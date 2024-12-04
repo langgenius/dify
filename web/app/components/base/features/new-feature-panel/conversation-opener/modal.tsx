@@ -22,7 +22,7 @@ type OpeningSettingModalProps = {
   onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
 }
 
-const MAX_QUESTION_NUM = 5
+const MAX_QUESTION_NUM = 10
 
 const OpeningSettingModal = ({
   data,

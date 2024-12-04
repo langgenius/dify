@@ -500,6 +500,26 @@ const translation = {
       'clear': 'Löschen',
       'setVariable': 'Variable setzen',
       'variable': 'Variable',
+      'operations': {
+        'title': 'Operation',
+        'clear': 'Klar',
+        'over-write': 'Überschreiben',
+        'set': 'Garnitur',
+        '-=': '-=',
+        '+=': '+=',
+        '/=': '/=',
+        'append': 'Anfügen',
+        'extend': 'Ausdehnen',
+        '*=': '*=',
+        'overwrite': 'Überschreiben',
+      },
+      'setParameter': 'Parameter setzen...',
+      'noVarTip': 'Klicken Sie auf die Schaltfläche "+", um Variablen hinzuzufügen',
+      'variables': 'Variablen',
+      'noAssignedVars': 'Keine verfügbaren zugewiesenen Variablen',
+      'selectAssignedVariable': 'Zugewiesene Variable auswählen...',
+      'varNotSet': 'Variable NICHT gesetzt',
+      'assignedVarsDescription': 'Zugewiesene Variablen müssen beschreibbare Variablen sein, z. B. Konversationsvariablen.',
     },
     tool: {
       toAuthorize: 'Autorisieren',
@@ -630,6 +650,13 @@ const translation = {
   },
   tracing: {
     stopBy: 'Gestoppt von {{user}}',
+  },
+  variableReference: {
+    noAvailableVars: 'Keine verfügbaren Variablen',
+    conversationVars: 'Konversations-Variablen',
+    noAssignedVars: 'Keine verfügbaren zugewiesenen Variablen',
+    noVarsForOperation: 'Es stehen keine Variablen für die Zuweisung mit der ausgewählten Operation zur Verfügung.',
+    assignedVarsDescription: 'Zugewiesene Variablen müssen beschreibbare Variablen sein, z. B.',
   },
 }
 

@@ -141,7 +141,7 @@ class BaseAppGenerator:
         return value
 
     @classmethod
-    def convert_to_event_stream(cls, generator: Union[dict, Generator[dict | str, None, None]]):
+    def convert_to_event_stream(cls, generator: Union[Mapping, Generator[Mapping | str, None, None]]):
         """
         Convert messages into event stream
         """
@@ -151,7 +151,7 @@ class BaseAppGenerator:
 
             def gen():
                 for message in generator:
-                    if isinstance(message, dict):
+                    if isinstance(message, (Mapping, dict)):
                         yield f"data: {json.dumps(message)}\n\n"
                     else:
                         yield f"event: {message}\n\n"

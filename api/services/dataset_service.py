@@ -406,6 +406,9 @@ class DocumentService:
             ],
             "segmentation": {"delimiter": "\n", "max_tokens": 500, "chunk_overlap": 50},
         },
+        "limits": {
+            "indexing_max_segmentation_tokens_length": dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH,
+        },
     }
 
     DOCUMENT_METADATA_SCHEMA = {

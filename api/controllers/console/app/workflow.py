@@ -104,11 +104,11 @@ class DraftWorkflowApi(Resource):
         try:
             environment_variables_list = args.get("environment_variables") or []
             environment_variables = [
-                variable_factory.build_variable_from_mapping(obj) for obj in environment_variables_list
+                variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
             ]
             conversation_variables_list = args.get("conversation_variables") or []
             conversation_variables = [
-                variable_factory.build_variable_from_mapping(obj) for obj in conversation_variables_list
+                variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
             ]
             workflow = workflow_service.sync_draft_workflow(
                 app_model=app_model,
@@ -166,7 +166,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
             raise ConversationCompletedError()
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
 
@@ -203,7 +203,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
             raise ConversationCompletedError()
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
 
@@ -240,7 +240,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
             raise ConversationCompletedError()
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
 
@@ -413,7 +413,7 @@ class DefaultBlockConfigApi(Resource):
         filters = None
         if q:
             try:
-                filters = json.loads(q)
+                filters = json.loads(args.get("q", ""))
             except json.JSONDecodeError:
                 raise ValueError("Invalid filters")
 

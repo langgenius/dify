@@ -271,13 +271,18 @@ export const useWorkflowRun = () => {
                 } as any)
               }
               else {
-                if (!iterParallelLogMap.has(data.parallel_run_id))
-                  iterParallelLogMap.set(data.parallel_run_id, [{ ...data, status: NodeRunningStatus.Running } as any])
+                const nodeId = iterations?.node_id as string
+                if (!iterParallelLogMap.has(nodeId as string))
+                  iterParallelLogMap.set(iterations?.node_id as string, new Map())
+
+                const currentIterLogMap = iterParallelLogMap.get(nodeId)!
+                if (!currentIterLogMap.has(data.parallel_run_id))
+                  currentIterLogMap.set(data.parallel_run_id, [{ ...data, status: NodeRunningStatus.Running } as any])
                 else
-                  iterParallelLogMap.get(data.parallel_run_id)!.push({ ...data, status: NodeRunningStatus.Running } as any)
+                  currentIterLogMap.get(data.parallel_run_id)!.push({ ...data, status: NodeRunningStatus.Running } as any)
                 setIterParallelLogMap(iterParallelLogMap)
                 if (iterations)
-                  iterations.details = Array.from(iterParallelLogMap.values())
+                  iterations.details = Array.from(currentIterLogMap.values())
               }
             }))
           }
@@ -373,7 +378,7 @@ export const useWorkflowRun = () => {
                 if (iterations && iterations.details) {
                   const iterRunID = data.execution_metadata?.parallel_mode_run_id
 
-                  const currIteration = iterParallelLogMap.get(iterRunID)
+                  const currIteration = iterParallelLogMap.get(iterations.node_id)?.get(iterRunID)
                   const nodeIndex = currIteration?.findIndex(node =>
                     node.node_id === data.node_id && (
                       node?.parallel_run_id === data.execution_metadata?.parallel_mode_run_id),
@@ -392,7 +397,9 @@ export const useWorkflowRun = () => {
                     }
                   }
                   setIterParallelLogMap(iterParallelLogMap)
-                  iterations.details = Array.from(iterParallelLogMap.values())
+                  const iterLogMap = iterParallelLogMap.get(iterations.node_id)
+                  if (iterLogMap)
+                    iterations.details = Array.from(iterLogMap.values())
                 }
               }))
             }

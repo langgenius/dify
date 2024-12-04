@@ -33,15 +33,16 @@ class WorkflowAppGenerator(BaseAppGenerator):
     @overload
     def generate(
         self,
+        *,
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
-        args: dict,
+        args: Mapping,
         invoke_from: InvokeFrom,
-        stream: Literal[True] = True,
+        streaming: Literal[True] = True,
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
-    ) -> Generator[dict | str, None, None]: ...
+    ) -> Generator[Mapping | str, None, None]: ...
 
     @overload
     def generate(
@@ -49,12 +50,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
-        args: dict,
+        args: Mapping,
         invoke_from: InvokeFrom,
-        stream: Literal[False] = False,
+        streaming: Literal[False] = False,
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
-    ) -> dict: ...
+    ) -> Mapping: ...
 
     @overload
     def generate(
@@ -62,11 +63,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
-        args: dict,
+        args: Mapping,
         invoke_from: InvokeFrom,
-        stream: bool = False,
+        streaming: bool,
         call_depth: int = 0,
-    ) -> dict | Generator[dict | str, None, None]: ...
+        workflow_thread_pool_id: Optional[str] = None,
+    ) -> Mapping | Generator[Mapping | str, None, None]: ...
 
     def generate(
         self,
@@ -75,10 +77,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         user: Union[Account, EndUser],
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        stream: bool = True,
+        streaming: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
-    ):
+    ) -> Mapping | Generator[Mapping | str, None, None]:
         files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
         # parse files
@@ -113,7 +115,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             ),
             files=system_files,
             user_id=user.id,
-            stream=stream,
+            stream=streaming,
             invoke_from=invoke_from,
             call_depth=call_depth,
             trace_manager=trace_manager,
@@ -130,7 +132,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             application_generate_entity=application_generate_entity,
             invoke_from=invoke_from,
-            stream=stream,
+            streaming=streaming,
             workflow_thread_pool_id=workflow_thread_pool_id,
         )
 
@@ -142,7 +144,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         user: Union[Account, EndUser],
         application_generate_entity: WorkflowAppGenerateEntity,
         invoke_from: InvokeFrom,
-        stream: bool = True,
+        streaming: bool = True,
         workflow_thread_pool_id: Optional[str] = None,
     ) -> Union[dict, Generator[str | dict, None, None]]:
         """
@@ -184,13 +186,19 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow=workflow,
             queue_manager=queue_manager,
             user=user,
-            stream=stream,
+            stream=streaming,
         )
 
         return WorkflowAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
 
     def single_iteration_generate(
-        self, app_model: App, workflow: Workflow, node_id: str, user: Account | EndUser, args: dict, stream: bool = True
+        self,
+        app_model: App,
+        workflow: Workflow,
+        node_id: str,
+        user: Account | EndUser,
+        args: dict,
+        streaming: bool = True,
     ) -> dict[str, Any] | Generator[str | dict, Any, None]:
         """
         Generate App response.
@@ -218,7 +226,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             inputs={},
             files=[],
             user_id=user.id,
-            stream=stream,
+            stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={"auto_generate_conversation_name": False},
             single_iteration_run=WorkflowAppGenerateEntity.SingleIterationRunEntity(
@@ -235,7 +243,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             invoke_from=InvokeFrom.DEBUGGER,
             application_generate_entity=application_generate_entity,
-            stream=stream,
+            streaming=streaming,
         )
 
     def _generate_worker(

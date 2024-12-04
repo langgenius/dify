@@ -526,7 +526,7 @@ def add_qdrant_doc_id_index(field: str):
                         )
                     )
 
-    except Exception as e:
+    except Exception:
         click.echo(click.style("Failed to create Qdrant client.", fg="red"))
 
     click.echo(click.style(f"Index creation complete. Created {create_count} collection indexes.", fg="green"))
@@ -589,7 +589,7 @@ def upgrade_db():
 
             click.echo(click.style("Database migration successful!", fg="green"))
 
-        except Exception as e:
+        except Exception:
             logging.exception("Failed to execute database migration")
         finally:
             lock.release()
@@ -631,7 +631,7 @@ where sites.id is null limit 1000"""
                         account = accounts[0]
                         print("Fixing missing site for app {}".format(app.id))
                         app_was_created.send(app, account=account)
-                except Exception as e:
+                except Exception:
                     failed_app_ids.append(app_id)
                     click.echo(click.style("Failed to fix missing site for app {}".format(app_id), fg="red"))
                     logging.exception(f"Failed to fix app related site missing issue, app_id: {app_id}")

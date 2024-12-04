@@ -7,6 +7,7 @@ from pydantic import BaseModel
 class BaseNodeData(ABC, BaseModel):
     title: str
     desc: Optional[str] = None
+    version: str = "1"
 
 
 class BaseIterationNodeData(BaseNodeData):

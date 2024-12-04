@@ -607,6 +607,9 @@ const translation = {
     expiring: 'Expiring in one day',
     expiring_plural: 'Expiring in {{count}} days',
   },
+  pagination: {
+    perPage: 'Items per page',
+  },
 }
 
 export default translation

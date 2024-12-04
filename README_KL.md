@@ -213,6 +213,13 @@ wa'logh nIqHom neH ghun deployment toy'wI' [terraform](https://www.terraform.io/
 ##### Google Cloud
 - [Google Cloud Terraform qachlot @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
+#### AWS CDK atorlugh pilersitsineq
+
+wa'logh nIqHom neH ghun deployment toy'wI' [CDK](https://aws.amazon.com/cdk/) lo'laH.
+
+##### AWS 
+- [AWS CDK qachlot @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+
 ## Contributing
 
 For those who'd like to contribute code, see our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md). 

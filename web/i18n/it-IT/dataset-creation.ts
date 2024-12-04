@@ -167,7 +167,7 @@ const translation = {
     retrievalSettingTip: 'Per cambiare il metodo di indicizzazione, vai alle ',
     datasetSettingLink: 'impostazioni della Conoscenza.',
     separatorTip: 'Un delimitatore è il carattere utilizzato per separare il testo. \\n\\n e \\n sono delimitatori comunemente usati per separare paragrafi e righe. In combinazione con le virgole (\\n\\n,\\n), i paragrafi verranno segmentati per righe quando superano la lunghezza massima del blocco. È inoltre possibile utilizzare delimitatori speciali definiti dall\'utente (ad es. ***).',
-    maxLengthCheck: 'La lunghezza massima del blocco deve essere inferiore a 4000',
+    maxLengthCheck: 'La lunghezza massima del blocco deve essere inferiore a {{limit}}',
   },
   stepThree: {
     creationTitle: '🎉 Conoscenza creata',
