@@ -573,7 +573,7 @@ class TenantService:
         return tenant
 
     @staticmethod
-    def switch_tenant(account: Account, tenant_id: Optional[int] = None) -> None:
+    def switch_tenant(account: Account, tenant_id: Optional[str] = None) -> None:
         """Switch the current workspace for the account"""
 
         # Ensure tenant_id is provided
@@ -672,7 +672,7 @@ class TenantService:
         return db.session.query(func.count(Tenant.id)).scalar()
 
     @staticmethod
-    def check_member_permission(tenant: Tenant, operator: Account, member: Account, action: str) -> None:
+    def check_member_permission(tenant: Tenant, operator: Account, member: Account | None, action: str) -> None:
         """Check member permission"""
         perms = {
             "add": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],

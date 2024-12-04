@@ -55,7 +55,9 @@ class BaseNode(Generic[GenericNodeData]):
             raise ValueError("Node ID is required.")
 
         self.node_id = node_id
-        self.node_data: GenericNodeData = cast(GenericNodeData, self._node_data_cls(**config.get("data", {})))
+
+        node_data = self._node_data_cls.model_validate(config.get("data", {}))
+        self.node_data = cast(GenericNodeData, node_data)
 
     @abstractmethod
     def _run(self) -> NodeRunResult | Generator[Union[NodeEvent, "InNodeEvent"], None, None]:

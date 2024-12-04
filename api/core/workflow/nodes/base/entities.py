@@ -107,6 +107,7 @@ class BaseNodeData(ABC, BaseModel):
     desc: Optional[str] = None
     error_strategy: Optional[ErrorStrategy] = None
     default_value: Optional[list[DefaultValue]] = None
+    version: str = "1"
 
     @property
     def default_value_dict(self):

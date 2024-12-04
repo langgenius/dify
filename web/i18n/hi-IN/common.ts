@@ -617,6 +617,9 @@ const translation = {
     expiring: 'एक दिन में समाप्त हो रहा है',
     expiring_plural: '{{गिनती}} दिनों में समाप्त हो रहा है',
   },
+  pagination: {
+    perPage: 'प्रति पृष्ठ आइटम',
+  },
 }
 
 export default translation

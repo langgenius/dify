@@ -52,8 +52,6 @@ def build_from_mapping(
     tenant_id: str,
     config: FileUploadConfig | None = None,
 ) -> File:
-    config = config or FileUploadConfig()
-
     transfer_method = FileTransferMethod.value_of(mapping.get("transfer_method"))
 
     build_functions: dict[FileTransferMethod, Callable] = {
@@ -72,7 +70,7 @@ def build_from_mapping(
         transfer_method=transfer_method,
     )
 
-    if not _is_file_valid_with_config(
+    if config and not _is_file_valid_with_config(
         input_file_type=mapping.get("type", FileType.CUSTOM),
         file_extension=file.extension,
         file_transfer_method=file.transfer_method,
@@ -127,7 +125,7 @@ def _build_from_local_file(
     if row is None:
         raise ValueError("Invalid upload file")
 
-    file_type = FileType(mapping.get("type"))
+    file_type = FileType(mapping.get("type", "custom"))
     file_type = _standardize_file_type(file_type, extension="." + row.extension, mime_type=row.mime_type)
 
     return File(
@@ -157,7 +155,7 @@ def _build_from_remote_url(
     mime_type, filename, file_size = _get_remote_file_info(url)
     extension = mimetypes.guess_extension(mime_type) or "." + filename.split(".")[-1] if "." in filename else ".bin"
 
-    file_type = FileType(mapping.get("type"))
+    file_type = FileType(mapping.get("type", "custom"))
     file_type = _standardize_file_type(file_type, extension=extension, mime_type=mime_type)
 
     return File(
@@ -208,7 +206,7 @@ def _build_from_tool_file(
         raise ValueError(f"ToolFile {mapping.get('tool_file_id')} not found")
 
     extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
-    file_type = FileType(mapping.get("type"))
+    file_type = FileType(mapping.get("type", "custom"))
     file_type = _standardize_file_type(file_type, extension=extension, mime_type=tool_file.mimetype)
 
     return File(
@@ -244,9 +242,6 @@ def _is_file_valid_with_config(
         and config.allowed_file_extensions is not None
         and file_extension not in config.allowed_file_extensions
     ):
-        return False
-
-    if config.allowed_file_upload_methods and file_transfer_method not in config.allowed_file_upload_methods:
         return False
 
     if input_file_type == FileType.IMAGE and config.image_config:
