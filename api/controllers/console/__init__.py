@@ -2,7 +2,7 @@ from flask import Blueprint
 
 from libs.external_api import ExternalApi
 
-from .app.app_import import AppImportApi, AppImportConfirmApi
+from .app.app_import import AppImportApi, AppImportCheckDependenciesApi, AppImportConfirmApi
 from .files import FileApi, FilePreviewApi, FileSupportTypeApi
 from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
 
@@ -21,6 +21,7 @@ api.add_resource(RemoteFileUploadApi, "/remote-files/upload")
 # Import App
 api.add_resource(AppImportApi, "/apps/imports")
 api.add_resource(AppImportConfirmApi, "/apps/imports/<string:import_id>/confirm")
+api.add_resource(AppImportCheckDependenciesApi, "/apps/imports/<string:app_id>/check-dependencies")
 
 # Import other controllers
 from . import admin, apikey, extension, feature, ping, setup, version
