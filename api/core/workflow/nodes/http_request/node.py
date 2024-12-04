@@ -1,11 +1,9 @@
 import logging
 from collections.abc import Mapping, Sequence
-from mimetypes import guess_extension
-from os import path
 from typing import Any
 
 from configs import dify_config
-from core.file import File, FileTransferMethod, FileType
+from core.file import File, FileTransferMethod
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_entities import VariableSelector
