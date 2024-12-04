@@ -11,9 +11,11 @@ import useConfig from './use-config'
 import type { DocExtractorNodeType } from './types'
 import { fetchSupportFileTypes } from '@/service/datasets'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import { BlockEnum, type NodePanelProps } from '@/app/components/workflow/types'
+import { BlockEnum, InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n/language'
+import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
+import ResultPanel from '@/app/components/workflow/run/result-panel'
 
 const i18nPrefix = 'workflow.nodes.docExtractor'
 
@@ -46,6 +48,15 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
     inputs,
     handleVarChanges,
     filterVar,
+    // single run
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    handleRun,
+    handleStop,
+    runResult,
+    files,
+    setFiles,
   } = useConfig(id, data)
 
   return (
@@ -81,6 +92,30 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
           />
         </OutputVars>
       </div>
+      {
+        isShowSingleRun && (
+          <BeforeRunForm
+            nodeName={inputs.title}
+            onHide={hideSingleRun}
+            forms={[
+              {
+                inputs: [{
+                  label: t(`${i18nPrefix}.inputVar`)!,
+                  variable: 'files',
+                  type: InputVarType.multiFiles,
+                  required: true,
+                }],
+                values: { files },
+                onChange: keyValue => setFiles((keyValue as any).files),
+              },
+            ]}
+            runningStatus={runningStatus}
+            onRun={handleRun}
+            onStop={handleStop}
+            result={<ResultPanel {...runResult} showSteps={false} />}
+          />
+        )
+      }
     </div>
   )
 }
