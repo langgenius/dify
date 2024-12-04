@@ -195,10 +195,10 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             parameters["toolConfig"] = self._convert_converse_tool_config(tools=tools)
         try:
             # for issue #10976
-            # add placeholder for conversation because that bedrock-runtime doesn't support two users
-            # FIXME: when bedrock-runtime support two users, we should remove this placeholder
+            # add placeholder for conversation because that bedrock-runtime doesn't support two users consecutive
+            # FIXME: when bedrock-runtime support two users consecutive, we should remove this placeholder
             conversations_list = parameters["messages"]
-            # if two consecutive user messages found, insert a system message placeholder
+            # if two consecutive user messages found, insert an assistant message placeholder
             i = 0
             while i < len(conversations_list) - 1:
                 if conversations_list[i]["role"] == "user" and conversations_list[i + 1]["role"] == "user":
