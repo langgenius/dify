@@ -8,8 +8,7 @@ import RemarkGfm from 'remark-gfm'
 import RehypeRaw from 'rehype-raw'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
-import type { RefObject } from 'react'
-import { Component, memo, useEffect, useMemo, useRef, useState } from 'react'
+import { Component, memo, useMemo, useRef, useState } from 'react'
 import type { CodeComponent } from 'react-markdown/lib/ast-to-react'
 import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
@@ -75,29 +74,6 @@ export function PreCode(props: { children: any }) {
       {props.children}
     </pre>
   )
-}
-
-// eslint-disable-next-line unused-imports/no-unused-vars
-const useLazyLoad = (ref: RefObject<Element>): boolean => {
-  const [isIntersecting, setIntersecting] = useState<boolean>(false)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setIntersecting(true)
-        observer.disconnect()
-      }
-    })
-
-    if (ref.current)
-      observer.observe(ref.current)
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [ref])
-
-  return isIntersecting
 }
 
 // **Add code block
