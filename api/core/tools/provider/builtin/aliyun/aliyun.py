@@ -2,6 +2,7 @@ from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.provider.builtin.aliyun.tools.eas import EasTool
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
+
 class AliYunProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:
         try:
@@ -17,4 +18,3 @@ class AliYunProvider(BuiltinToolProviderController):
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
-        
