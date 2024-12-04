@@ -19,36 +19,36 @@ from factories import variable_factory
 
 def test_string_variable():
     test_data = {"value_type": "string", "name": "test_text", "value": "Hello, World!"}
-    result = variable_factory.build_variable_from_mapping(test_data)
+    result = variable_factory.build_conversation_variable_from_mapping(test_data)
     assert isinstance(result, StringVariable)
 
 
 def test_integer_variable():
     test_data = {"value_type": "number", "name": "test_int", "value": 42}
-    result = variable_factory.build_variable_from_mapping(test_data)
+    result = variable_factory.build_conversation_variable_from_mapping(test_data)
     assert isinstance(result, IntegerVariable)
 
 
 def test_float_variable():
     test_data = {"value_type": "number", "name": "test_float", "value": 3.14}
-    result = variable_factory.build_variable_from_mapping(test_data)
+    result = variable_factory.build_conversation_variable_from_mapping(test_data)
     assert isinstance(result, FloatVariable)
 
 
 def test_secret_variable():
     test_data = {"value_type": "secret", "name": "test_secret", "value": "secret_value"}
-    result = variable_factory.build_variable_from_mapping(test_data)
+    result = variable_factory.build_conversation_variable_from_mapping(test_data)
     assert isinstance(result, SecretVariable)
 
 
 def test_invalid_value_type():
     test_data = {"value_type": "unknown", "name": "test_invalid", "value": "value"}
     with pytest.raises(VariableError):
-        variable_factory.build_variable_from_mapping(test_data)
+        variable_factory.build_conversation_variable_from_mapping(test_data)
 
 
 def test_build_a_blank_string():
-    result = variable_factory.build_variable_from_mapping(
+    result = variable_factory.build_conversation_variable_from_mapping(
         {
             "value_type": "string",
             "name": "blank",
@@ -80,7 +80,7 @@ def test_object_variable():
             "key2": 2,
         },
     }
-    variable = variable_factory.build_variable_from_mapping(mapping)
+    variable = variable_factory.build_conversation_variable_from_mapping(mapping)
     assert isinstance(variable, ObjectSegment)
     assert isinstance(variable.value["key1"], str)
     assert isinstance(variable.value["key2"], int)
@@ -97,7 +97,7 @@ def test_array_string_variable():
             "text",
         ],
     }
-    variable = variable_factory.build_variable_from_mapping(mapping)
+    variable = variable_factory.build_conversation_variable_from_mapping(mapping)
     assert isinstance(variable, ArrayStringVariable)
     assert isinstance(variable.value[0], str)
     assert isinstance(variable.value[1], str)
@@ -114,7 +114,7 @@ def test_array_number_variable():
             2.0,
         ],
     }
-    variable = variable_factory.build_variable_from_mapping(mapping)
+    variable = variable_factory.build_conversation_variable_from_mapping(mapping)
     assert isinstance(variable, ArrayNumberVariable)
     assert isinstance(variable.value[0], int)
     assert isinstance(variable.value[1], float)
@@ -137,7 +137,7 @@ def test_array_object_variable():
             },
         ],
     }
-    variable = variable_factory.build_variable_from_mapping(mapping)
+    variable = variable_factory.build_conversation_variable_from_mapping(mapping)
     assert isinstance(variable, ArrayObjectVariable)
     assert isinstance(variable.value[0], dict)
     assert isinstance(variable.value[1], dict)
@@ -149,7 +149,7 @@ def test_array_object_variable():
 
 def test_variable_cannot_large_than_200_kb():
     with pytest.raises(VariableError):
-        variable_factory.build_variable_from_mapping(
+        variable_factory.build_conversation_variable_from_mapping(
             {
                 "id": str(uuid4()),
                 "value_type": "string",

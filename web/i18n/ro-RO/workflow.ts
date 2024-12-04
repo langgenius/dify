@@ -500,6 +500,26 @@ const translation = {
       'clear': 'Șterge',
       'setVariable': 'Setează Variabila',
       'variable': 'Variabilă',
+      'operations': {
+        'append': 'Adăugaţi',
+        'extend': 'Prelungi',
+        'title': 'Operație',
+        '+=': '+=',
+        'set': 'Apus',
+        '*=': '*=',
+        'overwrite': 'Suprascrie',
+        'clear': 'Clar',
+        'over-write': 'Suprascrie',
+        '/=': '/=',
+        '-=': '-=',
+      },
+      'selectAssignedVariable': 'Selectați variabila atribuită...',
+      'varNotSet': 'Variabila NU este setată',
+      'noVarTip': 'Faceți clic pe butonul "+" pentru a adăuga variabile',
+      'noAssignedVars': 'Nu există variabile atribuite disponibile',
+      'setParameter': 'Setați parametrul...',
+      'assignedVarsDescription': 'Variabilele atribuite trebuie să fie variabile inscripționabile, cum ar fi variabilele de conversație.',
+      'variables': 'Variabile',
     },
     tool: {
       toAuthorize: 'Autorizați',
@@ -630,6 +650,13 @@ const translation = {
   },
   tracing: {
     stopBy: 'Oprit de {{user}}',
+  },
+  variableReference: {
+    noAvailableVars: 'Nu există variabile disponibile',
+    noVarsForOperation: 'Nu există variabile disponibile pentru atribuire cu operațiunea selectată.',
+    conversationVars: 'Variabile de conversație',
+    assignedVarsDescription: 'Variabilele atribuite trebuie să fie variabile inscripționabile, cum ar fi',
+    noAssignedVars: 'Nu există variabile atribuite disponibile',
   },
 }
 

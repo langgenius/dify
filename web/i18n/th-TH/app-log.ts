@@ -51,6 +51,7 @@ const translation = {
     },
     variables: 'ตัว แปร',
     uploadImages: 'รูปภาพที่อัปโหลด',
+    timeConsuming: '',
   },
   filter: {
     period: {
