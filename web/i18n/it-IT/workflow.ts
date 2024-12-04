@@ -520,6 +520,26 @@ const translation = {
       'clear': 'Cancellare',
       'setVariable': 'Imposta Variabile',
       'variable': 'Variabile',
+      'operations': {
+        '-=': '-=',
+        'overwrite': 'Sovrascrivere',
+        '+=': '+=',
+        '*=': '*=',
+        'append': 'Aggiungere',
+        'set': 'Mettere',
+        'title': 'Operazione',
+        '/=': '/=',
+        'over-write': 'Sovrascrivere',
+        'extend': 'Estendere',
+        'clear': 'Chiaro',
+      },
+      'setParameter': 'Imposta parametro...',
+      'variables': 'Variabili',
+      'noAssignedVars': 'Nessuna variabile assegnata disponibile',
+      'assignedVarsDescription': 'Le variabili assegnate devono essere variabili scrivibili, ad esempio variabili di conversazione.',
+      'varNotSet': 'Variabile NON impostata',
+      'selectAssignedVariable': 'Seleziona variabile assegnata...',
+      'noVarTip': 'Fare clic sul pulsante "+" per aggiungere variabili',
     },
     tool: {
       toAuthorize: 'Per autorizzare',
@@ -657,6 +677,13 @@ const translation = {
   },
   tracing: {
     stopBy: 'Interrotto da {{user}}',
+  },
+  variableReference: {
+    noAvailableVars: 'Nessuna variabile disponibile',
+    noAssignedVars: 'Nessuna variabile assegnata disponibile',
+    noVarsForOperation: 'Non ci sono variabili disponibili per l\'assegnazione con l\'operazione selezionata.',
+    assignedVarsDescription: 'Le variabili assegnate devono essere variabili scrivibili, ad esempio',
+    conversationVars: 'Variabili di conversazione',
   },
 }
 

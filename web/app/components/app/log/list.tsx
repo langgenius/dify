@@ -318,7 +318,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const targetTone = TONE_LIST.find((item: any) => {
     let res = true
     validatedParams.forEach((param) => {
-      res = item.config?.[param] === detail.model_config?.configs?.completion_params?.[param]
+      res = item.config?.[param] === detail?.model_config.model?.completion_params?.[param]
     })
     return res
   })?.name ?? 'custom'

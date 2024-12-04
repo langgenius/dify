@@ -62,7 +62,7 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
   const formatNodeList = useCallback((list: NodeTracing[]) => {
     const allItems = [...list].reverse()
     const result: NodeTracing[] = []
-    const groupMap = new Map<string, NodeTracing[]>()
+    const nodeGroupMap = new Map<string, Map<string, NodeTracing[]>>()
 
     const processIterationNode = (item: NodeTracing) => {
       result.push({
@@ -70,11 +70,19 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
         details: [],
       })
     }
+
     const updateParallelModeGroup = (runId: string, item: NodeTracing, iterationNode: NodeTracing) => {
+      if (!nodeGroupMap.has(iterationNode.node_id))
+        nodeGroupMap.set(iterationNode.node_id, new Map())
+
+      const groupMap = nodeGroupMap.get(iterationNode.node_id)!
+
       if (!groupMap.has(runId))
         groupMap.set(runId, [item])
+
       else
         groupMap.get(runId)!.push(item)
+
       if (item.status === 'failed') {
         iterationNode.status = 'failed'
         iterationNode.error = item.error

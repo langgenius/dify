@@ -2,7 +2,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Any, Literal, Union, overload
+from typing import Any, Literal, Mapping, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -34,9 +34,9 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         self,
         app_model: App,
         user: Union[Account, EndUser],
-        args: dict,
+        args: Mapping,
         invoke_from: InvokeFrom,
-        stream: Literal[True] = True,
+        streaming: Literal[True] = True,
     ) -> Generator[str, None, None]: ...
 
     @overload
@@ -44,24 +44,24 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         self,
         app_model: App,
         user: Union[Account, EndUser],
-        args: dict,
+        args: Mapping,
         invoke_from: InvokeFrom,
-        stream: Literal[False] = False,
-    ) -> dict: ...
+        streaming: Literal[False] = False,
+    ) -> Mapping: ...
 
     @overload
     def generate(
         self,
         app_model: App,
         user: Union[Account, EndUser],
-        args: dict,
+        args: Mapping,
         invoke_from: InvokeFrom,
-        stream: bool = False,
-    ) -> dict | Generator[str, None, None]: ...
+        streaming: bool = False,
+    ) -> Mapping | Generator[str, None, None]: ...
 
     def generate(
-        self, app_model: App, user: Union[Account, EndUser], args: Any, invoke_from: InvokeFrom, stream: bool = True
-    ) -> Union[dict, Generator[str, None, None]]:
+        self, app_model: App, user: Union[Account, EndUser], args: Any, invoke_from: InvokeFrom, streaming: bool = True
+    ) -> Union[Mapping, Generator[str, None, None]]:
         """
         Generate App response.
 
@@ -129,7 +129,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             query=query,
             files=file_objs,
             user_id=user.id,
-            stream=stream,
+            stream=streaming,
             invoke_from=invoke_from,
             extras=extras,
             trace_manager=trace_manager,
@@ -168,7 +168,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
             message=message,
             user=user,
-            stream=stream,
+            stream=streaming,
         )
 
         return CompletionAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
@@ -226,7 +226,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         invoke_from: InvokeFrom,
         stream: bool = True,
-    ) -> Union[dict, Generator[str, None, None]]:
+    ) -> Union[Mapping, Generator[str, None, None]]:
         """
         Generate App response.
 

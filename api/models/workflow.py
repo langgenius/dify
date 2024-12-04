@@ -243,7 +243,9 @@ class Workflow(Base):
         tenant_id = contexts.tenant_id.get()
 
         environment_variables_dict: dict[str, Any] = json.loads(self._environment_variables)
-        results = [variable_factory.build_variable_from_mapping(v) for v in environment_variables_dict.values()]
+        results = [
+            variable_factory.build_environment_variable_from_mapping(v) for v in environment_variables_dict.values()
+        ]
 
         # decrypt secret variables value
         decrypt_func = (
@@ -308,7 +310,7 @@ class Workflow(Base):
             self._conversation_variables = "{}"
 
         variables_dict: dict[str, Any] = json.loads(self._conversation_variables)
-        results = [variable_factory.build_variable_from_mapping(v) for v in variables_dict.values()]
+        results = [variable_factory.build_conversation_variable_from_mapping(v) for v in variables_dict.values()]
         return results
 
     @conversation_variables.setter
@@ -803,4 +805,4 @@ class ConversationVariable(Base):
 
     def to_variable(self) -> Variable:
         mapping = json.loads(self.data)
-        return variable_factory.build_variable_from_mapping(mapping)
+        return variable_factory.build_conversation_variable_from_mapping(mapping)

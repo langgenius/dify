@@ -34,7 +34,6 @@ class OAuthDataSource(Resource):
         OAUTH_DATASOURCE_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_DATASOURCE_PROVIDERS.get(provider)
-            print(vars(oauth_provider))
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
         if dify_config.NOTION_INTEGRATION_TYPE == "internal":

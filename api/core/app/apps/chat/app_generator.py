@@ -36,7 +36,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         args: Any,
         invoke_from: InvokeFrom,
-        stream: Literal[True] = True,
+        streaming: Literal[True] = True,
     ) -> Generator[dict | str, None, None]: ...
 
     @overload
@@ -46,7 +46,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         args: Any,
         invoke_from: InvokeFrom,
-        stream: Literal[False] = False,
+        streaming: Literal[False] = False,
     ) -> dict: ...
 
     @overload
@@ -56,7 +56,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         args: Any,
         invoke_from: InvokeFrom,
-        stream: bool = False,
+        streaming: bool = False,
     ) -> Union[dict, Generator[dict | str, None, None]]: ...
 
     def generate(
@@ -65,7 +65,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         args: Any,
         invoke_from: InvokeFrom,
-        stream: bool = True,
+        streaming: bool = True,
     ) -> Union[dict, Generator[dict | str, None, None]]:
         """
         Generate App response.
@@ -152,7 +152,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             invoke_from=invoke_from,
             extras=extras,
             trace_manager=trace_manager,
-            stream=stream,
+            stream=streaming,
         )
 
         # init generate records
@@ -172,7 +172,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         worker_thread = threading.Thread(
             target=self._generate_worker,
             kwargs={
-                "flask_app": current_app._get_current_object(),
+                "flask_app": current_app._get_current_object(),  # type: ignore
                 "application_generate_entity": application_generate_entity,
                 "queue_manager": queue_manager,
                 "conversation_id": conversation.id,
@@ -189,7 +189,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
             message=message,
             user=user,
-            stream=stream,
+            stream=streaming,
         )
 
         return ChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)

@@ -794,6 +794,9 @@ const translation = {
     expiring_plural: 'Poteče v {{count}} dneh',
     expiring: 'Poteče v enem dnevu',
   },
+  pagination: {
+    perPage: 'Elementi na stran',
+  },
 }
 
 export default translation

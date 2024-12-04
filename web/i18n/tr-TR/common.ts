@@ -595,6 +595,9 @@ const translation = {
     expiring_plural: '{{count}} gün içinde sona eriyor',
     expiring: 'Bir günde sona eriyor',
   },
+  pagination: {
+    perPage: 'Sayfa başına öğe sayısı',
+  },
 }
 
 export default translation

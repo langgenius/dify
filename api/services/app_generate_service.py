@@ -45,16 +45,16 @@ class AppGenerateService:
                 return rate_limit.generate(
                     CompletionAppGenerator.convert_to_event_stream(
                         CompletionAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, stream=streaming
+                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
                         ),
                     ),
-                    request_id,
+                    request_id=request_id,
                 )
             elif app_model.mode == AppMode.AGENT_CHAT.value or app_model.is_agent:
                 return rate_limit.generate(
                     AgentChatAppGenerator.convert_to_event_stream(
                         AgentChatAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, stream=streaming
+                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
                         ),
                     ),
                     request_id,
@@ -63,10 +63,10 @@ class AppGenerateService:
                 return rate_limit.generate(
                     ChatAppGenerator.convert_to_event_stream(
                         ChatAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, stream=streaming
+                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
                         ),
                     ),
-                    request_id,
+                    request_id=request_id,
                 )
             elif app_model.mode == AppMode.ADVANCED_CHAT.value:
                 workflow = cls._get_workflow(app_model, invoke_from)
@@ -78,10 +78,10 @@ class AppGenerateService:
                             user=user,
                             args=args,
                             invoke_from=invoke_from,
-                            stream=streaming,
+                            streaming=streaming,
                         ),
                     ),
-                    request_id,
+                    request_id=request_id,
                 )
             elif app_model.mode == AppMode.WORKFLOW.value:
                 workflow = cls._get_workflow(app_model, invoke_from)
@@ -93,7 +93,7 @@ class AppGenerateService:
                             user=user,
                             args=args,
                             invoke_from=invoke_from,
-                            stream=streaming,
+                            streaming=streaming,
                         ),
                     ),
                     request_id,
@@ -119,14 +119,14 @@ class AppGenerateService:
             workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
             return AdvancedChatAppGenerator.convert_to_event_stream(
                 AdvancedChatAppGenerator().single_iteration_generate(
-                    app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, stream=streaming
+                    app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
                 )
             )
         elif app_model.mode == AppMode.WORKFLOW.value:
             workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
             return AdvancedChatAppGenerator.convert_to_event_stream(
                 WorkflowAppGenerator().single_iteration_generate(
-                    app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, stream=streaming
+                    app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
                 )
             )
         else:
@@ -140,7 +140,7 @@ class AppGenerateService:
         message_id: str,
         invoke_from: InvokeFrom,
         streaming: bool = True,
-    ) -> Union[dict, Generator]:
+    ) -> Union[Mapping, Generator]:
         """
         Generate more like this
         :param app_model: app model
