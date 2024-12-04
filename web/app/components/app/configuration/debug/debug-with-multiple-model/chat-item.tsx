@@ -102,7 +102,7 @@ const ChatItem: FC<ChatItemProps> = ({
       query: message,
       inputs,
       model_config: configData,
-      parentMessageId: getLastAnswer(chatListRef.current)?.id || null,
+      parent_message_id: getLastAnswer(chatListRef.current)?.id || null,
     }
 
     if ((config.file_upload as any).enabled && files?.length && supportVision)
