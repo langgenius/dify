@@ -330,6 +330,7 @@ const translation = {
   },
   segment: {
     paragraphs: '段落',
+    chunks: '段落',
     keywords: '关键词',
     addKeyWord: '添加关键词',
     keywordError: '关键词最大长度为 20',

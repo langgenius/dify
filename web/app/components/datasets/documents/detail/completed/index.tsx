@@ -1,11 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React, { memo, useEffect, useMemo, useState } from 'react'
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useDebounceFn } from 'ahooks'
-import { HashtagIcon } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import { isNil, omitBy } from 'lodash-es'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import {
   RiCloseLine,
   RiEditLine,
@@ -14,7 +12,9 @@ import { StatusItem } from '../../list'
 import { DocumentContext } from '../index'
 import { ProcessStatus } from '../segment-add'
 import s from './style.module.css'
-import InfiniteVirtualList from './InfiniteVirtualList'
+import SegmentList from './segment-list'
+import DisplayToggle from './display-toggle'
+import BatchAction from './batch-action'
 import cn from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import Modal from '@/app/components/base/modal'
@@ -24,27 +24,44 @@ import Input from '@/app/components/base/input'
 import { ToastContext } from '@/app/components/base/toast'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
-import { deleteSegment, disableSegment, enableSegment, fetchSegments, updateSegment } from '@/service/datasets'
-import type { SegmentDetailModel, SegmentUpdater, SegmentsQuery, SegmentsResponse } from '@/models/datasets'
-import { asyncRunSafe } from '@/utils'
-import type { CommonResponse } from '@/models/common'
+import { updateSegment } from '@/service/datasets'
+import type { ParentMode, ProcessMode, SegmentDetailModel, SegmentUpdater } from '@/models/datasets'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea/common'
 import Button from '@/app/components/base/button'
 import NewSegmentModal from '@/app/components/datasets/documents/detail/new-segment-modal'
 import TagInput from '@/app/components/base/tag-input'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import Checkbox from '@/app/components/base/checkbox'
+import { useDeleteSegment, useDisableSegment, useEnableSegment, useSegmentList } from '@/service/knowledge/use-segment'
+import { Chunk } from '@/app/components/base/icons/src/public/knowledge'
+
+type SegmentListContextValue = {
+  isCollapsed: boolean
+  toggleCollapsed: () => void
+}
+
+const SegmentListContext = createContext({
+  isCollapsed: true,
+  toggleCollapsed: () => {},
+})
+
+export const useSegmentListContext = (selector: (value: SegmentListContextValue) => any) => {
+  return useContextSelector(SegmentListContext, selector)
+}
 
 export const SegmentIndexTag: FC<{ positionId: string | number; className?: string }> = ({ positionId, className }) => {
   const localPositionId = useMemo(() => {
     const positionIdStr = String(positionId)
     if (positionIdStr.length >= 3)
-      return positionId
-    return positionIdStr.padStart(3, '0')
+      return `Chunk-${positionId}`
+    return `Chunk-${positionIdStr.padStart(2, '0')}`
   }, [positionId])
   return (
-    <div className={`text-gray-500 border border-gray-200 box-border flex items-center rounded-md italic text-[11px] pl-1 pr-1.5 font-medium ${className ?? ''}`}>
-      <HashtagIcon className='w-3 h-3 text-gray-400 fill-current mr-1 stroke-current stroke-1' />
-      {localPositionId}
+    <div className={cn('flex items-center', className)}>
+      <Chunk className='w-3 h-3 p-[1px] text-text-tertiary mr-0.5' />
+      <div className='text-text-tertiary system-xs-medium'>
+        {localPositionId}
+      </div>
     </div>
   )
 }
@@ -52,10 +69,11 @@ export const SegmentIndexTag: FC<{ positionId: string | number; className?: stri
 type ISegmentDetailProps = {
   embeddingAvailable: boolean
   segInfo?: Partial<SegmentDetailModel> & { id: string }
-  onChangeSwitch?: (segId: string, enabled: boolean) => Promise<void>
+  onChangeSwitch?: (enabled: boolean, segId?: string) => Promise<void>
   onUpdate: (segmentId: string, q: string, a: string, k: string[]) => void
   onCancel: () => void
   archived?: boolean
+  isEditing?: boolean
 }
 /**
  * Show all the contents of the segment
@@ -67,9 +85,10 @@ const SegmentDetailComponent: FC<ISegmentDetailProps> = ({
   onChangeSwitch,
   onUpdate,
   onCancel,
+  isEditing: initialIsEditing,
 }) => {
   const { t } = useTranslation()
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing, setIsEditing] = useState(initialIsEditing)
   const [question, setQuestion] = useState(segInfo?.content || '')
   const [answer, setAnswer] = useState(segInfo?.answer || '')
   const [keywords, setKeywords] = useState<string[]>(segInfo?.keywords || [])
@@ -195,7 +214,7 @@ const SegmentDetailComponent: FC<ISegmentDetailProps> = ({
                 size='md'
                 defaultValue={segInfo?.enabled}
                 onChange={async (val) => {
-                  await onChangeSwitch?.(segInfo?.id || '', val)
+                  await onChangeSwitch?.(val, segInfo?.id || '')
                 }}
                 disabled={archived}
               />
@@ -223,6 +242,8 @@ type ICompletedProps = {
   onNewSegmentModalChange: (state: boolean) => void
   importStatus: ProcessStatus | string | undefined
   archived?: boolean
+  mode?: ProcessMode
+  parentMode?: ParentMode
   // data: Array<{}> // all/part segments
 }
 /**
@@ -235,22 +256,26 @@ const Completed: FC<ICompletedProps> = ({
   onNewSegmentModalChange,
   importStatus,
   archived,
+  mode,
+  parentMode,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { datasetId = '', documentId = '', docForm } = useContext(DocumentContext)
   // the current segment id and whether to show the modal
-  const [currSegment, setCurrSegment] = useState<{ segInfo?: SegmentDetailModel; showModal: boolean }>({ showModal: false })
+  const [currSegment, setCurrSegment] = useState<{ segInfo?: SegmentDetailModel; showModal: boolean; isEditing?: boolean }>({ showModal: false })
 
   const [inputValue, setInputValue] = useState<string>('') // the input value
   const [searchValue, setSearchValue] = useState<string>('') // the search value
   const [selectedStatus, setSelectedStatus] = useState<boolean | 'all'>('all') // the selected status, enabled/disabled/undefined
 
-  const [lastSegmentsRes, setLastSegmentsRes] = useState<SegmentsResponse | undefined>(undefined)
-  const [allSegments, setAllSegments] = useState<Array<SegmentDetailModel[]>>([]) // all segments data
-  const [loading, setLoading] = useState(false)
-  const [total, setTotal] = useState<number | undefined>()
+  const [segments, setSegments] = useState<SegmentDetailModel[]>([]) // all segments data
+  const [selectedSegmentIds, setSelectedSegmentIds] = useState<string[]>([])
   const { eventEmitter } = useEventEmitterContextContext()
+  const [isCollapsed, setIsCollapsed] = useState(true)
+  // todo: pagination
+  const [currentPage, setCurrentPage] = useState(1)
+  const [limit, setLimit] = useState(10)
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchValue(inputValue)
@@ -265,72 +290,86 @@ const Completed: FC<ICompletedProps> = ({
     setSelectedStatus(value === 'all' ? 'all' : !!value)
   }
 
-  const getSegments = async (needLastId?: boolean) => {
-    const finalLastId = lastSegmentsRes?.data?.[lastSegmentsRes.data.length - 1]?.id || ''
-    setLoading(true)
-    const [e, res] = await asyncRunSafe<SegmentsResponse>(fetchSegments({
+  const { isLoading: isLoadingSegmentList, data: segmentList, refetch: refreshSegmentList } = useSegmentList(
+    {
       datasetId,
       documentId,
-      params: omitBy({
-        last_id: !needLastId ? undefined : finalLastId,
-        limit: 12,
+      params: {
+        page: currentPage,
+        limit,
         keyword: searchValue,
         enabled: selectedStatus === 'all' ? 'all' : !!selectedStatus,
-      }, isNil) as SegmentsQuery,
-    }) as Promise<SegmentsResponse>)
-    if (!e) {
-      setAllSegments([...(!needLastId ? [] : allSegments), ...splitArray(res.data || [])])
-      setLastSegmentsRes(res)
-      if (!lastSegmentsRes || !needLastId)
-        setTotal(res?.total || 0)
-    }
-    setLoading(false)
-  }
+      },
+    },
+    mode === 'hierarchical' && parentMode === 'full-doc',
+  )
 
-  const resetList = () => {
-    setLastSegmentsRes(undefined)
-    setAllSegments([])
-    setLoading(false)
-    setTotal(undefined)
-    getSegments(false)
-  }
+  useEffect(() => {
+    if (segmentList)
+      setSegments(segmentList.data || [])
+  }, [segmentList])
 
-  const onClickCard = (detail: SegmentDetailModel) => {
-    setCurrSegment({ segInfo: detail, showModal: true })
+  const resetList = useCallback(() => {
+    setSegments([])
+    refreshSegmentList()
+  }, [])
+
+  const onClickCard = (detail: SegmentDetailModel, isEditing = false) => {
+    setCurrSegment({ segInfo: detail, showModal: true, isEditing })
   }
 
   const onCloseModal = () => {
     setCurrSegment({ ...currSegment, showModal: false })
   }
 
-  const onChangeSwitch = async (segId: string, enabled: boolean) => {
-    const opApi = enabled ? enableSegment : disableSegment
-    const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, segmentId: segId }) as Promise<CommonResponse>)
-    if (!e) {
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      for (const item of allSegments) {
-        for (const seg of item) {
-          if (seg.id === segId)
-            seg.enabled = enabled
-        }
-      }
-      setAllSegments([...allSegments])
-    }
-    else {
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
-    }
-  }
+  const { mutateAsync: enableSegment } = useEnableSegment()
 
-  const onDelete = async (segId: string) => {
-    const [e] = await asyncRunSafe<CommonResponse>(deleteSegment({ datasetId, documentId, segmentId: segId }) as Promise<CommonResponse>)
-    if (!e) {
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      resetList()
-    }
-    else {
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
-    }
-  }
+  const { mutateAsync: disableSegment } = useDisableSegment()
+
+  const onChangeSwitch = useCallback(async (enable: boolean, segId?: string) => {
+    const operationApi = enable ? enableSegment : disableSegment
+    await operationApi({ datasetId, documentId, segmentIds: segId ? [segId] : selectedSegmentIds }, {
+      onSuccess: () => {
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        for (const seg of segments) {
+          if (segId ? seg.id === segId : selectedSegmentIds.includes(seg.id))
+            seg.enabled = enable
+        }
+        setSegments([...segments])
+      },
+      onError: () => {
+        notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      },
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datasetId, documentId, selectedSegmentIds, segments])
+
+  const { mutateAsync: deleteSegment } = useDeleteSegment()
+
+  const onDelete = useCallback(async (segId?: string) => {
+    await deleteSegment({ datasetId, documentId, segmentIds: segId ? [segId] : selectedSegmentIds }, {
+      onSuccess: () => {
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        resetList()
+      },
+      onError: () => {
+        notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      },
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datasetId, documentId, selectedSegmentIds])
+
+  const onCancelBatchOperation = useCallback(() => {
+    setSelectedSegmentIds([])
+  }, [])
+
+  const onSelected = useCallback((segId: string) => {
+    setSelectedSegmentIds(prev =>
+      prev.includes(segId)
+        ? prev.filter(id => id !== segId)
+        : [...prev, segId],
+    )
+  }, [])
 
   const handleUpdateSegment = async (segmentId: string, question: string, answer: string, keywords: string[]) => {
     const params: SegmentUpdater = { content: '' }
@@ -358,20 +397,18 @@ const Completed: FC<ICompletedProps> = ({
       const res = await updateSegment({ datasetId, documentId, segmentId, body: params })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       onCloseModal()
-      for (const item of allSegments) {
-        for (const seg of item) {
-          if (seg.id === segmentId) {
-            seg.answer = res.data.answer
-            seg.content = res.data.content
-            seg.keywords = res.data.keywords
-            seg.word_count = res.data.word_count
-            seg.hit_count = res.data.hit_count
-            seg.index_node_hash = res.data.index_node_hash
-            seg.enabled = res.data.enabled
-          }
+      for (const seg of segments) {
+        if (seg.id === segmentId) {
+          seg.answer = res.data.answer
+          seg.content = res.data.content
+          seg.keywords = res.data.keywords
+          seg.word_count = res.data.word_count
+          seg.hit_count = res.data.hit_count
+          seg.index_node_hash = res.data.index_node_hash
+          seg.enabled = res.data.enabled
         }
       }
-      setAllSegments([...allSegments])
+      setSegments([...segments])
     }
     finally {
       eventEmitter?.emit('')
@@ -379,19 +416,43 @@ const Completed: FC<ICompletedProps> = ({
   }
 
   useEffect(() => {
-    if (lastSegmentsRes !== undefined)
-      getSegments(false)
-  }, [selectedStatus, searchValue])
-
-  useEffect(() => {
     if (importStatus === ProcessStatus.COMPLETED)
       resetList()
-  }, [importStatus])
+  }, [importStatus, resetList])
+
+  const isAllSelected = useMemo(() => {
+    return segments.every(seg => selectedSegmentIds.includes(seg.id))
+  }, [segments, selectedSegmentIds])
+
+  const isSomeSelected = useMemo(() => {
+    return segments.some(seg => selectedSegmentIds.includes(seg.id))
+  }, [segments, selectedSegmentIds])
+
+  const onSelectedAll = useCallback(() => {
+    setSelectedSegmentIds((prev) => {
+      const currentAllSegIds = segments.map(seg => seg.id)
+      const prevSelectedIds = prev.filter(item => !currentAllSegIds.includes(item))
+      return [...prevSelectedIds, ...((isAllSelected || selectedSegmentIds.length > 0) ? [] : currentAllSegIds)]
+    })
+  }, [segments, isAllSelected, selectedSegmentIds])
+
+  const totalText = useMemo(() => {
+    return segmentList?.total ? formatNumber(segmentList.total) : '--'
+  }, [segmentList?.total])
 
   return (
-    <>
+    <SegmentListContext.Provider value={{
+      isCollapsed,
+      toggleCollapsed: () => setIsCollapsed(!isCollapsed),
+    }}>
       <div className={s.docSearchWrapper}>
-        <div className={s.totalText}>{total ? formatNumber(total) : '--'} {t('datasetDocuments.segment.paragraphs')}</div>
+        <Checkbox
+          className='shrink-0'
+          checked={isAllSelected}
+          mixed={!isAllSelected && isSomeSelected}
+          onCheck={onSelectedAll}
+        />
+        <div className={cn('system-sm-semibold-uppercase pl-5', s.totalText)}>{totalText} {t('datasetDocuments.segment.chunks')}</div>
         <SimpleSelect
           onSelect={onChangeStatus}
           items={[
@@ -401,7 +462,7 @@ const Completed: FC<ICompletedProps> = ({
           ]}
           defaultValue={'all'}
           className={s.select}
-          wrapperClassName='h-fit w-[120px] mr-2' />
+          wrapperClassName='h-fit w-[100px] mr-2' />
         <Input
           showLeftIcon
           showClearIcon
@@ -410,13 +471,15 @@ const Completed: FC<ICompletedProps> = ({
           onChange={e => handleInputChange(e.target.value)}
           onClear={() => handleInputChange('')}
         />
+        <Divider type='vertical' className='h-3.5 mx-3' />
+        <DisplayToggle />
       </div>
-      <InfiniteVirtualList
+      <SegmentList
         embeddingAvailable={embeddingAvailable}
-        hasNextPage={lastSegmentsRes?.has_more ?? true}
-        isNextPageLoading={loading}
-        items={allSegments}
-        loadNextPage={getSegments}
+        isLoading={isLoadingSegmentList}
+        items={segments}
+        selectedSegmentIds={selectedSegmentIds}
+        onSelected={onSelected}
         onChangeSwitch={onChangeSwitch}
         onDelete={onDelete}
         onClick={onClickCard}
@@ -426,6 +489,7 @@ const Completed: FC<ICompletedProps> = ({
         <SegmentDetail
           embeddingAvailable={embeddingAvailable}
           segInfo={currSegment.segInfo ?? { id: '' }}
+          isEditing={currSegment.isEditing}
           onChangeSwitch={onChangeSwitch}
           onUpdate={handleUpdateSegment}
           onCancel={onCloseModal}
@@ -438,7 +502,15 @@ const Completed: FC<ICompletedProps> = ({
         onCancel={() => onNewSegmentModalChange(false)}
         onSave={resetList}
       />
-    </>
+      {selectedSegmentIds.length > 0
+      && <BatchAction
+        selectedSegmentIds={selectedSegmentIds}
+        onBatchEnable={onChangeSwitch.bind(null, true)}
+        onBatchDisable={onChangeSwitch.bind(null, false)}
+        onBatchDelete={onDelete}
+        onCancel={onCancelBatchOperation}
+      />}
+    </SegmentListContext.Provider>
   )
 }
 

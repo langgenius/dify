@@ -182,7 +182,7 @@ export type ProcessRuleResponse = {
 export type Rules = {
   pre_processing_rules: PreProcessingRule[]
   segmentation: Segmentation
-  parent_node: ParentMode
+  parent_mode: ParentMode
   subchunk_segmentation: Segmentation
 }
 
@@ -405,12 +405,12 @@ export const SEGMENT_STATUS_LIST = ['waiting', 'completed', 'error', 'indexing']
 export type SegmentStatus = typeof SEGMENT_STATUS_LIST[number]
 
 export type SegmentsQuery = {
-  last_id?: string
+  page?: string
   limit: number
   // status?: SegmentStatus
   hit_count_gte?: number
   keyword?: string
-  enabled?: boolean
+  enabled?: boolean | 'all'
 }
 
 export type SegmentDetailModel = {
@@ -435,6 +435,7 @@ export type SegmentDetailModel = {
   error: string | null
   stopped_at: number
   answer?: string
+  child_chunks?: ChildChunkDetail[]
 }
 
 export type SegmentsResponse = {
@@ -442,6 +443,7 @@ export type SegmentsResponse = {
   has_more: boolean
   limit: number
   total: number
+  total_pages: number
 }
 
 export type HitTestingRecord = {
@@ -584,4 +586,16 @@ export const DEFAULT_WEIGHTED_SCORE = {
     semantic: 0.7,
     keyword: 0.3,
   },
+}
+
+export type ChildChunkType = 'automatic' | 'customized'
+
+export type ChildChunkDetail = {
+  id: number
+  position: number
+  segment_id: string
+  content: string
+  word_count: number
+  created_at: number
+  type: ChildChunkType
 }

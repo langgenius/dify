@@ -332,6 +332,7 @@ const translation = {
   },
   segment: {
     paragraphs: 'Paragraphs',
+    chunks: 'CHUNKS',
     keywords: 'Key Words',
     addKeyWord: 'Add key word',
     keywordError: 'The maximum length of keyword is 20',

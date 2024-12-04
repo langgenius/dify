@@ -4,4 +4,5 @@ html[data-theme="dark"] {
   --color-workflow-process-bg: linear-gradient(90deg, rgba(24, 24, 27, 0.25) 0%, rgba(24, 24, 27, 0.04) 100%);
   --color-dataset-chunk-process-success-bg: linear-gradient(92deg, rgba(23, 178, 106, 0.30) 0%, rgba(0, 0, 0, 0.00) 100%);
   --color-dataset-chunk-process-error-bg: linear-gradient(92deg, rgba(240, 68, 56, 0.30) 0%, rgba(0, 0, 0, 0.00) 100%);
+  --color-dataset-chunk-detail-card-hover-bg: linear-gradient(180deg, #1D1D20 0%, #222225 100%);
 }
