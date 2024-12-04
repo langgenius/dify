@@ -1,17 +1,14 @@
 'use client'
-import type { FC, PropsWithChildren, ReactNode } from 'react'
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { FC, PropsWithChildren } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { useBoolean } from 'ahooks'
-import { XMarkIcon } from '@heroicons/react/20/solid'
 import {
   RiArrowLeftLine,
   RiCloseLine,
   RiSearchEyeLine,
 } from '@remixicon/react'
 import Link from 'next/link'
-import { groupBy } from 'lodash-es'
 import Image from 'next/image'
 import SettingCog from '../assets/setting-gear-mod.svg'
 import OrangeEffect from '../assets/option-card-effect-orange.svg'
@@ -19,7 +16,9 @@ import FamilyMod from '../assets/family-mod.svg'
 import Note from '../assets/note-mod.svg'
 import FileList from '../assets/file-list-3-fill.svg'
 import { indexMethodIcon } from '../icons'
-import PreviewItem, { PreviewType } from './preview-item'
+import { PreviewContainer } from '../../preview/container'
+import { ChunkContainer, QAPreview } from '../../chunk'
+import { PreviewHeader } from '../../preview/header'
 import s from './index.module.css'
 import unescape from './unescape'
 import escape from './escape'
@@ -27,15 +26,9 @@ import { OptionCard } from './option-card'
 import LanguageSelect from './language-select'
 import { DelimiterInput, MaxLengthInput, OverlapInput } from './inputs'
 import cn from '@/utils/classnames'
-import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
-import {
-  createDocument,
-  createFirstDocument,
-  fetchFileIndexingEstimate as didFetchFileIndexingEstimate,
-  fetchDefaultProcessRule,
-} from '@/service/datasets'
+import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FullDocumentDetail, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
+
 import Button from '@/app/components/base/button'
-import Loading from '@/app/components/base/loading'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
@@ -60,26 +53,20 @@ import { MessageChatSquare } from '@/app/components/base/icons/src/public/common
 import { IS_CE_EDITION } from '@/config'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
+import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocument, useFetchDefaultProcessRule, useFetchFileIndexingEstimateForFile, useFetchFileIndexingEstimateForNotion, useFetchFileIndexingEstimateForWeb } from '@/service/use-datasets'
+import Loading from '@/app/components/base/loading'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='text-text-secondary text-xs font-semibold leading-none'>{props.children}</label>
 }
 
-const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
-  return <div className='space-y-2 flex-1'>
-    <TextLabel>{props.label}</TextLabel>
-    {props.children}
-  </div>
-}
-
-type ValueOf<T> = T[keyof T]
 type StepTwoProps = {
   isSetting?: boolean
   documentDetail?: FullDocumentDetail
   isAPIKeySet: boolean
   onSetting: () => void
   datasetId?: string
-  indexingType?: ValueOf<IndexingType>
+  indexingType?: IndexingType
   retrievalMethod?: string
   dataSourceType: DataSourceType
   files: CustomFile[]
@@ -96,11 +83,11 @@ type StepTwoProps = {
   onCancel?: () => void
 }
 
-enum SegmentType {
+export enum SegmentType {
   AUTO = 'automatic',
   CUSTOM = 'custom',
 }
-enum IndexingType {
+export enum IndexingType {
   QUALIFIED = 'high_quality',
   ECONOMICAL = 'economy',
 }
@@ -117,7 +104,6 @@ type ParentChildConfig = {
     delimiter: string
     maxLength: number
   }
-  rules: PreProcessingRule[]
 }
 
 const defaultParentChildConfig: ParentChildConfig = {
@@ -130,7 +116,6 @@ const defaultParentChildConfig: ParentChildConfig = {
     delimiter: '\\n\\n',
     maxLength: 4000,
   },
-  rules: [],
 }
 
 const StepTwo = ({
@@ -162,10 +147,6 @@ const StepTwo = ({
   const { dataset: currentDataset, mutateDatasetRes } = useDatasetDetailContext()
   const isInCreatePage = !datasetId || (datasetId && !currentDataset?.data_source_type)
   const dataSourceType = isInCreatePage ? inCreatePageDataSourceType : currentDataset?.data_source_type
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [scrolled, setScrolled] = useState(false)
-  const previewScrollRef = useRef<HTMLDivElement>(null)
-  const [previewScrolled, setPreviewScrolled] = useState(false)
   const [segmentationType, setSegmentationType] = useState<SegmentType>(SegmentType.AUTO)
   const [segmentIdentifier, doSetSegmentIdentifier] = useState(DEFAULT_SEGMENT_IDENTIFIER)
   const setSegmentIdentifier = useCallback((value: string) => {
@@ -176,7 +157,7 @@ const StepTwo = ({
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
   const hasSetIndexType = !!indexingType
-  const [indexType, setIndexType] = useState<ValueOf<IndexingType>>(
+  const [indexType, setIndexType] = useState<IndexingType>(
     (indexingType
       || isAPIKeySet)
       ? IndexingType.QUALIFIED
@@ -190,37 +171,96 @@ const StepTwo = ({
     (datasetId && documentDetail) ? documentDetail.doc_language : (locale !== LanguagesSupported[1] ? 'English' : 'Chinese'),
   )
   const [QATipHide, setQATipHide] = useState(false)
-  const [previewSwitched, setPreviewSwitched] = useState(false)
-  const [showPreview, { setTrue: setShowPreview, setFalse: hidePreview }] = useBoolean()
-  const [customFileIndexingEstimate, setCustomFileIndexingEstimate] = useState<FileIndexingEstimateResponse | null>(null)
-  const [automaticFileIndexingEstimate, setAutomaticFileIndexingEstimate] = useState<FileIndexingEstimateResponse | null>(null)
-
-  const fileIndexingEstimate = (() => {
-    return segmentationType === SegmentType.AUTO ? automaticFileIndexingEstimate : customFileIndexingEstimate
-  })()
-  const [isCreating, setIsCreating] = useState(false)
+  const [qaPreviewSwitched, setQAPreviewSwitched] = useState(false)
 
   const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>(defaultParentChildConfig)
 
-  const scrollHandle = (e: Event) => {
-    if ((e.target as HTMLDivElement).scrollTop > 0)
-      setScrolled(true)
+  const getIndexing_technique = () => indexingType || indexType
 
-    else
-      setScrolled(false)
+  const getProcessRule = () => {
+    const processRule: ProcessRule = {
+      rules: {} as any, // api will check this. It will be removed after api refactored.
+      mode: segmentationType,
+    }
+    if (segmentationType === SegmentType.CUSTOM) {
+      const ruleObj = {
+        pre_processing_rules: rules,
+        segmentation: {
+          separator: unescape(segmentIdentifier),
+          max_tokens: max,
+          chunk_overlap: overlap,
+        },
+      }
+      processRule.rules = ruleObj
+    }
+    return processRule
   }
 
-  const previewScrollHandle = (e: Event) => {
-    if ((e.target as HTMLDivElement).scrollTop > 0)
-      setPreviewScrolled(true)
+  const fileIndexingEstimateQuery = useFetchFileIndexingEstimateForFile({
+    docForm: docForm as DocForm,
+    docLanguage,
+    dataSourceType: DataSourceType.FILE,
+    files,
+    indexingTechnique: getIndexing_technique() as any,
+    processRule: getProcessRule(),
+    dataset_id: datasetId!,
+  })
+  const notionIndexingEstimateQuery = useFetchFileIndexingEstimateForNotion({
+    docForm: docForm as DocForm,
+    docLanguage,
+    dataSourceType: DataSourceType.NOTION,
+    notionPages,
+    indexingTechnique: getIndexing_technique() as any,
+    processRule: getProcessRule(),
+    dataset_id: datasetId || '',
+  })
 
-    else
-      setPreviewScrolled(false)
-  }
-  const getFileName = (name: string) => {
-    const arr = name.split('.')
-    return arr.slice(0, -1).join('.')
-  }
+  const websiteIndexingEstimateQuery = useFetchFileIndexingEstimateForWeb({
+    docForm: docForm as DocForm,
+    docLanguage,
+    dataSourceType: DataSourceType.WEB,
+    websitePages,
+    crawlOptions,
+    websiteCrawlProvider,
+    websiteCrawlJobId,
+    indexingTechnique: getIndexing_technique() as any,
+    processRule: getProcessRule(),
+    dataset_id: datasetId || '',
+  })
+
+  const fetchEstimate = useCallback(() => {
+    if (dataSourceType === DataSourceType.FILE)
+      fileIndexingEstimateQuery.mutate()
+
+    if (dataSourceType === DataSourceType.NOTION)
+      notionIndexingEstimateQuery.mutate()
+
+    if (dataSourceType === DataSourceType.WEB)
+      websiteIndexingEstimateQuery.mutate()
+  }, [dataSourceType, fileIndexingEstimateQuery, notionIndexingEstimateQuery, websiteIndexingEstimateQuery])
+
+  const estimate
+    = dataSourceType === DataSourceType.FILE
+      ? fileIndexingEstimateQuery.data
+      : dataSourceType === DataSourceType.NOTION
+        ? notionIndexingEstimateQuery.data
+        : websiteIndexingEstimateQuery.data
+
+  // const getIsEstimateReady = useCallback(() => {
+  //   if (dataSourceType === DataSourceType.FILE)
+  //     return fileIndexingEstimateQuery.isSuccess
+
+  //   if (dataSourceType === DataSourceType.NOTION)
+  //     return notionIndexingEstimateQuery.isSuccess
+
+  //   if (dataSourceType === DataSourceType.WEB)
+  //     return websiteIndexingEstimateQuery.isSuccess
+  // }, [dataSourceType, fileIndexingEstimateQuery.isSuccess, notionIndexingEstimateQuery.isSuccess, websiteIndexingEstimateQuery.isSuccess])
+
+  // const getFileName = (name: string) => {
+  //   const arr = name.split('.')
+  //   return arr.slice(0, -1).join('.')
+  // }
 
   const getRuleName = (key: string) => {
     if (key === 'remove_extra_spaces')
@@ -248,129 +288,21 @@ const StepTwo = ({
     if (defaultConfig) {
       setSegmentIdentifier(defaultConfig.segmentation.separator)
       setMax(defaultConfig.segmentation.max_tokens)
-      setOverlap(defaultConfig.segmentation.chunk_overlap)
+      setOverlap(defaultConfig.segmentation.chunk_overlap!)
       setRules(defaultConfig.pre_processing_rules)
     }
     setParentChildConfig(defaultParentChildConfig)
   }
 
-  const fetchFileIndexingEstimate = async (docForm = DocForm.TEXT, language?: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
-    const res = await didFetchFileIndexingEstimate(getFileIndexingEstimateParams(docForm, language)!)
-    if (segmentationType === SegmentType.CUSTOM)
-      setCustomFileIndexingEstimate(res)
-    else
-      setAutomaticFileIndexingEstimate(res)
-  }
-
-  const confirmChangeCustomConfig = () => {
+  const updatePreview = () => {
     if (segmentationType === SegmentType.CUSTOM && max > 4000) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
       return
     }
-    setCustomFileIndexingEstimate(null)
-    setShowPreview()
-    fetchFileIndexingEstimate()
-    setPreviewSwitched(false)
+    fetchEstimate()
+    setQAPreviewSwitched(false)
   }
 
-  const getIndexing_technique = () => indexingType || indexType
-
-  const getProcessRule = () => {
-    const processRule: ProcessRule = {
-      rules: {} as any, // api will check this. It will be removed after api refactored.
-      mode: segmentationType,
-    }
-    if (segmentationType === SegmentType.CUSTOM) {
-      const ruleObj = {
-        pre_processing_rules: rules,
-        segmentation: {
-          separator: unescape(segmentIdentifier),
-          max_tokens: max,
-          chunk_overlap: overlap,
-        },
-      }
-      processRule.rules = ruleObj
-    }
-    return processRule
-  }
-
-  const getNotionInfo = () => {
-    const workspacesMap = groupBy(notionPages, 'workspace_id')
-    const workspaces = Object.keys(workspacesMap).map((workspaceId) => {
-      return {
-        workspaceId,
-        pages: workspacesMap[workspaceId],
-      }
-    })
-    return workspaces.map((workspace) => {
-      return {
-        workspace_id: workspace.workspaceId,
-        pages: workspace.pages.map((page) => {
-          const { page_id, page_name, page_icon, type } = page
-          return {
-            page_id,
-            page_name,
-            page_icon,
-            type,
-          }
-        }),
-      }
-    }) as NotionInfo[]
-  }
-
-  const getWebsiteInfo = () => {
-    return {
-      provider: websiteCrawlProvider,
-      job_id: websiteCrawlJobId,
-      urls: websitePages.map(page => page.source_url),
-      only_main_content: crawlOptions?.only_main_content,
-    }
-  }
-
-  const getFileIndexingEstimateParams = (docForm: DocForm, language?: string): IndexingEstimateParams | undefined => {
-    if (dataSourceType === DataSourceType.FILE) {
-      return {
-        info_list: {
-          data_source_type: dataSourceType,
-          file_info_list: {
-            file_ids: files.map(file => file.id) as string[],
-          },
-        },
-        indexing_technique: getIndexing_technique() as string,
-        process_rule: getProcessRule(),
-        doc_form: docForm,
-        doc_language: language || docLanguage,
-        dataset_id: datasetId as string,
-      }
-    }
-    if (dataSourceType === DataSourceType.NOTION) {
-      return {
-        info_list: {
-          data_source_type: dataSourceType,
-          notion_info_list: getNotionInfo(),
-        },
-        indexing_technique: getIndexing_technique() as string,
-        process_rule: getProcessRule(),
-        doc_form: docForm,
-        doc_language: language || docLanguage,
-        dataset_id: datasetId as string,
-      }
-    }
-    if (dataSourceType === DataSourceType.WEB) {
-      return {
-        info_list: {
-          data_source_type: dataSourceType,
-          website_info_list: getWebsiteInfo(),
-        },
-        indexing_technique: getIndexing_technique() as string,
-        process_rule: getProcessRule(),
-        doc_form: docForm,
-        doc_language: language || docLanguage,
-        dataset_id: datasetId as string,
-      }
-    }
-  }
   const {
     modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
@@ -454,28 +386,35 @@ const StepTwo = ({
         }
       }
       if (dataSourceType === DataSourceType.NOTION)
-        params.data_source.info_list.notion_info_list = getNotionInfo()
+        params.data_source.info_list.notion_info_list = getNotionInfo(notionPages)
 
-      if (dataSourceType === DataSourceType.WEB)
-        params.data_source.info_list.website_info_list = getWebsiteInfo()
+      if (dataSourceType === DataSourceType.WEB) {
+        params.data_source.info_list.website_info_list = getWebsiteInfo({
+          websiteCrawlProvider,
+          websiteCrawlJobId,
+          websitePages,
+        })
+      }
     }
     return params
   }
 
-  const getRules = async () => {
-    try {
-      const res = await fetchDefaultProcessRule({ url: '/datasets/process-rule' })
-      const separator = res.rules.segmentation.separator
+  const fetchDefaultProcessRuleMutation = useFetchDefaultProcessRule({
+    onSuccess(data) {
+      const separator = data.rules.segmentation.separator
       setSegmentIdentifier(separator)
-      setMax(res.rules.segmentation.max_tokens)
-      setOverlap(res.rules.segmentation.chunk_overlap)
-      setRules(res.rules.pre_processing_rules)
-      setDefaultConfig(res.rules)
-    }
-    catch (err) {
-      console.log(err)
-    }
-  }
+      setMax(data.rules.segmentation.max_tokens)
+      setOverlap(data.rules.segmentation.chunk_overlap!)
+      setRules(data.rules.pre_processing_rules)
+      setDefaultConfig(data.rules)
+    },
+    onError(error) {
+      Toast.notify({
+        type: 'error',
+        message: `${error}`,
+      })
+    },
+  })
 
   const getRulesFromDetail = () => {
     if (documentDetail) {
@@ -485,7 +424,7 @@ const StepTwo = ({
       const overlap = rules.segmentation.chunk_overlap
       setSegmentIdentifier(separator)
       setMax(max)
-      setOverlap(overlap)
+      setOverlap(overlap as number)
       setRules(rules.pre_processing_rules)
       setDefaultConfig(rules)
     }
@@ -496,77 +435,75 @@ const StepTwo = ({
       setSegmentationType(documentDetail.dataset_process_rule.mode)
   }
 
-  const createHandle = async () => {
-    if (isCreating)
-      return
-    setIsCreating(true)
-    try {
-      let res
-      const params = getCreationParams()
-      if (!params)
-        return false
-
-      setIsCreating(true)
-      if (!datasetId) {
-        res = await createFirstDocument({
-          body: params as CreateDocumentReq,
-        })
-        updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
-        updateResultCache && updateResultCache(res)
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        updateRetrievalMethodCache && updateRetrievalMethodCache(retrievalConfig.search_method as string)
-      }
-      else {
-        res = await createDocument({
-          datasetId,
-          body: params as CreateDocumentReq,
-        })
-        updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
-        updateResultCache && updateResultCache(res)
-      }
-      if (mutateDatasetRes)
-        mutateDatasetRes()
-      onStepChange && onStepChange(+1)
-      isSetting && onSave && onSave()
-    }
-    catch (err) {
+  const createFirstDocumentMutation = useCreateFirstDocument({
+    onError(error) {
       Toast.notify({
         type: 'error',
-        message: `${err}`,
+        message: `${error}`,
+      })
+    },
+  })
+  const createDocumentMutation = useCreateDocument(datasetId!, {
+    onError(error) {
+      Toast.notify({
+        type: 'error',
+        message: `${error}`,
+      })
+    },
+  })
+
+  const isCreating = createFirstDocumentMutation.isPending || createDocumentMutation.isPending
+
+  const createHandle = async () => {
+    const params = getCreationParams()
+    if (!params)
+      return false
+
+    if (!datasetId) {
+      await createFirstDocumentMutation.mutateAsync(
+        params,
+        {
+          onSuccess(data) {
+            updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
+            updateResultCache && updateResultCache(data)
+            // eslint-disable-next-line @typescript-eslint/no-use-before-define
+            updateRetrievalMethodCache && updateRetrievalMethodCache(retrievalConfig.search_method as string)
+          },
+        },
+      )
+    }
+    else {
+      await createDocumentMutation.mutateAsync(params, {
+        onSuccess(data) {
+          updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
+          updateResultCache && updateResultCache(data)
+        },
       })
     }
-    finally {
-      setIsCreating(false)
-    }
+    if (mutateDatasetRes)
+      mutateDatasetRes()
+    onStepChange && onStepChange(+1)
+    isSetting && onSave && onSave()
   }
 
-  const handleSwitch = (state: boolean) => {
-    if (state)
+  const handleDocformSwitch = (isQAMode: boolean) => {
+    if (isQAMode)
       setDocForm(DocForm.QA)
     else
       setDocForm(DocForm.TEXT)
   }
 
-  const previewSwitch = async (language?: string) => {
-    setPreviewSwitched(true)
+  const previewSwitch = () => {
+    setQAPreviewSwitched(true)
     setIsLanguageSelectDisabled(true)
-    if (segmentationType === SegmentType.AUTO)
-      setAutomaticFileIndexingEstimate(null)
-    else
-      setCustomFileIndexingEstimate(null)
-    try {
-      await fetchFileIndexingEstimate(DocForm.QA, language)
-    }
-    finally {
-      setIsLanguageSelectDisabled(false)
-    }
+    fetchEstimate()
   }
 
   const handleSelect = (language: string) => {
     setDocLanguage(language)
     // Switch language, re-cutter
-    if (docForm === DocForm.QA && previewSwitched)
-      previewSwitch(language)
+    if (docForm === DocForm.QA && qaPreviewSwitched)
+      previewSwitch()
   }
 
   const changeToEconomicalType = () => {
@@ -579,29 +516,13 @@ const StepTwo = ({
   useEffect(() => {
     // fetch rules
     if (!isSetting) {
-      getRules()
+      fetchDefaultProcessRuleMutation.mutate('/datasets/process-rule')
     }
     else {
       getRulesFromDetail()
       getDefaultMode()
     }
   }, [])
-
-  useEffect(() => {
-    scrollRef.current?.addEventListener('scroll', scrollHandle)
-    return () => {
-      scrollRef.current?.removeEventListener('scroll', scrollHandle)
-    }
-  }, [])
-
-  useLayoutEffect(() => {
-    if (showPreview) {
-      previewScrollRef.current?.addEventListener('scroll', previewScrollHandle)
-      return () => {
-        previewScrollRef.current?.removeEventListener('scroll', previewScrollHandle)
-      }
-    }
-  }, [showPreview])
 
   useEffect(() => {
     if (indexingType === IndexingType.ECONOMICAL && docForm === DocForm.QA)
@@ -616,20 +537,6 @@ const StepTwo = ({
     else
       setIndexType(isAPIKeySet ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL)
   }, [isAPIKeySet, indexingType, datasetId])
-
-  useEffect(() => {
-    if (segmentationType === SegmentType.AUTO) {
-      setAutomaticFileIndexingEstimate(null)
-      !isMobile && setShowPreview()
-      fetchFileIndexingEstimate()
-      setPreviewSwitched(false)
-    }
-    else {
-      hidePreview()
-      setCustomFileIndexingEstimate(null)
-      setPreviewSwitched(false)
-    }
-  }, [segmentationType, indexType])
 
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict || {
     search_method: RETRIEVE_METHOD.semantic,
@@ -659,7 +566,7 @@ const StepTwo = ({
                 onClick={() => setSegmentationType(SegmentType.AUTO)}
                 actions={
                   <>
-                    <Button variant={'secondary-accent'}>
+                    <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
                       <RiSearchEyeLine className='h-4 w-4 mr-1.5' />
                       {t('datasetCreation.stepTwo.previewChunk')}
                     </Button>
@@ -714,7 +621,7 @@ const StepTwo = ({
                 onClick={() => setSegmentationType(SegmentType.CUSTOM)}
                 actions={
                   <>
-                    <Button variant={'secondary-accent'}>
+                    <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
                       <RiSearchEyeLine className='h-4 w-4 mr-1.5' />
                       {t('datasetCreation.stepTwo.previewChunk')}
                     </Button>
@@ -910,7 +817,7 @@ const StepTwo = ({
                   </div>
                   <Switch
                     defaultValue={docForm === DocForm.QA}
-                    onChange={handleSwitch}
+                    onChange={handleDocformSwitch}
                     size='md'
                   />
                 </div>
@@ -1000,70 +907,40 @@ const StepTwo = ({
         </div>
       </div>
       <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={() => { }} footer={null}>
-        {showPreview && <div
-          ref={previewScrollRef}
-          className={cn(s.previewWrap, isMobile && s.isMobile, 'relative h-full overflow-y-scroll border-l border-[#F2F4F7]')}
+        <PreviewContainer
+          header={<PreviewHeader
+            title='Preview'
+          >
+          </PreviewHeader>}
+          className={cn(s.previewWrap, isMobile && s.isMobile, 'relative h-full overflow-y-scroll space-y-4')}
         >
-          <div className={cn(s.previewHeader, previewScrolled && `${s.fixed} pb-3`)}>
-            <div className='flex items-center justify-between px-8'>
-              <div className='grow flex items-center'>
-                <div>{t('datasetCreation.stepTwo.previewTitle')}</div>
-                {docForm === DocForm.QA && !previewSwitched && (
-                  <Button className='ml-2' variant='secondary-accent' onClick={() => previewSwitch()}>{t('datasetCreation.stepTwo.previewButton')}</Button>
-                )}
-              </div>
-              <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}>
-                <XMarkIcon className='h-4 w-4'></XMarkIcon>
-              </div>
+          {qaPreviewSwitched && docForm === DocForm.QA && estimate?.qa_preview && (
+            estimate?.qa_preview.map(item => (
+              <QAPreview key={item.question} qa={item} />
+            ))
+          )}
+          {(docForm === DocForm.TEXT || !qaPreviewSwitched) && estimate?.preview && (
+            estimate?.preview.map((item, index) => (
+              <ChunkContainer
+                key={item}
+                label={`Chunk-${index + 1}`}
+                characterCount={item.length}
+              >
+                {item}
+              </ChunkContainer>
+            ))
+          )}
+          {qaPreviewSwitched && docForm === DocForm.QA && !estimate?.qa_preview && (
+            <div className='flex items-center justify-center h-[200px]'>
+              <Loading type='area' />
             </div>
-            {docForm === DocForm.QA && !previewSwitched && (
-              <div className='px-8 pr-12 text-xs text-gray-500'>
-                <span>{t('datasetCreation.stepTwo.previewSwitchTipStart')}</span>
-                <span className='text-amber-600'>{t('datasetCreation.stepTwo.previewSwitchTipEnd')}</span>
-              </div>
-            )}
-          </div>
-          <div className='my-4 px-8 space-y-4'>
-            {previewSwitched && docForm === DocForm.QA && fileIndexingEstimate?.qa_preview && (
-              <>
-                {fileIndexingEstimate?.qa_preview.map((item, index) => (
-                  <PreviewItem type={PreviewType.QA} key={item.question} qa={item} index={index + 1} />
-                ))}
-              </>
-            )}
-            {(docForm === DocForm.TEXT || !previewSwitched) && fileIndexingEstimate?.preview && (
-              <>
-                {fileIndexingEstimate?.preview.map((item, index) => (
-                  <PreviewItem type={PreviewType.TEXT} key={item} content={item} index={index + 1} />
-                ))}
-              </>
-            )}
-            {previewSwitched && docForm === DocForm.QA && !fileIndexingEstimate?.qa_preview && (
-              <div className='flex items-center justify-center h-[200px]'>
-                <Loading type='area' />
-              </div>
-            )}
-            {!previewSwitched && !fileIndexingEstimate?.preview && (
-              <div className='flex items-center justify-center h-[200px]'>
-                <Loading type='area' />
-              </div>
-            )}
-          </div>
-        </div>}
-        {!showPreview && (
-          <div className={cn(s.sideTip)}>
-            <div className={s.tipCard}>
-              <span className={s.icon} />
-              <div className={s.title}>{t('datasetCreation.stepTwo.sideTipTitle')}</div>
-              <div className={s.content}>
-                <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP1')}</p>
-                <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP2')}</p>
-                <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP3')}</p>
-                <p>{t('datasetCreation.stepTwo.sideTipP4')}</p>
-              </div>
+          )}
+          {!qaPreviewSwitched && !estimate?.preview && (
+            <div className='flex items-center justify-center h-[200px]'>
+              <Loading type='area' />
             </div>
-          </div>
-        )}
+          )}
+        </PreviewContainer>
       </FloatRightContainer>
     </div>
   )

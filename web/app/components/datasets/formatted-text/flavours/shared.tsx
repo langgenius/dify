@@ -34,7 +34,7 @@ export const SliceContent: FC<SliceContentProps> = forwardRef((props, ref) => {
   const { className, children, ...rest } = props
   return <span {...rest} ref={ref} className={classNames(
     baseStyle,
-    'px-1 bg-state-base-hover group-hover:bg-state-accent-hover-alt group-hover:text-text-primary',
+    'px-1 bg-state-base-hover group-hover:bg-state-accent-hover-alt group-hover:text-text-primary leading-7',
     className,
   )}>
     {children}
