@@ -195,6 +195,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
               className={style.layoutRightIcon}
               onClick={() => setShowMetadata(!showMetadata)}
             >
+              {/* // todo: change icon */}
               <RiLayoutRight2Line className={cn('w-4 h-4', showMetadata ? 'text-components-button-secondary-accent-text' : 'text-components-button-secondary-text')} />
             </button>
           </div>
@@ -202,7 +203,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
         <div className='flex flex-row flex-1' style={{ height: 'calc(100% - 4rem)' }}>
           {isDetailLoading
             ? <Loading type='app' />
-            : <div className={`h-full w-full flex flex-col ${embedding ? 'px-6 py-3 sm:py-12 sm:px-16' : 'pb-[30px] pt-3 px-6'}`}>
+            : <div className={`h-full w-full flex flex-col ${embedding ? 'px-6 py-3 sm:py-12 sm:px-16' : 'pb-[30px] pt-3 pl-5 pr-11'}`}>
               {embedding
                 ? <Embedding detail={documentDetail} detailUpdate={detailMutate} />
                 : <Completed
@@ -211,6 +212,8 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
                   onNewSegmentModalChange={setNewSegmentModalVisible}
                   importStatus={importStatus}
                   archived={documentDetail?.archived}
+                  mode={documentDetail?.dataset_process_rule.mode}
+                  parentMode={documentDetail?.dataset_process_rule.rules.parent_mode}
                 />
               }
             </div>

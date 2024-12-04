@@ -6,16 +6,17 @@ type CheckboxProps = {
   onCheck?: () => void
   className?: string
   disabled?: boolean
+  mixed?: boolean
 }
 
-const Checkbox = ({ checked, onCheck, className, disabled }: CheckboxProps) => {
+const Checkbox = ({ checked, onCheck, className, disabled, mixed }: CheckboxProps) => {
   return (
     <div
       className={cn(
-        s.wrapper,
+        'w-4 h-4 border rounded border-components-checkbox-border bg-components-checkbox-bg-unchecked shadow-xs shadow-shadow-shadow-3',
         checked && s.checked,
         disabled && s.disabled,
-        'w-4 h-4 border rounded border-gray-300',
+        mixed && s.mixed,
         className,
       )}
       onClick={() => {
