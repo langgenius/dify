@@ -95,7 +95,7 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
         :param node_data: node data
         :return:
         """
-        return { node_id + ".files": node_data.variable_selector}
+        return {node_id + ".files": node_data.variable_selector}
 
 
 def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
