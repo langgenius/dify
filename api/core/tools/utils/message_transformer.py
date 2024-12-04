@@ -85,7 +85,7 @@ class ToolFileMessageTransformer:
                     )
                 else:
                     yield ToolInvokeMessage(
-                        type=ToolInvokeMessage.MessageType.LINK,
+                        type=ToolInvokeMessage.MessageType.BINARY_LINK,
                         message=ToolInvokeMessage.TextMessage(text=url),
                         meta=message.meta.copy() if message.meta is not None else {},
                     )

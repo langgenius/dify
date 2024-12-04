@@ -190,7 +190,11 @@ class ToolNode(BaseNode[ToolNodeData]):
         variables: dict[str, Any] = {}
 
         for message in message_stream:
-            if message.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
+            if message.type in {
+                ToolInvokeMessage.MessageType.IMAGE_LINK,
+                ToolInvokeMessage.MessageType.BINARY_LINK,
+                ToolInvokeMessage.MessageType.IMAGE,
+            }:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
 
                 url = message.message.text
@@ -209,7 +213,7 @@ class ToolNode(BaseNode[ToolNodeData]):
 
                 mapping = {
                     "tool_file_id": tool_file_id,
-                    "type": FileType.IMAGE,
+                    "type": file_factory.get_file_type_by_mime_type(tool_file.mimetype),
                     "transfer_method": transfer_method,
                     "url": url,
                 }
