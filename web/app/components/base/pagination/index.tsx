@@ -33,20 +33,20 @@ const CustomizedPagination: FC<Props> = ({
   const [showPerPageTip, setShowPerPageTip] = React.useState(false)
 
   const { run: handlePaging } = useDebounceFn((value: string) => {
-    if (parseInt(value) > totalPages) {
+    if (Number.parseInt(value) > totalPages) {
       setInputValue(totalPages)
       onChange(totalPages - 1)
       setShowInput(false)
       return
     }
-    if (parseInt(value) < 1) {
+    if (Number.parseInt(value) < 1) {
       setInputValue(1)
       onChange(0)
       setShowInput(false)
       return
     }
-    onChange(parseInt(value) - 1)
-    setInputValue(parseInt(value))
+    onChange(Number.parseInt(value) - 1)
+    setInputValue(Number.parseInt(value))
     setShowInput(false)
   }, { wait: 500 })
 
@@ -54,9 +54,9 @@ const CustomizedPagination: FC<Props> = ({
     const value = e.target.value
     if (!value)
       return setInputValue('')
-    if (isNaN(parseInt(value)))
+    if (isNaN(Number.parseInt(value)))
       return setInputValue('')
-    setInputValue(parseInt(value))
+    setInputValue(Number.parseInt(value))
     handlePaging(value)
   }
 

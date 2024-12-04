@@ -108,7 +108,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
                     }}
                   >
                     <div className='flex min-h-5 px-1 items-center gap-1 grow'>
-                      <span className={'flex flex-grow text-text-secondary system-sm-medium'}>{t(`${i18nPrefix}.operations.${item.name}`)}</span>
+                      <span className={'flex grow text-text-secondary system-sm-medium'}>{t(`${i18nPrefix}.operations.${item.name}`)}</span>
                     </div>
                     {item.value === value && (
                       <div className='flex justify-center items-center'>

@@ -13,10 +13,9 @@ import EnvNav from './env-nav'
 import PluginsNav from './plugins-nav'
 import ExploreNav from './explore-nav'
 import ToolsNav from './tools-nav'
-import GithubStar from './github-star'
 import LicenseNav from './license-env'
 import { WorkspaceProvider } from '@/context/workspace-context'
-import AppContext, { useAppContext } from '@/context/app-context'
+import { useAppContext } from '@/context/app-context'
 import LogoSite from '@/app/components/base/logo/logo-site'
 import WorkplaceSelector from '@/app/components/header/account-dropdown/workplace-selector'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -61,7 +60,8 @@ const Header = () => {
         >
           <Bars3Icon className="h-4 w-4 text-gray-500" />
         </div>}
-        {!isMobile
+        {
+          !isMobile
           && <div className='flex w-64 p-2 pl-3 gap-1.5 items-center shrink-0 self-stretch'>
             <Link href="/apps" className='flex w-8 h-8 items-center justify-center gap-2 shrink-0'>
               <LogoSite className='object-contain' />
@@ -93,29 +93,32 @@ const Header = () => {
             <LogoSite />
           </Link>
           <div className='font-light text-divider-deep'>/</div>
-          {enableBilling && (
-            <div className='select-none'>
-              <PremiumBadge color='blue' allowHover={true} onClick={handlePlanClick}>
-                <SparklesSoft className='flex items-center py-[1px] pl-[3px] w-3.5 h-3.5 text-components-premium-badge-indigo-text-stop-0' />
-                <div className='system-xs-medium'>
-                  <span className='p-1'>
-                    {t('billing.upgradeBtn.encourageShort')}
-                  </span>
-                </div>
-              </PremiumBadge>
-            </div>
-          )}
-          <GithubStar />
-        </div>
+          {
+            enableBilling && (
+              <div className='select-none'>
+                <PremiumBadge color='blue' allowHover={true} onClick={handlePlanClick}>
+                  <SparklesSoft className='flex items-center py-[1px] pl-[3px] w-3.5 h-3.5 text-components-premium-badge-indigo-text-stop-0' />
+                  <div className='system-xs-medium'>
+                    <span className='p-1'>
+                      {t('billing.upgradeBtn.encourageShort')}
+                    </span>
+                  </div>
+                </PremiumBadge>
+              </div>
+            )
+          }
+        </div >
       )}
-      {!isMobile && (
-        <div className='flex items-center'>
-          {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
-          {!isCurrentWorkspaceDatasetOperator && <AppNav />}
-          {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
-          {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
-        </div>
-      )}
+      {
+        !isMobile && (
+          <div className='flex items-center'>
+            {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
+            {!isCurrentWorkspaceDatasetOperator && <AppNav />}
+            {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
+            {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
+          </div>
+        )
+      }
       <div className='flex items-center shrink-0'>
         <LicenseNav />
         <EnvNav />
@@ -124,15 +127,17 @@ const Header = () => {
         </div>
         <AccountDropdown isMobile={isMobile} />
       </div>
-      {(isMobile && isShowNavMenu) && (
-        <div className='w-full flex flex-col p-2 gap-y-1'>
-          {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
-          {!isCurrentWorkspaceDatasetOperator && <AppNav />}
-          {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
-          {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
-        </div>
-      )}
-    </div>
+      {
+        (isMobile && isShowNavMenu) && (
+          <div className='w-full flex flex-col p-2 gap-y-1'>
+            {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
+            {!isCurrentWorkspaceDatasetOperator && <AppNav />}
+            {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
+            {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
+          </div>
+        )
+      }
+    </div >
   )
 }
 export default Header

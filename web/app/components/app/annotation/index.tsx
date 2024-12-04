@@ -25,7 +25,7 @@ import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import type { App } from '@/types/app'
 
-interface Props {
+type Props = {
   appDetail: App
 }
 

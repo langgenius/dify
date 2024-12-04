@@ -675,7 +675,7 @@ const StepTwo = ({
                         value={maxChunkLength}
                         max={limitMaxChunkLength}
                         min={1}
-                        onChange={e => setMaxChunkLength(parseInt(e.target.value.replace(/^0+/, ''), 10))}
+                        onChange={e => setMaxChunkLength(Number.parseInt(e.target.value.replace(/^0+/, ''), 10))}
                       />
                     </div>
                   </div>
