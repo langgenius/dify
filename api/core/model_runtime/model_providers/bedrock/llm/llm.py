@@ -200,8 +200,8 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             conversations_list = parameters["messages"]
             # if two consecutive user messages found, insert an assistant message placeholder
             for i in range(len(conversations_list) - 2, -1, -1):
-                if conversations_list[i]["role"] == "user" and conversations_list[i + 1]["role"] == "user":
-                    conversations_list.insert(i + 1, {"role": "assistant", "content": [{"text": "placeholder"}]})
+                if conversations_list[i]["role"] == conversations_list[i + 1]["role"]:
+                    conversations_list[i]["content"].extend(conversations_list.pop(i + 1)["content"])
 
             if stream:
                 response = bedrock_client.converse_stream(**parameters)
