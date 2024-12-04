@@ -1,11 +1,34 @@
-import type { FC } from 'react'
-import { twc } from '@/utils/twc'
+import type { ComponentProps, FC } from 'react'
+import classNames from '@/utils/classnames'
 
-export const SkeletonContanier = twc.div`flex flex-col gap-1`
+type SkeletonProps = ComponentProps<'div'>
 
-export const SkeletonRow = twc.div`flex items-center gap-2`
+export const SkeletonContanier: FC<SkeletonProps> = (props) => {
+  const { className, children, ...rest } = props
+  return (
+    <div className={classNames('flex flex-col gap-1', className)} {...rest}>
+      {children}
+    </div>
+  )
+}
 
-export const SkeletonRectangle = twc.div`h-2 rounded-sm opacity-20 bg-text-tertiary my-1`
+export const SkeletonRow: FC<SkeletonProps> = (props) => {
+  const { className, children, ...rest } = props
+  return (
+    <div className={classNames('flex items-center gap-2', className)} {...rest}>
+      {children}
+    </div>
+  )
+}
+
+export const SkeletonRectangle: FC<SkeletonProps> = (props) => {
+  const { className, children, ...rest } = props
+  return (
+    <div className={classNames('h-2 rounded-sm opacity-20 bg-text-tertiary my-1', className)} {...rest}>
+      {children}
+    </div>
+  )
+}
 
 export const SkeletonPoint: FC = () =>
   <div className='text-text-quaternary text-xs font-medium'>·</div>

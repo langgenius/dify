@@ -87,7 +87,6 @@
     "react-sortablejs": "^6.1.4",
     "react-syntax-highlighter": "^15.5.0",
     "react-tooltip": "5.8.3",
-    "react-twc": "^1.4.2",
     "react-window": "^1.8.9",
     "react-window-infinite-loader": "^1.0.9",
     "reactflow": "^11.11.3",
