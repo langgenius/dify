@@ -207,5 +207,8 @@ app_import_fields = {
     "current_dsl_version": fields.String,
     "imported_dsl_version": fields.String,
     "error": fields.String,
+}
+
+app_import_check_dependencies_fields = {
     "leaked_dependencies": fields.List(fields.Nested(leaked_dependency_fields)),
 }

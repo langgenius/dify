@@ -31,7 +31,8 @@ from services.workflow_service import WorkflowService
 logger = logging.getLogger(__name__)
 
 IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
-IMPORT_INFO_REDIS_EXPIRY = 2 * 60 * 60  # 2 hours
+CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
+IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 CURRENT_DSL_VERSION = "0.1.4"
 DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
 
@@ -54,8 +55,11 @@ class Import(BaseModel):
     app_id: Optional[str] = None
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
-    leaked_dependencies: list[PluginDependency] = Field(default_factory=list)
     error: str = ""
+
+
+class CheckDependenciesResult(BaseModel):
+    leaked_dependencies: list[PluginDependency] = Field(default_factory=list)
 
 
 def _check_version_compatibility(imported_version: str) -> ImportStatus:
@@ -84,6 +88,11 @@ class PendingData(BaseModel):
     icon_type: str | None
     icon: str | None
     icon_background: str | None
+    app_id: str | None
+
+
+class CheckDependenciesPendingData(BaseModel):
+    dependencies: list[PluginDependency]
     app_id: str | None
 
 
@@ -243,23 +252,11 @@ class AppDslService:
                     imported_dsl_version=imported_version,
                 )
 
-            try:
-                dependencies = self.get_leaked_dependencies(account.current_tenant_id, data.get("dependencies", []))
-            except Exception as e:
-                return Import(
-                    id=import_id,
-                    status=ImportStatus.FAILED,
-                    error=str(e),
-                )
-
-            if len(dependencies) > 0:
-                return Import(
-                    id=import_id,
-                    status=ImportStatus.PENDING,
-                    app_id=app_id,
-                    imported_dsl_version=imported_version,
-                    leaked_dependencies=dependencies,
-                )
+            # Extract dependencies
+            dependencies = data.get("dependencies", [])
+            check_dependencies_pending_data = None
+            if dependencies:
+                check_dependencies_pending_data = [PluginDependency.model_validate(d) for d in dependencies]
 
             # Create or update app
             app = self._create_or_update_app(
@@ -271,6 +268,7 @@ class AppDslService:
                 icon_type=icon_type,
                 icon=icon,
                 icon_background=icon_background,
+                dependencies=check_dependencies_pending_data,
             )
 
             return Import(
@@ -355,6 +353,29 @@ class AppDslService:
                 error=str(e),
             )
 
+    def check_dependencies(
+        self,
+        *,
+        app_model: App,
+    ) -> CheckDependenciesResult:
+        """Check dependencies"""
+        # Get dependencies from Redis
+        redis_key = f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app_model.id}"
+        dependencies = redis_client.get(redis_key)
+        if not dependencies:
+            return CheckDependenciesResult()
+
+        # Extract dependencies
+        dependencies = CheckDependenciesPendingData.model_validate_json(dependencies)
+
+        # Get leaked dependencies
+        leaked_dependencies = DependenciesAnalysisService.get_leaked_dependencies(
+            tenant_id=app_model.tenant_id, dependencies=dependencies.dependencies
+        )
+        return CheckDependenciesResult(
+            leaked_dependencies=leaked_dependencies,
+        )
+
     def _create_or_update_app(
         self,
         *,
@@ -366,6 +387,7 @@ class AppDslService:
         icon_type: Optional[str] = None,
         icon: Optional[str] = None,
         icon_background: Optional[str] = None,
+        dependencies: Optional[list[PluginDependency]] = None,
     ) -> App:
         """Create a new app or update an existing one."""
         app_data = data.get("app", {})
@@ -407,6 +429,14 @@ class AppDslService:
             self._session.add(app)
             self._session.commit()
             app_was_created.send(app, account=account)
+
+        # save dependencies
+        if dependencies:
+            redis_client.setex(
+                f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app.id}",
+                IMPORT_INFO_REDIS_EXPIRY,
+                CheckDependenciesPendingData(app_id=app.id, dependencies=dependencies).model_dump_json(),
+            )
 
         # Initialize app based on mode
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:

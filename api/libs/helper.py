@@ -9,7 +9,7 @@ import uuid
 from collections.abc import Generator
 from datetime import datetime
 from hashlib import sha256
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from flask import Response, stream_with_context
 from flask_restful import fields
@@ -19,7 +19,9 @@ from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.file import helpers as file_helpers
 from extensions.ext_redis import redis_client
-from models.account import Account
+
+if TYPE_CHECKING:
+    from models.account import Account
 
 
 def run(script):
@@ -196,7 +198,7 @@ class TokenManager:
     def generate_token(
         cls,
         token_type: str,
-        account: Optional[Account] = None,
+        account: Optional["Account"] = None,
         email: Optional[str] = None,
         additional_data: Optional[dict] = None,
     ) -> str:
