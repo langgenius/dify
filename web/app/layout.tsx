@@ -45,7 +45,6 @@ const LocaleLayout = ({
         data-public-maintenance-notice={process.env.NEXT_PUBLIC_MAINTENANCE_NOTICE}
         data-public-site-about={process.env.NEXT_PUBLIC_SITE_ABOUT}
         data-public-text-generation-timeout-ms={process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS}
-        data-public-github-access-token={process.env.NEXT_PUBLIC_GITHUB_ACCESS_TOKEN}
       >
         <BrowserInitor>
           <SentryInitor>

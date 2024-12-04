@@ -2,13 +2,24 @@ import Toast, { type IToastProps } from '@/app/components/base/toast'
 import { uploadGitHub } from '@/service/plugins'
 import { compareVersion, getLatestVersion } from '@/utils/semver'
 import type { GitHubRepoReleaseResponse } from '../types'
+import { GITHUB_ACCESS_TOKEN } from '@/config'
 
 export const useGitHubReleases = () => {
   const fetchReleases = async (owner: string, repo: string) => {
     try {
-      const res = await fetch(`/repos/${owner}/${repo}/releases`)
-      const bodyJson = await res.json()
-      if (bodyJson.status !== 200) throw new Error(bodyJson.data.message)
+      let res, bodyJson
+      if (!GITHUB_ACCESS_TOKEN) {
+        // Fetch releases without authentication from client
+        res = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases`)
+        if (!res.ok) throw new Error('Failed to fetch releases')
+        bodyJson = await res.json()
+      }
+      else {
+        // Fetch releases with authentication from server
+        res = await fetch(`/repos/${owner}/${repo}/releases`)
+        bodyJson = await res.json()
+        if (bodyJson.status !== 200) throw new Error(bodyJson.data.message)
+      }
 
       const formattedReleases = bodyJson.data.map((release: any) => ({
         tag_name: release.tag_name,
