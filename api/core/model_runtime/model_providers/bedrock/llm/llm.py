@@ -196,7 +196,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         try:
             # for issue #10976
             conversations_list = parameters["messages"]
-            # if two consecutive user messages found, combine them into one message 
+            # if two consecutive user messages found, combine them into one message
             for i in range(len(conversations_list) - 2, -1, -1):
                 if conversations_list[i]["role"] == conversations_list[i + 1]["role"]:
                     conversations_list[i]["content"].extend(conversations_list.pop(i + 1)["content"])
