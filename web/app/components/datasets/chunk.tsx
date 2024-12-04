@@ -1,6 +1,5 @@
 import type { FC, PropsWithChildren } from 'react'
-import Image from 'next/image'
-import SelectionMod from './assets/selection-mod-nocolor.svg'
+import { SelectionMod } from '../base/icons/src/public/knowledge'
 import type { QA } from '@/models/datasets'
 
 export type ChunkLabelProps = {
@@ -11,7 +10,7 @@ export type ChunkLabelProps = {
 export const ChunkLabel: FC<ChunkLabelProps> = (props) => {
   const { label, characterCount } = props
   return <div className='flex items-center text-text-tertiary text-xs font-medium'>
-    <Image src={SelectionMod} alt="Selection Mod" width={10} height={10} />
+    <SelectionMod className='size-[10px]' />
     <p className='flex gap-2 ml-0.5'><span>
       {label}
     </span>

@@ -19,6 +19,7 @@ import { indexMethodIcon } from '../icons'
 import { PreviewContainer } from '../../preview/container'
 import { ChunkContainer, QAPreview } from '../../chunk'
 import { PreviewHeader } from '../../preview/header'
+import DocumentPicker from '../../common/document-picker'
 import s from './index.module.css'
 import unescape from './unescape'
 import escape from './escape'
@@ -53,8 +54,10 @@ import { MessageChatSquare } from '@/app/components/base/icons/src/public/common
 import { IS_CE_EDITION } from '@/config'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
-import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocument, useFetchDefaultProcessRule, useFetchFileIndexingEstimateForFile, useFetchFileIndexingEstimateForNotion, useFetchFileIndexingEstimateForWeb } from '@/service/use-datasets'
+import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocument, useFetchDefaultProcessRule, useFetchFileIndexingEstimateForFile, useFetchFileIndexingEstimateForNotion, useFetchFileIndexingEstimateForWeb } from '@/service/knowledge/use-create-dataset'
 import Loading from '@/app/components/base/loading'
+import Badge from '@/app/components/base/badge'
+import { SkeletonCircle, SkeletonContanier, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='text-text-secondary text-xs font-semibold leading-none'>{props.children}</label>
@@ -227,6 +230,12 @@ const StepTwo = ({
     processRule: getProcessRule(),
     dataset_id: datasetId || '',
   })
+
+  const currentEstimateMutation = dataSourceType === DataSourceType.FILE
+    ? fileIndexingEstimateQuery
+    : dataSourceType === DataSourceType.NOTION
+      ? notionIndexingEstimateQuery
+      : websiteIndexingEstimateQuery
 
   const fetchEstimate = useCallback(() => {
     if (dataSourceType === DataSourceType.FILE)
@@ -911,6 +920,10 @@ const StepTwo = ({
           header={<PreviewHeader
             title='Preview'
           >
+            <div className='flex items-center gap-2'>
+              <DocumentPicker datasetId={datasetId || ''} value={{}} onChange={console.log} />
+              <Badge text='276 Estimated chunks' />
+            </div>
           </PreviewHeader>}
           className={cn(s.previewWrap, isMobile && s.isMobile, 'relative h-full overflow-y-scroll space-y-4')}
         >
@@ -935,9 +948,33 @@ const StepTwo = ({
               <Loading type='area' />
             </div>
           )}
-          {!qaPreviewSwitched && !estimate?.preview && (
+          {/* {!qaPreviewSwitched && !estimate?.preview && (
             <div className='flex items-center justify-center h-[200px]'>
               <Loading type='area' />
+            </div>
+          )} */}
+          {currentEstimateMutation.isIdle && (
+            <div className='h-full w-full flex items-center justify-center'>
+              <div className='flex flex-col items-center justify-center gap-3'>
+                <RiSearchEyeLine className='size-10 text-text-empty-state-icon' />
+                <p className='text-sm text-text-tertiary'>{'Click the \'Preview Chunk\' button on the left to load the preview'}</p>
+              </div>
+            </div>
+          )}
+          {currentEstimateMutation.isPending && (
+            <div className='space-y-6'>
+              {Array.from({ length: 10 }, (_, i) => (
+                <SkeletonContanier key={i}>
+                  <SkeletonRow>
+                    <SkeletonRectangle className="w-20" />
+                    <SkeletonCircle />
+                    <SkeletonRectangle className="w-24" />
+                  </SkeletonRow>
+                  <SkeletonRectangle className="w-full" />
+                  <SkeletonRectangle className="w-full" />
+                  <SkeletonRectangle className="w-[422px]" />
+                </SkeletonContanier>
+              ))}
             </div>
           )}
         </PreviewContainer>

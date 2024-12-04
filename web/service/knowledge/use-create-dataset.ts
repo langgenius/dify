@@ -1,7 +1,7 @@
 import groupBy from 'lodash-es/groupBy'
 import type { MutationOptions } from '@tanstack/react-query'
 import { useMutation } from '@tanstack/react-query'
-import { createDocument, createFirstDocument, fetchDefaultProcessRule, fetchFileIndexingEstimate } from './datasets'
+import { createDocument, createFirstDocument, fetchDefaultProcessRule, fetchFileIndexingEstimate } from '../datasets'
 import { type IndexingType } from '@/app/components/datasets/create/step-two'
 import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, DataSourceType, DocForm, FileIndexingEstimateResponse, IndexingEstimateParams, NotionInfo, ProcessRule, ProcessRuleResponse, createDocumentResponse } from '@/models/datasets'
 import type { DataSourceProvider, NotionPage } from '@/models/common'

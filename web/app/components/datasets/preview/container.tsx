@@ -19,7 +19,7 @@ export const PreviewContainer: FC<PreviewContainerProps> = forwardRef((props, re
     <header className='py-4 pl-5 pr-3 border-b border-divider-subtle'>
       {header}
     </header>
-    <main className='py-5 px-6'>
+    <main className='py-5 px-6 w-full h-full'>
       {children}
     </main>
   </div>
