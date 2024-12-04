@@ -14,7 +14,7 @@ export const SkeletonPoint: FC = () =>
  * <SkeletonContanier>
  *  <SkeletonRow>
  *    <SkeletonRectangle className="w-96" />
- *    <SkeletonCircle />
+ *    <SkeletonPoint />
  *    <SkeletonRectangle className="w-96" />
  *  </SkeletonRow>
  *  <SkeletonRow>
