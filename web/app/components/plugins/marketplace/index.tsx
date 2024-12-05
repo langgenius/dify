@@ -14,6 +14,8 @@ type MarketplaceProps = {
   shouldExclude?: boolean
   searchParams?: SearchParams
   pluginTypeSwitchClassName?: string
+  intersectionContainerId?: string
+  scrollContainerId?: string
 }
 const Marketplace = async ({
   locale,
@@ -21,6 +23,8 @@ const Marketplace = async ({
   shouldExclude,
   searchParams,
   pluginTypeSwitchClassName,
+  intersectionContainerId,
+  scrollContainerId,
 }: MarketplaceProps) => {
   let marketplaceCollections: any = []
   let marketplaceCollectionPluginsMap = {}
@@ -32,9 +36,13 @@ const Marketplace = async ({
 
   return (
     <TanstackQueryIniter>
-      <MarketplaceContextProvider searchParams={searchParams} shouldExclude={shouldExclude}>
+      <MarketplaceContextProvider
+        searchParams={searchParams}
+        shouldExclude={shouldExclude}
+        scrollContainerId={scrollContainerId}
+      >
         <Description locale={locale} />
-        <IntersectionLine />
+        <IntersectionLine intersectionContainerId={intersectionContainerId} />
         <SearchBoxWrapper locale={locale} />
         <PluginTypeSwitch
           locale={locale}

@@ -59,27 +59,46 @@ export const useMarketplaceCollectionsAndPlugins = () => {
 export const useMarketplacePlugins = () => {
   const {
     data,
-    mutate,
+    mutateAsync,
     reset,
     isPending,
   } = useMutationPluginsFromMarketplace()
 
+  const [prevPlugins, setPrevPlugins] = useState<Plugin[] | undefined>()
+  const resetPlugins = useCallback(() => {
+    reset()
+    setPrevPlugins(undefined)
+  }, [reset])
+  const handleUpdatePlugins = useCallback((pluginsSearchParams: PluginsSearchParams) => {
+    mutateAsync(pluginsSearchParams).then((res) => {
+      const currentPage = pluginsSearchParams.page || 1
+      const resPlugins = res.data.plugins
+      if (currentPage > 1) {
+        setPrevPlugins(prevPlugins => [...(prevPlugins || []), ...resPlugins.map((plugin) => {
+          return getFormattedPlugin(plugin)
+        })])
+      }
+      else {
+        setPrevPlugins(resPlugins.map((plugin) => {
+          return getFormattedPlugin(plugin)
+        }))
+      }
+    })
+  }, [mutateAsync])
   const queryPlugins = useCallback((pluginsSearchParams: PluginsSearchParams) => {
-    mutate(pluginsSearchParams)
-  }, [mutate])
+    handleUpdatePlugins(pluginsSearchParams)
+  }, [handleUpdatePlugins])
 
   const { run: queryPluginsWithDebounced } = useDebounceFn((pluginsSearchParams: PluginsSearchParams) => {
-    mutate(pluginsSearchParams)
+    handleUpdatePlugins(pluginsSearchParams)
   }, {
     wait: 500,
   })
 
   return {
-    plugins: data?.data?.plugins.map((plugin) => {
-      return getFormattedPlugin(plugin)
-    }),
+    plugins: prevPlugins,
     total: data?.data?.total,
-    resetPlugins: reset,
+    resetPlugins,
     queryPlugins,
     queryPluginsWithDebounced,
     isLoading: isPending,
@@ -97,8 +116,11 @@ export const useMixedTranslation = (localeFromOuter?: string) => {
   }
 }
 
-export const useMarketplaceContainerScroll = (callback: () => void) => {
-  const container = document.getElementById('marketplace-container')
+export const useMarketplaceContainerScroll = (
+  callback: () => void,
+  scrollContainerId = 'marketplace-container',
+) => {
+  const container = document.getElementById(scrollContainerId)
 
   const handleScroll = useCallback((e: Event) => {
     const target = e.target as HTMLDivElement
