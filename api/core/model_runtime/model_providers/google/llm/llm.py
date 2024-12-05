@@ -254,8 +254,12 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         assistant_prompt_message = AssistantPromptMessage(content=response.text)
 
         # calculate num tokens
-        prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
-        completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
+        if response.usage_metadata:
+            prompt_tokens = response.usage_metadata.prompt_token_count
+            completion_tokens = response.usage_metadata.candidates_token_count
+        else:
+            prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
+            completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
 
         # transform usage
         usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)

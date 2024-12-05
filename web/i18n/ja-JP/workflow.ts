@@ -501,6 +501,26 @@ const translation = {
       'clear': 'クリア',
       'setVariable': '変数を設定する',
       'variable': '変数',
+      'operations': {
+        'title': '操作',
+        'set': 'セット',
+        'clear': 'クリア',
+        'overwrite': '上書き',
+        'append': '追加',
+        '-=': '-=',
+        '/=': '/=',
+        '+=': '+=',
+        'over-write': '上書き',
+        'extend': '延ばす',
+        '*=': '*=',
+      },
+      'setParameter': 'パラメータを設定...',
+      'selectAssignedVariable': '代入変数を選択...',
+      'varNotSet': '変数が設定されていません',
+      'variables': '変数',
+      'noVarTip': '「+」ボタンをクリックして変数を追加します',
+      'noAssignedVars': '使用可能な代入変数がありません',
+      'assignedVarsDescription': '代入される変数は、会話変数などの書き込み可能な変数である必要があります。',
     },
     tool: {
       toAuthorize: '承認するには',
@@ -631,6 +651,13 @@ const translation = {
   },
   tracing: {
     stopBy: '{{user}}によって停止',
+  },
+  variableReference: {
+    noVarsForOperation: '選択した操作で代入できる変数はありません。',
+    noAvailableVars: '使用可能な変数がありません',
+    noAssignedVars: '使用可能な代入変数がありません',
+    assignedVarsDescription: '代入変数は、次のような書き込み可能な変数である必要があります。',
+    conversationVars: '会話変数',
   },
 }
 

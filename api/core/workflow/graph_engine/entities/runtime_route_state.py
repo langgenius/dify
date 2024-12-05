@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Optional
 
@@ -63,7 +63,7 @@ class RouteNodeState(BaseModel):
             raise Exception(f"Invalid route status {run_result.status}")
 
         self.node_run_result = run_result
-        self.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        self.finished_at = datetime.now(UTC).replace(tzinfo=None)
 
 
 class RuntimeRouteState(BaseModel):
@@ -81,7 +81,7 @@ class RuntimeRouteState(BaseModel):
 
         :param node_id: node id
         """
-        state = RouteNodeState(node_id=node_id, start_at=datetime.now(timezone.utc).replace(tzinfo=None))
+        state = RouteNodeState(node_id=node_id, start_at=datetime.now(UTC).replace(tzinfo=None))
         self.node_state_mapping[state.id] = state
         return state
 

@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -122,7 +122,7 @@ trace_info_info_map = {
 }
 
 
-class TraceTaskName(str, Enum):
+class TraceTaskName(StrEnum):
     CONVERSATION_TRACE = "conversation"
     WORKFLOW_TRACE = "workflow"
     MESSAGE_TRACE = "message"

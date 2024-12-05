@@ -626,6 +626,9 @@ const translation = {
     expiring_plural: 'Scadenza tra {{count}} giorni',
     expiring: 'Scadenza in un giorno',
   },
+  pagination: {
+    perPage: 'Articoli per pagina',
+  },
 }
 
 export default translation

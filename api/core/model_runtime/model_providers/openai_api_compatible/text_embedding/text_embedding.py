@@ -139,13 +139,17 @@ class OAICompatEmbeddingModel(_CommonOaiApiCompat, TextEmbeddingModel):
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
 
-            endpoint_url = credentials.get("endpoint_url")
+            endpoint_url = credentials.get("endpoint_url", "")
             if not endpoint_url.endswith("/"):
                 endpoint_url += "/"
 
             endpoint_url = urljoin(endpoint_url, "embeddings")
 
             payload = {"input": "ping", "model": model}
+            # For nvidia models, the "input_type":"query" need in the payload
+            # more to check issue #11193 or NvidiaTextEmbeddingModel
+            if model.startswith("nvidia/"):
+                payload["input_type"] = "query"
 
             response = requests.post(url=endpoint_url, headers=headers, data=json.dumps(payload), timeout=(10, 300))
 
@@ -176,7 +180,7 @@ class OAICompatEmbeddingModel(_CommonOaiApiCompat, TextEmbeddingModel):
             model_type=ModelType.TEXT_EMBEDDING,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size")),
+                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size", 512)),
                 ModelPropertyKey.MAX_CHUNKS: 1,
             },
             parameter_rules=[],

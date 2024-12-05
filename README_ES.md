@@ -215,6 +215,13 @@ Despliega Dify en una plataforma en la nube con un solo clic utilizando [terrafo
 ##### Google Cloud
 - [Google Cloud Terraform por @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
+#### Usando AWS CDK para el Despliegue
+
+Despliegue Dify en AWS usando [CDK](https://aws.amazon.com/cdk/)
+
+##### AWS 
+- [AWS CDK por @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+
 ## Contribuir
 
 Para aquellos que deseen contribuir con código, consulten nuestra [Guía de contribución](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md). 
@@ -241,6 +248,13 @@ Al mismo tiempo, considera apoyar a Dify compartiéndolo en redes sociales y en 
 [![Gráfico de Historial de Estrellas](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
 
 
+## Divulgación de Seguridad
+
+Para proteger tu privacidad, evita publicar problemas de seguridad en GitHub. En su lugar, envía tus preguntas a security@dify.ai y te proporcionaremos una respuesta más detallada.
+
+## Licencia
+
+Este repositorio está disponible bajo la [Licencia de Código Abierto de Dify](LICENSE), que es esencialmente Apache 2.0 con algunas restricciones adicionales.
 ## Divulgación de Seguridad
 
 Para proteger tu privacidad, evita publicar problemas de seguridad en GitHub. En su lugar, envía tus preguntas a security@dify.ai y te proporcionaremos una respuesta más detallada.

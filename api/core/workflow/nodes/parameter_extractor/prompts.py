@@ -98,7 +98,7 @@ Step 3: Structure the extracted parameters to JSON object as specified in <struc
 Step 4: Ensure that the JSON object is properly formatted and valid. The output should not contain any XML tags. Only the JSON object should be outputted.
 
 ### Memory
-Here is the chat histories between human and assistant, inside <histories></histories> XML tags.
+Here are the chat histories between human and assistant, inside <histories></histories> XML tags.
 <histories>
 {histories}
 </histories>
@@ -125,7 +125,7 @@ CHAT_GENERATE_JSON_PROMPT = """You should always follow the instructions and out
 The structure of the JSON object you can found in the instructions.
 
 ### Memory
-Here is the chat histories between human and assistant, inside <histories></histories> XML tags.
+Here are the chat histories between human and assistant, inside <histories></histories> XML tags.
 <histories>
 {histories}
 </histories>
