@@ -1,8 +1,8 @@
 from collections.abc import Callable, Sequence
 from typing import Literal, Union
 
-from core.file import File
-from core.variables import ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment
+from core.file import FILE_MODEL_IDENTITY, File
+from core.variables import ArrayFileSegment, ArrayNumberSegment, ArrayObjectVariable, ArrayStringSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
@@ -37,10 +37,20 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
                 process_data=process_data,
                 outputs=outputs,
             )
+        # tricky to handle the ArrayObjectVariable, fix issue #10596, because of that iteration node output,
+        # is object and can not have files for now but the output can be File, so using this tricky way to
+        # handle this, FIXME when refactor the iteration node can drop this code.
+        if isinstance(variable, ArrayObjectVariable):
+            files = []
+            for item in variable.value:
+                if isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY:
+                    file = File.model_validate(item)
+                    files.append(file)
+                    variable = ArrayFileSegment(value=files)
         if not isinstance(variable, ArrayFileSegment | ArrayNumberSegment | ArrayStringSegment):
             error_message = (
                 f"Variable {self.node_data.variable} is not an ArrayFileSegment, ArrayNumberSegment "
-                "or ArrayStringSegment"
+                ", ArrayStringSegment or ArrayObjectVariable."
             )
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, error=error_message, inputs=inputs, outputs=outputs
