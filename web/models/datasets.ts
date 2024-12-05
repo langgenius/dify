@@ -591,7 +591,7 @@ export const DEFAULT_WEIGHTED_SCORE = {
 export type ChildChunkType = 'automatic' | 'customized'
 
 export type ChildChunkDetail = {
-  id: number
+  id: string
   position: number
   segment_id: string
   content: string
