@@ -1,0 +1,4 @@
+model: amazon.rerank-v1:0
+model_type: rerank
+model_properties:
+  context_size: 5120
