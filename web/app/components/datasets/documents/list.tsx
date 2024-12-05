@@ -21,6 +21,7 @@ import { Globe01 } from '../../base/icons/src/vender/line/mapsAndTravel'
 import ChunkingModeLabel from '../common/chunking-mode-label'
 import s from './style.module.css'
 import RenameModal from './rename-modal'
+import BatchAction from './detail/completed/batch-action'
 import cn from '@/utils/classnames'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
@@ -576,6 +577,25 @@ const DocumentList: FC<IDocumentListProps> = ({
           })}
         </tbody>
       </table>
+      {(selectedIds.length > 0) && (
+        <BatchAction
+          className='absolute left-0 bottom-16 z-20'
+          selectedIds={selectedIds}
+          onArchive={() => { }}
+          onBatchEnable={() => {
+
+          }}
+          onBatchDisable={() => {
+
+          }}
+          onBatchDelete={() => {
+
+          }}
+          onCancel={() => {
+            onSelectedIdChange([])
+          }}
+        />
+      )}
       {/* Show Pagination only if the total is more than the limit */}
       {pagination.total && pagination.total > (pagination.limit || 10) && (
         <Pagination
