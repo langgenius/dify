@@ -50,10 +50,10 @@ const Toast = ({
     'right-0',
   )}>
     <div className={`absolute inset-0 opacity-40 ${
-      (type === 'success' && 'bg-[linear-gradient(92deg,rgba(23,178,106,0.25)_0%,rgba(255,255,255,0.00)_100%)]')
-      || (type === 'warning' && 'bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)]')
-      || (type === 'error' && 'bg-[linear-gradient(92deg,rgba(240,68,56,0.25)_0%,rgba(255,255,255,0.00)_100%)]')
-      || (type === 'info' && 'bg-[linear-gradient(92deg,rgba(11,165,236,0.25)_0%,rgba(255,255,255,0.00)_100%)]')
+      (type === 'success' && 'bg-toast-success-bg')
+      || (type === 'warning' && 'bg-toast-warning-bg')
+      || (type === 'error' && 'bg-toast-error-bg')
+      || (type === 'info' && 'bg-toast-info-bg')
     }`}
     />
     <div className={`flex ${size === 'md' ? 'gap-1' : 'gap-0.5'}`}>
@@ -70,9 +70,11 @@ const Toast = ({
         </div>
         }
       </div>
-      <ActionButton className='z-[1000]' onClick={close}>
-        <RiCloseLine className='w-4 h-4 shrink-0 text-text-tertiary' />
-      </ActionButton>
+      {close
+        && (<ActionButton className='z-[1000]' onClick={close}>
+          <RiCloseLine className='w-4 h-4 shrink-0 text-text-tertiary' />
+        </ActionButton>)
+      }
     </div>
   </div>
 }
