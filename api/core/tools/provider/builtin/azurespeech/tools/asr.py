@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 import requests
@@ -31,6 +32,6 @@ class AzureASRTool(BuiltinTool):
         combinedPhrases = data.get("combinedPhrases", [])
 
         if len(combinedPhrases) == 0:
-            return [self.create_text_message("No text detected"), self.create_json_message(data)]
+            raise Exception("No text detected, error: {}".format(json.dumps(data)))
 
         return [self.create_text_message(data.get("combinedPhrases", [])[0].get("text", ""))]
