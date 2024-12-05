@@ -168,7 +168,7 @@ const NodePanel: FC<Props> = ({
                 <Split className='mt-2' />
               </div>
             )}
-            <div className={cn('px-[10px]', hideInfo && '!px-2 !py-0.5')}>
+            <div className={cn('mb-1', hideInfo && '!px-2 !py-0.5')}>
               {(nodeInfo.status === 'stopped') && (
                 <StatusContainer status='stopped'>
                   {t('workflow.tracing.stopBy', { user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}
