@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
 import { usePrevious } from 'ahooks'
 import CryptoJS from 'crypto-js'
@@ -45,7 +45,7 @@ const Flowchart = React.forwardRef((props: {
   const [errMsg, setErrMsg] = useState('')
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
 
-  const renderFlowchart = async (PrimitiveCode: string) => {
+  const renderFlowchart = useCallback(async (PrimitiveCode: string) => {
     setSvgCode(null)
     setIsLoading(true)
 
@@ -65,7 +65,7 @@ const Flowchart = React.forwardRef((props: {
         setErrMsg((error as Error).message)
       }
     }
-  }
+  }, [props.PrimitiveCode])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -80,7 +80,7 @@ const Flowchart = React.forwardRef((props: {
       })
 
       localStorage.removeItem(chartId.current)
-      renderFlowchart(props.PrimitiveCode).then()
+      renderFlowchart(props.PrimitiveCode)
     }
   }, [look])
 
@@ -96,58 +96,62 @@ const Flowchart = React.forwardRef((props: {
       clearTimeout(timeRef.current)
 
     timeRef.current = setTimeout(() => {
-      renderFlowchart(props.PrimitiveCode).then()
+      renderFlowchart(props.PrimitiveCode)
     }, 300)
   }, [props.PrimitiveCode])
 
-  return <div ref={ref}>
-    <div className="msh-segmented msh-segmented-sm css-23bs09 css-var-r1">
-      <div className="msh-segmented-group">
-        <label className="msh-segmented-item flex items-center space-x-1 m-2 w-[200px]">
-          <div key='classic'
-            className={cn('flex items-center justify-center mb-4 w-[calc((100%-8px)/2)] h-8 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg cursor-pointer system-sm-medium text-text-secondary',
-              look === 'classic' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
-            )}
+  return (
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    <div ref={ref}>
+      <div className="msh-segmented msh-segmented-sm css-23bs09 css-var-r1">
+        <div className="msh-segmented-group">
+          <label className="msh-segmented-item flex items-center space-x-1 m-2 w-[200px]">
+            <div key='classic'
+              className={cn('flex items-center justify-center mb-4 w-[calc((100%-8px)/2)] h-8 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg cursor-pointer system-sm-medium text-text-secondary',
+                look === 'classic' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
+              )}
 
-            onClick={() => setLook('classic')}
-          >
-            <div className="msh-segmented-item-label">{t('app.mermaid.classic')}</div>
-          </div>
-          <div key='handDrawn'
-            className={cn(
-              'flex items-center justify-center mb-4 w-[calc((100%-8px)/2)] h-8 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg cursor-pointer system-sm-medium text-text-secondary',
-              look === 'handDrawn' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
-            )}
-            onClick={() => setLook('handDrawn')}
-          >
-            <div className="msh-segmented-item-label">{t('app.mermaid.handDrawn')}</div>
-          </div>
-        </label>
+              onClick={() => setLook('classic')}
+            >
+              <div className="msh-segmented-item-label">{t('app.mermaid.classic')}</div>
+            </div>
+            <div key='handDrawn'
+              className={cn(
+                'flex items-center justify-center mb-4 w-[calc((100%-8px)/2)] h-8 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg cursor-pointer system-sm-medium text-text-secondary',
+                look === 'handDrawn' && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
+              )}
+              onClick={() => setLook('handDrawn')}
+            >
+              <div className="msh-segmented-item-label">{t('app.mermaid.handDrawn')}</div>
+            </div>
+          </label>
+        </div>
       </div>
+      {
+        svgCode
+            && <div className="mermaid cursor-pointer" style={style} onClick={() => setImagePreviewUrl(svgCode)}>
+              {svgCode && <img src={svgCode} style={{ width: '100%', height: 'auto' }} alt="mermaid_chart" />}
+            </div>
+      }
+      {isLoading
+            && <div className='py-4 px-[26px]'>
+              <LoadingAnim type='text'/>
+            </div>
+      }
+      {
+        errMsg
+            && <div className='py-4 px-[26px]'>
+              <ExclamationTriangleIcon className='w-6 h-6 text-red-500'/>
+              &nbsp;
+              {errMsg}
+            </div>
+      }
+      {
+        imagePreviewUrl && (<ImagePreview title='mermaid_chart' url={imagePreviewUrl} onCancel={() => setImagePreviewUrl('')} />)
+      }
     </div>
-    {
-      svgCode
-          && <div className="mermaid cursor-pointer" style={style} onClick={() => setImagePreviewUrl(svgCode)}>
-            {svgCode && <img src={svgCode} style={{ width: '100%', height: 'auto' }} alt="mermaid_chart" />}
-          </div>
-    }
-    {isLoading
-          && <div className='py-4 px-[26px]'>
-            <LoadingAnim type='text'/>
-          </div>
-    }
-    {
-      errMsg
-          && <div className='py-4 px-[26px]'>
-            <ExclamationTriangleIcon className='w-6 h-6 text-red-500'/>
-            &nbsp;
-            {errMsg}
-          </div>
-    }
-    {
-      imagePreviewUrl && <ImagePreview title='mermaid_chart' url={imagePreviewUrl} onCancel={() => setImagePreviewUrl('')} />
-    }
-  </div>
+  )
 })
 
 export default Flowchart
