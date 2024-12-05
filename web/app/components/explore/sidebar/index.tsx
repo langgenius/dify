@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useSelectedLayoutSegments } from 'next/navigation'
 import Link from 'next/link'
+import { RiArrowLeftDoubleFill, RiArrowRightDoubleFill } from '@remixicon/react'
 import Toast from '../../base/toast'
 import Item from './app-nav-item'
 import cn from '@/utils/classnames'
@@ -38,17 +39,8 @@ const ChatIcon = () => (
   </svg>
 )
 
-const CollapsedIcon = ({ isCollapsed, onClick }: { isCollapsed: boolean;onClick: React.MouseEventHandler }) => isCollapsed
-  ? (
-    <svg width="16" height="16" onClick={onClick} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="m1.54,14.82c-0.24,-0.27 -0.21,-0.69 0.07,-0.93l6.79,-5.81c0.09,-0.08 0.09,-0.23 0,-0.31l-6.79,-5.86c-0.27,-0.24 -0.31,-0.65 -0.07,-0.93c0.24,-0.28 0.65,-0.31 0.93,-0.07l7.77,6.7c0.19,0.16 0.19,0.46 0,0.62l-7.76,6.66c-0.27,0.24 -0.69,0.21 -0.93,-0.07zm4.5,0c-0.24,-0.27 -0.21,-0.69 0.07,-0.93l6.79,-5.81c0.09,-0.08 0.09,-0.23 0,-0.31l-6.79,-5.86c-0.27,-0.24 -0.31,-0.65 -0.07,-0.93c0.24,-0.28 0.65,-0.31 0.93,-0.07l7.77,6.7c0.19,0.16 0.19,0.46 0,0.62l-7.76,6.66c-0.27,0.24 -0.69,0.21 -0.93,-0.07z" stroke="#344054" strokeWidth="0.25" strokeLinecap="round" fill="#344054" strokeLinejoin="round" />
-    </svg>
-  )
-  : (
-    <svg width="16" height="16" onClick={onClick} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="m14.9,0.82c0.25,0.29 0.22,0.72 -0.07,0.97l-7.09,6.03c-0.1,0.09 -0.1,0.24 0,0.32l7.09,6.09c0.29,0.25 0.32,0.68 0.07,0.97c-0.25,0.29 -0.68,0.32 -0.97,0.07l-8.1,-6.96c-0.2,-0.17 -0.2,-0.48 0,-0.65l8.1,-6.91c0.29,-0.25 0.72,-0.22 0.97,0.07zm-4.69,0c0.25,0.29 0.22,0.72 -0.07,0.97l-7.09,6.03c-0.1,0.09 -0.1,0.24 0,0.32l7.09,6.09c0.29,0.25 0.32,0.68 0.07,0.97c-0.25,0.29 -0.68,0.32 -0.97,0.07l-8.1,-6.96c-0.2,-0.17 -0.2,-0.48 0,-0.65l8.1,-6.91c0.29,-0.25 0.72,-0.22 0.97,0.07z" stroke="#344054" strokeWidth="0.25" strokeLinecap="round" fill="#344054" strokeLinejoin="round"/>
-    </svg>
-  )
+const CollapsedIcon = ({ isCollapsed, onClick }: { isCollapsed: boolean;onClick: React.MouseEventHandler }) =>
+  isCollapsed ? (<RiArrowRightDoubleFill onClick={onClick} size={22}/>) : (<RiArrowLeftDoubleFill onClick={onClick} size={22}/>)
 
 export type IExploreSideBarProps = {
   controlUpdateInstalledApps: number
