@@ -3,7 +3,6 @@ import io
 import json
 import os
 import tempfile
-from typing import Optional
 
 import docx
 import pandas as pd
@@ -82,7 +81,7 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
             )
 
 
-def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str, filename: Optional[str] = None) -> str:
+def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
     """Extract text from a file based on its MIME type."""
     match mime_type:
         case "text/plain" | "text/html" | "text/htm" | "text/markdown" | "text/xml":
@@ -98,7 +97,7 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str, filename:
         case "application/vnd.ms-powerpoint":
             return _extract_text_from_ppt(file_content)
         case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-            return _extract_text_from_pptx(file_content, filename)
+            return _extract_text_from_pptx(file_content)
         case "application/epub+zip":
             return _extract_text_from_epub(file_content)
         case "message/rfc822":
@@ -113,7 +112,7 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str, filename:
             raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
 
 
-def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str, filename: Optional[str] = None) -> str:
+def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str) -> str:
     """Extract text from a file based on its file extension."""
     match file_extension:
         case ".txt" | ".markdown" | ".md" | ".html" | ".htm" | ".xml" | ".vtt":
@@ -133,7 +132,7 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str,
         case ".ppt":
             return _extract_text_from_ppt(file_content)
         case ".pptx":
-            return _extract_text_from_pptx(file_content, filename)
+            return _extract_text_from_pptx(file_content)
         case ".epub":
             return _extract_text_from_epub(file_content)
         case ".eml":
@@ -212,9 +211,7 @@ def _extract_text_from_file(file: File):
     if file.extension:
         extracted_text = _extract_text_by_file_extension(file_content=file_content, file_extension=file.extension)
     elif file.mime_type:
-        extracted_text = _extract_text_by_mime_type(
-            file_content=file_content, mime_type=file.mime_type, filename=file.filename
-        )
+        extracted_text = _extract_text_by_mime_type(file_content=file_content, mime_type=file.mime_type)
     else:
         raise UnsupportedFileTypeError("Unable to determine file type: MIME type or file extension is missing")
     return extracted_text
@@ -267,7 +264,7 @@ def _extract_text_from_ppt(file_content: bytes) -> str:
         raise TextExtractionError(f"Failed to extract text from PPT: {str(e)}") from e
 
 
-def _extract_text_from_pptx(file_content: bytes, filename: Optional[str] = None) -> str:
+def _extract_text_from_pptx(file_content: bytes) -> str:
     try:
         if dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY:
             with tempfile.NamedTemporaryFile(suffix=".pptx", delete=False) as temp_file:
@@ -276,7 +273,7 @@ def _extract_text_from_pptx(file_content: bytes, filename: Optional[str] = None)
                 with open(temp_file.name, "rb") as file:
                     elements = partition_via_api(
                         file=file,
-                        metadata_filename=filename or temp_file.name,
+                        metadata_filename=temp_file.name,
                         api_url=dify_config.UNSTRUCTURED_API_URL,
                         api_key=dify_config.UNSTRUCTURED_API_KEY,
                     )
