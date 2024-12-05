@@ -11,6 +11,7 @@ import SegmentList from './segment-list'
 import DisplayToggle from './display-toggle'
 import BatchAction from './batch-action'
 import SegmentDetail from './segment-detail'
+import { mockSegments } from './mock-data'
 import cn from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import Modal from '@/app/components/base/modal'
@@ -123,8 +124,9 @@ const Completed: FC<ICompletedProps> = ({
   )
 
   useEffect(() => {
-    if (segmentList)
-      setSegments(segmentList.data || [])
+    setSegments(mockSegments.data)
+    // if (segmentList)
+    //   setSegments(segmentList.data || [])
   }, [segmentList])
 
   const resetList = useCallback(() => {

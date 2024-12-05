@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { RiArrowRightUpLine, RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import { StatusItem } from '../../list'
 import DocumentFileIcon from '../../../common/document-file-icon'
+import { useDocumentContext } from '../index'
+import ChildSegmentList from './child-segment-list'
 import { SegmentIndexTag, useSegmentListContext } from '.'
 import type { SegmentDetailModel } from '@/models/datasets'
 import Indicator from '@/app/components/header/indicator'
@@ -112,8 +114,11 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     hit_count,
     answer,
     keywords,
+    child_chunks = [],
   } = detail as Required<ISegmentCardProps>['detail']
   const [showModal, setShowModal] = useState(false)
+  const isCollapsed = useSegmentListContext(s => s.isCollapsed)
+  const mode = useDocumentContext(s => s.mode)
 
   const isDocScene = useMemo(() => {
     return scene === 'doc'
@@ -149,11 +154,10 @@ const SegmentCard: FC<ISegmentCardProps> = ({
 
     return content
   }
-  const isCollapsed = useSegmentListContext(s => s.isCollapsed)
 
   return (
-    <div className={cn('p-3 pb-2.5 hover:bg-dataset-chunk-detail-card-hover-bg rounded-xl group/card', className)} onClick={() => onClick?.()}>
-      <div className='relative flex items-center justify-between'>
+    <div className={cn('p-1 pt-2.5 hover:bg-dataset-chunk-detail-card-hover-bg rounded-xl group/card', className, !enabled ? 'opacity-50 hover:opacity-100' : '')} onClick={() => onClick?.()}>
+      <div className='h-5 px-2 relative flex items-center justify-between'>
         {isDocScene
           ? <>
             <div className='flex items-center gap-x-2'>
@@ -167,7 +171,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                 <Badge text='edited' uppercase className={textOpacity} />
               )}
             </div>
-            <div className=''>
+            <div className='relative z-10'>
               {loading
                 ? (
                   <Indicator color="gray" />
@@ -176,7 +180,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                   <>
                     <StatusItem status={enabled ? 'enabled' : 'disabled'} reverse textCls="text-text-tertiary system-xs-regular" />
                     {embeddingAvailable && (
-                      <div className="absolute -top-2.5 -right-2.5 z-20 hidden group-hover/card:flex items-center gap-x-0.5 p-1
+                      <div className="absolute -top-2 -right-2.5 z-20 hidden group-hover/card:flex items-center gap-x-0.5 p-1
                         rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-[5px]">
                         {!archived && (
                           <>
@@ -240,12 +244,20 @@ const SegmentCard: FC<ISegmentCardProps> = ({
         : (
           isDocScene
             ? <>
-              <div className={cn('text-text-secondary body-md-regular -tracking-[0.07px] mt-1', textOpacity, isCollapsed ? 'line-clamp-2' : 'line-clamp-20')}>
+              <div className={cn('text-text-secondary body-md-regular -tracking-[0.07px] mt-1 px-2', textOpacity, isCollapsed ? 'line-clamp-2' : 'line-clamp-20')}>
                 {renderContent()}
               </div>
-              <div className={cn('flex items-center gap-x-2 pt-1.5', textOpacity)}>
+              {mode === 'custom' && <div className={cn('flex items-center gap-x-2 px-2 py-1.5', textOpacity)}>
                 {keywords?.map(keyword => <Tag key={keyword} text={keyword} />)}
-              </div>
+              </div>}
+              {
+                child_chunks.length > 0
+                && <ChildSegmentList
+                  child_chunks={child_chunks}
+                  onSave={() => {}}
+                  handleInputChange={() => {}}
+                />
+              }
             </>
             : <>
               <div className='text-text-secondary body-md-regular -tracking-[0.07px]'>
