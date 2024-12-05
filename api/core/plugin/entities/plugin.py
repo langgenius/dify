@@ -52,7 +52,7 @@ class PluginResourceRequirements(BaseModel):
         endpoint: Optional[Endpoint] = Field(default=None)
         storage: Storage = Field(default=None)
 
-    permission: Optional[Permission]
+    permission: Optional[Permission] = Field(default=None)
 
 
 class PluginCategory(enum.StrEnum):
