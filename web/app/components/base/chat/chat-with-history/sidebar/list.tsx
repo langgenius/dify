@@ -3,6 +3,7 @@ import Item from './item'
 import type { ConversationItem } from '@/models/share'
 
 type ListProps = {
+  isCollapsed: boolean
   isPin?: boolean
   title?: string
   list: ConversationItem[]
@@ -11,6 +12,7 @@ type ListProps = {
   currentConversationId: string
 }
 const List: FC<ListProps> = ({
+  isCollapsed,
   isPin,
   title,
   list,
@@ -31,6 +33,7 @@ const List: FC<ListProps> = ({
         list.map(item => (
           <Item
             key={item.id}
+            isCollapsed={isCollapsed}
             isPin={isPin}
             item={item}
             onOperate={onOperate}

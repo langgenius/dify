@@ -38,6 +38,18 @@ const ChatIcon = () => (
   </svg>
 )
 
+const CollapsedIcon = ({ isCollapsed, onClick }: { isCollapsed: boolean;onClick: React.MouseEventHandler }) => isCollapsed
+  ? (
+    <svg width="16" height="16" onClick={onClick} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="m1.54,14.82c-0.24,-0.27 -0.21,-0.69 0.07,-0.93l6.79,-5.81c0.09,-0.08 0.09,-0.23 0,-0.31l-6.79,-5.86c-0.27,-0.24 -0.31,-0.65 -0.07,-0.93c0.24,-0.28 0.65,-0.31 0.93,-0.07l7.77,6.7c0.19,0.16 0.19,0.46 0,0.62l-7.76,6.66c-0.27,0.24 -0.69,0.21 -0.93,-0.07zm4.5,0c-0.24,-0.27 -0.21,-0.69 0.07,-0.93l6.79,-5.81c0.09,-0.08 0.09,-0.23 0,-0.31l-6.79,-5.86c-0.27,-0.24 -0.31,-0.65 -0.07,-0.93c0.24,-0.28 0.65,-0.31 0.93,-0.07l7.77,6.7c0.19,0.16 0.19,0.46 0,0.62l-7.76,6.66c-0.27,0.24 -0.69,0.21 -0.93,-0.07z" stroke="#344054" strokeWidth="0.25" strokeLinecap="round" fill="#344054" strokeLinejoin="round" />
+    </svg>
+  )
+  : (
+    <svg width="16" height="16" onClick={onClick} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="m14.9,0.82c0.25,0.29 0.22,0.72 -0.07,0.97l-7.09,6.03c-0.1,0.09 -0.1,0.24 0,0.32l7.09,6.09c0.29,0.25 0.32,0.68 0.07,0.97c-0.25,0.29 -0.68,0.32 -0.97,0.07l-8.1,-6.96c-0.2,-0.17 -0.2,-0.48 0,-0.65l8.1,-6.91c0.29,-0.25 0.72,-0.22 0.97,0.07zm-4.69,0c0.25,0.29 0.22,0.72 -0.07,0.97l-7.09,6.03c-0.1,0.09 -0.1,0.24 0,0.32l7.09,6.09c0.29,0.25 0.32,0.68 0.07,0.97c-0.25,0.29 -0.68,0.32 -0.97,0.07l-8.1,-6.96c-0.2,-0.17 -0.2,-0.48 0,-0.65l8.1,-6.91c0.29,-0.25 0.72,-0.22 0.97,0.07z" stroke="#344054" strokeWidth="0.25" strokeLinecap="round" fill="#344054" strokeLinejoin="round"/>
+    </svg>
+  )
+
 export type IExploreSideBarProps = {
   controlUpdateInstalledApps: number
 }
@@ -50,10 +62,14 @@ const SideBar: FC<IExploreSideBarProps> = ({
   const lastSegment = segments.slice(-1)[0]
   const isDiscoverySelected = lastSegment === 'apps'
   const isChatSelected = lastSegment === 'chat'
-  const { installedApps, setInstalledApps } = useContext(ExploreContext)
+  const {
+    installedApps,
+    setInstalledApps,
+  } = useContext(ExploreContext)
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
   const fetchInstalledAppList = async () => {
     const { installed_apps }: any = await doFetchInstalledAppList()
@@ -92,15 +108,17 @@ const SideBar: FC<IExploreSideBarProps> = ({
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
   return (
-    <div className='w-fit sm:w-[216px] shrink-0 pt-6 px-4 border-gray-200 cursor-pointer'>
+    <div className='w-fit sm:w-[216px] shrink-0 pt-6 px-4 border-gray-200 cursor-pointer'
+      style={isCollapsed ? { width: '75px' } : {}}
+    >
       <div>
         <Link
           href='/explore/apps'
           className={cn(isDiscoverySelected ? 'text-primary-600  bg-white font-semibold' : 'text-gray-700 font-medium hover:bg-gray-200', 'flex items-center pc:justify-start pc:w-full mobile:justify-center mobile:w-fit h-9 px-3 mobile:px-2 gap-2 rounded-lg')}
           style={isDiscoverySelected ? { boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)' } : {}}
         >
-          {isDiscoverySelected ? <SelectedDiscoveryIcon /> : <DiscoveryIcon />}
-          {!isMobile && <div className='text-sm'>{t('explore.sidebar.discovery')}</div>}
+          {isDiscoverySelected ? <SelectedDiscoveryIcon/> : <DiscoveryIcon/>}
+          { !isMobile && !isCollapsed && <div className='text-sm'>{t('explore.sidebar.discovery')}</div>}
         </Link>
       </div>
       {installedApps.length > 0 && (
@@ -108,12 +126,13 @@ const SideBar: FC<IExploreSideBarProps> = ({
           <p className='pl-2 mobile:px-0 text-xs text-gray-500 break-all font-medium uppercase'>{t('explore.sidebar.workspace')}</p>
           <div className='mt-3 space-y-1 overflow-y-auto overflow-x-hidden'
             style={{
-              height: 'calc(100vh - 250px)',
+              height: 'calc(100vh - 225px)',
             }}
           >
             {installedApps.map(({ id, is_pinned, uninstallable, app: { name, icon_type, icon, icon_url, icon_background } }, index) => (
               <React.Fragment key={id}>
                 <Item
+                  isCollapsed={isCollapsed}
                   isMobile={isMobile}
                   name={name}
                   icon_type={icon_type}
@@ -133,6 +152,13 @@ const SideBar: FC<IExploreSideBarProps> = ({
                 {index === pinnedAppsCount - 1 && index !== installedApps.length - 1 && <Divider />}
               </React.Fragment>
             ))}
+          </div>
+        </div>
+      )}
+      { !isMobile && (
+        <div className="h-[25px]">
+          <div className="flex items-center justify-end h-full">
+            <CollapsedIcon onClick={() => setIsCollapsed(!isCollapsed)} isCollapsed={isCollapsed} />
           </div>
         </div>
       )}
