@@ -35,6 +35,8 @@ const translation = {
     Translate: 'Prevajanje',
     Programming: 'Programiranje',
     HR: 'Kadri',
+    Workflow: 'Potek dela',
+    Agent: 'Agent',
   },
 }
 
