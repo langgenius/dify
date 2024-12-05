@@ -936,6 +936,26 @@ const translation = {
       'setVariable': 'Nastavi spremenljivko',
       'over-write': 'Prepisati',
       'writeModeTip': 'Način dodajanja: Na voljo samo za spremenljivke polja.',
+      'operations': {
+        '+=': '+=',
+        'overwrite': 'Prepisati',
+        '*=': '*=',
+        'extend': 'Razširiti',
+        'append': 'Dodaj',
+        '-=': '-=',
+        'title': 'Operacija',
+        '/=': '/=',
+        'set': 'Nastaviti',
+        'clear': 'Jasen',
+        'over-write': 'Prepisati',
+      },
+      'variables': 'Spremenljivke',
+      'selectAssignedVariable': 'Izberite dodeljeno spremenljivko ...',
+      'assignedVarsDescription': 'Dodeljene spremenljivke morajo biti zapisljive, kot so spremenljivke pogovora.',
+      'noVarTip': 'Kliknite gumb »+«, da dodate spremenljivke',
+      'noAssignedVars': 'Ni razpoložljivih dodeljenih spremenljivk',
+      'varNotSet': 'Spremenljivka NI nastavljena',
+      'setParameter': 'Nastavi parameter ...',
     },
     tool: {
       outputVars: {
@@ -1063,6 +1083,13 @@ const translation = {
       inputVar: 'Vhodna spremenljivka',
       filterConditionComparisonValue: 'Vrednost pogoja filtra',
     },
+  },
+  variableReference: {
+    noVarsForOperation: 'Spremenljivk ni na voljo za dodelitev z izbrano operacijo.',
+    conversationVars: 'Spremenljivke pogovora',
+    noAssignedVars: 'Ni razpoložljivih dodeljenih spremenljivk',
+    noAvailableVars: 'Ni spremenljivk, ki so na voljo',
+    assignedVarsDescription: 'Dodeljene spremenljivke morajo biti zapisljive, kot so:',
   },
 }
 

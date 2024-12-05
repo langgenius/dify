@@ -585,6 +585,11 @@ class RagEtlConfig(BaseSettings):
         default=None,
     )
 
+    SCARF_NO_ANALYTICS: Optional[str] = Field(
+        description="This is about whether to disable Scarf analytics in Unstructured library.",
+        default="false",
+    )
+
 
 class DataSetConfig(BaseSettings):
     """
@@ -640,7 +645,7 @@ class IndexingConfig(BaseSettings):
 
     INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: PositiveInt = Field(
         description="Maximum token length for text segmentation during indexing",
-        default=1000,
+        default=4000,
     )
 
 

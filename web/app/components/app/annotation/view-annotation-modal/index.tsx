@@ -2,13 +2,12 @@
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pagination } from 'react-headless-pagination'
-import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
 import EditItem, { EditItemType } from '../edit-annotation-modal/edit-item'
 import type { AnnotationItem, HitHistoryItem } from '../type'
 import s from './style.module.css'
 import HitHistoryNoData from './hit-history-no-data'
 import cn from '@/utils/classnames'
+import Pagination from '@/app/components/base/pagination'
 import Drawer from '@/app/components/base/drawer-plus'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
 import Confirm from '@/app/components/base/confirm'
@@ -150,35 +149,10 @@ const ViewAnnotationModal: FC<Props> = ({
         </table>
         {(total && total > APP_PAGE_LIMIT)
           ? <Pagination
-            className="flex items-center w-full h-10 text-sm select-none mt-8"
-            currentPage={currPage}
-            edgePageCount={2}
-            middlePagesSiblingCount={1}
-            setCurrentPage={setCurrPage}
-            totalPages={Math.ceil(total / APP_PAGE_LIMIT)}
-            truncatableClassName="w-8 px-0.5 text-center"
-            truncatableText="..."
-          >
-            <Pagination.PrevButton
-              disabled={currPage === 0}
-              className={`flex items-center mr-2 text-gray-500  focus:outline-none ${currPage === 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-gray-600 dark:hover:text-gray-200'}`} >
-              <ArrowLeftIcon className="mr-3 h-3 w-3" />
-              {t('appLog.table.pagination.previous')}
-            </Pagination.PrevButton>
-            <div className={`flex items-center justify-center flex-grow ${s.pagination}`}>
-              <Pagination.PageButton
-                activeClassName="bg-primary-50 dark:bg-opacity-0 text-primary-600 dark:text-white"
-                className="flex items-center justify-center h-8 w-8 rounded-full cursor-pointer"
-                inactiveClassName="text-gray-500"
-              />
-            </div>
-            <Pagination.NextButton
-              disabled={currPage === Math.ceil(total / APP_PAGE_LIMIT) - 1}
-              className={`flex items-center mr-2 text-gray-500 focus:outline-none ${currPage === Math.ceil(total / APP_PAGE_LIMIT) - 1 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-gray-600 dark:hover:text-gray-200'}`} >
-              {t('appLog.table.pagination.next')}
-              <ArrowRightIcon className="ml-3 h-3 w-3" />
-            </Pagination.NextButton>
-          </Pagination>
+            current={currPage}
+            onChange={setCurrPage}
+            total={total}
+          />
           : null}
       </div>
 

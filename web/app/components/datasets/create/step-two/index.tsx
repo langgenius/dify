@@ -156,7 +156,8 @@ const StepTwo = ({
   const setSegmentIdentifier = useCallback((value: string) => {
     doSetSegmentIdentifier(value ? escape(value) : DEFAULT_SEGMENT_IDENTIFIER)
   }, [])
-  const [max, setMax] = useState(4000) // default chunk length
+  const [maxChunkLength, setMaxChunkLength] = useState(4000) // default chunk length
+  const [limitMaxChunkLength, setLimitMaxChunkLength] = useState(4000)
   const [overlap, setOverlap] = useState(50)
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
@@ -193,10 +194,11 @@ const StepTwo = ({
         pre_processing_rules: rules,
         segmentation: {
           separator: unescape(segmentIdentifier),
-          max_tokens: max,
+          max_tokens: maxChunkLength,
           chunk_overlap: overlap,
         },
       }
+      // @ts-expect-error will be removed after api refactored.
       processRule.rules = ruleObj
     }
     return processRule
@@ -283,7 +285,7 @@ const StepTwo = ({
   const resetRules = () => {
     if (defaultConfig) {
       setSegmentIdentifier(defaultConfig.segmentation.separator)
-      setMax(defaultConfig.segmentation.max_tokens)
+      setMaxChunkLength(defaultConfig.segmentation.max_tokens)
       setOverlap(defaultConfig.segmentation.chunk_overlap!)
       setRules(defaultConfig.pre_processing_rules)
     }
@@ -291,7 +293,7 @@ const StepTwo = ({
   }
 
   const updatePreview = () => {
-    if (segmentationType === SegmentType.CUSTOM && max > 4000) {
+    if (segmentationType === SegmentType.CUSTOM && maxChunkLength > 4000) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
       return
     }
@@ -318,12 +320,12 @@ const StepTwo = ({
   )
   const getCreationParams = () => {
     let params
-    if (segmentationType === SegmentType.CUSTOM && overlap > max) {
+    if (segmentationType === SegmentType.CUSTOM && overlap > maxChunkLength) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.overlapCheck') })
       return
     }
-    if (segmentationType === SegmentType.CUSTOM && max > 4000) {
-      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
+    if (segmentationType === SegmentType.CUSTOM && maxChunkLength > limitMaxChunkLength) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck', { limit: limitMaxChunkLength }) })
       return
     }
     if (isSetting) {
@@ -398,10 +400,11 @@ const StepTwo = ({
     onSuccess(data) {
       const separator = data.rules.segmentation.separator
       setSegmentIdentifier(separator)
-      setMax(data.rules.segmentation.max_tokens)
+      setMaxChunkLength(data.rules.segmentation.max_tokens)
       setOverlap(data.rules.segmentation.chunk_overlap!)
       setRules(data.rules.pre_processing_rules)
       setDefaultConfig(data.rules)
+      setLimitMaxChunkLength(data.limits.indexing_max_segmentation_tokens_length)
     },
     onError(error) {
       Toast.notify({
@@ -418,8 +421,8 @@ const StepTwo = ({
       const max = rules.segmentation.max_tokens
       const overlap = rules.segmentation.chunk_overlap
       setSegmentIdentifier(separator)
-      setMax(max)
-      setOverlap(overlap as number)
+      setMaxChunkLength(max)
+      setOverlap(overlap!)
       setRules(rules.pre_processing_rules)
       setDefaultConfig(rules)
     }
@@ -427,6 +430,7 @@ const StepTwo = ({
 
   const getDefaultMode = () => {
     if (documentDetail)
+      // @ts-expect-error fix after api refactored
       setSegmentationType(documentDetail.dataset_process_rule.mode)
   }
 
@@ -516,6 +520,7 @@ const StepTwo = ({
       getRulesFromDetail()
       getDefaultMode()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -577,8 +582,8 @@ const StepTwo = ({
                       onChange={e => setSegmentIdentifier(e.target.value)}
                     />
                     <MaxLengthInput
-                      value={max}
-                      onChange={setMax}
+                      value={maxChunkLength}
+                      onChange={setMaxChunkLength}
                     />
                     <OverlapInput
                       value={overlap}

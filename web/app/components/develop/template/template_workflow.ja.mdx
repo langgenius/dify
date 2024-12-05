@@ -113,7 +113,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - `title` (string) ノードの名前
         - `index` (int) 実行シーケンス番号、トレースノードシーケンスを表示するために使用
         - `predecessor_node_id` (string) オプションのプレフィックスノードID、キャンバス表示実行パスに使用
-        - `inputs` (array[object]) ノードで使用されるすべての前のノード変数の内容
+        - `inputs` (object) ノードで使用されるすべての前のノード変数の内容
         - `created_at` (timestamp) 開始のタイムスタンプ、例：1705395332
     - `event: node_finished` ノード実行終了、同じイベントで異なる状態で成功または失敗
       - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
@@ -126,7 +126,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - `title` (string) ノードの名前
         - `index` (int) 実行シーケンス番号、トレースノードシーケンスを表示するために使用
         - `predecessor_node_id` (string) オプションのプレフィックスノードID、キャンバス表示実行パスに使用
-        - `inputs` (array[object]) ノードで使用されるすべての前のノード変数の内容
+        - `inputs` (object) ノードで使用されるすべての前のノード変数の内容
         - `process_data` (json) オプションのノードプロセスデータ
         - `outputs` (json) オプションの出力内容
         - `status` (string) 実行のステータス、`running` / `succeeded` / `failed` / `stopped`
@@ -499,104 +499,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
-  url='/parameters'
-  method='GET'
-  title='アプリケーション情報を取得'
-  name='#parameters'
-/>
-<Row>
-  <Col>
-    ページに入る際に、機能、入力パラメータ名、タイプ、デフォルト値などの情報を取得するために使用されます。
-
-    ### クエリ
-
-    <Properties>
-      <Property name='user' type='string' key='user'>
-          ユーザー識別子、開発者のルールで定義され、アプリケーション内で一意でなければなりません。
-      </Property>
-    </Properties>
-
-    ### 応答
-    - `user_input_form` (array[object]) ユーザー入力フォームの設定
-      - `text-input` (object) テキスト入力コントロール
-        - `label` (string) 変数表示ラベル名
-        - `variable` (string) 変数ID
-        - `required` (bool) 必須かどうか
-        - `default` (string) デフォルト値
-      - `paragraph` (object) 段落テキスト入力コントロール
-        - `label` (string) 変数表示ラベル名
-        - `variable` (string) 変数ID
-        - `required` (bool) 必須かどうか
-        - `default` (string) デフォルト値
-      - `select` (object) ドロップダウンコントロール
-        - `label` (string) 変数表示ラベル名
-        - `variable` (string) 変数ID
-        - `required` (bool) 必須かどうか
-        - `default` (string) デフォルト値
-        - `options` (array[string]) オプション値
-    - `file_upload` (object) ファイルアップロード設定
-      - `image` (object) 画像設定
-        現在サポートされている画像タイプのみ：`png`, `jpg`, `jpeg`, `webp`, `gif`
-        - `enabled` (bool) 有効かどうか
-        - `number_limits` (int) 画像数の制限、デフォルトは3
-        - `transfer_methods` (array[string]) 転送方法のリスト、remote_url, local_file、いずれかを選択する必要があります
-    - `system_parameters` (object) システムパラメータ
-      - `file_size_limit` (int) ドキュメントアップロードサイズ制限（MB）
-      - `image_file_size_limit` (int) 画像ファイルアップロードサイズ制限（MB）
-      - `audio_file_size_limit` (int) オーディオファイルアップロードサイズ制限（MB）
-      - `video_file_size_limit` (int) ビデオファイルアップロードサイズ制限（MB）
-
-  </Col>
-  <Col sticky>
-
-    <CodeGroup title="リクエスト" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
-
-    <CodeGroup title="応答">
-    ```json {{ title: '応答' }}
-    {
-      "user_input_form": [
-          {
-              "paragraph": {
-                  "label": "Query",
-                  "variable": "query",
-                  "required": true,
-                  "default": ""
-              }
-          }
-      ],
-      "file_upload": {
-          "image": {
-              "enabled": false,
-              "number_limits": 3,
-              "detail": "high",
-              "transfer_methods": [
-                  "remote_url",
-                  "local_file"
-              ]
-          }
-      },
-      "system_parameters": {
-          "file_size_limit": 15,
-          "image_file_size_limit": 10,
-          "audio_file_size_limit": 50,
-          "video_file_size_limit": 100
-      }
-    }
-    ```
-    </CodeGroup>
-  </Col>
-</Row>
-
----
-
-<Heading
   url='/workflows/logs'
   method='GET'
   title='ワークフローログを取得'
@@ -694,6 +596,148 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
                 "created_at": 1726139644
             }
         ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/info'
+  method='GET'
+  title='アプリケーションの基本情報を取得'
+  name='#info'
+/>
+<Row>
+  <Col>
+  このアプリケーションの基本情報を取得するために使用されます
+  ### Query
+    <Properties>
+
+   <Property name='user' type='string' key='user'>
+        ユーザー識別子、開発者のルールによって定義され、アプリケーション内で一意でなければなりません。
+    </Property>
+      </Properties>
+  ### Response
+  - `name` (string) アプリケーションの名前
+  - `description` (string) アプリケーションの説明
+  - `tags` (array[string]) アプリケーションのタグ
+  </Col>
+  <Col>
+    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \
+      -H 'Authorization: Bearer {api_key}'
+      ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "name": "My App",
+      "description": "This is my app.",
+      "tags": [
+        "tag1",
+        "tag2"
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/parameters'
+  method='GET'
+  title='アプリケーションのパラメータ情報を取得'
+  name='#parameters'
+/>
+<Row>
+  <Col>
+    ページに入る際に、機能、入力パラメータ名、タイプ、デフォルト値などの情報を取得するために使用されます。
+
+    ### クエリ
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+          ユーザー識別子、開発者のルールで定義され、アプリケーション内で一意でなければなりません。
+      </Property>
+    </Properties>
+
+    ### 応答
+    - `user_input_form` (array[object]) ユーザー入力フォームの設定
+      - `text-input` (object) テキスト入力コントロール
+        - `label` (string) 変数表示ラベル名
+        - `variable` (string) 変数ID
+        - `required` (bool) 必須かどうか
+        - `default` (string) デフォルト値
+      - `paragraph` (object) 段落テキスト入力コントロール
+        - `label` (string) 変数表示ラベル名
+        - `variable` (string) 変数ID
+        - `required` (bool) 必須かどうか
+        - `default` (string) デフォルト値
+      - `select` (object) ドロップダウンコントロール
+        - `label` (string) 変数表示ラベル名
+        - `variable` (string) 変数ID
+        - `required` (bool) 必須かどうか
+        - `default` (string) デフォルト値
+        - `options` (array[string]) オプション値
+    - `file_upload` (object) ファイルアップロード設定
+      - `image` (object) 画像設定
+        現在サポートされている画像タイプのみ：`png`, `jpg`, `jpeg`, `webp`, `gif`
+        - `enabled` (bool) 有効かどうか
+        - `number_limits` (int) 画像数の制限、デフォルトは3
+        - `transfer_methods` (array[string]) 転送方法のリスト、remote_url, local_file、いずれかを選択する必要があります
+    - `system_parameters` (object) システムパラメータ
+      - `file_size_limit` (int) ドキュメントアップロードサイズ制限（MB）
+      - `image_file_size_limit` (int) 画像ファイルアップロードサイズ制限（MB）
+      - `audio_file_size_limit` (int) オーディオファイルアップロードサイズ制限（MB）
+      - `video_file_size_limit` (int) ビデオファイルアップロードサイズ制限（MB）
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="リクエスト" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+      "user_input_form": [
+          {
+              "paragraph": {
+                  "label": "Query",
+                  "variable": "query",
+                  "required": true,
+                  "default": ""
+              }
+          }
+      ],
+      "file_upload": {
+          "image": {
+              "enabled": false,
+              "number_limits": 3,
+              "detail": "high",
+              "transfer_methods": [
+                  "remote_url",
+                  "local_file"
+              ]
+          }
+      },
+      "system_parameters": {
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
+      }
     }
     ```
     </CodeGroup>

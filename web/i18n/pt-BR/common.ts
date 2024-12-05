@@ -595,6 +595,9 @@ const translation = {
     expiring: 'Expirando em um dia',
     expiring_plural: 'Expirando em {{count}} dias',
   },
+  pagination: {
+    perPage: 'Itens por página',
+  },
 }
 
 export default translation
