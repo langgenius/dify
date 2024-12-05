@@ -128,10 +128,10 @@ class VectorService:
             doc_language=dataset_document.doc_language,
         )
         # save child chunks
-        if len(documents) > 0 and len(documents[0].child_chunks) > 0:
+        if len(documents) > 0 and len(documents[0].children) > 0:
             index_processor.load(dataset, documents)
 
-            for position, child_chunk in enumerate(documents[0].child_chunks, start=1):
+            for position, child_chunk in enumerate(documents[0].children, start=1):
                 child_segment = ChildChunk(
                     tenant_id=dataset.tenant_id,
                     dataset_id=dataset.id,
