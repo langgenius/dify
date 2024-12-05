@@ -47,6 +47,6 @@ parameter_rules:
       en_US: Only sample from the top K options for each subsequent token. Use top_k to remove long tail low probability responses.
 pricing:
   input: '0.0008'
-  output: '0.0016'
+  output: '0.0032'
   unit: '0.001'
   currency: USD
