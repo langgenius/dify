@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import { Edit03 } from '../../base/icons/src/vender/solid/general'
 import { Globe01 } from '../../base/icons/src/vender/line/mapsAndTravel'
+import ChunkingModeLabel from '../common/chunking-mode-label'
 import s from './style.module.css'
 import RenameModal from './rename-modal'
 import cn from '@/utils/classnames'
@@ -436,7 +437,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
                 {t('datasetDocuments.list.table.header.fileName')}
               </div>
             </td>
-            <td className='w-[120px]'>{t('datasetDocuments.list.table.header.chunkingMode')}</td>
+            <td className='w-[130px]'>{t('datasetDocuments.list.table.header.chunkingMode')}</td>
             <td className='w-24'>{t('datasetDocuments.list.table.header.words')}</td>
             <td className='w-44'>{t('datasetDocuments.list.table.header.hitCount')}</td>
             <td className='w-44'>
@@ -489,7 +490,12 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
                   </div>
                 </div>
               </td>
-              <td>{isGeneralMode ? `general ${isQAMode ? '. QA' : ''}` : 'ParentChilde'}</td>
+              <td>
+                <ChunkingModeLabel
+                  isGeneralMode={isGeneralMode}
+                  isQAMode={isQAMode}
+                />
+              </td>
               <td>{renderCount(doc.word_count)}</td>
               <td>{renderCount(doc.hit_count)}</td>
               <td className='text-text-secondary text-[13px]'>

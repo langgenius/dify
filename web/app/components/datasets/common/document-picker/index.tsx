@@ -3,8 +3,10 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useBoolean } from 'ahooks'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import FileIcon from '../document-file-icon'
-import type { ParentMode, ProcessMode, SimpleDocumentDetail } from '@/models/datasets'
+import type { ParentMode, SimpleDocumentDetail } from '@/models/datasets'
+import { ProcessMode } from '@/models/datasets'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -32,6 +34,7 @@ const DocumentPicker: FC<Props> = ({
   value,
   onChange,
 }) => {
+  const { t } = useTranslation()
   const {
     name,
     extension,
@@ -49,7 +52,7 @@ const DocumentPicker: FC<Props> = ({
     },
   })
   const documentsList = data?.data
-  const isParentChild = processMode === 'hierarchical'
+  const isParentChild = processMode === ProcessMode.parentChild
   const TypeIcon = isParentChild ? ParentChildType : GeneralType
 
   const [open, {
@@ -75,7 +78,7 @@ const DocumentPicker: FC<Props> = ({
             <div className='flex items-center h-3 text-text-tertiary space-x-0.5'>
               <TypeIcon className='w-3 h-3' />
               <span className={cn('system-2xs-medium-uppercase', isParentChild && 'mt-0.5' /* to icon problem cause not ver align */)}>
-                {isParentChild ? 'Parent-Child' : 'General'}
+                {isParentChild ? t('dataset.chunkingMode.parentChild') : t('dataset.chunkingMode.general')}
                 {isParentChild && ` · ${parentMode || '--'}`}
               </span>
             </div>

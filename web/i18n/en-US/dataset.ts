@@ -1,5 +1,9 @@
 const translation = {
   knowledge: 'Knowledge',
+  chunkingMode: {
+    general: 'General',
+    parentChild: 'Parent-child',
+  },
   externalTag: 'External',
   externalAPI: 'External API',
   externalAPIPanelTitle: 'External Knowledge API',
