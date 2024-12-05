@@ -315,6 +315,21 @@ const formatItem = (
     }
   }
 
+  const { error_strategy } = data
+
+  if (error_strategy) {
+    res.vars.push(...[
+      {
+        variable: 'error_message',
+        type: VarType.string,
+      },
+      {
+        variable: 'error_type',
+        type: VarType.string,
+      },
+    ])
+  }
+
   const selector = [id]
   res.vars = res.vars.filter((v) => {
     const isCurrentMatched = filterVar(v, (() => {
