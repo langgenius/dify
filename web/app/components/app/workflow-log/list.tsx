@@ -2,9 +2,7 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-// import s from './style.module.css'
 import DetailPanel from './detail'
-import cn from '@/utils/classnames'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse } from '@/models/log'
 import type { App } from '@/types/app'
 import Loading from '@/app/components/base/loading'
@@ -12,6 +10,7 @@ import Drawer from '@/app/components/base/drawer'
 import Indicator from '@/app/components/header/indicator'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
+import cn from '@/utils/classnames'
 
 type ILogs = {
   logs?: WorkflowLogsResponse

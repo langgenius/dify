@@ -640,15 +640,3 @@ where sites.id is null limit 1000"""
                 break
 
     click.echo(click.style("Fix for missing app-related sites completed successfully!", fg="green"))
-
-
-def register_commands(app):
-    app.cli.add_command(reset_password)
-    app.cli.add_command(reset_email)
-    app.cli.add_command(reset_encrypt_key_pair)
-    app.cli.add_command(vdb_migrate)
-    app.cli.add_command(convert_to_agent_apps)
-    app.cli.add_command(add_qdrant_doc_id_index)
-    app.cli.add_command(create_tenant)
-    app.cli.add_command(upgrade_db)
-    app.cli.add_command(fix_app_site_missing)

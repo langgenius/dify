@@ -142,7 +142,7 @@ const translation = {
     websiteSource: 'Preprocess-Website',
     webpageUnit: 'Seiten',
     separatorTip: 'Ein Trennzeichen ist das Zeichen, das zum Trennen von Text verwendet wird. \\n\\n und \\n sind häufig verwendete Trennzeichen zum Trennen von Absätzen und Zeilen. In Kombination mit Kommas (\\n\\n,\\n) werden Absätze nach Zeilen segmentiert, wenn die maximale Blocklänge überschritten wird. Sie können auch spezielle, von Ihnen selbst definierte Trennzeichen verwenden (z. B. ***).',
-    maxLengthCheck: 'Die maximale Stücklänge sollte weniger als 4000 betragen',
+    maxLengthCheck: 'Die maximale Stücklänge sollte weniger als {{limit}} betragen',
   },
   stepThree: {
     creationTitle: '🎉 Wissen erstellt',

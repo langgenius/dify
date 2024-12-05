@@ -1,3 +1,6 @@
+from collections.abc import Mapping
+from typing import Any
+
 from core.app.app_config.entities import ModelConfigEntity
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.model_providers import model_provider_factory
@@ -36,7 +39,7 @@ class ModelConfigManager:
         )
 
     @classmethod
-    def validate_and_set_defaults(cls, tenant_id: str, config: dict) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, tenant_id: str, config: Mapping[str, Any]) -> tuple[dict, list[str]]:
         """
         Validate and set defaults for model config
 

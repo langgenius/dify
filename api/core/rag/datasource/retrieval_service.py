@@ -114,8 +114,12 @@ class RetrievalService:
                 str(dataset.tenant_id), reranking_mode, reranking_model, weights, False
             )
             all_documents = data_post_processor.invoke(
-                query=query, documents=all_documents, score_threshold=score_threshold, top_n=top_k
+                query=query,
+                documents=all_documents,
+                score_threshold=score_threshold,
+                top_n=top_k,
             )
+
         return all_documents
 
     @classmethod
@@ -182,7 +186,10 @@ class RetrievalService:
                         )
                         all_documents.extend(
                             data_post_processor.invoke(
-                                query=query, documents=documents, score_threshold=score_threshold, top_n=len(documents)
+                                query=query,
+                                documents=documents,
+                                score_threshold=score_threshold,
+                                top_n=len(documents),
                             )
                         )
                     else:
@@ -224,7 +231,10 @@ class RetrievalService:
                         )
                         all_documents.extend(
                             data_post_processor.invoke(
-                                query=query, documents=documents, score_threshold=score_threshold, top_n=len(documents)
+                                query=query,
+                                documents=documents,
+                                score_threshold=score_threshold,
+                                top_n=len(documents),
                             )
                         )
                     else:

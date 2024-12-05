@@ -1,11 +1,9 @@
 import logging
 from collections.abc import Mapping, Sequence
-from mimetypes import guess_extension
-from os import path
 from typing import Any
 
 from configs import dify_config
-from core.file import File, FileTransferMethod, FileType
+from core.file import File, FileTransferMethod
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_entities import VariableSelector
@@ -107,6 +105,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
         node_data: HttpRequestNodeData,
     ) -> Mapping[str, Sequence[str]]:
         selectors: list[VariableSelector] = []
+        selectors += variable_template_parser.extract_selectors_from_template(node_data.url)
         selectors += variable_template_parser.extract_selectors_from_template(node_data.headers)
         selectors += variable_template_parser.extract_selectors_from_template(node_data.params)
         if node_data.body:
@@ -149,11 +148,6 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
         content = response.content
 
         if is_file and content_type:
-            # extract filename from url
-            filename = path.basename(url)
-            # extract extension if possible
-            extension = guess_extension(content_type) or ".bin"
-
             tool_file = ToolFileManager.create_file_by_raw(
                 user_id=self.user_id,
                 tenant_id=self.tenant_id,
@@ -164,7 +158,6 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
 
             mapping = {
                 "tool_file_id": tool_file.id,
-                "type": FileType.IMAGE.value,
                 "transfer_method": FileTransferMethod.TOOL_FILE.value,
             }
             file = file_factory.build_from_mapping(

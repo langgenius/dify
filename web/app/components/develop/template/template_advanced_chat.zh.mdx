@@ -162,7 +162,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - `title` (string) 节点名称
         - `index` (int) 执行序号，用于展示 Tracing Node 顺序
         - `predecessor_node_id` (string) 前置节点 ID，用于画布展示执行路径
-        - `inputs` (array[object]) 节点中所有使用到的前置节点变量内容
+        - `inputs` (object) 节点中所有使用到的前置节点变量内容
         - `created_at` (timestamp) 开始时间
     - `event: node_finished` node 执行结束，成功失败同一事件中不同状态
       - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
@@ -173,7 +173,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - `node_id` (string) 节点 ID
         - `index` (int) 执行序号，用于展示 Tracing Node 顺序
         - `predecessor_node_id` (string) optional 前置节点 ID，用于画布展示执行路径
-        - `inputs` (array[object]) 节点中所有使用到的前置节点变量内容
+        - `inputs` (object) 节点中所有使用到的前置节点变量内容
         - `process_data` (json) Optional 节点过程数据
         - `outputs` (json) Optional 输出内容
         - `status` (string) 执行状态 `running` / `succeeded` / `failed` / `stopped`
@@ -570,7 +570,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - `data` (array[object])  消息列表
     - `id`  (string) 消息 ID
     - `conversation_id` (string)  会话 ID
-    - `inputs` (array[object]) 用户输入参数。
+    - `inputs` (object) 用户输入参数。
     - `query`  (string) 用户输入 / 提问内容。
     - `message_files` (array[object]) 消息文件
       - `id` (string) ID
@@ -683,16 +683,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
       </Property>
       <Property name='last_id' type='string' key='last_id'>
-        当前页最后面一条记录的 ID，默认 null
+        （选填）当前页最后面一条记录的 ID，默认 null
       </Property>
       <Property name='limit' type='int' key='limit'>
-        一次请求返回多少条记录
-      </Property>
-      <Property name='pinned' type='bool' key='pinned'>
-        只返回置顶 true，只返回非置顶 false
+        （选填）一次请求返回多少条记录，默认 20 条，最大 100 条，最小 1 条。
       </Property>
       <Property name='sort_by' type='string' key='sort_by'>
-        排序字段（选题），默认 -updated_at(按更新时间倒序排列)
+        （选填）排序字段，默认 -updated_at(按更新时间倒序排列)
         - 可选值：created_at, -created_at, updated_at, -updated_at
         - 字段前面的符号代表顺序或倒序，-代表倒序
       </Property>
@@ -702,9 +699,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - `data` (array[object]) 会话列表
       - `id`  (string) 会话 ID
       - `name`  (string) 会话名称，默认由大语言模型生成。
-      - `inputs` (array[object]) 用户输入参数。
+      - `inputs` (object) 用户输入参数。
+      - `status` (string) 会话状态
       - `introduction` (string) 开场白
       - `created_at` (timestamp) 创建时间
+      - `updated_at` (timestamp) 更新时间
     - `has_more` (bool)
     - `limit` (int) 返回条数，若传入超过系统限制，返回系统限制数量
 
@@ -734,7 +733,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
               "myName": "Lucy"
           },
           "status": "normal",
-          "created_at": 1679667915
+          "created_at": 1679667915,
+          "updated_at": 1679667915
         },
         {
           "id": "hSIhXBhNe8X1d8Et"
@@ -817,10 +817,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
     <Properties>
       <Property name='name' type='string' key='name'>
-        名称，若 `auto_generate` 为 `true` 时，该参数可不传。
+        （选填）名称，若 `auto_generate` 为 `true` 时，该参数可不传。
       </Property>
-      <Property name='auto_generate' type='string' key='auto_generate'>
-        自动生成标题，默认 false。
+      <Property name='auto_generate' type='bool' key='auto_generate'>
+        （选填）自动生成标题，默认 false。
       </Property>
       <Property name='user' type='string' key='user'>
         用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
@@ -830,13 +830,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     ### Response
     - `id`  (string) 会话 ID
     - `name`  (string) 会话名称
-    - `inputs` array[object] 用户输入参数。
+    - `inputs` (object) 用户输入参数
+    - `status` (string) 会话状态
     - `introduction` (string) 开场白
     - `created_at` (timestamp) 创建时间
+    - `updated_at` (timestamp) 更新时间
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "auto_generate": true, \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
@@ -844,6 +846,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     --header 'Content-Type: application/json' \
     --data-raw '{
         "name": "",
+        "auto_generate": true,
         "user": "abc-123"
     }'
     ```
@@ -853,7 +856,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "result": "success"
+      "id": "34d511d5-56de-4f16-a997-57b379508443",
+      "name": "hello",
+      "inputs": {},
+      "status": "normal",
+      "introduction": "",
+      "created_at": 1732731141,
+      "updated_at": 1732734510
     }
     ```
     </CodeGroup>
@@ -960,13 +969,57 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     </CodeGroup>
   </Col>
 </Row>
+---
+
+<Heading
+  url='/info'
+  method='GET'
+  title='获取应用基本信息'
+  name='#info'
+/>
+<Row>
+  <Col>
+  用于获取应用的基本信息
+  ### Query
+    <Properties>
+
+   <Property name='user' type='string' key='user'>
+      用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+    </Property>
+      </Properties>
+  ### Response
+  - `name` (string) 应用名称
+  - `description` (string) 应用描述
+  - `tags` (array[string]) 应用标签
+  </Col>
+  <Col>
+    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \
+      -H 'Authorization: Bearer {api_key}'
+      ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "name": "My App",
+      "description": "This is my app.",
+      "tags": [
+        "tag1",
+        "tag2"
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
 
 ---
 
 <Heading
   url='/parameters'
   method='GET'
-  title='获取应用配置信息'
+  title='获取应用参数'
   name='#parameters'
 />
 <Row>

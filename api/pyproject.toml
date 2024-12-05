@@ -1,108 +1,12 @@
 [project]
+name = "dify-api"
 requires-python = ">=3.11,<3.13"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.ruff]
-exclude=[
-    "migrations/*",
-]
-line-length = 120
-
-[tool.ruff.lint]
-preview = true
-select = [
-    "B", # flake8-bugbear rules
-    "C4", # flake8-comprehensions
-    "E", # pycodestyle E rules
-    "F", # pyflakes rules
-    "FURB", # refurb rules
-    "I", # isort rules
-    "N", # pep8-naming
-    "PT", # flake8-pytest-style rules
-    "PLC0208", # iteration-over-set
-    "PLC2801", # unnecessary-dunder-call
-    "PLC0414", # useless-import-alias
-    "PLR0402", # manual-from-import
-    "PLR1711", # useless-return
-    "PLR1714", # repeated-equality-comparison
-    "RUF013", # implicit-optional
-    "RUF019", # unnecessary-key-check
-    "RUF100", # unused-noqa
-    "RUF101", # redirected-noqa
-    "S506", # unsafe-yaml-load
-    "SIM", # flake8-simplify rules
-    "TRY400", # error-instead-of-exception
-    "TRY401", # verbose-log-message
-    "UP", # pyupgrade rules
-    "W191", # tab-indentation
-    "W605", # invalid-escape-sequence
-]
-ignore = [
-    "E402", # module-import-not-at-top-of-file
-    "E711", # none-comparison
-    "E712", # true-false-comparison
-    "E721", # type-comparison
-    "E722", # bare-except
-    "E731", # lambda-assignment
-    "F821", # undefined-name
-    "F841", # unused-variable
-    "FURB113", # repeated-append
-    "FURB152", # math-constant
-    "UP007", # non-pep604-annotation
-    "UP032", # f-string
-    "B005", # strip-with-multi-characters
-    "B006", # mutable-argument-default
-    "B007", # unused-loop-control-variable
-    "B026", # star-arg-unpacking-after-keyword-arg
-    "B904", # raise-without-from-inside-except
-    "B905", # zip-without-explicit-strict
-    "N806", # non-lowercase-variable-in-function
-    "N815", # mixed-case-variable-in-class-scope
-    "PT011", # pytest-raises-too-broad
-    "SIM102", # collapsible-if
-    "SIM103", # needless-bool
-    "SIM105", # suppressible-exception
-    "SIM107", # return-in-try-except-finally
-    "SIM108", # if-else-block-instead-of-if-exp
-    "SIM113", # eumerate-for-loop
-    "SIM117", # multiple-with-statements
-    "SIM210", # if-expr-with-true-false
-    "SIM300", # yoda-conditions,
-]
-
-[tool.ruff.lint.per-file-ignores]
-"app.py" = [
-]
-"__init__.py" = [
-    "F401", # unused-import
-    "F811", # redefined-while-unused
-]
-"configs/*" = [
-    "N802", # invalid-function-name
-]
-"libs/gmpy2_pkcs10aep_cipher.py" = [
-    "N803", # invalid-argument-name
-]
-"tests/*" = [
-    "F811", # redefined-while-unused
-    "F401", # unused-import
-]
-
-[tool.ruff.lint.pyflakes]
-extend-generics=[
-    "_pytest.monkeypatch",
-    "tests.integration_tests",
-]
-
-[tool.ruff.format]
-exclude = [
-]
-
 [tool.poetry]
-name = "dify-api"
 package-mode = false
 
 ############################################################
@@ -116,7 +20,7 @@ azure-ai-inference = "~1.0.0b3"
 azure-ai-ml = "~1.20.0"
 azure-identity = "1.16.1"
 beautifulsoup4 = "4.12.2"
-boto3 = "1.35.17"
+boto3 = "1.35.74"
 bs4 = "~0.0.1"
 cachetools = "~5.3.0"
 celery = "~5.4.0"
@@ -124,11 +28,11 @@ chardet = "~5.1.0"
 cohere = "~5.2.4"
 dashscope = { version = "~1.17.0", extras = ["tokenizer"] }
 fal-client = "0.5.6"
-flask = "~3.0.1"
-flask-compress = "~1.14"
+flask = "~3.1.0"
+flask-compress = "~1.17"
 flask-cors = "~4.0.0"
 flask-login = "~0.6.3"
-flask-migrate = "~4.0.5"
+flask-migrate = "~4.0.7"
 flask-restful = "~0.3.10"
 flask-sqlalchemy = "~3.1.1"
 gevent = "~24.11.1"
@@ -184,7 +88,6 @@ unstructured = { version = "~0.16.1", extras = ["docx", "epub", "md", "msg", "pp
 validators = "0.21.0"
 volcengine-python-sdk = {extras = ["ark"], version = "~1.0.98"}
 websocket-client = "~1.7.0"
-werkzeug = "~3.0.1"
 xinference-client = "0.15.2"
 yarl = "~1.9.4"
 youtube-transcript-api = "~0.6.2"
@@ -282,4 +185,4 @@ pytest-mock = "~3.14.0"
 optional = true
 [tool.poetry.group.lint.dependencies]
 dotenv-linter = "~0.5.0"
-ruff = "~0.7.3"
+ruff = "~0.8.1"
