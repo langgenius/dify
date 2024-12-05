@@ -22,14 +22,14 @@ class BedrockRerankModel(RerankModel):
     """
 
     def _invoke(
-            self,
-            model: str,
-            credentials: dict,
-            query: str,
-            docs: list[str],
-            score_threshold: Optional[float] = None,
-            top_n: Optional[int] = None,
-            user: Optional[str] = None,
+        self,
+        model: str,
+        credentials: dict,
+        query: str,
+        docs: list[str],
+        score_threshold: Optional[float] = None,
+        top_n: Optional[int] = None,
+        user: Optional[str] = None,
     ) -> RerankResult:
         """
         Invoke rerank model
@@ -55,25 +55,20 @@ class BedrockRerankModel(RerankModel):
             aws_access_key_id=credentials.get("aws_access_key_id", ""),
             aws_secret_access_key=credentials.get("aws_secret_access_key"),
         )
-        queries = [
-            {
-                "type": "TEXT",
-                "textQuery": {
-                    "text": query
-                }
-            }
-        ]
+        queries = [{"type": "TEXT", "textQuery": {"text": query}}]
         text_sources = []
         for text in docs:
-            text_sources.append({
-                "type": "INLINE",
-                "inlineDocumentSource": {
-                    "type": "TEXT",
-                    "textDocument": {
-                        "text": text,
-                    }
+            text_sources.append(
+                {
+                    "type": "INLINE",
+                    "inlineDocumentSource": {
+                        "type": "TEXT",
+                        "textDocument": {
+                            "text": text,
+                        },
+                    },
                 }
-            })
+            )
         modelId = model
         region = credentials["aws_region"]
         model_package_arn = f"arn:aws:bedrock:{region}::foundation-model/{modelId}"
@@ -83,23 +78,21 @@ class BedrockRerankModel(RerankModel):
                 "numberOfResults": top_n,
                 "modelConfiguration": {
                     "modelArn": model_package_arn,
-                }
-            }
+                },
+            },
         }
         response = bedrock_runtime.rerank(
-            queries=queries,
-            sources=text_sources,
-            rerankingConfiguration=rerankingConfiguration
+            queries=queries, sources=text_sources, rerankingConfiguration=rerankingConfiguration
         )
 
         rerank_documents = []
-        for idx, result in enumerate(response['results']):
+        for idx, result in enumerate(response["results"]):
             # format document
-            index = result['index']
+            index = result["index"]
             rerank_document = RerankDocument(
                 index=index,
                 text=docs[index],
-                score=result['relevanceScore'],
+                score=result["relevanceScore"],
             )
 
             # score threshold check
