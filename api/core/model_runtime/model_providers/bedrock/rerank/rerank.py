@@ -2,6 +2,7 @@ from typing import Optional
 
 import boto3
 from botocore.config import Config
+
 from core.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
