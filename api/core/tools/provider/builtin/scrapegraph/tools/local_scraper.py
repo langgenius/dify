@@ -5,12 +5,12 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
 
-class SmartScraperScrapegraphTool(BuiltinTool):
+class LocalScraperScrapegraphTool(BuiltinTool):
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage:
         sgai_client = Client(api_key=self.runtime.credentials["scrapegraph_api_key"])
 
         response = sgai_client.smartscraper(
-            website_url=tool_parameters["url"],
+            website_html=tool_parameters["url"],
             user_prompt=tool_parameters["prompt"],
         )
 

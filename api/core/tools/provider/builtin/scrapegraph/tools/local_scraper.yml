@@ -1,0 +1,44 @@
+identity:
+  name: local_scraper
+  author: Marco Vciguerra
+  label:
+    en_US: Local HTML Scraper
+    zh_Hans: 本地HTML抓取器
+    pt_BR: Extrator HTML Local
+  description:
+    en_US: Extract data from HTML content using smart scraping capabilities
+    zh_Hans: 使用智能抓取功能从HTML内容中提取数据
+    pt_BR: Extraia dados do conteúdo HTML usando recursos de extração inteligente
+description:
+  human:
+    en_US: Extract specific information from HTML content based on your requirements
+    zh_Hans: 根据您的要求从HTML内容中提取特定信息
+    pt_BR: Extraia informações específicas do conteúdo HTML com base em seus requisitos
+  llm: Tool for extracting data from HTML content using smart scraping with specific instructions
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: HTML Content
+      zh_Hans: HTML内容
+      pt_BR: Conteúdo HTML
+    human_description:
+      en_US: The HTML content you want to extract data from
+      zh_Hans: 您想要提取数据的HTML内容
+      pt_BR: O conteúdo HTML do qual você deseja extrair dados
+    llm_description: The HTML content to be processed for data extraction
+    form: form
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Scraping Instructions
+      zh_Hans: 抓取说明
+      pt_BR: Instruções de extração
+    human_description:
+      en_US: Describe what data you want to extract from the HTML
+      zh_Hans: 描述您想从HTML中提取什么数据
+      pt_BR: Descreva quais dados você deseja extrair do HTML
+    llm_description: Detailed instructions for what data should be extracted from the HTML content
+    form: llm

@@ -1,0 +1,31 @@
+identity:
+  name: markdownify
+  author: Marco Vciguerra
+  label:
+    en_US: Markdownify Website
+    zh_Hans: 网站Markdown转换
+    pt_BR: Converter Site para Markdown
+  description:
+    en_US: Convert website content into Markdown format
+    zh_Hans: 将网站内容转换为Markdown格式
+    pt_BR: Converter conteúdo do site para formato Markdown
+description:
+  human:
+    en_US: Convert a website's content into clean, readable Markdown format
+    zh_Hans: 将网站内容转换为清晰可读的Markdown格式
+    pt_BR: Converta o conteúdo de um site em formato Markdown limpo e legível
+  llm: Tool for converting website content into Markdown format using smart scraping technology
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: Website URL
+      zh_Hans: 网站网址
+      pt_BR: URL do site
+    human_description:
+      en_US: The URL of the website you want to convert to Markdown
+      zh_Hans: 您想要转换为Markdown的网站网址
+      pt_BR: O URL do site que você deseja converter para Markdown
+    llm_description: The complete URL of the website to be converted to Markdown format
+    form: form
