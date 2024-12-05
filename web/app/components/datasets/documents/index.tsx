@@ -195,7 +195,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   }
 
   const documentsList = isDataSourceNotion ? documentsWithProgress?.data : documentsRes?.data
-
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchValue(inputValue)
   }, { wait: 500 })
@@ -249,6 +249,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
               embeddingAvailable={embeddingAvailable}
               documents={documentsList || []}
               datasetId={datasetId} onUpdate={mutate}
+              selectedIds={selectedIds}
+              onSelectedIdChange={setSelectedIds}
               pagination={{
                 total,
                 limit,

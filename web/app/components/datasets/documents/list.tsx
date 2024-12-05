@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { ArrowDownIcon } from '@heroicons/react/24/outline'
-import { pick } from 'lodash-es'
+import { pick, uniq } from 'lodash-es'
 import {
   RiArchive2Line,
   RiDeleteBinLine,
@@ -41,6 +41,7 @@ import useTimestamp from '@/hooks/use-timestamp'
 import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
 import type { Props as PaginationProps } from '@/app/components/base/pagination'
 import Pagination from '@/app/components/base/pagination'
+import Checkbox from '@/app/components/base/checkbox'
 
 export const useIndexStatus = () => {
   const { t } = useTranslation()
@@ -382,6 +383,8 @@ type LocalDoc = SimpleDocumentDetail & { percent?: number }
 type IDocumentListProps = {
   embeddingAvailable: boolean
   documents: LocalDoc[]
+  selectedIds: string[]
+  onSelectedIdChange: (selectedIds: string[]) => void
   datasetId: string
   pagination: PaginationProps
   onUpdate: () => void
@@ -393,6 +396,8 @@ type IDocumentListProps = {
 const DocumentList: FC<IDocumentListProps> = ({
   embeddingAvailable,
   documents = [],
+  selectedIds,
+  onSelectedIdChange,
   datasetId,
   pagination,
   onUpdate,
@@ -435,12 +440,37 @@ const DocumentList: FC<IDocumentListProps> = ({
     onUpdate()
   }, [onUpdate])
 
+  const isAllSelected = useMemo(() => {
+    return localDocs.length > 0 && localDocs.every(doc => selectedIds.includes(doc.id))
+  }, [localDocs, selectedIds])
+
+  const isSomeSelected = useMemo(() => {
+    return localDocs.some(doc => selectedIds.includes(doc.id))
+  }, [localDocs, selectedIds])
+
+  const onSelectedAll = useCallback(() => {
+    if (isAllSelected)
+      onSelectedIdChange([])
+    else
+      onSelectedIdChange(uniq([...selectedIds, ...localDocs.map(doc => doc.id)]))
+  }, [isAllSelected, localDocs, onSelectedIdChange, selectedIds])
+
   return (
     <div className='relative w-full h-full overflow-x-auto'>
       <table className={`min-w-[700px] max-w-full w-full border-collapse border-0 text-sm mt-3 ${s.documentTable}`}>
         <thead className="h-8 leading-8 border-b border-gray-200 text-gray-500 font-medium text-xs uppercase">
           <tr>
-            <td className='w-12'>#</td>
+            <td className='w-12'>
+              <div className='flex items-center' onClick={e => e.stopPropagation()}>
+                <Checkbox
+                  className='shrink-0 mr-2'
+                  checked={isAllSelected}
+                  mixed={!isAllSelected && isSomeSelected}
+                  onCheck={onSelectedAll}
+                />
+                #
+              </div>
+            </td>
             <td>
               <div className='flex'>
                 {t('datasetDocuments.list.table.header.fileName')}
@@ -460,7 +490,7 @@ const DocumentList: FC<IDocumentListProps> = ({
           </tr>
         </thead>
         <tbody className="text-gray-700">
-          {localDocs.map((doc) => {
+          {localDocs.map((doc, index) => {
             const isFile = doc.data_source_type === DataSourceType.FILE
             const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
             return <tr
@@ -469,7 +499,24 @@ const DocumentList: FC<IDocumentListProps> = ({
               onClick={() => {
                 router.push(`/datasets/${datasetId}/documents/${doc.id}`)
               }}>
-              <td className='text-left align-middle text-text-tertiary text-xs'>{doc.position}</td>
+              <td className='text-left align-middle text-text-tertiary text-xs'>
+                <div className='flex items-center' onClick={e => e.stopPropagation()}>
+
+                  <Checkbox
+                    className='shrink-0 mr-2'
+                    checked={selectedIds.includes(doc.id)}
+                    onCheck={() => {
+                      onSelectedIdChange(
+                        selectedIds.includes(doc.id)
+                          ? selectedIds.filter(id => id !== doc.id)
+                          : [...selectedIds, doc.id],
+                      )
+                    }}
+                  />
+                  {/* {doc.position} */}
+                  {index + 1}
+                </div>
+              </td>
               <td>
                 <div className='group flex items-center justify-between'>
                   <span className={s.tdValue}>
