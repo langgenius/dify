@@ -1,34 +1,21 @@
-from collections.abc import Generator, Iterator
-from typing import cast, List, Optional, Union, Mapping
+from collections.abc import Generator, Mapping
+from typing import Optional, Union, cast
+
 import requests
+from httpx import Timeout
 from openai import (
-    APIConnectionError,
-    APITimeoutError,
-    AuthenticationError,
-    ConflictError,
-    InternalServerError,
-    NotFoundError,
     OpenAI,
-    PermissionDeniedError,
-    RateLimitError,
-    UnprocessableEntityError,
     Stream,
 )
-from httpx import Timeout
-from yarl import URL
-from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessageToolCall
-from openai.types.chat.chat_completion_chunk import ChoiceDeltaFunctionCall, ChoiceDeltaToolCall
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from openai.types.chat.chat_completion_message import FunctionCall
-from openai.types.completion import Completion
+from yarl import URL
 
 from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
-    ImagePromptMessageContent,
     PromptMessage,
-    PromptMessageContent,
-    PromptMessageContentType,
     PromptMessageTool,
     SystemPromptMessage,
     ToolPromptMessage,
@@ -36,10 +23,7 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
-    DefaultParameterName,
     FetchFrom,
-    ModelFeature,
-    ModelPropertyKey,
     ModelType,
     ParameterRule,
     ParameterType,
@@ -52,10 +36,7 @@ from core.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.model_runtime.model_providers.openai.llm.llm import OpenAILargeLanguageModel
-from core.model_runtime.utils import helper
 
 
 class ModelScopeLargeLanguageModel(LargeLanguageModel):
@@ -66,8 +47,8 @@ class ModelScopeLargeLanguageModel(LargeLanguageModel):
         credentials: dict,
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
-        tools: Optional[List[PromptMessageTool]] = None,
-        stop: Optional[List[str]] = None,
+        tools: Optional[list[PromptMessageTool]] = None,
+        stop: Optional[list[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
     ) -> Union[LLMResult, Generator]:
