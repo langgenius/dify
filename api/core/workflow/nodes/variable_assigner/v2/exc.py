@@ -7,8 +7,8 @@ from .enums import InputType, Operation
 
 
 class OperationNotSupportedError(VariableOperatorNodeError):
-    def __init__(self, *, operation: Operation, varialbe_type: str):
-        super().__init__(f"Operation {operation} is not supported for type {varialbe_type}")
+    def __init__(self, *, operation: Operation, variable_type: str):
+        super().__init__(f"Operation {operation} is not supported for type {variable_type}")
 
 
 class InputTypeNotSupportedError(VariableOperatorNodeError):

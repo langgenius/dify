@@ -33,7 +33,7 @@ const NodeVariableItem = ({
   const { t } = useTranslation()
   return (
     <div className={cn(
-      'relative flex items-center p-[3px] pl-[5px] gap-1 self-stretch rounded-md bg-workflow-block-param-bg',
+      'relative flex items-center p-[3px] pl-[5px] gap-1 self-stretch rounded-md bg-workflow-block-parma-bg',
       showBorder && '!bg-black/[0.02]',
       className,
     )}>

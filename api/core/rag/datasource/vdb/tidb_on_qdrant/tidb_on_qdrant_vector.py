@@ -375,7 +375,6 @@ class TidbOnQdrantVector(BaseVector):
         for result in results:
             if result:
                 document = self._document_from_scored_point(result, Field.CONTENT_KEY.value, Field.METADATA_KEY.value)
-                document.metadata["vector"] = result.vector
                 documents.append(document)
 
         return documents
@@ -394,6 +393,7 @@ class TidbOnQdrantVector(BaseVector):
     ) -> Document:
         return Document(
             page_content=scored_point.payload.get(content_payload_key),
+            vector=scored_point.vector,
             metadata=scored_point.payload.get(metadata_payload_key) or {},
         )
 
