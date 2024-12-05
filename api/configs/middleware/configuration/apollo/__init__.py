@@ -9,20 +9,20 @@ class ApolloConfig(BaseSettings):
 
     APOLLO_APP_ID: str = Field(
         description="apollo app_id",
-        default="",
+        default=None,
     )
 
     APOLLO_CLUSTER: str = Field(
         description="apollo cluster",
-        default="",
+        default=None,
     )
 
     APOLLO_CONFIG_URL: str = Field(
         description="apollo config url",
-        default="",
+        default=None,
     )
 
     APOLLO_NAMESPACE: str = Field(
         description="apollo namespace",
-        default="",
+        default=None,
     )
