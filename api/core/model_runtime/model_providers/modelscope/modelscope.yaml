@@ -25,8 +25,8 @@ model_credential_schema:
       type: secret-input
       required: true
       placeholder:
-        zh_Hans: 在此输入ModelScope服务地址
-        en_US: Enter the server address of your ModelScope service
+        zh_Hans: 支持SwingDeploy或者swift deploy两种服务
+        en_US: Support SwingDeploy or swift deploy services
     - variable: api_key
       label:
         zh_Hans: API_Key
