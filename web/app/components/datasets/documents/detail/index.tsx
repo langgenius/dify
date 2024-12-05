@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
@@ -152,13 +152,25 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
       detailMutate()
   }
 
+  const mode = useMemo(() => {
+    return documentDetail?.dataset_process_rule?.mode
+  }, [documentDetail])
+
+  const parentMode = useMemo(() => {
+    return documentDetail?.dataset_process_rule.rules.parent_mode
+  }, [documentDetail])
+
+  const isFullDocMode = useMemo(() => {
+    return mode === 'hierarchical' && parentMode === 'full-doc'
+  }, [mode, parentMode])
+
   return (
     <DocumentContext.Provider value={{
       datasetId,
       documentId,
       docForm: documentDetail?.doc_form || '',
-      mode: documentDetail?.dataset_process_rule.mode,
-      parentMode: documentDetail?.dataset_process_rule.rules.parent_mode,
+      mode,
+      parentMode,
     }}>
       <div className='flex flex-col h-full'>
         <div className='flex items-center justify-between flex-wrap min-h-16 pl-3 pr-4 py-2.5 border-b border-b-divider-subtle'>
@@ -222,7 +234,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
         <div className='flex flex-row flex-1' style={{ height: 'calc(100% - 4rem)' }}>
           {isDetailLoading
             ? <Loading type='app' />
-            : <div className={`h-full w-full flex flex-col ${embedding ? 'px-6 py-3 sm:py-12 sm:px-16' : 'relative pb-[30px] pt-3 pl-5 pr-11'}`}>
+            : <div className={`h-full w-full flex flex-col ${embedding ? 'px-6 py-3 sm:py-12 sm:px-16' : `relative pb-[30px] pt-3 ${isFullDocMode ? 'pl-11' : 'pl-5'} pr-11`}`}>
               {embedding
                 ? <Embedding detail={documentDetail} detailUpdate={detailMutate} />
                 : <Completed

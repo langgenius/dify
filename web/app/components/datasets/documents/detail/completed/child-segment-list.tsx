@@ -1,4 +1,4 @@
-import { type FC, useState } from 'react'
+import { type FC, useMemo, useState } from 'react'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { FormattedText } from '../../../formatted-text/formatted'
 import { EditSlice } from '../../../formatted-text/flavours/edit-slice'
@@ -9,33 +9,46 @@ import classNames from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 
 type IChildSegmentCardProps = {
-  child_chunks: ChildChunkDetail[]
-  onSave: () => void
+  childChunks: ChildChunkDetail[]
   handleInputChange: (value: string) => void
+  enabled: boolean
 }
 
 const ChildSegmentList: FC<IChildSegmentCardProps> = ({
-  child_chunks,
-  onSave,
+  childChunks,
   handleInputChange,
+  enabled,
 }) => {
-  let parentMode = useDocumentContext(s => s.parentMode)
-  parentMode = 'paragraph'
+  const parentMode = useDocumentContext(s => s.parentMode)
+
   const [collapsed, setCollapsed] = useState(true)
 
   const toggleCollapse = () => {
     setCollapsed(!collapsed)
   }
 
+  const isParagraphMode = useMemo(() => {
+    return parentMode === 'paragraph'
+  }, [parentMode])
+
+  const isFullDocMode = useMemo(() => {
+    return parentMode === 'full-doc'
+  }, [parentMode])
+
+  const contentOpacity = useMemo(() => {
+    return enabled ? '' : 'opacity-50 group-hover/card:opacity-100'
+  }, [enabled])
+
   return (
-    <div className='flex flex-col p-1 pb-2'>
-      <div className='flex items-center justify-between'>
-        <div className={classNames('h-7 flex items-center pl-1 pr-3 rounded-lg', collapsed ? 'bg-dataset-child-chunk-expand-btn-bg' : '')} onClick={(event) => {
+    <div className={classNames('flex flex-col', contentOpacity, isParagraphMode ? 'p-1 pb-2' : 'px-3 grow overflow-y-hidden')}>
+      {isFullDocMode ? <Divider type='horizontal' className='h-[1px] bg-divider-subtle my-1' /> : null}
+      <div className={classNames('flex items-center justify-between', isFullDocMode ? 'pt-2 pb-3' : '')}>
+        <div className={classNames('h-7 flex items-center pl-1 pr-3 rounded-lg', (isParagraphMode && collapsed) ? 'bg-dataset-child-chunk-expand-btn-bg' : '')} onClick={(event) => {
           event.stopPropagation()
           toggleCollapse()
         }}>
           {
-            parentMode === 'paragraph'
+            isParagraphMode
               ? collapsed
                 ? (
                   <RiArrowRightSLine className='w-4 h-4 text-text-secondary opacity-50 mr-0.5' />
@@ -43,11 +56,18 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
                 : (<RiArrowDownSLine className='w-4 h-4 text-text-secondary mr-0.5' />)
               : null
           }
-          <span className='text-text-secondary system-sm-semibold-uppercase'>{`${child_chunks.length} CHILD CHUNKS`}</span>
-          <span className='hidden group-hover/card:inline-block text-text-quaternary text-xs font-medium pl-1.5'>·</span>
-          <button className='hidden group-hover/card:inline-block px-1.5 py-1 text-components-button-secondary-accent-text system-xs-semibold'>ADD</button>
+          <span className='text-text-secondary system-sm-semibold-uppercase'>{`${childChunks.length} CHILD CHUNKS`}</span>
+          <span className={classNames('text-text-quaternary text-xs font-medium pl-1.5', isParagraphMode ? 'hidden group-hover/card:inline-block' : '')}>·</span>
+          <button
+            className={classNames('px-1.5 py-1 text-components-button-secondary-accent-text system-xs-semibold', isParagraphMode ? 'hidden group-hover/card:inline-block' : '')}
+            onClick={(event) => {
+              event.stopPropagation()
+            }}
+          >
+            ADD
+          </button>
         </div>
-        {parentMode === 'full-doc'
+        {isFullDocMode
           ? <Input
             showLeftIcon
             showClearIcon
@@ -58,13 +78,13 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
           />
           : null}
       </div>
-      {(parentMode === 'full-doc' || !collapsed)
-        ? <div className='flex gap-x-0.5 p-1'>
-          <Divider type='vertical' className='h-auto w-[2px] mx-[7px] bg-text-accent-secondary' />
-          <FormattedText className='w-full !leading-5'>
-            {child_chunks.map((childChunk, index) => {
+      {(isFullDocMode || !collapsed)
+        ? <div className={classNames('flex gap-x-0.5', isFullDocMode ? 'grow overflow-y-auto' : '')}>
+          {isParagraphMode && <Divider type='vertical' className='h-auto w-[2px] mx-[7px] bg-text-accent-secondary' />}
+          <FormattedText className={classNames('w-full !leading-5 flex flex-col', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
+            {childChunks.map((childChunk) => {
               return <EditSlice
-                key={index}
+                key={childChunk.segment_id}
                 label={`C-${childChunk.position}`}
                 text={childChunk.content}
                 onDelete={() => {}}
@@ -73,7 +93,6 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
             })}
           </FormattedText>
         </div>
-
         : null}
     </div>
   )

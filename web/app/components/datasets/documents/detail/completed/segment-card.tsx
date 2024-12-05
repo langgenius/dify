@@ -1,4 +1,4 @@
-import React, { type FC, useMemo, useState } from 'react'
+import React, { type FC, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiArrowRightUpLine, RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import { StatusItem } from '../../list'
@@ -118,20 +118,33 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   } = detail as Required<ISegmentCardProps>['detail']
   const [showModal, setShowModal] = useState(false)
   const isCollapsed = useSegmentListContext(s => s.isCollapsed)
-  const mode = useDocumentContext(s => s.mode)
+  const [mode, parentMode] = useDocumentContext(s => [s.mode, s.parentMode])
 
   const isDocScene = useMemo(() => {
     return scene === 'doc'
   }, [scene])
 
+  const isGeneralMode = useMemo(() => {
+    return mode === 'custom'
+  }, [mode])
+
+  const isFullDocMode = useMemo(() => {
+    return mode === 'hierarchical' && parentMode === 'full-doc'
+  }, [mode, parentMode])
+
   // todo: change to real logic
   const chunkEdited = useMemo(() => {
-    return true
-  }, [])
+    return mode !== 'hierarchical' || parentMode !== 'full-doc'
+  }, [mode, parentMode])
 
   const textOpacity = useMemo(() => {
-    return enabled ? '' : 'opacity-50'
+    return enabled ? '' : 'opacity-50 group-hover/card:opacity-100'
   }, [enabled])
+
+  const handleClickCard = useCallback(() => {
+    if (!isFullDocMode)
+      onClick?.()
+  }, [isFullDocMode, onClick])
 
   const renderContent = () => {
     if (answer) {
@@ -156,8 +169,11 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   }
 
   return (
-    <div className={cn('p-1 pt-2.5 hover:bg-dataset-chunk-detail-card-hover-bg rounded-xl group/card', className, !enabled ? 'opacity-50 hover:opacity-100' : '')} onClick={() => onClick?.()}>
-      <div className='h-5 px-2 relative flex items-center justify-between'>
+    <div
+      className={cn('px-3 rounded-xl group/card', isFullDocMode ? '' : 'pt-2.5 pb-2 hover:bg-dataset-chunk-detail-card-hover-bg', className)}
+      onClick={handleClickCard}
+    >
+      <div className='h-5 relative flex items-center justify-between'>
         {isDocScene
           ? <>
             <div className='flex items-center gap-x-2'>
@@ -166,63 +182,67 @@ const SegmentCard: FC<ISegmentCardProps> = ({
               <div className={cn('text-text-tertiary system-xs-medium', textOpacity)}>{`${formatNumber(word_count)} Characters`}</div>
               <Dot />
               <div className={cn('text-text-tertiary system-xs-medium', textOpacity)}>{`${formatNumber(hit_count)} Retrieval Count`}</div>
-              <Dot />
               {chunkEdited && (
-                <Badge text='edited' uppercase className={textOpacity} />
+                <>
+                  <Dot />
+                  <Badge text='edited' uppercase className={textOpacity} />
+                </>
               )}
             </div>
-            <div className='relative z-10'>
-              {loading
-                ? (
-                  <Indicator color="gray" />
-                )
-                : (
-                  <>
-                    <StatusItem status={enabled ? 'enabled' : 'disabled'} reverse textCls="text-text-tertiary system-xs-regular" />
-                    {embeddingAvailable && (
-                      <div className="absolute -top-2 -right-2.5 z-20 hidden group-hover/card:flex items-center gap-x-0.5 p-1
+            {!isFullDocMode
+              ? <div className='flex items-center'>
+                {loading
+                  ? (
+                    <Indicator color="gray" />
+                  )
+                  : (
+                    <>
+                      <StatusItem status={enabled ? 'enabled' : 'disabled'} reverse textCls="text-text-tertiary system-xs-regular" />
+                      {embeddingAvailable && (
+                        <div className="absolute -top-2 -right-2.5 z-20 hidden group-hover/card:flex items-center gap-x-0.5 p-1
                         rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-[5px]">
-                        {!archived && (
-                          <>
-                            <div
-                              className='shrink-0 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-state-base-hover cursor-pointer'
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onClickEdit?.()
-                              }}>
-                              <RiEditLine className='w-4 h-4 text-text-tertiary' />
-                            </div>
-                            <div className='shrink-0 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-state-destructive-hover cursor-pointer group/delete'
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setShowModal(true)
-                              }
-                              }>
-                              <RiDeleteBinLine className='w-4 h-4 text-text-tertiary group-hover/delete:text-text-destructive' />
-                            </div>
-                            <Divider type="vertical" className="h-3.5 bg-divider-regular" />
-                          </>
-                        )}
-                        <div
-                          onClick={(e: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
-                            e.stopPropagation()
-                          }
-                          className="flex items-center"
-                        >
-                          <Switch
-                            size='md'
-                            disabled={archived || detail.status !== 'completed'}
-                            defaultValue={enabled}
-                            onChange={async (val) => {
-                              await onChangeSwitch?.(val, id)
-                            }}
-                          />
+                          {!archived && (
+                            <>
+                              <div
+                                className='shrink-0 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-state-base-hover cursor-pointer'
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onClickEdit?.()
+                                }}>
+                                <RiEditLine className='w-4 h-4 text-text-tertiary' />
+                              </div>
+                              <div className='shrink-0 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-state-destructive-hover cursor-pointer group/delete'
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setShowModal(true)
+                                }
+                                }>
+                                <RiDeleteBinLine className='w-4 h-4 text-text-tertiary group-hover/delete:text-text-destructive' />
+                              </div>
+                              <Divider type="vertical" className="h-3.5 bg-divider-regular" />
+                            </>
+                          )}
+                          <div
+                            onClick={(e: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
+                              e.stopPropagation()
+                            }
+                            className="flex items-center"
+                          >
+                            <Switch
+                              size='md'
+                              disabled={archived || detail.status !== 'completed'}
+                              defaultValue={enabled}
+                              onChange={async (val) => {
+                                await onChangeSwitch?.(val, id)
+                              }}
+                            />
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </>
-                )}
-            </div>
+                      )}
+                    </>
+                  )}
+              </div>
+              : null}
           </>
           : (
             score !== null
@@ -244,18 +264,26 @@ const SegmentCard: FC<ISegmentCardProps> = ({
         : (
           isDocScene
             ? <>
-              <div className={cn('text-text-secondary body-md-regular -tracking-[0.07px] mt-1 px-2', textOpacity, isCollapsed ? 'line-clamp-2' : 'line-clamp-20')}>
+              <div className={cn('text-text-secondary body-md-regular -tracking-[0.07px] mt-0.5',
+                textOpacity,
+                isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
+              )}>
                 {renderContent()}
               </div>
-              {mode === 'custom' && <div className={cn('flex items-center gap-x-2 px-2 py-1.5', textOpacity)}>
+              {isGeneralMode && <div className={cn('flex items-center gap-x-2 py-1.5', textOpacity)}>
                 {keywords?.map(keyword => <Tag key={keyword} text={keyword} />)}
               </div>}
               {
+                isFullDocMode
+                  ? <button className='mt-0.5 mb-2 text-text-accent system-xs-semibold-uppercase' onClick={() => onClick?.()}>VIEW MORE</button>
+                  : null
+              }
+              {
                 child_chunks.length > 0
                 && <ChildSegmentList
-                  child_chunks={child_chunks}
-                  onSave={() => {}}
+                  childChunks={child_chunks}
                   handleInputChange={() => {}}
+                  enabled={enabled}
                 />
               }
             </>

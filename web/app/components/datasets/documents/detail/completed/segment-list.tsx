@@ -5,6 +5,7 @@ import type { SegmentDetailModel } from '@/models/datasets'
 import Checkbox from '@/app/components/base/checkbox'
 import Loading from '@/app/components/base/loading'
 import Divider from '@/app/components/base/divider'
+import classNames from '@/utils/classnames'
 
 type ISegmentListProps = {
   isLoading: boolean
@@ -32,7 +33,7 @@ const SegmentList: FC<ISegmentListProps> = ({
   if (isLoading)
     return <Loading type='app' />
   return (
-    <div className='flex flex-col h-full overflow-y-auto'>
+    <div className={classNames('flex flex-col h-full overflow-y-auto')}>
       {
         items.map((segItem) => {
           const isLast = items[items.length - 1].id === segItem.id
@@ -44,7 +45,7 @@ const SegmentList: FC<ISegmentListProps> = ({
                 checked={selectedSegmentIds.includes(segItem.id)}
                 onCheck={() => onSelected(segItem.id)}
               />
-              <div className='flex flex-col'>
+              <div>
                 <SegmentCard
                   key={`${segItem.id}-card`}
                   detail={segItem}

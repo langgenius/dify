@@ -11,7 +11,9 @@ import SegmentList from './segment-list'
 import DisplayToggle from './display-toggle'
 import BatchAction from './batch-action'
 import SegmentDetail from './segment-detail'
-import { mockSegments } from './mock-data'
+import { mockChildSegments, mockSegments } from './mock-data'
+import SegmentCard from './segment-card'
+import ChildSegmentList from './child-segment-list'
 import cn from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import Modal from '@/app/components/base/modal'
@@ -260,12 +262,16 @@ const Completed: FC<ICompletedProps> = ({
     return segmentList?.total ? formatNumber(segmentList.total) : '--'
   }, [segmentList?.total])
 
+  const isFullDocMode = useMemo(() => {
+    return mode === 'hierarchical' && parentMode === 'full-doc'
+  }, [mode, parentMode])
+
   return (
     <SegmentListContext.Provider value={{
       isCollapsed,
       toggleCollapsed: () => setIsCollapsed(!isCollapsed),
     }}>
-      <div className={s.docSearchWrapper}>
+      {!isFullDocMode && <div className={s.docSearchWrapper}>
         <Checkbox
           className='shrink-0'
           checked={isAllSelected}
@@ -293,19 +299,34 @@ const Completed: FC<ICompletedProps> = ({
         />
         <Divider type='vertical' className='h-3.5 mx-3' />
         <DisplayToggle />
-      </div>
-      <SegmentList
-        embeddingAvailable={embeddingAvailable}
-        isLoading={isLoadingSegmentList}
-        items={segments}
-        selectedSegmentIds={selectedSegmentIds}
-        onSelected={onSelected}
-        onChangeSwitch={onChangeSwitch}
-        onDelete={onDelete}
-        onClick={onClickCard}
-        archived={archived}
-      />
-      <Modal isShow={currSegment.showModal} onClose={() => { }} className='!max-w-[640px] !overflow-visible'>
+      </div>}
+      {
+        isFullDocMode
+          ? <div className='h-full flex flex-col'>
+            <SegmentCard
+              detail={segments[0]}
+              onClick={() => onClickCard(segments[0])}
+              loading={false}
+            />
+            <ChildSegmentList
+              childChunks={mockChildSegments.data}
+              handleInputChange={() => {}}
+              enabled={!archived}
+            />
+          </div>
+          : <SegmentList
+            embeddingAvailable={embeddingAvailable}
+            isLoading={isLoadingSegmentList}
+            items={segments}
+            selectedSegmentIds={selectedSegmentIds}
+            onSelected={onSelected}
+            onChangeSwitch={onChangeSwitch}
+            onDelete={onDelete}
+            onClick={onClickCard}
+            archived={archived}
+          />
+      }
+      <Modal isShow={currSegment.showModal} onClose={() => {}} className='!max-w-[640px] !overflow-visible'>
         <SegmentDetail
           embeddingAvailable={embeddingAvailable}
           segInfo={currSegment.segInfo ?? { id: '' }}
