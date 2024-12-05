@@ -45,7 +45,7 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
 
                 # Check if operation is supported
                 if not helpers.is_operation_supported(variable_type=variable.value_type, operation=item.operation):
-                    raise OperationNotSupportedError(operation=item.operation, varialbe_type=variable.value_type)
+                    raise OperationNotSupportedError(operation=item.operation, variable_type=variable.value_type)
 
                 # Check if variable input is supported
                 if item.input_type == InputType.VARIABLE and not helpers.is_variable_input_supported(
@@ -156,4 +156,4 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
             case Operation.DIVIDE:
                 return variable.value / value
             case _:
-                raise OperationNotSupportedError(operation=operation, varialbe_type=variable.value_type)
+                raise OperationNotSupportedError(operation=operation, variable_type=variable.value_type)

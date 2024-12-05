@@ -79,6 +79,8 @@ const translation = {
   runDetail: {
     title: 'Konuşma Günlüğü',
     workflowTitle: 'Günlük Detayı',
+    fileListDetail: 'Ayrıntı',
+    fileListLabel: 'Dosya Detayları',
   },
   promptLog: 'Prompt Günlüğü',
   agentLog: 'Agent Günlüğü',
