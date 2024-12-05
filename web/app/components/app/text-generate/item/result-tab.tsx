@@ -8,7 +8,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
-import { FileList } from '@/app/components/base/file-uploader'
+import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
 
 const ResultTab = ({
   data,
@@ -58,11 +58,11 @@ const ResultTab = ({
           <>
             {data?.resultText && <Markdown content={data?.resultText || ''} />}
             {!!data?.files?.length && (
-              <FileList
-                files={data?.files}
-                showDeleteAction={false}
-                showDownloadAction
-                canPreview
+              <FileListInLog
+                noBorder
+                noPadding
+                isExpanded
+                fileList={data.files as any[]}
               />
             )}
           </>

@@ -79,7 +79,7 @@ const translation = {
   runDetail: {
     title: 'Conversation Log',
     workflowTitle: 'Log Detail',
-    fileListLabel: 'File List',
+    fileListLabel: 'File Details',
     fileListDetail: 'Detail',
   },
   promptLog: 'Prompt Log',

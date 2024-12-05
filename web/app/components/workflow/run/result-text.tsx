@@ -5,15 +5,14 @@ import { ImageIndentLeft } from '@/app/components/base/icons/src/vender/line/edi
 import { Markdown } from '@/app/components/base/markdown'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import StatusContainer from '@/app/components/workflow/run/status-container'
-import { FileList } from '@/app/components/base/file-uploader'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
 
 type ResultTextProps = {
   isRunning?: boolean
   outputs?: any
   error?: string
   onClick?: () => void
-  allFiles?: FileEntity[]
+  allFiles?: any[]
 }
 
 const ResultText: FC<ResultTextProps> = ({
@@ -50,17 +49,18 @@ const ResultText: FC<ResultTextProps> = ({
         </div>
       )}
       {(outputs || !!allFiles?.length) && (
-        <div className='px-4 py-2'>
-          {outputs && <Markdown content={outputs} />}
+        <>
+          <div className='px-4 py-2'>
+            {outputs && <Markdown content={outputs} />}
+          </div>
           {!!allFiles?.length && (
-            <FileList
-              files={allFiles}
-              showDeleteAction={false}
-              showDownloadAction
-              canPreview
+            <FileListInLog
+              noBorder
+              isExpanded
+              fileList={allFiles}
             />
           )}
-        </div>
+        </>
       )}
     </div>
   )

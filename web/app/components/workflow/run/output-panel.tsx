@@ -87,7 +87,7 @@ const OutputPanel: FC<OutputPanelProps> = ({
             language={CodeLanguage.json}
             value={outputs}
             isJSONStringifyBeauty
-            height={height ? height - 50 - 16 : undefined}
+            height={height ? (height - 16) / 2 : undefined}
           />
         </div>
       )}
