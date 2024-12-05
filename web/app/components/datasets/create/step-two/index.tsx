@@ -58,6 +58,7 @@ import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocumen
 import Loading from '@/app/components/base/loading'
 import Badge from '@/app/components/base/badge'
 import { SkeletonContanier, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import Tooltip from '@/app/components/base/tooltip'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='text-text-secondary text-xs font-semibold leading-none'>{props.children}</label>
@@ -155,7 +156,8 @@ const StepTwo = ({
   const setSegmentIdentifier = useCallback((value: string) => {
     doSetSegmentIdentifier(value ? escape(value) : DEFAULT_SEGMENT_IDENTIFIER)
   }, [])
-  const [max, setMax] = useState(4000) // default chunk length
+  const [maxChunkLength, setMaxChunkLength] = useState(4000) // default chunk length
+  const [limitMaxChunkLength, setLimitMaxChunkLength] = useState(4000)
   const [overlap, setOverlap] = useState(50)
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
@@ -166,15 +168,17 @@ const StepTwo = ({
       ? IndexingType.QUALIFIED
       : IndexingType.ECONOMICAL,
   )
+
+  // QA Related
   const [isLanguageSelectDisabled, setIsLanguageSelectDisabled] = useState(false)
   const [docForm, setDocForm] = useState<DocForm | string>(
     (datasetId && documentDetail) ? documentDetail.doc_form : DocForm.TEXT,
   )
+
   const [docLanguage, setDocLanguage] = useState<string>(
     (datasetId && documentDetail) ? documentDetail.doc_language : (locale !== LanguagesSupported[1] ? 'English' : 'Chinese'),
   )
   const [QATipHide, setQATipHide] = useState(false)
-  const [qaPreviewSwitched, setQAPreviewSwitched] = useState(false)
 
   const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>(defaultParentChildConfig)
 
@@ -190,10 +194,11 @@ const StepTwo = ({
         pre_processing_rules: rules,
         segmentation: {
           separator: unescape(segmentIdentifier),
-          max_tokens: max,
+          max_tokens: maxChunkLength,
           chunk_overlap: overlap,
         },
       }
+      // @ts-expect-error will be removed after api refactored.
       processRule.rules = ruleObj
     }
     return processRule
@@ -255,22 +260,6 @@ const StepTwo = ({
         ? notionIndexingEstimateQuery.data
         : websiteIndexingEstimateQuery.data
 
-  // const getIsEstimateReady = useCallback(() => {
-  //   if (dataSourceType === DataSourceType.FILE)
-  //     return fileIndexingEstimateQuery.isSuccess
-
-  //   if (dataSourceType === DataSourceType.NOTION)
-  //     return notionIndexingEstimateQuery.isSuccess
-
-  //   if (dataSourceType === DataSourceType.WEB)
-  //     return websiteIndexingEstimateQuery.isSuccess
-  // }, [dataSourceType, fileIndexingEstimateQuery.isSuccess, notionIndexingEstimateQuery.isSuccess, websiteIndexingEstimateQuery.isSuccess])
-
-  // const getFileName = (name: string) => {
-  //   const arr = name.split('.')
-  //   return arr.slice(0, -1).join('.')
-  // }
-
   const getRuleName = (key: string) => {
     if (key === 'remove_extra_spaces')
       return t('datasetCreation.stepTwo.removeExtraSpaces')
@@ -296,7 +285,7 @@ const StepTwo = ({
   const resetRules = () => {
     if (defaultConfig) {
       setSegmentIdentifier(defaultConfig.segmentation.separator)
-      setMax(defaultConfig.segmentation.max_tokens)
+      setMaxChunkLength(defaultConfig.segmentation.max_tokens)
       setOverlap(defaultConfig.segmentation.chunk_overlap!)
       setRules(defaultConfig.pre_processing_rules)
     }
@@ -304,12 +293,11 @@ const StepTwo = ({
   }
 
   const updatePreview = () => {
-    if (segmentationType === SegmentType.CUSTOM && max > 4000) {
+    if (segmentationType === SegmentType.CUSTOM && maxChunkLength > 4000) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
       return
     }
     fetchEstimate()
-    setQAPreviewSwitched(false)
   }
 
   const {
@@ -332,12 +320,12 @@ const StepTwo = ({
   )
   const getCreationParams = () => {
     let params
-    if (segmentationType === SegmentType.CUSTOM && overlap > max) {
+    if (segmentationType === SegmentType.CUSTOM && overlap > maxChunkLength) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.overlapCheck') })
       return
     }
-    if (segmentationType === SegmentType.CUSTOM && max > 4000) {
-      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
+    if (segmentationType === SegmentType.CUSTOM && maxChunkLength > limitMaxChunkLength) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck', { limit: limitMaxChunkLength }) })
       return
     }
     if (isSetting) {
@@ -412,10 +400,11 @@ const StepTwo = ({
     onSuccess(data) {
       const separator = data.rules.segmentation.separator
       setSegmentIdentifier(separator)
-      setMax(data.rules.segmentation.max_tokens)
+      setMaxChunkLength(data.rules.segmentation.max_tokens)
       setOverlap(data.rules.segmentation.chunk_overlap!)
       setRules(data.rules.pre_processing_rules)
       setDefaultConfig(data.rules)
+      setLimitMaxChunkLength(data.limits.indexing_max_segmentation_tokens_length)
     },
     onError(error) {
       Toast.notify({
@@ -432,8 +421,8 @@ const StepTwo = ({
       const max = rules.segmentation.max_tokens
       const overlap = rules.segmentation.chunk_overlap
       setSegmentIdentifier(separator)
-      setMax(max)
-      setOverlap(overlap as number)
+      setMaxChunkLength(max)
+      setOverlap(overlap!)
       setRules(rules.pre_processing_rules)
       setDefaultConfig(rules)
     }
@@ -441,6 +430,7 @@ const StepTwo = ({
 
   const getDefaultMode = () => {
     if (documentDetail)
+      // @ts-expect-error fix after api refactored
       setSegmentationType(documentDetail.dataset_process_rule.mode)
   }
 
@@ -503,7 +493,6 @@ const StepTwo = ({
   }
 
   const previewSwitch = () => {
-    setQAPreviewSwitched(true)
     setIsLanguageSelectDisabled(true)
     fetchEstimate()
   }
@@ -511,7 +500,7 @@ const StepTwo = ({
   const handleSelect = (language: string) => {
     setDocLanguage(language)
     // Switch language, re-cutter
-    if (docForm === DocForm.QA && qaPreviewSwitched)
+    if (docForm === DocForm.QA)
       previewSwitch()
   }
 
@@ -531,6 +520,7 @@ const StepTwo = ({
       getRulesFromDetail()
       getDefaultMode()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -592,8 +582,8 @@ const StepTwo = ({
                       onChange={e => setSegmentIdentifier(e.target.value)}
                     />
                     <MaxLengthInput
-                      value={max}
-                      onChange={setMax}
+                      value={maxChunkLength}
+                      onChange={setMaxChunkLength}
                     />
                     <OverlapInput
                       value={overlap}
@@ -618,6 +608,31 @@ const StepTwo = ({
                       </div>
                     </div>
                   </div>
+                  {IS_CE_EDITION && <div className='flex items-center'>
+                    <Checkbox
+                      checked={docForm === DocForm.QA}
+                      onCheck={() => {
+                        if (docForm === DocForm.QA)
+                          setDocForm(DocForm.TEXT)
+                        else
+                          setDocForm(DocForm.QA)
+                      }}
+                      className='mr-2'
+                    />
+                    <div className='flex items-center gap-1'>
+                      <TextLabel>
+                      Chunk using Q&A format in
+                      </TextLabel>
+                      <div className='z-50 relative'>
+                        <LanguageSelect
+                          currentLanguage={docLanguage || locale}
+                          onSelect={setDocLanguage}
+                          disabled={isLanguageSelectDisabled}
+                        />
+                      </div>
+                      <Tooltip popupContent={t('datasetCreation.stepTwo.qaTip')} />
+                    </div>
+                  </div>}
                 </div>
               </OptionCard>
               <OptionCard
@@ -927,12 +942,12 @@ const StepTwo = ({
           </PreviewHeader>}
           className={cn(s.previewWrap, isMobile && s.isMobile, 'relative h-full overflow-y-scroll space-y-4')}
         >
-          {qaPreviewSwitched && docForm === DocForm.QA && estimate?.qa_preview && (
+          {docForm === DocForm.QA && estimate?.qa_preview && (
             estimate?.qa_preview.map(item => (
               <QAPreview key={item.question} qa={item} />
             ))
           )}
-          {(docForm === DocForm.TEXT || !qaPreviewSwitched) && estimate?.preview && (
+          {docForm === DocForm.TEXT && estimate?.preview && (
             estimate?.preview.map((item, index) => (
               <ChunkContainer
                 key={item}
@@ -943,16 +958,11 @@ const StepTwo = ({
               </ChunkContainer>
             ))
           )}
-          {qaPreviewSwitched && docForm === DocForm.QA && !estimate?.qa_preview && (
+          {docForm === DocForm.QA && !estimate?.qa_preview && (
             <div className='flex items-center justify-center h-[200px]'>
               <Loading type='area' />
             </div>
           )}
-          {/* {!qaPreviewSwitched && !estimate?.preview && (
-            <div className='flex items-center justify-center h-[200px]'>
-              <Loading type='area' />
-            </div>
-          )} */}
           {currentEstimateMutation.isIdle && (
             <div className='h-full w-full flex items-center justify-center'>
               <div className='flex flex-col items-center justify-center gap-3'>

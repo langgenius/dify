@@ -197,7 +197,6 @@ class LLMNode(BaseNode[LLMNodeData]):
             )
             return
         except Exception as e:
-            logger.exception(f"Node {self.node_id} failed to run")
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
@@ -816,7 +815,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                     "completion_model": {
                         "conversation_histories_role": {"user_prefix": "Human", "assistant_prefix": "Assistant"},
                         "prompt": {
-                            "text": "Here is the chat histories between human and assistant, inside "
+                            "text": "Here are the chat histories between human and assistant, inside "
                             "<histories></histories> XML tags.\n\n<histories>\n{{"
                             "#histories#}}\n</histories>\n\n\nHuman: {{#sys.query#}}\n\nAssistant:",
                             "edition_type": "basic",

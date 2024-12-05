@@ -177,6 +177,7 @@ export type ParentMode = 'full-doc' | 'paragraph'
 export type ProcessRuleResponse = {
   mode: ProcessMode
   rules: Rules
+  limits: Limits
 }
 
 export type Rules = {
@@ -184,6 +185,10 @@ export type Rules = {
   segmentation: Segmentation
   parent_mode: ParentMode
   subchunk_segmentation: Segmentation
+}
+
+export type Limits = {
+  indexing_max_segmentation_tokens_length: number
 }
 
 export type PreProcessingRule = {
@@ -330,7 +335,6 @@ export type NotionPage = {
 }
 
 export type ProcessRule = {
-  processRule: { pre_processing_rules: PreProcessingRule[]; segmentation: { separator: string; max_tokens: number; chunk_overlap: number } }
   mode: string
   rules: Rules
 }

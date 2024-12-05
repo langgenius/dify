@@ -500,6 +500,26 @@ const translation = {
       'clear': 'Очистити',
       'setVariable': 'Встановити Змінну',
       'variable': 'Змінна',
+      'operations': {
+        'clear': 'Ясний',
+        'set': 'Встановити',
+        'title': 'Операція',
+        'append': 'Додати',
+        '-=': '-=',
+        'over-write': 'Перезаписати',
+        'overwrite': 'Перезаписати',
+        '/=': '/=',
+        '+=': '+=',
+        '*=': '*=',
+        'extend': 'Розширити',
+      },
+      'selectAssignedVariable': 'Виберіть призначену змінну...',
+      'noAssignedVars': 'Немає доступних призначених змінних',
+      'noVarTip': 'Натисніть кнопку «+», щоб додати змінні',
+      'assignedVarsDescription': 'Призначені змінні мають бути доступними для запису, такими як змінні розмови.',
+      'variables': 'Змінні',
+      'varNotSet': 'Змінна НЕ встановлена',
+      'setParameter': 'Встановити параметр...',
     },
     tool: {
       toAuthorize: 'Авторизувати',
@@ -630,6 +650,13 @@ const translation = {
   },
   tracing: {
     stopBy: 'Зупинено користувачем {{user}}',
+  },
+  variableReference: {
+    conversationVars: 'Змінні розмови',
+    noVarsForOperation: 'Немає доступних змінних для призначення з обраною операцією.',
+    assignedVarsDescription: 'Призначені змінні мають бути доступними для запису, такими як',
+    noAssignedVars: 'Немає доступних призначених змінних',
+    noAvailableVars: 'Немає доступних змінних',
   },
 }
 
