@@ -318,16 +318,19 @@ const formatItem = (
   const { error_strategy } = data
 
   if (error_strategy) {
-    res.vars.push(...[
+    res.vars = [
+      ...res.vars,
       {
         variable: 'error_message',
         type: VarType.string,
+        isException: true,
       },
       {
         variable: 'error_type',
         type: VarType.string,
+        isException: true,
       },
-    ])
+    ]
   }
 
   const selector = [id]
