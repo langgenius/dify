@@ -1,0 +1,44 @@
+identity:
+  name: scrapegraph
+  author: Marco Vciguerra
+  label:
+    en_US: ScrapeGraph
+    zh_Hans: ScrapeGraph
+    pt_BR: ScrapeGraph
+  description:
+    en_US: ScrapeGraph is a powerful tool that can scrape web data based on your requirements
+    zh_Hans: ScrapeGraph 是一个强大的工具，可以根据您的要求抓取网页数据
+    pt_BR: ScrapeGraph é uma ferramenta poderosa que pode extrair dados da web com base em seus requisitos
+description:
+  human:
+    en_US: ScrapeGraph is a powerful tool that can scrape web data based on your requirements
+    zh_Hans: ScrapeGraph 是一个强大的工具，可以根据您的要求抓取网页数据
+    pt_BR: ScrapeGraph é uma ferramenta poderosa que pode extrair dados da web com base em seus requisitos
+  llm: ScrapeGraph is a tool used to extract data from websites based on specified requirements
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: Website URL
+      zh_Hans: 网站网址
+      pt_BR: URL do site
+    human_description:
+      en_US: The URL of the website you want to scrape data from
+      zh_Hans: 您想要抓取数据的网站网址
+      pt_BR: O URL do site do qual você deseja extrair dados
+    llm_description: The complete URL of the target website for data extraction
+    form: form
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Scraping Instructions
+      zh_Hans: 抓取说明
+      pt_BR: Instruções de extração
+    human_description:
+      en_US: Describe what data you want to extract from the website
+      zh_Hans: 描述您想从网站中提取什么数据
+      pt_BR: Descreva quais dados você deseja extrair do site
+    llm_description: Detailed instructions for what data should be extracted from the website
+    form: llm

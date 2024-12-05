@@ -77,6 +77,7 @@ replicate = "~0.22.0"
 resend = "~0.7.0"
 sagemaker = "~2.231.0"
 scikit-learn = "~1.5.1"
+scrapegraph-py = "1.6.0"
 sentry-sdk = { version = "~1.44.1", extras = ["flask"] }
 sqlalchemy = "~2.0.29"
 starlette = "0.41.0"
