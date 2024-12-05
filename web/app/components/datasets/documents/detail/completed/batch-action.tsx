@@ -1,9 +1,11 @@
 import React, { type FC } from 'react'
 import { RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine } from '@remixicon/react'
 import Divider from '@/app/components/base/divider'
+import classNames from '@/utils/classnames'
 
 type IBatchActionProps = {
-  selectedSegmentIds: string[]
+  className?: string
+  selectedIds: string[]
   onBatchEnable: () => Promise<void>
   onBatchDisable: () => Promise<void>
   onBatchDelete: () => Promise<void>
@@ -11,18 +13,19 @@ type IBatchActionProps = {
 }
 
 const BatchAction: FC<IBatchActionProps> = ({
-  selectedSegmentIds,
+  className,
+  selectedIds,
   onBatchEnable,
   onBatchDisable,
   onBatchDelete,
   onCancel,
 }) => {
   return (
-    <div className='w-full flex justify-center gap-x-2 absolute bottom-16 z-20'>
+    <div className={classNames('w-full flex justify-center gap-x-2', className)}>
       <div className='flex items-center gap-x-1 p-1 rounded-[10px] bg-components-actionbar-bg-accent border border-components-actionbar-border-accent shadow-xl shadow-shadow-shadow-5 backdrop-blur-[5px]'>
         <div className='inline-flex items-center gap-x-2 pl-2 pr-3 py-1'>
           <span className='w-5 h-5 flex items-center justify-center px-1 py-0.5 bg-text-accent rounded-md text-text-primary-on-surface text-xs font-medium'>
-            {selectedSegmentIds.length}
+            {selectedIds.length}
           </span>
           <span className='text-text-accent text-[13px] font-semibold leading-[16px]'>Selected</span>
         </div>

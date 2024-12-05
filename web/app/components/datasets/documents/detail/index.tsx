@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import useSWR from 'swr'
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { omit } from 'lodash-es'
@@ -25,7 +25,20 @@ import type { DocForm, ParentMode, ProcessMode } from '@/models/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-export const DocumentContext = createContext<{ datasetId?: string; documentId?: string; docForm: string }>({ docForm: '' })
+
+type DocumentContextValue = {
+  datasetId?: string
+  documentId?: string
+  docForm: string
+  mode?: ProcessMode
+  parentMode?: ParentMode
+}
+
+export const DocumentContext = createContext<DocumentContextValue>({ docForm: '' })
+
+export const useDocumentContext = (selector: (value: DocumentContextValue) => any) => {
+  return useContextSelector(DocumentContext, selector)
+}
 
 type DocumentTitleProps = {
   datasetId: string
@@ -140,7 +153,13 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   }
 
   return (
-    <DocumentContext.Provider value={{ datasetId, documentId, docForm: documentDetail?.doc_form || '' }}>
+    <DocumentContext.Provider value={{
+      datasetId,
+      documentId,
+      docForm: documentDetail?.doc_form || '',
+      mode: documentDetail?.dataset_process_rule.mode,
+      parentMode: documentDetail?.dataset_process_rule.rules.parent_mode,
+    }}>
       <div className='flex flex-col h-full'>
         <div className='flex items-center justify-between flex-wrap min-h-16 pl-3 pr-4 py-2.5 border-b border-b-divider-subtle'>
           <div onClick={backToPrev} className={'shrink-0 rounded-full w-8 h-8 flex justify-center items-center cursor-pointer hover:bg-components-button-tertiary-bg'}>
@@ -203,7 +222,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
         <div className='flex flex-row flex-1' style={{ height: 'calc(100% - 4rem)' }}>
           {isDetailLoading
             ? <Loading type='app' />
-            : <div className={`h-full w-full flex flex-col ${embedding ? 'px-6 py-3 sm:py-12 sm:px-16' : 'pb-[30px] pt-3 pl-5 pr-11'}`}>
+            : <div className={`h-full w-full flex flex-col ${embedding ? 'px-6 py-3 sm:py-12 sm:px-16' : 'relative pb-[30px] pt-3 pl-5 pr-11'}`}>
               {embedding
                 ? <Embedding detail={documentDetail} detailUpdate={detailMutate} />
                 : <Completed
@@ -212,8 +231,6 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
                   onNewSegmentModalChange={setNewSegmentModalVisible}
                   importStatus={importStatus}
                   archived={documentDetail?.archived}
-                  mode={documentDetail?.dataset_process_rule.mode}
-                  parentMode={documentDetail?.dataset_process_rule.rules.parent_mode}
                 />
               }
             </div>
