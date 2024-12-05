@@ -8,7 +8,8 @@ const translation = {
     addUrl: 'Add URL',
     table: {
       header: {
-        fileName: 'FILE NAME',
+        fileName: 'NAME',
+        chunkingMode: 'CHUNKING MODE',
         words: 'WORDS',
         hitCount: 'RETRIEVAL COUNT',
         uploadTime: 'UPLOAD TIME',

@@ -22,7 +22,7 @@ type OptionCardHeaderProps = {
 export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
   const { icon, title, description, isActive, activeClassName, effectImg } = props
   return <div className={classNames(
-    'flex h-full overflow-hidden relative',
+    'flex h-full overflow-hidden rounded-xl relative',
     isActive && activeClassName,
   )}>
     <div className='size-14 flex items-center justify-center relative overflow-hidden'>
@@ -56,7 +56,7 @@ export const OptionCard: FC<OptionCardProps> = (props) => {
   const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, ...rest } = props
   return <div
     className={classNames(
-      'rounded-xl overflow-hidden',
+      'rounded-xl',
       isActive ? 'border-components-option-card-option-selected-border bg-components-panel-bg' : 'border-components-option-card-option-border bg-components-option-card-option-bg',
       className,
     )}

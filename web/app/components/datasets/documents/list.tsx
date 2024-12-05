@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { ArrowDownIcon } from '@heroicons/react/24/outline'
-import { pick } from 'lodash-es'
+import { pick, uniq } from 'lodash-es'
 import {
   RiArchive2Line,
   RiDeleteBinLine,
@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import { Edit03 } from '../../base/icons/src/vender/solid/general'
 import { Globe01 } from '../../base/icons/src/vender/line/mapsAndTravel'
+import ChunkingModeLabel from '../common/chunking-mode-label'
 import s from './style.module.css'
 import RenameModal from './rename-modal'
 import cn from '@/utils/classnames'
@@ -34,9 +35,13 @@ import { formatNumber } from '@/utils/format'
 import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument, syncWebsite, unArchiveDocument } from '@/service/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
-import { DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
+import { ChuckingMode, DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 import useTimestamp from '@/hooks/use-timestamp'
+import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
+import type { Props as PaginationProps } from '@/app/components/base/pagination'
+import Pagination from '@/app/components/base/pagination'
+import Checkbox from '@/app/components/base/checkbox'
 
 export const useIndexStatus = () => {
   const { t } = useTranslation()
@@ -378,17 +383,32 @@ type LocalDoc = SimpleDocumentDetail & { percent?: number }
 type IDocumentListProps = {
   embeddingAvailable: boolean
   documents: LocalDoc[]
+  selectedIds: string[]
+  onSelectedIdChange: (selectedIds: string[]) => void
   datasetId: string
+  pagination: PaginationProps
   onUpdate: () => void
 }
 
 /**
  * Document list component including basic information
  */
-const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = [], datasetId, onUpdate }) => {
+const DocumentList: FC<IDocumentListProps> = ({
+  embeddingAvailable,
+  documents = [],
+  selectedIds,
+  onSelectedIdChange,
+  datasetId,
+  pagination,
+  onUpdate,
+}) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const router = useRouter()
+  const [datasetConfig] = useDatasetDetailContext(s => [s.dataset])
+  const chunkingMode = datasetConfig?.doc_form
+  const isGeneralMode = chunkingMode !== ChuckingMode.parentChild
+  const isQAMode = chunkingMode === ChuckingMode.qa
   const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
   const [enableSort, setEnableSort] = useState(false)
 
@@ -420,17 +440,43 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
     onUpdate()
   }, [onUpdate])
 
+  const isAllSelected = useMemo(() => {
+    return localDocs.length > 0 && localDocs.every(doc => selectedIds.includes(doc.id))
+  }, [localDocs, selectedIds])
+
+  const isSomeSelected = useMemo(() => {
+    return localDocs.some(doc => selectedIds.includes(doc.id))
+  }, [localDocs, selectedIds])
+
+  const onSelectedAll = useCallback(() => {
+    if (isAllSelected)
+      onSelectedIdChange([])
+    else
+      onSelectedIdChange(uniq([...selectedIds, ...localDocs.map(doc => doc.id)]))
+  }, [isAllSelected, localDocs, onSelectedIdChange, selectedIds])
+
   return (
-    <div className='w-full h-full overflow-x-auto'>
+    <div className='relative w-full h-full overflow-x-auto'>
       <table className={`min-w-[700px] max-w-full w-full border-collapse border-0 text-sm mt-3 ${s.documentTable}`}>
         <thead className="h-8 leading-8 border-b border-gray-200 text-gray-500 font-medium text-xs uppercase">
           <tr>
-            <td className='w-12'>#</td>
+            <td className='w-12'>
+              <div className='flex items-center' onClick={e => e.stopPropagation()}>
+                <Checkbox
+                  className='shrink-0 mr-2'
+                  checked={isAllSelected}
+                  mixed={!isAllSelected && isSomeSelected}
+                  onCheck={onSelectedAll}
+                />
+                #
+              </div>
+            </td>
             <td>
               <div className='flex'>
                 {t('datasetDocuments.list.table.header.fileName')}
               </div>
             </td>
+            <td className='w-[130px]'>{t('datasetDocuments.list.table.header.chunkingMode')}</td>
             <td className='w-24'>{t('datasetDocuments.list.table.header.words')}</td>
             <td className='w-44'>{t('datasetDocuments.list.table.header.hitCount')}</td>
             <td className='w-44'>
@@ -444,7 +490,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
           </tr>
         </thead>
         <tbody className="text-gray-700">
-          {localDocs.map((doc) => {
+          {localDocs.map((doc, index) => {
             const isFile = doc.data_source_type === DataSourceType.FILE
             const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
             return <tr
@@ -453,7 +499,24 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
               onClick={() => {
                 router.push(`/datasets/${datasetId}/documents/${doc.id}`)
               }}>
-              <td className='text-left align-middle text-gray-500 text-xs'>{doc.position}</td>
+              <td className='text-left align-middle text-text-tertiary text-xs'>
+                <div className='flex items-center' onClick={e => e.stopPropagation()}>
+
+                  <Checkbox
+                    className='shrink-0 mr-2'
+                    checked={selectedIds.includes(doc.id)}
+                    onCheck={() => {
+                      onSelectedIdChange(
+                        selectedIds.includes(doc.id)
+                          ? selectedIds.filter(id => id !== doc.id)
+                          : [...selectedIds, doc.id],
+                      )
+                    }}
+                  />
+                  {/* {doc.position} */}
+                  {index + 1}
+                </div>
+              </td>
               <td>
                 <div className='group flex items-center justify-between'>
                   <span className={s.tdValue}>
@@ -482,11 +545,16 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
                     </Tooltip>
                   </div>
                 </div>
-
+              </td>
+              <td>
+                <ChunkingModeLabel
+                  isGeneralMode={isGeneralMode}
+                  isQAMode={isQAMode}
+                />
               </td>
               <td>{renderCount(doc.word_count)}</td>
               <td>{renderCount(doc.hit_count)}</td>
-              <td className='text-gray-500 text-[13px]'>
+              <td className='text-text-secondary text-[13px]'>
                 {formatTime(doc.created_at, t('datasetHitTesting.dateTimeFormat') as string)}
               </td>
               <td>
@@ -508,6 +576,13 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
           })}
         </tbody>
       </table>
+      {/* Show Pagination only if the total is more than the limit */}
+      {pagination.total && pagination.total > (pagination.limit || 10) && (
+        <Pagination
+          {...pagination}
+          className='absolute bottom-0 left-0 w-full px-0 pb-0'
+        />
+      )}
 
       {isShowRenameModal && currDocument && (
         <RenameModal

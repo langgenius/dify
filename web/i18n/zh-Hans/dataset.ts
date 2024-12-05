@@ -1,5 +1,9 @@
 const translation = {
   knowledge: '知识库',
+  chunkingMode: {
+    general: '通用',
+    parentChild: '父子',
+  },
   externalTag: '外部',
   externalAPI: '外部 API',
   externalAPIPanelTitle: '外部知识库 API',

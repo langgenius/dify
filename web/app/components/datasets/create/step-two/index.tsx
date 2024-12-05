@@ -4,8 +4,8 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import {
+  RiAlertFill,
   RiArrowLeftLine,
-  RiCloseLine,
   RiSearchEyeLine,
 } from '@remixicon/react'
 import Link from 'next/link'
@@ -50,12 +50,9 @@ import type { DefaultModel } from '@/app/components/header/account-setting/model
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Checkbox from '@/app/components/base/checkbox'
 import RadioCard from '@/app/components/base/radio-card'
-import { MessageChatSquare } from '@/app/components/base/icons/src/public/common'
 import { IS_CE_EDITION } from '@/config'
-import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocument, useFetchDefaultProcessRule, useFetchFileIndexingEstimateForFile, useFetchFileIndexingEstimateForNotion, useFetchFileIndexingEstimateForWeb } from '@/service/knowledge/use-create-dataset'
-import Loading from '@/app/components/base/loading'
 import Badge from '@/app/components/base/badge'
 import { SkeletonContanier, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Tooltip from '@/app/components/base/tooltip'
@@ -178,7 +175,6 @@ const StepTwo = ({
   const [docLanguage, setDocLanguage] = useState<string>(
     (datasetId && documentDetail) ? documentDetail.doc_language : (locale !== LanguagesSupported[1] ? 'English' : 'Chinese'),
   )
-  const [QATipHide, setQATipHide] = useState(false)
 
   const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>(defaultParentChildConfig)
 
@@ -608,31 +604,46 @@ const StepTwo = ({
                       </div>
                     </div>
                   </div>
-                  {IS_CE_EDITION && <div className='flex items-center'>
-                    <Checkbox
-                      checked={docForm === DocForm.QA}
-                      onCheck={() => {
-                        if (docForm === DocForm.QA)
-                          setDocForm(DocForm.TEXT)
-                        else
-                          setDocForm(DocForm.QA)
-                      }}
-                      className='mr-2'
-                    />
-                    <div className='flex items-center gap-1'>
-                      <TextLabel>
-                      Chunk using Q&A format in
-                      </TextLabel>
-                      <div className='z-50 relative'>
-                        <LanguageSelect
-                          currentLanguage={docLanguage || locale}
-                          onSelect={setDocLanguage}
-                          disabled={isLanguageSelectDisabled}
-                        />
+                  {IS_CE_EDITION && <>
+                    <div className='flex items-center'>
+                      <Checkbox
+                        checked={docForm === DocForm.QA}
+                        onCheck={() => {
+                          if (docForm === DocForm.QA)
+                            setDocForm(DocForm.TEXT)
+                          else
+                            setDocForm(DocForm.QA)
+                        }}
+                        className='mr-2'
+                      />
+                      <div className='flex items-center gap-1'>
+                        <TextLabel>
+                          {t('datasetCreation.stepTwo.QALanguage')}
+                        </TextLabel>
+                        <div className='z-50 relative'>
+                          <LanguageSelect
+                            currentLanguage={docLanguage || locale}
+                            onSelect={setDocLanguage}
+                            disabled={isLanguageSelectDisabled}
+                          />
+                        </div>
+                        <Tooltip popupContent={t('datasetCreation.stepTwo.QATip')} />
                       </div>
-                      <Tooltip popupContent={t('datasetCreation.stepTwo.qaTip')} />
                     </div>
-                  </div>}
+                    {docForm === DocForm.QA && (
+                      <div
+                        style={{
+                          background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.1) 0%, rgba(255, 255, 255, 0.00) 100%)',
+                        }}
+                        className='h-10 flex items-center gap-2 rounded-xl border-components-panel-border border shadow-shadow-shadow-3 px-3 text-xs'
+                      >
+                        <RiAlertFill className='size-4 text-text-warning-secondary' />
+                        <span className='text-sm font-medium text-text-primary'>
+                          {t('datasetCreation.stepTwo.QATip')}
+                        </span>
+                      </div>
+                    )}
+                  </>}
                 </div>
               </OptionCard>
               <OptionCard
@@ -826,33 +837,6 @@ const StepTwo = ({
                 <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
               </div>
             )}
-            {IS_CE_EDITION && indexType === IndexingType.QUALIFIED && (
-              <div className='mt-2 rounded-xl bg-gray-50 border border-gray-100'>
-                <div className='flex justify-between items-center px-5 py-4'>
-                  <div className='flex justify-center items-center w-8 h-8 rounded-lg bg-indigo-50'>
-                    <MessageChatSquare className='w-4 h-4' />
-                  </div>
-                  <div className='grow mx-3'>
-                    <div className='mb-0.5 text-md font-medium text-gray-900'>{t('datasetCreation.stepTwo.QATitle')}</div>
-                    <div className='inline-flex items-center text-[13px] leading-[18px] text-gray-500'>
-                      <span className='pr-1'>{t('datasetCreation.stepTwo.QALanguage')}</span>
-                      <LanguageSelect currentLanguage={docLanguage} onSelect={handleSelect} disabled={isLanguageSelectDisabled} />
-                    </div>
-                  </div>
-                  <Switch
-                    defaultValue={docForm === DocForm.QA}
-                    onChange={handleDocformSwitch}
-                    size='md'
-                  />
-                </div>
-                {docForm === DocForm.QA && !QATipHide && (
-                  <div className='flex justify-between items-center px-5 py-2 bg-orange-50 border-t border-amber-100 rounded-b-xl text-[13px] leading-[18px] text-medium text-amber-500'>
-                    {t('datasetCreation.stepTwo.QATip')}
-                    <RiCloseLine className='w-4 h-4 text-gray-500 cursor-pointer' onClick={() => setQATipHide(true)} />
-                  </div>
-                )}
-              </div>
-            )}
             {/* Embedding model */}
             {indexType === IndexingType.QUALIFIED && (
               <div className='mt-6 my-2'>
@@ -957,11 +941,6 @@ const StepTwo = ({
                 {item}
               </ChunkContainer>
             ))
-          )}
-          {docForm === DocForm.QA && !estimate?.qa_preview && (
-            <div className='flex items-center justify-center h-[200px]'>
-              <Loading type='area' />
-            </div>
           )}
           {currentEstimateMutation.isIdle && (
             <div className='h-full w-full flex items-center justify-center'>

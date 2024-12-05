@@ -7,7 +7,8 @@ const translation = {
     addUrl: '添加 URL',
     table: {
       header: {
-        fileName: '文件名',
+        fileName: '名称',
+        chunkingMode: '分段模式',
         words: '字符数',
         hitCount: '召回次数',
         uploadTime: '上传时间',
