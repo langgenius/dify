@@ -1,0 +1,33 @@
+identity:
+  name: azure_tts
+  author: ymshenyu
+  label:
+    en_US: Azure Text To Speech
+description:
+  human:
+    en_US: Convert text to audio file.
+    zh_Hans: 将文本转换为音频文件。
+  llm: Convert text to audio file.
+parameters:
+  - name: text
+    type: string
+    required: true
+    label:
+      en_US: Text
+      zh_Hans: 文本
+    human_description:
+      en_US: The text to be converted.
+      zh_Hans: 要转换的文本。
+    llm_description: The text to be converted.
+    form: llm
+  - name: speech_synthesis_voice_name
+    type: string
+    required: true
+    label:
+      en_US: Voice Name
+      zh_Hans: 音色
+    human_description:
+      en_US: The voice name to be used.
+      zh_Hans: 要使用的音色
+    llm_description: The voice name to be used.
+    form: form

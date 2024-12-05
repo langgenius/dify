@@ -1,0 +1,51 @@
+identity:
+  author: ymshenyu
+  name: azurespeech
+  label:
+    en_US: Azure Speech
+    zh_Hans: Azure Speech
+  description:
+    en_US: Azure Speech
+    zh_Hans: Azure Speech
+  icon: icon.png
+  tags:
+    - utilities
+credentials_for_provider:
+  azure_speech_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: API key
+      zh_Hans: 密钥
+    help:
+      en_US: Please input your Azure Speech API key
+      zh_Hans: 请输入你的 Azure Speech API key
+    placeholder:
+      en_US: Please input your Azure Speech API key
+      zh_Hans: 请输入你的 Azure Speech API key
+  azure_speech_region:
+    type: text-input
+    required: true
+    label:
+      en_US: API Region
+      zh_Hans: API 地区
+    help:
+      en_US: Please input your Azure Speech Region, e.g. eastasia
+      zh_Hans: 请输入你的 Azure Speech 地区，例如：eastasia
+    placeholder:
+      en_US: Please input your Azure Speech Region, e.g. eastasia
+      zh_Hans: 请输入你的 Azure Speech 地区，例如：eastasia
+  azure_speech_api_version:
+    type: text-input
+    required: false
+    default: '2024-11-15'
+    label:
+      en_US: API Version
+      zh_Hans: API Version
+      pt_BR: Versão da API
+    placeholder:
+      en_US: Please input your Azure Speech API Version
+      zh_Hans: 请输入你的 Azure Speech API Version
+    help:
+      en_US: Get your API Version from Azure Speech
+      zh_Hans: 从 Azure Speech 获取您的 API Version
