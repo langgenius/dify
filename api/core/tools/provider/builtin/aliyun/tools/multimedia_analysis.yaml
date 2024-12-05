@@ -1,78 +1,78 @@
-identity: 
-  name: multimedia_analysis 
-  author: Aliyun 
-  label: 
-    en_US: Aliyun multimedia analysis 
-    zh_Hans: 阿里云多媒体分析 
-description: 
-  human: 
+identity:
+  name: multimedia_analysis
+  author: Aliyun
+  label:
+    en_US: Aliyun multimedia analysis
+    zh_Hans: 阿里云多媒体分析
+description:
+  human:
     en_US: Aliyun multimedia analysis
     zh_Hans: 阿里云多媒体分析
   llm: A multimedia analysis service API.
-parameters: 
-  - name: endpoint_url 
-    type: string 
-    required: true 
-    label: 
-      en_US: multimedia endpoint url 
-      zh_Hans: 多媒体分析调用路径 
-    human_description: 
+parameters:
+  - name: endpoint_url
+    type: string
+    required: true
+    label:
+      en_US: multimedia endpoint url
+      zh_Hans: 多媒体分析调用路径
+    human_description:
       en_US: multimedia endpoint url used for calling
       zh_Hans: 用于多媒体分析服务调用的API路径
     llm_description: endpoint url for aliyun multimedia analysis API service
     form: llm
-  - name: app_id 
-    type: string 
-    required: true 
-    label: 
-      en_US: app_id 
-      zh_Hans: app id 
-    human_description: 
+  - name: app_id
+    type: string
+    required: true
+    label:
+      en_US: app_id
+      zh_Hans: app id
+    human_description:
       en_US: app id
       zh_Hans: app id
     llm_description: app id
     form: llm
-  - name: token 
-    type: string 
-    required: true 
-    label: 
-      en_US: token 
-      zh_Hans: 调用token 
-    human_description: 
+  - name: token
+    type: string
+    required: true
+    label:
+      en_US: token
+      zh_Hans: 调用token
+    human_description:
       en_US: token used for calling
       zh_Hans: 用于服务调用的token
     llm_description: token for aliyun multimedia analysis API service
     form: llm
-  - name: model_name 
-    type: string 
-    required: false 
-    label: 
-      en_US: model name 
-      zh_Hans: 调用模型名 
-    human_description: 
+  - name: model_name
+    type: string
+    required: false
+    label:
+      en_US: model name
+      zh_Hans: 调用模型名
+    human_description:
       en_US: model name
       zh_Hans: 调用模型名
     llm_description: token for aliyun multimedia analysis API service
     form: llm
-  - name: image_url 
-    type: string 
-    required: true 
-    label: 
-      en_US: image url 
-      zh_Hans: 调用的请求图片地址 
-    human_description: 
+  - name: image_url
+    type: string
+    required: true
+    label:
+      en_US: image url
+      zh_Hans: 调用的请求图片地址
+    human_description:
       en_US: image url used for calling
       zh_Hans: 待分析的图片地址
-    llm_description: image url for request. 
+    llm_description: image url for request.
     form: llm
-  - name: text 
-    type: string 
-    required: false 
-    label: 
-      en_US: text 
-      zh_Hans: 调用的请求文本 
-    human_description: 
+  - name: text
+    type: string
+    required: false
+    label:
+      en_US: text
+      zh_Hans: 调用的请求文本
+    human_description:
       en_US: text used for calling
       zh_Hans: 待分析的文本
-    llm_description: text for request. 
+    llm_description: text for request.
     form: llm

@@ -1,45 +1,45 @@
-identity: 
-  name: EAS 
-  author: Aliyun 
-  label: 
-    en_US: Aliyun PAI EAS 
-    zh_Hans: 阿里云PAI EAS 
-description: 
-  human: 
+identity:
+  name: EAS
+  author: Aliyun
+  label:
+    en_US: Aliyun PAI EAS
+    zh_Hans: 阿里云PAI EAS
+description:
+  human:
     en_US: Aliyun PAI EAS
     zh_Hans: Aliyun PAI EAS工具
   llm: A tool for request an elastic algorithm service(EAS). Input contains endpoint url, token and query.
-parameters: 
-  - name: eas_endpoint_url 
-    type: string 
-    required: true 
-    label: 
-      en_US: eas endpoint url 
-      zh_Hans: 调用路径 
-    human_description: 
+parameters:
+  - name: eas_endpoint_url
+    type: string
+    required: true
+    label:
+      en_US: eas endpoint url
+      zh_Hans: 调用路径
+    human_description:
       en_US: eas endpoint url used for calling
       zh_Hans: 用于服务调用的API
     llm_description: url for aliyun PAI eas service
     form: llm
-  - name: eas_token 
-    type: string 
-    required: true 
-    label: 
-      en_US: eas token 
-      zh_Hans: 调用token 
-    human_description: 
+  - name: eas_token
+    type: string
+    required: true
+    label:
+      en_US: eas token
+      zh_Hans: 调用token
+    human_description:
       en_US: eas token used for calling
       zh_Hans: 用于服务调用的token
     llm_description: token for aliyun PAI eas service
     form: llm
-  - name: query 
-    type: string 
-    required: true 
-    label: 
-      en_US: eas query 
-      zh_Hans: 调用的请求数据 
-    human_description: 
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: eas query
+      zh_Hans: 调用的请求数据
+    human_description:
       en_US: eas query used for calling
       zh_Hans: 用于服务调用的请求数据
-    llm_description: query for request, the input data format depends on the api defination. 
+    llm_description: query for request, the input data format depends on the api defination.
     form: llm
