@@ -51,5 +51,5 @@ class AzureTTSTool(BuiltinTool):
             if cancellation_details.reason == speechsdk.CancellationReason.Error:
                 if cancellation_details.error_details:
                     msg += "Error details: {}".format(cancellation_details.error_details)
-            return [self.create_text_message(msg)]
+            raise Exception(msg)
         return [self.create_text_message("Audio generation failed")]
