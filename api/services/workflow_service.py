@@ -2,7 +2,7 @@ import json
 import time
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import Optional
+from typing import Optional, cast
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
@@ -11,6 +11,8 @@ from core.variables import Variable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.nodes import NodeType
+from core.workflow.nodes.base.entities import BaseNodeData
+from core.workflow.nodes.base.node import BaseNode
 from core.workflow.nodes.enums import ErrorStrategy
 from core.workflow.nodes.event import RunCompletedEvent
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
@@ -226,7 +228,7 @@ class WorkflowService:
                 user_inputs=user_inputs,
                 user_id=account.id,
             )
-
+            node_instance = cast(BaseNode[BaseNodeData], node_instance)
             node_run_result: NodeRunResult | None = None
             for event in generator:
                 if isinstance(event, RunCompletedEvent):
@@ -238,6 +240,7 @@ class WorkflowService:
 
             if not node_run_result:
                 raise ValueError("Node run failed with no run result")
+            # single step debug mode error handling return
             if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node_instance.should_continue_on_error:
                 node_error_args = {
                     "status": WorkflowNodeExecutionStatus.EXCEPTION,
@@ -254,14 +257,14 @@ class WorkflowService:
                             "error_type": node_run_result.error_type,
                         },
                     )
-
-                node_run_result = NodeRunResult(
-                    **node_error_args,
-                    outputs={
-                        "error_message": node_run_result.error,
-                        "error_type": node_run_result.error_type,
-                    },
-                )
+                else:
+                    node_run_result = NodeRunResult(
+                        **node_error_args,
+                        outputs={
+                            "error_message": node_run_result.error,
+                            "error_type": node_run_result.error_type,
+                        },
+                    )
             run_succeeded = node_run_result.status in (
                 WorkflowNodeExecutionStatus.SUCCEEDED,
                 WorkflowNodeExecutionStatus.EXCEPTION,

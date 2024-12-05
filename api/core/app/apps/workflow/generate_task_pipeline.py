@@ -392,9 +392,34 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                     "conversation_id": None,
                     "trace_manager": trace_manager,
                 }
-                if isinstance(event, QueueWorkflowFailedEvent):
-                    handle_args["exceptions_count"] = event.exceptions_count
                 workflow_run = self._handle_workflow_run_failed(**handle_args)
+
+                # save workflow app log
+                self._save_workflow_app_log(workflow_run)
+
+                yield self._workflow_finish_to_stream_response(
+                    task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
+                )
+            elif isinstance(event, QueueWorkflowPartialSuccessEvent):
+                if not workflow_run:
+                    raise Exception("Workflow run not initialized.")
+
+                if not graph_runtime_state:
+                    raise Exception("Graph runtime state not initialized.")
+                handle_args = {
+                    "workflow_run": workflow_run,
+                    "start_at": graph_runtime_state.start_at,
+                    "total_tokens": graph_runtime_state.total_tokens,
+                    "total_steps": graph_runtime_state.node_run_steps,
+                    "status": WorkflowRunStatus.FAILED
+                    if isinstance(event, QueueWorkflowFailedEvent)
+                    else WorkflowRunStatus.STOPPED,
+                    "error": event.error if isinstance(event, QueueWorkflowFailedEvent) else event.get_stop_reason(),
+                    "conversation_id": None,
+                    "trace_manager": trace_manager,
+                    "exceptions_count": event.exceptions_count,
+                }
+                workflow_run = self._handle_workflow_run_partial_success(**handle_args)
 
                 # save workflow app log
                 self._save_workflow_app_log(workflow_run)

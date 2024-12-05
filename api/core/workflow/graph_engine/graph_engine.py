@@ -255,7 +255,7 @@ class GraphEngine:
                 previous_node_id=previous_node_id,
                 thread_pool_id=self.thread_pool_id,
             )
-
+            node_instance = cast(BaseNode[BaseNodeData], node_instance)
             try:
                 # run node
                 generator = self._run_node(
@@ -314,13 +314,13 @@ class GraphEngine:
                 break
 
             if len(edge_mappings) == 1:
+                edge = edge_mappings[0]
                 if (
                     previous_route_node_state.status == RouteNodeState.Status.EXCEPTION
                     and node_instance.node_data.error_strategy == ErrorStrategy.FAIL_BRANCH
+                    and edge.run_condition is None
                 ):
                     break
-                edge = edge_mappings[0]
-
                 if edge.run_condition:
                     result = ConditionManager.get_condition_handler(
                         init_params=self.init_params,
@@ -651,7 +651,9 @@ class GraphEngine:
                                 )
 
                         elif run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
-                            if node_instance.should_continue_on_error:
+                            if node_instance.should_continue_on_error and self.graph.edge_mapping.get(
+                                node_instance.node_id
+                            ):
                                 run_result.edge_source_handle = FailBranchSourceHandle.SUCCESS
                             if run_result.metadata and run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS):
                                 # plus state total_tokens
@@ -827,15 +829,17 @@ class GraphEngine:
                     "error_type": error_result.error_type,
                 },
             )
-
-        return NodeRunResult(
-            **node_error_args,
-            outputs={
-                "error_message": error_result.error,
-                "error_type": error_result.error_type,
-            },
-            edge_source_handle=FailBranchSourceHandle.FAILED,
-        )
+        elif node_instance.node_data.error_strategy is ErrorStrategy.FAIL_BRANCH:
+            if self.graph.edge_mapping.get(node_instance.node_id):
+                node_error_args["edge_source_handle"] = FailBranchSourceHandle.FAILED
+            return NodeRunResult(
+                **node_error_args,
+                outputs={
+                    "error_message": error_result.error,
+                    "error_type": error_result.error_type,
+                },
+            )
+        return error_result
 
 
 class GraphRunFailedError(Exception):
