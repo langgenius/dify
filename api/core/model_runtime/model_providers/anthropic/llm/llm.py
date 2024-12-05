@@ -483,6 +483,10 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                 if isinstance(message, UserPromptMessage):
                     message = cast(UserPromptMessage, message)
                     if isinstance(message.content, str):
+                        # handle empty user prompt see #10013 #10520
+                        # responses, ignore user prompts containing only whitespace, the Claude API can't handle it.
+                        if not message.content.strip():
+                            continue
                         message_dict = {"role": "user", "content": message.content}
                         prompt_message_dicts.append(message_dict)
                     else:

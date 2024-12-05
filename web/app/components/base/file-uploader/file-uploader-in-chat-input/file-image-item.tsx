@@ -84,7 +84,7 @@ const FileImageItem = ({
                 className='absolute bottom-0.5 right-0.5  flex items-center justify-center w-6 h-6 rounded-lg bg-components-actionbar-bg shadow-md'
                 onClick={(e) => {
                   e.stopPropagation()
-                  downloadFile(url || '', name)
+                  downloadFile(url || base64Url || '', name)
                 }}
               >
                 <RiDownloadLine className='w-4 h-4 text-text-tertiary' />

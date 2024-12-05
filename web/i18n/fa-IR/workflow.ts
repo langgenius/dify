@@ -500,6 +500,26 @@ const translation = {
       'clear': 'پاک کردن',
       'setVariable': 'تنظیم متغیر',
       'variable': 'متغیر',
+      'operations': {
+        'clear': 'روشن',
+        'over-write': 'بازنویسی',
+        'set': 'مجموعه',
+        '*=': '*=',
+        'overwrite': 'بازنویسی',
+        '+=': '+=',
+        'title': 'عملیات',
+        'extend': 'گسترش',
+        '-=': '-=',
+        'append': 'الحاق',
+        '/=': '/=',
+      },
+      'noVarTip': 'برای افزودن متغیرها روی دکمه "+" کلیک کنید',
+      'selectAssignedVariable': 'متغیر اختصاص داده شده را انتخاب کنید...',
+      'noAssignedVars': 'هیچ متغیر اختصاص داده شده در دسترس نیست',
+      'setParameter': 'پارامتر را تنظیم کنید...',
+      'assignedVarsDescription': 'متغیرهای اختصاص داده شده باید متغیرهای قابل نوشتن مانند متغیرهای مکالمه باشند.',
+      'variables': 'متغیرهای',
+      'varNotSet': 'متغیر NOT Set',
     },
     tool: {
       toAuthorize: 'برای مجوز دادن',
@@ -630,6 +650,13 @@ const translation = {
   },
   tracing: {
     stopBy: 'متوقف شده توسط {{user}}',
+  },
+  variableReference: {
+    noAvailableVars: 'هیچ متغیری در دسترس نیست',
+    conversationVars: 'متغیرهای مکالمه',
+    noVarsForOperation: 'هیچ متغیری برای تخصیص با عملیات انتخاب شده در دسترس نیست.',
+    assignedVarsDescription: 'متغیرهای اختصاص داده شده باید متغیرهای قابل نوشتن باشند، مانند',
+    noAssignedVars: 'هیچ متغیر اختصاص داده شده در دسترس نیست',
   },
 }
 

@@ -67,7 +67,6 @@ from .entities import (
     ModelConfig,
 )
 from .exc import (
-    FileTypeNotSupportError,
     InvalidContextStructureError,
     InvalidVariableTypeError,
     LLMModeRequiredError,
@@ -198,7 +197,6 @@ class LLMNode(BaseNode[LLMNodeData]):
             )
             return
         except Exception as e:
-            logger.exception(f"Node {self.node_id} failed to run")
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
@@ -676,7 +674,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                             and ModelFeature.AUDIO not in model_config.model_schema.features
                         )
                     ):
-                        raise FileTypeNotSupportError(type_name=content_item.type)
+                        continue
                     prompt_message_content.append(content_item)
                 if len(prompt_message_content) == 1 and prompt_message_content[0].type == PromptMessageContentType.TEXT:
                     prompt_message.content = prompt_message_content[0].data
@@ -817,7 +815,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                     "completion_model": {
                         "conversation_histories_role": {"user_prefix": "Human", "assistant_prefix": "Assistant"},
                         "prompt": {
-                            "text": "Here is the chat histories between human and assistant, inside "
+                            "text": "Here are the chat histories between human and assistant, inside "
                             "<histories></histories> XML tags.\n\n<histories>\n{{"
                             "#histories#}}\n</histories>\n\n\nHuman: {{#sys.query#}}\n\nAssistant:",
                             "edition_type": "basic",

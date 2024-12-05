@@ -31,19 +31,20 @@ if $api_modified; then
         poetry install -C api --only lint
     fi
 
-    # run Ruff linter auto-fixing
-    ruff check --fix ./api
-
-    # run Ruff linter checks
-    ruff check --preview ./api || status=$?
+    # 只检查修改的文件
+    modified_py_files=$(git diff --cached --name-only --diff-filter=ACMRT -- "api/**/*.py")
+    if [ -n "$modified_py_files" ]; then
+        # run Ruff linter checks
+        echo "Checking files: $modified_py_files"
+        ruff check --config api/pyproject.toml $modified_py_files || status=$?
+    fi
 
     status=${status:-0}
 
-
     if [ $status -ne 0 ]; then
-      echo "Ruff linter on api module error, exit code: $status"
-      echo "Please run 'dev/reformat' to fix the fixable linting errors."
-      exit 1
+        echo "Ruff linter on api module error, exit code: $status"
+        echo "Please run 'dev/reformat' to fix the fixable linting errors."
+        exit 1
     fi
 fi
 

@@ -1,4 +1,5 @@
 [project]
+name = "dify-api"
 requires-python = ">=3.11,<3.13"
 
 [build-system]
@@ -12,7 +13,7 @@ exclude=[
     "__pycache__",
     "build",
     "dist",
-    "core/tools/provider/builtin/flexport/generated",
+    "**/generated/**",
     "migrations",
 ]
 line-length = 120
@@ -97,6 +98,14 @@ ignore = [
     "F811", # redefined-while-unused
     "F401", # unused-import
 ]
+"**/generated/**" = [
+    "N802",  # Function name should be lowercase
+    "N803",  # Argument name should be lowercase
+    "N806",  # Variable name should be lowercase
+    "N815",  # Mixed case variable name
+    "N816",  # Mixed case variable name in global scope
+    "N817",  # CamelCase imported as acronym
+]
 
 [tool.ruff.lint.pyflakes]
 extend-generics=[
@@ -109,7 +118,6 @@ exclude = [
 ]
 
 [tool.poetry]
-name = "dify-api"
 package-mode = false
 
 ############################################################
@@ -123,7 +131,7 @@ azure-ai-inference = "~1.0.0b3"
 azure-ai-ml = "~1.20.0"
 azure-identity = "1.16.1"
 beautifulsoup4 = "4.12.2"
-boto3 = "1.35.17"
+boto3 = "1.35.74"
 bs4 = "~0.0.1"
 cachetools = "~5.3.0"
 celery = "~5.4.0"
@@ -131,11 +139,11 @@ chardet = "~5.1.0"
 cohere = "~5.2.4"
 dashscope = { version = "~1.17.0", extras = ["tokenizer"] }
 fal-client = "0.5.6"
-flask = "~3.0.1"
-flask-compress = "~1.14"
+flask = "~3.1.0"
+flask-compress = "~1.17"
 flask-cors = "~4.0.0"
 flask-login = "~0.6.3"
-flask-migrate = "~4.0.5"
+flask-migrate = "~4.0.7"
 flask-restful = "~0.3.10"
 flask-sqlalchemy = "~3.1.1"
 gevent = "~24.11.1"
@@ -190,7 +198,6 @@ unstructured = { version = "~0.16.1", extras = ["docx", "epub", "md", "msg", "pp
 validators = "0.21.0"
 volcengine-python-sdk = {extras = ["ark"], version = "~1.0.98"}
 websocket-client = "~1.7.0"
-werkzeug = "~3.0.1"
 xinference-client = "0.15.2"
 yarl = "~1.9.4"
 youtube-transcript-api = "~0.6.2"
@@ -291,6 +298,4 @@ pytest-mock = "~3.14.0"
 optional = true
 [tool.poetry.group.lint.dependencies]
 dotenv-linter = "~0.5.0"
-ruff = "~0.7.3"
-
-
+ruff = "~0.8.1"

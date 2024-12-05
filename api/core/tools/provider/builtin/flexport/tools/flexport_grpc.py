@@ -92,7 +92,7 @@ class FlexportGrpcTool(BuiltinTool):
                         if "class" in content and "Stub" in content:
                             rel_path = os.path.relpath(os.path.join(root, file), base_dir)
                             module_path = os.path.splitext(rel_path)[0].replace(os.sep, ".")
-                            
+
                             # Check if package should be ignored
                             should_ignore = any(module_path.startswith(prefix) for prefix in ignored_prefixes)
                             if should_ignore:
@@ -163,16 +163,16 @@ class FlexportGrpcTool(BuiltinTool):
         """Get all available methods for a service"""
         methods = []
         stub_class = getattr(grpc_module, stub_name)
-        
+
         # Get methods from __init__ method
         init_source = inspect.getsource(stub_class.__init__)
-        
+
         # Find all self.{method} = channel.unary_unary assignments
         method_matches = re.finditer(r"self\.(\w+)\s*=\s*channel\.unary_unary", init_source)
         for match in method_matches:
             method_name = match.group(1)
             methods.append(method_name)
-        
+
         return methods
 
     def _get_stub(self, service_name: str, host: str) -> Any:
@@ -195,18 +195,18 @@ class FlexportGrpcTool(BuiltinTool):
         try:
             host = tool_parameters.get("host")
             service_method = tool_parameters.get("service_method", "")
-            
+
             if "::" not in service_method:
                 return self.create_text_message(
                     text="Invalid service_method format. Expected format: 'service::method'"
                 )
-            
+
             service, method = service_method.split("::")
-            
+
             # Add flexport prefix if not present
             if not service.startswith("flexport."):
                 service = f"flexport.{service}"
-            
+
             service_config = self.service_map.get(service)
             if not service_config:
                 # Try without flexport prefix
@@ -217,23 +217,23 @@ class FlexportGrpcTool(BuiltinTool):
                 else:
                     available_services = list(self.service_map.keys())
                     return self.create_text_message(
-                        text=f"Unknown service: {service}\nAvailable services:\n" + 
-                             "\n".join(f"- {s}" for s in available_services)
+                        text=f"Unknown service: {service}\nAvailable services:\n"
+                        + "\n".join(f"- {s}" for s in available_services)
                     )
 
             # Add method validation
             if method not in service_config["methods"]:
                 available_methods = service_config["methods"]
                 return self.create_text_message(
-                    text=f"Unknown method: {method}\nAvailable methods for {service}:\n" +
-                         "\n".join(f"- {m}" for m in available_methods)
+                    text=f"Unknown method: {method}\nAvailable methods for {service}:\n"
+                    + "\n".join(f"- {m}" for m in available_methods)
                 )
 
             # Validate method parameters
             method_parameters_str = tool_parameters.get("method_parameters", "{}")
             if not method_parameters_str or not method_parameters_str.strip():
                 method_parameters_str = "{}"
-            
+
             try:
                 method_parameters = json.loads(method_parameters_str)
             except json.JSONDecodeError:
@@ -254,7 +254,7 @@ class FlexportGrpcTool(BuiltinTool):
             request = json_format.ParseDict(method_parameters, request_type())
             response = grpc_method(request)
             response_dict = json_format.MessageToDict(response, preserving_proto_field_name=True)
-            
+
             result = "\n".join([f"{k}: {v}" for k, v in response_dict.items()])
             return self.create_text_message(text=result)
 
@@ -298,7 +298,7 @@ class FlexportGrpcTool(BuiltinTool):
                     label=I18nObject(en_US="Host Address", zh_Hans="Server Address"),
                     human_description=I18nObject(
                         en_US="The host address of the gRPC server (e.g. localhost:50051)",
-                        zh_Hans="gRPC server address (e.g. localhost:50051)"
+                        zh_Hans="gRPC server address (e.g. localhost:50051)",
                     ),
                     llm_description="The host address and port of the gRPC server",
                     form=ToolParameter.ToolParameterForm.FORM,
@@ -309,8 +309,7 @@ class FlexportGrpcTool(BuiltinTool):
                     required=True,
                     label=I18nObject(en_US="Service and Method", zh_Hans="Service and Method"),
                     human_description=I18nObject(
-                        en_US="Select the gRPC service and method to call",
-                        zh_Hans="选择要调用的gRPC服务和方法"
+                        en_US="Select the gRPC service and method to call", zh_Hans="选择要调用的gRPC服务和方法"
                     ),
                     llm_description="The full service name and method to call",
                     form=ToolParameter.ToolParameterForm.FORM,
@@ -322,8 +321,7 @@ class FlexportGrpcTool(BuiltinTool):
                     required=True,
                     label=I18nObject(en_US="Method Parameters", zh_Hans="Method Parameters"),
                     human_description=I18nObject(
-                        en_US="JSON string of parameters for the method",
-                        zh_Hans="方法参数的JSON字符串"
+                        en_US="JSON string of parameters for the method", zh_Hans="方法参数的JSON字符串"
                     ),
                     llm_description="JSON formatted string containing the parameters for the method call",
                     form=ToolParameter.ToolParameterForm.LLM,

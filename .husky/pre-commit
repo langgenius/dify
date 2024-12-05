@@ -1,0 +1,2 @@
+# 查看 pre-commit 配置中是否有其他 linter 也在检查这些文件
+# 或者 ruff 的配置是否正确读取了 pyproject.toml 
