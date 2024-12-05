@@ -22,6 +22,7 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
       manualClose
       trigger='click'
       disabled={disabled}
+      popupClassName='z-20'
       htmlContent={
         <div className='w-full py-1'>
           {languages.filter(language => language.supported).map(({ prompt_name }) => (

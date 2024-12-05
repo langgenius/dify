@@ -58,6 +58,7 @@ import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocumen
 import Loading from '@/app/components/base/loading'
 import Badge from '@/app/components/base/badge'
 import { SkeletonContanier, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import Tooltip from '@/app/components/base/tooltip'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='text-text-secondary text-xs font-semibold leading-none'>{props.children}</label>
@@ -166,15 +167,17 @@ const StepTwo = ({
       ? IndexingType.QUALIFIED
       : IndexingType.ECONOMICAL,
   )
+
+  // QA Related
   const [isLanguageSelectDisabled, setIsLanguageSelectDisabled] = useState(false)
   const [docForm, setDocForm] = useState<DocForm | string>(
     (datasetId && documentDetail) ? documentDetail.doc_form : DocForm.TEXT,
   )
+
   const [docLanguage, setDocLanguage] = useState<string>(
     (datasetId && documentDetail) ? documentDetail.doc_language : (locale !== LanguagesSupported[1] ? 'English' : 'Chinese'),
   )
   const [QATipHide, setQATipHide] = useState(false)
-  const [qaPreviewSwitched, setQAPreviewSwitched] = useState(false)
 
   const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>(defaultParentChildConfig)
 
@@ -255,22 +258,6 @@ const StepTwo = ({
         ? notionIndexingEstimateQuery.data
         : websiteIndexingEstimateQuery.data
 
-  // const getIsEstimateReady = useCallback(() => {
-  //   if (dataSourceType === DataSourceType.FILE)
-  //     return fileIndexingEstimateQuery.isSuccess
-
-  //   if (dataSourceType === DataSourceType.NOTION)
-  //     return notionIndexingEstimateQuery.isSuccess
-
-  //   if (dataSourceType === DataSourceType.WEB)
-  //     return websiteIndexingEstimateQuery.isSuccess
-  // }, [dataSourceType, fileIndexingEstimateQuery.isSuccess, notionIndexingEstimateQuery.isSuccess, websiteIndexingEstimateQuery.isSuccess])
-
-  // const getFileName = (name: string) => {
-  //   const arr = name.split('.')
-  //   return arr.slice(0, -1).join('.')
-  // }
-
   const getRuleName = (key: string) => {
     if (key === 'remove_extra_spaces')
       return t('datasetCreation.stepTwo.removeExtraSpaces')
@@ -309,7 +296,6 @@ const StepTwo = ({
       return
     }
     fetchEstimate()
-    setQAPreviewSwitched(false)
   }
 
   const {
@@ -503,7 +489,6 @@ const StepTwo = ({
   }
 
   const previewSwitch = () => {
-    setQAPreviewSwitched(true)
     setIsLanguageSelectDisabled(true)
     fetchEstimate()
   }
@@ -511,7 +496,7 @@ const StepTwo = ({
   const handleSelect = (language: string) => {
     setDocLanguage(language)
     // Switch language, re-cutter
-    if (docForm === DocForm.QA && qaPreviewSwitched)
+    if (docForm === DocForm.QA)
       previewSwitch()
   }
 
@@ -618,6 +603,31 @@ const StepTwo = ({
                       </div>
                     </div>
                   </div>
+                  {IS_CE_EDITION && <div className='flex items-center'>
+                    <Checkbox
+                      checked={docForm === DocForm.QA}
+                      onCheck={() => {
+                        if (docForm === DocForm.QA)
+                          setDocForm(DocForm.TEXT)
+                        else
+                          setDocForm(DocForm.QA)
+                      }}
+                      className='mr-2'
+                    />
+                    <div className='flex items-center gap-1'>
+                      <TextLabel>
+                      Chunk using Q&A format in
+                      </TextLabel>
+                      <div className='z-50 relative'>
+                        <LanguageSelect
+                          currentLanguage={docLanguage || locale}
+                          onSelect={setDocLanguage}
+                          disabled={isLanguageSelectDisabled}
+                        />
+                      </div>
+                      <Tooltip popupContent={t('datasetCreation.stepTwo.qaTip')} />
+                    </div>
+                  </div>}
                 </div>
               </OptionCard>
               <OptionCard
@@ -927,12 +937,12 @@ const StepTwo = ({
           </PreviewHeader>}
           className={cn(s.previewWrap, isMobile && s.isMobile, 'relative h-full overflow-y-scroll space-y-4')}
         >
-          {qaPreviewSwitched && docForm === DocForm.QA && estimate?.qa_preview && (
+          {docForm === DocForm.QA && estimate?.qa_preview && (
             estimate?.qa_preview.map(item => (
               <QAPreview key={item.question} qa={item} />
             ))
           )}
-          {(docForm === DocForm.TEXT || !qaPreviewSwitched) && estimate?.preview && (
+          {docForm === DocForm.TEXT && estimate?.preview && (
             estimate?.preview.map((item, index) => (
               <ChunkContainer
                 key={item}
@@ -943,16 +953,11 @@ const StepTwo = ({
               </ChunkContainer>
             ))
           )}
-          {qaPreviewSwitched && docForm === DocForm.QA && !estimate?.qa_preview && (
+          {docForm === DocForm.QA && !estimate?.qa_preview && (
             <div className='flex items-center justify-center h-[200px]'>
               <Loading type='area' />
             </div>
           )}
-          {/* {!qaPreviewSwitched && !estimate?.preview && (
-            <div className='flex items-center justify-center h-[200px]'>
-              <Loading type='area' />
-            </div>
-          )} */}
           {currentEstimateMutation.isIdle && (
             <div className='h-full w-full flex items-center justify-center'>
               <div className='flex flex-col items-center justify-center gap-3'>
