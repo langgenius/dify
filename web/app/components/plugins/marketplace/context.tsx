@@ -28,6 +28,7 @@ import type {
 import { DEFAULT_SORT } from './constants'
 import {
   useMarketplaceCollectionsAndPlugins,
+  useMarketplaceContainerScroll,
   useMarketplacePlugins,
 } from './hooks'
 import {
@@ -51,7 +52,7 @@ export type MarketplaceContextValue = {
   resetPlugins: () => void
   sort: PluginsSort
   handleSortChange: (sort: PluginsSort) => void
-  handleQueryPluginsWhenNoCollection: () => void
+  handleQueryPlugins: () => void
   marketplaceCollectionsFromClient?: MarketplaceCollection[]
   setMarketplaceCollectionsFromClient: (collections: MarketplaceCollection[]) => void
   marketplaceCollectionPluginsMapFromClient?: Record<string, Plugin[]>
@@ -75,7 +76,7 @@ export const MarketplaceContext = createContext<MarketplaceContextValue>({
   resetPlugins: () => {},
   sort: DEFAULT_SORT,
   handleSortChange: () => {},
-  handleQueryPluginsWhenNoCollection: () => {},
+  handleQueryPlugins: () => {},
   marketplaceCollectionsFromClient: [],
   setMarketplaceCollectionsFromClient: () => {},
   marketplaceCollectionPluginsMapFromClient: {},
@@ -88,6 +89,7 @@ type MarketplaceContextProviderProps = {
   children: ReactNode
   searchParams?: SearchParams
   shouldExclude?: boolean
+  scrollContainerId?: string
 }
 
 export function useMarketplaceContext(selector: (value: MarketplaceContextValue) => any) {
@@ -98,6 +100,7 @@ export const MarketplaceContextProvider = ({
   children,
   searchParams,
   shouldExclude,
+  scrollContainerId,
 }: MarketplaceContextProviderProps) => {
   const { data, isSuccess } = useInstalledPluginList(!shouldExclude)
   const exclude = useMemo(() => {
@@ -131,6 +134,7 @@ export const MarketplaceContextProvider = ({
   } = useMarketplaceCollectionsAndPlugins()
   const {
     plugins,
+    total: pluginsTotal,
     resetPlugins,
     queryPlugins,
     queryPluginsWithDebounced,
@@ -161,34 +165,60 @@ export const MarketplaceContextProvider = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryPlugins, queryMarketplaceCollectionsAndPlugins, isSuccess, exclude])
 
+  const handleQueryMarketplaceCollectionsAndPlugins = useCallback(() => {
+    queryMarketplaceCollectionsAndPlugins({
+      category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
+      condition: getMarketplaceListCondition(activePluginTypeRef.current),
+      exclude,
+      type: getMarketplaceListFilterType(activePluginTypeRef.current),
+    })
+    resetPlugins()
+  }, [exclude, queryMarketplaceCollectionsAndPlugins, resetPlugins])
+
+  const handleQueryPlugins = useCallback((debounced?: boolean) => {
+    if (debounced) {
+      queryPluginsWithDebounced({
+        query: searchPluginTextRef.current,
+        category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
+        tags: filterPluginTagsRef.current,
+        sortBy: sortRef.current.sortBy,
+        sortOrder: sortRef.current.sortOrder,
+        exclude,
+        type: getMarketplaceListFilterType(activePluginTypeRef.current),
+        page: pageRef.current,
+      })
+    }
+    else {
+      queryPlugins({
+        query: searchPluginTextRef.current,
+        category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
+        tags: filterPluginTagsRef.current,
+        sortBy: sortRef.current.sortBy,
+        sortOrder: sortRef.current.sortOrder,
+        exclude,
+        type: getMarketplaceListFilterType(activePluginTypeRef.current),
+        page: pageRef.current,
+      })
+    }
+  }, [exclude, queryPluginsWithDebounced, queryPlugins])
+
+  const handleQuery = useCallback((debounced?: boolean) => {
+    if (!searchPluginTextRef.current && !filterPluginTagsRef.current.length) {
+      handleQueryMarketplaceCollectionsAndPlugins()
+      return
+    }
+
+    handleQueryPlugins(debounced)
+  }, [handleQueryMarketplaceCollectionsAndPlugins, handleQueryPlugins])
+
   const handleSearchPluginTextChange = useCallback((text: string) => {
     setSearchPluginText(text)
     searchPluginTextRef.current = text
     setPage(1)
     pageRef.current = 1
 
-    if (!searchPluginTextRef.current && !filterPluginTagsRef.current.length) {
-      queryMarketplaceCollectionsAndPlugins({
-        category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
-        condition: getMarketplaceListCondition(activePluginTypeRef.current),
-        exclude,
-        type: getMarketplaceListFilterType(activePluginTypeRef.current),
-      })
-      resetPlugins()
-
-      return
-    }
-
-    queryPluginsWithDebounced({
-      query: text,
-      category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
-      tags: filterPluginTagsRef.current,
-      sortBy: sortRef.current.sortBy,
-      sortOrder: sortRef.current.sortOrder,
-      exclude,
-      page: pageRef.current,
-    })
-  }, [queryPluginsWithDebounced, queryMarketplaceCollectionsAndPlugins, resetPlugins, exclude])
+    handleQuery(true)
+  }, [handleQuery])
 
   const handleFilterPluginTagsChange = useCallback((tags: string[]) => {
     setFilterPluginTags(tags)
@@ -196,29 +226,8 @@ export const MarketplaceContextProvider = ({
     setPage(1)
     pageRef.current = 1
 
-    if (!searchPluginTextRef.current && !filterPluginTagsRef.current.length) {
-      queryMarketplaceCollectionsAndPlugins({
-        category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
-        condition: getMarketplaceListCondition(activePluginTypeRef.current),
-        exclude,
-        type: getMarketplaceListFilterType(activePluginTypeRef.current),
-      })
-      resetPlugins()
-
-      return
-    }
-
-    queryPlugins({
-      query: searchPluginTextRef.current,
-      category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
-      tags,
-      sortBy: sortRef.current.sortBy,
-      sortOrder: sortRef.current.sortOrder,
-      exclude,
-      type: getMarketplaceListFilterType(activePluginTypeRef.current),
-      page: pageRef.current,
-    })
-  }, [queryPlugins, resetPlugins, queryMarketplaceCollectionsAndPlugins, exclude])
+    handleQuery()
+  }, [handleQuery])
 
   const handleActivePluginTypeChange = useCallback((type: string) => {
     setActivePluginType(type)
@@ -226,57 +235,8 @@ export const MarketplaceContextProvider = ({
     setPage(1)
     pageRef.current = 1
 
-    if (!searchPluginTextRef.current && !filterPluginTagsRef.current.length) {
-      queryMarketplaceCollectionsAndPlugins({
-        category: type === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : type,
-        condition: getMarketplaceListCondition(type),
-        exclude,
-        type: getMarketplaceListFilterType(activePluginTypeRef.current),
-      })
-      resetPlugins()
-
-      return
-    }
-
-    queryPlugins({
-      query: searchPluginTextRef.current,
-      category: type === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : type,
-      tags: filterPluginTagsRef.current,
-      sortBy: sortRef.current.sortBy,
-      sortOrder: sortRef.current.sortOrder,
-      exclude,
-      type: getMarketplaceListFilterType(activePluginTypeRef.current),
-      page: pageRef.current,
-    })
-  }, [queryPlugins, resetPlugins, queryMarketplaceCollectionsAndPlugins, exclude])
-
-  const handlePageChange = useCallback(() => {
-    setPage(pageRef.current + 1)
-    pageRef.current++
-
-    if (!searchPluginTextRef.current && !filterPluginTagsRef.current.length) {
-      queryMarketplaceCollectionsAndPlugins({
-        category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
-        condition: getMarketplaceListCondition(activePluginTypeRef.current),
-        exclude,
-        type: getMarketplaceListFilterType(activePluginTypeRef.current),
-      })
-      resetPlugins()
-
-      return
-    }
-
-    queryPlugins({
-      query: searchPluginTextRef.current,
-      category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
-      tags: filterPluginTagsRef.current,
-      sortBy: sortRef.current.sortBy,
-      sortOrder: sortRef.current.sortOrder,
-      exclude,
-      type: getMarketplaceListFilterType(activePluginTypeRef.current),
-      page: pageRef.current,
-    })
-  }, [exclude, queryPlugins, queryMarketplaceCollectionsAndPlugins, resetPlugins])
+    handleQuery()
+  }, [handleQuery])
 
   const handleSortChange = useCallback((sort: PluginsSort) => {
     setSort(sort)
@@ -284,32 +244,19 @@ export const MarketplaceContextProvider = ({
     setPage(1)
     pageRef.current = 1
 
-    queryPlugins({
-      query: searchPluginTextRef.current,
-      category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
-      tags: filterPluginTagsRef.current,
-      sortBy: sortRef.current.sortBy,
-      sortOrder: sortRef.current.sortOrder,
-      exclude,
-      type: getMarketplaceListFilterType(activePluginTypeRef.current),
-      page: pageRef.current,
-    })
-  }, [queryPlugins, exclude])
+    handleQueryPlugins()
+  }, [handleQueryPlugins])
 
-  const handleQueryPluginsWhenNoCollection = useCallback(() => {
-    queryPlugins({
-      query: searchPluginTextRef.current,
-      category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
-      tags: filterPluginTagsRef.current,
-      sortBy: sortRef.current.sortBy,
-      sortOrder: sortRef.current.sortOrder,
-      exclude,
-      type: getMarketplaceListFilterType(activePluginTypeRef.current),
-      page: pageRef.current,
-    })
-  }, [exclude, queryPlugins])
+  const handlePageChange = useCallback(() => {
+    if (pluginsTotal && plugins && pluginsTotal > plugins.length && (!!searchPluginTextRef.current || !!filterPluginTagsRef.current.length)) {
+      setPage(pageRef.current + 1)
+      pageRef.current++
 
-  // useMarketplaceContainerScroll(handlePageChange)
+      handleQueryPlugins()
+    }
+  }, [handleQueryPlugins, plugins, pluginsTotal])
+
+  useMarketplaceContainerScroll(handlePageChange, scrollContainerId)
 
   return (
     <MarketplaceContext.Provider
@@ -328,7 +275,7 @@ export const MarketplaceContextProvider = ({
         resetPlugins,
         sort,
         handleSortChange,
-        handleQueryPluginsWhenNoCollection,
+        handleQueryPlugins,
         marketplaceCollectionsFromClient,
         setMarketplaceCollectionsFromClient,
         marketplaceCollectionPluginsMapFromClient,

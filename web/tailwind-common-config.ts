@@ -89,6 +89,10 @@ const config = {
         'workflow-process-bg': 'var(--color-workflow-process-bg)',
         'marketplace-divider-bg': 'var(--color-marketplace-divider-bg)',
         'marketplace-plugin-empty': 'var(--color-marketplace-plugin-empty)',
+        'toast-success-bg': 'var(--color-toast-success-bg)',
+        'toast-warning-bg': 'var(--color-toast-warning-bg)',
+        'toast-error-bg': 'var(--color-toast-error-bg)',
+        'toast-info-bg': 'var(--color-toast-info-bg)',
       },
       animation: {
         'spin-slow': 'spin 2s linear infinite',

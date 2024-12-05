@@ -38,8 +38,8 @@ import { ToastContext } from '@/app/components/base/toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import { useStore as usePluginDependencyStore } from '@/app/components/workflow/plugin-dependency/store'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
+import { useStore as usePluginDependencyStore } from '@/app/components/workflow/plugin-dependency/store'
 
 type UpdateDSLModalProps = {
   onCancel: () => void
@@ -229,7 +229,7 @@ const UpdateDSLModal = ({
           </div>
         </div>
         <div className='flex relative p-2 mb-2 gap-0.5 grow rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xs overflow-hidden'>
-          <div className='absolute top-0 left-0 w-full h-full opacity-40 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)]' />
+          <div className='absolute top-0 left-0 w-full h-full opacity-40 bg-toast-warning-bg' />
           <div className='flex p-1 justify-center items-start'>
             <RiAlertFill className='w-4 h-4 shrink-0 text-text-warning-secondary' />
           </div>

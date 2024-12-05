@@ -26,18 +26,19 @@ const ListWrapper = ({
   const marketplaceCollectionPluginsMapFromClient = useMarketplaceContext(v => v.marketplaceCollectionPluginsMapFromClient)
   const isLoading = useMarketplaceContext(v => v.isLoading)
   const isSuccessCollections = useMarketplaceContext(v => v.isSuccessCollections)
-  const handleQueryPluginsWhenNoCollection = useMarketplaceContext(v => v.handleQueryPluginsWhenNoCollection)
+  const handleQueryPlugins = useMarketplaceContext(v => v.handleQueryPlugins)
+  const page = useMarketplaceContext(v => v.page)
 
   useEffect(() => {
     if (!marketplaceCollectionsFromClient?.length && isSuccessCollections)
-      handleQueryPluginsWhenNoCollection()
-  }, [handleQueryPluginsWhenNoCollection, marketplaceCollections, marketplaceCollectionsFromClient, isSuccessCollections])
+      handleQueryPlugins()
+  }, [handleQueryPlugins, marketplaceCollections, marketplaceCollectionsFromClient, isSuccessCollections])
 
   return (
     <div className='relative flex flex-col grow px-12 py-2 bg-background-default-subtle'>
       {
         plugins && (
-          <div className='flex items-center mb-4 pt-3'>
+          <div className='top-5 flex items-center mb-4 pt-3'>
             <div className='title-xl-semi-bold text-text-primary'>{t('plugin.marketplace.pluginsResult', { num: plugins.length })}</div>
             <div className='mx-3 w-[1px] h-3.5 bg-divider-regular'></div>
             <SortDropdown />
@@ -45,14 +46,14 @@ const ListWrapper = ({
         )
       }
       {
-        isLoading && (
+        isLoading && page === 1 && (
           <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'>
             <Loading />
           </div>
         )
       }
       {
-        !isLoading && (
+        (!isLoading || page > 1) && (
           <List
             marketplaceCollections={marketplaceCollectionsFromClient || marketplaceCollections}
             marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMapFromClient || marketplaceCollectionPluginsMap}
