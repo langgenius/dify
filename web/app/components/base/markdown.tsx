@@ -9,7 +9,6 @@ import RemarkGfm from 'remark-gfm'
 import RehypeRaw from 'rehype-raw'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
-import type { RefObject } from 'react'
 import { Component, createContext, memo, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
@@ -78,28 +77,6 @@ export function PreCode(props: { children: any }) {
   )
 }
 
-const useLazyLoad = (ref: RefObject<Element>): boolean => {
-  const [isIntersecting, setIntersecting] = useState<boolean>(false)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setIntersecting(true)
-        observer.disconnect()
-      }
-    })
-
-    if (ref.current)
-      observer.observe(ref.current)
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [ref])
-
-  return isIntersecting
-}
-
 const PreContext = createContext({
   // if children not in PreContext, just leave inline true
   inline: true,
@@ -138,7 +115,7 @@ const CodeBlock: Components['code'] = memo(({ className, children, ...props }) =
       try {
         return JSON.parse(String(children).replace(/\n$/, ''))
       }
-      catch { }
+      catch (error) { }
     }
     return JSON.parse('{"title":{"text":"ECharts error - Wrong JSON format."}}')
   }, [language, children])
@@ -167,7 +144,7 @@ const CodeBlock: Components['code'] = memo(({ className, children, ...props }) =
     else {
       return (
         <SyntaxHighlighter
-          {...props}
+          {...props as any}
           style={atelierHeathLight}
           customStyle={{
             paddingLeft: 12,
@@ -274,7 +251,7 @@ export function Markdown(props: { content: string; className?: string }) {
           () => {
             return (tree) => {
               const iterate = (node: any) => {
-                if (node.type === 'element' && !node.properties?.src && node.properties?.ref && node.properties.ref.startsWith('{') && node.properties.ref.endsWith('}'))
+                if (node.type === 'element' && node.properties?.ref)
                   delete node.properties.ref
 
                 if (node.children)

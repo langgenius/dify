@@ -35,6 +35,8 @@ const translation = {
     Translate: 'Traducción',
     Programming: 'Programación',
     HR: 'Recursos Humanos',
+    Agent: 'Agente',
+    Workflow: 'Flujo de trabajo',
   },
 }
 
