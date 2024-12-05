@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -7,22 +9,22 @@ class ApolloConfig(BaseSettings):
     Packaging build information
     """
 
-    APOLLO_APP_ID: str = Field(
+    APOLLO_APP_ID: Optional[str] = Field(
         description="apollo app_id",
         default=None,
     )
 
-    APOLLO_CLUSTER: str = Field(
+    APOLLO_CLUSTER: Optional[str] = Field(
         description="apollo cluster",
         default=None,
     )
 
-    APOLLO_CONFIG_URL: str = Field(
+    APOLLO_CONFIG_URL: Optional[str] = Field(
         description="apollo config url",
         default=None,
     )
 
-    APOLLO_NAMESPACE: str = Field(
+    APOLLO_NAMESPACE: Optional[str] = Field(
         description="apollo namespace",
         default=None,
     )
