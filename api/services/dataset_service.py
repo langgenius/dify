@@ -26,6 +26,7 @@ from models.dataset import (
     AppDatasetJoin,
     ChildChunk,
     Dataset,
+    DatasetAutoDisableLog,
     DatasetCollectionBinding,
     DatasetPermission,
     DatasetPermissionEnum,
@@ -404,6 +405,24 @@ class DatasetService:
             .order_by(db.desc(AppDatasetJoin.created_at))
             .all()
         )
+    
+    @staticmethod
+    def get_dataset_auto_disable_logs(dataset_id: str) -> dict:
+        # get recent 30 days auto disable logs
+        start_date = datetime.datetime.now() - datetime.timedelta(days=30)
+        dataset_auto_disable_logs = DatasetAutoDisableLog.query.filter(
+            DatasetAutoDisableLog.dataset_id == dataset_id,
+            DatasetAutoDisableLog.created_at >= start_date,
+        ).all()
+        if dataset_auto_disable_logs:
+            return {
+                "document_ids": [log.document_id for log in dataset_auto_disable_logs],
+                "count": len(dataset_auto_disable_logs),
+            }
+        return {
+            "document_ids": [],
+            "count": 0,
+        }
 
 
 class DocumentService:

@@ -898,3 +898,19 @@ class ExternalKnowledgeBindings(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     updated_by = db.Column(StringUUID, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+
+
+class DatasetAutoDisableLog(db.Model):
+    __tablename__ = "dataset_auto_disable_logs"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="dataset_auto_disable_log_pkey"),
+        db.Index("dataset_auto_disable_log_tenant_idx", "tenant_id"),
+        db.Index("dataset_auto_disable_log_dataset_idx", "dataset_id"),
+        db.Index("dataset_auto_disable_log_created_atx", "created_at"),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    dataset_id = db.Column(StringUUID, nullable=False)
+    document_id = db.Column(StringUUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))

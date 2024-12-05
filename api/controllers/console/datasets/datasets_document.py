@@ -758,9 +758,8 @@ class DocumentStatusApi(DocumentResource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
-    def patch(self, dataset_id, document_id, action):
+    def patch(self, dataset_id, action):
         dataset_id = str(dataset_id)
-        document_id = str(document_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
@@ -775,84 +774,79 @@ class DocumentStatusApi(DocumentResource):
         # check user's permission
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        document = self.get_document(dataset_id, document_id)
+        document_ids = request.args.getlist("document_id")
+        for document_id in document_ids:
+            document = self.get_document(dataset_id, document_id)
 
-        indexing_cache_key = "document_{}_indexing".format(document.id)
-        cache_result = redis_client.get(indexing_cache_key)
-        if cache_result is not None:
-            raise InvalidActionError("Document is being indexed, please try again later")
+            indexing_cache_key = "document_{}_indexing".format(document.id)
+            cache_result = redis_client.get(indexing_cache_key)
+            if cache_result is not None:
+                raise InvalidActionError(f"Document:{document.name} is being indexed, please try again later")
 
-        if action == "enable":
-            if document.enabled:
-                raise InvalidActionError("Document already enabled.")
+            if action == "enable":
+                if document.enabled:
+                    continue
+                document.enabled = True
+                document.disabled_at = None
+                document.disabled_by = None
+                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
+                db.session.commit()
 
-            document.enabled = True
-            document.disabled_at = None
-            document.disabled_by = None
-            document.updated_at = datetime.now(UTC).replace(tzinfo=None)
-            db.session.commit()
+                # Set cache to prevent indexing the same document multiple times
+                redis_client.setex(indexing_cache_key, 600, 1)
 
-            # Set cache to prevent indexing the same document multiple times
-            redis_client.setex(indexing_cache_key, 600, 1)
+                add_document_to_index_task.delay(document_id)
 
-            add_document_to_index_task.delay(document_id)
+            elif action == "disable":
+                if not document.completed_at or document.indexing_status != "completed":
+                    raise InvalidActionError(f"Document: {document.name} is not completed.")
+                if not document.enabled:
+                    continue
 
-            return {"result": "success"}, 200
+                document.enabled = False
+                document.disabled_at = datetime.now(UTC).replace(tzinfo=None)
+                document.disabled_by = current_user.id
+                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
+                db.session.commit()
 
-        elif action == "disable":
-            if not document.completed_at or document.indexing_status != "completed":
-                raise InvalidActionError("Document is not completed.")
-            if not document.enabled:
-                raise InvalidActionError("Document already disabled.")
-
-            document.enabled = False
-            document.disabled_at = datetime.now(UTC).replace(tzinfo=None)
-            document.disabled_by = current_user.id
-            document.updated_at = datetime.now(UTC).replace(tzinfo=None)
-            db.session.commit()
-
-            # Set cache to prevent indexing the same document multiple times
-            redis_client.setex(indexing_cache_key, 600, 1)
-
-            remove_document_from_index_task.delay(document_id)
-
-            return {"result": "success"}, 200
-
-        elif action == "archive":
-            if document.archived:
-                raise InvalidActionError("Document already archived.")
-
-            document.archived = True
-            document.archived_at = datetime.now(UTC).replace(tzinfo=None)
-            document.archived_by = current_user.id
-            document.updated_at = datetime.now(UTC).replace(tzinfo=None)
-            db.session.commit()
-
-            if document.enabled:
                 # Set cache to prevent indexing the same document multiple times
                 redis_client.setex(indexing_cache_key, 600, 1)
 
                 remove_document_from_index_task.delay(document_id)
 
+            elif action == "archive":
+                if document.archived:
+                    continue
+
+                document.archived = True
+                document.archived_at = datetime.now(UTC).replace(tzinfo=None)
+                document.archived_by = current_user.id
+                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
+                db.session.commit()
+
+                if document.enabled:
+                    # Set cache to prevent indexing the same document multiple times
+                    redis_client.setex(indexing_cache_key, 600, 1)
+
+                    remove_document_from_index_task.delay(document_id)
+
+            elif action == "un_archive":
+                if not document.archived:
+                    continue
+                document.archived = False
+                document.archived_at = None
+                document.archived_by = None
+                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
+                db.session.commit()
+
+                # Set cache to prevent indexing the same document multiple times
+                redis_client.setex(indexing_cache_key, 600, 1)
+
+                add_document_to_index_task.delay(document_id)
+
+            else:
+                raise InvalidActionError()
             return {"result": "success"}, 200
-        elif action == "un_archive":
-            if not document.archived:
-                raise InvalidActionError("Document is not archived.")
-
-            document.archived = False
-            document.archived_at = None
-            document.archived_by = None
-            document.updated_at = datetime.now(UTC).replace(tzinfo=None)
-            db.session.commit()
-
-            # Set cache to prevent indexing the same document multiple times
-            redis_client.setex(indexing_cache_key, 600, 1)
-
-            add_document_to_index_task.delay(document_id)
-
-            return {"result": "success"}, 200
-        else:
-            raise InvalidActionError()
 
 
 class DocumentPauseApi(DocumentResource):
