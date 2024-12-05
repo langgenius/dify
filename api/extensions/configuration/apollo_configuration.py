@@ -1,5 +1,3 @@
-from abc import ABC
-
 from pydantic import parse_obj_as
 
 import configs
@@ -8,7 +6,7 @@ from extensions.configuration.apollo.apollo_client import ApolloClient
 from extensions.configuration.base_configuration import BaseConfiguration
 
 
-class ApolloConfiguration(BaseConfiguration, ABC):
+class ApolloConfiguration(BaseConfiguration):
     """Implementation for Apollo Configuration."""
 
     def __init__(self):

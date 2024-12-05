@@ -80,7 +80,7 @@ class ApolloClient:
                 return return_data
             else:
                 return None
-        except Exception as e:
+        except Exception:
             logger.exception("an error occurred in get_json_from_net")
             return None
 
@@ -114,7 +114,7 @@ class ApolloClient:
             # and the local cache is set to None
             self._set_local_cache_none(namespace, key)
             return default_val
-        except Exception as e:
+        except Exception:
             logger.exception("get_value has error, [key is %s], [namespace is %s]", key, namespace)
             return default_val
 
@@ -276,7 +276,7 @@ class ApolloClient:
                 self._update_cache_and_file(data, namespace)
             else:
                 return None
-        except Exception as e:
+        except Exception:
             logger.exception("an error occurred in _do_heart_beat")
             return None
 
