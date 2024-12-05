@@ -32,7 +32,7 @@ model_credential_schema:
         zh_Hans: API_Key
         en_US: API_Key
       type: secret-input
-      required: true
+      required: false
       placeholder:
         zh_Hans: 在此输入API_Key
         en_US: Enter the API_Key of your ModelScope service

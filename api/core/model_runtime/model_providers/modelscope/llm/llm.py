@@ -426,14 +426,6 @@ class ModelScopeLargeLanguageModel(LargeLanguageModel):
 
         return num_tokens
 
-    @classmethod
-    def agent_type(cls, response):
-        if response.lower().endswith('observation:'):
-            return 'react'
-        if 'observation:' not in response.lower() and 'action input:' in response.lower():
-            return 'toolbench'
-        return None
-
     def get_num_tokens(
         self,
         model: str,
