@@ -6,9 +6,8 @@ const i18nPrefix = 'workflow.errorMsg'
 
 const nodeDefault: NodeDefault<AssignerNodeType> = {
   defaultValue: {
-    assigned_variable_selector: [],
-    write_mode: WriteMode.Overwrite,
-    input_variable_selector: [],
+    version: '2',
+    items: [],
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode
@@ -23,18 +22,25 @@ const nodeDefault: NodeDefault<AssignerNodeType> = {
   checkValid(payload: AssignerNodeType, t: any) {
     let errorMessages = ''
     const {
-      assigned_variable_selector: assignedVarSelector,
-      write_mode: writeMode,
-      input_variable_selector: toAssignerVarSelector,
+      items: operationItems,
     } = payload
 
-    if (!errorMessages && !assignedVarSelector?.length)
-      errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.assigner.assignedVariable') })
+    operationItems?.forEach((value) => {
+      if (!errorMessages && !value.variable_selector?.length)
+        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.assigner.assignedVariable') })
 
-    if (!errorMessages && writeMode !== WriteMode.Clear) {
-      if (!toAssignerVarSelector?.length)
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.assigner.variable') })
-    }
+      if (!errorMessages && value.operation !== WriteMode.clear) {
+        if (value.operation === WriteMode.set || value.operation === WriteMode.increment
+          || value.operation === WriteMode.decrement || value.operation === WriteMode.multiply
+          || value.operation === WriteMode.divide) {
+          if (!value.value && typeof value.value !== 'number')
+            errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.assigner.variable') })
+        }
+        else if (!value.value?.length) {
+          errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.assigner.variable') })
+        }
+      }
+    })
 
     return {
       isValid: !errorMessages,
