@@ -10,6 +10,12 @@ export enum DataSourceType {
 
 export type DatasetPermission = 'only_me' | 'all_team_members' | 'partial_members'
 
+export enum ChuckingMode {
+  'text' = 'text_model', // General text
+  'qa' = 'qa_model', // General QA
+  'parentChild' = 'hierarchical_model', // Parent-Child
+}
+
 export type DataSet = {
   id: string
   name: string
@@ -23,6 +29,7 @@ export type DataSet = {
   updated_by: string
   updated_at: number
   app_count: number
+  doc_form: ChuckingMode
   document_count: number
   word_count: number
   provider: string
@@ -170,7 +177,10 @@ export type IndexingStatusBatchResponse = {
   data: IndexingStatusResponse[]
 }
 
-export type ProcessMode = 'custom' | 'hierarchical'
+export enum ProcessMode {
+  general = 'custom',
+  parentChild = 'hierarchical',
+}
 
 export type ParentMode = 'full-doc' | 'paragraph'
 
@@ -269,6 +279,7 @@ export type InitialDocumentDetail = {
 export type SimpleDocumentDetail = InitialDocumentDetail & {
   enabled: boolean
   word_count: number
+  is_qa: boolean // TODO waiting for backend to add this field
   error?: string | null
   archived: boolean
   updated_at: number

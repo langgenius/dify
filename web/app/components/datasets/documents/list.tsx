@@ -34,9 +34,10 @@ import { formatNumber } from '@/utils/format'
 import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument, syncWebsite, unArchiveDocument } from '@/service/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
-import { DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
+import { ChuckingMode, DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 import useTimestamp from '@/hooks/use-timestamp'
+import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
 
 export const useIndexStatus = () => {
   const { t } = useTranslation()
@@ -389,6 +390,10 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const router = useRouter()
+  const [datasetConfig] = useDatasetDetailContext(s => [s.dataset])
+  const chunkingMode = datasetConfig?.doc_form
+  const isGeneralMode = chunkingMode !== ChuckingMode.parentChild
+  const isQAMode = chunkingMode === ChuckingMode.qa
   const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
   const [enableSort, setEnableSort] = useState(false)
 
@@ -431,6 +436,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
                 {t('datasetDocuments.list.table.header.fileName')}
               </div>
             </td>
+            <td className='w-[120px]'>{t('datasetDocuments.list.table.header.chunkingMode')}</td>
             <td className='w-24'>{t('datasetDocuments.list.table.header.words')}</td>
             <td className='w-44'>{t('datasetDocuments.list.table.header.hitCount')}</td>
             <td className='w-44'>
@@ -453,7 +459,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
               onClick={() => {
                 router.push(`/datasets/${datasetId}/documents/${doc.id}`)
               }}>
-              <td className='text-left align-middle text-gray-500 text-xs'>{doc.position}</td>
+              <td className='text-left align-middle text-text-tertiary text-xs'>{doc.position}</td>
               <td>
                 <div className='group flex items-center justify-between'>
                   <span className={s.tdValue}>
@@ -482,11 +488,11 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
                     </Tooltip>
                   </div>
                 </div>
-
               </td>
+              <td>{isGeneralMode ? `general ${isQAMode ? '. QA' : ''}` : 'ParentChilde'}</td>
               <td>{renderCount(doc.word_count)}</td>
               <td>{renderCount(doc.hit_count)}</td>
-              <td className='text-gray-500 text-[13px]'>
+              <td className='text-text-secondary text-[13px]'>
                 {formatTime(doc.created_at, t('datasetHitTesting.dateTimeFormat') as string)}
               </td>
               <td>
