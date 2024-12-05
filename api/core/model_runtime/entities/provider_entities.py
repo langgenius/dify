@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
@@ -127,7 +127,7 @@ class ProviderEntity(BaseModel):
     help: Optional[ProviderHelpEntity] = None
     supported_model_types: Sequence[ModelType]
     configurate_methods: list[ConfigurateMethod]
-    models: list[AIModelEntity] = []
+    models: list[AIModelEntity] = Field(default_factory=list)
     provider_credential_schema: Optional[ProviderCredentialSchema] = None
     model_credential_schema: Optional[ModelCredentialSchema] = None
 
