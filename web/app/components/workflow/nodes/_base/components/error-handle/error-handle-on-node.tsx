@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useUpdateNodeInternals } from 'reactflow'
 import { NodeSourceHandle } from '../node-handle'
 import { ErrorHandleTypeEnum } from './types'
 import type { Node } from '@/app/components/workflow/types'
@@ -12,6 +14,12 @@ const ErrorHandleOnNode = ({
 }: ErrorHandleOnNodeProps) => {
   const { t } = useTranslation()
   const { error_strategy } = data
+  const updateNodeInternals = useUpdateNodeInternals()
+
+  useEffect(() => {
+    if (error_strategy === ErrorHandleTypeEnum.failBranch)
+      updateNodeInternals(id)
+  }, [error_strategy, id, updateNodeInternals])
 
   if (!error_strategy)
     return null
