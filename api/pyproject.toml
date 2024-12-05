@@ -103,7 +103,7 @@ zhipuai = "~2.1.5"
 # Related transparent dependencies with pinned version
 # required by main implementations
 ############################################################
-azure-cognitiveservices-speech = "^1.41.1"
+azure-cognitiveservices-speech = "~1.41.1"
 [tool.poetry.group.indirect.dependencies]
 kaleido = "0.2.1"
 rank-bm25 = "~0.2.2"
