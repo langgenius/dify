@@ -57,17 +57,21 @@ const ResultTab = ({
         {currentTab === 'RESULT' && (
           <>
             {data?.resultText && <Markdown content={data?.resultText || ''} />}
-            {!!data?.files?.length && data?.files.map((item: any) => (
-              <div key={item.varName} className='flex flex-col gap-1 system-xs-regular'>
-                <div className='py-1 text-text-tertiary '>{item.varName}</div>
-                <FileList
-                  files={item.list}
-                  showDeleteAction={false}
-                  showDownloadAction
-                  canPreview
-                />
+            {!!data?.files?.length && (
+              <div className='flex flex-col gap-2'>
+                {data?.files.map((item: any) => (
+                  <div key={item.varName} className='flex flex-col gap-1 system-xs-regular'>
+                    <div className='py-1 text-text-tertiary '>{item.varName}</div>
+                    <FileList
+                      files={item.list}
+                      showDeleteAction={false}
+                      showDownloadAction
+                      canPreview
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </>
         )}
         {currentTab === 'DETAIL' && content && (
