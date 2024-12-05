@@ -79,6 +79,8 @@ const translation = {
   runDetail: {
     title: 'لاگ مکالمه',
     workflowTitle: 'جزئیات لاگ',
+    fileListLabel: 'جزئیات فایل',
+    fileListDetail: 'جزئیات',
   },
   promptLog: 'لاگ درخواست',
   agentLog: 'لاگ عامل',
