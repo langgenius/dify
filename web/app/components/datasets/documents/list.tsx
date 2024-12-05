@@ -39,6 +39,8 @@ import { ChuckingMode, DataSourceType, type DocumentDisplayStatus, type SimpleDo
 import type { CommonResponse } from '@/models/common'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
+import type { Props as PaginationProps } from '@/app/components/base/pagination'
+import Pagination from '@/app/components/base/pagination'
 
 export const useIndexStatus = () => {
   const { t } = useTranslation()
@@ -381,13 +383,20 @@ type IDocumentListProps = {
   embeddingAvailable: boolean
   documents: LocalDoc[]
   datasetId: string
+  pagination: PaginationProps
   onUpdate: () => void
 }
 
 /**
  * Document list component including basic information
  */
-const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = [], datasetId, onUpdate }) => {
+const DocumentList: FC<IDocumentListProps> = ({
+  embeddingAvailable,
+  documents = [],
+  datasetId,
+  pagination,
+  onUpdate,
+}) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const router = useRouter()
@@ -427,7 +436,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
   }, [onUpdate])
 
   return (
-    <div className='w-full h-full overflow-x-auto'>
+    <div className='relative w-full h-full overflow-x-auto'>
       <table className={`min-w-[700px] max-w-full w-full border-collapse border-0 text-sm mt-3 ${s.documentTable}`}>
         <thead className="h-8 leading-8 border-b border-gray-200 text-gray-500 font-medium text-xs uppercase">
           <tr>
@@ -520,6 +529,13 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
           })}
         </tbody>
       </table>
+      {/* Show Pagination only if the total is more than the limit */}
+      {pagination.total && pagination.total > (pagination.limit || 10) && (
+        <Pagination
+          {...pagination}
+          className='absolute bottom-0 left-0 w-full px-0 pb-0'
+        />
+      )}
 
       {isShowRenameModal && currDocument && (
         <RenameModal
