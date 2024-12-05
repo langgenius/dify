@@ -305,6 +305,7 @@ const translation = {
       },
       errorHandle: {
         title: 'Error Handling',
+        tip: 'Exception handling strategy, triggered when a node encounters an exception.',
         none: {
           title: 'None',
           desc: 'The node will stop running if an exception occurs and is not handled',

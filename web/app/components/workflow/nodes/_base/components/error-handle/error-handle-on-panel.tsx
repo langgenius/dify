@@ -15,6 +15,7 @@ import type {
   Node,
 } from '@/app/components/workflow/types'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import Tooltip from '@/app/components/base/tooltip'
 
 type ErrorHandleProps = Pick<Node, 'id' | 'data'>
 const ErrorHandle = ({
@@ -27,7 +28,7 @@ const ErrorHandle = ({
     collapsed,
     setCollapsed,
     handleErrorHandleTypeChange,
-  } = useErrorHandle(id)
+  } = useErrorHandle(id, data)
   const { handleFormChange } = useDefaultValue(id)
 
   const getHandleErrorHandleTypeChange = useCallback((data: CommonNodeType) => {
@@ -52,8 +53,11 @@ const ErrorHandle = ({
           onCollapse={setCollapsed}
           trigger={
             <div className='grow flex items-center justify-between pr-4'>
-              <div className='system-sm-semibold-uppercase text-text-secondary'>
-                {t('workflow.nodes.common.errorHandle.title')}
+              <div className='flex items-center'>
+                <div className='mr-0.5 system-sm-semibold-uppercase text-text-secondary'>
+                  {t('workflow.nodes.common.errorHandle.title')}
+                </div>
+                <Tooltip popupContent={t('workflow.nodes.common.errorHandle.tip')} />
               </div>
               <ErrorHandleTypeSelector
                 value={error_strategy || ErrorHandleTypeEnum.none}

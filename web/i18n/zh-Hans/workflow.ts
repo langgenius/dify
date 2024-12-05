@@ -305,6 +305,7 @@ const translation = {
       },
       errorHandle: {
         title: '异常处理',
+        tip: '配置异常处理策略，当节点发生异常时触发。',
         none: {
           title: '无',
           desc: '当发生异常且未处理时，节点将停止运行',

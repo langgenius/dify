@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useMemo,
   useState,
 } from 'react'
 import { ErrorHandleTypeEnum } from './types'
@@ -62,8 +63,15 @@ export const useDefaultValue = (
 
 export const useErrorHandle = (
   id: string,
+  data: CommonNodeType,
 ) => {
-  const [collapsed, setCollapsed] = useState(true)
+  const initCollapsed = useMemo(() => {
+    if (data.error_strategy === ErrorHandleTypeEnum.none)
+      return true
+
+    return false
+  }, [data.error_strategy])
+  const [collapsed, setCollapsed] = useState(initCollapsed)
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const { handleEdgeDeleteByDeleteBranch } = useEdgesInteractions()
 
