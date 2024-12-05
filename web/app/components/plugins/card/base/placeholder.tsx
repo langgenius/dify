@@ -1,5 +1,6 @@
 import { Group } from '../../../base/icons/src/vender/other'
 import Title from './title'
+import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -17,7 +18,7 @@ const Placeholder = ({
 }: Props) => {
   return (
     <div className={wrapClassName}>
-      <div className="flex">
+      <SkeletonRow>
         <div
           className='flex w-10 h-10 p-1 justify-center items-center gap-2 rounded-[10px]
               border-[0.5px] border-components-panel-border bg-background-default backdrop-blur-sm'>
@@ -25,24 +26,24 @@ const Placeholder = ({
             <Group className='text-text-tertiary' />
           </div>
         </div>
-        <div className="ml-3 grow">
-          <div className="flex items-center h-5">
-            {loadingFileName ? (
-              <Title title={loadingFileName} />
-            ) : (
-              <LoadingPlaceholder className="w-[260px]" />
-            )}
-          </div>
-          <div className={cn('flex items-center h-4 space-x-0.5')}>
-            <LoadingPlaceholder className="w-[41px]" />
-            <span className='shrink-0 text-text-quaternary system-xs-regular'>
-              ·
-            </span>
-            <LoadingPlaceholder className="w-[180px]" />
-          </div>
+        <div className="grow">
+          <SkeletonContainer>
+            <div className="flex items-center h-5">
+              {loadingFileName ? (
+                <Title title={loadingFileName} />
+              ) : (
+                <SkeletonRectangle className="w-[260px]" />
+              )}
+            </div>
+            <SkeletonRow className="h-4">
+              <SkeletonRectangle className="w-[41px]" />
+              <SkeletonPoint />
+              <SkeletonRectangle className="w-[180px]" />
+            </SkeletonRow>
+          </SkeletonContainer>
         </div>
-      </div>
-      <LoadingPlaceholder className="mt-3 w-[420px]" />
+      </SkeletonRow>
+      <SkeletonRectangle className="mt-3 w-[420px]" />
     </div>
   )
 }

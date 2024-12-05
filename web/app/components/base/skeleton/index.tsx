@@ -3,7 +3,7 @@ import classNames from '@/utils/classnames'
 
 type SkeletonProps = ComponentProps<'div'>
 
-export const SkeletonContanier: FC<SkeletonProps> = (props) => {
+export const SkeletonContainer: FC<SkeletonProps> = (props) => {
   const { className, children, ...rest } = props
   return (
     <div className={classNames('flex flex-col gap-1', className)} {...rest}>
@@ -24,7 +24,7 @@ export const SkeletonRow: FC<SkeletonProps> = (props) => {
 export const SkeletonRectangle: FC<SkeletonProps> = (props) => {
   const { className, children, ...rest } = props
   return (
-    <div className={classNames('h-2 rounded-sm opacity-20 bg-text-tertiary my-1', className)} {...rest}>
+    <div className={classNames('h-2 rounded-sm opacity-20 bg-text-quaternary my-1', className)} {...rest}>
       {children}
     </div>
   )
