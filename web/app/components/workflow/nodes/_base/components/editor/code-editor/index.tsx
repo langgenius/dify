@@ -208,7 +208,7 @@ const CodeEditor: FC<Props> = ({
             isInNode={isInNode}
             onGenerated={onGenerated}
             codeLanguages={language}
-            fileList={fileList}
+            fileList={fileList as any}
             showFileList={showFileList}
             showCodeGenerator={showCodeGenerator}
           >
