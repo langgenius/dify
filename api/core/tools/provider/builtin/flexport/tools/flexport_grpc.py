@@ -132,7 +132,11 @@ class FlexportGrpcTool(BuiltinTool):
                                             # Get the full service name from the generic handler
                                             handler_source = content
                                             # Look for the generic_handler line which contains the full service name
-                                            match = re.search(r"generic_handler\s*=\s*grpc\.method_handlers_generic_handler\s*\(\s*'([^']+)'", handler_source)
+                                            pattern = (
+                                                r"generic_handler\s*=\s*grpc\.method_handlers_generic_handler"
+                                                r"\s*\(\s*'([^']+)'"
+                                            )
+                                            match = re.search(pattern, handler_source)
                                             if match:
                                                 full_service_name = match.group(1)
                                                 methods = self._get_service_methods(grpc_module, attr_name)
