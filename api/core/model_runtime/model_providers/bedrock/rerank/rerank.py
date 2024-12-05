@@ -1,4 +1,5 @@
 from typing import Optional
+
 import boto3
 from botocore.config import Config
 from core.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
@@ -20,14 +21,14 @@ class BedrockRerankModel(RerankModel):
     """
 
     def _invoke(
-        self,
-        model: str,
-        credentials: dict,
-        query: str,
-        docs: list[str],
-        score_threshold: Optional[float] = None,
-        top_n: Optional[int] = None,
-        user: Optional[str] = None,
+            self,
+            model: str,
+            credentials: dict,
+            query: str,
+            docs: list[str],
+            score_threshold: Optional[float] = None,
+            top_n: Optional[int] = None,
+            user: Optional[str] = None,
     ) -> RerankResult:
         """
         Invoke rerank model
@@ -50,7 +51,7 @@ class BedrockRerankModel(RerankModel):
         bedrock_runtime = boto3.client(
             service_name="bedrock-agent-runtime",
             config=client_config,
-            aws_access_key_id=credentials.get("aws_access_key_id",""),
+            aws_access_key_id=credentials.get("aws_access_key_id", ""),
             aws_secret_access_key=credentials.get("aws_secret_access_key"),
         )
         queries = [
