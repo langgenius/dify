@@ -28,4 +28,9 @@ class AzureASRTool(BuiltinTool):
 
         data: dict = resp.json()
 
+        combinedPhrases = data.get("combinedPhrases", [])
+
+        if len(combinedPhrases) == 0:
+            return [self.create_text_message("No text detected"), self.create_json_message(data)]
+
         return [self.create_text_message(data.get("combinedPhrases", [])[0].get("text", ""))]
