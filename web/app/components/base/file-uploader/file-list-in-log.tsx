@@ -92,6 +92,7 @@ const FileListInLog = ({ fileList, isExpanded = false, noBorder = false, noPaddi
                   file={file}
                   showDeleteAction={false}
                   showDownloadAction
+                  canPreview
                 />
               ))}
             </div>

@@ -24,14 +24,14 @@ const ResultText: FC<ResultTextProps> = ({
 }) => {
   const { t } = useTranslation()
   return (
-    <div className='bg-background-section-burn py-2'>
+    <div className='bg-background-section-burn'>
       {isRunning && !outputs && (
         <div className='pt-4 pl-[26px]'>
           <LoadingAnim type='text' />
         </div>
       )}
       {!isRunning && error && (
-        <div className='px-4'>
+        <div className='px-4 py-2'>
           <StatusContainer status='failed'>
             {error}
           </StatusContainer>
@@ -50,9 +50,11 @@ const ResultText: FC<ResultTextProps> = ({
       )}
       {(outputs || !!allFiles?.length) && (
         <>
-          <div className='px-4 py-2'>
-            {outputs && <Markdown content={outputs} />}
-          </div>
+          {outputs && (
+            <div className='px-4 py-2'>
+              <Markdown content={outputs} />
+            </div>
+          )}
           {!!allFiles?.length && (
             <FileListInLog
               noBorder
