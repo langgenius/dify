@@ -224,6 +224,7 @@ class WorkflowCycleManage:
         error: str,
         conversation_id: Optional[str] = None,
         trace_manager: Optional[TraceQueueManager] = None,
+        exceptions_count: int = 0,
     ) -> WorkflowRun:
         """
         Workflow run failed
@@ -243,7 +244,7 @@ class WorkflowCycleManage:
         workflow_run.total_tokens = total_tokens
         workflow_run.total_steps = total_steps
         workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
-
+        workflow_run.exceptions_count = exceptions_count
         db.session.commit()
 
         running_workflow_node_executions = (

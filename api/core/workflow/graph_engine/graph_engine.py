@@ -152,7 +152,10 @@ class GraphEngine:
                 try:
                     yield item
                     if isinstance(item, NodeRunFailedEvent):
-                        yield GraphRunFailedEvent(error=item.route_node_state.failed_reason or "Unknown error.")
+                        yield GraphRunFailedEvent(
+                            error=item.route_node_state.failed_reason or "Unknown error.",
+                            exceptions_count=len(handle_exceptions),
+                        )
                         return
                     elif isinstance(item, NodeRunSucceededEvent):
                         if item.node_type == NodeType.END:
@@ -178,7 +181,7 @@ class GraphEngine:
                             ].strip()
                 except Exception as e:
                     logger.exception("Graph run failed")
-                    yield GraphRunFailedEvent(error=str(e))
+                    yield GraphRunFailedEvent(error=str(e), exceptions_count=len(handle_exceptions))
                     return
             # count exceptions to determine partial success
             exceptions_count = len(handle_exceptions)
@@ -196,7 +199,7 @@ class GraphEngine:
             return
         except Exception as e:
             logger.exception("Unknown Error when graph running")
-            yield GraphRunFailedEvent(error=str(e), exceptions_count=len(handle_exceptions))
+            yield GraphRunFailedEvent(error=str(e), exceptions_count=exceptions_count)
             self._release_thread()
             raise e
 
@@ -387,6 +390,12 @@ class GraphEngine:
                         break
 
                     next_node_id = final_node_id
+                elif (
+                    node_instance.node_data.error_strategy == ErrorStrategy.FAIL_BRANCH
+                    and node_instance.should_continue_on_error
+                    and previous_route_node_state.status == RouteNodeState.Status.EXCEPTION
+                ):
+                    break
                 else:
                     parallel_generator = self._run_parallel_branches(
                         edge_mappings=edge_mappings,

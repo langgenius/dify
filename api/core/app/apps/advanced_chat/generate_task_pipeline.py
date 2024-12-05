@@ -429,6 +429,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     error=event.error,
                     conversation_id=self._conversation.id,
                     trace_manager=trace_manager,
+                    exceptions_count=event.exceptions_count,
                 )
 
                 yield self._workflow_finish_to_stream_response(

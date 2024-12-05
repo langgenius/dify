@@ -391,6 +391,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                     "error": event.error if isinstance(event, QueueWorkflowFailedEvent) else event.get_stop_reason(),
                     "conversation_id": None,
                     "trace_manager": trace_manager,
+                    "exceptions_count": event.exceptions_count,
                 }
                 workflow_run = self._handle_workflow_run_failed(**handle_args)
 

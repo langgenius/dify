@@ -14,10 +14,8 @@ from core.workflow.graph_engine.entities.graph_init_params import GraphInitParam
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.entities import CodeNodeData
-from core.workflow.nodes.event.event import RunCompletedEvent
 from models.enums import UserFrom
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
-from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
 
 CODE_MAX_STRING_LENGTH = int(getenv("CODE_MAX_STRING_LENGTH", "10000"))
 
