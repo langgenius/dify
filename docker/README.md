@@ -112,3 +112,16 @@ This README aims to guide you through the deployment process using the new Docke
 
 4. **Accessing the Services**:
     - Once deployed, you can access the services via the URLs provided by Google CloudRun.
+
+### How to Start the Dify Server
+
+The easiest way to start the Dify server is through docker compose. Before running Dify with the following commands, make sure that Docker and Docker Compose are installed on your machine:
+
+```sh
+cd dify
+cd docker
+cp .env.example .env
+docker compose up -d
+```
+
+After running, you can access the Dify dashboard in your browser at [http://localhost/install](http://localhost/install) and start the initialization process.

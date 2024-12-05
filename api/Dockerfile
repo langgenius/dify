@@ -76,6 +76,8 @@ COPY . /app/api/
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+# Copy start.sh to /app directory
+COPY ../app/start.sh /app/start.sh
 
 ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}
