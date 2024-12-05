@@ -97,3 +97,18 @@ The `.env.example` file provided in the Docker setup is extensive and covers a w
 - **Support**: For detailed configuration options and environment variable settings, refer to the `.env.example` file and the Docker Compose configuration files in the `docker` directory.
 
 This README aims to guide you through the deployment process using the new Docker Compose setup. For any issues or further assistance, please refer to the official documentation or contact support.
+
+### How to Deploy Dify to Google CloudRun
+
+1. **Prerequisites**: Ensure you have the Google Cloud SDK installed and authenticated. Also, enable the Cloud Run and Cloud Build APIs in your Google Cloud project.
+
+2. **Environment Setup**:
+    - Navigate to the `docker` directory.
+    - Copy the `.env.example` file to a new file named `.env` by running `cp .env.example .env`.
+    - Customize the `.env` file with your Google Cloud project details. Refer to the `.env.example` file for detailed configuration options.
+
+3. **Build and Deploy**:
+    - Execute `gcloud builds submit --config=cloudbuild.yaml` from the root directory to build and deploy the services to Google CloudRun.
+
+4. **Accessing the Services**:
+    - Once deployed, you can access the services via the URLs provided by Google CloudRun.

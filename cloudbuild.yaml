@@ -1,0 +1,12 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/dify-api:$COMMIT_SHA', '.']
+    id: Build API Image
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/dify-api:$COMMIT_SHA']
+    id: Push API Image
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args: ['run', 'deploy', 'dify-api', '--image', 'gcr.io/$PROJECT_ID/dify-api:$COMMIT_SHA', '--region', 'us-central1', '--platform', 'managed']
+    id: Deploy to CloudRun
