@@ -5,7 +5,7 @@ import { ImageIndentLeft } from '@/app/components/base/icons/src/vender/line/edi
 import { Markdown } from '@/app/components/base/markdown'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import StatusContainer from '@/app/components/workflow/run/status-container'
-import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
+import { FileList } from '@/app/components/base/file-uploader'
 
 type ResultTextProps = {
   isRunning?: boolean
@@ -55,13 +55,17 @@ const ResultText: FC<ResultTextProps> = ({
               <Markdown content={outputs} />
             </div>
           )}
-          {!!allFiles?.length && (
-            <FileListInLog
-              noBorder
-              isExpanded
-              fileList={allFiles}
-            />
-          )}
+          {!!allFiles?.length && allFiles.map(item => (
+            <div key={item.varName} className='px-4 py-2 flex flex-col gap-1 system-xs-regular'>
+              <div className='py-1 text-text-tertiary '>{item.varName}</div>
+              <FileList
+                files={item.list}
+                showDeleteAction={false}
+                showDownloadAction
+                canPreview
+              />
+            </div>
+          ))}
         </>
       )}
     </div>
