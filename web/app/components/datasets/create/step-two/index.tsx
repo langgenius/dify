@@ -148,7 +148,7 @@ const StepTwo = ({
   const { dataset: currentDataset, mutateDatasetRes } = useDatasetDetailContext()
   const isInCreatePage = !datasetId || (datasetId && !currentDataset?.data_source_type)
   const dataSourceType = isInCreatePage ? inCreatePageDataSourceType : currentDataset?.data_source_type
-  const [segmentationType, setSegmentationType] = useState<SegmentType>(SegmentType.AUTO)
+  const [segmentationType, setSegmentationType] = useState<SegmentType>(SegmentType.CUSTOM)
   const [segmentIdentifier, doSetSegmentIdentifier] = useState(DEFAULT_SEGMENT_IDENTIFIER)
   const setSegmentIdentifier = useCallback((value: string) => {
     doSetSegmentIdentifier(value ? escape(value) : DEFAULT_SEGMENT_IDENTIFIER)
@@ -180,7 +180,27 @@ const StepTwo = ({
 
   const getIndexing_technique = () => indexingType || indexType
 
-  const getProcessRule = () => {
+  const getProcessRule = (): ProcessRule => {
+    if (docForm === ChuckingMode.parentChild) {
+      return {
+        rules: {
+          pre_processing_rules: rules,
+          segmentation: {
+            separator: unescape(
+              parentChildConfig.parent.delimiter,
+            ),
+            max_tokens: parentChildConfig.parent.maxLength,
+            chunk_overlap: overlap,
+          },
+          parent_mode: parentChildConfig.chunkForContext,
+          subchunk_segmentation: {
+            separator: parentChildConfig.child.delimiter,
+            max_tokens: parentChildConfig.child.maxLength,
+          },
+        }, // api will check this. It will be removed after api refactored.
+        mode: 'hierarchical',
+      } as ProcessRule
+    }
     return {
       rules: {
         pre_processing_rules: rules,
@@ -189,15 +209,8 @@ const StepTwo = ({
           max_tokens: maxChunkLength,
           chunk_overlap: overlap,
         },
-        parent_mode: parentChildConfig.chunkForContext,
-        subchunk_segmentation: {
-          separator: parentChildConfig.child.delimiter,
-          max_tokens: parentChildConfig.child.maxLength,
-        },
       }, // api will check this. It will be removed after api refactored.
-      mode: docForm === ChuckingMode.parentChild
-        ? 'hierarchical'
-        : segmentationType,
+      mode: segmentationType,
     } as ProcessRule
   }
 
