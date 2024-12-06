@@ -9,6 +9,10 @@ const translation = {
     advanced: 'Chatflow',
   },
   duplicate: 'Duplicate',
+  mermaid: {
+    handDrawn: 'Hand Drawn',
+    classic: 'Classic',
+  },
   duplicateTitle: 'Duplicate App',
   export: 'Export DSL',
   exportFailed: 'Export DSL failed.',
