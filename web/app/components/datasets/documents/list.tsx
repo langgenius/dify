@@ -33,7 +33,6 @@ import type { ColorMap, IndicatorProps } from '@/app/components/header/indicator
 import Indicator from '@/app/components/header/indicator'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
-import { deleteDocument, disableDocument, enableDocument, syncDocument, syncWebsite, unArchiveDocument } from '@/service/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
 import { ChuckingMode, DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
@@ -43,8 +42,7 @@ import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '
 import type { Props as PaginationProps } from '@/app/components/base/pagination'
 import Pagination from '@/app/components/base/pagination'
 import Checkbox from '@/app/components/base/checkbox'
-import { useDocumentBatchAction } from '@/service/knowledge/use-document'
-import { BatchActionType } from '@/models/datasets'
+import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
 
 export const useIndexStatus = () => {
   const { t } = useTranslation()
@@ -90,34 +88,18 @@ export const StatusItem: FC<{
   const { enabled = false, archived = false, id = '' } = detail || {}
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
-  const { mutateAsync: documentBatchActon } = useDocumentBatchAction()
+  const { mutateAsync: enableDocument } = useDocumentEnable()
+  const { mutateAsync: disableDocument } = useDocumentDisable()
+  const { mutateAsync: deleteDocument } = useDocumentDelete()
 
   const onOperate = async (operationName: OperationName) => {
     let opApi = deleteDocument
     switch (operationName) {
       case 'enable':
-        opApi = async ({
-          datasetId,
-          documentId,
-        }) => {
-          return documentBatchActon({
-            action: BatchActionType.enable,
-            datasetId,
-            documentIds: [documentId],
-          })
-        }
+        opApi = enableDocument
         break
       case 'disable':
-        opApi = async ({
-          datasetId,
-          documentId,
-        }) => {
-          return documentBatchActon({
-            action: BatchActionType.disable,
-            datasetId,
-            documentIds: [documentId],
-          })
-        }
+        opApi = disableDocument
         break
     }
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
@@ -201,24 +183,20 @@ export const OperationAction: FC<{
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
   const router = useRouter()
-  const { mutateAsync: documentBatchActon } = useDocumentBatchAction()
-
+  const { mutateAsync: archiveDocument } = useDocumentArchive()
+  const { mutateAsync: unArchiveDocument } = useDocumentUnArchive()
+  const { mutateAsync: enableDocument } = useDocumentEnable()
+  const { mutateAsync: disableDocument } = useDocumentDisable()
+  const { mutateAsync: deleteDocument } = useDocumentDelete()
+  const { mutateAsync: syncDocument } = useSyncDocument()
+  const { mutateAsync: syncWebsite } = useSyncWebsite()
   const isListScene = scene === 'list'
 
   const onOperate = async (operationName: OperationName) => {
     let opApi = deleteDocument
     switch (operationName) {
       case 'archive':
-        opApi = async ({
-          datasetId,
-          documentId,
-        }) => {
-          return documentBatchActon({
-            action: BatchActionType.archive,
-            datasetId,
-            documentIds: [documentId],
-          })
-        }
+        opApi = archiveDocument
         break
       case 'un_archive':
         opApi = unArchiveDocument
@@ -232,10 +210,8 @@ export const OperationAction: FC<{
       case 'sync':
         if (data_source_type === 'notion_import')
           opApi = syncDocument
-
         else
           opApi = syncWebsite
-
         break
       default:
         opApi = deleteDocument

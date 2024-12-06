@@ -625,10 +625,11 @@ export enum BatchActionType {
   enable = 'enable',
   disable = 'disable',
   archive = 'archive',
+  unArchive = 'un_archive',
 }
 
 export type UpdateDocumentBatchParams = {
   datasetId: string
-  documentIds: string[]
-  action: BatchActionType
+  documentId?: string
+  documentIds?: string[] | string
 }
