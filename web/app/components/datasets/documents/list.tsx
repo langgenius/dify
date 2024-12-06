@@ -33,7 +33,7 @@ import type { ColorMap, IndicatorProps } from '@/app/components/header/indicator
 import Indicator from '@/app/components/header/indicator'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
-import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument, syncWebsite, unArchiveDocument } from '@/service/datasets'
+import { deleteDocument, disableDocument, enableDocument, syncDocument, syncWebsite, unArchiveDocument } from '@/service/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
 import { ChuckingMode, DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
@@ -43,6 +43,8 @@ import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '
 import type { Props as PaginationProps } from '@/app/components/base/pagination'
 import Pagination from '@/app/components/base/pagination'
 import Checkbox from '@/app/components/base/checkbox'
+import { useDocumentBatchAction } from '@/service/knowledge/use-document'
+import { BatchActionType } from '@/models/datasets'
 
 export const useIndexStatus = () => {
   const { t } = useTranslation()
@@ -88,15 +90,34 @@ export const StatusItem: FC<{
   const { enabled = false, archived = false, id = '' } = detail || {}
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
+  const { mutateAsync: documentBatchActon } = useDocumentBatchAction()
 
   const onOperate = async (operationName: OperationName) => {
     let opApi = deleteDocument
     switch (operationName) {
       case 'enable':
-        opApi = enableDocument
+        opApi = async ({
+          datasetId,
+          documentId,
+        }) => {
+          return documentBatchActon({
+            action: BatchActionType.enable,
+            datasetId,
+            documentIds: [documentId],
+          })
+        }
         break
       case 'disable':
-        opApi = disableDocument
+        opApi = async ({
+          datasetId,
+          documentId,
+        }) => {
+          return documentBatchActon({
+            action: BatchActionType.disable,
+            datasetId,
+            documentIds: [documentId],
+          })
+        }
         break
     }
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
@@ -180,6 +201,7 @@ export const OperationAction: FC<{
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
   const router = useRouter()
+  const { mutateAsync: documentBatchActon } = useDocumentBatchAction()
 
   const isListScene = scene === 'list'
 
@@ -187,7 +209,16 @@ export const OperationAction: FC<{
     let opApi = deleteDocument
     switch (operationName) {
       case 'archive':
-        opApi = archiveDocument
+        opApi = async ({
+          datasetId,
+          documentId,
+        }) => {
+          return documentBatchActon({
+            action: BatchActionType.archive,
+            datasetId,
+            documentIds: [documentId],
+          })
+        }
         break
       case 'un_archive':
         opApi = unArchiveDocument

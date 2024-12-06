@@ -614,3 +614,20 @@ export type ChildChunkDetail = {
   created_at: number
   type: ChildChunkType
 }
+
+export type UpdateDocumentParams = {
+  datasetId: string
+  documentId: string
+}
+
+export enum BatchActionType {
+  enable = 'enable',
+  disable = 'disable',
+  archive = 'archive',
+}
+
+export type UpdateDocumentBatchParams = {
+  datasetId: string
+  documentIds: string[]
+  action: BatchActionType
+}
