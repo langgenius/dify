@@ -537,6 +537,9 @@ class DatasetApiKeyApi(Resource):
             .filter(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id)
             .all()
         )
+
+        keys = [key for key in keys if key.created_by == current_user.id or key.created_by is None]
+
         return {"items": keys}
 
     @setup_required
@@ -548,11 +551,13 @@ class DatasetApiKeyApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        current_key_count = (
+        keys = (
             db.session.query(ApiToken)
             .filter(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id)
-            .count()
+            .all()
         )
+
+        current_key_count = len([key for key in keys if key.created_by == current_user.id or key.created_by is None])
 
         if current_key_count >= self.max_keys:
             flask_restful.abort(
