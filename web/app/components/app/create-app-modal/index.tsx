@@ -342,19 +342,20 @@ function AppPreview({ mode }: { mode: AppMode }) {
 }
 
 function AppScreenShot({ mode }: { mode: AppMode }) {
+  const theme = useContextSelector(AppsContext, state => state.theme)
   const modeToImageMap = {
     'chat': 'Chatbot',
-    'advanced-chat': 'ChatFlow',
+    'advanced-chat': 'Chatflow',
     'agent-chat': 'Agent',
     'completion': 'TextGenerator',
     'workflow': 'Workflow',
   }
   return <picture>
-    <source media="(resolution: 1x)" srcSet={`/screenshots/Light/${modeToImageMap[mode]}.png`} />
-    <source media="(resolution: 2x)" srcSet={`/screenshots/Light/${modeToImageMap[mode]}@2x.png`} />
-    <source media="(resolution: 3x)" srcSet={`/screenshots/Light/${modeToImageMap[mode]}@3x.png`} />
+    <source media="(resolution: 1x)" srcSet={`/screenshots/${theme}/${modeToImageMap[mode]}.png`} />
+    <source media="(resolution: 2x)" srcSet={`/screenshots/${theme}/${modeToImageMap[mode]}@2x.png`} />
+    <source media="(resolution: 3x)" srcSet={`/screenshots/${theme}/${modeToImageMap[mode]}@3x.png`} />
     <Image
-      src={`/screenshots/Light/${modeToImageMap[mode]}.png`}
+      src={`/screenshots/${theme}/${modeToImageMap[mode]}.png`}
       alt='App Screen Shot'
       width={664} height={448} />
   </picture>
