@@ -20,6 +20,8 @@ import { PreviewContainer } from '../../preview/container'
 import { ChunkContainer, QAPreview } from '../../chunk'
 import { PreviewHeader } from '../../preview/header'
 import DocumentPicker from '../../common/document-picker'
+import { FormattedText } from '../../formatted-text/formatted'
+import { PreviewSlice } from '../../formatted-text/flavours/preview-slice'
 import s from './index.module.css'
 import unescape from './unescape'
 import escape from './escape'
@@ -171,6 +173,11 @@ const StepTwo = ({
   const [docForm, setDocForm] = useState<ChuckingMode>(
     (datasetId && documentDetail) ? documentDetail.doc_form as ChuckingMode : ChuckingMode.text,
   )
+  const handleChangeDocform = (value: ChuckingMode) => {
+    setDocForm(value)
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    currentEstimateMutation.reset()
+  }
 
   const [docLanguage, setDocLanguage] = useState<string>(
     (datasetId && documentDetail) ? documentDetail.doc_language : (locale !== LanguagesSupported[1] ? 'English' : 'Chinese'),
@@ -498,7 +505,8 @@ const StepTwo = ({
   const changeToEconomicalType = () => {
     if (!hasSetIndexType) {
       setIndexType(IndexingType.ECONOMICAL)
-      setDocForm(ChuckingMode.text)
+      if (docForm === ChuckingMode.qa)
+        handleChangeDocform(ChuckingMode.text)
     }
   }
 
@@ -513,11 +521,6 @@ const StepTwo = ({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  useEffect(() => {
-    if (indexingType === IndexingType.ECONOMICAL && docForm === ChuckingMode.qa)
-      setDocForm(ChuckingMode.text)
-  }, [indexingType, docForm])
 
   useEffect(() => {
     // get indexing type by props
@@ -553,7 +556,7 @@ const StepTwo = ({
                 activeHeaderClassName='bg-gradient-to-r from-[#EFF0F9] to-[#F9FAFB]'
                 description={t('datasetCreation.stepTwo.generalTip')}
                 isActive={docForm === ChuckingMode.qa || docForm === ChuckingMode.text}
-                onClick={() => setDocForm(ChuckingMode.text)}
+                onSelect={() => handleChangeDocform(ChuckingMode.text)}
                 actions={
                   <>
                     <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
@@ -605,9 +608,9 @@ const StepTwo = ({
                         checked={docForm === ChuckingMode.qa}
                         onCheck={() => {
                           if (docForm === ChuckingMode.qa)
-                            setDocForm(ChuckingMode.text)
+                            handleChangeDocform(ChuckingMode.text)
                           else
-                            setDocForm(ChuckingMode.qa)
+                            handleChangeDocform(ChuckingMode.qa)
                         }}
                         className='mr-2'
                       />
@@ -648,7 +651,7 @@ const StepTwo = ({
                 activeHeaderClassName='bg-gradient-to-r from-[#F9F1EE] to-[#F9FAFB]'
                 description={t('datasetCreation.stepTwo.parentChildTip')}
                 isActive={docForm === ChuckingMode.parentChild}
-                onClick={() => setDocForm(ChuckingMode.parentChild)}
+                onSelected={() => handleChangeDocform(ChuckingMode.parentChild)}
                 actions={
                   <>
                     <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
@@ -936,6 +939,32 @@ const StepTwo = ({
                 {item.content}
               </ChunkContainer>
             ))
+          )}
+          {docForm === ChuckingMode.parentChild && currentEstimateMutation.data?.preview && (
+            estimate?.preview?.map((item, index) => {
+              const indexForLabel = index + 1
+              return (
+                <ChunkContainer
+                  key={item.content}
+                  label={`Chunk-${indexForLabel}`}
+                  characterCount={item.content.length}
+                >
+                  <FormattedText>
+                    {item.child_chunks.map((child, index) => {
+                      const indexForLabel = index + 1
+                      return (
+                        <PreviewSlice
+                          key={child}
+                          label={`C-${indexForLabel}`}
+                          text={child}
+                          tooltip={`Child-chunk-${indexForLabel} · ${child.length} Characters`}
+                        />
+                      )
+                    })}
+                  </FormattedText>
+                </ChunkContainer>
+              )
+            })
           )}
           {currentEstimateMutation.isIdle && (
             <div className='h-full w-full flex items-center justify-center'>
