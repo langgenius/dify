@@ -338,7 +338,7 @@ export const OperationAction: FC<{
               <RiMoreFill className='w-4 h-4 text-text-components-button-secondary-text' />
             </div>
           }
-          btnClassName={open => cn(isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail, open ? '!bg-gray-100 !shadow-none' : '!bg-transparent')}
+          btnClassName={open => cn(isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail, open ? '!hover:bg-state-base-hover !shadow-none' : '!bg-transparent')}
           popupClassName='!w-full'
           className={`flex justify-end !w-[200px] h-fit !z-20 ${className}`}
         />
@@ -371,7 +371,7 @@ export const OperationAction: FC<{
 
 export const renderTdValue = (value: string | number | null, isEmptyStyle = false) => {
   return (
-    <div className={cn(isEmptyStyle ? 'text-gray-400' : 'text-gray-700', s.tdValue)}>
+    <div className={cn(isEmptyStyle ? 'text-text-tertiary' : 'text-text-secondary', s.tdValue)}>
       {value ?? '-'}
     </div>
   )
@@ -418,7 +418,7 @@ const DocumentList: FC<IDocumentListProps> = ({
   const isGeneralMode = chunkingMode !== ChuckingMode.parentChild
   const isQAMode = chunkingMode === ChuckingMode.qa
   const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
-  const [enableSort, setEnableSort] = useState(false)
+  const [enableSort, setEnableSort] = useState(true)
 
   useEffect(() => {
     setLocalDocs(documents)
@@ -426,7 +426,7 @@ const DocumentList: FC<IDocumentListProps> = ({
 
   const onClickSort = () => {
     setEnableSort(!enableSort)
-    if (!enableSort) {
+    if (enableSort) {
       const sortedDocs = [...localDocs].sort((a, b) => dayjs(a.created_at).isBefore(dayjs(b.created_at)) ? -1 : 1)
       setLocalDocs(sortedDocs)
     }
@@ -497,7 +497,7 @@ const DocumentList: FC<IDocumentListProps> = ({
   return (
     <div className='relative w-full h-full overflow-x-auto'>
       <table className={`min-w-[700px] max-w-full w-full border-collapse border-0 text-sm mt-3 ${s.documentTable}`}>
-        <thead className="h-8 leading-8 border-b border-gray-200 text-gray-500 font-medium text-xs uppercase">
+        <thead className="h-8 leading-8 border-b border-divider-subtle text-text-tertiary font-medium text-xs uppercase">
           <tr>
             <td className='w-12'>
               <div className='flex items-center' onClick={e => e.stopPropagation()}>
@@ -519,22 +519,22 @@ const DocumentList: FC<IDocumentListProps> = ({
             <td className='w-24'>{t('datasetDocuments.list.table.header.words')}</td>
             <td className='w-44'>{t('datasetDocuments.list.table.header.hitCount')}</td>
             <td className='w-44'>
-              <div className='flex justify-between items-center'>
+              <div className='flex items-center' onClick={onClickSort}>
                 {t('datasetDocuments.list.table.header.uploadTime')}
-                <ArrowDownIcon className={cn('h-3 w-3 stroke-current stroke-2 cursor-pointer', enableSort ? 'text-gray-500' : 'text-gray-300')} onClick={onClickSort} />
+                <ArrowDownIcon className={cn('ml-0.5 h-3 w-3 stroke-current stroke-2 cursor-pointer', enableSort ? 'text-text-tertiary' : 'text-gray-300')} />
               </div>
             </td>
             <td className='w-40'>{t('datasetDocuments.list.table.header.status')}</td>
             <td className='w-20'>{t('datasetDocuments.list.table.header.action')}</td>
           </tr>
         </thead>
-        <tbody className="text-gray-700">
+        <tbody className="text-text-secondary">
           {localDocs.map((doc, index) => {
             const isFile = doc.data_source_type === DataSourceType.FILE
             const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
             return <tr
               key={doc.id}
-              className={'border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer'}
+              className={'border-b border-divider-subtle h-8 hover:bg-background-default-hover cursor-pointer'}
               onClick={() => {
                 router.push(`/datasets/${datasetId}/documents/${doc.id}`)
               }}>
@@ -573,13 +573,13 @@ const DocumentList: FC<IDocumentListProps> = ({
                       popupContent={t('datasetDocuments.list.table.rename')}
                     >
                       <div
-                        className='p-1 rounded-md cursor-pointer hover:bg-black/5'
+                        className='p-1 rounded-md cursor-pointer hover:bg-state-base-hover'
                         onClick={(e) => {
                           e.stopPropagation()
                           handleShowRenameModal(doc)
                         }}
                       >
-                        <Edit03 className='w-4 h-4 text-gray-500' />
+                        <Edit03 className='w-4 h-4 text-text-tertiary' />
                       </div>
                     </Tooltip>
                   </div>
