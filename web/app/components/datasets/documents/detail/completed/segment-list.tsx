@@ -45,7 +45,7 @@ const SegmentList: FC<ISegmentListProps> = ({
                 checked={selectedSegmentIds.includes(segItem.id)}
                 onCheck={() => onSelected(segItem.id)}
               />
-              <div>
+              <div className='grow'>
                 <SegmentCard
                   key={`${segItem.id}-card`}
                   detail={segItem}

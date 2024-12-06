@@ -48,7 +48,7 @@ export const useSegmentListContext = (selector: (value: SegmentListContextValue)
   return useContextSelector(SegmentListContext, selector)
 }
 
-export const SegmentIndexTag: FC<{ positionId: string | number; className?: string }> = ({ positionId, className }) => {
+export const SegmentIndexTag: FC<{ positionId?: string | number; label?: string; className?: string }> = ({ positionId, label, className }) => {
   const localPositionId = useMemo(() => {
     const positionIdStr = String(positionId)
     if (positionIdStr.length >= 3)
@@ -59,7 +59,7 @@ export const SegmentIndexTag: FC<{ positionId: string | number; className?: stri
     <div className={cn('flex items-center', className)}>
       <Chunk className='w-3 h-3 p-[1px] text-text-tertiary mr-0.5' />
       <div className='text-text-tertiary system-xs-medium'>
-        {localPositionId}
+        {label || localPositionId}
       </div>
     </div>
   )
@@ -305,6 +305,7 @@ const Completed: FC<ICompletedProps> = ({
       fullScreen,
       toggleFullScreen,
     }}>
+      {/* Menu Bar */}
       {!isFullDocMode && <div className={s.docSearchWrapper}>
         <Checkbox
           className='shrink-0'
@@ -334,6 +335,7 @@ const Completed: FC<ICompletedProps> = ({
         <Divider type='vertical' className='h-3.5 mx-3' />
         <DisplayToggle />
       </div>}
+      {/* Segment list */}
       {
         isFullDocMode
           ? <div className='h-full flex flex-col'>
@@ -378,12 +380,14 @@ const Completed: FC<ICompletedProps> = ({
           onCancel={onCloseDrawer}
         />
       </Drawer>
+      {/* Create New Segment */}
       <NewSegmentModal
         isShow={showNewSegmentModal}
         docForm={docForm}
         onCancel={() => onNewSegmentModalChange(false)}
         onSave={resetList}
       />
+      {/* Batch Action Buttons */}
       {selectedSegmentIds.length > 0
       && <BatchAction
         className='absolute left-0 bottom-16 z-20'

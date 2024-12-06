@@ -137,7 +137,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
 
   const renderKeywords = () => {
     return (
-      <div className={classNames('flex flex-col', fullScreen ? 'max-w-[320px]' : '')}>
+      <div className={classNames('flex flex-col', fullScreen ? 'w-1/5' : '')}>
         <div className='text-text-tertiary system-xs-medium-uppercase'>{t('datasetDocuments.segment.keywords')}</div>
         <div className='text-text-tertiary w-full max-h-[200px] overflow-auto flex flex-wrap gap-1'>
           {!segInfo?.keywords?.length
@@ -162,7 +162,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
         <div className='flex flex-col'>
           <div className='text-text-primary system-xl-semibold'>{isEditMode ? 'Edit Chunk' : 'Chunk Detail'}</div>
           <div className='flex items-center gap-x-2'>
-            <SegmentIndexTag positionId={segInfo?.position || ''} className='w-fit' />
+            <SegmentIndexTag positionId={segInfo?.position || ''} />
             <span className='text-text-quaternary system-xs-medium'>·</span>
             <span className='text-text-tertiary system-xs-medium'>{formatNumber(segInfo?.word_count as number)} {t('datasetDocuments.segment.characters')}</span>
           </div>
@@ -182,8 +182,8 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
           </div>
         </div>
       </div>
-      <div className={classNames('flex grow overflow-hidden', fullScreen ? 'flex-row px-6 pt-6 gap-x-8 mx-auto' : 'flex-col gap-y-1 py-3 px-4')}>
-        <div className={classNames('grow break-all overflow-y-auto whitespace-pre-line', fullScreen ? 'max-w-[800px]' : '')}>
+      <div className={classNames('flex grow overflow-hidden', fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8 mx-auto' : 'flex-col gap-y-1 py-3 px-4')}>
+        <div className={classNames('break-all overflow-y-auto whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
           {renderContent()}
         </div>
         {renderKeywords()}
