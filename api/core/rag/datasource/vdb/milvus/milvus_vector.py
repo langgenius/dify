@@ -130,7 +130,9 @@ class MilvusVector(BaseVector):
 
         return len(result) > 0
 
-    def _process_search_results(self, results: list[Any], output_fields: list[str], score_threshold: float = 0.0) -> list[Document]:
+    def _process_search_results(
+        self, results: list[Any], output_fields: list[str], score_threshold: float = 0.0
+    ) -> list[Document]:
         """
         Common method to process search results
 
@@ -147,10 +149,7 @@ class MilvusVector(BaseVector):
 
             # Filter based on score threshold
             if result["distance"] > score_threshold:
-                doc = Document(
-                    page_content=result["entity"].get(output_fields[0], ""),
-                    metadata=metadata
-                )
+                doc = Document(page_content=result["entity"].get(output_fields[0], ""), metadata=metadata)
                 docs.append(doc)
 
         return docs
@@ -162,13 +161,13 @@ class MilvusVector(BaseVector):
             data=[query_vector],
             anns_field=Field.VECTOR.value,
             limit=kwargs.get("top_k", 4),
-            output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value]
+            output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value],
         )
 
         return self._process_search_results(
             results,
             output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value],
-            score_threshold=float(kwargs.get("score_threshold") or 0.0)
+            score_threshold=float(kwargs.get("score_threshold") or 0.0),
         )
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
@@ -177,13 +176,13 @@ class MilvusVector(BaseVector):
             data=[query],
             anns_field=Field.SPARSE_VECTOR.value,
             limit=kwargs.get("top_k", 4),
-            output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value]
+            output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value],
         )
 
         return self._process_search_results(
             results,
             output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value],
-            score_threshold=float(kwargs.get("score_threshold") or 0.0)
+            score_threshold=float(kwargs.get("score_threshold") or 0.0),
         )
 
     def create_collection(
@@ -207,7 +206,9 @@ class MilvusVector(BaseVector):
 
                 # Create the text field, enable_analyzer will be set True to support milvus automatically
                 # transfer text to sparse_vector, reference: https://milvus.io/docs/full-text-search.md
-                fields.append(FieldSchema(Field.CONTENT_KEY.value, DataType.VARCHAR, max_length=65_535, enable_analyzer=True))
+                fields.append(
+                    FieldSchema(Field.CONTENT_KEY.value, DataType.VARCHAR, max_length=65_535, enable_analyzer=True)
+                )
                 # Create the primary key field
                 fields.append(FieldSchema(Field.PRIMARY_KEY.value, DataType.INT64, is_primary=True, auto_id=True))
                 # Create the vector field, supports binary or float vectors
@@ -238,9 +239,7 @@ class MilvusVector(BaseVector):
                 index_params_obj.add_index(field_name=Field.VECTOR.value, **index_params)
                 # Create Sparse Vector Index for the collection
                 index_params_obj.add_index(
-                    field_name=Field.SPARSE_VECTOR.value,
-                    index_type="AUTOINDEX",
-                    metric_type="BM25"
+                    field_name=Field.SPARSE_VECTOR.value, index_type="AUTOINDEX", metric_type="BM25"
                 )
 
                 # Create the collection
