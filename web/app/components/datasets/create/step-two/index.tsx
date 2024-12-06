@@ -177,6 +177,8 @@ const StepTwo = ({
     setDocForm(value)
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     currentEstimateMutation.reset()
+    if (value === ChuckingMode.parentChild)
+      setIndexType(IndexingType.QUALIFIED)
   }
 
   const [docLanguage, setDocLanguage] = useState<string>(
