@@ -23,16 +23,10 @@ import { comparisonOperatorNotRequireValue, getOperators } from '../../utils'
 import ConditionNumberInput from '../condition-number-input'
 import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '../../default'
 import ConditionWrap from '../condition-wrap'
-import VarReferenceVars from '../../../_base/components/variable/var-reference-vars'
 import ConditionOperator from './condition-operator'
 import ConditionInput from './condition-input'
-import VariableTag from '@/app/components/workflow/nodes/_base/components/variable-tag'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 
+import ConditionVarSelector from './condition-var-selector'
 import type {
   Node,
   NodeOutPutVar,
@@ -241,35 +235,15 @@ const ConditionItem = ({
                 />
               )
               : (
-                <PortalToFollowElem
+                <ConditionVarSelector
                   open={open}
                   onOpenChange={setOpen}
-                  placement='bottom-start'
-                  offset={{
-                    mainAxis: 4,
-                    crossAxis: 0,
-                  }}
-                >
-                  <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>
-                    <div className="cursor-pointer">
-                      <VariableTag
-                        valueSelector={condition.variable_selector || []}
-                        varType={condition.varType}
-                        availableNodes={availableNodes}
-                        isShort
-                      />
-                    </div>
-                  </PortalToFollowElemTrigger>
-                  <PortalToFollowElemContent className='z-[1000]'>
-                    <div className='w-[296px] bg-components-panel-bg-blur rounded-lg border-[0.5px] border-components-panel-border shadow-lg'>
-                      <VarReferenceVars
-                        vars={nodesOutputVars}
-                        isSupportFileVar
-                        onChange={handleVarChange}
-                      />
-                    </div>
-                  </PortalToFollowElemContent>
-                </PortalToFollowElem>
+                  valueSelector={condition.variable_selector || []}
+                  varType={condition.varType}
+                  availableNodes={availableNodes}
+                  nodesOutputVars={nodesOutputVars}
+                  onChange={handleVarChange}
+                />
               )}
 
           </div>
