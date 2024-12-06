@@ -83,6 +83,8 @@ const translation = {
   runDetail: {
     title: 'Dziennik rozmowy',
     workflowTitle: 'Szczegół dziennika',
+    fileListDetail: 'Detal',
+    fileListLabel: 'Szczegóły pliku',
   },
   promptLog: 'Dziennik monitów',
   agentLog: 'Dziennik agenta',
