@@ -501,6 +501,26 @@ const translation = {
       'clear': 'Temizle',
       'setVariable': 'Değişken Ayarla',
       'variable': 'Değişken',
+      'operations': {
+        'extend': 'Uzatmak',
+        'overwrite': 'Üzerine',
+        'over-write': 'Üzerine',
+        'title': 'İşlem',
+        '+=': '+=',
+        'clear': 'Berrak',
+        'append': 'Ekleme',
+        '/=': '/=',
+        '-=': '-=',
+        '*=': '*=',
+        'set': 'Ayarlamak',
+      },
+      'variables': 'Değişken',
+      'selectAssignedVariable': 'Atanan değişkeni seçin...',
+      'setParameter': 'Parametreyi ayarla...',
+      'varNotSet': 'Değişken NOT Set',
+      'assignedVarsDescription': 'Atanan değişkenler, konuşma değişkenleri gibi yazılabilir değişkenler olmalıdır.',
+      'noVarTip': 'Değişken eklemek için "+" düğmesini tıklayın',
+      'noAssignedVars': 'Kullanılabilir atanmış değişken yok',
     },
     tool: {
       toAuthorize: 'Yetkilendirmek için',
@@ -631,6 +651,13 @@ const translation = {
   },
   tracing: {
     stopBy: '{{user}} tarafından durduruldu',
+  },
+  variableReference: {
+    assignedVarsDescription: 'Atanan değişkenler, örneğin yazılabilir değişkenler olmalıdır',
+    noAvailableVars: 'Kullanılabilir değişken yok',
+    conversationVars: 'Konuşma değişkenleri',
+    noVarsForOperation: 'Seçilen işlemle atanabilecek değişken yok.',
+    noAssignedVars: 'Kullanılabilir atanmış değişken yok',
   },
 }
 

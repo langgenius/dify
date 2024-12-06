@@ -499,6 +499,26 @@ const translation = {
       'clear': 'ใส',
       'setVariable': 'ตั้งค่าตัวแปร',
       'variable': 'ตัวแปร',
+      'operations': {
+        'set': 'ชุด',
+        'append': 'ผนวก',
+        '-=': '-=',
+        '*=': '*=',
+        'overwrite': 'เขียน ทับ',
+        'extend': 'ขยาย',
+        'title': 'การผ่าตัด',
+        'clear': 'ใส',
+        'over-write': 'เขียน ทับ',
+        '+=': '+=',
+        '/=': '/=',
+      },
+      'noAssignedVars': 'ไม่มีตัวแปรที่กําหนด',
+      'selectAssignedVariable': 'เลือกตัวแปรที่กําหนด...',
+      'variables': 'ตัว แปร',
+      'varNotSet': 'ตัวแปรไม่ได้ตั้งค่า',
+      'assignedVarsDescription': 'ตัวแปรที่กําหนดต้องเป็นตัวแปรที่เขียนได้ เช่น ตัวแปรการสนทนา',
+      'noVarTip': 'คลิกปุ่ม "+" เพื่อเพิ่มตัวแปร',
+      'setParameter': 'ตั้งค่าพารามิเตอร์...',
     },
     tool: {
       toAuthorize: 'เพื่ออนุญาต',
@@ -629,6 +649,13 @@ const translation = {
   },
   tracing: {
     stopBy: 'แวะที่ {{user}}',
+  },
+  variableReference: {
+    conversationVars: 'ตัวแปรการสนทนา',
+    noVarsForOperation: 'ไม่มีตัวแปรที่พร้อมใช้งานสําหรับการกําหนดด้วยการดําเนินการที่เลือก',
+    noAvailableVars: 'ไม่มีตัวแปรที่ใช้ได้',
+    assignedVarsDescription: 'ตัวแปรที่กําหนดต้องเป็นตัวแปรที่เขียนได้ เช่น',
+    noAssignedVars: 'ไม่มีตัวแปรที่กําหนด',
   },
 }
 

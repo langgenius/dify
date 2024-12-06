@@ -51,6 +51,7 @@ const translation = {
     },
     variables: 'ตัว แปร',
     uploadImages: 'รูปภาพที่อัปโหลด',
+    timeConsuming: '',
   },
   filter: {
     period: {
@@ -78,6 +79,8 @@ const translation = {
   runDetail: {
     title: 'บันทึกการสนทนา',
     workflowTitle: 'รายละเอียดบันทึก',
+    fileListDetail: 'รายละเอียด',
+    fileListLabel: 'รายละเอียดไฟล์',
   },
   promptLog: 'บันทึกพร้อมท์',
   agentLog: 'บันทึกตัวแทน',
