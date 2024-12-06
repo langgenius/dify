@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "private": true,
   "engines": {
     "node": ">=18.17.0"
@@ -68,7 +68,7 @@
     "lamejs": "^1.2.1",
     "lexical": "^0.18.0",
     "lodash-es": "^4.17.21",
-    "mermaid": "10.9.3",
+    "mermaid": "11.4.1",
     "mime": "^4.0.4",
     "mitt": "^3.0.1",
     "negotiator": "^0.6.3",

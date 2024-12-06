@@ -274,7 +274,7 @@ export function Markdown(props: { content: string; className?: string }) {
           () => {
             return (tree) => {
               const iterate = (node: any) => {
-                if (node.type === 'element' && !node.properties?.src && node.properties?.ref && node.properties.ref.startsWith('{') && node.properties.ref.endsWith('}'))
+                if (node.type === 'element' && node.properties?.ref)
                   delete node.properties.ref
 
                 if (node.children)
