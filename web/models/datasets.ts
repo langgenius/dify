@@ -620,11 +620,13 @@ export type UpdateDocumentParams = {
   documentId: string
 }
 
-export enum BatchActionType {
+// Used in api url
+export enum DocumentActionType {
   enable = 'enable',
   disable = 'disable',
   archive = 'archive',
   unArchive = 'un_archive',
+  delete = 'delete',
 }
 
 export type UpdateDocumentBatchParams = {

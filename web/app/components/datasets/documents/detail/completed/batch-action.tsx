@@ -56,7 +56,7 @@ const BatchAction: FC<IBatchActionProps> = ({
         {onArchive && (
           <div className='flex items-center gap-x-0.5 px-3 py-2'>
             <RiArchive2Line className='w-4 h-4 text-components-button-ghost-text' />
-            <button className='px-0.5 text-components-button-ghost-text text-[13px] font-medium leading-[16px]' onClick={onBatchDisable}>
+            <button className='px-0.5 text-components-button-ghost-text text-[13px] font-medium leading-[16px]' onClick={onArchive}>
               {t(`${i18nPrefix}.archive`)}
             </button>
           </div>

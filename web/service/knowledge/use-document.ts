@@ -4,7 +4,7 @@ import {
 } from '@tanstack/react-query'
 import { del, get, patch } from '../base'
 import type { SimpleDocumentDetail, UpdateDocumentBatchParams } from '@/models/datasets'
-import { BatchActionType } from '@/models/datasets'
+import { DocumentActionType } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 
 const NAME_SPACE = 'knowledge/document'
@@ -29,10 +29,10 @@ export const useDocumentList = (payload: {
 
 const toBatchDocumentsIdParams = (documentIds: string[] | string) => {
   const ids = Array.isArray(documentIds) ? documentIds : [documentIds]
-  return ids.map(id => `document_id=${id}`).join('=')
+  return ids.map(id => `document_id=${id}`).join('&')
 }
 
-export const useDocumentBatchAction = (action: BatchActionType) => {
+export const useDocumentBatchAction = (action: DocumentActionType) => {
   return useMutation({
     mutationFn: ({ datasetId, documentIds, documentId }: UpdateDocumentBatchParams) => {
       return patch<CommonResponse>(`/datasets/${datasetId}/documents/status/${action}?${toBatchDocumentsIdParams(documentId || documentIds!)}`)
@@ -41,19 +41,19 @@ export const useDocumentBatchAction = (action: BatchActionType) => {
 }
 
 export const useDocumentEnable = () => {
-  return useDocumentBatchAction(BatchActionType.enable)
+  return useDocumentBatchAction(DocumentActionType.enable)
 }
 
 export const useDocumentDisable = () => {
-  return useDocumentBatchAction(BatchActionType.disable)
+  return useDocumentBatchAction(DocumentActionType.disable)
 }
 
 export const useDocumentArchive = () => {
-  return useDocumentBatchAction(BatchActionType.archive)
+  return useDocumentBatchAction(DocumentActionType.archive)
 }
 
 export const useDocumentUnArchive = () => {
-  return useDocumentBatchAction(BatchActionType.unArchive)
+  return useDocumentBatchAction(DocumentActionType.unArchive)
 }
 
 export const useDocumentDelete = () => {
