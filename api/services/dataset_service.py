@@ -1121,14 +1121,14 @@ class DocumentService:
         if features.billing.enabled:
             count = 0
             if knowledge_config.data_source.info_list.data_source_type == "upload_file":
-                upload_file_list = knowledge_config.data_source.file_info_list.file_ids
+                upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
                 count = len(upload_file_list)
             elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
-                notion_info_list = knowledge_config.data_source.notion_info_list
+                notion_info_list = knowledge_config.data_source.info_list.notion_info_list
                 for notion_info in notion_info_list:
                     count = count + len(notion_info["pages"])
             elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
-                website_info = knowledge_config.data_source.website_info_list
+                website_info = knowledge_config.data_source.info_list.website_info_list
                 count = len(website_info.urls)
             batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
             if count > batch_upload_limit:
