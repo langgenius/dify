@@ -27,7 +27,7 @@ import { OptionCard } from './option-card'
 import LanguageSelect from './language-select'
 import { DelimiterInput, MaxLengthInput, OverlapInput } from './inputs'
 import cn from '@/utils/classnames'
-import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FullDocumentDetail, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FullDocumentDetail, ParentMode, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 
 import Button from '@/app/components/base/button'
 import FloatRightContainer from '@/app/components/base/float-right-container'
@@ -38,7 +38,7 @@ import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/componen
 import Toast from '@/app/components/base/toast'
 import type { NotionPage } from '@/models/common'
 import { DataSourceProvider } from '@/models/common'
-import { DataSourceType, DocForm } from '@/models/datasets'
+import { ChuckingMode, DataSourceType } from '@/models/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -96,7 +96,7 @@ export enum IndexingType {
 const DEFAULT_SEGMENT_IDENTIFIER = '\\n\\n'
 
 type ParentChildConfig = {
-  chunkForContext: 'paragraph' | 'full_doc'
+  chunkForContext: ParentMode
   parent: {
     delimiter: string
     maxLength: number
@@ -168,8 +168,8 @@ const StepTwo = ({
 
   // QA Related
   const [isLanguageSelectDisabled, setIsLanguageSelectDisabled] = useState(false)
-  const [docForm, setDocForm] = useState<DocForm | string>(
-    (datasetId && documentDetail) ? documentDetail.doc_form : DocForm.TEXT,
+  const [docForm, setDocForm] = useState<ChuckingMode>(
+    (datasetId && documentDetail) ? documentDetail.doc_form as ChuckingMode : ChuckingMode.text,
   )
 
   const [docLanguage, setDocLanguage] = useState<string>(
@@ -181,27 +181,28 @@ const StepTwo = ({
   const getIndexing_technique = () => indexingType || indexType
 
   const getProcessRule = () => {
-    const processRule: ProcessRule = {
-      rules: {} as any, // api will check this. It will be removed after api refactored.
-      mode: segmentationType,
-    }
-    if (segmentationType === SegmentType.CUSTOM) {
-      const ruleObj = {
+    return {
+      rules: {
         pre_processing_rules: rules,
         segmentation: {
           separator: unescape(segmentIdentifier),
           max_tokens: maxChunkLength,
           chunk_overlap: overlap,
         },
-      }
-      // @ts-expect-error will be removed after api refactored.
-      processRule.rules = ruleObj
-    }
-    return processRule
+        parent_mode: parentChildConfig.chunkForContext,
+        subchunk_segmentation: {
+          separator: parentChildConfig.child.delimiter,
+          max_tokens: parentChildConfig.child.maxLength,
+        },
+      }, // api will check this. It will be removed after api refactored.
+      mode: docForm === ChuckingMode.parentChild
+        ? 'hierarchical'
+        : segmentationType,
+    } as ProcessRule
   }
 
   const fileIndexingEstimateQuery = useFetchFileIndexingEstimateForFile({
-    docForm: docForm as DocForm,
+    docForm,
     docLanguage,
     dataSourceType: DataSourceType.FILE,
     files,
@@ -210,7 +211,7 @@ const StepTwo = ({
     dataset_id: datasetId!,
   })
   const notionIndexingEstimateQuery = useFetchFileIndexingEstimateForNotion({
-    docForm: docForm as DocForm,
+    docForm,
     docLanguage,
     dataSourceType: DataSourceType.NOTION,
     notionPages,
@@ -220,7 +221,7 @@ const StepTwo = ({
   })
 
   const websiteIndexingEstimateQuery = useFetchFileIndexingEstimateForWeb({
-    docForm: docForm as DocForm,
+    docForm,
     docLanguage,
     dataSourceType: DataSourceType.WEB,
     websitePages,
@@ -481,29 +482,10 @@ const StepTwo = ({
     isSetting && onSave && onSave()
   }
 
-  const handleDocformSwitch = (isQAMode: boolean) => {
-    if (isQAMode)
-      setDocForm(DocForm.QA)
-    else
-      setDocForm(DocForm.TEXT)
-  }
-
-  const previewSwitch = () => {
-    setIsLanguageSelectDisabled(true)
-    fetchEstimate()
-  }
-
-  const handleSelect = (language: string) => {
-    setDocLanguage(language)
-    // Switch language, re-cutter
-    if (docForm === DocForm.QA)
-      previewSwitch()
-  }
-
   const changeToEconomicalType = () => {
     if (!hasSetIndexType) {
       setIndexType(IndexingType.ECONOMICAL)
-      setDocForm(DocForm.TEXT)
+      setDocForm(ChuckingMode.text)
     }
   }
 
@@ -520,8 +502,8 @@ const StepTwo = ({
   }, [])
 
   useEffect(() => {
-    if (indexingType === IndexingType.ECONOMICAL && docForm === DocForm.QA)
-      setDocForm(DocForm.TEXT)
+    if (indexingType === IndexingType.ECONOMICAL && docForm === ChuckingMode.qa)
+      setDocForm(ChuckingMode.text)
   }, [indexingType, docForm])
 
   useEffect(() => {
@@ -557,8 +539,8 @@ const StepTwo = ({
                 icon={<Image src={SettingCog} alt={t('datasetCreation.stepTwo.general')} />}
                 activeHeaderClassName='bg-gradient-to-r from-[#EFF0F9] to-[#F9FAFB]'
                 description={t('datasetCreation.stepTwo.generalTip')}
-                isActive={SegmentType.AUTO === segmentationType}
-                onClick={() => setSegmentationType(SegmentType.AUTO)}
+                isActive={docForm === ChuckingMode.qa || docForm === ChuckingMode.text}
+                onClick={() => setDocForm(ChuckingMode.text)}
                 actions={
                   <>
                     <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
@@ -607,12 +589,12 @@ const StepTwo = ({
                   {IS_CE_EDITION && <>
                     <div className='flex items-center'>
                       <Checkbox
-                        checked={docForm === DocForm.QA}
+                        checked={docForm === ChuckingMode.qa}
                         onCheck={() => {
-                          if (docForm === DocForm.QA)
-                            setDocForm(DocForm.TEXT)
+                          if (docForm === ChuckingMode.qa)
+                            setDocForm(ChuckingMode.text)
                           else
-                            setDocForm(DocForm.QA)
+                            setDocForm(ChuckingMode.qa)
                         }}
                         className='mr-2'
                       />
@@ -630,7 +612,7 @@ const StepTwo = ({
                         <Tooltip popupContent={t('datasetCreation.stepTwo.QATip')} />
                       </div>
                     </div>
-                    {docForm === DocForm.QA && (
+                    {docForm === ChuckingMode.qa && (
                       <div
                         style={{
                           background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.1) 0%, rgba(255, 255, 255, 0.00) 100%)',
@@ -652,8 +634,8 @@ const StepTwo = ({
                 effectImg={OrangeEffect.src}
                 activeHeaderClassName='bg-gradient-to-r from-[#F9F1EE] to-[#F9FAFB]'
                 description={t('datasetCreation.stepTwo.parentChildTip')}
-                isActive={SegmentType.CUSTOM === segmentationType}
-                onClick={() => setSegmentationType(SegmentType.CUSTOM)}
+                isActive={docForm === ChuckingMode.parentChild}
+                onClick={() => setDocForm(ChuckingMode.parentChild)}
                 actions={
                   <>
                     <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
@@ -714,10 +696,10 @@ const StepTwo = ({
                       onChosen={() => setParentChildConfig(
                         {
                           ...parentChildConfig,
-                          chunkForContext: 'full_doc',
+                          chunkForContext: 'full-doc',
                         },
                       )}
-                      isChosen={parentChildConfig.chunkForContext === 'full_doc'}
+                      isChosen={parentChildConfig.chunkForContext === 'full-doc'}
                     />
                   </div>
 
@@ -926,19 +908,19 @@ const StepTwo = ({
           </PreviewHeader>}
           className={cn(s.previewWrap, isMobile && s.isMobile, 'relative h-full overflow-y-scroll space-y-4')}
         >
-          {docForm === DocForm.QA && estimate?.qa_preview && (
+          {docForm === ChuckingMode.qa && estimate?.qa_preview && (
             estimate?.qa_preview.map(item => (
               <QAPreview key={item.question} qa={item} />
             ))
           )}
-          {docForm === DocForm.TEXT && estimate?.preview && (
+          {docForm === ChuckingMode.text && estimate?.preview && (
             estimate?.preview.map((item, index) => (
               <ChunkContainer
-                key={item}
+                key={item.content}
                 label={`Chunk-${index + 1}`}
-                characterCount={item.length}
+                characterCount={item.content.length}
               >
-                {item}
+                {item.content}
               </ChunkContainer>
             ))
           )}

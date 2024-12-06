@@ -151,7 +151,8 @@ export type IndexingEstimateResponse = {
   total_price: number
   currency: string
   total_segments: number
-  preview: string[]
+  // TODO: change it
+  preview: Array<{ content: string; child_chunks: any }>
   qa_preview?: QA[]
 }
 
@@ -304,7 +305,7 @@ export type DocumentListResponse = {
 export type DocumentReq = {
   original_document_id?: string
   indexing_technique?: string
-  doc_form: 'text_model' | 'qa_model'
+  doc_form: ChuckingMode
   doc_language: string
   process_rule: ProcessRule
 }
@@ -346,7 +347,7 @@ export type NotionPage = {
 }
 
 export type ProcessRule = {
-  mode: string
+  mode: ChildChunkType | 'hierarchical'
   rules: Rules
 }
 
