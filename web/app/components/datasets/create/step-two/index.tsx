@@ -113,11 +113,11 @@ const defaultParentChildConfig: ParentChildConfig = {
   chunkForContext: 'paragraph',
   parent: {
     delimiter: '\\n\\n',
-    maxLength: 4000,
+    maxLength: 500,
   },
   child: {
     delimiter: '\\n\\n',
-    maxLength: 4000,
+    maxLength: 200,
   },
 }
 
@@ -922,7 +922,8 @@ const StepTwo = ({
               <Badge text='276 Estimated chunks' />
             </div>
           </PreviewHeader>}
-          className={cn(s.previewWrap, isMobile && s.isMobile, 'relative h-full overflow-y-scroll space-y-4')}
+          className={cn(s.previewWrap, isMobile && s.isMobile, 'relative h-full overflow-y-scroll')}
+          mainClassName='space-y-6'
         >
           {docForm === ChuckingMode.qa && estimate?.qa_preview && (
             estimate?.qa_preview.map(item => (

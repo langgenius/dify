@@ -4,10 +4,11 @@ import classNames from '@/utils/classnames'
 
 export type PreviewContainerProps = ComponentProps<'div'> & {
   header: ReactNode
+  mainClassName?: string
 }
 
 export const PreviewContainer: FC<PreviewContainerProps> = forwardRef((props, ref) => {
-  const { children, className, header, ...rest } = props
+  const { children, className, header, mainClassName, ...rest } = props
   return <div
     {...rest}
     ref={ref}
@@ -19,7 +20,7 @@ export const PreviewContainer: FC<PreviewContainerProps> = forwardRef((props, re
     <header className='py-4 pl-5 pr-3 border-b border-divider-subtle'>
       {header}
     </header>
-    <main className='py-5 px-6 w-full h-full'>
+    <main className={classNames('py-5 px-6 w-full h-full', mainClassName)}>
       {children}
     </main>
   </div>
