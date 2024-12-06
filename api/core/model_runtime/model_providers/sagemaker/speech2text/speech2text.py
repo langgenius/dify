@@ -78,7 +78,7 @@ class SageMakerSpeech2TextModel(Speech2TextModel):
             json_obj = json.loads(json_str)
             asr_text = json_obj["text"]
         except Exception as e:
-            logger.exception(f"failed to invoke speech2text model, {e}")
+            logger.exception(f"failed to invoke speech2text model, model: {model}")
             raise CredentialsValidateFailedError(str(e))
 
         return asr_text

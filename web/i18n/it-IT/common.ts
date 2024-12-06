@@ -622,6 +622,13 @@ const translation = {
     pasteFileLink: 'Incolla il collegamento del file',
     uploadFromComputerReadError: 'Lettura del file non riuscita, riprovare.',
   },
+  license: {
+    expiring_plural: 'Scadenza tra {{count}} giorni',
+    expiring: 'Scadenza in un giorno',
+  },
+  pagination: {
+    perPage: 'Articoli per pagina',
+  },
 }
 
 export default translation

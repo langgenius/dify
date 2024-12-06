@@ -99,6 +99,8 @@ const translation = {
     fileUploadTip: 'Функции загрузки изображений были обновлены до загрузки файлов.',
     featuresDescription: 'Улучшение взаимодействия с пользователем веб-приложения',
     ImageUploadLegacyTip: 'Теперь вы можете создавать переменные типа файла в стартовой форме. В будущем мы больше не будем поддерживать функцию загрузки изображений.',
+    importWarning: 'Осторожность',
+    importWarningDetails: 'Разница в версии DSL может повлиять на некоторые функции',
   },
   env: {
     envPanelTitle: 'Переменные среды',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: 'Тип',
       binaryFileVariable: 'Переменная двоичного файла',
+      extractListPlaceholder: 'Введите индекс элемента списка, введите \'/\' вставьте переменную',
+      curl: {
+        placeholder: 'Вставьте сюда строку cURL',
+        title: 'Импорт из cURL',
+      },
     },
     code: {
       inputVars: 'Входные переменные',
@@ -493,6 +500,26 @@ const translation = {
       'clear': 'Очистить',
       'setVariable': 'Установить переменную',
       'variable': 'Переменная',
+      'operations': {
+        '-=': '-=',
+        '+=': '+=',
+        'clear': 'Ясный',
+        'extend': 'Вытягивать',
+        'set': 'Набор',
+        'overwrite': 'Перезаписать',
+        '/=': '/=',
+        '*=': '*=',
+        'title': 'Операция',
+        'over-write': 'Перезаписать',
+        'append': 'Прибавлять',
+      },
+      'variables': 'Переменные',
+      'noAssignedVars': 'Нет доступных назначенных переменных',
+      'noVarTip': 'Нажмите кнопку "+", чтобы добавить переменные',
+      'setParameter': 'Установите параметр...',
+      'assignedVarsDescription': 'Назначаемые переменные должны быть доступными для записи, например переменными беседы.',
+      'varNotSet': 'Переменная НЕ установлена',
+      'selectAssignedVariable': 'Выберите назначенную переменную...',
     },
     tool: {
       toAuthorize: 'Авторизовать',
@@ -618,10 +645,18 @@ const translation = {
       filterConditionKey: 'Ключ условия фильтра',
       selectVariableKeyPlaceholder: 'Выбор ключа подпеременной',
       filterConditionComparisonValue: 'Значение условия фильтра',
+      extractsCondition: 'Извлечение элемента N',
     },
   },
   tracing: {
     stopBy: 'Остановлено {{user}}',
+  },
+  variableReference: {
+    assignedVarsDescription: 'Назначаемые переменные должны быть доступными для записи, такими как',
+    noAssignedVars: 'Нет доступных назначенных переменных',
+    noVarsForOperation: 'Переменные для присвоения выбранной операции отсутствуют.',
+    conversationVars: 'Переменные беседы',
+    noAvailableVars: 'Нет доступных переменных',
   },
 }
 

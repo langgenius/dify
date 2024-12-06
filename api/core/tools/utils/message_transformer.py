@@ -40,7 +40,7 @@ class ToolFileMessageTransformer:
                         )
                     )
                 except Exception as e:
-                    logger.exception(e)
+                    logger.exception(f"Failed to download image from {url}")
                     result.append(
                         ToolInvokeMessage(
                             type=ToolInvokeMessage.MessageType.TEXT,

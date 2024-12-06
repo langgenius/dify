@@ -591,6 +591,13 @@ const translation = {
     pasteFileLinkInvalid: 'Lien de fichier non valide',
     uploadFromComputerLimit: 'Le fichier de téléchargement ne peut pas dépasser {{size}}',
   },
+  license: {
+    expiring: 'Expirant dans un jour',
+    expiring_plural: 'Expirant dans {{count}} jours',
+  },
+  pagination: {
+    perPage: 'Articles par page',
+  },
 }
 
 export default translation

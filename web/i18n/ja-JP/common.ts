@@ -591,6 +591,13 @@ const translation = {
     fileExtensionNotSupport: 'ファイル拡張子はサポートされていません',
     pasteFileLinkInvalid: '無効なファイルリンク',
   },
+  license: {
+    expiring_plural: '有効期限 {{count}} 日',
+    expiring: '1日で有効期限が切れます',
+  },
+  pagination: {
+    perPage: 'ページあたりのアイテム数',
+  },
 }
 
 export default translation

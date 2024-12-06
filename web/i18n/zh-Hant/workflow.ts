@@ -99,6 +99,8 @@ const translation = {
     fileUploadTip: '圖片上傳功能已升級為檔上傳。',
     ImageUploadLegacyTip: '現在，您可以在起始表單中創建檔案類型變數。我們將來不再支持圖片上傳功能。',
     featuresDescription: '增強 Web 應用程式用戶體驗',
+    importWarning: '謹慎',
+    importWarningDetails: 'DSL 版本差異可能會影響某些功能',
   },
   env: {
     envPanelTitle: '環境變數',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: '類型',
       binaryFileVariable: '二進位檔變數',
+      extractListPlaceholder: '輸入清單項索引，鍵入 『/』 插入變數',
+      curl: {
+        placeholder: '在此處粘貼 cURL 字串',
+        title: '從 cURL 導入',
+      },
     },
     code: {
       inputVars: '輸入變量',
@@ -493,6 +500,26 @@ const translation = {
       'clear': '清除',
       'setVariable': '設定變數',
       'variable': '變數',
+      'operations': {
+        'overwrite': '改寫',
+        '/=': '/=',
+        'title': '操作',
+        '*=': '*=',
+        'extend': '擴展',
+        '+=': '+=',
+        'set': '設置',
+        'over-write': '改寫',
+        '-=': '-=',
+        'append': '附加',
+        'clear': '清楚',
+      },
+      'noAssignedVars': '沒有可用的已分配變數',
+      'variables': '變數',
+      'selectAssignedVariable': '選擇配置的變數...',
+      'setParameter': '設定參數...',
+      'noVarTip': '點擊 「+」 按鈕添加變數',
+      'assignedVarsDescription': '分配的變數必須是可寫變數，例如對話變數。',
+      'varNotSet': '未設置變數',
     },
     tool: {
       toAuthorize: '授權',
@@ -618,10 +645,18 @@ const translation = {
       selectVariableKeyPlaceholder: 'Select sub variable key （選擇子變數鍵）',
       filterConditionComparisonOperator: 'Filter Condition Comparison 運算符',
       filterConditionKey: '篩選條件鍵',
+      extractsCondition: '提取第 N 項',
     },
   },
   tracing: {
     stopBy: '由{{user}}終止',
+  },
+  variableReference: {
+    noAvailableVars: '無可用變數',
+    noAssignedVars: '沒有可用的已分配變數',
+    noVarsForOperation: '所選操作沒有可用於賦值的變數。',
+    assignedVarsDescription: '分配的變數必須是可寫變數，例如',
+    conversationVars: '對話變數',
   },
 }
 

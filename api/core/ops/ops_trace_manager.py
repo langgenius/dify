@@ -445,7 +445,7 @@ class TraceTask:
             "ls_provider": message_data.model_provider,
             "ls_model_name": message_data.model_id,
             "status": message_data.status,
-            "from_end_user_id": message_data.from_account_id,
+            "from_end_user_id": message_data.from_end_user_id,
             "from_account_id": message_data.from_account_id,
             "agent_based": message_data.agent_based,
             "workflow_run_id": message_data.workflow_run_id,
@@ -521,7 +521,7 @@ class TraceTask:
             "ls_provider": message_data.model_provider,
             "ls_model_name": message_data.model_id,
             "status": message_data.status,
-            "from_end_user_id": message_data.from_account_id,
+            "from_end_user_id": message_data.from_end_user_id,
             "from_account_id": message_data.from_account_id,
             "agent_based": message_data.agent_based,
             "workflow_run_id": message_data.workflow_run_id,
@@ -570,7 +570,7 @@ class TraceTask:
             "ls_provider": message_data.model_provider,
             "ls_model_name": message_data.model_id,
             "status": message_data.status,
-            "from_end_user_id": message_data.from_account_id,
+            "from_end_user_id": message_data.from_end_user_id,
             "from_account_id": message_data.from_account_id,
             "agent_based": message_data.agent_based,
             "workflow_run_id": message_data.workflow_run_id,
@@ -711,7 +711,7 @@ class TraceQueueManager:
                 trace_task.app_id = self.app_id
                 trace_manager_queue.put(trace_task)
         except Exception as e:
-            logging.exception(f"Error adding trace task: {e}")
+            logging.exception(f"Error adding trace task, trace_type {trace_task.trace_type}")
         finally:
             self.start_timer()
 
@@ -730,7 +730,7 @@ class TraceQueueManager:
             if tasks:
                 self.send_to_celery(tasks)
         except Exception as e:
-            logging.exception(f"Error processing trace tasks: {e}")
+            logging.exception("Error processing trace tasks")
 
     def start_timer(self):
         global trace_manager_timer

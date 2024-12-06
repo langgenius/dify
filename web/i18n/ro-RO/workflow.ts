@@ -99,6 +99,8 @@ const translation = {
     featuresDocLink: 'Află mai multe',
     fileUploadTip: 'Funcțiile de încărcare a imaginilor au fost actualizate la încărcarea fișierelor.',
     ImageUploadLegacyTip: 'Acum puteți crea variabile de tip de fișier în formularul de pornire. Nu vom mai accepta funcția de încărcare a imaginilor în viitor.',
+    importWarning: 'Prudență',
+    importWarningDetails: 'Diferența de versiune DSL poate afecta anumite caracteristici',
   },
   env: {
     envPanelTitle: 'Variabile de Mediu',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: 'Tip',
       binaryFileVariable: 'Variabilă de fișier binar',
+      extractListPlaceholder: 'Introduceți indexul elementelor din listă, tastați "/" inserați variabila',
+      curl: {
+        placeholder: 'Lipiți șirul cURL aici',
+        title: 'Importați din cURL',
+      },
     },
     code: {
       inputVars: 'Variabile de intrare',
@@ -493,6 +500,26 @@ const translation = {
       'clear': 'Șterge',
       'setVariable': 'Setează Variabila',
       'variable': 'Variabilă',
+      'operations': {
+        'append': 'Adăugaţi',
+        'extend': 'Prelungi',
+        'title': 'Operație',
+        '+=': '+=',
+        'set': 'Apus',
+        '*=': '*=',
+        'overwrite': 'Suprascrie',
+        'clear': 'Clar',
+        'over-write': 'Suprascrie',
+        '/=': '/=',
+        '-=': '-=',
+      },
+      'selectAssignedVariable': 'Selectați variabila atribuită...',
+      'varNotSet': 'Variabila NU este setată',
+      'noVarTip': 'Faceți clic pe butonul "+" pentru a adăuga variabile',
+      'noAssignedVars': 'Nu există variabile atribuite disponibile',
+      'setParameter': 'Setați parametrul...',
+      'assignedVarsDescription': 'Variabilele atribuite trebuie să fie variabile inscripționabile, cum ar fi variabilele de conversație.',
+      'variables': 'Variabile',
     },
     tool: {
       toAuthorize: 'Autorizați',
@@ -618,10 +645,18 @@ const translation = {
       limit: 'N de sus',
       filterConditionComparisonValue: 'Valoare Stare filtrare',
       asc: 'ASC',
+      extractsCondition: 'Extrageți elementul N',
     },
   },
   tracing: {
     stopBy: 'Oprit de {{user}}',
+  },
+  variableReference: {
+    noAvailableVars: 'Nu există variabile disponibile',
+    noVarsForOperation: 'Nu există variabile disponibile pentru atribuire cu operațiunea selectată.',
+    conversationVars: 'Variabile de conversație',
+    assignedVarsDescription: 'Variabilele atribuite trebuie să fie variabile inscripționabile, cum ar fi',
+    noAssignedVars: 'Nu există variabile atribuite disponibile',
   },
 }
 

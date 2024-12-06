@@ -99,6 +99,8 @@ const translation = {
     ImageUploadLegacyTip: 'Vous pouvez désormais créer des variables de type de fichier dans le formulaire de démarrage. À l’avenir, nous ne prendrons plus en charge la fonctionnalité de téléchargement d’images.',
     fileUploadTip: 'Les fonctionnalités de téléchargement d’images ont été mises à niveau vers le téléchargement de fichiers.',
     featuresDescription: 'Améliorer l’expérience utilisateur de l’application web',
+    importWarning: 'Prudence',
+    importWarningDetails: 'La différence de version DSL peut affecter certaines fonctionnalités',
   },
   env: {
     envPanelTitle: 'Variables d\'Environnement',
@@ -407,6 +409,11 @@ const translation = {
       },
       binaryFileVariable: 'Variable de fichier binaire',
       type: 'Type',
+      extractListPlaceholder: 'Entrez l’index de l’élément de liste, tapez \'/\' insérer la variable',
+      curl: {
+        placeholder: 'Collez la chaîne cURL ici',
+        title: 'Importer à partir de cURL',
+      },
     },
     code: {
       inputVars: 'Variables de saisie',
@@ -493,6 +500,26 @@ const translation = {
       'clear': 'Effacer',
       'setVariable': 'Définir Variable',
       'variable': 'Variable',
+      'operations': {
+        'clear': 'Clair',
+        '*=': '*=',
+        '-=': '-=',
+        'extend': 'Étendre',
+        '+=': '+=',
+        'over-write': 'Écraser',
+        'set': 'Poser',
+        'append': 'Ajouter',
+        'title': 'Opération',
+        '/=': '/=',
+        'overwrite': 'Écraser',
+      },
+      'assignedVarsDescription': 'Les variables affectées doivent être accessibles en écriture, telles que des variables de conversation.',
+      'noVarTip': 'Cliquez sur le bouton « + » pour ajouter des variables',
+      'variables': 'Variables',
+      'setParameter': 'Définir le paramètre...',
+      'noAssignedVars': 'Aucune variable affectée disponible',
+      'varNotSet': 'Variable NON définie',
+      'selectAssignedVariable': 'Sélectionner la variable affectée...',
     },
     tool: {
       toAuthorize: 'Autoriser',
@@ -618,10 +645,18 @@ const translation = {
       limit: 'Haut N',
       orderBy: 'Trier par',
       filterConditionKey: 'Clé de condition de filtre',
+      extractsCondition: 'Extraire l’élément N',
     },
   },
   tracing: {
     stopBy: 'Arrêté par {{user}}',
+  },
+  variableReference: {
+    noAssignedVars: 'Aucune variable affectée disponible',
+    noVarsForOperation: 'Aucune variable n’est disponible pour l’affectation avec l’opération sélectionnée.',
+    noAvailableVars: 'Aucune variable disponible',
+    assignedVarsDescription: 'Les variables affectées doivent être des variables accessibles en écriture, telles que',
+    conversationVars: 'Variables de conversation',
   },
 }
 

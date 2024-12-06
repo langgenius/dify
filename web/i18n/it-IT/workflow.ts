@@ -103,6 +103,8 @@ const translation = {
     featuresDescription: 'Migliora l\'esperienza utente dell\'app Web',
     fileUploadTip: 'Le funzioni di caricamento delle immagini sono state aggiornate al caricamento dei file.',
     ImageUploadLegacyTip: 'Ora è possibile creare variabili di tipo file nel modulo iniziale. In futuro non supporteremo più la funzione di caricamento delle immagini.',
+    importWarning: 'Cautela',
+    importWarningDetails: 'La differenza di versione DSL può influire su alcune funzionalità',
   },
   env: {
     envPanelTitle: 'Variabili d\'Ambiente',
@@ -424,6 +426,11 @@ const translation = {
       },
       binaryFileVariable: 'Variabile file binario',
       type: 'Digitare',
+      extractListPlaceholder: 'Inserisci l\'indice delle voci dell\'elenco, digita \'/\' inserisci la variabile',
+      curl: {
+        placeholder: 'Incolla qui la stringa cURL',
+        title: 'Importazione da cURL',
+      },
     },
     code: {
       inputVars: 'Variabili di Input',
@@ -513,6 +520,26 @@ const translation = {
       'clear': 'Cancellare',
       'setVariable': 'Imposta Variabile',
       'variable': 'Variabile',
+      'operations': {
+        '-=': '-=',
+        'overwrite': 'Sovrascrivere',
+        '+=': '+=',
+        '*=': '*=',
+        'append': 'Aggiungere',
+        'set': 'Mettere',
+        'title': 'Operazione',
+        '/=': '/=',
+        'over-write': 'Sovrascrivere',
+        'extend': 'Estendere',
+        'clear': 'Chiaro',
+      },
+      'setParameter': 'Imposta parametro...',
+      'variables': 'Variabili',
+      'noAssignedVars': 'Nessuna variabile assegnata disponibile',
+      'assignedVarsDescription': 'Le variabili assegnate devono essere variabili scrivibili, ad esempio variabili di conversazione.',
+      'varNotSet': 'Variabile NON impostata',
+      'selectAssignedVariable': 'Seleziona variabile assegnata...',
+      'noVarTip': 'Fare clic sul pulsante "+" per aggiungere variabili',
     },
     tool: {
       toAuthorize: 'Per autorizzare',
@@ -645,10 +672,18 @@ const translation = {
       desc: 'DESC',
       filterConditionComparisonValue: 'Valore della condizione di filtro',
       orderBy: 'Ordina per',
+      extractsCondition: 'Estrai l\'elemento N',
     },
   },
   tracing: {
     stopBy: 'Interrotto da {{user}}',
+  },
+  variableReference: {
+    noAvailableVars: 'Nessuna variabile disponibile',
+    noAssignedVars: 'Nessuna variabile assegnata disponibile',
+    noVarsForOperation: 'Non ci sono variabili disponibili per l\'assegnazione con l\'operazione selezionata.',
+    assignedVarsDescription: 'Le variabili assegnate devono essere variabili scrivibili, ad esempio',
+    conversationVars: 'Variabili di conversazione',
   },
 }
 

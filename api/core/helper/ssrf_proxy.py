@@ -39,6 +39,7 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
         )
 
     retries = 0
+    stream = kwargs.pop("stream", False)
     while retries <= max_retries:
         try:
             if dify_config.SSRF_PROXY_ALL_URL:

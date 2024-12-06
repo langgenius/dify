@@ -99,6 +99,8 @@ const translation = {
     fileUploadTip: '이미지 업로드 기능이 파일 업로드로 업그레이드되었습니다.',
     featuresDescription: '웹앱 사용자 경험 향상',
     ImageUploadLegacyTip: '이제 시작 양식에서 파일 형식 변수를 만들 수 있습니다. 앞으로 이미지 업로드 기능은 더 이상 지원되지 않습니다.',
+    importWarning: '주의',
+    importWarningDetails: 'DSL 버전 차이는 특정 기능에 영향을 미칠 수 있습니다.',
   },
   env: {
     envPanelTitle: '환경 변수',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: '형',
       binaryFileVariable: '바이너리 파일 변수',
+      extractListPlaceholder: '목록 항목 인덱스 입력, \'/\' 변수 삽입',
+      curl: {
+        title: 'cURL에서 가져오기',
+        placeholder: '여기에 cURL 문자열 붙여 넣기',
+      },
     },
     code: {
       inputVars: '입력 변수',
@@ -493,6 +500,26 @@ const translation = {
       'clear': '지우기',
       'setVariable': '변수 설정',
       'variable': '변수',
+      'operations': {
+        '*=': '*=',
+        'overwrite': '덮어쓸',
+        '-=': '-=',
+        'append': '덧붙이다',
+        'over-write': '덮어쓸',
+        '+=': '+=',
+        'title': '수술',
+        'extend': '뻗치다',
+        'clear': '맑다',
+        '/=': '/=',
+        'set': '집합',
+      },
+      'variables': '변수',
+      'noAssignedVars': '사용 가능한 할당된 변수가 없습니다.',
+      'noVarTip': '"+" 버튼을 클릭하여 변수를 추가합니다.',
+      'setParameter': '매개 변수 설정...',
+      'assignedVarsDescription': '할당된 변수는 대화 변수와 같은 쓰기 가능한 변수여야 합니다.',
+      'selectAssignedVariable': '할당된 변수 선택...',
+      'varNotSet': '변수가 설정되지 않음',
     },
     tool: {
       toAuthorize: '승인하기',
@@ -618,10 +645,18 @@ const translation = {
       orderBy: '정렬 기준',
       selectVariableKeyPlaceholder: '하위 변수 키 선택',
       filterConditionComparisonOperator: '필터 조건 비교 연산자',
+      extractsCondition: 'N 항목을 추출합니다.',
     },
   },
   tracing: {
     stopBy: '{{user}}에 의해 중지됨',
+  },
+  variableReference: {
+    noAvailableVars: '사용 가능한 변수 없음',
+    conversationVars: '대화 변수',
+    noVarsForOperation: '선택한 작업에 할당할 수 있는 변수가 없습니다.',
+    noAssignedVars: '사용 가능한 할당된 변수가 없습니다.',
+    assignedVarsDescription: '할당된 변수는 다음과 같이 쓰기 가능한 변수여야 합니다.',
   },
 }
 

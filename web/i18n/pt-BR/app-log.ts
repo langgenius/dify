@@ -79,6 +79,8 @@ const translation = {
   runDetail: {
     title: 'Registro de Conversa',
     workflowTitle: 'Detalhes do Registro',
+    fileListLabel: 'Detalhes do arquivo',
+    fileListDetail: 'Detalhe',
   },
   promptLog: 'Registro de Prompt',
   agentLog: 'Registro do agente',
@@ -86,8 +88,8 @@ const translation = {
   agenteLogDetail: {
     agentMode: 'Modo Agente',
     toolUsed: 'Ferramenta usada',
-    iterações: 'Iterações',
-    iteração: 'Iteração',
+    iterations: 'Iterações',
+    iteration: 'Iteração',
     finalProcessing: 'Processamento Final',
   },
   agentLogDetail: {

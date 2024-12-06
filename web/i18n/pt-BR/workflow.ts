@@ -99,6 +99,8 @@ const translation = {
     featuresDescription: 'Melhore a experiência do usuário do aplicativo Web',
     ImageUploadLegacyTip: 'Agora você pode criar variáveis de tipo de arquivo no formulário inicial. Não daremos mais suporte ao recurso de upload de imagens no futuro.',
     fileUploadTip: 'Os recursos de upload de imagens foram atualizados para upload de arquivos.',
+    importWarning: 'Cuidado',
+    importWarningDetails: 'A diferença de versão DSL pode afetar determinados recursos',
   },
   env: {
     envPanelTitle: 'Variáveis de Ambiente',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: 'Tipo',
       binaryFileVariable: 'Variável de arquivo binário',
+      extractListPlaceholder: 'Insira o índice do item da lista, digite \'/\' inserir variável',
+      curl: {
+        placeholder: 'Cole a string cURL aqui',
+        title: 'Importar do cURL',
+      },
     },
     code: {
       inputVars: 'Variáveis de entrada',
@@ -493,6 +500,26 @@ const translation = {
       'clear': 'Limpar',
       'setVariable': 'Definir Variável',
       'variable': 'Variável',
+      'operations': {
+        'clear': 'Claro',
+        'title': 'Operação',
+        'over-write': 'Sobrescrever',
+        '-=': '-=',
+        '/=': '/=',
+        '*=': '*=',
+        'extend': 'Estender',
+        'append': 'Acrescentar',
+        '+=': '+=',
+        'set': 'Pôr',
+        'overwrite': 'Sobrescrever',
+      },
+      'selectAssignedVariable': 'Selecione a variável atribuída...',
+      'setParameter': 'Definir parâmetro...',
+      'noVarTip': 'Clique no botão "+" para adicionar variáveis',
+      'assignedVarsDescription': 'As variáveis atribuídas devem ser variáveis graváveis, como variáveis de conversação.',
+      'varNotSet': 'Variável NÃO definida',
+      'noAssignedVars': 'Nenhuma variável atribuída disponível',
+      'variables': 'Variáveis',
     },
     tool: {
       toAuthorize: 'Autorizar',
@@ -618,10 +645,18 @@ const translation = {
       filterConditionKey: 'Chave de condição do filtro',
       filterConditionComparisonOperator: 'Operador de comparação de condição de filtro',
       filterConditionComparisonValue: 'Valor da condição do filtro',
+      extractsCondition: 'Extraia o item N',
     },
   },
   tracing: {
     stopBy: 'Parado por {{user}}',
+  },
+  variableReference: {
+    noAssignedVars: 'Nenhuma variável atribuída disponível',
+    noVarsForOperation: 'Não há variáveis disponíveis para atribuição com a operação selecionada.',
+    conversationVars: 'variáveis de conversação',
+    assignedVarsDescription: 'As variáveis atribuídas devem ser variáveis graváveis, como',
+    noAvailableVars: 'Nenhuma variável disponível',
   },
 }
 

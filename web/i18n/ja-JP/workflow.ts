@@ -99,6 +99,8 @@ const translation = {
     addParallelNode: '並列ノードを追加',
     parallel: '並列',
     branch: 'ブランチ',
+    importWarning: '注意',
+    importWarningDetails: 'DSL のバージョンの違いが特定の機能に影響を与える場合があります',
   },
   env: {
     envPanelTitle: '環境変数',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: 'タイプ',
       binaryFileVariable: 'バイナリファイル変数',
+      extractListPlaceholder: 'リスト項目のインデックスを入力し、変数を挿入 \'/\' と入力します',
+      curl: {
+        title: 'cURLからのインポート',
+        placeholder: 'ここにcURL文字列を貼り付けます',
+      },
     },
     code: {
       inputVars: '入力変数',
@@ -494,6 +501,26 @@ const translation = {
       'clear': 'クリア',
       'setVariable': '変数を設定する',
       'variable': '変数',
+      'operations': {
+        'title': '操作',
+        'set': 'セット',
+        'clear': 'クリア',
+        'overwrite': '上書き',
+        'append': '追加',
+        '-=': '-=',
+        '/=': '/=',
+        '+=': '+=',
+        'over-write': '上書き',
+        'extend': '延ばす',
+        '*=': '*=',
+      },
+      'setParameter': 'パラメータを設定...',
+      'selectAssignedVariable': '代入変数を選択...',
+      'varNotSet': '変数が設定されていません',
+      'variables': '変数',
+      'noVarTip': '「+」ボタンをクリックして変数を追加します',
+      'noAssignedVars': '使用可能な代入変数がありません',
+      'assignedVarsDescription': '代入される変数は、会話変数などの書き込み可能な変数である必要があります。',
     },
     tool: {
       toAuthorize: '承認するには',
@@ -619,10 +646,18 @@ const translation = {
       filterConditionComparisonOperator: 'フィルター条件を比較オペレーター',
       inputVar: '入力変数',
       desc: 'DESC',
+      extractsCondition: 'N個のアイテムを抽出します',
     },
   },
   tracing: {
     stopBy: '{{user}}によって停止',
+  },
+  variableReference: {
+    noVarsForOperation: '選択した操作で代入できる変数はありません。',
+    noAvailableVars: '使用可能な変数がありません',
+    noAssignedVars: '使用可能な代入変数がありません',
+    assignedVarsDescription: '代入変数は、次のような書き込み可能な変数である必要があります。',
+    conversationVars: '会話変数',
   },
 }
 

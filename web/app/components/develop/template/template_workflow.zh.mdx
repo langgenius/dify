@@ -52,7 +52,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
         用户标识，用于定义终端用户的身份，方便检索、统计。
         由开发者定义规则，需保证用户标识在应用内唯一。
       - `files` (array[object]) Optional
-          文件列表，适用于传入文件结合文本理解并回答问题，仅当模型支持 Vision 能力时可用。
+          文件列表，适用于传入文件结合文本理解并回答问题，仅当模型支持该类型文件解析能力时可用。
           - `type` (string) 支持类型：
             - `document` 具体类型包含：'TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB'
             - `image` 具体类型包含：'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'
@@ -111,7 +111,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
         - `title` (string) 节点名称
         - `index` (int) 执行序号，用于展示 Tracing Node 顺序
         - `predecessor_node_id` (string) 前置节点 ID，用于画布展示执行路径
-        - `inputs` (array[object]) 节点中所有使用到的前置节点变量内容
+        - `inputs` (object) 节点中所有使用到的前置节点变量内容
         - `created_at` (timestamp) 开始时间
     - `event: node_finished` node 执行结束，成功失败同一事件中不同状态
       - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
@@ -122,7 +122,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
         - `node_id` (string) 节点 ID
         - `index` (int) 执行序号，用于展示 Tracing Node 顺序
         - `predecessor_node_id` (string) optional 前置节点 ID，用于画布展示执行路径
-        - `inputs` (array[object]) 节点中所有使用到的前置节点变量内容
+        - `inputs` (object) 节点中所有使用到的前置节点变量内容
         - `process_data` (json) Optional 节点过程数据
         - `outputs` (json) Optional 输出内容
         - `status` (string) 执行状态 `running` / `succeeded` / `failed` / `stopped`
@@ -171,8 +171,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 
   </Col>
   <Col sticky>
-     <CodeGroup title="Request" tag="POST" label="/workflows/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
-
+    <CodeGroup title="Request" tag="POST" label="/workflows/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/workflows/run' \
     --header 'Authorization: Bearer {api_key}' \
@@ -183,7 +182,19 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
         "user": "abc-123"
     }'
     ```
-
+    </CodeGroup>
+    <CodeGroup title="File variable example">
+      ```json {{ title: 'File variable example' }}
+      {
+        "inputs": {
+          "{variable_name}": {
+            "transfer_method": "local_file",
+            "upload_file_id": "{upload_file_id}",
+            "type": "{document_type}"
+          }
+        }
+      }
+      ```
     </CodeGroup>
     ### Blocking Mode
     <CodeGroup title="Response">
@@ -219,7 +230,88 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
       data: {"event": "tts_message_end", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": ""}
     ```
     </CodeGroup>
+    <CodeGroup title="File upload sample code">
+      ```json {{ title: 'File upload sample code' }}
+      {
+        import requests
+        import json
 
+        def upload_file(file_path, user):
+            upload_url = "https://api.dify.ai/v1/files/upload"
+            headers = {
+                "Authorization": "Bearer app-xxxxxxxx",
+            }
+            
+            try:
+                print("上传文件中...")
+                with open(file_path, 'rb') as file:
+                    files = {
+                        'file': (file_path, file, 'text/plain')  # 确保文件以适当的MIME类型上传
+                    }
+                    data = {
+                        "user": user,
+                        "type": "TXT"  # 设置文件类型为TXT
+                    }
+                    
+                    response = requests.post(upload_url, headers=headers, files=files, data=data)
+                    if response.status_code == 201:  # 201 表示创建成功
+                        print("文件上传成功")
+                        return response.json().get("id")  # 获取上传的文件 ID
+                    else:
+                        print(f"文件上传失败，状态码: {response.status_code}")
+                        return None
+            except Exception as e:
+                print(f"发生错误: {str(e)}")
+                return None
+
+        def run_workflow(file_id, user, response_mode="blocking"):
+            workflow_url = "https://api.dify.ai/v1/workflows/run"
+            headers = {
+                "Authorization": "Bearer app-xxxxxxxxx",
+                "Content-Type": "application/json"
+            }
+
+            data = {
+                "inputs": {
+                    "orig_mail": {
+                        "transfer_method": "local_file",
+                        "upload_file_id": file_id,
+                        "type": "document"
+                    }
+                },
+                "response_mode": response_mode,
+                "user": user
+            }
+
+            try:
+                print("运行工作流...")
+                response = requests.post(workflow_url, headers=headers, json=data)
+                if response.status_code == 200:
+                    print("工作流执行成功")
+                    return response.json()
+                else:
+                    print(f"工作流执行失败，状态码: {response.status_code}")
+                    return {"status": "error", "message": f"Failed to execute workflow, status code: {response.status_code}"}
+            except Exception as e:
+                print(f"发生错误: {str(e)}")
+                return {"status": "error", "message": str(e)}
+
+        # 使用示例
+        file_path = "{your_file_path}"
+        user = "difyuser"
+
+        # 上传文件
+        file_id = upload_file(file_path, user)
+        if file_id:
+            # 文件上传成功，继续运行工作流
+            result = run_workflow(file_id, user)
+            print(result)
+        else:
+            print("文件上传失败，无法执行工作流")
+
+      }
+      ```
+    </CodeGroup>
   </Col>
 </Row>
 
@@ -399,104 +491,6 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 ---
 
 <Heading
-  url='/parameters'
-  method='GET'
-  title='获取应用配置信息'
-  name='#parameters'
-/>
-<Row>
-  <Col>
-    用于进入页面一开始，获取功能开关、输入参数名称、类型及默认值等使用。
-
-    ### Query
-
-    <Properties>
-      <Property name='user' type='string' key='user'>
-        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
-      </Property>
-    </Properties>
-
-    ### Response
-    - `user_input_form` (array[object]) 用户输入表单配置
-      - `text-input` (object) 文本输入控件
-        - `label` (string) 控件展示标签名
-        - `variable` (string) 控件 ID
-        - `required` (bool) 是否必填
-        - `default` (string) 默认值
-      - `paragraph` (object) 段落文本输入控件
-        - `label` (string) 控件展示标签名
-        - `variable` (string) 控件 ID
-        - `required` (bool) 是否必填
-        - `default` (string) 默认值
-      - `select` (object) 下拉控件
-        - `label` (string) 控件展示标签名
-        - `variable` (string) 控件 ID
-        - `required` (bool) 是否必填
-        - `default` (string) 默认值
-        - `options` (array[string]) 选项值
-    - `file_upload` (object) 文件上传配置
-      - `image` (object) 图片设置
-        当前仅支持图片类型：`png`, `jpg`, `jpeg`, `webp`, `gif`
-        - `enabled` (bool) 是否开启
-        - `number_limits` (int) 图片数量限制，默认 3
-        - `transfer_methods` (array[string]) 传递方式列表，remote_url , local_file，必选一个
-    - `system_parameters` (object) 系统参数
-      - `file_size_limit` (int) 文档上传大小限制 (MB)
-      - `image_file_size_limit` (int) 图片文件上传大小限制（MB）
-      - `audio_file_size_limit` (int) 音频文件上传大小限制 (MB)
-      - `video_file_size_limit` (int) 视频文件上传大小限制 (MB)
-
-  </Col>
-  <Col sticky>
-
-    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
-
-    <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "user_input_form": [
-          {
-              "paragraph": {
-                  "label": "Query",
-                  "variable": "query",
-                  "required": true,
-                  "default": ""
-              }
-          }
-      ],
-      "file_upload": {
-          "image": {
-              "enabled": false,
-              "number_limits": 3,
-              "detail": "high",
-              "transfer_methods": [
-                  "remote_url",
-                  "local_file"
-              ]
-          }
-      },
-      "system_parameters": {
-          "file_size_limit": 15,
-          "image_file_size_limit": 10,
-          "audio_file_size_limit": 50,
-          "video_file_size_limit": 100
-      }
-    }
-    ```
-    </CodeGroup>
-  </Col>
-</Row>
-
----
-
-<Heading
   url='/workflows/logs'
   method='GET'
   title='获取 workflow 日志'
@@ -594,6 +588,148 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
                 "created_at": 1726139644
             }
         ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/info'
+  method='GET'
+  title='获取应用基本信息'
+  name='#info'
+/>
+<Row>
+  <Col>
+  用于获取应用的基本信息
+  ### Query
+    <Properties>
+
+   <Property name='user' type='string' key='user'>
+      用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+    </Property>
+      </Properties>
+  ### Response
+  - `name` (string) 应用名称
+  - `description` (string) 应用描述
+  - `tags` (array[string]) 应用标签
+  </Col>
+  <Col>
+    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \
+      -H 'Authorization: Bearer {api_key}'
+      ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "name": "My App",
+      "description": "This is my app.",
+      "tags": [
+        "tag1",
+        "tag2"
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/parameters'
+  method='GET'
+  title='获取应用参数'
+  name='#parameters'
+/>
+<Row>
+  <Col>
+    用于进入页面一开始，获取功能开关、输入参数名称、类型及默认值等使用。
+
+    ### Query
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      </Property>
+    </Properties>
+
+    ### Response
+    - `user_input_form` (array[object]) 用户输入表单配置
+      - `text-input` (object) 文本输入控件
+        - `label` (string) 控件展示标签名
+        - `variable` (string) 控件 ID
+        - `required` (bool) 是否必填
+        - `default` (string) 默认值
+      - `paragraph` (object) 段落文本输入控件
+        - `label` (string) 控件展示标签名
+        - `variable` (string) 控件 ID
+        - `required` (bool) 是否必填
+        - `default` (string) 默认值
+      - `select` (object) 下拉控件
+        - `label` (string) 控件展示标签名
+        - `variable` (string) 控件 ID
+        - `required` (bool) 是否必填
+        - `default` (string) 默认值
+        - `options` (array[string]) 选项值
+    - `file_upload` (object) 文件上传配置
+      - `image` (object) 图片设置
+        当前仅支持图片类型：`png`, `jpg`, `jpeg`, `webp`, `gif`
+        - `enabled` (bool) 是否开启
+        - `number_limits` (int) 图片数量限制，默认 3
+        - `transfer_methods` (array[string]) 传递方式列表，remote_url , local_file，必选一个
+    - `system_parameters` (object) 系统参数
+      - `file_size_limit` (int) 文档上传大小限制 (MB)
+      - `image_file_size_limit` (int) 图片文件上传大小限制（MB）
+      - `audio_file_size_limit` (int) 音频文件上传大小限制 (MB)
+      - `video_file_size_limit` (int) 视频文件上传大小限制 (MB)
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "user_input_form": [
+          {
+              "paragraph": {
+                  "label": "Query",
+                  "variable": "query",
+                  "required": true,
+                  "default": ""
+              }
+          }
+      ],
+      "file_upload": {
+          "image": {
+              "enabled": false,
+              "number_limits": 3,
+              "detail": "high",
+              "transfer_methods": [
+                  "remote_url",
+                  "local_file"
+              ]
+          }
+      },
+      "system_parameters": {
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
+      }
     }
     ```
     </CodeGroup>

@@ -8,8 +8,7 @@ import RemarkGfm from 'remark-gfm'
 import RehypeRaw from 'rehype-raw'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
-import type { RefObject } from 'react'
-import { Component, memo, useEffect, useMemo, useRef, useState } from 'react'
+import { Component, memo, useMemo, useRef, useState } from 'react'
 import type { CodeComponent } from 'react-markdown/lib/ast-to-react'
 import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
@@ -77,29 +76,6 @@ export function PreCode(props: { children: any }) {
   )
 }
 
-// eslint-disable-next-line unused-imports/no-unused-vars
-const useLazyLoad = (ref: RefObject<Element>): boolean => {
-  const [isIntersecting, setIntersecting] = useState<boolean>(false)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setIntersecting(true)
-        observer.disconnect()
-      }
-    })
-
-    if (ref.current)
-      observer.observe(ref.current)
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [ref])
-
-  return isIntersecting
-}
-
 // **Add code block
 // Avoid error #185 (Maximum update depth exceeded.
 // This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate.
@@ -123,7 +99,7 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
       try {
         return JSON.parse(String(children).replace(/\n$/, ''))
       }
-      catch (error) {}
+      catch (error) { }
     }
     return JSON.parse('{"title":{"text":"ECharts error - Wrong JSON format."}}')
   }, [language, children])
@@ -181,7 +157,7 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
       >
         <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
         <div style={{ display: 'flex' }}>
-          {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG}/>}
+          {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
           <CopyBtn
             className='mr-1'
             value={String(children).replace(/\n$/, '')}
@@ -210,6 +186,12 @@ const AudioBlock: CodeComponent = memo(({ node }) => {
   return <AudioGallery key={srcs.join()} srcs={srcs} />
 })
 AudioBlock.displayName = 'AudioBlock'
+
+const ScriptBlock = memo(({ node }: any) => {
+  const scriptContent = node.children[0]?.value || ''
+  return `<script>${scriptContent}</script>`
+})
+ScriptBlock.displayName = 'ScriptBlock'
 
 const Paragraph = (paragraph: any) => {
   const { node }: any = paragraph
@@ -255,7 +237,7 @@ export function Markdown(props: { content: string; className?: string }) {
           () => {
             return (tree) => {
               const iterate = (node: any) => {
-                if (node.type === 'element' && !node.properties?.src && node.properties?.ref && node.properties.ref.startsWith('{') && node.properties.ref.endsWith('}'))
+                if (node.type === 'element' && node.properties?.ref)
                   delete node.properties.ref
 
                 if (node.children)
@@ -265,7 +247,7 @@ export function Markdown(props: { content: string; className?: string }) {
             }
           },
         ]}
-        disallowedElements={['script', 'iframe', 'head', 'html', 'meta', 'link', 'style', 'body']}
+        disallowedElements={['iframe', 'head', 'html', 'meta', 'link', 'style', 'body']}
         components={{
           code: CodeBlock,
           img: Img,
@@ -275,6 +257,7 @@ export function Markdown(props: { content: string; className?: string }) {
           p: Paragraph,
           button: MarkdownButton,
           form: MarkdownForm,
+          script: ScriptBlock,
         }}
         linkTarget='_blank'
       >

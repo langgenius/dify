@@ -406,6 +406,9 @@ class DocumentService:
             ],
             "segmentation": {"delimiter": "\n", "max_tokens": 500, "chunk_overlap": 50},
         },
+        "limits": {
+            "indexing_max_segmentation_tokens_length": dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH,
+        },
     }
 
     DOCUMENT_METADATA_SCHEMA = {
@@ -600,7 +603,7 @@ class DocumentService:
         # update document to be paused
         document.is_paused = True
         document.paused_by = current_user.id
-        document.paused_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        document.paused_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
 
         db.session.add(document)
         db.session.commit()
@@ -1072,7 +1075,7 @@ class DocumentService:
         document.parsing_completed_at = None
         document.cleaning_completed_at = None
         document.splitting_completed_at = None
-        document.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        document.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         document.created_from = created_from
         document.doc_form = document_data["doc_form"]
         db.session.add(document)
@@ -1409,8 +1412,8 @@ class SegmentService:
                 word_count=len(content),
                 tokens=tokens,
                 status="completed",
-                indexing_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
-                completed_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+                indexing_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                 created_by=current_user.id,
             )
             if document.doc_form == "qa_model":
@@ -1429,7 +1432,7 @@ class SegmentService:
             except Exception as e:
                 logging.exception("create segment index failed")
                 segment_document.enabled = False
-                segment_document.disabled_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                segment_document.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 segment_document.status = "error"
                 segment_document.error = str(e)
                 db.session.commit()
@@ -1458,6 +1461,7 @@ class SegmentService:
             pre_segment_data_list = []
             segment_data_list = []
             keywords_list = []
+            position = max_position + 1 if max_position else 1
             for segment_item in segments:
                 content = segment_item["content"]
                 doc_id = str(uuid.uuid4())
@@ -1475,13 +1479,13 @@ class SegmentService:
                     document_id=document.id,
                     index_node_id=doc_id,
                     index_node_hash=segment_hash,
-                    position=max_position + 1 if max_position else 1,
+                    position=position,
                     content=content,
                     word_count=len(content),
                     tokens=tokens,
                     status="completed",
-                    indexing_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
-                    completed_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+                    indexing_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                    completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                     created_by=current_user.id,
                 )
                 if document.doc_form == "qa_model":
@@ -1490,6 +1494,7 @@ class SegmentService:
                 increment_word_count += segment_document.word_count
                 db.session.add(segment_document)
                 segment_data_list.append(segment_document)
+                position += 1
 
                 pre_segment_data_list.append(segment_document)
                 if "keywords" in segment_item:
@@ -1506,7 +1511,7 @@ class SegmentService:
                 logging.exception("create segment index failed")
                 for segment_document in segment_data_list:
                     segment_document.enabled = False
-                    segment_document.disabled_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                    segment_document.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                     segment_document.status = "error"
                     segment_document.error = str(e)
             db.session.commit()
@@ -1524,7 +1529,7 @@ class SegmentService:
             if segment.enabled != action:
                 if not action:
                     segment.enabled = action
-                    segment.disabled_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                    segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                     segment.disabled_by = current_user.id
                     db.session.add(segment)
                     db.session.commit()
@@ -1583,10 +1588,10 @@ class SegmentService:
                 segment.word_count = len(content)
                 segment.tokens = tokens
                 segment.status = "completed"
-                segment.indexing_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-                segment.completed_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                segment.indexing_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+                segment.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 segment.updated_by = current_user.id
-                segment.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                segment.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 segment.enabled = True
                 segment.disabled_at = None
                 segment.disabled_by = None
@@ -1606,7 +1611,7 @@ class SegmentService:
         except Exception as e:
             logging.exception("update segment index failed")
             segment.enabled = False
-            segment.disabled_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             segment.status = "error"
             segment.error = str(e)
             db.session.commit()

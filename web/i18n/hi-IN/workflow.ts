@@ -102,6 +102,8 @@ const translation = {
     featuresDescription: 'वेब ऐप उपयोगकर्ता अनुभव को बेहतर बनाएं',
     fileUploadTip: 'छवि अपलोड सुविधाओं को फ़ाइल अपलोड में अपग्रेड किया गया है।',
     ImageUploadLegacyTip: 'अब आप प्रारंभ प्रपत्र में फ़ाइल प्रकार चर बना सकते हैं। हम अब भविष्य में छवि अपलोड सुविधा का समर्थन नहीं करेंगे।',
+    importWarning: 'सावधानी',
+    importWarningDetails: 'डीएसएल संस्करण अंतर कुछ सुविधाओं को प्रभावित कर सकता है',
   },
   env: {
     envPanelTitle: 'पर्यावरण चर',
@@ -420,6 +422,11 @@ const translation = {
       },
       type: 'प्रकार',
       binaryFileVariable: 'बाइनरी फ़ाइल चर',
+      extractListPlaceholder: 'सूची आइटम इंडेक्स दर्ज करें, \'/\' इन्सर्ट वेरिएबल टाइप करें',
+      curl: {
+        placeholder: 'यहां cURL स्ट्रिंग पेस्ट करें',
+        title: 'cURL से आयात करें',
+      },
     },
     code: {
       inputVars: 'इनपुट वेरिएबल्स',
@@ -509,6 +516,26 @@ const translation = {
       'clear': 'साफ़ करें',
       'setVariable': 'चर सेट करें',
       'variable': 'चर',
+      'operations': {
+        'clear': 'स्पष्ट',
+        '/=': '/=',
+        '*=': '*=',
+        'over-write': 'अधिलेखित',
+        'title': 'परिचालन',
+        '+=': '+=',
+        'overwrite': 'अधिलेखित',
+        'set': 'अस्त हो',
+        'extend': 'पसार',
+        '-=': '-=',
+        'append': 'संलग्न',
+      },
+      'setParameter': 'पैरामीटर सेट करें...',
+      'noVarTip': 'चर जोड़ने के लिए "+" बटन पर क्लिक करें',
+      'variables': 'चर',
+      'selectAssignedVariable': 'असाइन किए गए चर का चयन करें...',
+      'varNotSet': 'चर सेट नहीं',
+      'assignedVarsDescription': 'असाइन किए गए चर लिखने योग्य चर होने चाहिए, जैसे वार्तालाप चर।',
+      'noAssignedVars': 'कोई उपलब्ध असाइन किए गए चर नहीं',
     },
     tool: {
       toAuthorize: 'अधिकृत करने के लिए',
@@ -638,10 +665,18 @@ const translation = {
       filterConditionComparisonOperator: 'फ़िल्टर शर्त तुलन ऑपरेटर',
       selectVariableKeyPlaceholder: 'उप चर कुंजी का चयन करें',
       inputVar: 'इनपुट वेरिएबल',
+      extractsCondition: 'N आइटम निकालें',
     },
   },
   tracing: {
     stopBy: '{{user}} द्वारा रोका गया',
+  },
+  variableReference: {
+    conversationVars: 'बातचीत चर',
+    noAvailableVars: 'कोई उपलब्ध चर नहीं',
+    assignedVarsDescription: 'असाइन किए गए चर लिखने योग्य चर होने चाहिए, जैसे',
+    noVarsForOperation: 'चयनित कार्रवाई के साथ असाइनमेंट के लिए कोई चर उपलब्ध नहीं हैं.',
+    noAssignedVars: 'कोई उपलब्ध असाइन किए गए चर नहीं',
   },
 }
 

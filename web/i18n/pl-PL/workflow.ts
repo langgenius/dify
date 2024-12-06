@@ -99,6 +99,8 @@ const translation = {
     fileUploadTip: 'Funkcje przesyłania obrazów zostały zaktualizowane do przesyłania plików.',
     featuresDescription: 'Ulepszanie środowiska użytkownika aplikacji internetowej',
     featuresDocLink: 'Dowiedz się więcej',
+    importWarning: 'Ostrożność',
+    importWarningDetails: 'Różnica w wersji DSL może mieć wpływ na niektóre funkcje',
   },
   env: {
     envPanelTitle: 'Zmienne Środowiskowe',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: 'Typ',
       binaryFileVariable: 'Binarna zmienna pliku',
+      extractListPlaceholder: 'Wprowadź indeks elementu listy, wpisz "/" wstaw zmienną',
+      curl: {
+        placeholder: 'Wklej tutaj ciąg cURL',
+        title: 'Importowanie z cURL',
+      },
     },
     code: {
       inputVars: 'Zmienne wejściowe',
@@ -493,6 +500,26 @@ const translation = {
       'clear': 'Wyczyść',
       'setVariable': 'Ustaw Zmienną',
       'variable': 'Zmienna',
+      'operations': {
+        'over-write': 'Zastąpić',
+        'set': 'Zbiór',
+        'title': 'Operacja',
+        'overwrite': 'Zastąpić',
+        '*=': '*=',
+        '/=': '/=',
+        '-=': '-=',
+        'extend': 'Rozszerzyć',
+        '+=': '+=',
+        'clear': 'Jasny',
+        'append': 'Dołączyć',
+      },
+      'variables': 'Zmiennych',
+      'selectAssignedVariable': 'Wybierz przypisaną zmienną...',
+      'varNotSet': 'Zmienna NIE jest ustawiona',
+      'noAssignedVars': 'Brak dostępnych przypisanych zmiennych',
+      'assignedVarsDescription': 'Przypisane zmienne muszą być zmiennymi zapisywalnymi, takimi jak zmienne konwersacji.',
+      'setParameter': 'Ustaw parametr...',
+      'noVarTip': 'Kliknij przycisk "+", aby dodać zmienne',
     },
     tool: {
       toAuthorize: 'Do autoryzacji',
@@ -618,10 +645,18 @@ const translation = {
       filterCondition: 'Stan filtra',
       filterConditionComparisonValue: 'Wartość warunku filtru',
       selectVariableKeyPlaceholder: 'Wybierz klucz zmiennej podrzędnej',
+      extractsCondition: 'Wyodrębnij element N',
     },
   },
   tracing: {
     stopBy: 'Zatrzymane przez {{user}}',
+  },
+  variableReference: {
+    conversationVars: 'Zmienne konwersacji',
+    assignedVarsDescription: 'Przypisane zmienne muszą być zmiennymi zapisywalnymi, takimi jak',
+    noVarsForOperation: 'Nie ma dostępnych zmiennych do przypisania do wybranej operacji.',
+    noAssignedVars: 'Brak dostępnych przypisanych zmiennych',
+    noAvailableVars: 'Brak dostępnych zmiennych',
   },
 }
 

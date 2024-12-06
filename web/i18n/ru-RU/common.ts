@@ -591,6 +591,13 @@ const translation = {
     uploadFromComputerLimit: 'Файл загрузки не может превышать {{size}}',
     uploadFromComputerUploadError: 'Загрузка файла не удалась, пожалуйста, загрузите еще раз.',
   },
+  license: {
+    expiring: 'Срок действия истекает за один день',
+    expiring_plural: 'Срок действия истекает через {{count}} дней',
+  },
+  pagination: {
+    perPage: 'Элементов на странице',
+  },
 }
 
 export default translation

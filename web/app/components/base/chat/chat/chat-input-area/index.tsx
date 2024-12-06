@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useRef,
   useState,
 } from 'react'
 import Textarea from 'rc-textarea'
@@ -73,7 +74,8 @@ const ChatInputArea = ({
     isDragActive,
   } = useFile(visionConfig!)
   const { checkInputsForm } = useCheckInputsForms()
-
+  const historyRef = useRef([''])
+  const [currentIndex, setCurrentIndex] = useState(-1)
   const handleSend = () => {
     if (onSend) {
       const { files, setFiles } = filesStore.getState()
@@ -92,12 +94,32 @@ const ChatInputArea = ({
       }
     }
   }
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
       setQuery(query.replace(/\n$/, ''))
+      historyRef.current.push(query)
+      setCurrentIndex(historyRef.current.length)
       handleSend()
+    }
+    else if (e.key === 'ArrowUp' && !e.shiftKey && !e.nativeEvent.isComposing && e.metaKey) {
+      // When the cmd + up key is pressed, output the previous element
+      if (currentIndex > 0) {
+        setCurrentIndex(currentIndex - 1)
+        setQuery(historyRef.current[currentIndex - 1])
+      }
+    }
+    else if (e.key === 'ArrowDown' && !e.shiftKey && !e.nativeEvent.isComposing && e.metaKey) {
+      // When the cmd + down key is pressed, output the next element
+      if (currentIndex < historyRef.current.length - 1) {
+        setCurrentIndex(currentIndex + 1)
+        setQuery(historyRef.current[currentIndex + 1])
+      }
+      else if (currentIndex === historyRef.current.length - 1) {
+      // If it is the last element, clear the input box
+        setCurrentIndex(historyRef.current.length)
+        setQuery('')
+      }
     }
   }
 
