@@ -102,11 +102,9 @@ const ModelProviderPage = ({ searchText }: Props) => {
       onSaveCallback: () => {
         updateModelProviders()
 
-        if (configurationMethod === ConfigurationMethodEnum.predefinedModel) {
-          provider.supported_model_types.forEach((type) => {
-            updateModelList(type)
-          })
-        }
+        provider.supported_model_types.forEach((type) => {
+          updateModelList(type)
+        })
 
         if (configurationMethod === ConfigurationMethodEnum.customizableModel && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
           eventEmitter?.emit({
@@ -218,7 +216,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
         </div>
         {!collapse && (isPluginsLoading || isAllPluginsLoading) && <Loading type='area' />}
         {
-          !isPluginsLoading && (
+          !isPluginsLoading && !collapse && (
             <List
               marketplaceCollections={marketplaceCollections || []}
               marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
@@ -231,7 +229,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
           )
         }
         {
-          !isAllPluginsLoading && (
+          !isAllPluginsLoading && !collapse && (
             <List
               marketplaceCollections={[]}
               marketplaceCollectionPluginsMap={{}}

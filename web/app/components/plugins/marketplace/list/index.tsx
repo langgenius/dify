@@ -14,6 +14,7 @@ type ListProps = {
   locale: string
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => JSX.Element | null
+  onMoreClick?: () => void
 }
 const List = ({
   marketplaceCollections,
@@ -23,6 +24,7 @@ const List = ({
   locale,
   cardContainerClassName,
   cardRender,
+  onMoreClick,
 }: ListProps) => {
   return (
     <>
@@ -35,6 +37,7 @@ const List = ({
             locale={locale}
             cardContainerClassName={cardContainerClassName}
             cardRender={cardRender}
+            onMoreClick={onMoreClick}
           />
         )
       }

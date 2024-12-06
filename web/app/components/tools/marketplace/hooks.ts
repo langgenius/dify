@@ -1,6 +1,9 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
+  useRef,
+  useState,
 } from 'react'
 import {
   useMarketplaceCollectionsAndPlugins,
@@ -28,10 +31,22 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
     queryPlugins,
     queryPluginsWithDebounced,
     isLoading: isPluginsLoading,
+    total: pluginsTotal,
   } = useMarketplacePlugins()
+  const [page, setPage] = useState(1)
+  const pageRef = useRef(page)
+  const searchPluginTextRef = useRef(searchPluginText)
+  const filterPluginTagsRef = useRef(filterPluginTags)
 
   useEffect(() => {
+    searchPluginTextRef.current = searchPluginText
+    filterPluginTagsRef.current = filterPluginTags
+  }, [searchPluginText, filterPluginTags])
+  useEffect(() => {
     if ((searchPluginText || filterPluginTags.length) && isSuccess) {
+      setPage(1)
+      pageRef.current = 1
+
       if (searchPluginText) {
         queryPluginsWithDebounced({
           category: PluginType.tool,
@@ -39,6 +54,7 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
           tags: filterPluginTags,
           exclude,
           type: 'plugin',
+          page: pageRef.current,
         })
         return
       }
@@ -48,6 +64,7 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
         tags: filterPluginTags,
         exclude,
         type: 'plugin',
+        page: pageRef.current,
       })
     }
     else {
@@ -63,10 +80,38 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
     }
   }, [searchPluginText, filterPluginTags, queryPlugins, queryMarketplaceCollectionsAndPlugins, queryPluginsWithDebounced, resetPlugins, exclude, isSuccess])
 
+  const handleScroll = useCallback((e: Event) => {
+    const target = e.target as HTMLDivElement
+    const {
+      scrollTop,
+      scrollHeight,
+      clientHeight,
+    } = target
+    if (scrollTop + clientHeight >= scrollHeight - 5 && scrollTop > 0) {
+      const searchPluginText = searchPluginTextRef.current
+      const filterPluginTags = filterPluginTagsRef.current
+      if (pluginsTotal && plugins && pluginsTotal > plugins.length && (!!searchPluginText || !!filterPluginTags.length)) {
+        setPage(pageRef.current + 1)
+        pageRef.current++
+
+        queryPlugins({
+          category: PluginType.tool,
+          query: searchPluginText,
+          tags: filterPluginTags,
+          exclude,
+          type: 'plugin',
+          page: pageRef.current,
+        })
+      }
+    }
+  }, [exclude, plugins, pluginsTotal, queryPlugins])
+
   return {
     isLoading: isLoading || isPluginsLoading,
     marketplaceCollections,
     marketplaceCollectionPluginsMap,
     plugins,
+    handleScroll,
+    page,
   }
 }
