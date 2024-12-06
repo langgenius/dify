@@ -25,7 +25,6 @@ from controllers.console.wraps import (
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.segment_fields import child_chunk_fields, segment_fields
 from libs.login import login_required
@@ -639,7 +638,9 @@ class ChildChunkUpdateApi(Resource):
 
 
 api.add_resource(DatasetDocumentSegmentListApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
-api.add_resource(DatasetDocumentSegmentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment/<string:action>")
+api.add_resource(
+    DatasetDocumentSegmentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment/<string:action>"
+)
 api.add_resource(DatasetDocumentSegmentAddApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment")
 api.add_resource(
     DatasetDocumentSegmentUpdateApi,

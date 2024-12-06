@@ -278,6 +278,25 @@ class DatasetDocumentListApi(Resource):
 
         return {"documents": documents, "batch": batch}
 
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, dataset_id):
+        dataset_id = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+        # check user's model setting
+        DatasetService.check_dataset_model_setting(dataset)
+
+        try:
+            document_ids = request.args.getlist("document_id")
+            DatasetService.delete_documents(dataset, document_ids)
+        except services.errors.document.DocumentIndexingError:
+            raise DocumentIndexingError("Cannot delete document during indexing.")
+
+        return {"result": "success"}, 204
+
 
 class DatasetInitApi(Resource):
     @setup_required

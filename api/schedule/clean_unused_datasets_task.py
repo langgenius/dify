@@ -77,11 +77,15 @@ def clean_unused_datasets_task():
             if not dataset_query or len(dataset_query) == 0:
                 try:
                     # add auto disable log
-                    documents = db.session.query(Document).filter(
-                        Document.dataset_id == dataset.id,
-                        Document.enabled == True,
-                        Document.archived == False,
-                    ).all()
+                    documents = (
+                        db.session.query(Document)
+                        .filter(
+                            Document.dataset_id == dataset.id,
+                            Document.enabled == True,
+                            Document.archived == False,
+                        )
+                        .all()
+                    )
                     for document in documents:
                         dataset_auto_disable_log = DatasetAutoDisableLog(
                             tenant_id=dataset.tenant_id,
@@ -167,11 +171,15 @@ def clean_unused_datasets_task():
                         plan = plan_cache.decode()
                     if plan == "sandbox":
                         # add auto disable log
-                        documents = db.session.query(Document).filter(
-                            Document.dataset_id == dataset.id,
-                            Document.enabled == True,
-                            Document.archived == False,
-                        ).all()
+                        documents = (
+                            db.session.query(Document)
+                            .filter(
+                                Document.dataset_id == dataset.id,
+                                Document.enabled == True,
+                                Document.archived == False,
+                            )
+                            .all()
+                        )
                         for document in documents:
                             dataset_auto_disable_log = DatasetAutoDisableLog(
                                 tenant_id=dataset.tenant_id,

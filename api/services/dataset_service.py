@@ -53,6 +53,7 @@ from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureModel, FeatureService
 from services.tag_service import TagService
 from services.vector_service import VectorService
+from tasks.batch_clean_document_task import batch_clean_document_task
 from tasks.clean_notion_document_task import clean_notion_document_task
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
@@ -405,7 +406,7 @@ class DatasetService:
             .order_by(db.desc(AppDatasetJoin.created_at))
             .all()
         )
-    
+
     @staticmethod
     def get_dataset_auto_disable_logs(dataset_id: str) -> dict:
         # get recent 30 days auto disable logs
@@ -602,6 +603,20 @@ class DocumentService:
         )
 
         db.session.delete(document)
+        db.session.commit()
+
+    @staticmethod
+    def delete_documents(dataset: Dataset, document_ids: list[str]):
+        documents = db.session.query(Document).filter(Document.id.in_(document_ids)).all()
+        file_ids = [
+            document.data_source_info_dict["upload_file_id"]
+            for document in documents
+            if document.data_source_type == "upload_file"
+        ]
+        batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
+
+        for document in documents:
+            db.session.delete(document)
         db.session.commit()
 
     @staticmethod
@@ -1903,12 +1918,15 @@ class SegmentService:
         db.session.commit()
 
     @classmethod
-    def get_child_chunks(cls, segment_id: str, document_id: str, dataset_id: str, 
-                         page: int, limit: int, keyword: Optional[str] = None):
-        query = ChildChunk.query.filter_by(tenant_id=current_user.current_tenant_id, 
-                                           dataset_id=dataset_id, 
-                                           document_id=document_id, 
-                                           segment_id=segment_id)
+    def get_child_chunks(
+        cls, segment_id: str, document_id: str, dataset_id: str, page: int, limit: int, keyword: Optional[str] = None
+    ):
+        query = ChildChunk.query.filter_by(
+            tenant_id=current_user.current_tenant_id,
+            dataset_id=dataset_id,
+            document_id=document_id,
+            segment_id=segment_id,
+        )
         if keyword:
             query = query.where(ChildChunk.content.ilike(f"%{keyword}%"))
         return query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
