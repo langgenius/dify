@@ -102,11 +102,9 @@ const ModelProviderPage = ({ searchText }: Props) => {
       onSaveCallback: () => {
         updateModelProviders()
 
-        if (configurationMethod === ConfigurationMethodEnum.predefinedModel) {
-          provider.supported_model_types.forEach((type) => {
-            updateModelList(type)
-          })
-        }
+        provider.supported_model_types.forEach((type) => {
+          updateModelList(type)
+        })
 
         if (configurationMethod === ConfigurationMethodEnum.customizableModel && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
           eventEmitter?.emit({
