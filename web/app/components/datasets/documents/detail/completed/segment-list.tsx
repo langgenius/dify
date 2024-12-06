@@ -12,7 +12,7 @@ type ISegmentListProps = {
   items: SegmentDetailModel[]
   selectedSegmentIds: string[]
   onSelected: (segId: string) => void
-  onClick: (detail: SegmentDetailModel, isEditing?: boolean) => void
+  onClick: (detail: SegmentDetailModel, isEditMode?: boolean) => void
   onChangeSwitch: (enabled: boolean, segId?: string,) => Promise<void>
   onDelete: (segId: string) => Promise<void>
   archived?: boolean
@@ -45,11 +45,11 @@ const SegmentList: FC<ISegmentListProps> = ({
                 checked={selectedSegmentIds.includes(segItem.id)}
                 onCheck={() => onSelected(segItem.id)}
               />
-              <div>
+              <div className='grow'>
                 <SegmentCard
                   key={`${segItem.id}-card`}
                   detail={segItem}
-                  onClick={() => onClickCard(segItem)}
+                  onClick={() => onClickCard(segItem, true)}
                   onChangeSwitch={onChangeSwitch}
                   onClickEdit={() => onClickCard(segItem, true)}
                   onDelete={onDelete}

@@ -170,7 +170,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
 
   return (
     <div
-      className={cn('px-3 rounded-xl group/card', isFullDocMode ? '' : 'pt-2.5 pb-2 hover:bg-dataset-chunk-detail-card-hover-bg', className)}
+      className={cn('w-full px-3 rounded-xl group/card', isFullDocMode ? '' : 'pt-2.5 pb-2 hover:bg-dataset-chunk-detail-card-hover-bg', className)}
       onClick={handleClickCard}
     >
       <div className='h-5 relative flex items-center justify-between'>

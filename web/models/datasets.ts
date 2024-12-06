@@ -459,6 +459,7 @@ export type SegmentsResponse = {
   limit: number
   total: number
   total_pages: number
+  page: number
 }
 
 export type HitTestingRecord = {
@@ -613,6 +614,14 @@ export type ChildChunkDetail = {
   word_count: number
   created_at: number
   type: ChildChunkType
+}
+
+export type ChildSegmentResponse = {
+  data: ChildChunkDetail[]
+  total: number
+  total_pages: number
+  page: number
+  limit: number
 }
 
 export type UpdateDocumentParams = {
