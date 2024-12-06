@@ -69,6 +69,8 @@ class MilvusVector(BaseVector):
         insert_dict_list = []
         for i in range(len(documents)):
             insert_dict = {
+                # Do not need to insert the sparse_vector field separately, as the text_bm25_emb
+                # function will automatically convert the native text into a sparse vector for us.
                 Field.CONTENT_KEY.value: documents[i].page_content,
                 Field.VECTOR.value: embeddings[i],
                 Field.METADATA_KEY.value: documents[i].metadata,
@@ -128,28 +130,61 @@ class MilvusVector(BaseVector):
 
         return len(result) > 0
 
+    def _process_search_results(self, results: list[Any], output_fields: list[str], score_threshold: float = 0.0) -> list[Document]:
+        """
+        Common method to process search results
+
+        :param results: Search results
+        :param output_fields: Fields to be output
+        :param score_threshold: Score threshold for filtering
+        :return: List of documents
+        """
+        docs = []
+        for result in results[0]:
+            # Get metadata
+            metadata = result["entity"].get(output_fields[1], {})
+            metadata["score"] = result["distance"]
+
+            # Filter based on score threshold
+            if result["distance"] > score_threshold:
+                doc = Document(
+                    page_content=result["entity"].get(output_fields[0], ""),
+                    metadata=metadata
+                )
+                docs.append(doc)
+
+        return docs
+
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         # Set search parameters.
         results = self._client.search(
             collection_name=self._collection_name,
             data=[query_vector],
+            anns_field=Field.VECTOR.value,
             limit=kwargs.get("top_k", 4),
-            output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value],
+            output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value]
         )
-        # Organize results.
-        docs = []
-        for result in results[0]:
-            metadata = result["entity"].get(Field.METADATA_KEY.value)
-            metadata["score"] = result["distance"]
-            score_threshold = float(kwargs.get("score_threshold") or 0.0)
-            if result["distance"] > score_threshold:
-                doc = Document(page_content=result["entity"].get(Field.CONTENT_KEY.value), metadata=metadata)
-                docs.append(doc)
-        return docs
+
+        return self._process_search_results(
+            results,
+            output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value],
+            score_threshold=float(kwargs.get("score_threshold") or 0.0)
+        )
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        # milvus/zilliz doesn't support bm25 search
-        return []
+        results = self._client.search(
+            collection_name=self._collection_name,
+            data=[query],
+            anns_field=Field.SPARSE_VECTOR.value,
+            limit=kwargs.get("top_k", 4),
+            output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value]
+        )
+
+        return self._process_search_results(
+            results,
+            output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value],
+            score_threshold=float(kwargs.get("score_threshold") or 0.0)
+        )
 
     def create_collection(
         self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None
@@ -161,8 +196,8 @@ class MilvusVector(BaseVector):
                 return
             # Grab the existing collection if it exists
             if not self._client.has_collection(self._collection_name):
-                from pymilvus import CollectionSchema, DataType, FieldSchema  # type: ignore
-                from pymilvus.orm.types import infer_dtype_bydata  # type: ignore
+                from pymilvus import CollectionSchema, DataType, FieldSchema, Function, FunctionType # type: ignore
+                from pymilvus.orm.types import infer_dtype_bydata # type: ignore
 
                 # Determine embedding dim
                 dim = len(embeddings[0])
@@ -170,15 +205,28 @@ class MilvusVector(BaseVector):
                 if metadatas:
                     fields.append(FieldSchema(Field.METADATA_KEY.value, DataType.JSON, max_length=65_535))
 
-                # Create the text field
-                fields.append(FieldSchema(Field.CONTENT_KEY.value, DataType.VARCHAR, max_length=65_535))
+                # Create the text field, enable_analyzer will be set True to support milvus automatically
+                # transfer text to sparse_vector, reference: https://milvus.io/docs/full-text-search.md
+                fields.append(FieldSchema(Field.CONTENT_KEY.value, DataType.VARCHAR, max_length=65_535, enable_analyzer=True))
                 # Create the primary key field
                 fields.append(FieldSchema(Field.PRIMARY_KEY.value, DataType.INT64, is_primary=True, auto_id=True))
                 # Create the vector field, supports binary or float vectors
                 fields.append(FieldSchema(Field.VECTOR.value, infer_dtype_bydata(embeddings[0]), dim=dim))
+                # Create the sparse vector field, support full text search
+                fields.append(FieldSchema(Field.SPARSE_VECTOR.value, DataType.SPARSE_FLOAT_VECTOR))
 
                 # Create the schema for the collection
                 schema = CollectionSchema(fields)
+
+                # Create custom function to support text to sparse vector by BM25
+                bm25_function = Function(
+                    name="text_bm25_emb",  # Function name
+                    input_field_names=[Field.CONTENT_KEY.value],  # Name of the VARCHAR field containing raw text data
+                    output_field_names=[Field.SPARSE_VECTOR.value],
+                    # Name of the SPARSE_FLOAT_VECTOR field reserved to store generated embeddings
+                    function_type=FunctionType.BM25,
+                )
+                schema.add_function(bm25_function)
 
                 for x in schema.fields:
                     self._fields.append(x.name)
@@ -188,6 +236,12 @@ class MilvusVector(BaseVector):
                 # Create Index params for the collection
                 index_params_obj = IndexParams()
                 index_params_obj.add_index(field_name=Field.VECTOR.value, **index_params)
+                # Create Sparse Vector Index for the collection
+                index_params_obj.add_index(
+                    field_name=Field.SPARSE_VECTOR.value,
+                    index_type="AUTOINDEX",
+                    metric_type="BM25"
+                )
 
                 # Create the collection
                 collection_name = self._collection_name
