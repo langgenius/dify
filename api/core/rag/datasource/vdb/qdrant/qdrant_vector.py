@@ -97,12 +97,7 @@ class QdrantVector(BaseVector):
             if redis_client.get(collection_exist_cache_key):
                 return
             collection_name = collection_name or uuid.uuid4().hex
-            all_collection_name = []
-            collections_response = self._client.get_collections()
-            collection_list = collections_response.collections
-            for collection in collection_list:
-                all_collection_name.append(collection.name)
-            if collection_name not in all_collection_name:
+            if not self._client.collection_exists(collection_name):
                 from qdrant_client.http import models as rest
 
                 vectors_config = rest.VectorParams(
@@ -304,12 +299,7 @@ class QdrantVector(BaseVector):
                     raise e
 
     def text_exists(self, id: str) -> bool:
-        all_collection_name = []
-        collections_response = self._client.get_collections()
-        collection_list = collections_response.collections
-        for collection in collection_list:
-            all_collection_name.append(collection.name)
-        if self._collection_name not in all_collection_name:
+        if not self._client.collection_exists(self._collection_name):
             return False
         response = self._client.retrieve(collection_name=self._collection_name, ids=[id])
 
