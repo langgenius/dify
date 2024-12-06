@@ -19,6 +19,7 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import Button from '@/app/components/base/button'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
+import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 
 type Props = {
   className?: string
@@ -215,6 +216,7 @@ const NodePanel: FC<Props> = ({
                   language={CodeLanguage.json}
                   value={nodeInfo.outputs}
                   isJSONStringifyBeauty
+                  tip={<ErrorHandleTip type={nodeInfo.execution_metadata?.error_strategy} />}
                 />
               </div>
             )}
