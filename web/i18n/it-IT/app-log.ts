@@ -83,6 +83,8 @@ const translation = {
   runDetail: {
     title: 'Registro Conversazione',
     workflowTitle: 'Dettagli Registro',
+    fileListDetail: 'Dettaglio',
+    fileListLabel: 'Dettagli del file',
   },
   promptLog: 'Registro Prompt',
   agentLog: 'Registro Agente',
