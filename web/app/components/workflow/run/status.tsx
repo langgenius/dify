@@ -105,10 +105,16 @@ const StatusPanel: FC<ResultProps> = ({
         <>
           <div className='my-2 h-[0.5px] bg-divider-subtle'/>
           <div className='system-xs-regular text-text-destructive'>{error}</div>
-          <div className='my-2 h-[0.5px] bg-divider-subtle'/>
-          <div className='system-xs-regular text-text-destructive'>
-            {t('workflow.nodes.common.errorHandle.partialSucceeded.tip', { num: exceptionCounts })}
-          </div>
+          {
+            !!exceptionCounts && (
+              <>
+                <div className='my-2 h-[0.5px] bg-divider-subtle'/>
+                <div className='system-xs-regular text-text-destructive'>
+                  {t('workflow.nodes.common.errorHandle.partialSucceeded.tip', { num: exceptionCounts })}
+                </div>
+              </>
+            )
+          }
         </>
       )}
       {

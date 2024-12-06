@@ -174,6 +174,7 @@ export type NodeFinishedResponse = {
       iteration_index?: number
       iteration_id?: string
       parallel_mode_run_id: string
+      error_strategy?: ErrorHandleTypeEnum
     }
     created_at: number
     files?: FileResponse[]

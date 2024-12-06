@@ -450,7 +450,8 @@ export const useWorkflowRun = () => {
               const currentNode = draft.find(node => node.id === data.node_id)!
               currentNode.data._runningStatus = data.status as any
               if (data.status === NodeRunningStatus.Exception) {
-                currentNode.data._runningBranchId = ErrorHandleTypeEnum.failBranch
+                if (data.execution_metadata.error_strategy === ErrorHandleTypeEnum.failBranch)
+                  currentNode.data._runningBranchId = ErrorHandleTypeEnum.failBranch
               }
               else {
                 if (data.node_type === BlockEnum.IfElse)
