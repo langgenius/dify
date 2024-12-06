@@ -1,9 +1,0 @@
-// TEAM: client_app
-syntax = "proto3";
-
-package flexport.clientfreightdata.example.v1beta1;
-
-// A test message.
-message Example {
-  string id = 1;
-}

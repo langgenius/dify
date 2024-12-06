@@ -1,9 +1,0 @@
-// TEAM: client_app
-syntax = "proto3";
-
-package flexport.clientfreightdata.exceptions.v1beta1;
-
-message ExceptionsCheckActiveContainer {
-  // Id of the container use to check for exceptions
-  int64 container_use_id = 1;
-}
