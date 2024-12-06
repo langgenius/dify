@@ -3,6 +3,7 @@ import time
 import unittest
 from types import GeneratorType
 
+from dify_oapi.api.workflow.v1.model.get_workflow_log_request import GetWorkflowLogRequest
 from dify_oapi.api.workflow.v1.model.get_workflow_result_request import GetWorkflowResultRequest
 from dify_oapi.api.workflow.v1.model.run_workflow_request import RunWorkflowRequest
 from dify_oapi.api.workflow.v1.model.run_workflow_request_body import RunWorkflowRequestBody
@@ -41,6 +42,8 @@ class TestChatClient(unittest.TestCase):
         self._test_002_stream_workflow()
         time.sleep(0.5)
         self._test_003_result()
+        time.sleep(0.5)
+        self._test_005_log()
 
     def _test_001_block_workflow(self):
         req_file = RunWorkflowRequestFile.builder() \
@@ -86,6 +89,11 @@ class TestChatClient(unittest.TestCase):
         req_body = StopWorkflowRequestBody.builder().user("abc-123").build()
         req = StopWorkflowRequest.builder().request_body(req_body).task_id(self.task_id).build()
         response = self.client.workflow.v1.workflow.stop(req, self.req_option)
+        self.assertTrue(response.success, response.msg)
+
+    def _test_005_log(self):
+        req = GetWorkflowLogRequest.builder().status("succeeded").page(1).limit(10).build()
+        response = self.client.workflow.v1.workflow.log(req, self.req_option)
         self.assertTrue(response.success, response.msg)
 
 

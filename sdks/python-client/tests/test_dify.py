@@ -3,6 +3,7 @@ import unittest
 from io import BytesIO
 from pathlib import Path
 
+from dify_oapi.api.dify.v1.model.get_info_request import GetInfoRequest
 from dify_oapi.api.dify.v1.model.get_parameter_request import GetParameterRequest
 from dify_oapi.api.dify.v1.model.message_feedback_request import MessageFeedbackRequest
 from dify_oapi.api.dify.v1.model.message_feedback_request_body import MessageFeedbackRequestBody
@@ -63,6 +64,11 @@ class TestDifyClient(unittest.TestCase):
         req_body = MessageFeedbackRequestBody.builder().user("abc-123").rating("like").build()
         req = MessageFeedbackRequest.builder().message_id(self.message_id).request_body(req_body).build()
         response = self.client.dify.v1.message.feedback(req, self.req_option)
+        self.assertTrue(response.success, response.msg)
+
+    def test_get_info(self):
+        req = GetInfoRequest.builder().user("abc-123").build()
+        response = self.client.dify.v1.info.get(req, self.req_option)
         self.assertTrue(response.success, response.msg)
 
 
