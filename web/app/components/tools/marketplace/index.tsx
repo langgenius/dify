@@ -1,4 +1,8 @@
 import {
+  useEffect,
+  useRef,
+} from 'react'
+import {
   RiArrowRightUpLine,
   RiArrowUpDoubleLine,
 } from '@remixicon/react'
@@ -21,15 +25,33 @@ const Marketplace = ({
 }: MarketplaceProps) => {
   const locale = getLocaleOnClient()
   const { t } = useTranslation()
+
   const {
     isLoading,
     marketplaceCollections,
     marketplaceCollectionPluginsMap,
     plugins,
+    handleScroll,
+    page,
   } = useMarketplace(searchPluginText, filterPluginTags)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (container)
+      container.addEventListener('scroll', handleScroll)
+
+    return () => {
+      if (container)
+        container.removeEventListener('scroll', handleScroll)
+    }
+  }, [handleScroll])
 
   return (
-    <div className='flex flex-col shrink-0 sticky bottom-[-442px] h-[530px] overflow-y-auto px-12 py-2 pt-0 bg-background-default-subtle'>
+    <div
+      ref={containerRef}
+      className='grow flex flex-col shrink-0 sticky bottom-[-442px] h-[530px] overflow-y-auto px-12 py-2 pt-0 bg-background-default-subtle'
+    >
       <RiArrowUpDoubleLine
         className='absolute top-2 left-1/2 -translate-x-1/2 w-4 h-4 text-text-quaternary cursor-pointer'
         onClick={() => onMarketplaceScroll()}
@@ -67,14 +89,14 @@ const Marketplace = ({
         </div>
       </div>
       {
-        isLoading && (
+        isLoading && page === 1 && (
           <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'>
             <Loading />
           </div>
         )
       }
       {
-        !isLoading && (
+        (!isLoading || page > 1) && (
           <List
             marketplaceCollections={marketplaceCollections || []}
             marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}

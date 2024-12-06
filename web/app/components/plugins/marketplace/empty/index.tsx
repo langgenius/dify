@@ -29,20 +29,24 @@ const Empty = ({
               'mr-3 mb-3  h-[144px] w-[calc((100%-36px)/4)] rounded-xl bg-background-section-burn',
               index % 4 === 3 && 'mr-0',
               index > 11 && 'mb-0',
-              lightCard && 'bg-background-default-lighter',
+              lightCard && 'bg-background-default-lighter opacity-75',
             )}
           >
           </div>
         ))
       }
-      <div
-        className='absolute inset-0 bg-marketplace-plugin-empty z-[1]'
-      ></div>
+      {
+        !lightCard && (
+          <div
+            className='absolute inset-0 bg-marketplace-plugin-empty z-[1]'
+          ></div>
+        )
+      }
       <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[2] flex flex-col items-center'>
         <div className='relative flex items-center justify-center mb-3 w-14 h-14 rounded-xl border border-dashed border-divider-deep bg-components-card-bg shadow-lg'>
           <Group className='w-5 h-5' />
-          <Line className='absolute -right-[1px] top-1/2 -translate-y-1/2' />
-          <Line className='absolute -left-[1px] top-1/2 -translate-y-1/2' />
+          <Line className='absolute right-[-1px] top-1/2 -translate-y-1/2' />
+          <Line className='absolute left-[-1px] top-1/2 -translate-y-1/2' />
           <Line className='absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90' />
           <Line className='absolute top-full left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90' />
         </div>

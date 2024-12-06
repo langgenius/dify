@@ -218,7 +218,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
         </div>
         {!collapse && (isPluginsLoading || isAllPluginsLoading) && <Loading type='area' />}
         {
-          !isPluginsLoading && (
+          !isPluginsLoading && !collapse && (
             <List
               marketplaceCollections={marketplaceCollections || []}
               marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
@@ -231,7 +231,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
           )
         }
         {
-          !isAllPluginsLoading && (
+          !isAllPluginsLoading && !collapse && (
             <List
               marketplaceCollections={[]}
               marketplaceCollectionPluginsMap={{}}

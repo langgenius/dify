@@ -95,7 +95,7 @@ const ProviderList = () => {
           </div>
           {(filteredCollectionList.length > 0 || activeTab !== 'builtin') && (
             <div className={cn(
-              'relative grid content-start grid-cols-1 gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0',
+              'relative grid content-start grid-cols-1 gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 shrink-0',
             )}>
               {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
               {filteredCollectionList.map(collection => (
@@ -125,7 +125,7 @@ const ProviderList = () => {
             </div>
           )}
           {!filteredCollectionList.length && activeTab === 'builtin' && (
-            <Empty lightCard text={t('tools.noTools')} className='px-12' />
+            <Empty lightCard text={t('tools.noTools')} className='px-12 h-[224px]' />
           )}
           {
             enable_marketplace && activeTab === 'builtin' && (
