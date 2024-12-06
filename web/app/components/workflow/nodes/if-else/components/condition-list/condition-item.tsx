@@ -23,12 +23,20 @@ import { comparisonOperatorNotRequireValue, getOperators } from '../../utils'
 import ConditionNumberInput from '../condition-number-input'
 import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '../../default'
 import ConditionWrap from '../condition-wrap'
+import VarReferenceVars from '../../../_base/components/variable/var-reference-vars'
 import ConditionOperator from './condition-operator'
 import ConditionInput from './condition-input'
 import VariableTag from '@/app/components/workflow/nodes/_base/components/variable-tag'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
+
 import type {
   Node,
   NodeOutPutVar,
+  ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
@@ -82,6 +90,7 @@ const ConditionItem = ({
   const { t } = useTranslation()
 
   const [isHovered, setIsHovered] = useState(false)
+  const [open, setOpen] = useState(false)
 
   const doUpdateCondition = useCallback((newCondition: Condition) => {
     if (isSubVariableKey)
@@ -190,6 +199,17 @@ const ConditionItem = ({
       onRemoveCondition?.(caseId, condition.id)
   }, [caseId, condition, conditionId, isSubVariableKey, onRemoveCondition, onRemoveSubVariableCondition])
 
+  const handleVarChange = useCallback((valueSelector: ValueSelector, varItem: Var) => {
+    const newCondition = produce(condition, (draft) => {
+      draft.variable_selector = valueSelector
+      draft.varType = varItem.type
+      draft.value = ''
+      draft.comparison_operator = getOperators(varItem.type)[0]
+    })
+    doUpdateCondition(newCondition)
+    setOpen(false)
+  }, [condition, doUpdateCondition])
+
   return (
     <div className={cn('flex mb-1 last-of-type:mb-0', className)}>
       <div className={cn(
@@ -221,12 +241,35 @@ const ConditionItem = ({
                 />
               )
               : (
-                <VariableTag
-                  valueSelector={condition.variable_selector || []}
-                  varType={condition.varType}
-                  availableNodes={availableNodes}
-                  isShort
-                />
+                <PortalToFollowElem
+                  open={open}
+                  onOpenChange={setOpen}
+                  placement='bottom-start'
+                  offset={{
+                    mainAxis: 4,
+                    crossAxis: 0,
+                  }}
+                >
+                  <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>
+                    <div className="cursor-pointer">
+                      <VariableTag
+                        valueSelector={condition.variable_selector || []}
+                        varType={condition.varType}
+                        availableNodes={availableNodes}
+                        isShort
+                      />
+                    </div>
+                  </PortalToFollowElemTrigger>
+                  <PortalToFollowElemContent className='z-[1000]'>
+                    <div className='w-[296px] bg-components-panel-bg-blur rounded-lg border-[0.5px] border-components-panel-border shadow-lg'>
+                      <VarReferenceVars
+                        vars={nodesOutputVars}
+                        isSupportFileVar
+                        onChange={handleVarChange}
+                      />
+                    </div>
+                  </PortalToFollowElemContent>
+                </PortalToFollowElem>
               )}
 
           </div>
