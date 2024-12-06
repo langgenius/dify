@@ -8,6 +8,10 @@ const translation = {
     completion: '文本生成',
   },
   duplicate: '复制',
+  mermaid: {
+    handDrawn: '手绘',
+    classic: '经典',
+  },
   duplicateTitle: '复制应用',
   export: '导出 DSL',
   exportFailed: '导出 DSL 失败',

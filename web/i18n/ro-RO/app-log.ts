@@ -79,6 +79,8 @@ const translation = {
   runDetail: {
     title: 'Jurnal de conversație',
     workflowTitle: 'Detalii jurnal',
+    fileListDetail: 'Amănunt',
+    fileListLabel: 'Detalii fișier',
   },
   promptLog: 'Jurnal prompt',
   agentLog: 'Jurnal agent',

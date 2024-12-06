@@ -27,7 +27,10 @@ interface Props {
   isInNode?: boolean
   onGenerated?: (prompt: string) => void
   codeLanguages?: CodeLanguage
-  fileList?: FileEntity[]
+  fileList?: {
+    varName: string
+    list: FileEntity[]
+  }[]
   showFileList?: boolean
   showCodeGenerator?: boolean
 }

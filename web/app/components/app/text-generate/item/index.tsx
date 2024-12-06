@@ -334,7 +334,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                     </SimpleBtn>
                   )
                 }
-                {(currentTab === 'RESULT' || !isWorkflow) && (
+                {((currentTab === 'RESULT' && workflowProcessData?.resultText) || !isWorkflow) && (
                   <SimpleBtn
                     isDisabled={isError || !messageId}
                     className={cn(isMobile && '!px-1.5', 'space-x-1')}
