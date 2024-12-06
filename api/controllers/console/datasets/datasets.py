@@ -566,6 +566,7 @@ class DatasetApiKeyApi(Resource):
         api_token.tenant_id = current_user.current_tenant_id
         api_token.token = key
         api_token.type = self.resource_type
+        api_token.created_by = current_user.id
         db.session.add(api_token)
         db.session.commit()
         return api_token, 200

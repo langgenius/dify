@@ -1340,6 +1340,7 @@ class ApiToken(db.Model):
     type = db.Column(db.String(16), nullable=False)
     token = db.Column(db.String(255), nullable=False)
     last_used_at = db.Column(db.DateTime, nullable=True)
+    created_by = db.Column(StringUUID, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
     @staticmethod

@@ -140,14 +140,29 @@ def validate_dataset_token(view=None):
         @wraps(view)
         def decorated(*args, **kwargs):
             api_token = validate_and_get_api_token("dataset")
-            tenant_account_join = (
+
+            # Build base query
+            query = (
                 db.session.query(Tenant, TenantAccountJoin)
                 .filter(Tenant.id == api_token.tenant_id)
                 .filter(TenantAccountJoin.tenant_id == Tenant.id)
-                .filter(TenantAccountJoin.role.in_(["owner"]))
                 .filter(Tenant.status == TenantStatus.NORMAL)
-                .one_or_none()
-            )  # TODO: only owner information is required, so only one is returned.
+            )
+
+            if api_token.created_by:
+                # Only apply account_id filter if created_by exists
+                query = query.filter(
+                    db.and_(
+                        TenantAccountJoin.role.in_(["owner", "admin"]),
+                        TenantAccountJoin.account_id == api_token.created_by,
+                    )
+                )
+            else:
+                query = query.filter(TenantAccountJoin.role.in_(["owner"]))
+
+            tenant_account_join = query.one_or_none()
+            # TODO: only owner information is required, so only one is returned.
+
             if tenant_account_join:
                 tenant, ta = tenant_account_join
                 account = Account.query.filter_by(id=ta.account_id).first()
