@@ -500,6 +500,26 @@ const translation = {
       'clear': '清除',
       'setVariable': '設定變數',
       'variable': '變數',
+      'operations': {
+        'overwrite': '改寫',
+        '/=': '/=',
+        'title': '操作',
+        '*=': '*=',
+        'extend': '擴展',
+        '+=': '+=',
+        'set': '設置',
+        'over-write': '改寫',
+        '-=': '-=',
+        'append': '附加',
+        'clear': '清楚',
+      },
+      'noAssignedVars': '沒有可用的已分配變數',
+      'variables': '變數',
+      'selectAssignedVariable': '選擇配置的變數...',
+      'setParameter': '設定參數...',
+      'noVarTip': '點擊 「+」 按鈕添加變數',
+      'assignedVarsDescription': '分配的變數必須是可寫變數，例如對話變數。',
+      'varNotSet': '未設置變數',
     },
     tool: {
       toAuthorize: '授權',
@@ -630,6 +650,13 @@ const translation = {
   },
   tracing: {
     stopBy: '由{{user}}終止',
+  },
+  variableReference: {
+    noAvailableVars: '無可用變數',
+    noAssignedVars: '沒有可用的已分配變數',
+    noVarsForOperation: '所選操作沒有可用於賦值的變數。',
+    assignedVarsDescription: '分配的變數必須是可寫變數，例如',
+    conversationVars: '對話變數',
   },
 }
 

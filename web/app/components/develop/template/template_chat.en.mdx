@@ -965,13 +965,57 @@ Chat applications support session persistence, allowing previous chat history to
     </CodeGroup>
   </Col>
 </Row>
+---
+
+<Heading
+  url='/info'
+  method='GET'
+  title='Get Application Basic Information'
+  name='#info'
+/>
+<Row>
+  <Col>
+  Used to get basic information about this application
+  ### Query
+    <Properties>
+
+   <Property name='user' type='string' key='user'>
+        User identifier, defined by the developer's rules, must be unique within the application.
+    </Property>
+      </Properties>
+  ### Response
+  - `name` (string) application name
+  - `description` (string) application description
+  - `tags` (array[string]) application tags
+  </Col>
+  <Col>
+    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \
+      -H 'Authorization: Bearer {api_key}'
+      ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "name": "My App",
+      "description": "This is my app.",
+      "tags": [
+        "tag1",
+        "tag2"
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
 
 ---
 
 <Heading
   url='/parameters'
   method='GET'
-  title='Get Application Information'
+  title='Get Application Parameters Information'
   name='#parameters'
 />
 <Row>
@@ -1125,14 +1169,14 @@ Chat applications support session persistence, allowing previous chat history to
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-    "tool_icons": {
+      "tool_icons": {
         "dalle2": "https://cloud.dify.ai/console/api/workspaces/current/tool-provider/builtin/dalle/icon",
         "api_tool": {
-            "background": "#252525",
-            "content": "\ud83d\ude01"
+          "background": "#252525",
+          "content": "\ud83d\ude01"
         }
+      }
     }
-  }
     ```
     </CodeGroup>
   </Col>

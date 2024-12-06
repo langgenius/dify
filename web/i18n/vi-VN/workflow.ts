@@ -500,6 +500,26 @@ const translation = {
       'clear': 'Xóa',
       'setVariable': 'Đặt Biến',
       'variable': 'Biến',
+      'operations': {
+        '-=': '-=',
+        'over-write': 'Ghi đè lên',
+        'clear': 'Trong',
+        'append': 'Thêm',
+        'title': 'Hoạt động',
+        '*=': '*=',
+        '/=': '/=',
+        'extend': 'Mở rộng',
+        '+=': '+=',
+        'set': 'Cài',
+        'overwrite': 'Ghi đè lên',
+      },
+      'setParameter': 'Đặt tham số...',
+      'selectAssignedVariable': 'Chọn biến được gán...',
+      'noVarTip': 'Nhấp vào nút "+" để thêm biến',
+      'assignedVarsDescription': 'Các biến được gán phải là các biến có thể ghi, chẳng hạn như các biến hội thoại.',
+      'varNotSet': 'Biến KHÔNG được đặt',
+      'noAssignedVars': 'Không có biến được gán sẵn có',
+      'variables': 'Biến',
     },
     tool: {
       toAuthorize: 'Ủy quyền',
@@ -630,6 +650,13 @@ const translation = {
   },
   tracing: {
     stopBy: 'Dừng bởi {{user}}',
+  },
+  variableReference: {
+    noAssignedVars: 'Không có biến được gán sẵn có',
+    noAvailableVars: 'Không có biến khả dụng',
+    assignedVarsDescription: 'Các biến được gán phải là các biến có thể ghi, chẳng hạn như',
+    conversationVars: 'Biến cuộc trò chuyện',
+    noVarsForOperation: 'Không có biến nào có sẵn để gán với hoạt động đã chọn.',
   },
 }
 
