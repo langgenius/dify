@@ -865,7 +865,7 @@ class DocumentStatusApi(DocumentResource):
 
             else:
                 raise InvalidActionError()
-            return {"result": "success"}, 200
+        return {"result": "success"}, 200
 
 
 class DocumentPauseApi(DocumentResource):
