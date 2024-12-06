@@ -62,7 +62,7 @@ export default function FullScreenModal({
                 className,
               )}>
                 {closable
-                  && <div className='absolute z-50 top-3 right-3 w-9 h-9 flex items-center justify-center rounded-xl bg-components-button-tertiary-bg cursor-pointer'>
+                  && <div className='absolute z-50 top-3 right-3 w-9 h-9 flex items-center justify-center rounded-[10px] bg-components-button-tertiary-bg cursor-pointer'>
                     <RiCloseLargeLine className='w-4 h-4 text-components-button-tertiary-text' onClick={
                       (e) => {
                         e.stopPropagation()
