@@ -343,6 +343,7 @@ export type WorkflowRunningData = {
     showSteps?: boolean
     total_steps?: number
     files?: FileResponse[]
+    exceptions_count?: number
   }
   tracing?: NodeTracing[]
 }

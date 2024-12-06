@@ -193,6 +193,7 @@ const WorkflowPreview = () => {
                     created_at={workflowRunningData?.result?.created_at}
                     created_by={(workflowRunningData?.result?.created_by as any)?.name}
                     steps={workflowRunningData?.result?.total_steps}
+                    exceptionCounts={workflowRunningData?.result?.exceptions_count}
                   />
                 )}
                 {currentTab === 'DETAIL' && !workflowRunningData?.result && (
