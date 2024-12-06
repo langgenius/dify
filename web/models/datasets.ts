@@ -151,7 +151,7 @@ export type IndexingEstimateResponse = {
   total_price: number
   currency: string
   total_segments: number
-  preview: string[]
+  preview: Array<{ content: string; child_chunks: string[] }>
   qa_preview?: QA[]
 }
 
@@ -304,7 +304,7 @@ export type DocumentListResponse = {
 export type DocumentReq = {
   original_document_id?: string
   indexing_technique?: string
-  doc_form: 'text_model' | 'qa_model'
+  doc_form: ChuckingMode
   doc_language: string
   process_rule: ProcessRule
 }
@@ -346,7 +346,7 @@ export type NotionPage = {
 }
 
 export type ProcessRule = {
-  mode: string
+  mode: ChildChunkType | 'hierarchical'
   rules: Rules
 }
 
@@ -622,4 +622,24 @@ export type ChildSegmentResponse = {
   total_pages: number
   page: number
   limit: number
+}
+
+export type UpdateDocumentParams = {
+  datasetId: string
+  documentId: string
+}
+
+// Used in api url
+export enum DocumentActionType {
+  enable = 'enable',
+  disable = 'disable',
+  archive = 'archive',
+  unArchive = 'un_archive',
+  delete = 'delete',
+}
+
+export type UpdateDocumentBatchParams = {
+  datasetId: string
+  documentId?: string
+  documentIds?: string[] | string
 }

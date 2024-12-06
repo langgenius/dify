@@ -21,27 +21,28 @@ import { Globe01 } from '../../base/icons/src/vender/line/mapsAndTravel'
 import ChunkingModeLabel from '../common/chunking-mode-label'
 import s from './style.module.css'
 import RenameModal from './rename-modal'
+import BatchAction from './detail/completed/batch-action'
 import cn from '@/utils/classnames'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import Popover from '@/app/components/base/popover'
 import Confirm from '@/app/components/base/confirm'
 import Tooltip from '@/app/components/base/tooltip'
-import { ToastContext } from '@/app/components/base/toast'
+import Toast, { ToastContext } from '@/app/components/base/toast'
 import type { ColorMap, IndicatorProps } from '@/app/components/header/indicator'
 import Indicator from '@/app/components/header/indicator'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
-import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument, syncWebsite, unArchiveDocument } from '@/service/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
-import { ChuckingMode, DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
+import { ChuckingMode, DataSourceType, DocumentActionType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
 import type { Props as PaginationProps } from '@/app/components/base/pagination'
 import Pagination from '@/app/components/base/pagination'
 import Checkbox from '@/app/components/base/checkbox'
+import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
 
 export const useIndexStatus = () => {
   const { t } = useTranslation()
@@ -87,6 +88,9 @@ export const StatusItem: FC<{
   const { enabled = false, archived = false, id = '' } = detail || {}
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
+  const { mutateAsync: enableDocument } = useDocumentEnable()
+  const { mutateAsync: disableDocument } = useDocumentDisable()
+  const { mutateAsync: deleteDocument } = useDocumentDelete()
 
   const onOperate = async (operationName: OperationName) => {
     let opApi = deleteDocument
@@ -99,11 +103,11 @@ export const StatusItem: FC<{
         break
     }
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
-    if (!e)
+    if (!e) {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-    else
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
-    onUpdate?.(operationName)
+      onUpdate?.(operationName)
+    }
+    else { notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
   }
 
   const { run: handleSwitch } = useDebounceFn((operationName: OperationName) => {
@@ -179,7 +183,13 @@ export const OperationAction: FC<{
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
   const router = useRouter()
-
+  const { mutateAsync: archiveDocument } = useDocumentArchive()
+  const { mutateAsync: unArchiveDocument } = useDocumentUnArchive()
+  const { mutateAsync: enableDocument } = useDocumentEnable()
+  const { mutateAsync: disableDocument } = useDocumentDisable()
+  const { mutateAsync: deleteDocument } = useDocumentDelete()
+  const { mutateAsync: syncDocument } = useSyncDocument()
+  const { mutateAsync: syncWebsite } = useSyncWebsite()
   const isListScene = scene === 'list'
 
   const onOperate = async (operationName: OperationName) => {
@@ -200,10 +210,8 @@ export const OperationAction: FC<{
       case 'sync':
         if (data_source_type === 'notion_import')
           opApi = syncDocument
-
         else
           opApi = syncWebsite
-
         break
       default:
         opApi = deleteDocument
@@ -211,13 +219,13 @@ export const OperationAction: FC<{
         break
     }
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
-    if (!e)
+    if (!e) {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-    else
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      onUpdate(operationName)
+    }
+    else { notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
     if (operationName === 'delete')
       setDeleting(false)
-    onUpdate(operationName)
   }
 
   const { run: handleSwitch } = useDebounceFn((operationName: OperationName) => {
@@ -454,6 +462,37 @@ const DocumentList: FC<IDocumentListProps> = ({
     else
       onSelectedIdChange(uniq([...selectedIds, ...localDocs.map(doc => doc.id)]))
   }, [isAllSelected, localDocs, onSelectedIdChange, selectedIds])
+  const { mutateAsync: archiveDocument } = useDocumentArchive()
+  const { mutateAsync: enableDocument } = useDocumentEnable()
+  const { mutateAsync: disableDocument } = useDocumentDisable()
+  const { mutateAsync: deleteDocument } = useDocumentDelete()
+
+  const handleAction = (actionName: DocumentActionType) => {
+    return async () => {
+      let opApi = deleteDocument
+      switch (actionName) {
+        case DocumentActionType.archive:
+          opApi = archiveDocument
+          break
+        case DocumentActionType.enable:
+          opApi = enableDocument
+          break
+        case DocumentActionType.disable:
+          opApi = disableDocument
+          break
+        default:
+          opApi = deleteDocument
+          break
+      }
+      const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentIds: selectedIds }) as Promise<CommonResponse>)
+
+      if (!e) {
+        Toast.notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        onUpdate()
+      }
+      else { Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
+    }
+  }
 
   return (
     <div className='relative w-full h-full overflow-x-auto'>
@@ -576,6 +615,19 @@ const DocumentList: FC<IDocumentListProps> = ({
           })}
         </tbody>
       </table>
+      {(selectedIds.length > 0) && (
+        <BatchAction
+          className='absolute left-0 bottom-16 z-20'
+          selectedIds={selectedIds}
+          onArchive={handleAction(DocumentActionType.archive)}
+          onBatchEnable={handleAction(DocumentActionType.enable)}
+          onBatchDisable={handleAction(DocumentActionType.disable)}
+          onBatchDelete={handleAction(DocumentActionType.delete)}
+          onCancel={() => {
+            onSelectedIdChange([])
+          }}
+        />
+      )}
       {/* Show Pagination only if the total is more than the limit */}
       {pagination.total && pagination.total > (pagination.limit || 10) && (
         <Pagination

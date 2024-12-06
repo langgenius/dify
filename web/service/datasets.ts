@@ -171,34 +171,6 @@ export const resumeDocIndexing: Fetcher<CommonResponse, CommonDocReq> = ({ datas
   return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/processing/resume`)
 }
 
-export const deleteDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
-  return del<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}`)
-}
-
-export const archiveDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
-  return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/status/archive`)
-}
-
-export const unArchiveDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
-  return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/status/un_archive`)
-}
-
-export const enableDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
-  return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/status/enable`)
-}
-
-export const disableDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
-  return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/status/disable`)
-}
-
-export const syncDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
-  return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/notion/sync`)
-}
-
-export const syncWebsite: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
-  return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/website-sync`)
-}
-
 export const preImportNotionPages: Fetcher<{ notion_info: DataSourceNotionWorkspace[] }, { url: string; datasetId?: string }> = ({ url, datasetId }) => {
   return get<{ notion_info: DataSourceNotionWorkspace[] }>(url, { params: { dataset_id: datasetId } })
 }

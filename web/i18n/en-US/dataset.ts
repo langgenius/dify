@@ -150,6 +150,14 @@ const translation = {
   nTo1RetrievalLegacy: 'N-to-1 retrieval will be officially deprecated from September. It is recommended to use the latest Multi-path retrieval to obtain better results. ',
   nTo1RetrievalLegacyLink: 'Learn more',
   nTo1RetrievalLegacyLinkText: ' N-to-1 retrieval will be officially deprecated in September.',
+  batchAction: {
+    selected: 'Selected',
+    enable: 'Enable',
+    disable: 'Disable',
+    archive: 'Archive',
+    delete: 'Delete',
+    cancel: 'Cancel',
+  },
 }
 
 export default translation
