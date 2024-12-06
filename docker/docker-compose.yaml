@@ -799,7 +799,7 @@ services:
 
   milvus-standalone:
     container_name: milvus-standalone
-    image: milvusdb/milvus:v2.3.1
+    image: milvusdb/milvus:v2.5.0-beta
     profiles:
       - milvus
     command: [ 'milvus', 'run', 'standalone' ]
