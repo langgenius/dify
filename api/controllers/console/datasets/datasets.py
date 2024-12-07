@@ -538,6 +538,7 @@ class DatasetApiKeyApi(Resource):
             .all()
         )
 
+        # Only return keys created by current user or created_by none (for old keys do not have created_by)
         keys = [key for key in keys if key.created_by == current_user.id or key.created_by is None]
 
         return {"items": keys}
@@ -557,6 +558,7 @@ class DatasetApiKeyApi(Resource):
             .all()
         )
 
+        # Only count keys created by current user or created_by none (for old keys do not have created_by)
         current_key_count = len([key for key in keys if key.created_by == current_user.id or key.created_by is None])
 
         if current_key_count >= self.max_keys:
