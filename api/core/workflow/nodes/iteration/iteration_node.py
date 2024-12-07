@@ -182,6 +182,7 @@ class IterationNode(BaseNode[IterationNodeData]):
                     future.add_done_callback(thread_pool.task_done_callback)
                     futures.append(future)
                 succeeded_count = 0
+                empty_count = 0
                 while True:
                     try:
                         event = q.get(timeout=1)
@@ -202,7 +203,11 @@ class IterationNode(BaseNode[IterationNodeData]):
                             q.put(None)
                             yield event
                     except Empty:
-                        continue
+                        empty_count += 1
+                        if empty_count > 10:
+                            break
+                        else:
+                            continue
 
                 # wait all threads
                 wait(futures)
@@ -555,7 +560,6 @@ class IterationNode(BaseNode[IterationNodeData]):
 
     def _run_single_iter_parallel(
         self,
-        *,
         flask_app: Flask,
         q: Queue,
         iterator_list_value: list[str],
