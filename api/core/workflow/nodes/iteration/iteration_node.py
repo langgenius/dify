@@ -203,11 +203,7 @@ class IterationNode(BaseNode[IterationNodeData]):
                             q.put(None)
                             yield event
                     except Empty:
-                        empty_count += 1
-                        if empty_count > 10:
-                            break
-                        else:
-                            continue
+                        continue
 
                 # wait all threads
                 wait(futures)
