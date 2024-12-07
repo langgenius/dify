@@ -162,7 +162,7 @@ class IterationNode(BaseNode[IterationNodeData]):
         try:
             if self.node_data.is_parallel:
                 futures: list[Future] = []
-                q = Queue()
+                q: Queue = Queue()
                 thread_pool = GraphEngineThreadPool(max_workers=self.node_data.parallel_nums, max_submit_count=100)
                 for index, item in enumerate(iterator_list_value):
                     future: Future = thread_pool.submit(
@@ -291,7 +291,7 @@ class IterationNode(BaseNode[IterationNodeData]):
         :param node_data: node data
         :return:
         """
-        variable_mapping = {
+        variable_mapping: dict[str, Sequence[str]] = {
             f"{node_id}.input_selector": node_data.iterator_selector,
         }
 
@@ -319,7 +319,7 @@ class IterationNode(BaseNode[IterationNodeData]):
                 sub_node_variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
                     graph_config=graph_config, config=sub_node_config
                 )
-                sub_node_variable_mapping = cast(dict[str, list[str]], sub_node_variable_mapping)
+                sub_node_variable_mapping = cast(dict[str, Sequence[str]], sub_node_variable_mapping)
             except NotImplementedError:
                 sub_node_variable_mapping = {}
 
