@@ -127,9 +127,7 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
       </div>
     </div>}
 
-    <Divider className='m-0' />
-
-    <EmojiPickerInner className={activeTab === 'emoji' ? 'block' : 'hidden'} onSelect={handleSelectEmoji} />
+    <EmojiPickerInner className={cn(activeTab === 'emoji' ? 'block' : 'hidden', 'pt-2')} onSelect={handleSelectEmoji} />
     <Uploader className={activeTab === 'image' ? 'block' : 'hidden'} onImageCropped={handleImageCropped} onUpload={handleUpload}/>
 
     <Divider className='m-0' />
