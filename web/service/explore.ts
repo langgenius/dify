@@ -13,7 +13,7 @@ export const fetchAppDetail = (id: string): Promise<any> => {
 }
 
 export const fetchInstalledAppList = (app_id?: string | null) => {
-  return get(`/installed-apps${app_id ? `?app_id=${app_id}` : ''}`);
+  return get(`/installed-apps${app_id ? `?app_id=${app_id}` : ''}`)
 }
 
 export const installApp = (id: string) => {

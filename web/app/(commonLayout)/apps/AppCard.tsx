@@ -217,11 +217,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       e.preventDefault()
       try {
         const { installed_apps }: any = await fetchInstalledAppList(app.id) || {}
-        if (installed_apps?.length > 0) {
-          window.open(`/explore/installed/${installed_apps[0].id}`, '_blank');
-        } else {
+        if (installed_apps?.length > 0)
+          window.open(`/explore/installed/${installed_apps[0].id}`, '_blank')
+        else
           throw new Error('No app found in Explore')
-        }
       }
       catch (e: any) {
         Toast.notify({ type: 'error', message: `${e.message || e}` })

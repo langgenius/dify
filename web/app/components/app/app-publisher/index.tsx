@@ -110,11 +110,10 @@ const AppPublisher = ({
   const handleOpenInExplore = useCallback(async () => {
     try {
       const { installed_apps }: any = await fetchInstalledAppList(appDetail?.id) || {}
-      if (installed_apps?.length > 0) {
+      if (installed_apps?.length > 0)
         window.open(`/explore/installed/${installed_apps[0].id}`, '_blank')
-      } else {
+      else
         throw new Error('No app found in Explore')
-      }
     }
     catch (e: any) {
       Toast.notify({ type: 'error', message: `${e.message || e}` })
