@@ -27,7 +27,7 @@ import { FileText } from '@/app/components/base/icons/src/vender/line/files'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
 import type { InputVar } from '@/app/components/workflow/types'
 import { appDefaultIconBackground } from '@/config'
-
+import cn from '@/utils/classnames'
 export type AppPublisherProps = {
   disabled?: boolean
   publishDisabled?: boolean
@@ -155,10 +155,10 @@ const AppPublisher = ({
                     {t('workflow.common.publishedAt')} {formatTimeFromNow(publishedAt)}
                   </div>
                   <Button
-                    className={`
-                      ml-2 px-2 text-primary-600
-                      ${published && 'text-primary-300 border-gray-100'}
-                    `}
+                    className={cn(
+                      'ml-2 px-2 text-primary-600',
+                      { 'text-primary-300 border-gray-100': published },
+                    )}
                     size='small'
                     onClick={handleRestore}
                     disabled={published}

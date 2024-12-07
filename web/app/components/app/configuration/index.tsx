@@ -10,6 +10,7 @@ import { useBoolean, useGetState } from 'ahooks'
 import { clone, isEqual } from 'lodash-es'
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import { useShallow } from 'zustand/react/shallow'
+import cn from '@/utils/classnames'
 import AgentSettingButton from '@/app/components/app/configuration/config/agent-setting-button'
 import useAdvancedPromptConfig from '@/app/components/app/configuration/hooks/use-advanced-prompt-config'
 import EditHistoryModal from '@/app/components/app/configuration/config-prompt/conversation-history/edit-modal'
@@ -936,7 +937,12 @@ const Configuration: FC = () => {
                   </div>
                 </div>
               </div>
-              <div className={`w-full sm:w-1/2 shrink-0 flex flex-col h-full ${debugWithMultipleModel && 'max-w-[560px]'}`}>
+              <div
+                className={cn(
+                  'w-full sm:w-1/2 shrink-0 flex flex-col h-full',
+                  { 'max-w-[560px]': debugWithMultipleModel },
+                )}
+              >
                 <Config />
               </div>
               {!isMobile && <div className="relative flex flex-col w-1/2 h-full overflow-y-auto grow " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>

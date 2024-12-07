@@ -10,6 +10,7 @@ import { getLastAnswer } from '../utils'
 import { useChatWithHistoryContext } from './context'
 import Header from './header'
 import ConfigPanel from './config-panel'
+import cn from '@/utils/classnames'
 import {
   fetchSuggestedQuestions,
   getUrl,
@@ -127,7 +128,10 @@ const ChatWrapper = () => {
           />
           {
             !currentConversationId && (
-              <div className={`mx-auto w-full max-w-[720px] ${isMobile && 'px-4'}`}>
+              <div className={cn('mx-auto w-full max-w-[720px]', {
+                'px-4': isMobile,
+              })}>
+
                 <div className='mb-6' />
                 <ConfigPanel />
                 <div

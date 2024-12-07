@@ -14,6 +14,7 @@ import Sidebar from './sidebar'
 import HeaderInMobile from './header-in-mobile'
 import ConfigPanel from './config-panel'
 import ChatWrapper from './chat-wrapper'
+import cn from '@/utils/classnames'
 import type { InstalledApp } from '@/models/explore'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -38,7 +39,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
     themeBuilder,
   } = useChatWithHistoryContext()
 
-  const chatReady = (!showConfigPanelBeforeChat || !!appPrevChatList.length)
+  const chatReady = !showConfigPanelBeforeChat || !!appPrevChatList.length
   const customConfig = appData?.custom_config
   const site = appData?.site
 
@@ -65,35 +66,40 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   }
 
   return (
-    <div className={`h-full flex bg-white ${className} ${isMobile && 'flex-col'}`}>
-      {
-        !isMobile && (
-          <Sidebar />
-        )
-      }
-      {
-        isMobile && (
-          <HeaderInMobile />
-        )
-      }
-      <div className={`grow overflow-hidden ${showConfigPanelBeforeChat && !appPrevChatList.length && 'flex items-center justify-center'}`}>
-        {
-          showConfigPanelBeforeChat && !appChatListDataLoading && !appPrevChatList.length && (
-            <div className={`flex w-full items-center justify-center h-full ${isMobile && 'px-4'}`}>
-              <ConfigPanel />
-            </div>
-          )
-        }
-        {
-          appChatListDataLoading && chatReady && (
-            <Loading type='app' />
-          )
-        }
-        {
-          chatReady && !appChatListDataLoading && (
-            <ChatWrapper key={chatShouldReloadKey} />
-          )
-        }
+    <div
+      className={cn('h-full flex bg-white', className, {
+        'flex-col': isMobile,
+      })}
+    >
+      {!isMobile && <Sidebar />}
+      {isMobile && <HeaderInMobile />}
+      <div
+        className={
+          cn(
+            'grow overflow-hidden',
+            {
+              'flex items-center justify-center':
+              showConfigPanelBeforeChat && !appPrevChatList.length,
+            })}
+      >
+        {showConfigPanelBeforeChat
+          && !appChatListDataLoading
+          && !appPrevChatList.length && (
+          <div
+            className={cn(
+              'flex w-full items-center justify-center h-full',
+              {
+                'px-4': isMobile,
+              },
+            )}
+          >
+            <ConfigPanel />
+          </div>
+        )}
+        {appChatListDataLoading && chatReady && <Loading type="app" />}
+        {chatReady && !appChatListDataLoading && (
+          <ChatWrapper key={chatShouldReloadKey} />
+        )}
       </div>
     </div>
   )

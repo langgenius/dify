@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 
 export type IVarHighlightProps = {
   name: string
@@ -16,7 +16,11 @@ const VarHighlight: FC<IVarHighlightProps> = ({
   return (
     <div
       key={name}
-      className={`${s.item} ${className} flex mb-2 items-center justify-center rounded-md px-1 h-5 text-xs font-medium text-primary-600`}
+      className={cn(
+        s.item,
+        className,
+        'flex mb-2 items-center justify-center rounded-md px-1 h-5 text-xs font-medium text-primary-600',
+      )}
     >
       <span className='opacity-60'>{'{{'}</span>
       <span>{name}</span>

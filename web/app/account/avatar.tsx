@@ -7,7 +7,7 @@ import Avatar from '@/app/components/base/avatar'
 import { logout } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
-
+import cn from '@/utils/classnames'
 export type IAppSelector = {
   isMobile: boolean
 }
@@ -37,13 +37,10 @@ export default function AppSelector() {
           <>
             <div>
               <Menu.Button
-                className={`
-                    inline-flex items-center
-                    rounded-[20px] p-1x text-sm
-                  text-gray-700 hover:bg-gray-200
-                    mobile:px-1
-                    ${open && 'bg-gray-200'}
-                  `}
+                className={cn(
+                  'inline-flex items-center rounded-[20px] p-1x text-sm text-gray-700 hover:bg-gray-200 mobile:px1',
+                  { 'bg-gray-200': open },
+                )}
               >
                 <Avatar name={userProfile.name} size={32} />
               </Menu.Button>
