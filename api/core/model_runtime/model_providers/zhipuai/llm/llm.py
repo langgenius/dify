@@ -413,7 +413,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         ai_prompt = "\n\nAssistant:"
         content = message.content
         if isinstance(content, list):
-            content = "".join(c.data for c in content if c.type != PromptMessageContentType.IMAGE)
+            content = "".join(c.data for c in content if c.type == PromptMessageContentType.TEXT)
 
         if isinstance(message, UserPromptMessage):
             message_text = f"{human_prompt} {content}"
