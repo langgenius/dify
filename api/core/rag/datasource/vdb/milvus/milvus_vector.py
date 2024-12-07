@@ -82,7 +82,7 @@ class MilvusVector(BaseVector):
         pks: list[str] = []
 
         for i in range(0, total_count, 1000):
-            batch_insert_list = insert_dict_list[i: i + 1000]
+            batch_insert_list = insert_dict_list[i : i + 1000]
             # Insert into the collection.
             try:
                 ids = self._client.insert(collection_name=self._collection_name, data=batch_insert_list)
@@ -134,7 +134,7 @@ class MilvusVector(BaseVector):
         return field in self._fields
 
     def _process_search_results(
-            self, results: list[Any], output_fields: list[str], score_threshold: float = 0.0
+        self, results: list[Any], output_fields: list[str], score_threshold: float = 0.0
     ) -> list[Document]:
         """
         Common method to process search results
@@ -192,7 +192,7 @@ class MilvusVector(BaseVector):
         )
 
     def create_collection(
-            self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None
+        self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None
     ):
         lock_name = "vector_indexing_lock_{}".format(self._collection_name)
         with redis_client.lock(lock_name, timeout=20):
