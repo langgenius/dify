@@ -1332,6 +1332,7 @@ class ApiToken(db.Model):
         db.Index("api_token_app_id_type_idx", "app_id", "type"),
         db.Index("api_token_token_idx", "token", "type"),
         db.Index("api_token_tenant_idx", "tenant_id", "type"),
+        db.Index("api_token_created_by_idx", "created_by"),
     )
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
