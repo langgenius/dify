@@ -25,7 +25,6 @@ const PdfPreview: FC<PdfPreviewProps> = ({
       if (event.key === 'Escape')
         onCancel()
     }
-
     window.addEventListener('keydown', handleKeyDown)
 
     // Set focus to the container element
