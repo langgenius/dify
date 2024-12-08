@@ -82,7 +82,7 @@ class AppGenerateResponseConverter(ABC):
             for resource in metadata["retriever_resources"]:
                 updated_resources.append(
                     {
-                        "segment_id": resource["segment_id"],
+                        "segment_id": resource.get("segment_id", ""),
                         "position": resource["position"],
                         "document_name": resource["document_name"],
                         "score": resource["score"],

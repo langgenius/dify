@@ -79,6 +79,8 @@ const translation = {
   runDetail: {
     title: 'Журнал Розмови',
     workflowTitle: 'Деталі Журналу',
+    fileListDetail: 'Деталь',
+    fileListLabel: 'Подробиці файлу',
   },
   promptLog: 'Журнал Запитань',
   agentLog: 'Журнал агента',
