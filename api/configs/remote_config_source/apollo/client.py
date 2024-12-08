@@ -6,8 +6,8 @@ import threading
 import time
 from pathlib import Path
 
-from extensions.configuration.apollo.python_3x import http_request, makedirs_wrapper
-from extensions.configuration.apollo.util import (
+from .python_3x import http_request, makedirs_wrapper
+from .utils import (
     CONFIGURATIONS,
     NAMESPACE_NAME,
     NOTIFICATION_ID,
@@ -285,4 +285,5 @@ class ApolloClient:
         if namespace_data is None:
             namespace_data = self.get_json_from_net(namespace).get(CONFIGURATIONS)
             self._update_cache_and_file(namespace_data, namespace)
+        # FIXME: make sure the returned value is dict[str, Any]
         return namespace_data
