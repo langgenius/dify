@@ -4,7 +4,7 @@ from typing import Any
 from pydantic.fields import FieldInfo
 
 
-class RemoteConfigSource:
+class RemoteSettingsSource:
     def __init__(self, configs: Mapping[str, Any]):
         pass
 

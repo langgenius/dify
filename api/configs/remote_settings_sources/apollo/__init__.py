@@ -5,12 +5,12 @@ from pydantic import Field
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings
 
-from configs.remote_config_source.base import RemoteConfigSource
+from configs.remote_settings_sources.base import RemoteSettingsSource
 
 from .client import ApolloClient
 
 
-class ApolloConfigSourceInfo(BaseSettings):
+class ApolloSettingsSourceInfo(BaseSettings):
     """
     Packaging build information
     """
@@ -36,7 +36,7 @@ class ApolloConfigSourceInfo(BaseSettings):
     )
 
 
-class ApolloConfigSource(RemoteConfigSource):
+class ApolloSettingsSource(RemoteSettingsSource):
     def __init__(self, configs: Mapping[str, Any]):
         self.client = ApolloClient(
             app_id=configs["APOLLO_APP_ID"],

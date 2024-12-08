@@ -10,13 +10,13 @@ from .extra import ExtraServiceConfig
 from .feature import FeatureConfig
 from .middleware import MiddlewareConfig
 from .packaging import PackagingInfo
-from .remote_config_source import RemoteConfigSource, RemoteConfigSourceInfo, RemoteConfigSourceName
-from .remote_config_source.apollo import ApolloConfigSource
+from .remote_settings_sources import RemoteSettingsSource, RemoteSettingsSourceConfig, RemoteSettingsSourceName
+from .remote_settings_sources.apollo import ApolloSettingsSource
 
 logger = logging.getLogger(__name__)
 
 
-class RemoteConfigSourceFactory(PydanticBaseSettingsSource):
+class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
     def __init__(self, settings_cls: type[BaseSettings]):
         super().__init__(settings_cls)
 
@@ -29,10 +29,10 @@ class RemoteConfigSourceFactory(PydanticBaseSettingsSource):
         if not remote_source_name:
             return {}
 
-        remote_source: RemoteConfigSource | None = None
+        remote_source: RemoteSettingsSource | None = None
         match remote_source_name:
-            case RemoteConfigSourceName.APOLLO:
-                remote_source = ApolloConfigSource(current_state)
+            case RemoteSettingsSourceName.APOLLO:
+                remote_source = ApolloSettingsSource(current_state)
             case _:
                 logger.warning(f"Unsupported remote source: {remote_source_name}")
                 return {}
@@ -60,7 +60,7 @@ class DifyConfig(
     # Extra service configs
     ExtraServiceConfig,
     # Remote source configs
-    RemoteConfigSourceInfo,
+    RemoteSettingsSourceConfig,
     # Enterprise feature configs
     # **Before using, please contact business@dify.ai by email to inquire about licensing matters.**
     EnterpriseFeatureConfig,
@@ -90,7 +90,7 @@ class DifyConfig(
         return (
             init_settings,
             env_settings,
-            RemoteConfigSourceFactory(settings_cls),
+            RemoteSettingsSourceFactory(settings_cls),
             dotenv_settings,
             file_secret_settings,
         )
