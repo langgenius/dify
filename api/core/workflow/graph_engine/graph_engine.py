@@ -132,6 +132,7 @@ class GraphEngine:
     def run(self) -> Generator[GraphEngineEvent, None, None]:
         # trigger graph run start event
         yield GraphRunStartedEvent()
+        handle_exceptions = []
 
         try:
             if self.init_params.workflow_type == WorkflowType.CHAT:
@@ -144,7 +145,6 @@ class GraphEngine:
                 )
 
             # run graph
-            handle_exceptions = []
             generator = stream_processor.process(
                 self._run(start_node_id=self.graph.root_node_id, handle_exceptions=handle_exceptions)
             )
@@ -184,22 +184,21 @@ class GraphEngine:
                     yield GraphRunFailedEvent(error=str(e), exceptions_count=len(handle_exceptions))
                     return
             # count exceptions to determine partial success
-            exceptions_count = len(handle_exceptions)
-            if exceptions_count > 0:
+            if len(handle_exceptions) > 0:
                 yield GraphRunPartialSucceededEvent(
-                    exceptions_count=exceptions_count, outputs=self.graph_runtime_state.outputs
+                    exceptions_count=len(handle_exceptions), outputs=self.graph_runtime_state.outputs
                 )
             else:
                 # trigger graph run success event
                 yield GraphRunSucceededEvent(outputs=self.graph_runtime_state.outputs)
             self._release_thread()
         except GraphRunFailedError as e:
-            yield GraphRunFailedEvent(error=e.error, exceptions_count=exceptions_count)
+            yield GraphRunFailedEvent(error=e.error, exceptions_count=len(handle_exceptions))
             self._release_thread()
             return
         except Exception as e:
             logger.exception("Unknown Error when graph running")
-            yield GraphRunFailedEvent(error=str(e), exceptions_count=exceptions_count)
+            yield GraphRunFailedEvent(error=str(e), exceptions_count=len(handle_exceptions))
             self._release_thread()
             raise e
 
