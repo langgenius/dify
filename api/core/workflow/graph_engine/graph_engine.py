@@ -339,6 +339,7 @@ class GraphEngine:
                 next_node_id = edge.target_node_id
             else:
                 final_node_id = None
+
                 if any(edge.run_condition for edge in edge_mappings):
                     # if nodes has run conditions, get node id which branch to take based on the run condition results
                     condition_edge_mappings = {}
@@ -701,19 +702,18 @@ class GraphEngine:
                                     run_result.metadata[NodeRunMetadataKey.PARENT_PARALLEL_START_NODE_ID] = (
                                         parent_parallel_start_node_id
                                     )
-                            event_args = {
-                                "id": node_instance.id,
-                                "node_id": node_instance.node_id,
-                                "node_type": node_instance.node_type,
-                                "node_data": node_instance.node_data,
-                                "route_node_state": route_node_state,
-                                "parallel_id": parallel_id,
-                                "parallel_start_node_id": parallel_start_node_id,
-                                "parent_parallel_id": parent_parallel_id,
-                                "parent_parallel_start_node_id": parent_parallel_start_node_id,
-                            }
-                            event = NodeRunSucceededEvent(**event_args)
-                            yield event
+
+                            yield NodeRunSucceededEvent(
+                                id=node_instance.id,
+                                node_id=node_instance.node_id,
+                                node_type=node_instance.node_type,
+                                node_data=node_instance.node_data,
+                                route_node_state=route_node_state,
+                                parallel_id=parallel_id,
+                                parallel_start_node_id=parallel_start_node_id,
+                                parent_parallel_id=parent_parallel_id,
+                                parent_parallel_start_node_id=parent_parallel_start_node_id,
+                            )
 
                         break
                     elif isinstance(item, RunStreamChunkEvent):

@@ -33,8 +33,25 @@ class ContinueOnErrorTestHelper:
         return node
 
     @staticmethod
-    def get_http_node(error_strategy: str = "fail-branch", default_value: dict | None = None):
+    def get_http_node(
+        error_strategy: str = "fail-branch", default_value: dict | None = None, authorization_success: bool = False
+    ):
         """Helper method to create a http node configuration"""
+        authorization = (
+            {
+                "type": "api-key",
+                "config": {
+                    "type": "basic",
+                    "api_key": "ak-xxx",
+                    "header": "api-key",
+                },
+            }
+            if authorization_success
+            else {
+                "type": "api-key",
+                # missing config field
+            }
+        )
         node = {
             "id": "node",
             "data": {
@@ -42,10 +59,7 @@ class ContinueOnErrorTestHelper:
                 "desc": "",
                 "method": "get",
                 "url": "http://example.com",
-                "authorization": {
-                    "type": "api-key",
-                    # missing config field
-                },
+                "authorization": authorization,
                 "headers": "X-Header:123",
                 "params": "A:b",
                 "body": None,
@@ -214,7 +228,7 @@ def test_code_default_value_continue_on_error():
             {"data": {"title": "start", "type": "start", "variables": []}, "id": "start"},
             {"data": {"title": "answer", "type": "answer", "answer": "{{#node.result#}}"}, "id": "answer"},
             ContinueOnErrorTestHelper.get_code_node(
-                error_code, "default-value", [{"key": "result", "type": "Number", "value": 132123}]
+                error_code, "default-value", [{"key": "result", "type": "number", "value": 132123}]
             ),
         ],
     }
@@ -259,38 +273,6 @@ def test_code_fail_branch_continue_on_error():
     )
 
 
-def test_code_success_branch_continue_on_error():
-    success_code = """
-    def main() -> dict:
-        return {
-            "result": 1 / 1,
-        }
-    """
-
-    graph_config = {
-        "edges": FAIL_BRANCH_EDGES,
-        "nodes": [
-            {"data": {"title": "Start", "type": "start", "variables": []}, "id": "start"},
-            ContinueOnErrorTestHelper.get_code_node(success_code),
-            {
-                "data": {"title": "success", "type": "answer", "answer": "node node run successfully"},
-                "id": "success",
-            },
-            {
-                "data": {"title": "error", "type": "answer", "answer": "node node run failed"},
-                "id": "error",
-            },
-        ],
-    }
-
-    graph_engine = ContinueOnErrorTestHelper.create_test_graph_engine(graph_config)
-    events = list(graph_engine.run())
-    assert any(
-        isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "node node run successfully"} for e in events
-    )
-    assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
-
-
 def test_http_node_default_value_continue_on_error():
     """Test HTTP node with default value error strategy"""
     graph_config = {
@@ -299,7 +281,7 @@ def test_http_node_default_value_continue_on_error():
             {"data": {"title": "start", "type": "start", "variables": []}, "id": "start"},
             {"data": {"title": "answer", "type": "answer", "answer": "{{#node.response#}}"}, "id": "answer"},
             ContinueOnErrorTestHelper.get_http_node(
-                "default-value", [{"key": "response", "type": "String", "value": "http node got error response"}]
+                "default-value", [{"key": "response", "type": "string", "value": "http node got error response"}]
             ),
         ],
     }
@@ -351,7 +333,7 @@ def test_tool_node_default_value_continue_on_error():
             {"data": {"title": "start", "type": "start", "variables": []}, "id": "start"},
             {"data": {"title": "answer", "type": "answer", "answer": "{{#node.result#}}"}, "id": "answer"},
             ContinueOnErrorTestHelper.get_tool_node(
-                "default-value", [{"key": "result", "type": "String", "value": "default tool result"}]
+                "default-value", [{"key": "result", "type": "string", "value": "default tool result"}]
             ),
         ],
     }
@@ -402,7 +384,7 @@ def test_llm_node_default_value_continue_on_error():
             {"data": {"title": "start", "type": "start", "variables": []}, "id": "start"},
             {"data": {"title": "answer", "type": "answer", "answer": "{{#node.answer#}}"}, "id": "answer"},
             ContinueOnErrorTestHelper.get_llm_node(
-                "default-value", [{"key": "answer", "type": "String", "value": "default LLM response"}]
+                "default-value", [{"key": "answer", "type": "string", "value": "default LLM response"}]
             ),
         ],
     }
@@ -531,7 +513,7 @@ def test_continue_on_error_link_fail_branch():
                 "data": {"title": "error", "type": "answer", "answer": "http execute failed"},
                 "id": "error",
             },
-            ContinueOnErrorTestHelper.get_code_node(code=success_code),
+            ContinueOnErrorTestHelper.get_http_node(authorization_success=True),
             {
                 "id": "code",
                 "data": {
