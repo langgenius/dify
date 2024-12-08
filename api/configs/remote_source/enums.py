@@ -1,5 +1,5 @@
 from enum import StrEnum
 
 
-class ConfigurationType(StrEnum):
+class RemoteSource(StrEnum):
     APOLLO = "apollo"
