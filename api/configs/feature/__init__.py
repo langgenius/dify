@@ -433,6 +433,11 @@ class WorkflowConfig(BaseSettings):
         default=5,
     )
 
+    WORKFLOW_PARALLEL_DEPTH_LIMIT: PositiveInt = Field(
+        description="Maximum allowed depth for nested parallel executions",
+        default=3,
+    )
+
     MAX_VARIABLE_SIZE: PositiveInt = Field(
         description="Maximum size in bytes for a single variable in workflows. Default to 200 KB.",
         default=200 * 1024,
