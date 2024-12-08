@@ -11,16 +11,19 @@ import { useDraggableUploader } from './hooks'
 import { checkIsAnimatedImage } from './utils'
 import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 
-type UploaderProps = {
-  className?: string
-  onImageCropped?: (tempUrl: string, croppedAreaPixels: Area, fileName: string) => void
-  onUpload?: (file?: File) => void
+export type OnImageInput = {
+  (isCropped: true, tempUrl: string, croppedAreaPixels: Area, fileName: string): void
+  (isCropped: false, file: File): void
 }
 
-const Uploader: FC<UploaderProps> = ({
+type UploaderProps = {
+  className?: string
+  onImageInput?: OnImageInput
+}
+
+const ImageInput: FC<UploaderProps> = ({
   className,
-  onImageCropped,
-  onUpload,
+  onImageInput,
 }) => {
   const [inputImage, setInputImage] = useState<{ file: File; url: string }>()
   const [isAnimatedImage, setIsAnimatedImage] = useState<boolean>(false)
@@ -37,8 +40,7 @@ const Uploader: FC<UploaderProps> = ({
   const onCropComplete = async (_: Area, croppedAreaPixels: Area) => {
     if (!inputImage)
       return
-    onImageCropped?.(inputImage.url, croppedAreaPixels, inputImage.file.name)
-    onUpload?.(undefined)
+    onImageInput?.(true, inputImage.url, croppedAreaPixels, inputImage.file.name)
   }
 
   const handleLocalFileInput = (e: ChangeEvent<HTMLInputElement>) => {
@@ -48,7 +50,7 @@ const Uploader: FC<UploaderProps> = ({
       checkIsAnimatedImage(file).then((isAnimatedImage) => {
         setIsAnimatedImage(!!isAnimatedImage)
         if (isAnimatedImage)
-          onUpload?.(file)
+          onImageInput?.(false, file)
       })
     }
   }
@@ -117,4 +119,4 @@ const Uploader: FC<UploaderProps> = ({
   )
 }
 
-export default Uploader
+export default ImageInput
