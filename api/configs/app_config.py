@@ -25,7 +25,7 @@ class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
 
     def __call__(self) -> dict[str, Any]:
         current_state = self.current_state
-        remote_source_name = current_state.get("REMOTE_CONFIG_SOURCE_NAME")
+        remote_source_name = current_state.get("REMOTE_SETTINGS_SOURCE_NAME")
         if not remote_source_name:
             return {}
 
