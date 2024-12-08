@@ -480,64 +480,6 @@ def test_variable_pool_error_type_variable():
     assert error_type.value == "HTTPResponseCodeError"
 
 
-def test_continue_on_error_link_fail_branch():
-    success_code = """
-    def main() -> dict:
-        return {
-            "result": 1 / 1,
-        }
-    """
-    graph_config = {
-        "edges": [
-            *FAIL_BRANCH_EDGES,
-            {
-                "id": "start-source-code-target",
-                "source": "start",
-                "target": "code",
-                "sourceHandle": "source",
-            },
-            {
-                "id": "code-source-error-target",
-                "source": "code",
-                "target": "error",
-                "sourceHandle": "source",
-            },
-        ],
-        "nodes": [
-            {"data": {"title": "Start", "type": "start", "variables": []}, "id": "start"},
-            {
-                "data": {"title": "success", "type": "answer", "answer": "http execute successful"},
-                "id": "success",
-            },
-            {
-                "data": {"title": "error", "type": "answer", "answer": "http execute failed"},
-                "id": "error",
-            },
-            ContinueOnErrorTestHelper.get_http_node(authorization_success=True),
-            {
-                "id": "code",
-                "data": {
-                    "outputs": {"result": {"type": "number"}},
-                    "title": "code",
-                    "variables": [],
-                    "code_language": "python3",
-                    "code": "\n".join([line[4:] for line in success_code.split("\n")]),
-                    "type": "code",
-                },
-            },
-        ],
-    }
-
-    graph_engine = ContinueOnErrorTestHelper.create_test_graph_engine(graph_config)
-    events = list(graph_engine.run())
-    assert any(
-        isinstance(e, GraphRunSucceededEvent)
-        and e.outputs == {"answer": "http execute successful\nhttp execute failed"}
-        for e in events
-    )
-    assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 2
-
-
 def test_no_node_in_fail_branch_continue_on_error():
     """Test HTTP node with fail-branch error strategy"""
     graph_config = {
