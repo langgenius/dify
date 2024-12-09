@@ -19,7 +19,6 @@ import { indexMethodIcon } from '../icons'
 import { PreviewContainer } from '../../preview/container'
 import { ChunkContainer, QAPreview } from '../../chunk'
 import { PreviewHeader } from '../../preview/header'
-import DocumentPicker from '../../common/document-picker'
 import { FormattedText } from '../../formatted-text/formatted'
 import { PreviewSlice } from '../../formatted-text/flavours/preview-slice'
 import s from './index.module.css'
@@ -58,6 +57,7 @@ import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocumen
 import Badge from '@/app/components/base/badge'
 import { SkeletonContanier, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Tooltip from '@/app/components/base/tooltip'
+import Select from '@/app/components/base/select'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='text-text-secondary text-xs font-semibold leading-none'>{props.children}</label>
@@ -168,6 +168,8 @@ const StepTwo = ({
       : IndexingType.ECONOMICAL,
   )
 
+  const [previewFileName, setPreviewFileName] = useState<string>()
+
   // QA Related
   const [isLanguageSelectDisabled, setIsLanguageSelectDisabled] = useState(false)
   const [docForm, setDocForm] = useState<ChuckingMode>(
@@ -227,7 +229,9 @@ const StepTwo = ({
     docForm,
     docLanguage,
     dataSourceType: DataSourceType.FILE,
-    files,
+    files: previewFileName
+      ? [files.find(file => file.name === previewFileName)!]
+      : files,
     indexingTechnique: getIndexing_technique() as any,
     processRule: getProcessRule(),
     dataset_id: datasetId!,
@@ -928,7 +932,19 @@ const StepTwo = ({
             title='Preview'
           >
             <div className='flex items-center gap-2'>
-              <DocumentPicker datasetId={datasetId || ''} value={{}} onChange={console.log} />
+              <Select
+                items={
+                  files.map(file => ({
+                    name: file.name,
+                    value: file.name,
+                  }))
+                }
+                onSelect={(selected) => {
+                  currentEstimateMutation.reset()
+                  setPreviewFileName(selected.name)
+                  currentEstimateMutation.mutate()
+                }}
+              />
               <Badge text={t(
                 'datasetCreation.stepTwo.previewChunkCount', {
                   count: estimate?.preview.length || estimate?.qa_preview?.length || 0,
