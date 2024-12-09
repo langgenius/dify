@@ -18,9 +18,6 @@ class PluginAgentManager(BasePluginManager):
         def transformer(json_response: dict[str, Any]) -> dict:
             for provider in json_response.get("data", []):
                 declaration = provider.get("declaration", {}) or {}
-                declaration["identity"]["name"] = (
-                    f"{provider.get('plugin_id')}/{declaration.get('identity', {}).get('name')}"
-                )
                 provider_name = declaration.get("identity", {}).get("name")
                 for strategy in declaration.get("strategies", []):
                     strategy["identity"]["provider"] = provider_name
