@@ -3,7 +3,7 @@ from typing import Any, Optional, Union
 
 from pydantic import BaseModel
 
-from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
 
 
 class AgentToolEntity(BaseModel):
@@ -83,3 +83,11 @@ class AgentEntity(BaseModel):
     prompt: Optional[AgentPromptEntity] = None
     tools: Optional[list[AgentToolEntity]] = None
     max_iteration: int = 5
+
+
+class AgentInvokeMessage(ToolInvokeMessage):
+    """
+    Agent Invoke Message.
+    """
+
+    pass
