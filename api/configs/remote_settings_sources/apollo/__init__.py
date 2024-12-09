@@ -49,7 +49,6 @@ class ApolloSettingsSource(RemoteSettingsSource):
         self.remote_configs = self.client.get_all_dicts(self.namespace)
 
     def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
-        # FIXME: if `get_all_dicts` always returns dict[str, Any], then we can remove this check
         if not isinstance(self.remote_configs, dict):
             raise ValueError(f"remote configs is not dict, but {type(self.remote_configs)}")
         field_value = self.remote_configs.get(field_name)

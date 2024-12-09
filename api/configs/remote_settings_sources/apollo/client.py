@@ -74,6 +74,9 @@ class ApolloClient:
         try:
             code, body = http_request(url, timeout=3, headers=self._sign_headers(url))
             if code == 200:
+                if not body:
+                    logger.error(f"get_json_from_net load configs failed, body is {body}")
+                    return None
                 data = json.loads(body)
                 data = data["configurations"]
                 return_data = {CONFIGURATIONS: data}
@@ -217,6 +220,9 @@ class ApolloClient:
                 logger.debug("No change, loop...")
                 return
             if http_code == 200:
+                if not body:
+                    logger.error(f"_long_poll load configs failed,body is {body}")
+                    return
                 data = json.loads(body)
                 for entry in data:
                     namespace = entry[NAMESPACE_NAME]
@@ -231,10 +237,12 @@ class ApolloClient:
 
     def _get_net_and_set_local(self, namespace, n_id, call_change=False):
         namespace_data = self.get_json_from_net(namespace)
+        if not namespace_data:
+            return
         namespace_data[NOTIFICATION_ID] = n_id
         old_namespace = self._cache.get(namespace)
         self._update_cache_and_file(namespace_data, namespace)
-        if self._change_listener is not None and call_change:
+        if self._change_listener is not None and call_change and old_namespace:
             old_kv = old_namespace.get(CONFIGURATIONS)
             new_kv = namespace_data.get(CONFIGURATIONS)
             self._call_listener(namespace, old_kv, new_kv)
@@ -268,6 +276,9 @@ class ApolloClient:
         try:
             code, body = http_request(url, timeout=3, headers=self._sign_headers(url))
             if code == 200:
+                if not body:
+                    logger.error(f"_do_heart_beat load configs failed,body is {body}")
+                    return None
                 data = json.loads(body)
                 if self.last_release_key == data["releaseKey"]:
                     return None
@@ -283,7 +294,10 @@ class ApolloClient:
     def get_all_dicts(self, namespace):
         namespace_data = self._cache.get(namespace)
         if namespace_data is None:
-            namespace_data = self.get_json_from_net(namespace).get(CONFIGURATIONS)
-            self._update_cache_and_file(namespace_data, namespace)
-        # FIXME: make sure the returned value is dict[str, Any]
+            net_namespace_data = self.get_json_from_net(namespace)
+            if not net_namespace_data:
+                return namespace_data
+            namespace_data = net_namespace_data.get(CONFIGURATIONS)
+            if namespace_data:
+                self._update_cache_and_file(namespace_data, namespace)
         return namespace_data
