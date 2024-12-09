@@ -123,11 +123,25 @@ Toast.notify = ({
     const holder = document.createElement('div')
     const root = createRoot(holder)
 
-    root.render(<Toast type={type} size={size} message={message} duration={duration} className={className} />)
+    root.render(
+      <ToastContext.Provider value={{
+        notify: () => {},
+        close: () => {
+          if (holder) {
+            root.unmount()
+            holder.remove()
+          }
+        },
+      }}>
+        <Toast type={type} size={size} message={message} duration={duration} className={className} />
+      </ToastContext.Provider>,
+    )
     document.body.appendChild(holder)
     setTimeout(() => {
-      if (holder)
+      if (holder) {
+        root.unmount()
         holder.remove()
+      }
     }, duration || defaultDuring)
   }
 }
