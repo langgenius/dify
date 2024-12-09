@@ -193,19 +193,13 @@ class AppDslService:
                 stmt = select(App).where(App.id == app_id, App.tenant_id == account.current_tenant_id)
                 app = self._session.scalar(stmt)
 
-                if not app:
-                    return Import(
-                        id=import_id,
-                        status=ImportStatus.FAILED,
-                        error="App not found",
-                    )
-
-                if app.mode not in [AppMode.WORKFLOW.value, AppMode.ADVANCED_CHAT.value]:
-                    return Import(
-                        id=import_id,
-                        status=ImportStatus.FAILED,
-                        error="Only workflow or advanced chat apps can be overwritten",
-                    )
+                if app:
+                    if app.mode not in [AppMode.WORKFLOW.value, AppMode.ADVANCED_CHAT.value]:
+                        return Import(
+                            id=import_id,
+                            status=ImportStatus.FAILED,
+                            error="Only workflow or advanced chat apps can be overwritten",
+                        )
 
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
