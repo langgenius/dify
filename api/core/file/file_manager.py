@@ -50,12 +50,12 @@ def to_prompt_message_content(
             else:
                 data = _to_base64_data_string(f)
 
-            return ImagePromptMessageContent(data=data, detail=image_detail_config)
+            return ImagePromptMessageContent(data=data, detail=image_detail_config, format=f.extension.lstrip("."))
         case FileType.AUDIO:
-            encoded_string = _get_encoded_string(f)
+            data = _to_base64_data_string(f)
             if f.extension is None:
                 raise ValueError("Missing file extension")
-            return AudioPromptMessageContent(data=encoded_string, format=f.extension.lstrip("."))
+            return AudioPromptMessageContent(data=data, format=f.extension.lstrip("."))
         case FileType.VIDEO:
             if dify_config.MULTIMODAL_SEND_VIDEO_FORMAT == "url":
                 data = _to_url(f)
@@ -65,14 +65,8 @@ def to_prompt_message_content(
                 raise ValueError("Missing file extension")
             return VideoPromptMessageContent(data=data, format=f.extension.lstrip("."))
         case FileType.DOCUMENT:
-            data = _get_encoded_string(f)
-            if f.mime_type is None:
-                raise ValueError("Missing file mime_type")
-            return DocumentPromptMessageContent(
-                encode_format="base64",
-                mime_type=f.mime_type,
-                data=data,
-            )
+            data = _to_base64_data_string(f)
+            return DocumentPromptMessageContent(encode_format="base64", data=data, format=f.extension.lstrip("."))
         case _:
             raise ValueError(f"file type {f.type} is not supported")
 

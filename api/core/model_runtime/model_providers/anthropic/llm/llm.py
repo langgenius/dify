@@ -526,17 +526,20 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                                 }
                                 sub_messages.append(sub_message_dict)
                             elif isinstance(message_content, DocumentPromptMessageContent):
-                                if message_content.mime_type != "application/pdf":
+                                data_split = message_content.data.split(";base64,")
+                                mime_type = data_split[0].replace("data:", "")
+                                base64_data = data_split[1]
+                                if mime_type != "application/pdf":
                                     raise ValueError(
-                                        f"Unsupported document type {message_content.mime_type}, "
+                                        f"Unsupported document type {mime_type}, "
                                         "only support application/pdf"
                                     )
                                 sub_message_dict = {
                                     "type": "document",
                                     "source": {
                                         "type": message_content.encode_format,
-                                        "media_type": message_content.mime_type,
-                                        "data": message_content.data,
+                                        "media_type": mime_type,
+                                        "data": base64_data,
                                     },
                                 }
                                 sub_messages.append(sub_message_dict)

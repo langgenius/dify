@@ -101,13 +101,14 @@ class ImagePromptMessageContent(PromptMessageContent):
 
     type: PromptMessageContentType = PromptMessageContentType.IMAGE
     detail: DETAIL = DETAIL.LOW
+    format: str = Field("png", description="Image format")
 
 
 class DocumentPromptMessageContent(PromptMessageContent):
     type: PromptMessageContentType = PromptMessageContentType.DOCUMENT
     encode_format: Literal["base64"]
-    mime_type: str
     data: str
+    format: str = Field(..., description="Document format")
 
 
 class PromptMessage(ABC, BaseModel):
