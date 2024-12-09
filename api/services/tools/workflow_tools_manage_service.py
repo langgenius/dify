@@ -81,6 +81,10 @@ class WorkflowToolManageService:
         db.session.add(workflow_tool_provider)
         db.session.commit()
 
+        if labels is not None:
+            ToolLabelManager.update_tool_labels(
+                ToolTransformService.workflow_provider_to_controller(workflow_tool_provider), labels
+            )
         return {"result": "success"}
 
     @classmethod
