@@ -158,6 +158,7 @@ const translation = {
     delete: 'Delete',
     cancel: 'Cancel',
   },
+  preprocessDocument: '{{num}} Preprocess Documents',
 }
 
 export default translation

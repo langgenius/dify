@@ -158,6 +158,7 @@ const translation = {
     delete: '删除',
     cancel: '取消',
   },
+  preprocessDocument: '{{num}} 个预处理文档',
 }
 
 export default translation
