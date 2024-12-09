@@ -50,11 +50,11 @@ type OptionCardProps = {
   isActive?: boolean
   actions?: ReactNode
   effectImg?: string
-  onSelected?: () => void
+  onSwitched?: () => void
 } & Omit<ComponentProps<'div'>, 'title'>
 
 export const OptionCard: FC<OptionCardProps> = (props) => {
-  const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSelected, onClick, ...rest } = props
+  const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSwitched, onClick, ...rest } = props
   return <div
     className={classNames(
       'rounded-xl',
@@ -67,7 +67,7 @@ export const OptionCard: FC<OptionCardProps> = (props) => {
     }}
     onClick={(e) => {
       if (!isActive)
-        onSelected?.()
+        onSwitched?.()
       onClick?.(e)
     }}
     {...rest}>
