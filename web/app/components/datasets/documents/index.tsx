@@ -20,7 +20,7 @@ import { NotionPageSelectorModal } from '@/app/components/base/notion-page-selec
 import type { NotionPage } from '@/models/common'
 import type { CreateDocumentReq } from '@/models/datasets'
 import { DataSourceType } from '@/models/datasets'
-import RetryButton from '@/app/components/base/retry-button'
+import IndexFailed from '@/app/components/datasets/common/document-status-with-action/index-failed'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -231,7 +231,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             onClear={() => handleInputChange('')}
           />
           <div className='flex gap-2 justify-center items-center !h-8'>
-            <RetryButton datasetId={datasetId} />
+            <IndexFailed datasetId={datasetId} />
             {embeddingAvailable && (
               <Button variant='primary' onClick={routeToDocCreate} className='shrink-0'>
                 <PlusIcon className='h-4 w-4 mr-2 stroke-current' />
