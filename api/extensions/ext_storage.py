@@ -11,9 +11,6 @@ from extensions.storage.storage_type import StorageType
 
 
 class Storage:
-    def __init__(self):
-        self.storage_runner = None
-
     def init_app(self, app: Flask):
         storage_factory = self.get_storage_factory(dify_config.STORAGE_TYPE)
         with app.app_context():
