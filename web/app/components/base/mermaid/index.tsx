@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
 import { usePrevious } from 'ahooks'
-import CryptoJS from 'crypto-js'
 import { useTranslation } from 'react-i18next'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
@@ -13,12 +12,6 @@ mermaidAPI = null
 
 if (typeof window !== 'undefined')
   mermaidAPI = mermaid.mermaidAPI
-
-const style = {
-  minWidth: '480px',
-  height: 'auto',
-  overflow: 'auto',
-}
 
 const svgToBase64 = (svgGraph: string) => {
   const svgBytes = new TextEncoder().encode(svgGraph)
@@ -38,7 +31,6 @@ const Flowchart = React.forwardRef((props: {
   const [svgCode, setSvgCode] = useState(null)
   const [look, setLook] = useState<'classic' | 'handDrawn'>('classic')
 
-  const chartId = useRef(`flowchart_${CryptoJS.MD5(props.PrimitiveCode).toString()}`)
   const prevPrimitiveCode = usePrevious(props.PrimitiveCode)
   const [isLoading, setIsLoading] = useState(true)
   const timeRef = useRef<NodeJS.Timeout>()
@@ -51,12 +43,10 @@ const Flowchart = React.forwardRef((props: {
 
     try {
       if (typeof window !== 'undefined' && mermaidAPI) {
-        const svgGraph = await mermaidAPI.render(chartId.current, PrimitiveCode)
+        const svgGraph = await mermaidAPI.render('flowchart', PrimitiveCode)
         const base64Svg: any = await svgToBase64(svgGraph.svg)
         setSvgCode(base64Svg)
         setIsLoading(false)
-        if (chartId.current && base64Svg)
-          localStorage.setItem(chartId.current, base64Svg)
       }
     }
     catch (error) {
@@ -79,19 +69,11 @@ const Flowchart = React.forwardRef((props: {
         },
       })
 
-      localStorage.removeItem(chartId.current)
       renderFlowchart(props.PrimitiveCode)
     }
   }, [look])
 
   useEffect(() => {
-    const cachedSvg: any = localStorage.getItem(chartId.current)
-
-    if (cachedSvg) {
-      setSvgCode(cachedSvg)
-      setIsLoading(false)
-      return
-    }
     if (timeRef.current)
       clearTimeout(timeRef.current)
 
@@ -130,8 +112,8 @@ const Flowchart = React.forwardRef((props: {
       </div>
       {
         svgCode
-            && <div className="mermaid cursor-pointer" style={style} onClick={() => setImagePreviewUrl(svgCode)}>
-              {svgCode && <img src={svgCode} style={{ width: '100%', height: 'auto' }} alt="mermaid_chart" />}
+            && <div className="mermaid cursor-pointer h-auto w-full object-fit: cover" onClick={() => setImagePreviewUrl(svgCode)}>
+              {svgCode && <img src={svgCode} alt="mermaid_chart" />}
             </div>
       }
       {isLoading
