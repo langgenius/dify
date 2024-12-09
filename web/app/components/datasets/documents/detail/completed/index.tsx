@@ -161,6 +161,7 @@ const Completed: FC<ICompletedProps> = ({
 
   const resetList = useCallback(() => {
     setSegments([])
+    setSelectedSegmentIds([])
     refreshSegmentList()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -188,6 +189,7 @@ const Completed: FC<ICompletedProps> = ({
             seg.enabled = enable
         }
         setSegments([...segments])
+        !segId && setSelectedSegmentIds([])
       },
       onError: () => {
         notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
@@ -256,8 +258,8 @@ const Completed: FC<ICompletedProps> = ({
           seg.keywords = res.data.keywords
           seg.word_count = res.data.word_count
           seg.hit_count = res.data.hit_count
-          seg.index_node_hash = res.data.index_node_hash
           seg.enabled = res.data.enabled
+          seg.updated_at = res.data.updated_at
         }
       }
       setSegments([...segments])
@@ -396,9 +398,9 @@ const Completed: FC<ICompletedProps> = ({
       && <BatchAction
         className='absolute left-0 bottom-16 z-20'
         selectedIds={selectedSegmentIds}
-        onBatchEnable={onChangeSwitch.bind(null, true)}
-        onBatchDisable={onChangeSwitch.bind(null, false)}
-        onBatchDelete={onDelete}
+        onBatchEnable={onChangeSwitch.bind(null, true, '')}
+        onBatchDisable={onChangeSwitch.bind(null, false, '')}
+        onBatchDelete={onDelete.bind(null, '')}
         onCancel={onCancelBatchOperation}
       />}
     </SegmentListContext.Provider>

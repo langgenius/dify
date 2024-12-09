@@ -80,7 +80,10 @@ const BatchAction: FC<IBatchActionProps> = ({
             title={t('datasetDocuments.list.delete.title')}
             content={t('datasetDocuments.list.delete.content')}
             confirmText={t('common.operation.sure')}
-            onConfirm={onBatchDelete}
+            onConfirm={() => {
+              onBatchDelete()
+              hideDeleteConfirm()
+            }}
             onCancel={hideDeleteConfirm}
           />
         )

@@ -38,7 +38,7 @@ export const useEnableSegment = () => {
     mutationFn: (payload: { datasetId: string; documentId: string; segmentIds: string[] }) => {
       const { datasetId, documentId, segmentIds } = payload
       const query = segmentIds.map(id => `segment_id=${id}`).join('&')
-      return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/segments/enable?${query}`)
+      return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/segment/enable?${query}`)
     },
   })
 }
@@ -49,7 +49,7 @@ export const useDisableSegment = () => {
     mutationFn: (payload: { datasetId: string; documentId: string; segmentIds: string[] }) => {
       const { datasetId, documentId, segmentIds } = payload
       const query = segmentIds.map(id => `segment_id=${id}`).join('&')
-      return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/segments/disable?${query}`)
+      return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/segment/disable?${query}`)
     },
   })
 }
