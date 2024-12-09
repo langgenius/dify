@@ -1,0 +1,17 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionplan.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PlanningErrorsProto";
+option java_package = "com.flexport.executioncoordinator.executionplan.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionPlan::V1";
+
+// The PlanningPreconditionViolationType returned in rich errors from the PlanningAPI.
+enum PlanningPreconditionViolationType {
+  PLANNING_PRECONDITION_VIOLATION_TYPE_INVALID = 0;
+  PLANNING_PRECONDITION_VIOLATION_TYPE_STALE_REVISION = 1;
+  PLANNING_PRECONDITION_VIOLATION_TYPE_MISSING_TASKS = 2;
+}

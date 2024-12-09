@@ -1,0 +1,21 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipperBankSlipDocumentUploadedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+import "flexport/executioncoordinator/options/v1/state_event_options.proto";
+
+// A shipper's bank slip document has been uploaded.
+// According to Linjia Li, Shipper’s bank slip is the proof of shipper’s origin invoice settlement.
+// Shipper need to hand it to Flexport (no matter thru emails, Wechat, or directly uploading to Core) to prove that they have paid the origin invoice.
+message ShipperBankSlipDocumentUploaded {
+  option (flexport.executioncoordinator.options.v1.display_name) = "Shipper Bank Slip Document Uploaded";
+  option (flexport.executioncoordinator.options.v1.description) = "A shipper bank slip document is uploaded.";
+  string document_fid = 1;
+}

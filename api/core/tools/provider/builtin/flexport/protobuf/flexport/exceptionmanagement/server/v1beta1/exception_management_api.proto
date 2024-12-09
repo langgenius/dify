@@ -1,0 +1,528 @@
+// TEAM: origin_ops
+
+syntax = "proto3";
+
+package flexport.exceptionmanagement.server.v1beta1;
+
+import "flexport/exceptionmanagement/enums/v1beta1/exception_priority.proto";
+import "flexport/exceptionmanagement/enums/v1beta1/exception_reason_code.proto";
+import "flexport/exceptionmanagement/enums/v1beta1/exception_target_type.proto";
+import "flexport/exceptionmanagement/server/v1beta1/params.proto";
+import "flexport/exceptionmanagement/types/v1beta1/filter.proto";
+import "flexport/exceptionmanagement/types/v1beta1/operational_exception.proto";
+import "flexport/exceptionmanagement/types/v1beta1/operational_exception_type.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ExceptionManagementApiProto";
+option java_package = "com.flexport.exceptionmanagement.server.v1beta1";
+option ruby_package = "Flexport::ExceptionManagement::Server::V1Beta1";
+
+// This is the API for managing exceptions.
+service ExceptionManagementAPI {
+  rpc CreateOperationalException(CreateOperationalExceptionRequest) returns (CreateOperationalExceptionResponse);
+  rpc BatchCreateOperationalExceptions(BatchCreateOperationalExceptionsRequest) returns (BatchCreateOperationalExceptionsResponse);
+  rpc UpdateOperationalException(UpdateOperationalExceptionRequest) returns (UpdateOperationalExceptionResponse);
+  rpc BatchUpdateOperationalExceptions(BatchUpdateOperationalExceptionsRequest) returns (BatchUpdateOperationalExceptionsResponse);
+  rpc ListOperationalExceptions(ListOperationalExceptionsRequest) returns (ListOperationalExceptionsResponse);
+  rpc ListExtendedOperationalExceptions(ListExtendedOperationalExceptionsRequest) returns (ListExtendedOperationalExceptionsResponse);
+  rpc ListOperationalExceptionTypes(ListOperationalExceptionTypesRequest) returns (ListOperationalExceptionTypesResponse);
+}
+
+message CreateOperationalExceptionRequest {
+  // Required. E.g. "missing_bill_of_lading_numbers"
+  string operational_exception_type_slug = 1;
+  // Required. On which type of object that filing exception on. The most common is SHIPMENT.
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionTargetType target_type = 2;
+  // Required. Fid of object that filing exception on.
+  string target_fid = 3;
+  // Optional. The user_fid that this exception is assigned to.
+  google.protobuf.StringValue assigned_user_fid = 4;
+  // Optional. due_date_time is calculated by adding time_of_occurrence of exception and sla_hours of exception_type.
+  // If you need to see it on the deprecated exceptions queue, it's must be set either directly or via need_default_fields.
+  // See more with need_default_fields
+  google.protobuf.Timestamp due_date_time = 5;
+  // Required. Messaging of exception.
+  // See more with need_default_fields, if you just need default values for messaging.external_message, messaging.external_message_viewer_company_fids
+  // you can skip this this field
+  ExceptionMessagingParam messaging = 6;
+  // Will deprecate later. It's recommended not to use it.
+  repeated string visible_party_slugs = 7;
+  // Required.
+  // See more with need_default_fields
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionPriority priority = 8;
+  // Optional. User can add some custom Json data in it. For the json content of attrs: https://flexport.atlassian.net/wiki/spaces/EN/pages/2493514340/Extendable+fields+in+exception+management+model
+  google.protobuf.StringValue attrs = 9;
+  // Required. user_fid who files exception.
+  string actor_fid = 10;
+  // Required. company_fid of user who files exception.
+  string actor_company_fid = 11;
+  // Reserved. It's recommended not to use it.
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionReasonCode reason_code = 12;
+  // Optional. Fid of container that filing exception on.
+  google.protobuf.StringValue container_fid = 13;
+  // Optional. Fids of attached files.
+  repeated string files = 14;
+  // Optional. Fid of work_item that filing exception on.
+  google.protobuf.StringValue ffa_work_item_fid = 15;
+  // Required. The party that causes the exception, e.g. "carrier".
+  // See more with need_default_fields
+  google.protobuf.StringValue root_cause = 16;
+  // Required.
+  google.protobuf.Timestamp time_of_occurrence_time = 17;
+  // Optional.
+  google.protobuf.Timestamp actual_resolved_at_time = 18;
+  // Optional. Estimated impacted transit time of this exception. The unit is day.
+  google.protobuf.Int32Value estimated_transit_time_impact = 19;
+  // Optional. The revision of exception_type that you want to use. A valid revision number is always > 0. It will use the latest revision if not specified.
+  uint32 operational_exception_type_revision = 20;
+
+  //Optional, currently messaging.external_message, messaging.external_message_viewer_company_fids, due_date_time, priority, root_cause
+  //can have default values, they are copied from its corresponding exception types.
+  //this behaves like when you try to file an exception in the frontend, those fields would be pre-populated with default values,
+  //it provides a simple way to create exceptions without customization for other services.
+  //Known issue for messaging.external_message_viewer_company_fids: it's computed with exception_type.default_visible_party_slugs
+  //and shipment involved_parties, if there are more than one company for a involved_party
+  //(eg: 2 trucker companies for the trucker involved_party), they would BOTH be able to see it.
+  //see engines/involved_parties/app/services/involved_parties/shipment_participants_service.rb for slug -> [company_fid] mapping
+  google.protobuf.FieldMask need_default_fields = 21;
+}
+
+message BatchCreateOperationalExceptionsRequest {
+  repeated CreateOperationalExceptionRequest requests = 1;
+}
+
+message CreateOperationalExceptionResponse {
+  flexport.exceptionmanagement.types.v1beta1.OperationalException operational_exception = 1;
+}
+
+message OperationalExceptionError {
+  enum ErrorCode {
+    ERROR_CODE_INVALID = 0;
+    // server side error
+    ERROR_CODE_INTERNAL = 1;
+    // client side error, DONOT retry
+    ERROR_CODE_INVALID_ARGUMENT = 2;
+  }
+  ErrorCode error_code = 1;
+  string error_message = 2;
+}
+
+message OperationalExceptionResult {
+  oneof result {
+    flexport.exceptionmanagement.types.v1beta1.OperationalException operational_exception = 1;
+    OperationalExceptionError error = 2;
+  }
+}
+
+message BatchCreateOperationalExceptionsResponse {
+  // results are returned in the same order as requests
+  // could be partially successful
+  repeated OperationalExceptionResult results = 1;
+}
+
+message UpdateOperationalExceptionRequest {
+  // Required.
+  string fid = 1;
+  // Required.
+  string actor_fid = 2;
+  // Params used to update exception.
+  UpdateExceptionParam exception = 3;
+  // Only the fields in exception_mask will be updated.
+  google.protobuf.FieldMask exception_mask = 4;
+  // Optional. Attached file fids.
+  repeated string files = 5;
+}
+
+message BatchUpdateOperationalExceptionsRequest {
+  repeated UpdateOperationalExceptionRequest requests = 1;
+}
+
+message UpdateOperationalExceptionResponse {
+  // Exception after updated.
+  flexport.exceptionmanagement.types.v1beta1.OperationalException operational_exception = 1;
+}
+
+message BatchUpdateOperationalExceptionsResponse {
+  // results are returned in the same order as requests
+  // could be partially successful
+  repeated OperationalExceptionResult results = 1;
+}
+
+message ListOperationalExceptionsRequest {
+  oneof filter {
+    flexport.exceptionmanagement.types.v1beta1.StringFilter fids = 1;
+    flexport.exceptionmanagement.types.v1beta1.StringFilter internal_message_fids = 2;
+    flexport.exceptionmanagement.types.v1beta1.StringFilter external_message_fids = 3;
+    flexport.exceptionmanagement.types.v1beta1.StringFilter shipment_event_fids = 4;
+    // Fids and target type to query exceptions. The most common usage are fids of shipment.
+    flexport.exceptionmanagement.types.v1beta1.ExceptionTargetFilter targets = 5;
+  }
+}
+
+message ListOperationalExceptionsResponse {
+  repeated flexport.exceptionmanagement.types.v1beta1.OperationalException operational_exceptions = 1;
+}
+
+// The result of this request includes info of exception and corresponding exception_type.
+message ListExtendedOperationalExceptionsRequest {
+  oneof filter {
+    flexport.exceptionmanagement.types.v1beta1.StringFilter fids = 1;
+    // Will deprecate. It's recommended not to use it.
+    flexport.exceptionmanagement.types.v1beta1.StringFilter legacy_uuids = 2;
+    flexport.exceptionmanagement.types.v1beta1.StringFilter internal_message_fids = 3;
+    flexport.exceptionmanagement.types.v1beta1.StringFilter shipment_event_fids = 4;
+    // Fids and target type to query exceptions. The most common usage is fids of shipment.
+    flexport.exceptionmanagement.types.v1beta1.ExceptionTargetFilter targets = 5;
+  }
+}
+
+message ListExtendedOperationalExceptionsResponse {
+  repeated flexport.exceptionmanagement.types.v1beta1.ExtendedOperationalException extended_operational_exceptions = 1;
+}
+
+// Get exception types.
+message ListOperationalExceptionTypesRequest {
+  oneof filter {
+    // Slugs of exception_type.
+    flexport.exceptionmanagement.types.v1beta1.StringFilter slug = 1;
+    // Fids of exception_type.
+    flexport.exceptionmanagement.types.v1beta1.StringFilter fid = 2;
+  }
+}
+
+message ListOperationalExceptionTypesResponse {
+  repeated flexport.exceptionmanagement.types.v1beta1.OperationalExceptionType exception_types = 1;
+}
+
+/*
+Before you test grpc on rdev, you need to run `fx port-forward exception-management 50051` first.
+
+1. CreateOperationalException
+a. request
+grpcurl \
+ --plaintext \
+ -d '{
+   "operational_exception_type_slug": "missing_bill_of_lading_numbers",
+   "target_type": 1,
+   "target_fid": "flx::core:shipment:dbid/2291289",
+   "assigned_user_fid": "flx::core:user:dbid/182467",
+   "due_date_time": "2023-07-06T09:54:45Z",
+   "messaging": {"internal_note":"test","external_message_viewer_company_fids": [
+        "flx::core:company:dbid/883"
+      ]},
+   "priority": 1,
+   "time_of_occurrence_time":"2023-07-06T09:54:45Z",
+   "attrs": "{\"domain_specific_info\": null}",
+   "actor_fid": "flx::core:user:dbid/182467",
+   "actor_company_fid": "flx::core:company:dbid/883",
+   "container_fid": "flx::core:container:dbid/1225124",
+   "root_cause": "carrier",
+   "estimated_transit_time_impact": 2
+ }' \
+ localhost:9330 \
+ flexport.exceptionmanagement.server.v1beta1.ExceptionManagementAPI/CreateOperationalException
+
+ b. response
+ {
+  "operational_exception": {
+    "fid": "flx::exception_management:operational_exception:dbid/9930514",
+    "exception_type_fid": "flx::exception_management:operational_exception_type:dbid/630",
+    "target_type": "EXCEPTION_TARGET_TYPE_SHIPMENT",
+    "target_fid": "flx::core:shipment:dbid/2291289",
+    "assigned_user_fid": "flx::core:user:dbid/182467",
+    "due_date_time": "2023-07-06T09:54:45Z",
+    "messaging": {
+      "internal_note": "test",
+      "internal_message_fid": "flx::messaging:message:6d3089fe-aca2-4b76-ad15-a42cac6c4a48",
+      "internal_message_viewer_company_fids": [
+        "flx::core:company:dbid/883"
+      ],
+      "external_message_viewer_company_fids": [
+        "flx::core:company:dbid/883"
+      ],
+      "shipment_event_fid": "flx::shipment_events:shipment_event:dbid/99446403"
+    },
+    "priority": "EXCEPTION_PRIORITY_NORMAL",
+    "status": "EXCEPTION_STATUS_OPEN",
+    "revision": 1,
+    "attrs": "{\"domain_specific_info\": null}",
+    "created_by_user_fid": "flx::core:user:dbid/182467",
+    "created_at_time": "2023-08-25T02:19:15.049478Z",
+    "updated_by_user_fid": "flx::core:user:dbid/182467",
+    "updated_at_time": "2023-08-25T02:19:15.049478Z",
+    "container_fid": "flx::core:container:dbid/1225124",
+    "attached_files": {
+
+    },
+    "root_cause": "carrier",
+    "time_of_occurrence_time": "2023-07-06T09:54:45Z",
+    "estimated_transit_time_impact": 2,
+    "exception_type_revision": 2
+  }
+}
+
+2. UpdateOperationalException
+a. request
+grpcurl \
+ --plaintext \
+ -d '{
+   "fid": "flx::exception_management:operational_exception:dbid/9868732",
+   "actor_fid": "flx::core:user:dbid/182467",
+   "exception": {"status":5},
+   "exception_mask": {"paths": ["status"]},
+   "files": ["flx::storage:file_object:06bd8533-e83e-44d0-8bcd-62660431a8e0"]
+ }' \
+ localhost:9330 \
+ flexport.exceptionmanagement.server.v1beta1.ExceptionManagementAPI/UpdateOperationalException
+
+ b. response
+ {
+  "operational_exception": {
+    "fid": "flx::exception_management:operational_exception:dbid/9868732",
+    "exception_type_fid": "flx::exception_management:operational_exception_type:dbid/630",
+    "target_type": "EXCEPTION_TARGET_TYPE_SHIPMENT",
+    "target_fid": "flx::core:shipment:dbid/2291289",
+    "assigned_user_fid": "flx::core:user:dbid/182467",
+    "due_date_time": "2023-07-06T09:54:45Z",
+    "messaging": {
+      "internal_note": "test",
+      "internal_message_fid": "flx::messaging:message:e31f1286-a0dd-4abf-a136-57b7c33d9e36",
+      "internal_message_viewer_company_fids": [
+        "flx::core:company:dbid/883"
+      ],
+      "external_message_viewer_company_fids": [
+        "flx::core:company:dbid/883"
+      ],
+      "shipment_event_fid": "flx::shipment_events:shipment_event:dbid/96646739"
+    },
+    "priority": "EXCEPTION_PRIORITY_NORMAL",
+    "status": "EXCEPTION_STATUS_RESOLVED",
+    "revision": 5,
+    "attrs": "{\"domain_specific_info\": null}",
+    "created_by_user_fid": "flx::core:user:dbid/182467",
+    "created_at_time": "2023-08-16T09:36:47.255515Z",
+    "updated_by_user_fid": "flx::core:user:dbid/182467",
+    "updated_at_time": "2023-08-16T09:52:46.334231Z",
+    "container_fid": "flx::core:container:dbid/1225124",
+    "attached_files": {
+      "resolve_stage_files": [
+        "flx::storage:file_object:06bd8533-e83e-44d0-8bcd-62660431a8e0"
+      ]
+    },
+    "root_cause": "carrier",
+    "time_of_occurrence_time": "2023-07-06T09:54:45Z",
+    "estimated_transit_time_impact": 2,
+    "exception_type_revision": 1
+  }
+}
+
+3. ListOperationalExceptions
+a. request
+grpcurl \
+ --plaintext \
+ -d '{
+   "fids": {"matches_any":["flx::exception_management:operational_exception:dbid/9868732"]}
+ }' \
+ localhost:9330 \
+ flexport.exceptionmanagement.server.v1beta1.ExceptionManagementAPI/ListOperationalExceptions
+
+ b. response
+ {
+  "operational_exceptions": [
+    {
+      "fid": "flx::exception_management:operational_exception:dbid/9868732",
+      "exception_type_fid": "flx::exception_management:operational_exception_type:dbid/630",
+      "target_type": "EXCEPTION_TARGET_TYPE_SHIPMENT",
+      "target_fid": "flx::core:shipment:dbid/2291289",
+      "assigned_user_fid": "flx::core:user:dbid/182467",
+      "due_date_time": "2023-07-06T09:54:45Z",
+      "messaging": {
+        "internal_note": "test",
+        "internal_message_fid": "flx::messaging:message:e31f1286-a0dd-4abf-a136-57b7c33d9e36",
+        "internal_message_viewer_company_fids": [
+          "flx::core:company:dbid/883"
+        ],
+        "external_message_viewer_company_fids": [
+          "flx::core:company:dbid/883"
+        ],
+        "shipment_event_fid": "flx::shipment_events:shipment_event:dbid/96646739"
+      },
+      "priority": "EXCEPTION_PRIORITY_NORMAL",
+      "status": "EXCEPTION_STATUS_RESOLVED",
+      "revision": 6,
+      "attrs": "{\"domain_specific_info\": null}",
+      "created_by_user_fid": "flx::core:user:dbid/182467",
+      "created_at_time": "2023-08-16T09:36:47.255515Z",
+      "updated_by_user_fid": "flx::core:user:dbid/182467",
+      "updated_at_time": "2023-08-16T09:52:46.334231Z",
+      "container_fid": "flx::core:container:dbid/1225124",
+      "root_cause": "carrier",
+      "time_of_occurrence_time": "2023-07-06T09:54:45Z",
+      "estimated_transit_time_impact": 2,
+      "exception_type_revision": 1
+    }
+  ]
+}
+
+4. ListExtendedOperationalExceptions
+a. request
+grpcurl \
+ --plaintext \
+ -d '{
+   "fids": {"matches_any":["flx::exception_management:operational_exception:dbid/9868732"]}
+ }' \
+ localhost:9330 \
+ flexport.exceptionmanagement.server.v1beta1.ExceptionManagementAPI/ListExtendedOperationalExceptions
+
+ b. response
+{
+  "extended_operational_exceptions": [
+    {
+      "operational_exception": {
+        "fid": "flx::exception_management:operational_exception:dbid/9868732",
+        "exception_type_fid": "flx::exception_management:operational_exception_type:dbid/630",
+        "target_type": "EXCEPTION_TARGET_TYPE_SHIPMENT",
+        "target_fid": "flx::core:shipment:dbid/2291289",
+        "assigned_user_fid": "flx::core:user:dbid/182467",
+        "due_date_time": "2023-07-06T09:54:45Z",
+        "messaging": {
+          "internal_note": "test",
+          "internal_message_fid": "flx::messaging:message:e31f1286-a0dd-4abf-a136-57b7c33d9e36",
+          "internal_message_viewer_company_fids": [
+            "flx::core:company:dbid/883"
+          ],
+          "external_message_viewer_company_fids": [
+            "flx::core:company:dbid/883"
+          ],
+          "shipment_event_fid": "flx::shipment_events:shipment_event:dbid/96646739"
+        },
+        "priority": "EXCEPTION_PRIORITY_NORMAL",
+        "status": "EXCEPTION_STATUS_RESOLVED",
+        "revision": 6,
+        "attrs": "{\"domain_specific_info\": null}",
+        "created_by_user_fid": "flx::core:user:dbid/182467",
+        "created_at_time": "2023-08-16T09:36:47.255515Z",
+        "updated_by_user_fid": "flx::core:user:dbid/182467",
+        "updated_at_time": "2023-08-16T09:52:46.334231Z",
+        "container_fid": "flx::core:container:dbid/1225124",
+        "root_cause": "carrier",
+        "time_of_occurrence_time": "2023-07-06T09:54:45Z",
+        "estimated_transit_time_impact": 2,
+        "exception_type_revision": 1
+      },
+      "exception_type": {
+        "fid": "flx::exception_management:operational_exception_type:dbid/630",
+        "name": "Missing Bill of Lading Numbers",
+        "slug": "missing_bill_of_lading_numbers",
+        "target_type": "EXCEPTION_TARGET_TYPE_SHIPMENT",
+        "creator_parties": [
+          "flexport"
+        ],
+        "viewer_parties": [
+          "shipper",
+          "consignee",
+          "client",
+          "flexport",
+          "origin_agent"
+        ],
+        "active_status": "EXCEPTION_ACTIVE_STATUS_ACTIVE",
+        "resolution_type": "EXCEPTION_RESOLUTION_TYPE_ACTION_REQUIRED",
+        "sla_hours": 12,
+        "tags": [
+          "ffa",
+          "legacy_exception",
+          "oso"
+        ],
+        "attr_options": "{\"default_assigned_team\": \"net_ops\"}",
+        "created_by_user_fid": "flx::core:user:dbid/34592",
+        "created_at_time": "2022-10-13T08:07:42Z",
+        "updated_by_user_fid": "flx::core:user:dbid/127445",
+        "updated_at_time": "2023-06-24T15:54:05.862291Z",
+        "required_fields": {
+
+        },
+        "applicable_criteria": {
+
+        },
+        "default_visible_party_slugs": [
+          "flexport",
+          "origin_agent"
+        ],
+        "default_priority": "EXCEPTION_PRIORITY_NORMAL",
+        "default_root_cause": "unknown",
+        "recommended_use": "When missing HBL/MBL numbers and the documents are not uploaded yet but ISF need to be filed",
+        "revision": 1
+      }
+    }
+  ]
+}
+
+5. ListOperationalExceptionTypes
+a. request
+grpcurl \
+ --plaintext \
+ -d '{
+   "slug": {"matches_any":["missing_bill_of_lading_numbers", "_air_consolidation_schedule_delay_operator_mistake_origin_total_ote_planned_for_success_but_individual_leg_failed"]}
+ }' \
+ localhost:9330 \
+ flexport.exceptionmanagement.server.v1beta1.ExceptionManagementAPI/ListOperationalExceptionTypes
+
+ b. response
+ {
+  "exception_types": [
+    {
+      "fid": "flx::exception_management:operational_exception_type:dbid/630",
+      "name": "Missing Bill of Lading Numbers",
+      "slug": "missing_bill_of_lading_numbers",
+      "target_type": "EXCEPTION_TARGET_TYPE_SHIPMENT",
+      "creator_parties": [
+        "flexport"
+      ],
+      "viewer_parties": [
+        "shipper",
+        "consignee",
+        "client",
+        "flexport",
+        "origin_agent"
+      ],
+      "active_status": "EXCEPTION_ACTIVE_STATUS_ACTIVE",
+      "resolution_type": "EXCEPTION_RESOLUTION_TYPE_ACTION_REQUIRED",
+      "sla_hours": 12,
+      "tags": [
+        "ffa",
+        "legacy_exception",
+        "oso"
+      ],
+      "attr_options": "{\"default_assigned_team\": \"net_ops\"}",
+      "created_by_user_fid": "flx::core:user:dbid/34592",
+      "created_at_time": "2022-10-13T08:07:42Z",
+      "updated_by_user_fid": "flx::core:user:dbid/127445",
+      "updated_at_time": "2023-06-24T15:54:05.862291Z",
+      "required_fields": {
+
+      },
+      "applicable_criteria": {
+
+      },
+      "default_visible_party_slugs": [
+        "flexport",
+        "origin_agent"
+      ],
+      "default_priority": "EXCEPTION_PRIORITY_NORMAL",
+      "default_root_cause": "unknown",
+      "recommended_use": "When missing HBL/MBL numbers and the documents are not uploaded yet but ISF need to be filed",
+      "revision": 1
+    },
+    {
+      "fid": "flx::exception_management:operational_exception_type:dbid/5516",
+      "name": "(Air Consolidation) Schedule delay: Flexport - Origin Total OTE Planned for Success but Individual Leg Failed",
+      "slug": "_air_consolidation_schedule_delay_operator_mistake_origin_total_ote_planned_for_success_but_individual_leg_failed",
+      ...
+    }
+  ]
+}
+
+*/

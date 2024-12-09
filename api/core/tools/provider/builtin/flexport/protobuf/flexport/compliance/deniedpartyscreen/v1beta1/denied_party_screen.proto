@@ -1,0 +1,52 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.compliance.deniedpartyscreen.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DeniedPartyScreenProto";
+option java_package = "com.flexport.compliance.deniedpartyscreen.v1beta1";
+option ruby_package = "Flexport::Compliance::DeniedPartyScreenProto::V1Beta1";
+
+// The ScreenInput object.
+message ScreenInput {
+  string fid = 1;
+  EntityType screen_type = 2;
+  string address_one = 3;
+  string address_two = 4;
+  string city = 5;
+  string state = 6;
+  string zip_code = 7;
+  string country = 8;
+  string legal_name = 9;
+  string first_name = 10;
+  string last_name = 11;
+}
+
+// Types of screening.
+enum EntityType {
+  ENTITY_TYPE_INVALID = 0;
+  ENTITY_TYPE_INDIVIDUAL = 1;
+  ENTITY_TYPE_BUSINESS = 2;
+}
+
+// Screen error output.
+message ScreenErrorOutput {
+  repeated string errors = 1;
+}
+
+// Screen output.
+message ScreenOutput {
+  repeated ScreenMatch screen_matches = 1;
+}
+
+// Screen match.
+message ScreenMatch {
+  int32 score = 1;
+  EntityType entity_type = 2;
+  string match_data = 3;
+  string match_reasons = 4;
+  string match_comments = 5;
+  string record_string = 6;
+}

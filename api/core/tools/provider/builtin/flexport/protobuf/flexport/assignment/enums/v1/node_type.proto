@@ -1,0 +1,21 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "NodeTypeProto";
+option java_package = "com.flexport.assignment.enums.v1";
+option ruby_package = "Flexport::Assignment::Enums::V1";
+
+// Type of a node.
+enum NodeType {
+  NODE_TYPE_INVALID = 0;
+  NODE_TYPE_ROOT = 1;
+  NODE_TYPE_COMPANY = 2;
+  NODE_TYPE_DEPARTMENT = 3;
+  NODE_TYPE_TEAM = 4;
+  NODE_TYPE_WORK_DESK = 5;
+  NODE_TYPE_OPERATOR = 6;
+}

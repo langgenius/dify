@@ -1,0 +1,93 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.monolith.catalog.v1beta1;
+
+import "flexport/monolith/catalog/v1beta1/core_service.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CoreServiceApiProto";
+option java_package = "com.flexport.monolith.catalog.v1beta1";
+option ruby_package = "Flexport::Monolith::Catalog::V1Beta1";
+
+// This service is used internally by the Catalog service to retrieve Core models.
+// https://docs.google.com/document/d/1nvpu17HliH1az84I-naUs7Xdjv2SIVzXp48NXEkvBT0/edit?usp=sharing
+service CoreServiceAPI {
+  // Get Clients by fids. (Flexport Resource Identifiers)
+  rpc GetClients(GetClientsRequest) returns (GetClientsResponse);
+  // Get Addresses by fids. (Flexport Resource Identifiers)
+  rpc GetAddresses(GetAddressesRequest) returns (GetAddressesResponse);
+  // Get a list of allowable Categories for a specific charge code by fid .
+  rpc GetChargeCodeCategories(GetChargeCodeCategoriesRequest) returns (GetChargeCodeCategoriesResponse);
+  // Get a list of allowable Modes for a specific charge code by fid .
+  rpc GetChargeCodeModes(GetChargeCodeModesRequest) returns (GetChargeCodeModesResponse);
+  // Get Service_item_templates by tier, service_type, and service_charge_type_id
+  // This approach is part of an existing core logic that maintains a mapping
+  // between service_charges and service_item_templates. This is why we initially needed to retrieve the slug
+  // by finding the ServiceChargeType by its ID.
+  // code reference: engines/catalog/app/models/catalog/service_charge_to_template_map.rb
+  rpc GetServiceItemTemplate(GetServiceItemTemplateRequest) returns (GetServiceItemTemplateResponse);
+  // Get currently enabled service config by offering_type (e.g.: cartage, ocean_fcl, origin_booking)
+  // config page: https://core.flexport.com/marketplace/service_offerings/configure
+  rpc GetServiceConfig(GetServiceConfigRequest) returns (GetServiceConfigResponse);
+  // Get a list of object for service charge to template mappings
+  rpc GetServiceChargeToTemplateTable(GetServiceChargeToTemplateTableRequest) returns (GetServiceChargeToTemplateTableResponse);
+}
+
+message GetAddressesRequest {
+  repeated string address_fids = 1;
+}
+
+message GetAddressesResponse {
+  repeated Address addresses = 1;
+}
+
+message GetClientsRequest {
+  repeated string client_fids = 1;
+}
+
+message GetClientsResponse {
+  repeated Client clients = 1;
+}
+
+message GetChargeCodeCategoriesRequest {
+  string charge_code_fid = 1;
+}
+
+message GetChargeCodeCategoriesResponse {
+  repeated string charge_code_categories = 1;
+}
+
+message GetChargeCodeModesRequest {
+  string charge_code_fid = 1;
+}
+
+message GetChargeCodeModesResponse {
+  repeated string charge_code_modes = 1;
+}
+
+message GetServiceItemTemplateRequest {
+  google.protobuf.StringValue tier = 1;
+  google.protobuf.StringValue service_type = 2;
+  string service_charge_type_slug = 3;
+}
+
+message GetServiceItemTemplateResponse {
+  ServiceItemTemplate service_item_template = 1;
+}
+
+message GetServiceConfigRequest {
+  string offering_type = 1; // e.g.: cartage, ocean_fcl, origin_booking
+}
+
+message GetServiceConfigResponse {
+  ServiceConfig current_config = 1;
+}
+
+message GetServiceChargeToTemplateTableRequest {}
+
+message GetServiceChargeToTemplateTableResponse {
+  ServiceChargeToTemplateTable service_charge_to_template_table = 1;
+}

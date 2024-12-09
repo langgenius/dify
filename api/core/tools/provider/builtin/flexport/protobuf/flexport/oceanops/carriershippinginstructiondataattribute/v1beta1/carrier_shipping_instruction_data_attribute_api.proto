@@ -1,0 +1,355 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.oceanops.carriershippinginstructiondataattribute.v1beta1;
+
+import "flexport/oceanops/port/v1beta1/port.proto";
+import "flexport/rulesengine/options/v1/options.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierShippingInstructionDataAttributeApiProto";
+option java_package = "com.flexport.oceanops.carriershippinginstructiondataattribute.v1beta1";
+option ruby_package = "Flexport::OceanOps::CarrierShippingInstructionDataAttribute::V1Beta1";
+
+// CarrierShippingInstructionDataAttributeAPI. This is the rules to evaluate the default data of carrier SI form.
+service CarrierShippingInstructionDataAttributeAPI {
+  option (flexport.rulesengine.options.v1.rule_facade).service_name = "ocean_ops";
+  // Rate Group & Remark from carrier & contract number, this is going to replace the origin Google sheet.
+  rpc RateGroupAndRemark(RateGroupAndRemarkRequest) returns (RateGroupAndRemarkResponse) {
+    option (flexport.rulesengine.options.v1.rule).api_name = "com.flexport.oceanops.carriershippinginstructiondataattribute.rategroupandremark";
+    option (flexport.rulesengine.options.v1.rule).description = "Rate group & remark from carrier & contract number";
+    option (flexport.rulesengine.options.v1.rule).tolerate_evaluation_error = false;
+    option (flexport.rulesengine.options.v1.rule).workspace = "ocean_ops";
+    option (flexport.rulesengine.options.v1.rule_set).use = true;
+  }
+  // Evaluate cargo description and remark of an ocean shipment, this is the root level.
+  rpc CargoDescriptionAndRemark(CargoDescriptionAndRemarkRequest) returns (CargoDescriptionAndRemarkResponse) {
+    option (flexport.rulesengine.options.v1.decision_table).use = true;
+    option (flexport.rulesengine.options.v1.rule).api_name = "com.flexport.oceanops.carriershippinginstructiondataattribute.cargodescriptionandremark";
+    option (flexport.rulesengine.options.v1.rule).description = "CargoDescription & Remark, may return a template for further population";
+    option (flexport.rulesengine.options.v1.rule).tolerate_evaluation_error = false;
+    option (flexport.rulesengine.options.v1.rule).workspace = "ocean_ops";
+    option (flexport.rulesengine.options.v1.rule_set).use = true;
+  }
+  // Evaluate cargo description and remark of an ocean shipment, this is the root level. This one is derived from documents used by PRE.
+  rpc CargoDescriptionAndRemarkVerTwo(CargoDescriptionAndRemarkVerTwoRequest) returns (CargoDescriptionAndRemarkVerTwoResponse) {
+    option (flexport.rulesengine.options.v1.decision_table).use = true;
+    option (flexport.rulesengine.options.v1.rule).api_name = "com.flexport.oceanops.carriershippinginstructiondataattribute.cargodescriptionandremarkv2";
+    option (flexport.rulesengine.options.v1.rule).description = "CargoDescription & Remark, may return a template for further population";
+    option (flexport.rulesengine.options.v1.rule).tolerate_evaluation_error = false;
+    option (flexport.rulesengine.options.v1.rule).workspace = "ocean_ops";
+    option (flexport.rulesengine.options.v1.rule_set).use = true;
+  }
+  // Evaluate contract-wide information about the client and commodity name, the output of this is put after "NAC: ".
+  rpc ContractNacInfo(ContractNacInfoRequest) returns (ContractNacInfoResponse) {
+    option (flexport.rulesengine.options.v1.decision_table).use = true;
+    option (flexport.rulesengine.options.v1.rule).api_name = "com.flexport.oceanops.carriershippinginstructiondataattribute.contractnacinfo";
+    option (flexport.rulesengine.options.v1.rule).description = "Carrier contract nac info: client name, and optionally commodity name";
+    option (flexport.rulesengine.options.v1.rule).tolerate_evaluation_error = false;
+    option (flexport.rulesengine.options.v1.rule).workspace = "ocean_ops";
+    option (flexport.rulesengine.options.v1.rule_set).use = true;
+  }
+  // Evaluate fixed account booking info, the primary output is booking codes.
+  rpc FixedAccountBookingInfo(FixedAccountBookingInfoRequest) returns (FixedAccountBookingInfoResponse) {
+    option (flexport.rulesengine.options.v1.decision_table).use = true;
+    option (flexport.rulesengine.options.v1.rule).api_name = "com.flexport.oceanops.carriershippinginstructiondataattribute.fixedaccountbookinginfo";
+    option (flexport.rulesengine.options.v1.rule).description = "Fixed account booking info";
+    option (flexport.rulesengine.options.v1.rule).tolerate_evaluation_error = false;
+    option (flexport.rulesengine.options.v1.rule).workspace = "ocean_ops";
+    option (flexport.rulesengine.options.v1.rule_set).use = true;
+  }
+  // Evaluate carrier-specific rate group.
+  rpc CarrierRateGroup(CarrierRateGroupRequest) returns (CarrierRateGroupResponse) {
+    option (flexport.rulesengine.options.v1.decision_table).use = true;
+    option (flexport.rulesengine.options.v1.rule).api_name = "com.flexport.oceanops.carriershippinginstructiondataattribute.carrierrategroup";
+    option (flexport.rulesengine.options.v1.rule).description = "Carrier rate group";
+    option (flexport.rulesengine.options.v1.rule).tolerate_evaluation_error = false;
+    option (flexport.rulesengine.options.v1.rule).workspace = "ocean_ops";
+    option (flexport.rulesengine.options.v1.rule_set).use = true;
+  }
+  // Generate B/L comments other notes for carrie SI.
+  rpc BillOfLadingCommentsOtherNotes(BillOfLadingCommentsOtherNotesRequest) returns (BillOfLadingCommentsOtherNotesResponse) {
+    option (flexport.rulesengine.options.v1.rule).api_name = "com.flexport.oceanops.carriershippinginstructiondataattribute.billofladingcommentsothernotes";
+    option (flexport.rulesengine.options.v1.rule).description = "Carrier Shipping Instruction B/L Comments Other Notes";
+    option (flexport.rulesengine.options.v1.rule).tolerate_evaluation_error = false;
+    option (flexport.rulesengine.options.v1.rule).workspace = "ocean_ops";
+    option (flexport.rulesengine.options.v1.rule_set).use = true;
+  }
+  // Generate cargo description and remark (rule-based).
+  rpc CargoDescriptionAndRemarkRule(CargoDescriptionAndRemarkRuleRequest) returns (CargoDescriptionAndRemarkRuleResponse) {
+    option (flexport.rulesengine.options.v1.rule).api_name = "com.flexport.oceanops.carriershippinginstructiondataattribute.cargodescriptionandremarkrule";
+    option (flexport.rulesengine.options.v1.rule).description = "CargoDescription & Remark (rule-based)";
+    option (flexport.rulesengine.options.v1.rule).tolerate_evaluation_error = false;
+    option (flexport.rulesengine.options.v1.rule).workspace = "ocean_ops";
+    option (flexport.rulesengine.options.v1.rule_set).use = true;
+  }
+  // Generate contract attributes.
+  rpc ContractAttributes(ContractAttributesRequest) returns (ContractAttributesResponse) {
+    option (flexport.rulesengine.options.v1.decision_table).use = true;
+    option (flexport.rulesengine.options.v1.rule).api_name = "com.flexport.oceanops.carriershippinginstructiondataattribute.contractattributes";
+    option (flexport.rulesengine.options.v1.rule).description = "contract attributes (fak/nac/premium/...)";
+    option (flexport.rulesengine.options.v1.rule).tolerate_evaluation_error = false;
+    option (flexport.rulesengine.options.v1.rule).workspace = "ocean_ops";
+  }
+  // Generate freight charges payment location (rule-based) (FEWB only).
+  rpc FreightChargesPaymentLocation(FreightChargesPaymentLocationRequest) returns (FreightChargesPaymentLocationResponse) {
+    option (flexport.rulesengine.options.v1.rule).api_name = "com.flexport.oceanops.carriershippinginstructiondataattribute.freightchargespaymentlocation";
+    option (flexport.rulesengine.options.v1.rule).description = "Freight Charges Payment Location (rule-based) (FEWB)";
+    option (flexport.rulesengine.options.v1.rule).tolerate_evaluation_error = false;
+    option (flexport.rulesengine.options.v1.rule).workspace = "ocean_ops";
+    option (flexport.rulesengine.options.v1.rule_set).use = true;
+  }
+}
+
+// This is the request body of rate group & remark requests. The ocean procurement team
+// will procure contract with carriers yearly, and carriers will require us to fill the
+// rate group and SI remark either in B/L comments or description of goods. The overall
+// rules are so complex that we split it into two parts, one is the calculation of
+// rate group and remark, the others are for the specific fields.
+// port_of_discharge -- FMC unloading
+// interior_point_intermodal -- FMC delivery
+// Request body example:
+// {
+//   "carrier_scac_code": "APLU",
+//   "contract_number": "20-2008",
+//   "port_of_loading_loc_code": "CNYTN",
+//   "port_of_loading_country_code": "CN",
+//   "port_of_discharge_loc_code": "USLAX",
+//   "port_of_discharge_country_code": "US",
+//   "interior_point_intermodal_loc_code": "USSAV",
+//   "interior_point_intermodal_country_code": "US",
+// }
+message RateGroupAndRemarkRequest {
+  option (flexport.rulesengine.options.v1.message_description) = "Rate Group & Remark Request";
+  optional string carrier_scac_code = 1;
+  optional string contract_number = 2;
+  optional string port_of_loading_loc_code = 3;
+  optional string port_of_loading_country_code = 4;
+  optional string port_of_discharge_loc_code = 5;
+  optional string port_of_discharge_country_code = 6;
+  optional string interior_point_intermodal_loc_code = 7;
+  optional string interior_point_intermodal_country_code = 8;
+}
+
+message RateGroupAndRemarkResponse {
+  option (flexport.rulesengine.options.v1.message_description) = "Rate Group & Remark Response";
+  optional string service_level = 1;
+  optional string rate_group = 2;
+  optional string bill_of_lading_remark = 3;
+}
+
+// Contract number
+message CargoDescriptionAndRemarkRequest {
+  option (flexport.rulesengine.options.v1.message_description) = "CargoDescription & Remark";
+  optional string contract_number = 1;
+  optional uint64 client_id = 2;
+  optional string place_of_delivery_country_code = 3;
+  optional string premium_type = 4;
+  optional string carrier_scac_code = 5;
+}
+
+message CargoDescriptionAndRemarkResponse {
+  option (flexport.rulesengine.options.v1.message_description) = "Both responses are nullable and may be templates for further string interpolation";
+  string cargo_description = 1 [(flexport.rulesengine.options.v1.field_component) = {
+    text_area: {
+      min_rows: 5
+    }
+  }];
+  string remark = 2 [(flexport.rulesengine.options.v1.field_component) = {
+    text_area: {
+      min_rows: 5
+    }
+  }];
+}
+
+message CargoDescriptionAndRemarkVerTwoRequest {
+  option (flexport.rulesengine.options.v1.message_description) = "CargoDescription & Remark (V2)";
+  optional string carrier_scac_code = 1;
+  optional string contract_number = 2;
+  optional uint64 client_id = 3;
+  optional bool is_nac = 4;
+  optional bool is_fak = 5;
+}
+
+message CargoDescriptionAndRemarkVerTwoResponse {
+  option (flexport.rulesengine.options.v1.message_description) = "Both responses are nullable and may be templates for further string interpolation";
+  string cargo_description = 1 [(flexport.rulesengine.options.v1.field_component) = {
+    text_area: {
+      min_rows: 5
+    }
+  }];
+  string remark = 2 [(flexport.rulesengine.options.v1.field_component) = {
+    text_area: {
+      min_rows: 5
+    }
+  }];
+}
+
+// Contract Nac Info
+message ContractNacInfoRequest {
+  option (flexport.rulesengine.options.v1.message_description) = "Needs ContractNumber and ClientId to determine the mapped NacInfo";
+  // Effective / expiration dates are implied by contract number
+  optional string contract_number = 1;
+  optional uint64 client_id = 2;
+}
+
+message ContractNacInfoResponse {
+  option (flexport.rulesengine.options.v1.message_description) = "Nac info: client name, and optionally commodity name";
+  string nac_info = 1;
+}
+
+// Fixed account booking info
+message FixedAccountBookingInfoRequest {
+  option (flexport.rulesengine.options.v1.message_description) = "Fixed account booking info";
+  optional string contract_number = 1;
+  optional uint64 client_id = 2;
+  optional string string = 3;
+  // all the ports below are referenced with loc codes, and not country wild cards.
+  optional string port_of_receipt_loc_code = 4;
+  optional string port_of_discharge_loc_code = 5;
+  optional string port_of_intermodal_loc_code = 6;
+}
+
+message FixedAccountBookingInfoResponse {
+  option (flexport.rulesengine.options.v1.message_description) = "Fixed account booking code and client_name";
+  string booking_code = 1;
+  string client_name = 2;
+}
+
+message CarrierRateGroupRequest {
+  option (flexport.rulesengine.options.v1.message_description) = "Carrier rate group";
+  optional string contract_number = 1;
+  string port_of_loading_loc_code = 2;
+  string port_of_loading_country_code = 3;
+  string port_of_discharge_loc_code = 4;
+  string port_of_discharge_country_code = 5;
+  string interior_point_intermodal_loc_code = 6;
+  string interior_point_intermodal_country_code = 7;
+  uint64 client_id = 8;
+  string string = 9;
+  string vessel_name = 10;
+  string place_of_delivery_country_code = 11;
+}
+
+message CarrierRateGroupResponse {
+  option (flexport.rulesengine.options.v1.message_description) = "Carrier rate group";
+  string rate_group = 1;
+}
+
+message BillOfLadingCommentsOtherNotesRequest {
+  option (flexport.rulesengine.options.v1.message_description) = "B/L Comments Other Notes Request";
+  optional string carrier_scac = 1;
+  optional string contract_number = 2;
+  optional string service_level = 3;
+  optional string rate_group = 4;
+  optional string bill_of_lading_remark = 5;
+  optional string origin_region = 6;
+  optional string destination_region = 7;
+}
+
+message BillOfLadingCommentsOtherNotesResponse {
+  option (flexport.rulesengine.options.v1.message_description) = "B/L Comments Other Notes Response";
+  string output = 1 [(flexport.rulesengine.options.v1.template_type) = TEMPLATE_TYPE_SPEL];
+}
+
+message CargoDescriptionAndRemarkRuleRequest {
+  option (flexport.rulesengine.options.v1.message_description) = "CargoDescription & Remark (rule-based)";
+  optional string contract_number = 1;
+  optional uint64 feeder_vessel_id = 2;
+  optional string master_bill_of_lading_number = 3;
+  optional string multiple_shipping_order_numbers = 4;
+  optional flexport.oceanops.port.v1beta1.Port port_of_loading = 5;
+  optional flexport.oceanops.port.v1beta1.Port port_of_discharge = 6;
+  optional flexport.oceanops.port.v1beta1.Port place_of_delivery = 7;
+  // OriginRegion info from the CSI data attribute.
+  enum OriginRegion {
+    ORIGIN_REGION_INVALID = 0;
+    ORIGIN_REGION_SHEN_ZHEN = 1;
+    ORIGIN_REGION_SHANG_HAI = 2;
+    ORIGIN_REGION_HONG_KONG = 3;
+  }
+  optional OriginRegion origin_region = 8;
+  // DestinationRegion info from the CSI attribute.
+  enum DestinationRegion {
+    DESTINATION_REGION_INVALID = 0;
+    DESTINATION_REGION_CA = 1;
+    DESTINATION_REGION_US = 2;
+    DESTINATION_REGION_EU = 3;
+  }
+  optional DestinationRegion destination_region = 9;
+  optional string carrier_scac_code = 10;
+  optional uint64 container_count = 11;
+  // FreightTerm info from the default value on the CSI.
+  enum FreightTerm {
+    FREIGHT_TERM_INVALID = 0;
+    FREIGHT_TERM_PREPAID = 1;
+    FREIGHT_TERM_COLLECT = 2;
+    FREIGHT_TERM_PAYABLE_ELSEWHERE = 3;
+  }
+  optional FreightTerm freight_term = 12;
+  optional string house_bill_of_lading_number = 13;
+  optional string pay_office = 14;
+  string currency = 15;
+  optional bool is_fak = 16;
+  optional bool is_nac = 17;
+  // PaymentLocation for the Carrier SI freight charges, calculated from rules engine.
+  enum PaymentLocation {
+    PAYMENT_LOCATION_INVALID = 0;
+    PAYMENT_LOCATION_POD = 1;
+    PAYMENT_LOCATION_ROTTERDAM = 2;
+  }
+  optional PaymentLocation payment_location = 18;
+}
+
+message CargoDescriptionAndRemarkRuleResponse {
+  option (flexport.rulesengine.options.v1.message_description) = "CargoDescription & Remark (rule-based)";
+  string cargo_description = 1 [
+    (flexport.rulesengine.options.v1.field_component) = {
+      text_area: {
+        min_rows: 5
+      }
+    },
+    (flexport.rulesengine.options.v1.optional_output) = true,
+    (flexport.rulesengine.options.v1.template_type) = TEMPLATE_TYPE_SPEL
+  ];
+  string remark = 2 [
+    (flexport.rulesengine.options.v1.field_component) = {
+      text_area: {
+        min_rows: 5
+      }
+    },
+    (flexport.rulesengine.options.v1.optional_output) = true,
+    (flexport.rulesengine.options.v1.template_type) = TEMPLATE_TYPE_SPEL
+  ];
+}
+
+message ContractAttributesRequest {
+  option (flexport.rulesengine.options.v1.message_description) = "Contract Attributes Request";
+  optional string contract_number = 1;
+}
+
+message ContractAttributesResponse {
+  option (flexport.rulesengine.options.v1.message_description) = "Contract Attributes Response";
+  bool is_fak = 1;
+  bool is_nac = 2;
+  bool is_premium = 3;
+}
+
+message FreightChargesPaymentLocationRequest {
+  option (flexport.rulesengine.options.v1.message_description) = "Freight Charges Payment Location Request";
+  optional string carrier_scac_code = 1;
+  optional string port_of_discharge_country_code = 2;
+  optional string place_of_delivery_country_code = 3;
+}
+
+message FreightChargesPaymentLocationResponse {
+  option (flexport.rulesengine.options.v1.message_description) = "Freight Charges Payment Location Response";
+  // PaymentLocation for the Carrier SI freight charges.
+  enum PaymentLocation {
+    PAYMENT_LOCATION_INVALID = 0;
+    PAYMENT_LOCATION_POD = 1;
+    PAYMENT_LOCATION_ROTTERDAM = 2;
+  }
+  PaymentLocation payment_location = 1;
+}

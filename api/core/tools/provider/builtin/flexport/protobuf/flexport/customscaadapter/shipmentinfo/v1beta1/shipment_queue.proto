@@ -1,0 +1,15 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customscaadapter.shipmentinfo.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentQueueProto";
+option java_package = "com.flexport.customscaadapter.shipmentinfo.v1beta1";
+option ruby_package = "Flexport::CustomsCaAdapter::ShipmentInfo::V1Beta1";
+
+// Used for internal queue processing in canada adapter
+message ShipmentQueue {
+  string shipment_json = 1;
+  bool is_healing_message = 3;
+}

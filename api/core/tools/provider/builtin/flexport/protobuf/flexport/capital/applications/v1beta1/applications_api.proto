@@ -1,0 +1,99 @@
+// TEAM: capital
+
+syntax = "proto3";
+
+package flexport.capital.applications.v1beta1;
+
+import "flexport/capital/applications/v1beta1/application.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ApplicationsApiProto";
+option java_package = "com.flexport.capital.applications.v1beta1";
+option ruby_package = "Flexport::Capital::Applications::V1Beta1";
+
+service ApplicationsAPI {
+  rpc CreateApplication(CreateApplicationRequest) returns (CreateApplicationResponse);
+  rpc GetApplication(GetApplicationRequest) returns (GetApplicationResponse);
+  rpc GetApplications(GetApplicationsRequest) returns (GetApplicationsResponse);
+  rpc SubmitApplication(SubmitApplicationRequest) returns (SubmitApplicationResponse);
+  rpc UpdateApplication(UpdateApplicationRequest) returns (UpdateApplicationResponse);
+  rpc ProcessApplication(ProcessApplicationRequest) returns (ProcessApplicationResponse);
+}
+
+message CreateApplicationRequest {
+  ApplicationDetails application = 1;
+}
+
+message CreateApplicationResponse {
+  string application_id = 1;
+}
+
+message GetApplicationRequest {
+  string application_id = 1;
+}
+
+message GetApplicationsRequest {
+  repeated ApplicationStatus statuses = 1;
+  string created_at = 2;
+}
+
+message GetApplicationResponse {
+  Application application = 1;
+}
+
+message GetApplicationsResponse {
+  repeated Application applications = 1;
+}
+
+message SubmitApplicationRequest {
+  string application_id = 1;
+}
+
+message SubmitApplicationResponse {
+  Application application = 1;
+}
+
+message UpdateApplicationRequest {
+  string application_id = 1;
+  ApplicationDetails application = 2;
+}
+
+message UpdateApplicationResponse {
+  Application application = 1;
+}
+
+message ProcessApplicationRequest {
+  string application_id = 1;
+
+  // The action to be taken on the application.
+  enum Action {
+    ACTION_INVALID = 0;
+    ACTION_APPROVE = 1;
+    ACTION_DENY = 2;
+    ACTION_CANCEL = 3;
+  }
+
+  Action action = 2;
+
+  // Optional reason/message, mainly for REJECT/CANCEL actions.
+  string reason = 3;
+}
+
+message ProcessApplicationResponse {
+  string application_id = 1;
+
+  // The result of the action. Could be success, or specific error types.
+  enum Result {
+    RESULT_INVALID = 0; // Default value (invalid).
+    RESULT_SUCCESS = 1;
+    RESULT_ALREADY_APPROVED = 2;
+    RESULT_ALREADY_REJECTED = 3;
+    RESULT_ALREADY_CANCELED = 4;
+    RESULT_APPLICATION_NOT_FOUND = 5;
+    RESULT_APPLICATION_IN_DRAFT_STATUS = 6;
+    RESULT_UNKNOWN_ERROR = 7;
+  }
+
+  Result result = 2;
+  string message = 3; // Detailed message, if needed.
+}

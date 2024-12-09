@@ -1,0 +1,18 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customscargomanifestquery.enums.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsCargoManifestModeOfTransportationProto";
+option java_package = "com.flexport.customscargomanifestquery.enums.v1beta1";
+option ruby_package = "Flexport::CustomsCargoManifestQuery::Enums::V1Beta1";
+
+enum CustomsCargoManifestModeOfTransportation {
+  CUSTOMS_CARGO_MANIFEST_MODE_OF_TRANSPORTATION_INVALID = 0;
+  CUSTOMS_CARGO_MANIFEST_MODE_OF_TRANSPORTATION_OCEAN = 1;
+  CUSTOMS_CARGO_MANIFEST_MODE_OF_TRANSPORTATION_RAIL = 2;
+  CUSTOMS_CARGO_MANIFEST_MODE_OF_TRANSPORTATION_TRUCK = 3;
+  CUSTOMS_CARGO_MANIFEST_MODE_OF_TRANSPORTATION_AIR = 4;
+}

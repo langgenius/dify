@@ -1,0 +1,28 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.cmq.entities.v1;
+
+import "flexport/customs/usadapter/cmq/entities/v1/bill_type.proto";
+import "flexport/customs/usadapter/cmq/entities/v1/disposition.proto";
+import "flexport/customs/usadapter/cmq/entities/v1/firms_info.proto";
+import "flexport/customs/usadapter/cmq/entities/v1/in_bond.proto";
+import "google/type/date.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.cmq.entities.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::Cmq::V1";
+
+message HouseBill {
+  string master_bill_number = 1;
+  string house_bill_number = 2;
+  string sub_house_bill_number = 3;
+  string type = 4;
+  google.type.Date date_of_arrival = 5;
+  repeated InBond in_bonds = 6;
+  repeated Disposition dispositions = 7;
+  optional int32 amended_quantity = 8;
+  BillType bill_type = 9;
+  FirmsInfo firms_info = 10;
+}

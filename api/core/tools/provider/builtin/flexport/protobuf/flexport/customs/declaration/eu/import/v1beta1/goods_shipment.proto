@@ -1,0 +1,93 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customs.declaration.eu.import.v1beta1;
+
+import "flexport/customs/declaration/eu/common/v1beta1/addition_deduction.proto";
+import "flexport/customs/declaration/eu/common/v1beta1/additional.proto";
+import "flexport/customs/declaration/eu/common/v1beta1/delivery_terms.proto";
+import "flexport/customs/declaration/eu/common/v1beta1/documents.proto";
+import "flexport/customs/declaration/eu/common/v1beta1/involved_parties.proto";
+import "flexport/customs/declaration/eu/common/v1beta1/location_goods.proto";
+import "flexport/customs/declaration/eu/common/v1beta1/transport_equipment.proto";
+import "flexport/customs/declaration/eu/common/v1beta1/transport_means.proto";
+import "flexport/customs/declaration/eu/common/v1beta1/warehouse.proto";
+import "flexport/customs/declaration/eu/import/v1beta1/goods_shipment_item.proto";
+import "flexport/customs/declaration/eu/types/v1beta1/mode_of_transport.proto";
+import "google/type/date.proto";
+import "google/type/money.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.declaration.eu.imports.v1beta1";
+option ruby_package = "Flexport::Customs::Declaration::EU::Import::V1Beta1";
+
+// The Goods Shipment message contains all information about goods that are subject to one standard or simplified
+// customs declaration or one customs declaration in the form of an entry into the declarants records.
+//
+// Next ID: 31
+message GoodsShipment {
+  repeated GoodsShipmentItem items = 1;
+  // [Data Element: 12 01 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.PreviousDocument previous_documents = 2;
+  // [Data Element: 12 02 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.AdditionalInformation additional_information = 3;
+  // [Data Element: 12 03 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.SupportingDocument supporting_documents = 4;
+  // [Data Element: 12 04 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.AdditionalReference additional_references = 5;
+  // [Data Element: 12 05 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.TransportDocument transport_documents = 6;
+  // [Data Element: 12 08 000 000]
+  string unique_consignment_reference = 7;
+  // [Data Element: 12 11 000 000]
+  flexport.customs.declaration.eu.common.v1beta1.Warehouse warehouse = 8;
+  // [Data Element: 13 01 000 000]
+  flexport.customs.declaration.eu.common.v1beta1.Exporter exporter = 9;
+  // [Data Element:13 04 000 000]
+  flexport.customs.declaration.eu.common.v1beta1.Importer importer = 10;
+  // [Data Element: 13 08 000 000]
+  flexport.customs.declaration.eu.common.v1beta1.Seller seller = 11;
+  // [Data Element: 13 09 000 000]
+  flexport.customs.declaration.eu.common.v1beta1.Buyer buyer = 12;
+  // [Data Element: 13 14 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.AdditionalSupplyChainActor additional_supply_chain_actors = 19;
+  // [Data Element: 13 16 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.AdditionalFiscalReference additional_fiscal_references = 20;
+  // [Data Element: 14 01 000 000]
+  flexport.customs.declaration.eu.common.v1beta1.DeliveryTerms delivery_terms = 13;
+  // [Data Element: 14 04 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.AdditionDeduction addition_deductions = 14;
+  // The invoiced price for all goods declared in the declaration expressed in the currency unit.
+  //
+  // [Data Element: 14 05 000 000]
+  // [Data Element: 14 06 000 000]
+  google.type.Money total_invoiced_amount = 15;
+  // Transport and insurance costs up to the place of final destination in the invoice currency.
+  //
+  // [Data Element: 14 15 000 000]
+  google.type.Money transport_insurance_destination = 16;
+  // [Data Element: 15 09 000 000]
+  google.type.Date date_of_acceptance = 17;
+  // [Data Element: 16 03 000 000]
+  string country_of_destination = 21;
+  // [Data Element: 16 04 000 000]
+  string region_of_destination = 22;
+  // [Data Element: 16 06 000 000]
+  string country_of_dispatch = 23;
+  // [Data Element: 16 15 000 000]
+  flexport.customs.declaration.eu.common.v1beta1.LocationOfGoods location_of_goods = 18;
+  // [Data Element: 19 01 000 000]
+  bool container_indicator = 24;
+  // [Data Element: 19 03 000 000]
+  flexport.customs.declaration.eu.types.v1beta1.ModeOfTransport mode_of_transport_at_the_border = 25;
+  // [Data Element: 19 04 000 000]
+  flexport.customs.declaration.eu.types.v1beta1.ModeOfTransport inland_mode_of_transport = 26;
+  // [Data Element: 19 06 000 000]
+  flexport.customs.declaration.eu.common.v1beta1.ArrivalTransportMeans arrival_transport_means = 27;
+  // [Data Element: 19 07 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.TransportEquipment transport_equipments = 28;
+  // [Data Element: 19 08 000 000]
+  flexport.customs.declaration.eu.common.v1beta1.ActiveBorderTransportMeans active_border_transport_means = 29;
+  // [Data Element: 99 05 000 000]
+  uint32 nature_of_transaction = 30;
+}

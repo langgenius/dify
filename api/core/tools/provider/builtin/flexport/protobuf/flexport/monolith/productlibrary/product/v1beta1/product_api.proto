@@ -1,0 +1,60 @@
+// TEAM: customs_gateway
+
+syntax = "proto3";
+
+package flexport.monolith.productlibrary.product.v1beta1;
+
+import "flexport/monolith/productlibrary/product/v1beta1/product.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ProductApiProto";
+option java_package = "com.flexport.monolith.productlibrary.product.v1beta1";
+option ruby_package = "Flexport::Monolith::ProductLibrary::Product::V1Beta1";
+
+// Upserts products into the product library.
+service ProductAPI {
+  // Upsert products by sku.
+  rpc UpsertProducts(UpsertProductsRequest) returns (UpsertProductsResponse);
+  rpc FindAndCreateProducts(FindAndCreateProductsRequest) returns (FindAndCreateProductsResponse);
+  // Archive products by product_fid.
+  rpc ArchiveProducts(ArchiveProductsRequest) returns (ArchiveProductsResponse);
+}
+
+message UpsertProductsRequest {
+  repeated Product products = 1;
+  string client_fid = 2;
+  // The source of the upsert products request. This should be something that uniquely identifies the source of the request (like an fid) (e.g. a commercial invoice fid instead of just "commercial invoice service").
+  string source = 3;
+}
+
+message UpsertProductsResponse {
+  repeated Product products = 1;
+  repeated Error errors = 2;
+}
+
+message FindAndCreateProductsRequest {
+  repeated Product products = 1;
+  string client_fid = 2;
+  // The source of the upsert products request. This should be something that uniquely identifies the source of the request (like an fid) (e.g. a commercial invoice fid instead of just "commercial invoice service").
+  string source = 3;
+}
+
+message FindAndCreateProductsResponse {
+  repeated Product products = 1;
+}
+
+message Error {
+  string field = 1;
+  string message = 2;
+}
+
+// Request message for archiving products by product_fid.
+message ArchiveProductsRequest {
+  repeated string product_fids = 1; // List of product_fid(s) to archive.
+}
+
+// Response message for ArchiveProducts.
+message ArchiveProductsResponse {
+  repeated string archived_product_fids = 1; // List of successfully archived product_fid(s).
+  repeated Error errors = 2; // Errors encountered during archival.
+}

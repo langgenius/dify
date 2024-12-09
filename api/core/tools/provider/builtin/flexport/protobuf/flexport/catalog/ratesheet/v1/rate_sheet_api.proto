@@ -1,0 +1,26 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.ratesheet.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RateSheetApiProto";
+option java_package = "com.flexport.catalog.ratesheet.v1";
+option ruby_package = "Flexport::Catalog::RateSheet::V1";
+
+import "google/protobuf/wrappers.proto";
+
+// The rate sheet service definition.
+service RateSheetAPI {
+  // Deletes (archives) all offerings for a rate sheet upload.
+  rpc DeleteRateSheetUpload(DeleteRateSheetUploadRequest) returns (DeleteRateSheetUploadResponse);
+}
+
+message DeleteRateSheetUploadRequest {
+  google.protobuf.Int64Value rate_sheet_upload_id = 1;
+}
+
+message DeleteRateSheetUploadResponse {
+  google.protobuf.StringValue error = 1;
+}

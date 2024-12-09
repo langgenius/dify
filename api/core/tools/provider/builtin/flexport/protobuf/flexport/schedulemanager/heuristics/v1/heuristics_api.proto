@@ -1,0 +1,75 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.schedulemanager.heuristics.v1;
+
+import "flexport/executioncoordinator/types/query/v1/filters.proto";
+import "flexport/schedulemanager/entityevent/v1/schedule_violation_automation_entity.proto";
+import "flexport/schedulemanager/heuristics/v1/heuristic_details.proto";
+import "flexport/schedulemanager/heuristics/v1/leg_date_estimations.proto";
+import "flexport/schedulemanager/heuristics/v1beta1/heuristic_violation.proto";
+import "flexport/schedulemanager/heuristics/v1beta1/leg_date_suggestion.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "HeuristicsAPIProto";
+option java_package = "com.flexport.schedulemanager.heuristics.v1";
+option ruby_package = "Flexport::ScheduleManager::Heuristics::V1";
+
+// API for interacting with shipment schedule heuristics
+service HeuristicsAPI {
+  // Retrieves heuristics evaluation results for a shipment schedule.
+  rpc EvaluateSchedule(EvaluateScheduleRequest) returns (EvaluateScheduleResponse);
+  // Retrieves Schedule Violation matching specified FID.
+  rpc GetScheduleViolation(GetScheduleViolationRequest) returns (GetScheduleViolationResponse);
+  // Retrieves all Schedule Violations in DB for specified shipment.
+  rpc GetScheduleViolations(GetScheduleViolationsRequest) returns (GetScheduleViolationsResponse);
+  // Retrieves Heuristic Violation matching specified FID.
+  rpc GetHeuristicViolation(GetHeuristicViolationRequest) returns (GetHeuristicViolationResponse);
+  // Retrieves Heuristic Violations matching filters.
+  rpc ListHeuristicViolations(ListHeuristicViolationsRequest) returns (ListHeuristicViolationsResponse);
+}
+
+message EvaluateScheduleRequest {
+  string shipment_fid = 1;
+}
+message EvaluateScheduleResponse {
+  repeated flexport.schedulemanager.heuristics.v1.HeuristicDetails heuristic_details = 1;
+  repeated flexport.schedulemanager.heuristics.v1.LegDateEstimations leg_date_estimations_list = 2;
+}
+
+message GetScheduleViolationRequest {
+  string fid = 1;
+}
+message GetScheduleViolationResponse {
+  flexport.schedulemanager.entityevent.v1.ScheduleViolation schedule_violation = 1;
+}
+
+message GetScheduleViolationsRequest {
+  string shipment_fid = 1;
+}
+message GetScheduleViolationsResponse {
+  repeated flexport.schedulemanager.entityevent.v1.ScheduleViolation schedule_violations = 1;
+  repeated flexport.schedulemanager.heuristics.v1beta1.LegDateSuggestion leg_date_suggestions = 2;
+}
+
+message GetHeuristicViolationRequest {
+  string fid = 1;
+}
+message GetHeuristicViolationResponse {
+  flexport.schedulemanager.heuristics.v1beta1.HeuristicViolation heuristic_violation = 1;
+}
+
+message ListHeuristicViolationsRequest {
+  // The maximum number of entries to return. If a value of zero (the default) is provided, then 100 will be used.
+  // If the value provided exceeds 10,000, then 10,000 will be used.
+  uint32 limit = 1;
+  bool exclude_deleted = 2;
+  //
+  // All filters are "ANDed" together.
+  flexport.executioncoordinator.types.query.v1.StringFilter shipment_fid = 3;
+  flexport.executioncoordinator.types.query.v1.StringFilter heuristic_name = 4;
+}
+message ListHeuristicViolationsResponse {
+  repeated flexport.schedulemanager.heuristics.v1beta1.HeuristicViolation heuristic_violations = 1;
+}

@@ -1,0 +1,22 @@
+// TEAM: client_order
+
+syntax = "proto3";
+
+package flexport.commerce.facts.commercefacts.validators.demandfactsvalidator.v1beta1;
+
+import "flexport/commerce/facts/contracts/options/v1/options.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DemandFactsValidatorProto";
+option java_package = "com.flexport.commerce.facts.commercefacts.validators.demandfactsvalidator.v1beta1";
+option ruby_package = "Flexport::Commerce::Facts::CommerceFacts::Validators::DemandFactsValidator::V1Beta1";
+
+message DemandFactsValidator {
+  option (flexport.commerce.facts.contracts.options.v1.validator).repository_name = "commercefacts";
+  option (flexport.commerce.facts.contracts.options.v1.validator).packages = "demandfacts.demand_facts";
+  option (flexport.commerce.facts.contracts.options.v1.validator).services = "client_order";
+  option (flexport.commerce.facts.contracts.options.v1.validator).services = "core_internal";
+  option (flexport.commerce.facts.contracts.options.v1.validator).change_awareness = CHANGE_AWARENESS_MATCHED;
+  option (flexport.commerce.facts.contracts.options.v1.validator).actions = VALIDATOR_ACTION_CREATE;
+  option (flexport.commerce.facts.contracts.options.v1.validator).actions = VALIDATOR_ACTION_UPDATE;
+}

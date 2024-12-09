@@ -1,0 +1,61 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.escalationengine.v1;
+
+import "flexport/customs/productlibrary/common/v1beta1/country_code.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ProductLibraryEscalationProto";
+option java_package = "com.flexport.customs.escalationengine.v1";
+option ruby_package = "Flexport::Customs::EscalationEngine::V1";
+
+// Escalation for Product Library.
+message ProductLibraryEscalation {
+  // Type of escalations
+  enum Type {
+    reserved 1, 2, 3;
+
+    TYPE_INVALID = 0;
+    TYPE_SPECIAL_TARIFFS_301_INCOMPLETE = 4;
+    TYPE_COTTON_FEES_INCOMPLETE = 5 [deprecated = true];
+
+    TYPE_CLASSIFICATION_MISSING = 6;
+    TYPE_CLASSIFICATION_MORE_INFO_NEEDED = 8;
+    TYPE_CLASSIFICATION_PENDING_AUDIT = 9;
+    TYPE_CLASSIFICATION_MANUAL = 10;
+
+    TYPE_COTTON_FEE_INCOMPLETE = 7;
+  }
+  Type type = 1;
+
+  oneof classification_context {
+    ClassificationMissingContext classification_missing_context = 2;
+    CottonFeeIncompleteContext cotton_fee_incomplete_context = 3;
+  }
+
+  message ClassificationMissingContext {
+    flexport.customs.productlibrary.common.v1beta1.CountryCode country_of_import = 1;
+    flexport.customs.productlibrary.common.v1beta1.CountryCode country_of_origin = 2;
+    // Reason for missing classification
+    ClassificationMissingReason reason = 3;
+    string commercial_invoice_fid = 4;
+    bool sent_for_classification = 5;
+  }
+
+  enum ClassificationMissingReason {
+    CLASSIFICATION_MISSING_REASON_INVALID = 0;
+    // Classification is incomplete
+    CLASSIFICATION_MISSING_REASON_CLASSIFICATION_INCOMPLETE = 1;
+    // More information is needed
+    CLASSIFICATION_MISSING_REASON_CLASSIFICATION_MORE_INFO_NEEDED = 2;
+    // Pending audit
+    CLASSIFICATION_MISSING_REASON_CLASSIFICATION_PENDING_AUDIT = 3;
+  }
+
+  message CottonFeeIncompleteContext {
+    flexport.customs.productlibrary.common.v1beta1.CountryCode country_of_import = 1;
+    string commercial_invoice_fid = 4;
+  }
+}

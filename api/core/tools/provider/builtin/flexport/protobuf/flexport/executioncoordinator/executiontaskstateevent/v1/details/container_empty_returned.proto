@@ -1,0 +1,27 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerEmptyReturnedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/os/v1/types/walltimerange/v1/wall_time_range.proto";
+
+// The time that the carrier returned the empty container to the port.
+message ContainerEmptyReturned {
+  string container_fid = 6;
+  string origin_address_fid = 2;
+  string destination_address_fid = 3;
+  // this may be distinct from how we've historically identified the address, so
+  // we must allow for explicit declaration from emitting entity.
+  // e.g. EU container depots address are different than origin on the last leg
+  // e.g. destination is closer for port to port shipments (visibility-only shipments)
+  string returned_address_fid = 7;
+  string carrier_fid = 4;
+  // The time that the empty container was returned to the port
+  flexport.os.v1.types.walltimerange.v1.WallTimeRange container_empty_returned_time = 5;
+}

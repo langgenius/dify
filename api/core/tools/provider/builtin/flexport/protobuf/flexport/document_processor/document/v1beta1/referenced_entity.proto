@@ -1,0 +1,39 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.documentprocessor.document.v1beta1;
+
+import "flexport/document_processor/util/v1beta1/utils.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ReferencedEntityProto";
+option java_package = "com.flexport.documentprocessor.document.v1beta1";
+option ruby_package = "Flexport::DocumentProcessor::Document::V1Beta1";
+
+// The ReferencedEntity object.
+message ReferencedEntity {
+  string fid = 1;
+  string document_fid = 2;
+  string entity_fid = 3;
+  google.protobuf.Timestamp created_at_time = 4;
+  google.protobuf.Timestamp updated_at_time = 5;
+  google.protobuf.StringValue referenced_group_fid = 6;
+}
+
+// Collection of ReferencedEntities.
+message ReferencedEntities {
+  repeated ReferencedEntity referenced_entities = 1;
+}
+
+// Filters for querying referenced entities.
+message ReferencedEntityFilters {
+  repeated string fids = 1;
+  repeated string document_fids = 2;
+  repeated string entity_fids = 3;
+  flexport.documentprocessor.util.v1beta1.DateRange created_at_range = 4;
+  flexport.documentprocessor.util.v1beta1.DateRange updated_at_range = 5;
+  repeated string referenced_group_fids = 6;
+}

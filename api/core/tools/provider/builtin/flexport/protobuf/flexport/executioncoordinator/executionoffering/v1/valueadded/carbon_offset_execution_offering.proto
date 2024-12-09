@@ -1,0 +1,43 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionoffering.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CarbonOffsetExecutionOfferingProto";
+option java_package = "com.flexport.executioncoordinator.executionoffering.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOffering::V1";
+
+import "flexport/executioncoordinator/executiontask/v1/params/carbon_services_task_params.proto";
+import "google/protobuf/wrappers.proto";
+
+// CarbonOffsetExecutionOffering allows clients to donate CO2 emissions credits through Flexport.
+// In the future there will be multiple carbon offering types, beyond just offsets. For now, we include service
+// details which specifies details of the offerings.
+message CarbonOffsetExecutionOffering {
+  CarbonOffsetRole role = 1;
+  repeated ServiceDetails service_details = 2;
+}
+
+// To hold all the different possible carbon services.
+message ServiceDetails {
+  oneof details {
+    OffsetServiceDetails offset_details = 30;
+  }
+}
+
+// Represents client's preferences for carbon offsets for shipment.
+message OffsetServiceDetails {
+  flexport.executioncoordinator.executiontask.v1.OffsetType offset_type = 32;
+  google.protobuf.DoubleValue rate = 33;
+  flexport.executioncoordinator.executiontask.v1.OffsetVendor vendor = 34;
+}
+
+// The role the client wants Flexport to play in carbon offsetting.
+enum CarbonOffsetRole {
+  CARBON_OFFSET_ROLE_INVALID = 0;
+  CARBON_OFFSET_ROLE_FULL_SERVICE = 1;
+  CARBON_OFFSET_ROLE_NO_INVOLVEMENT = 2;
+  CARBON_OFFSET_ROLE_FLEXPORT_PAID = 3;
+}

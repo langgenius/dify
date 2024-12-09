@@ -1,0 +1,38 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RouteShapeReportedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/executioncoordinator/types/routeshape/v1/route_shape.proto";
+
+// Provider has _reported_ a new route shape.
+//
+// NOTE: We currently only support this proto for 4pl Visibility Only shipments.
+// We can _save_ this ETSE for other things, but we only update the ExecutionPlan
+// and do EC writeback for 4pl Visibility Only shipments.
+// If you have questions about this, or think this is an error, contact #forwarding-platform.
+//
+// Note that the verb here is "reported" rather than "changed". The "official" route shape
+// for a given ExecutionTask is the route_shape field on the ExecutionTask itself. Sometimes the
+// route shape reported with this ETSE could be saved as part of the ExecutionTask by a
+// handler within the EC or a planning system, and the new route_shape would be included in the
+// ExecutionTaskChanged event emitted by the EC-NIS.
+//
+// In other cases, the route_shape reported by the provider might not be saved as part of the ET,
+// either because of limitations with the legacy graph syncing (eg one leg = one trucking ET) or
+// due to inconsistencies between what the provider has reported and the existing ExecutionPlan
+// (eg if the current plan is for the ocean carrier to deliver to X and the reported route
+// terminates at Y, then human intervention may be need to know how to update the plan correctly).
+//
+// If we used the verb "changed" in this event, it might give the false impression that this event
+// represents a change to the "official" route_shape for an ExecutionTask, while that is not
+// the case.
+message RouteShapeReported {
+  flexport.executioncoordinator.types.routeshape.v1.RouteShape route_shape = 1;
+}

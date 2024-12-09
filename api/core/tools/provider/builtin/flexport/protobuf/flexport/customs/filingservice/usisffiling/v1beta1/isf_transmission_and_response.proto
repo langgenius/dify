@@ -1,0 +1,35 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.filingservice.usisffiling.v1beta1;
+
+import "flexport/customs/filingservice/usisffiling/v1beta1/enums.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "IsfTransmissionAndResponseProto";
+option java_package = "com.flexport.customs.filingservice.usisffiling.v1beta1";
+option ruby_package = "Flexport::Customs::FilingService::UsIsfFiling::V1Beta1";
+
+message IsfTransmission {
+  google.protobuf.Int64Value generation = 1;
+  google.protobuf.Timestamp transmitted_at = 2;
+  string isf_message = 3;
+  IsfResponse response = 4;
+}
+
+message IsfResponse {
+  ResponseMessageType response_message_type = 1;
+  string error_message = 2;
+  repeated IsfResponseError errors = 3;
+  google.protobuf.Timestamp received_at = 4;
+}
+
+message IsfResponseError {
+  string related_field = 1;
+  ResponseMessageType response_message_type = 2;
+  string error_code = 3;
+  string error_message = 4;
+}

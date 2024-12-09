@@ -193,3 +193,6 @@ api/.vscode
 
 .idea/
 .vscode
+
+# Ignore generated files
+**/generated/**

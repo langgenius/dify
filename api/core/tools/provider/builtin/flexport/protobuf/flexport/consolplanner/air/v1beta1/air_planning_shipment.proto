@@ -1,0 +1,118 @@
+// TEAM: wingstop
+
+syntax = "proto3";
+
+package flexport.consolplanner.air.v1beta1;
+
+import "flexport/consolplanner/entityevent/v1/air_cargo_allocation_entity.proto";
+import "flexport/executioncoordinator/executionoffering/v1/transit/air_execution_offering.proto";
+import "flexport/exceptionmanagement/enums/v1beta1/exception_status.proto";
+import "flexport/monolith/cargoreceipt/v1beta1/shipment_cargo_receipt_api.proto";
+import "flexport/os/v1/types/cargo/v1/shipment_cargo.proto";
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.consolplanner.air.v1beta1";
+option ruby_package = "Flexport::ConsolPlanner::Air::V1Beta1";
+
+message MustArriveByDetails {
+  // The date and time that the shipment must arrive by.
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime must_arrive_by = 1;
+}
+
+message AirOperationalException {
+  string shipment_fid = 1;
+  string operational_exception_fid = 2;
+  uint32 revision = 3;
+  string type_slug = 4;
+  string type_name = 5;
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionStatus status = 6;
+  string create_by_user_fid = 7;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime filed_time = 8;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime occurrence_time = 9;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime actual_resolved_time = 10;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime estimated_resolved_time = 11;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime due_date_time = 12;
+}
+
+enum CustomsDocumentStatus {
+  CUSTOMS_DOCUMENT_STATUS_INVALID = 0;
+  // Document status currently in approval
+  CUSTOMS_DOCUMENT_STATUS_PENDING = 1;
+  // Document status has been rejected
+  CUSTOMS_DOCUMENT_STATUS_FAILED = 2;
+  // Document status has been approved
+  CUSTOMS_DOCUMENT_STATUS_PASSED = 3;
+}
+
+enum SecurityDocumentStatus {
+  SECURITY_DOCUMENT_STATUS_INVALID = 0;
+  // Document status currently in approval
+  SECURITY_DOCUMENT_STATUS_PENDING = 1;
+  // Document status has been rejected
+  SECURITY_DOCUMENT_STATUS_FAILED = 2;
+  // Document status has been approved
+  SECURITY_DOCUMENT_STATUS_PASSED = 3;
+}
+
+// Next ID: 40
+message AirPlanningShipment {
+  string fid = 22;
+  string shipment_fid = 1;
+  MustArriveByDetails must_arrive_by_details = 2;
+  string preassigned_mawb = 3;
+
+  string quoted_origin_airport_fid = 4;
+  string quoted_destination_airport_fid = 5;
+  string route_origin_airport_fid = 20;
+  string route_destination_airport_fid = 21;
+
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate cargo_ready_date = 6;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime actual_origin_cfs_gate_in = 7;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime estimated_origin_cfs_gate_in = 8;
+  CustomsDocumentStatus customs_document_status = 9;
+  SecurityDocumentStatus security_document_status = 10;
+  flexport.consolplanner.entityevent.v1.ClearanceMode clearance_mode = 11;
+  string allotment_schedule_instance_fid = 12;
+  flexport.os.v1.types.cargo.v1.ShipmentCargo planned_cargo_info = 13;
+  repeated flexport.monolith.cargoreceipt.v1beta1.ShipmentCargoReceipt received_cargo_info = 14;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime actual_origin_pick_up = 15;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime estimated_origin_pick_up = 16;
+  // When actual and estimated gate-in/pick-up are not available,
+  // calculate a predicted-gate-in/predicted-pick-up date based on following rules from planners' experience:
+  // 1. clearance mode = 1.1 and route_origin_airport = PVG
+  //  1.1 predicted-gate-in date = crd + 2 day for Port to X shipment
+  //  1.2 predicted-pick-up date = crd + 1 day for Door to X shipment
+  // 2. client = Apple Inc and pickup location = Hon Hai V134 and route_origin_airport = PVG
+  //  2.1 predicted-gate-in date = crd + 1 day for Port to X shipment
+  //  2.1 predicted-pick-up date = crd + 1 day for Door to X shipment
+  // 3. client = Apple Inc and route_origin_airport in [PVG, CGO, CTU, HKG]
+  //  2.1 predicted-gate-in date = crd for Port to X shipment
+  //  2.1 predicted-pick-up date = crd for Door to X shipment
+  // 4. predicted-gate-in date & predicted-pick-up date = null for other cases
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate predicted_origin_cfs_gate_in = 17;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate predicted_origin_pick_up = 18;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime transloading_cfs_actual_gate_in = 23;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime transloading_cfs_estimated_gate_in = 24;
+  repeated AirOperationalException operational_exception = 19;
+  string service_tier = 25;
+
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime created_at = 26;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime updated_at = 27;
+
+  string created_by = 28;
+  string last_updated_by = 29;
+
+  flexport.executioncoordinator.executionoffering.v1.AirRole main_freight_role = 30;
+  string execution_order_fid = 31;
+  string execution_task_fid = 32;
+  string shipper_entity_fid = 33;
+  string client_entity_fid = 34;
+
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime assigned_to_supply_at = 35;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime updated_must_arrive_by_slow = 36;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime updated_must_arrive_by_fast = 37;
+  string nearest_destination_airport_fid = 38;
+  string final_destination_address_fid = 39;
+}

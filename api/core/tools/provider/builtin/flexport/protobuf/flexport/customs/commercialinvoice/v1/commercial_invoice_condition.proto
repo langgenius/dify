@@ -1,0 +1,43 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.commercialinvoice.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CommercialInvoiceConditionProto";
+option java_package = "com.flexport.customs.commercialinvoice.v1";
+option ruby_package = "Flexport::Customs::CommercialInvoice::V1";
+
+message CommercialInvoiceCondition {
+  enum CommercialInvoiceConditionType {
+    COMMERCIAL_INVOICE_CONDITION_TYPE_INVALID = 0;
+    COMMERCIAL_INVOICE_CONDITION_TYPE_INVOICE_NUMBER_NOT_SET = 1;
+    COMMERCIAL_INVOICE_CONDITION_TYPE_CURRENCY_NOT_DIGITIZED = 2;
+    COMMERCIAL_INVOICE_CONDITION_TYPE_TOTAL_GROSS_WEIGHT_NOT_DIGITIZED = 3;
+    COMMERCIAL_INVOICE_CONDITION_TYPE_TOTAL_PRICE_NOT_DIGITIZED = 4;
+    COMMERCIAL_INVOICE_CONDITION_TYPE_TOTAL_QUANTITY_NOT_DIGITIZED = 5;
+    COMMERCIAL_INVOICE_CONDITION_TYPE_TOTAL_GROSS_WEIGHT_MISMATCH = 6;
+    COMMERCIAL_INVOICE_CONDITION_TYPE_TOTAL_PRICE_MISMATCH = 7;
+    COMMERCIAL_INVOICE_CONDITION_TYPE_TOTAL_QUANTITY_MISMATCH = 8;
+    COMMERCIAL_INVOICE_CONDITION_TYPE_TOTAL_NET_WEIGHT_NOT_DIGITIZED = 9;
+    COMMERCIAL_INVOICE_CONDITION_TYPE_TOTAL_NET_WEIGHT_MISMATCH = 10;
+    COMMERCIAL_INVOICE_CONDITION_TYPE_TOTAL_CARTON_COUNT_NOT_DIGITIZED = 11;
+    COMMERCIAL_INVOICE_CONDITION_TYPE_TOTAL_CARTON_COUNT_MISMATCH = 12;
+  }
+
+  CommercialInvoiceConditionType type = 1;
+  bool status = 2;
+  string reason = 3;
+  optional string message = 4;
+  google.protobuf.Timestamp last_evaluated_at = 5;
+
+// there's no usage for contexts right now, keeping it here as an example
+// oneof context {
+//   InvoiceNumberNotSetContext invoice_number_not_set_context = 100;
+// }
+
+// message InvoiceNumberNotSetContext {}
+}

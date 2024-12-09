@@ -1,0 +1,18 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OrganizationUnitServiceProto";
+option java_package = "com.flexport.assignment.enums.v1";
+option ruby_package = "Flexport::Assignment::Enums::V1";
+
+// Organization unit service type.
+enum OrganizationUnitService {
+  ORGANIZATION_UNIT_SERVICE_INVALID = 0;
+  ORGANIZATION_UNIT_SERVICE_FCL = 1;
+  ORGANIZATION_UNIT_SERVICE_LCL = 2;
+  ORGANIZATION_UNIT_SERVICE_AIR = 3;
+}

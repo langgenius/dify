@@ -1,0 +1,103 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.offering.v2beta1;
+
+import "flexport/catalog/charge/v2beta1/charge.proto";
+import "flexport/catalog/date/v1/date.proto";
+import "flexport/catalog/offering/air/v2beta1/air.proto";
+import "flexport/catalog/offering/carbonoffset/v1/carbon_offset.proto";
+import "flexport/catalog/offering/cartage/v2beta1/cartage.proto";
+import "flexport/catalog/offering/destination/v1/destination.proto";
+import "flexport/catalog/offering/drayage/v2beta1/drayage.proto";
+import "flexport/catalog/offering/exportcustoms/v1/export_customs.proto";
+import "flexport/catalog/offering/ftl/v1/ftl.proto";
+import "flexport/catalog/offering/global_conveyor_belt/v1/global_conveyor_belt.proto";
+import "flexport/catalog/offering/importcustoms/v1/import_customs.proto";
+import "flexport/catalog/offering/insurance/v1/insurance.proto";
+import "flexport/catalog/offering/linehaul/v1/line_haul.proto";
+import "flexport/catalog/offering/oceanfcl/v1/ocean_fcl.proto";
+import "flexport/catalog/offering/oceanfcl/v2beta1/ocean_fcl.proto";
+import "flexport/catalog/offering/oceanlcl/v1/ocean_lcl.proto";
+import "flexport/catalog/offering/origin/v1/origin.proto";
+import "flexport/catalog/restrictions/v1/restrictions.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OfferingProto";
+option java_package = "com.flexport.catalog.offering.v2beta1";
+option ruby_package = "Flexport::Catalog::Offering::V2Beta1";
+
+// Sort by options.
+enum SortByDto {
+  SORT_BY_DTO_INVALID = 0;
+  // Sorts by the evaluated sell amount for the offering given the context.
+  SORT_BY_DTO_SELL = 1;
+  SORT_BY_DTO_TRANSIT_TIME = 2;
+  // For offerings with service areas. Requires a location search attribute
+  // to measure the distance between it and the service area.
+  SORT_BY_DTO_DISTANCE = 3;
+  SORT_BY_DTO_COST = 4;
+}
+
+// An offering configured for a specific client.
+message ClientOfferingDto {
+  google.protobuf.StringValue fid = 1;
+  google.protobuf.StringValue client_fid = 2;
+  catalog.date.v1.DateDto activation_date = 3;
+  catalog.date.v1.DateDto expiration_date = 4;
+  google.protobuf.StringValue freight_partner_fid = 5;
+  google.protobuf.StringValue free_text = 6;
+  google.protobuf.StringValue created_by_fid = 7;
+  google.protobuf.Timestamp created_at_time = 8;
+  // All the charges on this client offering are valid for same validity range of the offering.
+  repeated catalog.charge.v2beta1.ClientChargeDto charges = 9;
+  catalog.charge.v2beta1.EvaluatedRateDto total_cost = 10;
+  catalog.charge.v2beta1.EvaluatedRateDto total_sell = 11;
+  catalog.restrictions.v1.RestrictionsDto restrictions = 12;
+  // A NAC offering is one with client negotiated rates, not the default rates.
+  bool is_nac = 13;
+  // Offering type-specific attributes...
+  oneof type_attributes {
+    catalog.offering.air.v2beta1.AirAttributesDto air = 101;
+    catalog.offering.carbonoffset.v1.CarbonOffsetAttributesDto carbon_offset = 102;
+    catalog.offering.cartage.v2beta1.CartageAttributesDto cartage = 103;
+    catalog.offering.destination.v1.DestinationAttributesDto destination = 104;
+    catalog.offering.drayage.v2beta1.DrayageAttributesDto drayage = 105;
+    catalog.offering.exportcustoms.v1.ExportCustomsAttributesDto export_customs = 106;
+    catalog.offering.importcustoms.v1.ImportCustomsAttributesDto import_customs = 107;
+    catalog.offering.insurance.v1.InsuranceAttributesDto insurance = 108;
+    catalog.offering.linehaul.v1.LineHaulAttributesDto line_haul = 109;
+    catalog.offering.oceanfcl.v1.OceanFclAttributesDto ocean_fcl = 110;
+    catalog.offering.oceanlcl.v1.OceanLclAttributesDto ocean_lcl = 111;
+    catalog.offering.origin.v1.OriginAttributesDto origin = 112;
+    catalog.offering.ftl.v1.FtlAttributesDto ftl = 113;
+    catalog.offering.global_conveyor_belt.v1.GlobalConveyorBeltAttributesDto global_conveyor_belt = 114;
+  }
+}
+
+// Offering query attributes for clients offerings.
+message ClientOfferingQueryAttributesDto {
+  google.protobuf.StringValue client_fid = 1;
+  catalog.date.v1.DateDto on_date = 2;
+  repeated string freight_partner_fids = 3;
+  // This is a placeholder for when we have shipment level SRTs and rate overrides.
+  google.protobuf.StringValue shipment_fid = 4;
+  // Offering type-specific attributes...
+  oneof type_attributes {
+    catalog.offering.air.v2beta1.AirQueryAttributesDto air = 101;
+    catalog.offering.carbonoffset.v1.CarbonOffsetQueryAttributesDto carbon_offset = 102;
+    catalog.offering.cartage.v2beta1.CartageQueryAttributesDto cartage = 103;
+    catalog.offering.destination.v1.DestinationQueryAttributesDto destination = 104;
+    catalog.offering.drayage.v2beta1.DrayageQueryAttributesDto drayage = 105;
+    catalog.offering.exportcustoms.v1.ExportCustomsQueryAttributesDto export_customs = 106;
+    catalog.offering.importcustoms.v1.ImportCustomsQueryAttributesDto import_customs = 107;
+    catalog.offering.insurance.v1.InsuranceQueryAttributesDto insurance = 108;
+    catalog.offering.linehaul.v1.LineHaulQueryAttributesDto line_haul = 109;
+    catalog.offering.oceanfcl.v2beta1.OceanFclQueryAttributesDto ocean_fcl = 110;
+    catalog.offering.oceanlcl.v1.OceanLclQueryAttributesDto ocean_lcl = 111;
+    catalog.offering.origin.v1.OriginQueryAttributesDto origin = 112;
+  }
+}

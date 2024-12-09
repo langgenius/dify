@@ -1,0 +1,31 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoConsolidatedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/executioncoordinator/executioncargo/v1/execution_cargo.proto";
+
+// This event indicates that cargo has been consolidated and is staged for release from a warehouse.
+//
+// This event contains a snapshot of all the cargo information for this ExecutionTask
+// so that consumers can easily understand the current state of the warehousing system.
+//
+// If the cargo from this execution task undergoes multiple transformations, we will emit this event
+// multiple times. Each time the event is emitted it will contain the complete dimensions
+// of all the cargo in the warehouse including changes due to transformation up until the time
+// at which this event is emitted.
+//
+// Note: Treat the cargo information in this event as value objects.
+// Ignore the cargo_fids. They are not reused.
+message CargoConsolidated {
+  // Address where the cargo was consolidated.
+  string address_fid = 1;
+  // This snapshot represents the current state of the cargo associated with this ExecutionTask.
+  repeated flexport.executioncoordinator.executioncargo.v1.ExecutionCargo total_current_cargos = 3;
+}

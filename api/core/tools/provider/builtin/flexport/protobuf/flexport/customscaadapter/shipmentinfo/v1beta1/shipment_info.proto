@@ -1,0 +1,37 @@
+
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customscaadapter.shipmentinfo.v1beta1;
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customscaadapter.shipmentinfo.v1beta1";
+option ruby_package = "Flexport::CustomsCaAdapter::ShipmentInfo::V1Beta1";
+
+
+message ShipmentInfo {
+  // Use shipment_fid instead.
+  string flex_id = 1 [deprecated = true];
+  // This is a unique identifier for the shipment from customs broker point of view.
+  string transaction_number = 2;
+  // This is a unique identifier for the shipment from the Canadian Customs Authority's point of view.
+  string cargo_control_number = 3;
+  string port_of_clearance = 4;
+  // Only present on US shipments.
+  string port_of_exit = 5;
+  ShipmentTransportMode transport_mode = 6;
+  enum ShipmentTransportMode {
+    SHIPMENT_TRANSPORT_MODE_INVALID = 0;
+    SHIPMENT_TRANSPORT_MODE_AIR = 1;
+    SHIPMENT_TRANSPORT_MODE_HIGHWAY = 2;
+    SHIPMENT_TRANSPORT_MODE_POSTAL = 3;
+    SHIPMENT_TRANSPORT_MODE_RAIL = 4;
+    SHIPMENT_TRANSPORT_MODE_PIPELINE = 5;
+    SHIPMENT_TRANSPORT_MODE_HAND_CARRIED_GOODS = 6;
+    SHIPMENT_TRANSPORT_MODE_MARINE = 7;
+    SHIPMENT_TRANSPORT_MODE_ELECTRICAL_GRID = 8;
+  }
+
+  string shipment_fid = 7;
+}
+

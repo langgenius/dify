@@ -1,0 +1,23 @@
+// TEAM: origin_ops
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OriginDocumentSnoozeStatusChangedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+import "flexport/originops/ingestion/requireddocumentfeed/v1/required_document_feed.proto";
+import "google/protobuf/timestamp.proto";
+
+// Emitted when internal users or partners update required document due date and fill exception info.
+message OriginDocumentSnoozeStatusChanged {
+  string user_fid = 1;
+  google.protobuf.Timestamp snooze_until_time = 2;
+  // TODO make this to enum
+  string document_type_name = 3;
+  flexport.originops.ingestion.requireddocumentfeed.v1.DocumentSnoozeExceptionType exception_type = 4;
+  string exception_note = 5;
+}

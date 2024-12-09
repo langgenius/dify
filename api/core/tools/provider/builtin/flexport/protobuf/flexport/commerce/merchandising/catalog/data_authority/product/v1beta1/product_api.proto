@@ -1,0 +1,80 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.commerce.merchandising.catalog.data_authority.product.v1beta1;
+
+import "flexport/commerce/merchandising/catalog/data_authority/configuration/v1beta1/attribute.proto";
+import "flexport/commerce/merchandising/catalog/data_authority/product/v1beta1/product.proto";
+import "google/rpc/status.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.commerce.merchandising.catalog.dataauthority.product.v1beta1";
+option ruby_package = "Flexport::Commerce::Merchandising::Catalog::DataAuthority::Product::V1Beta1";
+
+// Product API is a set of CRUD+ operations for managing Products.
+service ProductAPI {
+  // Create a product for a given configuration.
+  // The initially created product will have version 1.
+  rpc CreateProduct(CreateProductRequest) returns (CreateProductResponse) {
+    option deprecated = true;
+  };
+
+  // Update product attributes and bump the product version.
+  // When succeeded, the offerings associated to the product will also be version bumped.
+  rpc UpdateProduct(UpdateProductRequest) returns (UpdateProductResponse) {
+    option deprecated = true;
+  };
+
+  // Get a specific product by Fid
+  // - For versioned Fid, return product with specified version
+  // - For un-versioned Fid, return product with latest version
+  rpc GetProductByFid(GetProductByFidRequest) returns (GetProductByFidResponse);
+}
+
+message CreateProductRequest {
+  // the configuration fid defining the service type
+  string configuration_fid = 1;
+  // A identifier for product dedupe.
+  // The distinct_key needs to be unique within the same configuration version.
+  // - If not provided, a distinct_key will be generated based on the configuration.
+  optional string distinct_key = 2;
+  // See Product.attributes.
+  repeated flexport.commerce.merchandising.catalog.data_authority.configuration.v1beta1.Attribute attributes = 3;
+}
+
+message CreateProductResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+  // Created product instance.
+  Product product = 2;
+}
+
+message UpdateProductRequest {
+  // The non-versioned product fid.
+  string product_fid = 1;
+  // The distinct_key of the product.
+  // - If not provided, the distinct_key will be generated based on the configuration.
+  optional string distinct_key = 2;
+  // See Product.attributes.
+  repeated flexport.commerce.merchandising.catalog.data_authority.configuration.v1beta1.Attribute attributes = 3;
+}
+
+message UpdateProductResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+  // Updated product instance.
+  Product product = 2;
+}
+
+message GetProductByFidRequest {
+  // The versioned or non-versioned product fid; if version is not provided, latest is assumed.
+  string product_fid = 1;
+}
+
+message GetProductByFidResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+  // The product instance with the given fid.
+  Product product = 2;
+}

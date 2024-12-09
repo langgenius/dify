@@ -1,0 +1,145 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsciservice.commercialinvoice.v1beta1;
+
+import "flexport/customsciservice/constants/v1beta1/constants.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CommercialInvoicePayloadProto";
+option java_package = "com.flexport.customsciservice.commercialinvoice.v1beta1";
+option ruby_package = "Flexport::CustomsCiService::CommercialInvoice::V1Beta1";
+
+// Represents a commercial invoice object for the create and update API payloads
+message CommercialInvoicePayload {
+  string invoice_number = 1;
+  repeated CommercialInvoiceInvolvedPartyPayload involved_parties = 2;
+  google.protobuf.BoolValue is_related_parties = 3;
+  string currency_code = 4;
+  google.protobuf.StringValue terms_of_sale = 5;
+  repeated CommercialInvoiceLineItemPayload line_items = 6;
+  google.protobuf.Int32Value shipment_id = 7;
+  google.protobuf.StringValue shipment_ref = 8;
+  google.protobuf.StringValue invoice_date = 9;
+  google.protobuf.StringValue mid_code = 10;
+  MoneyObject proration_amount = 11;
+  google.protobuf.Struct metadata = 12;
+  google.protobuf.StringValue document_fid = 13;
+  repeated FreightChargeAdjustmentPayload freight_charge_adjustments = 14;
+  repeated ChargeAdjustmentPayload charge_adjustments = 15;
+  optional google.protobuf.Int32Value manifest_quantity = 16;
+}
+
+// Represents a commercial invoice line item object for the create API payload
+message CommercialInvoiceLineItemPayload {
+  google.protobuf.StringValue mid_code = 1;
+  CommercialInvoiceInvolvedPartyPayload manufacturer_address = 2;
+  google.protobuf.StringValue country_of_origin = 3;
+  QuantityObject quantity = 4;
+  MoneyObject net_value = 5;
+  MoneyObject value = 6;
+  MoneyObject unit_price = 7;
+  MoneyObject first_sale_value = 8;
+  MoneyObject final_sale_value = 9;
+  WeightObject gross_weight = 10;
+  WeightObject net_weight = 11;
+  WeightObject net_net_weight = 12;
+  VolumeObject volume = 13;
+  google.protobuf.StringValue container_number = 14;
+  google.protobuf.Int32Value document_line_number = 15;
+  google.protobuf.StringValue purchase_order_number = 16;
+  google.protobuf.StringValue po_line_item_number = 17;
+  CommercialInvoiceProductPayload product = 18;
+  google.protobuf.Struct metadata = 19;
+
+  // Deprecated; use the charge_adjustments instead
+  repeated FreightChargeAdjustmentPayload freight_charge_adjustments = 20 [deprecated = true];
+
+  repeated ChargeAdjustmentPayload charge_adjustments = 21;
+
+  /*
+    For ingesting Commercial Invoices we have basically 2 cases:
+    1. The client provides us with a special program code
+    2. Our client tells us that the product is (not) eligible for a special program & we need to determine the special program code
+
+    Note that later in the process the broker will validate the special program code & is able to disregard the eligibility flag
+  */
+  oneof special_program {
+    string special_program_code = 22;
+    bool eligible_for_special_program = 23;
+  }
+}
+
+// Represents a commercial invoice involved party object
+message CommercialInvoiceInvolvedPartyPayload {
+  flexport.customsciservice.constants.v1beta1.InvolvedPartyType type = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue address_line_1 = 3;
+  google.protobuf.StringValue address_line_2 = 4;
+  google.protobuf.StringValue address_line_3 = 5;
+  google.protobuf.StringValue address_line_4 = 6;
+  google.protobuf.StringValue address_line_5 = 7;
+  google.protobuf.StringValue address_line_6 = 8;
+  google.protobuf.StringValue city = 9;
+  google.protobuf.StringValue state_province = 10;
+  google.protobuf.StringValue postal_code = 11;
+  google.protobuf.StringValue country_code = 12;
+  google.protobuf.StringValue external_ref = 13;
+}
+
+// Represents a freight charge adjustment object
+message FreightChargeAdjustmentPayload {
+  flexport.customsciservice.constants.v1beta1.FreightChargeAdjustmentAppliedAs adjustment_applied_as = 1 [deprecated = true];
+  flexport.customsciservice.constants.v1beta1.FreightChargeAdjustmentCode adjustment_code = 2 [deprecated = true];
+  double adjustment_value = 3 [deprecated = true];
+  string currency_code = 4 [deprecated = true];
+}
+
+message ChargeAdjustmentPayload {
+  flexport.customsciservice.constants.v1beta1.ChargeAdjustmentAppliedAs adjustment_applied_as = 1;
+  flexport.customsciservice.constants.v1beta1.ChargeAdjustmentCode adjustment_code = 2;
+  double adjustment_value = 3;
+  google.protobuf.StringValue currency_code = 4;
+  flexport.customsciservice.constants.v1beta1.ChargeAdjustmentAppliedTo adjustment_applied_to = 5;
+}
+
+message MoneyObject {
+  double amount = 1;
+  google.protobuf.StringValue currency_code = 2;
+}
+
+message QuantityObject {
+  int32 value = 1;
+  flexport.customsciservice.constants.v1beta1.QuantityUnit unit = 2;
+}
+
+message WeightObject {
+  double value = 1;
+  flexport.customsciservice.constants.v1beta1.WeightUnit unit = 2;
+}
+
+message VolumeObject {
+  double value = 1;
+  flexport.customsciservice.constants.v1beta1.VolumeUnit unit = 2;
+}
+
+message CommercialInvoiceProductPayload {
+  string product_sku = 1;
+  google.protobuf.StringValue description = 2;
+  google.protobuf.StringValue product_category = 3;
+  repeated ProductProperty product_properties = 4;
+  repeated ProductClassification product_classifications = 5;
+}
+
+message ProductProperty {
+  string type = 1;
+  string value = 2;
+}
+
+message ProductClassification {
+  repeated string hs_codes = 1;
+  string region = 2;
+}

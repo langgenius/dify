@@ -1,0 +1,17 @@
+// TEAM: trucking
+
+syntax = "proto3";
+
+package flexport.truckingprovider.boomi.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentTagsProto";
+option java_package = "com.flexport.truckingprovider.boomi.v1beta1";
+option ruby_package = "Flexport::TruckingProvider::Boomi::V1Beta1";
+
+// Company.
+message ShipmentTags {
+  string po_number = 1;
+  string line_of_business = 2;
+  string ops_subclass_code = 3;
+}

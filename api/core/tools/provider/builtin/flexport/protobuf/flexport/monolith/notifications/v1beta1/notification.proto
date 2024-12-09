@@ -1,0 +1,43 @@
+// TEAM: athena
+
+syntax = "proto3";
+
+package flexport.monolith.notifications.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "NotificationProto";
+option java_package = "com.flexport.monolith.notifications.v1beta1";
+option ruby_package = "Flexport::Monolith::Notifications::V1Beta1";
+
+import "flexport/monolith/notifications/v1beta1/notification_type.proto";
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+import "google/protobuf/wrappers.proto";
+
+// For querying notifications.
+message NotificationQuery {
+  repeated string notification_fids = 1;
+  repeated string user_fids = 2;
+  google.protobuf.StringValue subject_fid = 3;
+  google.protobuf.StringValue object_fid = 4;
+  google.protobuf.StringValue reference_fid = 5;
+  google.protobuf.BoolValue inbox_item_present = 6;
+  google.protobuf.BoolValue is_read = 7;
+  google.protobuf.BoolValue is_acted_upon = 8;
+  NotificationTypeQuery notification_types = 9;
+}
+
+// The notification entity.
+message Notification {
+  string notification_fid = 1;
+  string user_fid = 2;
+  google.protobuf.StringValue subject_fid = 3;
+  google.protobuf.StringValue subject_name = 4;
+  google.protobuf.StringValue object_fid = 5;
+  google.protobuf.StringValue object_name = 6;
+  google.protobuf.StringValue reference_fid = 7;
+  google.protobuf.StringValue details = 8;
+  google.protobuf.StringValue link = 9;
+  bool inbox_item_present = 10;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime read_at = 11;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime acted_upon_at = 12;
+}

@@ -1,0 +1,118 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.productlibrary.products.productcountryspecific.us.v1beta1;
+
+import "flexport/customs/productlibrary/products/productcountryspecific/us/v1beta1/pga_disclaim_reason_code.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "UsPgaFdaProto";
+option java_package = "com.flexport.customs.productlibrary.products.productcountryspecific.us.v1beta1";
+option ruby_package = "Flexport::Customs::ProductLibrary::Products::ProductCountrySpecific::US::V1Beta1";
+
+// This structure provides information for US FDA-regulated products.
+// The CBP guide for the FDA:
+// https://www.cbp.gov/sites/default/files/assets/documents/2021-Feb/FDASupplementalGuideVersion2.5.3.pdf
+
+message UsPgaFda {
+  oneof info {
+    UsPgaDisclaimReasonCode disclaim_reason_code = 1;
+    FdaClaimProfile fda_profile = 2;
+  }
+}
+message FdaClaimProfile {
+  string commercial_description = 2;
+
+  // Pg01
+  ProcessingCode agency_processing_code = 3;
+  ProgramCode agency_program_code = 4;
+
+  // Source -
+  // https://www.cbp.gov/sites/default/files/assets/documents/2016-Dec/Appendix%20R%20-December%202016.pdf
+  // There are around 50 intended use codes (sub codes) only for FDA.
+  // and around 200 of total intended use codes which makes it difficult
+  // to make it as enum.
+  // This field is validated against the values of the source link
+  // The format of the code should be DDD.DDD where 'D' is a digit.
+  string intended_use_code = 5;
+  string intended_use_description = 6;
+
+  // Pg02
+  ItemType item_type = 7;
+  string product_code = 8;
+
+  // Pg07
+  string brand_name = 9;
+
+  // Pg23
+  repeated ComplianceCodes compliance_codes = 10;
+
+  // Page 274 - https://www.cbp.gov/sites/default/files/assets/documents/2021-Feb/ACE%20CATAIR%20Appendix%20PGA_08Oct2020_0.pdf
+  message ComplianceCodes {
+    string code = 1;
+    string qualifier = 2;
+  }
+
+  // Page 25 - https://www.cbp.gov/sites/default/files/assets/documents/2021-Feb/FDASupplementalGuideVersion2.5.3.pdf
+  enum ItemType {
+    ITEM_TYPE_INVALID = 0;
+
+    // The source guide only has "P" option for Product
+    ITEM_TYPE_PRODUCT = 1;
+
+    // In our system, in the FDA forms we take the value of "C" for Component and "P" for Product as input for item type
+    ITEM_TYPE_COMPONENT = 2;
+  }
+
+  // Source: Page 19 - "Program code" column
+  // https://www.cbp.gov/sites/default/files/assets/documents/2021-Feb/FDASupplementalGuideVersion2.5.3.pdf
+  enum ProgramCode {
+    PROGRAM_CODE_INVALID = 0;
+    PROGRAM_CODE_BIO = 1;
+    PROGRAM_CODE_COS = 2;
+    PROGRAM_CODE_DRU = 3;
+    PROGRAM_CODE_VME = 4;
+    PROGRAM_CODE_FOO = 5;
+    PROGRAM_CODE_DEV = 6;
+    PROGRAM_CODE_RAD = 7;
+    PROGRAM_CODE_TOB = 8;
+  }
+
+  // Source: Page 19 - "Processing code" column
+  // https://www.cbp.gov/sites/default/files/assets/documents/2021-Feb/FDASupplementalGuideVersion2.5.3.pdf
+
+  enum ProcessingCode {
+    PROCESSING_CODE_INVALID = 0;
+    PROCESSING_CODE_BIO_ALG = 1;
+    PROCESSING_CODE_BIO_BLO = 2;
+    PROCESSING_CODE_BIO_CGT = 3;
+    PROCESSING_CODE_BIO_HCT = 4;
+    PROCESSING_CODE_BIO_VAC = 5;
+    PROCESSING_CODE_BIO_XEN = 6;
+    PROCESSING_CODE_BIO_BDP = 7;
+    PROCESSING_CODE_BIO_BBA = 8;
+    PROCESSING_CODE_BIO_BLD = 9;
+    PROCESSING_CODE_BIO_PVE = 10;
+    PROCESSING_CODE_DRU_PRE = 11;
+    PROCESSING_CODE_DRU_OTC = 12;
+    PROCESSING_CODE_DRU_RND = 13;
+    PROCESSING_CODE_DRU_INV = 14;
+    PROCESSING_CODE_DRU_PHN = 15;
+    PROCESSING_CODE_DRU_804 = 16;
+    PROCESSING_CODE_VME_ADR = 17;
+    PROCESSING_CODE_VME_ADE = 18;
+    PROCESSING_CODE_FOO_NSF = 19;
+    PROCESSING_CODE_FOO_PRO = 20;
+    PROCESSING_CODE_FOO_FEE = 21;
+    PROCESSING_CODE_FOO_DSU = 22;
+    PROCESSING_CODE_FOO_ADD = 23;
+    PROCESSING_CODE_FOO_CCW = 24;
+    PROCESSING_CODE_DEV_NED = 25;
+    PROCESSING_CODE_DEV_RED = 26;
+    PROCESSING_CODE_RAD_REP = 27;
+    PROCESSING_CODE_TOB_CSU = 28;
+    PROCESSING_CODE_TOB_FFM = 29;
+    PROCESSING_CODE_TOB_INV = 30;
+  }
+}

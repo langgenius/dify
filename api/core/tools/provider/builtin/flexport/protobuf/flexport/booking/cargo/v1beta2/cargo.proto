@@ -1,0 +1,61 @@
+// TEAM: bookings
+
+syntax = "proto3";
+
+package flexport.booking.cargo.v1beta2;
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoProto";
+option java_package = "com.flexport.booking.cargo.v1beta2";
+option ruby_package = "Flexport::Booking::Cargo::V1Beta2";
+
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+import "google/protobuf/wrappers.proto";
+
+// Information about the packages in the shipment and the goods contained within.
+message Cargo {
+  google.protobuf.BoolValue contains_hazmat = 1;
+  google.protobuf.BoolValue contains_li_ion = 2;
+  google.protobuf.BoolValue contains_non_li_ion_battery = 3;
+  google.protobuf.BoolValue contains_magnets = 4;
+  google.protobuf.BoolValue contains_other_dangerous_goods = 5;
+  // List of all ways lithium batteries are packed within this shipment.
+  repeated LithiumBatteriesPackingType lithium_batteries_packing_types = 6;
+  // Shipper-declared count of total packages in shipment.
+  google.protobuf.Int32Value shippers_load_and_count = 7;
+  // Units that make up the cargo
+  repeated ShippingUnit shipping_units = 8;
+  double stated_volume = 9;
+  double stated_weight = 10;
+  flexport.os.v1.types.cargo.v1.CargoVolumeUnit volume_unit = 11;
+  flexport.os.v1.types.cargo.v1.CargoWeightUnit weight_unit = 12;
+  flexport.os.v1.types.cargo.v1.CargoDimensionsUnit dimension_unit = 13;
+}
+
+// A unit of cargo, roughly corresponding to a package.
+message ShippingUnit {
+  string name = 1;
+  flexport.os.v1.types.cargo.v1.CargoUnit unit_type = 2;
+  // Total packages in this unit.
+  google.protobuf.Int32Value atomic_count = 3;
+  // Total top-level packages in this unit. Usually the same as atomic_count unless packed on pallets, in which
+  // case this refers to pallets and atomic_count refers to cartons (multiple per pallet).
+  int32 count = 4;
+  double stated_height = 5;
+  double stated_width = 6;
+  double stated_length = 7;
+  double stated_volume = 8;
+  double stated_weight = 9;
+  flexport.os.v1.types.cargo.v1.CargoVolumeUnit volume_unit = 10;
+  flexport.os.v1.types.cargo.v1.CargoWeightUnit weight_unit = 11;
+  flexport.os.v1.types.cargo.v1.CargoDimensionsUnit dimension_unit = 12;
+}
+
+// Possible ways lithium batteries can be packed in a shipment.
+enum LithiumBatteriesPackingType {
+  LITHIUM_BATTERIES_PACKING_TYPE_INVALID = 0;
+  LITHIUM_BATTERIES_PACKING_TYPE_PACKED_LOOSE = 1;
+  LITHIUM_BATTERIES_PACKING_TYPE_PACKED_WITH_EQUIPMENT = 2;
+  LITHIUM_BATTERIES_PACKING_TYPE_CONTAINED_IN_EQUIPMENT = 3;
+  LITHIUM_BATTERIES_PACKING_TYPE_CONTAINED_IN_BATTERY_POWERED_VEHICLE = 4;
+}

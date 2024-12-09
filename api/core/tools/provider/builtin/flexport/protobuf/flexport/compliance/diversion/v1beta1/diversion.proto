@@ -1,0 +1,27 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.compliance.diversion.v1beta1;
+
+import "flexport/executioncoordinator/types/diversion/v1/diversion_details.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DiversionProto";
+option java_package = "com.flexport.compliance.diversion.v1beta1";
+option ruby_package = "Flexport::Compliance::Diversion::V1Beta1";
+
+// The Diversion object.
+message Diversion {
+  string shipment_fid = 1;
+  flexport.executioncoordinator.types.diversion.v1.DiversionDetails details = 2;
+  FmcRoute old_route = 3;
+  FmcRoute new_route = 4;
+}
+
+message FmcRoute {
+  string place_of_receipt_fid = 1;
+  string origin_port_fid = 2;
+  string destination_port_fid = 3;
+  string place_of_delivery_fid = 4;
+}

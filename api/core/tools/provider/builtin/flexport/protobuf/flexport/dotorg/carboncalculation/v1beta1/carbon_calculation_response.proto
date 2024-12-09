@@ -1,0 +1,56 @@
+// TEAM: dot_org
+
+syntax = "proto3";
+
+package flexport.dotorg.carboncalculation.v1beta1;
+
+import "flexport/dotorg/carboncalculation/v1/leg_data_type.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarbonCalculationResponseProto";
+option java_package = "com.flexport.dotorg.carboncalculation.v1beta1";
+option ruby_package = "Flexport::DotOrg::CarbonCalculation::V1Beta1";
+
+// This represents the response of the carbon calculator in tonnes of CO2e.
+message CarbonCalculationResponse {
+  double tonnes_of_co2 = 1;
+  CarbonCalculationByMode tonnes_of_co2_by_mode = 2;
+  repeated google.protobuf.Struct errors = 3;
+}
+
+// This represents a breakdown of the response of the carbon calculator in tonnes of CO2e by mode.
+message CarbonCalculationByMode {
+  double air = 1;
+  double ocean = 2;
+  double truck = 3;
+  double rail = 4;
+}
+
+// This represents a Carbon Calculation result for a single leg.
+message LegCarbonCalculationResult {
+  double tonnes_of_co2 = 1;
+  flexport.dotorg.carboncalculation.v1.CarbonCalculationTransportationMode transportation_mode = 2;
+  map<string, ErrorList> errors = 3;
+  string distance_methodology = 4;
+  string weight_methodology = 5;
+  google.protobuf.DoubleValue distance_in_km = 6;
+  google.protobuf.DoubleValue weight_in_tonnes = 7;
+  google.protobuf.DoubleValue teus = 8;
+  google.protobuf.DoubleValue tkm = 9;
+}
+
+// This represents a Data Preparation result for a single leg.
+message DataPreparationResult {
+  double distance_in_km = 1;
+  string distance_methodology = 2;
+  double weight_in_tonnes = 3;
+  string weight_methodology = 5;
+  map<string, ErrorList> errors = 6;
+}
+
+// Error incurred during calculation.
+message ErrorList {
+  repeated string errors = 1;
+}

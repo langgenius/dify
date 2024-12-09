@@ -1,0 +1,25 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ScheduleFinalDeliveryDelayedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+
+// The schedule was updated such that one or more final delivery dates were moved more than 2 days
+// past their previous date values.
+message ScheduleFinalDeliveryDelayed {
+  repeated ScheduleFinalDeliveryDelayedDate delayed_dates = 3;
+}
+
+// Represents one final delivery date that was delayed.
+message ScheduleFinalDeliveryDelayedDate {
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime prev_delivery_date = 1;
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime new_delivery_date = 2;
+  repeated string container_fids = 3;
+}

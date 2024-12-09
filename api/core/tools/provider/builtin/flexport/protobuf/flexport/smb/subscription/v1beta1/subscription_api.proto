@@ -1,0 +1,215 @@
+// TEAM: smb
+
+syntax = "proto3";
+
+package flexport.smb.subscription.v1beta1;
+
+import "flexport/smb/subscription/v1beta1/subscription_state.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "SubscriptionApiProto";
+option java_package = "com.flexport.smb.subscription.v1beta1";
+
+service SubscriptionAPI {
+  rpc CreateSubscriptionOffer(CreateSubscriptionOfferRequest) returns (CreateSubscriptionOfferResponse) {}
+  rpc GetSubscriptionOffer(GetSubscriptionOfferRequest) returns (GetSubscriptionOfferResponse) {}
+  rpc UpdateSubscriptionOffer(UpdateSubscriptionOfferRequest) returns (UpdateSubscriptionOfferResponse) {}
+  rpc CreateSubscriptionSku(CreateSubscriptionSkuRequest) returns (CreateSubscriptionSkuResponse) {}
+  rpc GetSubscriptionSku(GetSubscriptionSkuRequest) returns (GetSubscriptionSkuResponse) {}
+  rpc UpdateSubscriptionSku(UpdateSubscriptionSkuRequest) returns (UpdateSubscriptionSkuResponse) {}
+  rpc CreateSubscription(CreateSubscriptionRequest) returns (CreateSubscriptionResponse) {}
+  rpc GetSubscription(GetSubscriptionRequest) returns (GetSubscriptionResponse) {}
+  rpc UpdateSubscription(UpdateSubscriptionRequest) returns (UpdateSubscriptionResponse) {}
+  rpc DeleteSubscription(DeleteSubscriptionRequest) returns (DeleteSubscriptionResponse) {}
+  rpc GetSubscriptionsByClient(GetSubscriptionsByClientRequest) returns (GetSubscriptionsByClientResponse) {}
+  rpc RenewSubscription(RenewSubscriptionRequest) returns (RenewSubscriptionResponse) {}
+  rpc RemitSubscription(RemitSubscriptionRequest) returns (RemitSubscriptionResponse) {}
+  rpc AssignFreeSubscription(AssignFreeSubscriptionRequest) returns (AssignFreeSubscriptionResponse) {}
+}
+
+message RenewSubscriptionRequest {
+  uint32 id = 1;
+}
+
+message RenewSubscriptionResponse {
+  Subscription data = 1;
+}
+
+message RemitSubscriptionRequest {
+  uint32 id = 1;
+}
+
+message RemitSubscriptionResponse {
+  Subscription data = 1;
+}
+
+message CreateSubscriptionOfferRequest {
+  string slug = 1;
+  string title = 2;
+  string description = 3;
+}
+
+message CreateSubscriptionOfferResponse {
+  SubscriptionOffer data = 1;
+}
+
+message GetSubscriptionOfferRequest {
+  string slug = 1;
+}
+
+message GetSubscriptionOfferResponse {
+  SubscriptionOffer data = 1;
+}
+
+message UpdateSubscriptionOfferRequest {
+  string slug = 1;
+  string title = 2;
+  string description = 3;
+}
+
+message UpdateSubscriptionOfferResponse {
+  SubscriptionOffer data = 1;
+}
+
+message SubscriptionOffer {
+  string slug = 1;
+  string title = 2;
+  string description = 3;
+  string created_at = 4;
+  string updated_at = 5;
+}
+
+message CreateSubscriptionSkuRequest {
+  string slug = 1;
+  string title = 2;
+  string description = 3;
+  uint32 billing_duration_in_days = 4;
+  uint32 renewal_duration_in_days = 5;
+  double price = 6;
+  repeated string offer_slugs = 7;
+}
+
+message CreateSubscriptionSkuResponse {
+  SubscriptionSku data = 1;
+}
+
+message GetSubscriptionSkuRequest {
+  string slug = 1;
+  string version = 2;
+}
+
+message GetSubscriptionSkuResponse {
+  SubscriptionSku data = 1;
+}
+
+message UpdateSubscriptionSkuRequest {
+  string slug = 1;
+  string version = 2;
+  string title = 3;
+  string description = 4;
+  uint32 billing_duration_in_days = 5;
+  uint32 renewal_duration_in_days = 6;
+  double price = 7;
+}
+
+message UpdateSubscriptionSkuResponse {
+  SubscriptionSku data = 1;
+}
+
+message SubscriptionSku {
+  string slug = 1;
+  string version = 2;
+  string title = 3;
+  string description = 4;
+  uint32 billing_duration_in_days = 5;
+  uint32 renewal_duration_in_days = 6;
+  double price = 7;
+  repeated SubscriptionOffer offers = 8;
+  string created_at = 9;
+  string updated_at = 10;
+}
+
+message CreateSubscriptionRequest {
+  string client_fid = 1;
+  SubscriptionState state = 2;
+  string sku_slug = 3;
+  string sku_version = 4;
+  string payment_id = 5;
+  string metadata = 6;
+  string start_time = 7;
+  string end_time = 8;
+  string remittance_time = 9;
+}
+
+message CreateSubscriptionResponse {
+  Subscription data = 1;
+}
+
+message GetSubscriptionRequest {
+  uint32 id = 1;
+}
+
+message GetSubscriptionResponse {
+  Subscription data = 1;
+}
+
+message UpdateSubscriptionRequest {
+  uint32 id = 1;
+  SubscriptionState state = 2;
+  string sku_slug = 3;
+  string sku_version = 4;
+  string payment_id = 5;
+  string metadata = 6;
+  string start_time = 7;
+  string end_time = 8;
+  string remittance_time = 9;
+}
+
+message UpdateSubscriptionResponse {
+  Subscription data = 1;
+}
+
+message DeleteSubscriptionRequest {
+  uint32 id = 1;
+}
+
+message AssignFreeSubscriptionRequest {
+  repeated string client_email = 1;
+  string sku_slug = 2;
+}
+
+message AssignFreeSubscriptionResponse {
+  repeated FreeSubscription data = 1;
+}
+
+message DeleteSubscriptionResponse {}
+
+message GetSubscriptionsByClientRequest {
+  string client_fid = 1;
+}
+
+message GetSubscriptionsByClientResponse {
+  repeated Subscription data = 1;
+}
+
+message Subscription {
+  uint32 id = 1;
+  string client_fid = 2;
+  SubscriptionState state = 3;
+  string start_time = 4;
+  string end_time = 5;
+  string metadata = 6;
+  string payment_id = 7;
+  SubscriptionSku sku = 8;
+  string created_at = 9;
+  string updated_at = 10;
+  string remittance_due_time = 11;
+}
+
+message FreeSubscription {
+  string email = 1;
+  string client_fid = 2;
+  string status = 3;
+  string status_message = 4;
+  Subscription data = 5;
+}

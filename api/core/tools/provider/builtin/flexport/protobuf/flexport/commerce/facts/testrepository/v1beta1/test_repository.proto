@@ -1,0 +1,50 @@
+// TEAM: client_order
+
+syntax = "proto3";
+
+package flexport.commerce.facts.testrepository.v1beta1;
+
+import "flexport/commerce/facts/codegen/options/v1/options.proto";
+import "flexport/commerce/facts/contracts/options/v1/options.proto";
+import "flexport/commerce/facts/testrepository/v1beta1/out_example_message.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TestRepositoryProto";
+option java_package = "com.flexport.commerce.facts.testrepository.v1beta1";
+option ruby_package = "Flexport::Commerce::Facts::TestRepository::V1Beta1";
+
+message TestRepository {
+  option (flexport.commerce.facts.contracts.options.v1.repository).name = "testrepository";
+
+  optional string first_name = 101 [
+    (flexport.commerce.facts.contracts.options.v1.packages) = "fragmentfacts.fragmentfacts1",
+    (flexport.commerce.facts.contracts.options.v1.packages) = "fragmentfacts.fragmentfacts2"
+  ];
+  optional string last_name = 102 [
+    (flexport.commerce.facts.contracts.options.v1.packages) = "fragmentfacts.fragmentfacts1",
+    (flexport.commerce.facts.contracts.options.v1.packages) = "fragmentfacts.fragmentfacts2"
+  ];
+  repeated string tags = 103 [
+    (flexport.commerce.facts.contracts.options.v1.packages) = "fragmentfacts.fragmentfacts2",
+    (flexport.commerce.facts.codegen.options.v1.field_codegen) = {
+      optional: true
+    }
+  ];
+  reserved 104 to 150;
+
+  optional int32 height = 151 [
+    deprecated = true,
+    (flexport.commerce.facts.contracts.options.v1.packages) = "fragmentfacts.fragmentfacts2"
+  ];
+  oneof one_of_example {
+    OneOfExampleMessage example1 = 152 [(flexport.commerce.facts.contracts.options.v1.packages) = "fragmentfacts.fragmentfacts2"];
+    OneOfExampleMessage example2 = 153 [(flexport.commerce.facts.contracts.options.v1.packages) = "fragmentfacts.fragmentfacts2"];
+  }
+  OutExampleMessage example3 = 154 [(flexport.commerce.facts.contracts.options.v1.packages) = "fragmentfacts.fragmentfacts2"];
+  reserved 155 to 200;
+
+  int32 age = 201 [(flexport.commerce.facts.contracts.options.v1.packages) = "fragmentfacts.fragmentfacts3"];
+  reserved 202 to 250;
+
+  reserved 251 to 1999;
+}

@@ -1,0 +1,26 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.oex.carrierbookingbundle.v1beta1;
+
+import "flexport/oex/carrierbookingbundle/v1beta1/carrier_booking_bundle.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "UpdateCarrierBookingVoyageInputProto";
+option java_package = "com.flexport.oex.carrierbookingbundle.v1beta1";
+option ruby_package = "Flexport::OEX::CarrierBookingBundle::V1Beta1";
+
+/*
+Mapping messages in engines/ocean_execution/app/api/ocean_execution/api/input/update_carrier_booking_voyage_input.rb
+ */
+
+message UpdateCarrierBookingVoyageInput {
+  string uuid = 1;
+  string carrier_booking_fid = 2;
+  optional string estimated_schedule_fid = 3;
+  google.protobuf.Timestamp scheduled_arrival = 4;
+  google.protobuf.Timestamp scheduled_departure = 5;
+  repeated VoyageAutomatedUpdate voyage_automated_updates = 6;
+}

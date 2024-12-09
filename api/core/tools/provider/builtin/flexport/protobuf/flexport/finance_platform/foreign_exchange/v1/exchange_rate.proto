@@ -1,0 +1,33 @@
+// TEAM: finance_platform
+/*
+ * Supporting protobuf definitions for Foreign Exchange APIs.
+ */
+
+syntax = "proto3";
+
+package flexport.finance_platform.foreign_exchange.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ForeignExchangeProto";
+option java_package = "com.flexport.finance_platform.foreign_exchange.v1";
+option ruby_package = "Flexport::FinancePlatform::ForeignExchange::V1";
+
+// List of source for foreign exchange rates
+enum FXSource {
+  FX_SOURCE_INVALID = 0;
+  FX_SOURCE_OPEN_EXCHANGE_RATES = 1;
+  FX_SOURCE_NETSUITE = 2;
+  FX_SOURCE_OANDA_MONTHLY = 3;
+}
+
+// Exchange rate DTO with fields.
+message ExchangeRateDto {
+  map<string, double> rates = 1;
+  google.protobuf.Timestamp effective_at_time = 2;
+  int32 id = 3;
+  FXSource fx_source = 4;
+  // Base currency 3-letter ISO code
+  string base_currency = 5;
+}

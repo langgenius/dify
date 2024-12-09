@@ -1,0 +1,22 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.compliance.dangerousgoods.constant.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DangerousGoodsReviewStatusProto";
+option java_package = "com.flexport.compliance.dangerousgoods.constant.v1beta1";
+option ruby_package = "Flexport::Compliance::DangerousGoods::Constant::V1Beta1";
+
+// From constants/dangerous_goods/review_statuses.rb
+enum DangerousGoodsReviewStatus {
+  DANGEROUS_GOODS_REVIEW_STATUS_INVALID = 0;
+  DANGEROUS_GOODS_REVIEW_STATUS_PENDING = 1;
+  DANGEROUS_GOODS_REVIEW_STATUS_IN_PROGRESS = 2;
+  DANGEROUS_GOODS_REVIEW_STATUS_CARRIER_BOOKING_APPROVED = 3;
+  DANGEROUS_GOODS_REVIEW_STATUS_COMPLETE = 4;
+  DANGEROUS_GOODS_REVIEW_STATUS_DENIED = 5;
+  DANGEROUS_GOODS_REVIEW_STATUS_NOT_APPLICABLE = 6;
+  DANGEROUS_GOODS_REVIEW_STATUS_MISFLAGGED = 7;
+}

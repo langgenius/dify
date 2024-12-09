@@ -1,0 +1,21 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoReceiptConfirmedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/executioncoordinator/executioncargo/v1/execution_cargo.proto";
+
+// An event emitted when a cargo receipt has been created or updated
+// through Core or Warehouse App.
+message CargoReceiptConfirmed {
+  repeated flexport.executioncoordinator.executioncargo.v1.ExecutionCargo execution_cargos = 1;
+  repeated string damages = 2;
+  bool is_new_record = 3;
+  string cargo_receipt_name = 4;
+}

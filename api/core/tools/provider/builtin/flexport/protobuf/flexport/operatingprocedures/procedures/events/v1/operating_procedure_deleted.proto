@@ -1,0 +1,18 @@
+// TEAM: work_management
+
+syntax = "proto3";
+
+package flexport.operatingprocedures.procedures.events.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OperatingProcedureDeletedProto";
+option java_package = "com.flexport.operatingprocedures.procedures.events.v1";
+option ruby_package = "Flexport::OperatingProcedures::Procedures::Events::V1";
+
+// Event payload for when an operating procedure is destroyed.
+message OperatingProcedureDeleted {
+  string category = 1;
+  string client_fid = 2;
+  string user_fid = 3;
+  string procedure_id = 4;
+}

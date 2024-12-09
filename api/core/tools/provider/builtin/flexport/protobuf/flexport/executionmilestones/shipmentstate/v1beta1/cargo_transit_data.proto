@@ -1,0 +1,28 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executionmilestones.shipmentstate.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoTransitDataProto";
+option java_package = "com.flexport.executionmilestones.shipmentstate.v1beta1";
+option ruby_package = "Flexport::ExecutionMilestones::ShipmentState::V1Beta1";
+
+// The state to store derived information from derived_shipment_route and NetworkAPI.
+message CargoTransitData {
+  CargoTransitState origin_address_pickup = 1;
+  CargoTransitState port_of_loading_delivery = 2;
+}
+
+message CargoTransitState {
+  string address_fid = 1;
+
+  // Indicates whether the schedule has been updated via FFA.
+  bool schedule_confirmed = 2;
+
+  // The integration would be enabled when carrier_company.transmission_api_integration_enabled is true
+  // and the company is in the 'transmission_api_integration_shipment_status_update' switch.
+  string carrier_company_fid = 3;
+  bool transmission_integration_enabled = 4;
+}

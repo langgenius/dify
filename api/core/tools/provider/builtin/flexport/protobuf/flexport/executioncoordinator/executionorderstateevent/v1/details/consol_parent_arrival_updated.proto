@@ -1,0 +1,16 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ConsolParentArrivalUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+// A consol parent shipment's arrival date(s) at a CFS have been updated.
+message ConsolParentArrivalUpdated {
+  // This legacy event is no longer consumed or published by any systems.
+  option deprecated = true;
+}

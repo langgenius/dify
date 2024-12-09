@@ -1,0 +1,105 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.ingestion.pie.engine.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PieApiProto";
+option java_package = "com.flexport.procurement.ingestion.pie.engine.v1beta1";
+option ruby_package = "Flexport::Procurement::Ingestion::Pie::Engine::V1Beta1";
+
+service PieAPI {
+  rpc GetPipelines(GetPipelinesRequest) returns (GetPipelinesResponse) {}
+  rpc GetPipelineStatus(GetPipelineStatusRequest) returns (GetPipelineStatusResponse) {}
+  rpc SendToPipeline(SendToPipelineRequest) returns (SendToPipelineResponse) {}
+}
+
+message GetPipelinesRequest {}
+
+message GetPipelinesResponse {
+  enum RequestResult {
+    REQUEST_RESULT_INVALID = 0;
+    REQUEST_RESULT_OK = 1;
+    REQUEST_RESULT_FAIL = 2;
+  }
+
+  RequestResult result = 1;
+
+  repeated PipelineItem pipelines = 2;
+}
+
+message PipelineItem {
+  int64 id = 1;
+  string name = 2;
+  repeated NodeItem nodes = 3;
+}
+
+message ArgumentItem {
+  string name = 1;
+  string value = 2;
+}
+
+message NodeItem {
+  int64 id = 1;
+  string name = 2;
+  repeated int64 dest_ids = 3;
+  repeated ArgumentItem arguments = 4;
+  string node_type = 5;
+}
+
+message GetPipelineStatusRequest {}
+
+message GetPipelineStatusResponse {
+  enum RequestResult {
+    REQUEST_RESULT_INVALID = 0;
+    REQUEST_RESULT_OK = 1;
+    REQUEST_RESULT_FAIL = 2;
+  }
+
+  RequestResult result = 1;
+
+  repeated PipelineStatusItem pipeline_statuses = 2;
+}
+
+message PipelineStatusItem {
+  int64 id = 1;
+  repeated NodeStatusItem node_statuses = 2;
+}
+
+message NodeStatusItem {
+  int64 id = 1;
+  map<string, string> properties = 2;
+}
+
+message RetryFileRequest {
+  string input_file_fid = 1; // USED as unique identifier between NIS and PIE
+  string input_filename = 2;
+  google.protobuf.Timestamp contract_received_at = 3;
+  string contract_number = 4;
+  string amendment_number = 5;
+  string carrier_fid = 6;
+  string user_fid = 7; // fid of user who requested retry or file parse
+  int64 digitization_job_id = 8;
+}
+
+// can include any type of custom request type within SendToPipelineRequest.request here, and the
+// request send to the grpc server will be added to GrpcQueue service.
+message SendToPipelineRequest {
+  oneof request {
+    RetryFileRequest retry_file_request = 1;
+  }
+}
+
+message SendToPipelineResponse {
+  enum RequestResult {
+    REQUEST_RESULT_INVALID = 0;
+    REQUEST_RESULT_OK = 1;
+    REQUEST_RESULT_FAIL = 2;
+  }
+
+  RequestResult result = 1;
+  string error_message = 2;
+}

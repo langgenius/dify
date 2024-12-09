@@ -1,0 +1,24 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.monolith.compliance.dangerousgoods.rpc.v1beta1;
+
+import "flexport/monolith/compliance/dangerousgoods/message/v1beta1/dangerous_goods_review.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DangerousGoodsReviewApiProto";
+option java_package = "com.flexport.monolith.compliance.dangerousgoods.rpc.v1beta1";
+option ruby_package = "Flexport::Monolith::Compliance::DangerousGoods::Rpc::V1Beta1";
+
+service DangerousGoodsReviewAPI {
+  rpc GetDangerousGoodsReview(GetDangerousGoodsReviewRequest) returns (GetDangerousGoodsReviewResponse);
+}
+
+message GetDangerousGoodsReviewRequest {
+  int32 shipment_id = 1;
+}
+
+message GetDangerousGoodsReviewResponse {
+  monolith.compliance.dangerousgoods.message.v1beta1.DangerousGoodsReview dangerous_goods_review = 1;
+}

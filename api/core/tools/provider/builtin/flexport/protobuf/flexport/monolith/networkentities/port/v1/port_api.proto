@@ -1,0 +1,61 @@
+// TEAM: network_entities
+
+// DEPRECATED. See protobuf/flexport/network/v1beta1/network_api.proto instead.
+
+syntax = "proto3";
+
+package flexport.monolith.networkentities.port.v1;
+
+import "flexport/monolith/networkentities/port/v1/port.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PortApiProto";
+option java_package = "com.flexport.monolith.networkentities.port.v1";
+option ruby_package = "Flexport::Monolith::NetworkEntities::Port::V1";
+
+// This service is used by any NIS to retrieve Port entities from monolith DB.
+service PortAPI {
+  // Returns port entities for given fids.
+  // Order is preserved between the list of response ports and the list of request fids.
+  // If a port is not found for an fid or an error is encountered (eg fid's format),
+  // then the response Port object will have all of its fields be empty.
+  rpc ListPorts(ListPortsRequest) returns (ListPortsResponse);
+  // Look up ports by their UN/LOCODE.
+  rpc FindPortsByLocode(FindPortsByLocodeRequest) returns (FindPortsByLocodeResponse);
+  // Look up sea ports by their UN/LOCODE.
+  rpc FindSeaPortsByLocode(FindSeaPortsByLocodeRequest) returns (FindSeaPortsByLocodeResponse);
+  // Look up ports by their iata code.
+  rpc FindPortsByIataCode(FindPortsByIataCodeRequest) returns (FindPortsByIataCodeResponse);
+}
+
+message ListPortsRequest {
+  repeated string port_fids = 1;
+}
+
+message ListPortsResponse {
+  repeated Port ports = 1;
+}
+
+message FindPortsByLocodeRequest {
+  repeated string locodes = 1;
+}
+
+message FindPortsByLocodeResponse {
+  repeated Port ports = 1;
+}
+
+message FindSeaPortsByLocodeRequest {
+  repeated string locodes = 1;
+}
+
+message FindSeaPortsByLocodeResponse {
+  repeated Port ports = 1;
+}
+
+message FindPortsByIataCodeRequest {
+  repeated string iata_codes = 1;
+}
+
+message FindPortsByIataCodeResponse {
+  repeated Port ports = 1;
+}

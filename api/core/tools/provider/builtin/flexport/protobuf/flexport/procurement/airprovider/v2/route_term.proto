@@ -1,0 +1,156 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.airprovider.v2;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RouteTermProto";
+option java_package = "com.flexport.procurement.airprovider.v2";
+option ruby_package = "Flexport::Procurement::AirProvider::V2";
+
+// Incoming data for a route term.
+message RouteTerm {
+  string contract_identifier = 1;
+  string origin_fid = 2;
+  string destination_fid = 3;
+  repeated string stop_fids = 4;
+  string shipment_fid = 5;
+  string min_transit_days = 6;
+  string max_transit_days = 7;
+  SpotRateMetaData spot_rate_metadata = 8;
+  google.protobuf.Timestamp effective_from_time = 9;
+  google.protobuf.Timestamp effective_to_time = 10;
+  google.protobuf.Timestamp issued_on_time = 11;
+  CostType cost_type = 12;
+  string vendor_company_entity_fid = 13;
+  string carrier_fid = 14;
+  string per_unit_rate_price_micros = 15;
+  RatePerUnit rate_per_unit = 16;
+  repeated RateBreak rate_break_info = 17;
+  string over_pivot_price_micros = 18;
+  string currency = 19;
+  string minimum_price_micros = 20;
+  string maximum_price_micros = 21;
+  string created_by_fid = 22;
+  string updated_by_fid = 23;
+  AllotmentType allotment_type = 24;
+  ServiceLevel service_level = 25;
+  Commodity commodity = 26;
+  ContractType contract_type = 27;
+  string origin_agent_company_entity_fid = 28;
+  repeated string flight_numbers = 29;
+  string original_air_procurement_term_dbid = 30;
+  ChargeType charge_type = 31;
+  string nac_customer_company_entity_fid = 32;
+  string flexport_customer_company_entity_fid = 33;
+  BupType bup_type = 34;
+  Status status = 35;
+}
+
+// Bup Type.
+enum BupType {
+  BUP_TYPE_INVALID = 0;
+  BUP_TYPE_SINGLE_BUP = 1;
+  BUP_TYPE_MIXED_BUP = 2;
+  BUP_TYPE_LOOSE_CARGO = 3;
+}
+
+// Charge Type.
+enum ChargeType {
+  CHARGE_TYPE_INVALID = 0;
+  CHARGE_TYPE_MAIN_FREIGHT = 1;
+  CHARGE_TYPE_FUEL_SURCHARGE = 2;
+  CHARGE_TYPE_SECURITY_SURCHARGE = 3;
+  CHARGE_TYPE_SCREENING_CHARGE = 4;
+  CHARGE_TYPE_AIRPORT_TRANSFER = 5;
+}
+
+// Cost type.
+enum CostType {
+  COST_TYPE_INVALID = 0;
+  COST_TYPE_BASE = 1;
+  COST_TYPE_ANCILLARY = 2;
+  COST_TYPE_ALL_IN = 3;
+  COST_TYPE_NET = 4;
+  COST_TYPE_ALL_IN_WITH_DETAILS = 5;
+}
+
+// Spot rate metadata.
+message SpotRateMetaData {
+  string spot_rate_source = 1;
+  string procurement_request_id = 2;
+  bool has_line_level_rates = 3;
+}
+
+// Per units rate is charged on.
+enum RatePerUnit {
+  RATE_PER_UNIT_INVALID = 0;
+  RATE_PER_UNIT_CHARGEABLE_KILOGRAM = 1;
+  RATE_PER_UNIT_GROSS_KILOGRAM = 2;
+  RATE_PER_UNIT_TOTAL = 3;
+  RATE_PER_UNIT_AIRWAY_BILL = 4;
+  RATE_PER_UNIT_PLANE = 5;
+  RATE_PER_UNIT_SKID = 6;
+  RATE_PER_UNIT_HOUR = 7;
+  RATE_PER_UNIT_ALLOTMENT = 8;
+}
+
+// Allotment type.
+enum AllotmentType {
+  ALLOTMENT_TYPE_INVALID = 0;
+  ALLOTMENT_TYPE_MAIN = 1;
+  ALLOTMENT_TYPE_AUXILIARY = 2;
+  ALLOTMENT_TYPE_INDIVIDUAL = 3;
+}
+
+// Service level for term.
+enum ServiceLevel {
+  SERVICE_LEVEL_INVALID = 0;
+  SERVICE_LEVEL_STANDARD = 1;
+  SERVICE_LEVEL_DEFERRED = 2;
+  SERVICE_LEVEL_EXPRESS = 3;
+  SERVICE_LEVEL_PREMIUM_EXPRESS = 4;
+}
+
+// Commodity for route term.
+enum Commodity {
+  COMMODITY_INVALID = 0;
+  COMMODITY_GENERAL_CARGO = 1;
+  COMMODITY_ALL_COMMODITIES = 2;
+}
+
+// Status of route term.
+enum Status {
+  STATUS_INVALID = 0;
+  STATUS_ACTIVE = 1;
+  STATUS_CLOSED = 2;
+  // cancelled = deleted
+  STATUS_CANCELLED = 3;
+}
+
+// Contract type of term.
+enum ContractType {
+  CONTRACT_TYPE_INVALID = 0;
+  CONTRACT_TYPE_PARTNER_FIXED_CONTRACT = 1;
+  CONTRACT_TYPE_NAC_PROCUREMENT = 2;
+  CONTRACT_TYPE_CHARTER = 3;
+  CONTRACT_TYPE_SPOT = 4;
+  CONTRACT_TYPE_BSA = 5;
+  CONTRACT_TYPE_SOFT_BSA = 6;
+}
+
+// Rate breaks.
+message RateBreak {
+  int32 break_amount = 1;
+  BreakUnit break_unit = 2;
+  string rate_micros = 3;
+}
+
+// Units that a rate could break on.
+enum BreakUnit {
+  BREAK_UNIT_INVALID = 0;
+  BREAK_UNIT_KG = 1;
+}

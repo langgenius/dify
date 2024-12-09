@@ -1,0 +1,31 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.authorization.token.v1beta2;
+
+option java_multiple_files = true;
+option java_outer_classname = "TokenApiProto";
+option java_package = "com.flexport.authorization.token.v1beta2";
+option ruby_package = "Flexport::Authorization::Token::V1beta2";
+
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+
+// Retrieve operations and resources relevant to permissions.
+service TokenAPI {
+  // Used to fetch the IAM jwt public key in JWKS format. This is meant to to replace the practice of
+  // storing the key in application configuration, by providing an API to fetch the most recent copy of
+  // the key on-demand.
+  rpc GetIamTokenPublicKeyJwks(GetIamTokenPublicKeyJwksRequest) returns (GetIamTokenPublicKeyJwksResponse) {
+    option (google.api.http) = {
+      get: "/.well-known/jwks.json"
+    };
+  }
+}
+
+message GetIamTokenPublicKeyJwksRequest {}
+
+message GetIamTokenPublicKeyJwksResponse {
+  repeated google.protobuf.Struct keys = 1;
+}

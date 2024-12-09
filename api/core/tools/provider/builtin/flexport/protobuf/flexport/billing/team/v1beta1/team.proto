@@ -1,0 +1,16 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.billing.team.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TeamProto";
+option java_package = "com.flexport.billing.team.v1beta1";
+option ruby_package = "Flexport::Billing::Team::V1Beta1";
+
+// The Team object.
+message Team {
+  string fid = 1;
+  string team_name = 2;
+}

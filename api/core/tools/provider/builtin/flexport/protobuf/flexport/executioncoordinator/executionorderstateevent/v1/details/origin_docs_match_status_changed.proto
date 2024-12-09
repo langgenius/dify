@@ -1,0 +1,23 @@
+// TEAM: origin_ops
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OriginDocsMatchStatusChangedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+import "google/protobuf/wrappers.proto";
+
+// Emitted when origin ops checks the consistency of docs provided by internal users or partners.
+message OriginDocsMatchStatusChanged {
+  string user_fid = 1;
+  google.protobuf.BoolValue booking_form_checked = 2;
+  google.protobuf.BoolValue commercial_invoice_checked = 3;
+  google.protobuf.BoolValue packing_list_checked = 4;
+  google.protobuf.BoolValue core_left_checked = 5;
+  google.protobuf.BoolValue docs_match_checked = 6;
+  string docs_match_uncheck_reason_note = 7;
+}

@@ -1,0 +1,31 @@
+// TEAM: dot_org
+
+syntax = "proto3";
+
+package flexport.dotorg.carboncalculation.v1beta1;
+
+import "flexport/booking/containercounts/v1beta1/container_counts.proto";
+import "flexport/dotorg/carboncalculation/v1/leg_data_type.proto";
+import "flexport/network/v1beta1/address.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "IpbCarbonCalculationRequestLegProto";
+option java_package = "com.flexport.dotorg.carboncalculation.v1beta1";
+option ruby_package = "Flexport::DotOrg::CarbonCalculation::V1Beta1";
+
+// Represents a request leg. sent by IPB to compute carbon emissions
+message IpbCarbonCalculationRequestLeg {
+  flexport.dotorg.carboncalculation.v1.CarbonCalculationTransportationMode transportation_mode = 1;
+  google.protobuf.DoubleValue weight_in_tonnes = 2;
+  flexport.booking.containercounts.v1beta1.ContainerCounts container_counts = 3;
+  flexport.network.v1beta1.Address origin_place = 4;
+  flexport.network.v1beta1.Address destination_place = 5;
+  bool is_lcl = 6;
+  bool is_reefer = 7;
+  flexport.dotorg.carboncalculation.v1.TruckingServiceType trucking_service_type = 8;
+  google.protobuf.DoubleValue origin_lat = 9;
+  google.protobuf.DoubleValue origin_lng = 10;
+  google.protobuf.DoubleValue destination_lat = 11;
+  google.protobuf.DoubleValue destination_lng = 12;
+}

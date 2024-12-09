@@ -1,0 +1,36 @@
+// TEAM: insurance
+
+syntax = "proto3";
+
+package flexport.insuranceintegration.backofficeevent.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CorePerShipmentInsuranceEventProto";
+option java_package = "com.flexport.insuranceintegration.backofficeevent.v1beta1";
+option ruby_package = "Flexport::InsuranceIntegration::BackOfficeEvent::V1Beta1";
+
+message CorePerShipmentInsuranceEvent {
+  google.protobuf.Int64Value shipment_id = 1;
+  google.protobuf.Timestamp date_of_departure = 2;
+  google.protobuf.StringValue named_assured_name = 3;
+  google.protobuf.StringValue named_assured_country = 4;
+  google.protobuf.StringValue named_assured_state = 5;
+  google.protobuf.StringValue conveyance = 6;
+  google.protobuf.StringValue origin_country = 7;
+  google.protobuf.StringValue origin_state = 8;
+  google.protobuf.StringValue destination_country = 9;
+  google.protobuf.StringValue destination_state = 10;
+  google.protobuf.StringValue loading_country = 11;
+  google.protobuf.StringValue unloading_country = 12;
+  google.protobuf.StringValue description_of_cargo = 13;
+  google.protobuf.StringValue insured_value_currency_iso = 14;
+  google.protobuf.DoubleValue invoice_amount = 15;
+  google.protobuf.DoubleValue duty_insured_value = 16;
+  google.protobuf.DoubleValue freight_other_expenses = 17;
+  google.protobuf.StringValue commodity_client_code = 18;
+  google.protobuf.StringValue vessel_name = 19;
+  google.protobuf.BoolValue is_dot_org_shipment = 20;
+}

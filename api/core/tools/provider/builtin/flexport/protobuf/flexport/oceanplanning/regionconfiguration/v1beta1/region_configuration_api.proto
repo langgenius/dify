@@ -1,0 +1,57 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.oceanplanning.regionconfiguration.v1beta1;
+
+import "flexport/oceanplanning/regionconfiguration/v1beta1/region_configuration.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanPlanningRegionApiProto";
+option java_package = "com.flexport.oceanplanning.regionconfiguration.v1beta1";
+option ruby_package = "Flexport::OceanPlanning::RegionConfiguration::V1Beta1";
+
+// The ocean planning region region service grpc API end point.
+service OceanPlanningRegionAPI {
+  // Get the ocean planning region given the region slug.
+  rpc GetOceanPlanningRegion(GetOceanPlanningRegionRequest) returns (GetOceanPlanningRegionResponse);
+  rpc GetOceanPlanningRegionByPorts(GetOceanPlanningRegionByPortsRequest) returns (GetOceanPlanningRegionByPortsResponse);
+  rpc GetOceanPlanningPortsByTradeLanes(GetOceanPlanningPortsByTradeLanesRequest) returns (GetOceanPlanningPortsByTradeLanesResponse);
+  rpc GetOceanPlanningPortsByOriginAndDestinationRegion(GetOceanPlanningPortsByOriginAndDestinationRegionRequest) returns (GetOceanPlanningPortsByOriginAndDestinationRegionResponse);
+}
+
+// The request message containing the region slug
+message GetOceanPlanningRegionRequest {
+  RegionSlug region_slug = 1;
+}
+
+// The response message containing ocean planning region
+message GetOceanPlanningRegionResponse {
+  OceanPlanningRegion ocean_planning_region = 1;
+}
+
+message GetOceanPlanningRegionByPortsRequest {
+  string origin_port_fid = 1;
+  string destination_port_fid = 2;
+}
+
+message GetOceanPlanningRegionByPortsResponse {
+  OceanPlanningRegion ocean_planning_region = 1;
+}
+
+message GetOceanPlanningPortsByTradeLanesRequest {
+  repeated TradeLane trade_lane = 1;
+}
+
+message GetOceanPlanningPortsByTradeLanesResponse {
+  repeated OceanPlanningTradeLanePorts trade_lane_ports = 1;
+}
+
+message GetOceanPlanningPortsByOriginAndDestinationRegionRequest {
+  RegionSlug region_slug = 1;
+}
+
+message GetOceanPlanningPortsByOriginAndDestinationRegionResponse {
+  repeated string origin_port_fids = 1;
+  repeated string destination_port_fids = 2;
+}

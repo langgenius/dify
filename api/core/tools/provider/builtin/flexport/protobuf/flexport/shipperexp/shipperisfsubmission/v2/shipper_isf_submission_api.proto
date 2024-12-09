@@ -1,0 +1,55 @@
+// TEAM: shipper_exp
+
+syntax = "proto3";
+
+package flexport.shipperexp.shipperisfsubmission.v2;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipperIsfSubmissionApiProto";
+option java_package = "com.flexport.shipperexp.shipperisfsubmission.v2";
+option ruby_package = "Flexport::ShipperExp::ShipperIsfSubmission::V2";
+
+import "flexport/executioncoordinator/types/shipperisfsubmission/v1/shipper_isf_submission.proto";
+import "google/protobuf/timestamp.proto";
+
+// Shipper isf submission service.
+service ShipperIsfSubmissionAPI {
+  // List shipper isf submissions by shipment fid.
+  rpc ListShipperIsfSubmissions(ListShipperIsfSubmissionsRequest) returns (ListShipperIsfSubmissionsResponse);
+  // List historical shipper ISFs by shipper company fid and consignee company fid.
+  rpc ListHistoricalShipperIsfs(ListHistoricalShipperIsfsRequest) returns (ListHistoricalShipperIsfsResponse);
+  // Migrate core shipper ISF to NIS.
+  rpc MigrateShipperIsfSubmission(MigrateShipperIsfSubmissionRequest) returns (MigrateShipperIsfSubmissionResponse);
+}
+
+message ListShipperIsfSubmissionsRequest {
+  // Shipment fid
+  string shipment_fid = 1;
+}
+
+message ListShipperIsfSubmissionsResponse {
+  repeated flexport.executioncoordinator.types.shipperisfsubmission.v1.ShipperIsfSubmission shipper_isf_submissions = 1;
+}
+
+message ListHistoricalShipperIsfsRequest {
+  string shipper_company_fid = 1;
+  string consignee_company_fid = 2;
+  uint32 limit = 3;
+}
+
+message ListHistoricalShipperIsfsResponse {
+  repeated flexport.executioncoordinator.types.shipperisfsubmission.v1.ShipperIsfSubmission shipper_isf_submissions = 1;
+}
+
+message MigrateShipperIsfSubmissionRequest {
+  // core shipper ISF fid.
+  string migrate_from = 1;
+  string submitted_by_fid = 2;
+  google.protobuf.Timestamp created_at_time = 3;
+  flexport.executioncoordinator.types.shipperisfsubmission.v1.ShipperIsfSubmission shipper_isf_submission = 4;
+}
+
+message MigrateShipperIsfSubmissionResponse {
+  // shipper ISF fid on shipper NIS which will be attached to shipper ISF on core.
+  string fid = 1;
+}

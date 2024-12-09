@@ -1,0 +1,26 @@
+// TEAM: service_catalog
+// FPOS concept
+
+syntax = "proto3";
+
+package flexport.commerce.fpos.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PlaceTypeProto";
+option java_package = "com.flexport.commerce.fpos.v1beta1";
+option ruby_package = "Flexport::Commerce::Fpos::V1Beta1";
+
+// adapted from: https://github.flexport.io/flexport/fpos_shared/blob/master/oas3/src/main/resources/schemas/network/place/v1.0.0/place_api.json#L1609
+enum PlaceType {
+  PLACE_TYPE_INVALID = 0; // Unknown place type
+  PLACE_TYPE_AIRPORT = 1; // Is an airport
+  PLACE_TYPE_SEAPORT = 2; // Is a Seaport
+  PLACE_TYPE_RAILPORT = 3; // Is a Railport
+  PLACE_TYPE_ROADPORT = 4; // Is a Roadport
+  PLACE_TYPE_PHYSICAL = 5; // Is Physical
+  PLACE_TYPE_MAILING = 6; // Is a Mailing
+  PLACE_TYPE_RESIDENTIAL = 7; // Is a Residential
+  PLACE_TYPE_FACTORY = 8; // Is a Factory
+  PLACE_TYPE_WAREHOUSE = 9; // Is a Warehouse
+  PLACE_TYPE_TERMINAL = 10; // Is a Terminal
+}

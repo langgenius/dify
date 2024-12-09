@@ -1,0 +1,48 @@
+// TEAM: warehousing
+
+syntax = "proto3";
+
+package flexport.monolith.warehouse.v1beta1;
+
+import "flexport/monolith/warehouse/v1beta1/cargo_group.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShippableCargoRecordApiProto";
+option java_package = "com.flexport.monolith.warehouse.v1beta1";
+option ruby_package = "Flexport::Monolith::Warehouse::V1Beta1";
+
+service ShippableCargoRecordAPI {
+  rpc FindByShipmentFid(FindByShipmentFidRequest) returns (FindByShipmentFidResponse);
+  rpc FindByFid(FindByFidRequest) returns (FindByFidResponse);
+}
+
+message FindByShipmentFidRequest {
+  string shipment_fid = 1;
+}
+
+message FindByShipmentFidResponse {
+  ShippableCargoRecord shippable_cargo_record = 1;
+}
+
+message FindByFidRequest {
+  string fid = 1;
+}
+
+message FindByFidResponse {
+  ShippableCargoRecord shippable_cargo_record = 1;
+}
+
+message ShippableCargoRecord {
+  string fid = 1;
+  string shipment_fid = 2;
+  string warehouse_address_fid = 3;
+  string warehouse_name = 4;
+  string gross_weight_in_kg = 5;
+  string gross_volume_in_cbm = 6;
+  google.protobuf.Timestamp timestamp = 7;
+  repeated flexport.monolith.warehouse.v1beta1.CargoGroup cargo = 8;
+  // Note: the gate_in_timestamp is not expected to be maintained long term on the Shippable Cargo Record, and
+  // is intended for deprecation in the future. It exists now in place of a proper Fully Received event being emitted.
+  google.protobuf.Timestamp gate_in_timestamp = 9;
+}

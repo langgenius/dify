@@ -1,0 +1,146 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+import "flexport/executioncoordinator/types/enums/v1/node_tag.proto";
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+import "flexport/os/v1/types/walltimerange/v1/wall_time_range.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoTransitDateChangedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// A cargo transit date has changed.
+//
+// This message was the first ExecutionTaskStateEvent we added, and the motivating use case was
+// to update the standard graph node dates stored on voyage.rb in the monolith:
+//
+//   actual_departure
+//   actual_arrival
+//   scheduled_departure
+//   scheduled_arrival
+//
+// Prior to the ExecutionCoordinator, ExecutionProvider-like supply team code within the monolith
+// often just directly mutated graph dates to reflect updates from external carriers. With the
+// forwarding domain model, these sort of updates can be expressed by emitting this event. The
+// execution_coordinator_writeback Rails Engine then consumes these events and updates graph.rb.
+//
+// CargoTransitDateChanged is fairly generic, which makes it easy for event consumers who want all
+// cargo transit updates to track the movement of cargo in a standardized way. These consumers only
+// need to handle this one event rather than manually coercing mode-specific events such as
+// OceanCarrierBookingLastEtaChanged or TruckingOutForFinalDelivery into a standard format.
+//
+// However, sometimes consumers may only care about a very specific event such as when cargo has
+// arrived at an origin airport. To support these cases, ExecutionProviders may emit more
+// specialized events such as OceanContainerArrivedAtPortOfUnloading. These events may be redundant
+// with CargoTransitDateChanged events in that the ExecutionProvider emits both events. Or these
+// events may not have a corresponding CargoTransitDateChanged event, as in the case of
+// TruckingTrailerLoadingFinished. The exact idioms here are still being fleshed out.
+//
+// When matching CargoTransitDateChanged events to "legs" in the shipment graph, consumers should match
+// based on the event's attributes in this order
+// - execution_task_fid
+// - transit_type
+// - date_type
+// - address_fid (a.k.a. place_fid)
+// - container_fid
+// - route_shape_leg_fid
+// - cargo_fid
+// Recommend use modeAgnosticLegLookup (ruby and java library) to match dates to "legs" of the shipment:
+//
+// container_fid, route_shape_leg_fid, and cargo_fid are only used to disambiguate when there are
+// cases of parallel legs where items of cargo moving between the same origin and destination on different
+// legs.
+// For example:
+// A ---> B (leg 1)
+// A ---> B (leg 2)
+//
+// Or split legs, where cargo converges at a location from different legs, or diverges to arrive at
+// multiple locations.
+// For example:
+// A ---> C (leg 1)
+// B ---> C (leg 2)
+// or
+// A ---> B (leg 1)
+// A ---> C (leg 2)
+message CargoTransitDateChanged {
+  //
+  // REQUIRED. The type of cargo transit, eg "arrival" or "departure".
+  CargoTransitType transit_type = 4;
+  //
+  // REQUIRED. The type of the cargo transit date, eg "actual" or "scheduled".
+  CargoTransitDateType date_type = 6;
+  //
+  // OPTIONAL. The value of the cargo transit date as either a date or date time value.
+  // Early on during the shipment lifecycle estimated date-only values are provided, and then as
+  // the shipment is executed actual date time values are provided. You can think of a date-only
+  // value as a 24-hour range starting and ending at midnight in a particular time zone.
+  // When omitted, this event corresponds to clearing a date for an arrival or departure.
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime date_or_date_time = 1;
+  //
+  // REQUIRED. The fid of the immutable address instance this event relates to, if any.
+  // For example, the address being departed from or arrived at.
+  // Note that the "address" is really any place (could be address, port, terminal_or_cfs, etc).
+  string address_fid = 9;
+  //
+  // OPTIONAL. Describes the address given by address_fid, if known. Deprecated as event producers do not
+  // reliably set this in all cases, and node tags in general are deprecated:
+  // https://flexport.atlassian.net/wiki/spaces/EN/pages/2275870010/Monolith+Node+Tags#The-Future-of-Tags.
+  repeated flexport.executioncoordinator.types.enums.v1.NodeTag node_tags = 10 [deprecated = true];
+  //
+  // Identifiers for the cargo this date change relates to.
+  // This allows separate events to be emitted for cargo split while executing an ExecutionTask.
+  // For example, two containers that are part of a single Delivery Order (trucking ExecutionTask).
+  //
+  // This part of the system is a bit messy right now.
+  //
+  // Trucking and warehousing always set cargo_fids and currently do not set container_fids.
+  // Consumers can determine the container_fid by retrieving the cargo entity via fid.
+  // Ocean currently uses cargo_fids sometimes and container_fids other times.
+  string cargo_fid = 8;
+  //
+  // RECOMMENDED generally, REQUIRED FOR SINGLE CONTAINER EVENTS.
+  // The identifier of the one ocean container this event corresponds to.
+  string container_fid = 11;
+  //
+  // RECOMMENDED. The RouteShapeLeg fid that this date change occurred on.
+  string route_shape_leg_fid = 12;
+  //
+  // Do not use this field.
+  flexport.os.v1.types.walltimerange.v1.WallTimeRange date_value = 7 [deprecated = true];
+}
+
+// When adding new enum values, please update the GraphQL type
+// in execution_coordinator/src/main/resources/schema.graphqls.
+
+// ExecutionTask CargoTransitDateType type.
+// Generally consumers can coalesce estimated and scheduled dates and treat them the same.
+// For example, the public API only has estimates: https://apidocs.flexport.com/reference/milestones
+// However, the distinction is important in some cases so we allow more expressiveness internally.
+// See http://go/ec-dates for more information about the meaning of estimated vs scheduled.
+enum CargoTransitDateType {
+  CARGO_TRANSIT_DATE_TYPE_INVALID = 0;
+  //
+  // Actual dates refer to when something has actually happened.
+  CARGO_TRANSIT_DATE_TYPE_ACTUAL = 2;
+  //
+  // Estimated dates can refer to:
+  // - Air or ocean arrival estimates when the vessel or plane is in transit between ports.
+  // - Estimations made by Flexport for when trucking cargo will be available for pickup.
+  CARGO_TRANSIT_DATE_TYPE_ESTIMATED = 3;
+  //
+  // Scheduled dates can refer to:
+  // - Proforma scheduled dates for ocean and air carriers.
+  // - Pickups or deliveries scheduled by trucking carriers or warehouses.
+  CARGO_TRANSIT_DATE_TYPE_SCHEDULED = 1;
+}
+
+// ExecutionTask cargo transit type.
+enum CargoTransitType {
+  CARGO_TRANSIT_TYPE_INVALID = 0;
+  CARGO_TRANSIT_TYPE_FREIGHT_DEPARTURE = 1;
+  CARGO_TRANSIT_TYPE_FREIGHT_ARRIVAL = 2;
+}

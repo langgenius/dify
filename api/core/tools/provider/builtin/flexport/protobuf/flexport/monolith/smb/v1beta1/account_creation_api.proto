@@ -1,0 +1,72 @@
+// TEAM: smb_scone
+
+syntax = "proto3";
+
+package flexport.monolith.smb.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "AccountCreationApiProto";
+option java_package = "com.flexport.monolith.smb.v1beta1";
+option ruby_package = "Flexport::Monolith::Smb::V1Beta1";
+
+// An API for data exchange between Core and SMB NIS.
+service AccountCreationAPI {
+  // Check company existence by email.
+  rpc CompanyExistByEmail(CompanyExistByEmailRequest) returns (CompanyExistByEmailResponse);
+  // Check company existence by tax id.
+  rpc CompanyExistByTaxID(CompanyExistByTaxIDRequest) returns (CompanyExistByTaxIDResponse);
+  // Update client with information from onboarding
+  rpc UpdateClientInformation(UpdateClientInformationRequest) returns (UpdateClientInformationResponse);
+}
+
+message CompanyExistByTaxIDRequest {
+  string tax_id = 1;
+  string current_client_fid = 2;
+}
+
+message CompanyExistByTaxIDResponse {
+  string tax_id = 1;
+  bool is_existing_company = 2;
+}
+
+message CompanyExistByEmailRequest {
+  string email = 1;
+}
+
+message CompanyExistByEmailResponse {
+  string domain = 1;
+  bool is_allowlisted = 2;
+  bool is_existing_company = 3;
+}
+
+enum Status {
+  STATUS_INVALID = 0;
+  STATUS_LEAD = 1;
+  STATUS_TEST = 2;
+  STATUS_DEMO = 3;
+  STATUS_ACTIVE = 4;
+  STATUS_CHURNED = 5;
+  STATUS_DEACTIVATED = 6;
+}
+
+// The type of the segment.
+enum Segment {
+  SEGMENT_INVALID = 0;
+  SEGMENT_EMERGING = 1;
+  SEGMENT_SMB = 2;
+  SEGMENT_MID_MARKET = 3;
+  SEGMENT_NOT_QUALIFIED = 4;
+  SEGMENT_UNKNOWN = 5;
+  SEGMENT_ENTERPRISE = 6;
+}
+
+message UpdateClientInformationRequest {
+  int32 client_id = 1;
+  Status status = 2;
+  string salesforce_id = 3;
+  Segment segment = 4;
+}
+
+message UpdateClientInformationResponse {
+  bool success = 1;
+}

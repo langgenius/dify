@@ -1,0 +1,80 @@
+// TEAM: cost_capture
+
+syntax = "proto3";
+
+package flexport.subledger.transaction.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TransactionApiProto";
+option java_package = "com.flexport.subledger.transaction.v1beta1";
+option ruby_package = "Flexport::Subledger::Transaction::V1Beta1";
+
+import "flexport/financialvisibility/utils/v1beta1/utils.proto";
+import "flexport/subledger/transaction/v1beta1/transaction.proto";
+import "google/protobuf/struct.proto";
+
+// The transaction service definition.
+service TransactionAPI {
+  // Create multiple transactions with items.
+  rpc MultiCreateFromItems(MultiCreateFromItemsRequest) returns (MultiCreateFromItemsResponse);
+  // Reverse multiple transactions.
+  rpc MultiReverse(MultiReverseRequest) returns (MultiReverseResponse);
+  // Retrieve multiple transactions by filters.
+  rpc RetrieveAll(RetrieveAllRequest) returns (RetrieveAllResponse);
+  // Retrieve a single transaction by filters.
+  rpc RetrieveBy(RetrieveByRequest) returns (RetrieveByResponse);
+}
+
+// Request to create multiple transactions from items.
+message MultiCreateFromItemsRequest {
+  // Request to create a single transaction from items.
+  message CreateFromItemsRequest {
+    string reference = 1;
+    string from_account_fid = 2;
+    string to_account_fid = 3;
+    repeated subledger.transaction.v1beta1.TransactionItemDto items = 4;
+  }
+  repeated CreateFromItemsRequest params = 1;
+}
+
+// Response to a multiple-transaction creation from items request.
+message MultiCreateFromItemsResponse {
+  oneof result {
+    subledger.transaction.v1beta1.TransactionsDto success_result = 1;
+    financialvisibility.v1beta1.ErrorResult failure_result = 2;
+  }
+}
+
+// Request to reverse multiple transactions.
+message MultiReverseRequest {
+  map<string, string> transaction_fid_reference_map = 1;
+}
+
+// Response to a multiple transaction reversal request.
+message MultiReverseResponse {
+  oneof result {
+    subledger.transaction.v1beta1.TransactionsDto success_result = 1;
+    financialvisibility.v1beta1.ErrorResult failure_result = 2;
+  }
+}
+
+// Request to bulk-retrieve Transactions by filters.
+message RetrieveAllRequest {
+  subledger.transaction.v1beta1.TransactionFiltersDto filters = 1;
+  google.protobuf.Struct sort = 2;
+}
+
+// Response to a Transaction bulk-retrieval request.
+message RetrieveAllResponse {
+  subledger.transaction.v1beta1.TransactionsDto result = 1;
+}
+
+// Request to retrieve a single Transaction by filters.
+message RetrieveByRequest {
+  subledger.transaction.v1beta1.TransactionFiltersDto filters = 1;
+}
+
+// Response to a Transaction retrieval by filters request.
+message RetrieveByResponse {
+  subledger.transaction.v1beta1.TransactionDto result = 1;
+}

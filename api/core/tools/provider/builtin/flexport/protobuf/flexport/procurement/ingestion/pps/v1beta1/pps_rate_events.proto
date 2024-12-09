@@ -1,0 +1,43 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.ingestion.pps.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PpsRateEventsProto";
+option java_package = "com.flexport.procurement.ingestion.pps.v1beta1";
+option ruby_package = "Flexport::Procurement::Ingestion::Pps::V1Beta1";
+
+message PpsRate {
+  optional string carrier = 1;
+  optional string contract_number = 2;
+  optional string freight_partner = 3;
+  optional string origin_service = 4;
+  optional string destination_service = 5;
+  optional string client = 6;
+  optional string booking_code = 7;
+  optional string nac_fak = 8;
+  optional string origin = 9;
+  optional string origin_via = 10;
+  optional string destination = 11;
+  optional string destination_via = 12;
+  optional bool visible = 13;
+  optional string pricing_stage = 14;
+  optional string charge_code = 15;
+  optional string effective = 16;
+  optional string expiration = 17;
+  optional string currency = 18;
+  optional int64 twenty_foot_micros = 19;
+  optional int64 forty_foot_micros = 20;
+  optional int64 forty_foot_hc_micros = 21;
+  optional int64 forty_five_foot_hc_micros = 22;
+}
+
+message RateCreated {
+  repeated PpsRate rates = 1;
+  bool end_of_contract = 2;
+  string amendment_number = 3;
+  string carrier_fid = 4;
+  string contract_number = 5;
+}

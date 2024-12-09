@@ -1,0 +1,11 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customscaadapter.healingjob.v1beta1;
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customscaadapter.healingjob.v1beta1";
+
+message HealingJob {
+  string customer_number = 1;
+}

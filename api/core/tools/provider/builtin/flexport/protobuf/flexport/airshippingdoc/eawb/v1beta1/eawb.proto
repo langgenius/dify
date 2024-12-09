@@ -1,0 +1,24 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.airshippingdoc.eawb.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "EawbProto";
+option java_package = "com.flexport.airshippingdoc.eawb.v1beta1";
+option ruby_package = "Flexport::AirShippingDoc::Eawb::V1Beta1";
+
+message Eawb {
+  google.protobuf.Int32Value id = 1;
+  google.protobuf.StringValue house_number = 2;
+  google.protobuf.StringValue mawb_number = 3;
+  google.protobuf.StringValue rejection_reason = 4;
+  google.protobuf.StringValue user_fid = 5;
+  google.protobuf.StringValue status = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}

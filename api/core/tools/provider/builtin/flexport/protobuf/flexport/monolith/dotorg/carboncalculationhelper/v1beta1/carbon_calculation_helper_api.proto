@@ -1,0 +1,59 @@
+// TEAM: dot_org
+
+syntax = "proto3";
+
+package flexport.monolith.dotorg.carboncalculationhelper.v1beta1;
+
+import "flexport/dotorg/carboncalculation/v1beta1/carbon_calculation_request_leg.proto";
+import "flexport/network/v1beta1/address.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarbonCalculationHelperApiProto";
+option java_package = "com.flexport.monolith.dotorg.carboncalculationhelper.v1beta1";
+option ruby_package = "Flexport::Monolith::DotOrg::CarbonCalculationHelper::V1Beta1";
+
+// DotOrg API to provide data from the monolith to feed to NIS carbon calculator
+service CarbonCalculationHelperAPI {
+  // Returns request legs for a shipment.
+  rpc BuildRequestLegsForShipment(BuildRequestLegsForShipmentRequest) returns (BuildRequestLegsForShipmentResponse);
+  // Returns coordinates for a port
+  rpc GetPortCoordinates(GetPortCoordinatesRequest) returns (GetPortCoordinatesResponse);
+  // Returns coordinates for a port
+  rpc GetNearestPort(GetNearestPortRequest) returns (GetNearestPortResponse);
+}
+
+// Request object for building shipment's request legs.
+message BuildRequestLegsForShipmentRequest {
+  string execution_order_fid = 1;
+  string shipment_fid = 2;
+}
+
+// Contains the request legs for a shipment.
+message BuildRequestLegsForShipmentResponse {
+  repeated flexport.dotorg.carboncalculation.v1beta1.CarbonCalculationRequestLeg request_legs = 1;
+}
+
+// Request object for getting a port's coordinates.
+message GetPortCoordinatesRequest {
+  string port_code = 1;
+}
+
+// Response object of a port's coordinates.
+message GetPortCoordinatesResponse {
+  google.protobuf.DoubleValue latitude = 1;
+  google.protobuf.DoubleValue longitude = 2;
+}
+
+// Request object for getting the nearest network port with a port route.
+message GetNearestPortRequest {
+  string port_code = 1;
+  google.protobuf.DoubleValue latitude = 2;
+  google.protobuf.DoubleValue longitude = 3;
+  bool is_origin = 4;
+}
+
+// Response object for the nearest network port with a port route.
+message GetNearestPortResponse {
+  flexport.network.v1beta1.Address address = 1;
+}

@@ -1,0 +1,28 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "AirCarrierCargoDeliveredProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "google/protobuf/timestamp.proto";
+
+// The air carrier (or back-to-back partner, or a designated terminal operator) have delivered the cargo to destination truckers/freight forwarder.
+// This should not be confused with cargo being delivered to the final destination.
+// One way to think is that the air carrier has released the cargo to the freight forwarder at the destination.
+message AirCarrierCargoDelivered {
+  // Do not use. Use route_shape_leg_fid instead.
+  string cargo_fid = 1;
+  // Address where the cargo was released
+  string address_fid = 2;
+  // Timestamp when the cargo was successfully delivered/handed off/released to the trucker
+  google.protobuf.Timestamp delivered_at_time = 3;
+  //
+  // The leg whose cargo has been release. If empty, this
+  // applies to all legs on the execution task.
+  string route_shape_leg_fid = 4;
+}

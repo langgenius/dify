@@ -1,0 +1,82 @@
+// TEAM: workflow_platform
+
+syntax = "proto3";
+
+package flexport.rulesengine.sampletestservice.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "SampleTestServiceApiProto";
+option java_package = "com.flexport.rulesengine.sampletestservice.v1beta1";
+option ruby_package = "Flexport::RulesEngine::SampleTestService::V1Beta1";
+
+import "flexport/rulesengine/options/v1/options.proto";
+
+// SampleTestServiceAPI.
+service SampleTestServiceAPI {
+  option (flexport.rulesengine.options.v1.rule_facade).service_name = "rules_engine";
+  // All following GradeN is for testing scanning the type system from Protobuf.
+
+  // Grade for test.
+  rpc Grade1(Grade1Request) returns (Grade1Response);
+  // Grade for test.
+  rpc Grade2(Grade2Request) returns (Grade2Response) {
+    option (flexport.rulesengine.options.v1.rule).api_name = "com.flexport.rulesengine.grading.dummy";
+  }
+  // Grade for test.
+  rpc Grade3(Grade3Request) returns (Grade3Response) {
+    option (flexport.rulesengine.options.v1.rule).api_name = "";
+  }
+  // Grade for test.
+  rpc Grade4(Grade4Request) returns (Grade4Response) {
+    option (flexport.rulesengine.options.v1.rule).api_name = "";
+    option (flexport.rulesengine.options.v1.validate_output).service_name = "";
+  }
+}
+
+message Grade1Request {
+  uint64 score = 1;
+}
+
+message Grade1Response {
+  // Grade.
+  enum Grade {
+    GRADE_INVALID = 0;
+  }
+  Grade grade = 1;
+}
+
+message Grade2Request {
+  uint64 score = 1;
+}
+
+message Grade2Response {
+  // Grade.
+  enum Grade {
+    GRADE_INVALID = 0;
+  }
+  Grade grade = 1;
+}
+
+message Grade3Request {
+  uint64 score = 1;
+}
+
+message Grade3Response {
+  // Grade.
+  enum Grade {
+    GRADE_INVALID = 0;
+  }
+  Grade grade = 1;
+}
+
+message Grade4Request {
+  uint64 score = 1;
+}
+
+message Grade4Response {
+  // Grade.
+  enum Grade {
+    GRADE_INVALID = 0;
+  }
+  Grade grade = 1;
+}

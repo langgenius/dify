@@ -1,0 +1,17 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.grpc.shipmentinfofetcher.v1beta1;
+
+import "flexport/originops/quotestatus/v1/quote_status.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentQuoteStatusProto";
+option java_package = "com.flexport.assignment.grpc.shipmentinfofetcher.v1beta1";
+option ruby_package = "Flexport::Assignment::Grpc::ShipmentInfoFetcher::V1Beta1";
+
+message ShipmentQuoteStatus {
+  string shipment_fid = 1;
+  flexport.originops.quotestatus.v1.QuoteStatus quote_status = 2;
+}

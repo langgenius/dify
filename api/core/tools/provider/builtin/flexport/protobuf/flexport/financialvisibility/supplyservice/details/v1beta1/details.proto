@@ -1,0 +1,33 @@
+// TEAM: cost_capture
+
+syntax = "proto3";
+
+package flexport.financialledger.supplyservice.details.v1beta1;
+
+import "flexport/financialvisibility/details/v1beta1/details.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DetailsProto";
+option java_package = "com.flexport.financialledger.supplyservice.details.v1beta1";
+option ruby_package = "Flexport::FinancialLedger::SupplyService::Details::V1Beta1";
+
+// Versioned details message for a supply service.
+message DetailsDto {
+  google.protobuf.StringValue fid = 1;
+  google.protobuf.StringValue supply_service_fid = 2;
+  google.protobuf.Timestamp versioned_at_time = 3;
+  map<string, financialledger.details.v1beta1.DetailValueDto> details = 4;
+  google.protobuf.Timestamp created_at_time = 5;
+  google.protobuf.Timestamp updated_at_time = 6;
+  google.protobuf.StringValue id = 7;
+}
+
+// Kinesis message emitted by the FinancialLedger UpdateSupplyServiceDetails
+// service when supply service details are updated.
+message DetailsUpdated {
+  string supply_service_id = 1;
+  string supply_service_details_id = 2;
+  google.protobuf.Timestamp versioned_at_time = 3;
+}

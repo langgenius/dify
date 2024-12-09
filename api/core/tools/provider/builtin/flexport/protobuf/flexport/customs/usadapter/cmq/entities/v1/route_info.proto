@@ -1,0 +1,26 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.cmq.entities.v1;
+
+import "google/type/date.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.cmq.entities.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::Cmq::V1";
+
+message RouteInfo {
+  string in_bond_entry_number = 1;
+  string manifested_port_of_unlading = 2;
+  string actual_port_of_unlading = 3;
+  string actual_port_of_unlading_vessel_diversion = 4;
+  string in_bond_origin_port = 5;
+  string manifested_in_bond_destination_port = 6;
+  string actual_in_bond_destination_manual_diversion = 7;
+  string actual_in_bond_destination_edi_diversion = 8;
+  string vessel_departure_port = 9;
+  google.type.Date vessel_departure_date = 10;
+  string container_load_port = 11;
+  google.type.Date container_load_date = 12;
+}

@@ -1,0 +1,36 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.monolith.oceansailing.portgroup.v1beta1;
+
+import "flexport/monolith/oceansailing/portgroup/v1beta1/port_group.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PortGroupApiProto";
+option java_package = "com.flexport.monolith.oceansailing.portgroup.v1beta1";
+option ruby_package = "Flexport::Monolith::OceanSailing::PortGroup::V1Beta1";
+
+service PortGroupAPI {
+  // Get port ids in the same port group as a given port
+  rpc GetPortsInSamePortGroupByPortId(GetPortsInSamePortGroupByPortIdRequest) returns (GetPortsInSamePortGroupByPortIdResponse);
+  // Get port ids in the given port group
+  rpc GetPortsInPortGroupByPortGroupId(GetPortsInPortGroupByPortGroupIdRequest) returns (GetPortsInPortGroupByPortGroupIdResponse);
+}
+
+message GetPortsInSamePortGroupByPortIdRequest {
+  int32 port_id = 1;
+  PortGroupType port_group_type = 2;
+}
+
+message GetPortsInSamePortGroupByPortIdResponse {
+  repeated int32 port_ids = 1;
+}
+
+message GetPortsInPortGroupByPortGroupIdRequest {
+  int32 port_group_id = 1;
+}
+
+message GetPortsInPortGroupByPortGroupIdResponse {
+  repeated int32 port_ids = 1;
+}

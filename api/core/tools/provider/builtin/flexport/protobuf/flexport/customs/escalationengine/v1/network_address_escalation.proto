@@ -1,0 +1,20 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.escalationengine.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "NetworkAddressEscalationProto";
+option java_package = "com.flexport.customs.escalationengine.v1";
+option ruby_package = "Flexport::Customs::EscalationEngine::V1";
+
+// Escalation for a NetworkAddressEscalation
+message NetworkAddressEscalation {
+  // The type of escalation.
+  enum Type {
+    TYPE_INVALID = 0;
+    TYPE_NETWORK_ADDRESS_MISMATCH_TASK = 1;
+  }
+  Type type = 1;
+}

@@ -1,0 +1,123 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.oex.carrierbookingbundle.v1beta1;
+
+import "flexport/oex/carrierbookingbundle/v1beta1/carrier_booking_bundle.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierBookingBundleFormInputProto";
+option java_package = "com.flexport.oex.carrierbookingbundle.v1beta1";
+option ruby_package = "Flexport::OEX::CarrierBookingBundle::V1Beta1";
+
+/*
+Mapping messages in engines/ocean_execution/app/api/ocean_execution/api/input/carrier_booking_bundle_form_input.rb
+ */
+
+message BookingContentInput {
+  bool prebooked = 1;
+  string carrier_fid = 2;
+  optional string carrier_contract_fid = 3;
+  optional string offline_carrier_contract_number = 13;
+  optional string booking_party_fid = 10;
+  google.protobuf.Timestamp cy_cutoff = 4;
+  google.protobuf.Timestamp si_cutoff = 5;
+  google.protobuf.Timestamp vgm_cutoff = 6;
+  repeated string premium_services = 9;
+  BookingContent.BookingStatus status = 7;
+  BookingContent.BookingReleaseStatus release_status = 8;
+  optional string source_carrier_booking_fid = 11;
+  optional string updated_by_user_fid = 12;
+}
+
+message BookingIntegrationInput {
+  optional BookingIntegration.BookingIntegrationPartner integration_partner = 1;
+  optional string booking_office_port_fid = 2;
+  optional string contract_client_fid = 4;
+  optional string contact_email = 5;
+  optional string rate_group = 6;
+  optional string edifact_booking_description = 7;
+  optional string edifact_description_of_goods = 8;
+  repeated string edifact_commodities = 9;
+  repeated string edifact_hs_codes = 10;
+  optional int64 edifact_package = 11;
+  optional double edifact_volume = 12;
+  optional double edifact_weight = 13;
+  optional BookingIntegration.BookingPlacedExternally placed_externally = 15;
+  bool uses_partner_contract = 16;
+  optional string spot_rate_offer_identifier = 17;
+  optional string internal_reference = 18;
+  optional string freight_type = 19;
+  optional string payment_term = 20;
+  optional string payment_location_code = 21;
+  optional string payment_location_name = 22;
+  optional BookingIntegration.ContractSourceType contract_source_type = 23;
+  optional string flexport_operation_contact_fid = 24;
+  optional IntegrationParty shipper = 25;
+  optional IntegrationParty consignee = 26;
+  optional IntegrationParty notify_party = 27;
+}
+
+message BookingVoyageInput {
+  // The UUID.
+  // nil       -> create a new voyage
+  // non-empty -> update an existing voyage
+  optional string uuid = 1;
+  BookingVoyage.TransportationMode transportation_mode = 2;
+  optional string freight_carrier_fid = 3;
+  optional string origin_fid = 4;
+  optional string destination_fid = 5;
+  google.protobuf.Timestamp scheduled_departure = 6;
+  google.protobuf.Timestamp scheduled_arrival = 8;
+  optional string vessel_fid = 10;
+  optional string voyage_number = 11;
+  optional string operator_voyage_number = 15;
+  optional string carrier_service_string_fid = 12;
+  optional string cargosmart_route_id = 13;
+  optional string estimated_schedule_fid = 14;
+}
+
+message ShippingOrderInput {
+  optional string uuid = 1;
+  string booking_number = 2;
+  string so_number = 3;
+  google.protobuf.Timestamp cy_cutoff = 8;
+  google.protobuf.Timestamp si_cutoff = 9;
+  google.protobuf.Timestamp vgm_cutoff = 10;
+  repeated BookingContainer released_containers = 7;
+  repeated string document_fids = 5;
+  repeated string sub_so_numbers = 4;
+  optional string ref_number = 6;
+  optional string updated_by_user_fid = 11;
+  optional string created_by_user_fid = 12;
+}
+
+message CarrierBookingBundleInput {
+  // The fid.
+  // nil       -> create a carrier booking
+  // non-empty -> update an existing booking
+  optional string carrier_booking_fid = 1;
+  // The shipment fid.
+  // nil       -> pre-booking
+  // non-empty -> booking with a shipment
+  optional string shipment_fid = 2;
+  optional string booking_number = 3;
+  BookingContentInput booking_content = 4;
+  BookingIntegrationInput booking_integration = 5;
+  repeated BookingContainer container_requests = 6;
+  repeated BookingVoyageInput booking_voyages = 7;
+  HblOverride hbl_override = 8;
+  repeated ShippingOrderInput shipping_orders = 9;
+  // Only update when this is a new booking
+  optional CarrierHaulage carrier_haulage = 13;
+  string created_or_updated_by_user_fid = 10;
+}
+
+message CarrierBookingBundleFormInput {
+  CarrierBookingBundleInput carrier_booking_bundle = 1;
+  optional string event_source = 2;
+  optional string frontend_view = 3;
+  optional string frontend_feature = 4;
+}

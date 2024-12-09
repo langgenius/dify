@@ -1,0 +1,257 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.oex.carrierbookingbundle.v1beta1;
+
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierBookingBundleProto";
+option java_package = "com.flexport.oex.carrierbookingbundle.v1beta1";
+option ruby_package = "Flexport::OEX::CarrierBookingBundle::V1Beta1";
+
+// This is the normalized data structure that represents everything around a booking with ocean carriers.
+message CarrierBookingBundle {
+  string carrier_booking_fid = 1;
+  optional string shipment_fid = 2;
+  optional string booking_number = 3;
+  BookingContent booking_content = 4;
+  BookingIntegration booking_integration = 5;
+  repeated BookingContainer container_requests = 6;
+  repeated BookingVoyage booking_voyages = 7;
+  HblOverride hbl_override = 8;
+  repeated ShippingOrder shipping_orders = 9;
+  optional CarrierHaulage carrier_haulage = 13;
+  string created_by_user_fid = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+  optional google.protobuf.Timestamp attached_at = 14;
+  optional string oex_carrier_booking_document_fid = 15;
+  RouteData route_data = 16;
+  optional uint64 revision = 17;
+  optional string revision_source = 18;
+}
+
+message BookingContent {
+  enum BookingStatus {
+    BOOKING_STATUS_INVALID = 0;
+    BOOKING_STATUS_CREATED = 1;
+    BOOKING_STATUS_REQUESTED = 2;
+    BOOKING_STATUS_PENDING = 3;
+    BOOKING_STATUS_CONFIRMED = 4;
+    BOOKING_STATUS_DECLINED = 5;
+    BOOKING_STATUS_CANCELLED = 6;
+    BOOKING_STATUS_UNBOOKED = 7;
+    BOOKING_STATUS_ERROR = 8;
+    BOOKING_STATUS_SLA_VIOLATION = 9;
+    BOOKING_STATUS_REVISING = 10;
+  }
+  enum BookingReleaseStatus {
+    BOOKING_RELEASE_STATUS_INVALID = 0;
+    BOOKING_RELEASE_STATUS_FULLY_RELEASED = 1;
+    BOOKING_RELEASE_STATUS_PARTIALLY_RELEASED = 2;
+    BOOKING_RELEASE_STATUS_NOT_RELEASED = 3;
+  }
+  bool prebooked = 1;
+  string carrier_fid = 2;
+  optional string carrier_contract_fid = 3;
+  optional string offline_carrier_contract_number = 14;
+  optional string booking_party_fid = 10;
+  google.protobuf.Timestamp cy_cutoff = 4;
+  google.protobuf.Timestamp si_cutoff = 5;
+  google.protobuf.Timestamp vgm_cutoff = 6;
+  repeated string premium_services = 9;
+  BookingStatus status = 7;
+  BookingReleaseStatus release_status = 8;
+  optional string source_carrier_booking_fid = 11;
+  optional string updated_by_user_fid = 12;
+  optional google.protobuf.Timestamp updated_by_user_time = 13;
+}
+
+message BookingIntegration {
+  enum BookingIntegrationPartner {
+    BOOKING_INTEGRATION_PARTNER_INVALID = 0;
+    BOOKING_INTEGRATION_PARTNER_INTTRA = 1;
+    BOOKING_INTEGRATION_PARTNER_CMA = 2;
+    BOOKING_INTEGRATION_PARTNER_BOOMI = 3;
+    BOOKING_INTEGRATION_PARTNER_OIT = 4;
+    BOOKING_INTEGRATION_PARTNER_TRANSOCEAN = 5;
+    BOOKING_INTEGRATION_PARTNER_CMLOG = 6;
+  }
+  enum BookingPlacedExternally {
+    BOOKING_PLACED_EXTERNALLY_INVALID = 0;
+    BOOKING_PLACED_EXTERNALLY_OTHER = 1;
+    BOOKING_PLACED_EXTERNALLY_SYNCONHUB_WEBSITE = 2;
+  }
+  enum ContractSourceType {
+    CONTRACT_SOURCE_TYPE_INVALID = 0;
+    CONTRACT_SOURCE_TYPE_FLEXPORT_CONTRACT = 1;
+    CONTRACT_SOURCE_TYPE_PARTNER_CONTRACT = 2;
+    CONTRACT_SOURCE_TYPE_BCO_CONTRACT = 3;
+  }
+  optional BookingIntegrationPartner integration_partner = 1;
+  optional string booking_office_port_fid = 2;
+  optional string contract_client_fid = 4;
+  optional string contact_email = 5;
+  optional string rate_group = 6;
+  optional string edifact_booking_description = 7;
+  optional string edifact_description_of_goods = 8;
+  repeated string edifact_commodities = 9;
+  repeated string edifact_hs_codes = 10;
+  optional int64 edifact_package = 11;
+  optional double edifact_volume = 12;
+  optional double edifact_weight = 13;
+  optional BookingPlacedExternally placed_externally = 15;
+  bool uses_partner_contract = 16;
+  optional string spot_rate_offer_identifier = 17;
+  repeated string boomi_error_messages = 3;
+  optional string internal_reference = 14;
+  optional string freight_type = 18;
+  optional string payment_term = 19;
+  optional string payment_location_code = 20;
+  optional string payment_location_name = 21;
+  optional ContractSourceType contract_source_type = 22;
+  optional string flexport_operation_contact_fid = 23;
+  optional IntegrationParty shipper = 24;
+  optional IntegrationParty consignee = 25;
+  optional IntegrationParty notify_party = 26;
+}
+
+message BookingContainer {
+  string iso_container_type = 1;
+  int64 quantity = 2;
+  bool subject_to_roll = 3;
+  bool non_operating_reefer = 4;
+  // the number of TEUs a container size represents according to carriers for the purposes of allocations
+  int32 carrier_teu = 5;
+  flexport.os.v1.types.cargo.v1.Iso6346ContainerSize iso_6346_container_size = 6;
+}
+
+message VoyageAutomatedUpdate {
+  string change_type = 1;
+  optional string unlink_reason = 2;
+  optional string date_changed = 3;
+  google.protobuf.Timestamp from_date = 4;
+  google.protobuf.Timestamp to_date = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message BookingVoyage {
+  enum TransportationMode {
+    TRANSPORTATION_MODE_INVALID = 0;
+    TRANSPORTATION_MODE_AIR = 1;
+    TRANSPORTATION_MODE_OCEAN = 2;
+    TRANSPORTATION_MODE_TRUCK = 3;
+    TRANSPORTATION_MODE_RAIL = 4;
+    TRANSPORTATION_MODE_OCEAN_AIR = 5;
+    TRANSPORTATION_MODE_TRUCK_INTL = 6;
+    TRANSPORTATION_MODE_WAREHOUSE_STORAGE = 7;
+  }
+  string uuid = 1;
+  TransportationMode transportation_mode = 2;
+  optional string freight_carrier_fid = 3;
+  optional string origin_fid = 4;
+  optional string destination_fid = 5;
+  google.protobuf.Timestamp scheduled_departure = 6;
+  bool scheduled_departure_date_only = 7;
+  google.protobuf.Timestamp scheduled_arrival = 8;
+  bool scheduled_arrival_date_only = 9;
+  optional string vessel_fid = 10;
+  optional string voyage_number = 11;
+  optional string operator_voyage_number = 16;
+  optional string carrier_service_string_fid = 12;
+  optional string cargosmart_route_id = 13;
+  optional string estimated_schedule_fid = 14;
+  repeated VoyageAutomatedUpdate voyage_automated_updates = 15;
+}
+
+message HblOverride {
+  optional string place_of_receipt_string = 1;
+  optional string port_of_loading_fid = 2;
+  optional string port_of_unloading_fid = 3;
+}
+
+message ShippingOrder {
+  string uuid = 1;
+  string booking_number = 2;
+  string so_number = 3;
+  google.protobuf.Timestamp cy_cutoff = 8;
+  google.protobuf.Timestamp si_cutoff = 9;
+  google.protobuf.Timestamp vgm_cutoff = 10;
+  repeated BookingContainer released_containers = 7;
+  repeated string document_fids = 5;
+  repeated string sub_so_numbers = 4;
+  optional string ref_number = 6;
+  optional string updated_by_user_fid = 11;
+  optional google.protobuf.Timestamp updated_at = 12;
+  optional string created_by_user_fid = 13;
+  optional google.protobuf.Timestamp created_at = 14;
+}
+
+message CarrierHaulageContainer {
+  string cargo_type = 1;
+  optional string haulage_instructions = 2;
+  google.protobuf.Timestamp drop_off_datetime = 5;
+  google.protobuf.Timestamp pickup_datetime = 3;
+  string pickup_reference = 4;
+}
+
+message CarrierHaulageAddress {
+  // Network::Address, it could be address, port, or etc.
+  optional string address_fid = 1;
+  optional string country_code = 2;
+  optional string state = 3;
+  optional string city = 4;
+  optional string zip = 5;
+  optional string street_address = 6;
+  optional string street_address2 = 7;
+}
+
+message CarrierHaulage {
+  string service_type = 1;
+  repeated CarrierHaulageContainer carrier_haulage_containers = 2;
+  optional CarrierHaulageAddress drop_off_location = 3;
+  optional CarrierHaulageAddress pickup_location = 4;
+  optional string contact_person = 5;
+  optional string contact_phone_number = 6;
+  optional string ship_to_party_name = 7;
+  optional string supplier_name = 8;
+  optional google.protobuf.Timestamp requested_delivery_datetime = 9;
+}
+
+message RouteData {
+  optional string place_of_receipt_fid = 1;
+  optional string place_of_delivery_fid = 2;
+  optional string port_of_loading_fid = 3;
+  optional string port_of_discharge_fid = 4;
+  optional string inland_port_fid = 5;
+  optional google.protobuf.Timestamp eta = 6;
+  optional google.protobuf.Timestamp etd = 7;
+  optional google.protobuf.Timestamp hard_si_cutoff = 8;
+  optional google.protobuf.Timestamp soft_si_cutoff = 9;
+  optional google.protobuf.Timestamp hard_cy_cutoff = 10;
+  optional google.protobuf.Timestamp soft_cy_cutoff = 11;
+  optional google.protobuf.Timestamp hard_vgm_cutoff = 12;
+  optional google.protobuf.Timestamp soft_vgm_cutoff = 13;
+  optional google.protobuf.Timestamp port_of_loading_etd = 14;
+  optional google.protobuf.Timestamp port_of_discharge_eta = 15;
+  optional string mother_vessel_fid = 16;
+  optional string mother_vessel_voyage_number = 17;
+}
+
+message IntegrationParty {
+  optional string title = 1;
+  optional string address_line_1 = 2;
+  optional string address_line_2 = 3;
+  optional string city = 4;
+  optional string state = 5;
+  optional string postal_code = 6;
+  optional string country_code = 7;
+  optional string party_identifier = 8;
+  optional string phone = 9;
+  optional string contact_email = 10;
+  optional string reference_code = 11;
+  optional string contact_name = 12;
+}

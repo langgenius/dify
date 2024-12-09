@@ -1,0 +1,48 @@
+// TEAM: customs-insights
+
+syntax = "proto3";
+
+package flexport.customs.productlibrary.products.v1beta1;
+
+import "flexport/customs/productlibrary/common/v1beta1/country_code.proto";
+import "flexport/customs/productlibrary/products/v1beta1/product.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ProductsApiProto";
+option java_package = "com.flexport.customs.productlibrary.products.v1beta1";
+option ruby_package = "Flexport::Customs::ProductLibrary::Products::V1Beta1";
+
+// Service to CREATE/UPDATE/GET products.
+// Currently this API supports GET.
+// For CREATE/UPDATE APIs please refer to the ProductAPI service in flexport.monolith.productlibrary.product.v1beta1.product_api.proto
+service ProductsAPI {
+  rpc GetProductsForImport(GetProductsForImportRequest) returns (GetProductsForImportResponse);
+}
+
+// Gets all the product information for the given country of import, date and product specifiers.
+message GetProductsForImportRequest {
+  reserved 1;
+
+  // Used to determine classification, Fees (e.g. cotton) and PGAs.
+  // All of these differ from country to country.
+  flexport.customs.productlibrary.common.v1beta1.CountryCode country_of_import = 2;
+
+  // This is a "bulk" API, allowing the caller to fetch data for multiple Products in a single call - henced the
+  // "repeated" keyword. This list identifies the Products that are being requested.
+  repeated ProductSpecifier product_specifiers = 3;
+}
+
+message ProductSpecifier {
+  // Product identifier
+  string product_fid = 1;
+
+  // Used to determine Free Trade Agreements (FTA) & 301 duties, ADD/CVD
+  flexport.customs.productlibrary.common.v1beta1.CountryCode country_of_origin = 2;
+
+  // Used to determine applicability of General System of Preferences (GSP) - future work
+  flexport.customs.productlibrary.common.v1beta1.CountryCode country_of_export = 3;
+}
+
+message GetProductsForImportResponse {
+  repeated ProductWithContext products = 1;
+}

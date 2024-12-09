@@ -1,0 +1,25 @@
+// TEAM: ocean_service_offerings
+
+syntax = "proto3";
+
+package flexport.oceansupply.entityevent.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanProductWeekEntityProto";
+option java_package = "com.flexport.oceansupply.entityevent.v1beta1";
+option ruby_package = "Flexport::OceanSupply::EntityEvent::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+
+// Should match com.flexport.oceansupply.generated.tables.records.OceanProductWeek
+message OceanProductWeekEntity {
+  string fid = 1;
+  int64 id = 2;
+  int64 ocean_product_id = 3;
+  int64 iso_year_week = 4;
+  repeated string inventory_fids = 5;
+  google.protobuf.Timestamp created_at_time = 6;
+  google.protobuf.Timestamp updated_at_time = 7;
+  int64 total_teus = 8;
+  int64 remaining_teus = 9;
+}

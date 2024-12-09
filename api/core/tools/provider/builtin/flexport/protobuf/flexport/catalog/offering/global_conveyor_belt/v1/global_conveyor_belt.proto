@@ -1,0 +1,13 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.offering.global_conveyor_belt.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "GlobalConveyorBeltProto";
+option java_package = "com.flexport.catalog.offering.global_conveyor_belt.v1";
+option ruby_package = "Flexport::Catalog::Offering::GlobalConveyorBelt::V1";
+
+// Global Conveyor Belt Attributes.
+message GlobalConveyorBeltAttributesDto {}

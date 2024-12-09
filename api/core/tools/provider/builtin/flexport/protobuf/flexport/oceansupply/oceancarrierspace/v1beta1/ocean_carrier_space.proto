@@ -1,0 +1,161 @@
+// TEAM: ocean_allocations
+
+syntax = "proto3";
+
+package flexport.oceansupply.oceancarrierspace.v1beta1;
+
+import "flexport/ocean/schedules/connectingleg/v1beta1/connecting_leg.proto";
+import "flexport/ocean/schedules/estimatedschedule/v1beta1/estimated_schedule.proto";
+import "flexport/ocean/schedules/proformaschedule/v1beta1/proforma_schedule.proto";
+import "flexport/ocean/type/sailingdirection/v1beta1/sailing_direction.proto";
+import "flexport/ocean/type/week/v1beta1/week.proto";
+import "flexport/oceansupply/carrierprofile/v1beta1/carrier_profile.proto";
+import "flexport/oceansupply/inventory/v1beta1/inventory.proto";
+import "flexport/oceansupply/oceanroute/v1beta1/ocean_route.proto";
+import "flexport/procurement/rates/v1/universal_rates.proto";
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanCarrierSpaceProto";
+option java_package = "com.flexport.oceansupply.oceancarrierspace.v1beta1";
+option ruby_package = "Flexport::OceanSupply::V1Beta1";
+
+/* This file is not covered by a the buf linter. The reason is it relies on
+ * protos from fpos sailing schedules, which are properly pulled in by bazel,
+ * but aren't visible to the linter and the only way to satisfy the linter
+ * is to exclude this file. So if you are making changes, please verify they
+ * follow the linter rules by checking the protos in another file first.
+ */
+
+/**
+ * A CarrierSpace is a bookable unit of space that can be obtained from an Ocean Carrier.
+ */
+message CarrierSpace {
+  // The Weekless component includes entities with properties that don't change
+  // week to week, like inventory_buckets, profiles and proforma schedules.
+  WeeklessCarrierSpace weekless_carrier_space = 1;
+  // The etd week (and year) correspond to the proforma etd from the Main Leg origin.
+  // This could be different than the inventory's carrier week; the estimated schedule's
+  // anchor week; the live etd of the Main Leg origin; and/or the etd of the origin connecting
+  // leg.
+  int32 etd_week = 2;
+  int32 etd_year = 3;
+  ocean.schedules.estimatedschedule.v1beta1.EstimatedSchedule estimated_schedule = 4;
+  inventory.v1beta1.Inventory inventory = 5;
+  flexport.procurement.rates.v1.Rate rate = 6;
+  // The contract is either from the profile or from the active contract in the inventory bucket
+  string contract_fid = 7;
+  // The fid of the carrier space used for external reference
+  string fid = 8;
+  // Additional information detailing rate requests for this carrier space.
+  RateMetadata rate_meta_data = 9;
+}
+
+message WeeklessCarrierSpace {
+  ProfileRoute profile_route = 1;
+  inventory.v1beta1.InventoryBucket inventory_bucket = 2; // no inventories included
+}
+
+message ProfileRoute {
+  carrierprofile.v1beta1.CarrierProfile profile = 1;
+  FullySpecifiedRoute full_route = 2;
+  FullySpecifiedRouteV2 full_route_v2 = 3;
+}
+
+message FullySpecifiedRoute {
+  // Connecting legs (origin and destination) are optional, may not be present.
+  ocean.schedules.connectingleg.v1beta1.ConnectingLeg origin_connecting_leg = 1;
+  MainLeg main_leg = 2;
+  ocean.schedules.connectingleg.v1beta1.ConnectingLeg destination_connecting_leg = 3;
+  // The specified quartet is a special case of the OceanRoute data type and will not
+  // use the ANY_ROUTE wildcard. The via ports will be either specific ports or will be SKIPPED.
+  oceanroute.v1beta1.OceanRoute specified_quartet = 4;
+  string carrier_fid = 5;
+}
+
+message FullySpecifiedRouteV2 {
+  repeated ocean.schedules.connectingleg.v1beta1.ConnectingLeg origin_connecting_legs = 1;
+  MainLeg main_leg = 2;
+  ocean.schedules.connectingleg.v1beta1.ConnectingLeg destination_connecting_leg = 3;
+  string origin_fid = 4;
+  string destination_fid = 5;
+  string carrier_fid = 6;
+}
+
+message MainLeg {
+  oneof schedule {
+    CarrierProformaSchedule carrier_proforma_schedule = 2;
+    // We represent typical sailing schedules with two different data types:
+    // EstimatedSchedules for live updates and ProformaSchedules for the general shape of the route and
+    // some optional extra information like offsets and other OfferingCarriers.
+    // Extra loaders don't have a proforma schedule, but since the CarrierSpace data model uses a Weekless
+    // concept with a proforma schedule in the MainLeg, for CarrierSpaces backed by ExtraLoaders, the
+    // extra loader estimated schedule is present both in the top level CarrierSpace message as well as
+    // in the WeeklessCarrierSpace's MainLeg (here).
+    ocean.schedules.estimatedschedule.v1beta1.EstimatedSchedule extra_loader = 3;
+  }
+}
+
+message CarrierSpaceFulfillmentRequest {
+  oceanroute.v1beta1.OceanRoute ocean_route = 1; // required
+  google.protobuf.StringValue carrier_fid = 2;
+  CompositeString composite_string = 3;
+  google.protobuf.StringValue client_fid = 4;
+  google.protobuf.StringValue receiver_company_fid = 5; // default to Flexport
+  // If a composite string or an extra loader string are provided, then the returned list will only include
+  // main legs using the provided value. Providing both will cause 0 results to be returned.
+  google.protobuf.StringValue extraLoaderStringName = 6;
+  ocean.type.week.v1beta1.IsoWeek start = 7;
+  ocean.type.week.v1beta1.IsoWeek end = 8;
+}
+
+/* For a multi-carrier alliance, SS stores one proforma with
+ * multiple offering carriers. There will be one CarrierProformaSchedule
+ * per offering carrier.
+ */
+message CarrierProformaSchedule {
+  ocean.schedules.proformaschedule.v1beta1.ProformaSchedule proforma = 1;
+  CompositeString composite_string = 2;
+}
+
+message CompositeString {
+  string scac_code = 1;
+  string service = 2;
+  ocean.type.sailingdirection.v1beta1.SailingDirection sailing_direction = 3;
+}
+
+message RateMetadata {
+  // Indicates if the current rate on the carrier space is actual or estimated.
+  // If a rate request was successful, but no rate was found then rate_status will be RATE_STATUS_ACTUAL.
+  RateStatus rate_status = 1;
+  // Date of last rate request.
+  google.protobuf.Timestamp last_rate_fetch = 2;
+  // Status of last rate request. Examples: Success, Timeout, Other Error.
+  RequestStatus last_rate_fetch_status = 3;
+  // Date when last rate update occurred. The scenarios where rate updates can occur are as follows:
+  //   1) Rate fetch is successful and a rate is found.
+  //   2) Rate fetch is successful and no rate if found.
+  //   3) Rate fetch is unsuccessful and the error type is non-retryable (example: bad data sent to portrix).
+  google.protobuf.Timestamp last_rate_fetch_write = 4;
+  // Specific reason a rate was not found (Ex. No Contract Coverage)
+  string rate_not_found_reason = 5;
+  // Specific reason a request errored (Ex. Duplicate Clients)
+  string error_reason = 6;
+  // Identifies where the main freight rate is sourced from
+  flexport.procurement.rates.v1.MainFreightSource main_freight_rate_source = 7;
+}
+
+enum RateStatus {
+  RATE_STATUS_INVALID = 0;
+  RATE_STATUS_ACTUAL = 1;
+  RATE_STATUS_ESTIMATED = 2;
+}
+
+enum RequestStatus {
+  REQUEST_STATUS_INVALID = 0;
+  REQUEST_STATUS_SUCCESS = 1;
+  REQUEST_STATUS_TIMEOUT = 2; // Considered a retryable error
+  REQUEST_STATUS_NON_RETRYABLE_ERROR = 3;
+  REQUEST_STATUS_OTHER_RETRYABLE_ERROR = 4;
+}

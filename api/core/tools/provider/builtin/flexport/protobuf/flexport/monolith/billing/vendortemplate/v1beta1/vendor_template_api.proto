@@ -1,0 +1,41 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.monolith.billing.vendortemplate.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "VendorTemplateApiProto";
+option java_package = "com.flexport.monolith.billing.vendortemplate.v1beta1";
+option ruby_package = "Flexport::Monolith::Billing::VendorTemplate::V1Beta1";
+
+import "flexport/monolith/billing/vendortemplate/v1beta1/vendor_template.proto";
+
+// An API to retrieve vendor templates.
+service VendorTemplateAPI {
+  // Retrieves a vendor template by fid.
+  rpc GetVendorTemplateByFid(GetVendorTemplateByFidRequest) returns (GetVendorTemplateByFidResponse);
+  // Retrieves a template by vendor fid and template text.
+  rpc GetVendorTemplateByVendorFidAndText(GetVendorTemplateByVendorFidAndTextRequest) returns (GetVendorTemplateByVendorFidAndTextResponse);
+}
+
+// The request to get a vendor template by fid.
+message GetVendorTemplateByFidRequest {
+  string vendor_template_fid = 1;
+}
+
+// The response to get a vendor template by fid.
+message GetVendorTemplateByFidResponse {
+  flexport.monolith.billing.vendortemplate.v1beta1.VendorTemplate result = 1;
+}
+
+// The request to get a vendor template by fid.
+message GetVendorTemplateByVendorFidAndTextRequest {
+  string vendor_fid = 1;
+  string template_text = 2;
+}
+
+// The response to get a vendor template by fid.
+message GetVendorTemplateByVendorFidAndTextResponse {
+  flexport.monolith.billing.vendortemplate.v1beta1.VendorTemplate result = 1;
+}

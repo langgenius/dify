@@ -1,0 +1,21 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerDischargeDateScheduledProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+// A container is scheduled to be discharged from an ocean vessel.
+message ContainerDischargeDateScheduled {
+  string container_fid = 1;
+  // Port where the container is scheduled to discharge from the vessel.
+  string port_fid = 2;
+  // The date time the container is scheduled for discharge.
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime discharged_date_time = 3;
+}

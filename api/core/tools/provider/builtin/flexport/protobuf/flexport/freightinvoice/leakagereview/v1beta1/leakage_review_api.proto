@@ -1,0 +1,28 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.freightinvoice.leakagereview.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "LeakageReviewApiProto";
+option java_package = "com.flexport.freightinvoice.leakagereview.v1beta1";
+option ruby_package = "Flexport::FreightInvoice::LeakageReview::V1Beta1";
+
+import "flexport/freightinvoice/leakagereview/v1beta1/leakage_review.proto";
+import "google/protobuf/wrappers.proto";
+
+message GetLeakageReviewReportRequest {
+  string shipment_fid = 1;
+  google.protobuf.StringValue mapping_type = 2;
+  google.protobuf.StringValue filter = 3;
+  google.protobuf.StringValue currency_code = 4;
+}
+
+message GetLeakageReviewReportResponse {
+  flexport.freightinvoice.leakagereview.v1beta1.LeakageReviewReport report = 1;
+}
+
+service LeakageReviewAPI {
+  rpc GetLeakageReviewReport(GetLeakageReviewReportRequest) returns (GetLeakageReviewReportResponse);
+}

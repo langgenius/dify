@@ -1,0 +1,29 @@
+// TEAM: sutro
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontask.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsImportExecutionTaskParamsProto";
+option java_package = "com.flexport.executioncoordinator.executiontask.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTask::V1";
+
+// The parameters for a Import Customs Execution Task.
+// Values within the params are not always couple with a existing customs declaration.
+// For example, ops may specify a place to issue customs clearance before they file a declaration.
+// This may also support third party customs where we don't file declarations
+// but want to provide more visibilities of where is the customs performing.
+message CustomsImportExecutionTaskParams {
+  // The address where the declaration is cleared.
+  // Could be a port, terminal, bonded warehouse, etc.
+  // For US imports, this location should have a FIRMS code.
+  // The value is derived from shipment.graph.customs_entry_node.
+  // See comments in shipment_node_tags.rb for more information.
+  string address_fid = 1;
+  //
+  // The port where the goods are unloaded from the “main freight” vessel. It is the inverse of Port of Loading.
+  // The value is derived from shipment.graph.port_of_unloading.
+  // See comments in shipment_node_tags.rb for more information.
+  string port_of_unloading_fid = 2;
+}

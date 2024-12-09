@@ -1,0 +1,29 @@
+// TEAM: trucking_planning
+
+syntax = "proto3";
+
+package flexport.truckingplanning.carrieroverridelog.v1beta1;
+
+import "flexport/truckingplanning/carrieroverridelog/v1beta1/carrier_override_log.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrieroverrideLogApiProto";
+option java_package = "com.flexport.truckingplanning.carrieroverridelog.v1beta1";
+
+// An API for interacting with CarrierOverrideLogs.
+service CarrierOverrideLogAPI {
+  // Creates CarrierOverrideLog
+  rpc CreateCarrierOverrideLog(CreateCarrierOverrideLogRequest) returns (CreateCarrierOverrideLogResponse);
+}
+
+// A request message containing a CarrierOverrideLog to create.
+message CreateCarrierOverrideLogRequest {
+  //
+  // The new CarrierOverrideLog
+  flexport.truckingplanning.carrieroverridelog.v1beta1.CarrierOverrideLog carrier_override_log = 1;
+}
+
+// The response message containing the new CarrierOverrideLog
+message CreateCarrierOverrideLogResponse {
+  flexport.truckingplanning.carrieroverridelog.v1beta1.CarrierOverrideLog carrier_override_log = 1;
+}

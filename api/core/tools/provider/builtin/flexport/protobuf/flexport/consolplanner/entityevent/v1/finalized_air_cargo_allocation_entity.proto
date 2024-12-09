@@ -1,0 +1,30 @@
+// TEAM: wingstop
+
+syntax = "proto3";
+
+package flexport.consolplanner.entityevent.v1;
+
+import "flexport/consolplanner/entityevent/v1/air_cargo_allocation_entity.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "FinalizedAirCargoAllocationEntityProto";
+option java_package = "com.flexport.consolplanner.entityevent.v1";
+option ruby_package = "Flexport::ConsolPlanner::EntityEvent::V1";
+
+// Next ID: 14
+message FinalizedAirCargoAllocationEntity {
+  AirCargoAllocationEntity air_cargo_allocation_entity = 1;
+  float full_util_destination_cost = 2;
+  float full_util_destination_net_revenue = 3;
+  float full_util_main_freight_cost = 4;
+  float full_util_main_freight_net_revenue = 5;
+  float current_util_destination_cost = 6;
+  float current_util_destination_net_revenue = 7;
+  float current_util_main_freight_cost = 8;
+  float current_util_main_freight_net_revenue = 9;
+  string finalized_by = 10;
+  google.protobuf.Timestamp finalized_at = 11;
+  google.protobuf.Timestamp financials_calculated_at = 12;
+  float utilization_factor = 13;
+}

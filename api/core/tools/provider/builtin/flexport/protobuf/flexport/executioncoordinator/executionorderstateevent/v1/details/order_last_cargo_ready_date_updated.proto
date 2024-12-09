@@ -1,0 +1,22 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OrderLastCargoReadyDateUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+
+// The last cargo ready date (ie last occurring) on an ExecutionOrder has been updated.
+message OrderLastCargoReadyDateUpdated {
+  //
+  // The revision number of the ExecutionOrder in which this info was updated.
+  uint32 revision = 1;
+  //
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate old_value = 2;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate new_value = 3;
+}

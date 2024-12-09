@@ -1,0 +1,25 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TruckingEstimatedOutForFinalDeliveryProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+// The estimated time for the delivery to be picked up en-route to the final destination.
+// This event only applies to high-visibility deliveries on their way to their final
+// destination and indicates the estimated time the truck will leave for the final destination.
+// There is no CargoTransitDateChanged event that corresponds with this one.
+message TruckingEstimatedOutForFinalDelivery {
+  string cargo_fid = 1;
+  string origin_address_fid = 2;
+  string destination_address_fid = 3;
+  string carrier_fid = 4;
+  // The estimated time for the delivery to be picked up to go to its final destination
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime estimated_out_for_delivery_time = 5;
+}

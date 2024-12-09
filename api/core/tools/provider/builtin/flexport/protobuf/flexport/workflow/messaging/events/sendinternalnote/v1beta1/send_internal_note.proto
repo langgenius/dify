@@ -1,0 +1,31 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.workflow.messaging.events.sendinternalnote.v1beta1;
+
+import "flexport/rulesengine/options/v1/options.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "SendInternalNoteProto";
+option java_package = "com.flexport.workflow.messaging.events.sendinternalnote.v1beta1";
+option ruby_package = "Flexport::Workflow::Messaging::Events::SendInternalNote::V1Beta1";
+
+// SendInternalNote represents a request to send an internal message.
+message SendInternalNote {
+  string shipment_fid = 1 [
+    (flexport.rulesengine.options.v1.field_description) = "Shipment fid",
+    (flexport.rulesengine.options.v1.field_title) = "Shipment fid",
+    (flexport.rulesengine.options.v1.template_type) = TEMPLATE_TYPE_SPEL
+  ];
+  string body = 2 [
+    (flexport.rulesengine.options.v1.field_component) = {
+      text_area: {
+        min_rows: 5
+      }
+    },
+    (flexport.rulesengine.options.v1.field_description) = "Internal note message",
+    (flexport.rulesengine.options.v1.field_title) = "Internal note message",
+    (flexport.rulesengine.options.v1.template_type) = TEMPLATE_TYPE_SPEL
+  ];
+}

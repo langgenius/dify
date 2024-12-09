@@ -1,0 +1,19 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "WarehouseUnableToIncludeChildrenInConsolidationProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// Shipments that had been planned to be within a build plan consolidation
+// were realized later by the origin consolidating warehouse as needing to be excluded from it.
+// Such as due to customs hold up, or gated-in cargo dimensions not being as expected.
+// Emitted against Tasks of cargo_consolidation params
+message WarehouseUnableToIncludeChildrenInConsolidation {
+  // Impacted child ExecutionOrder FIDs
+  repeated string excluded_child_execution_order_fids = 1;
+}

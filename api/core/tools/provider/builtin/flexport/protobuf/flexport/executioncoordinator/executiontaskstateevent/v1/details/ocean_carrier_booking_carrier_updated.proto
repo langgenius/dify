@@ -1,0 +1,17 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanCarrierBookingCarrierUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// The carrier of the carrier booking has been updated.
+//
+message OceanCarrierBookingCarrierUpdated {
+  string carrier_booking_fid = 1;
+  string carrier_fid = 2;
+}

@@ -1,0 +1,101 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.authorization.grant.v2;
+
+import "google/api/annotations.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "GrantApiProto";
+option java_package = "com.flexport.authorization.grant.v2";
+option ruby_package = "Flexport::Authorization::Grant::V2";
+
+import "flexport/authorization/v1/common.proto";
+
+// Handles role grants.
+service GrantAPI {
+  //  Grant role to an actor.
+  rpc CreateRoleGrant(CreateRoleGrantRequest) returns (CreateRoleGrantResponse) {
+    option (google.api.http) = {
+      post: "/v2/rolegrants"
+    };
+  }
+  //  Get all role grants for an actor.
+  rpc GetRoleGrants(GetRoleGrantsRequest) returns (GetRoleGrantsResponse) {
+    option (google.api.http) = {
+      get: "/v2/rolegrants"
+    };
+  }
+  //  Revoke a role grant.
+  rpc RevokeRoleGrant(RevokeRoleGrantRequest) returns (RevokeRoleGrantResponse) {
+    option (google.api.http) = {
+      post: "/v2/rolegrants/revoke"
+    };
+  }
+  // Returns roles that can be granted for a particular app, e.g. Core, Transmission.
+  rpc GetRolesForApp(GetRolesForAppRequest) returns (GetRolesForAppResponse);
+
+  //  Fetch a paginated list of actors provided a role slug
+  rpc ListRoleGrantsForRole(ListRoleGrantsForRoleRequest) returns (stream ListRoleGrantsForRoleResponse);
+}
+
+message CreateRoleGrantRequest {
+  flexport.authorization.v1.Actor actor = 1 [deprecated = true];
+  string role_slug = 2;
+  // External role parameter used to compute resource-level permissions.
+  flexport.authorization.v1.RoleParameter role_parameter = 3;
+  // `created_by_user_id` is meant to be a db id from the monolith `User` table, e.g. "622601",
+  // rather than an fid, e.g. "flx::core:company_entity:dbid/622601".
+  // TODO(williampitler): Replace this with an fid field. https://flexport.atlassian.net/browse/IAM-841
+  string created_by_user_id = 4;
+  string actor_fid = 5;
+}
+
+message CreateRoleGrantResponse {
+  flexport.authorization.v1.RoleGrant role_grant = 1;
+}
+
+message GetRoleGrantsRequest {
+  flexport.authorization.v1.Actor actor = 1 [deprecated = true];
+  string actor_fid = 2;
+  // (Optional) Filters on `app` field in roles/metadata.yml
+  string app_filter = 3;
+}
+
+message GetRoleGrantsResponse {
+  repeated flexport.authorization.v1.RoleGrant role_grants = 1;
+}
+
+message RevokeRoleGrantRequest {
+  flexport.authorization.v1.Actor actor = 1 [deprecated = true];
+  string role_slug = 2;
+  // The external role parameter included in the role grant.
+  flexport.authorization.v1.RoleParameter role_parameter = 3;
+  // `revoked_by_user_id` is meant to be a db id from the monolith `User` table, e.g. "622601",
+  // rather than an fid, e.g. "flx::core:company_entity:dbid/622601".
+  // TODO(williampitler): Replace this with an fid field. https://flexport.atlassian.net/browse/IAM-841
+  string revoked_by_user_id = 4;
+  string actor_fid = 5;
+}
+
+message RevokeRoleGrantResponse {}
+
+message GetRolesForAppRequest {
+  // E.g. "Core", "Transmission"
+  string app = 1;
+}
+
+message GetRolesForAppResponse {
+  repeated string role_slug = 1;
+}
+
+message ListRoleGrantsForRoleRequest {
+  // Role slug to filter role grants by
+  string role_slug = 1;
+}
+
+message ListRoleGrantsForRoleResponse {
+  // Actor to whom the queried role was granted
+  string actor_fid = 1;
+}

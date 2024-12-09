@@ -1,0 +1,84 @@
+// TEAM: quoting
+
+syntax = "proto3";
+
+package flexport.quoting.quote.v1beta1;
+
+import "flexport/os/v1/types/cargo/v1/container_counts.proto";
+import "flexport/quoting/events/v1beta1/ssat_allocation_info.proto";
+import "flexport/quoting/quote/v1beta1/quote.proto";
+import "google/protobuf/struct.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "QuoteApiProto";
+option java_package = "com.flexport.quoting.quote.v1beta1";
+option ruby_package = "Flexport::Quoting::Quote::V1Beta1";
+
+// An API for reading quotes.
+// A single RFQ (request-for-quotes) can produce multiple quotes. For example, we may want to
+// offer the client an FCL quote as well as a cheaper, consolidated option (LCL). Each quote,
+// individually, may also go through several revisions before being accepted. Every time a
+// version of that quote is shared with the client, we increment the revision number.
+// The API currently only supports reading the latest revision of a given quote.
+service QuoteAPI {
+  // Retrieves the latest revision of a quote.
+  rpc GetQuote(GetQuoteRequest) returns (GetQuoteResponse);
+  rpc GetQuoteJson(GetQuoteJsonRequest) returns (GetQuoteJsonResponse);
+  rpc GetQuotesJsonByShipmentFid(GetQuotesJsonByShipmentFidRequest) returns (GetQuotesJsonByShipmentFidResponse);
+  rpc ListShipmentsWithActiveAllocations(ListShipmentsWithActiveAllocationsRequest) returns (ListShipmentsWithActiveAllocationsResponse);
+}
+
+message GetQuoteRequest {
+  oneof identifier {
+    //
+    // Core quote DBID.
+    int32 dbid = 1;
+    //
+    // Quote revision UUID, eg. "flx::quoting:quote:9999-xxxx-123"
+    string fid = 2;
+  }
+}
+
+message GetQuoteResponse {
+  //
+  // The latest revision of the quote.
+  flexport.quoting.quote.v1beta1.Quote quote = 1;
+}
+
+message GetQuoteJsonRequest {
+  string fid = 1;
+}
+
+message GetQuoteJsonResponse {
+  google.protobuf.Struct quote = 1;
+}
+
+message GetQuotesJsonByShipmentFidRequest {
+  string shipment_fid = 1;
+}
+
+message GetQuotesJsonByShipmentFidResponse {
+  repeated google.protobuf.Struct quotes = 1;
+}
+
+message ListShipmentsWithActiveAllocationsRequest {
+  string cda_offering_fid = 1;
+}
+
+message ListShipmentsWithActiveAllocationsResponse {
+  repeated ShipmentWithActiveAllocations shipments = 1;
+}
+
+message ShipmentWithActiveAllocations {
+  string shipment_fid = 1;
+  string client_fid = 2;
+  repeated QuoteWithActiveAllocations quotes = 3;
+}
+
+message QuoteWithActiveAllocations {
+  string quote_fid = 1;
+  flexport.quoting.events.v1beta1.SsatAllocation ssat_allocation = 2;
+  flexport.os.v1.types.cargo.v1.ContainerCounts quoted_container_counts = 3;
+  // Client requested container counts.
+  flexport.os.v1.types.cargo.v1.ContainerCounts requested_container_counts = 4;
+}

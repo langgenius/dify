@@ -1,0 +1,34 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.documents.types.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DocumentProto";
+option java_package = "com.flexport.documents.types.v1beta1";
+option ruby_package = "Flexport::Documents::Types::V1Beta1";
+
+message Document {
+  string fid = 1;
+  string documentable_type = 2;
+  string documentable_fid = 3;
+  string document_type_fid = 4;
+  string document_type_slug = 5;
+  string file_name = 6;
+  string memo = 7;
+  string file_object_fid = 8;
+  string created_by_user_fid = 9;
+  string updated_by_user_fid = 10;
+  string archived_by_user_fid = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+  google.protobuf.Timestamp archived_at = 14;
+  string attachment_fingerprint = 15;
+  string attachment_file_name = 16;
+  string attachment_content_type = 17;
+  // will be added later
+  // repeated string viewer_company_fids = 15;
+}

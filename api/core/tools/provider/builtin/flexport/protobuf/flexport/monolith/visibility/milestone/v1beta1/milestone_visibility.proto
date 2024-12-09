@@ -1,0 +1,31 @@
+// TEAM: visibility
+
+syntax = "proto3";
+
+package flexport.monolith.visibility.milestone.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "MilestoneVisibilityProto";
+option java_package = "com.flexport.monolith.visibility.milestone.v1beta1";
+option ruby_package = "Flexport::Monolith::Visibility::Milestone::V1Beta1";
+
+// A sub item of Whether a milestone can be a  Automation.
+message MilestoneAutomationStatus {
+  AutomationMilestone milestone = 1;
+  // True if this milestone is expected to be automated.
+  bool automated = 2;
+  // The expected update time between when the event happens and it
+  // is reported by Visibility.
+  // TBD: Whether this is in first version
+  int32 update_latency_seconds = 3;
+  string container_number = 4;
+}
+
+// Milestone type.
+enum AutomationMilestone {
+  AUTOMATION_MILESTONE_INVALID = 0;
+  AUTOMATION_MILESTONE_GATE_IN = 1;
+  AUTOMATION_MILESTONE_EMPTY_RETURN = 2;
+  // etc...
+
+}

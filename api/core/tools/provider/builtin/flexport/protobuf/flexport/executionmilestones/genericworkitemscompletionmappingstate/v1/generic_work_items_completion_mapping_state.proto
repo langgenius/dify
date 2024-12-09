@@ -1,0 +1,28 @@
+// TEAM: sutro
+
+syntax = "proto3";
+
+package flexport.executionmilestones.genericworkitemscompletionmappingstate.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "GenericWorkItemsCompletionMappingStateProto";
+option java_package = "com.flexport.executionmilestones.genericworkitemscompletionmappingstate.v1";
+option ruby_package = "Flexport::ExecutionMilestones::GenericWorkItemsCompletionMappingState::V1";
+
+// The State to Store the Completion Status of all Generic Work Items in a Map.
+// Next ID: 2
+message GenericWorkItemsCompletionMappingState {
+  //Map to store the Completion status for all Generic Work Items.
+  //Key is the WorkItemType as a String and Value is a GenericWorkItemCompletionStatus.
+  map<string, GenericWorkItemCompletionStatus> generic_work_item_completion_mapping = 1;
+}
+// Represents the Completion Status of One Generic Work Item.
+// Next ID: 4
+message GenericWorkItemCompletionStatus {
+  bool is_completed = 1;
+  string completed_by = 2;
+  google.protobuf.Timestamp completed_at = 3;
+  string reason = 4;
+}

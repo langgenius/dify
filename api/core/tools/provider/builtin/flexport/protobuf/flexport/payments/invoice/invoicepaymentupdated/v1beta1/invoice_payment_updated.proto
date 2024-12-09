@@ -1,0 +1,26 @@
+// TEAM: finance_platform
+
+syntax = "proto3";
+
+package flexport.payments.invoice.invoicepaymentupdated.v1beta1;
+
+import "flexport/payments/invoice/v1beta1/invoice.proto";
+import "flexport/payments/payment/paymentlineitem/v1beta1/payment_line_item.proto";
+import "flexport/payments/payment/v1beta1/payment.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "InvoicePaymentUpdatedProto";
+option java_package = "com.flexport.payments.invoice.invoicepaymentupdated.v1beta1";
+option ruby_package = "Flexport::Payments::Invoice::InvoicePaymentUpdated::V1Beta1";
+
+// Update payment line item for invoice when the corresponding payment is updated.
+// Update also includes marking payment line item failed.
+message InvoicePaymentUpdated {
+  flexport.payments.payment.paymentlineitem.v1beta1.PaymentLineItem line_item = 1;
+  flexport.payments.payment.v1beta1.Payment payment = 2;
+  flexport.payments.invoice.v1beta1.Invoice invoice = 3;
+  string acting_user_fid = 4;
+  bool failed = 5;
+  google.protobuf.Int32Value acting_user_dbid = 6;
+}

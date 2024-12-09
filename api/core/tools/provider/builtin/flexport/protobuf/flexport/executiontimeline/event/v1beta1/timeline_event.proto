@@ -1,0 +1,123 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executiontimeline.event.v1beta1;
+
+import "flexport/executiontimeline/event/v1beta1/timeline_event_arrived_at_final_destination.proto";
+import "flexport/executiontimeline/event/v1beta1/timeline_event_departure_from_origin_terminal.proto";
+import "flexport/executiontimeline/event/v1beta1/timeline_event_estimated_time_of_arrival_to_destination.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TimelineEventProto";
+option java_package = "com.flexport.executiontimeline.event.v1beta1";
+option ruby_package = "Flexport::ExecutionTimeline::Event::V1Beta1";
+//
+// Timeline event type categories
+// need to consider cluster event type categories by subdomain when design is settled
+// time related - [100 -199]
+// container related - [200 - 299]
+// rail related - [300 - 399]
+// others - [500 - 599]
+enum TimelineEventTypeCategory {
+  TIMELINE_EVENT_TYPE_CATEGORY_INVALID = 0;
+  // for cargo
+  TIMELINE_EVENT_TYPE_CATEGORY_CARGO_READY_DATE_CHANGED = 100;
+
+  // for actual
+  TIMELINE_EVENT_TYPE_CATEGORY_ACTUAL_DEPARTURE_FROM_SHIPPER = 101;
+  TIMELINE_EVENT_TYPE_CATEGORY_ACTUAL_ARRIVAL_AT_PORT_OF_LOADING = 102;
+  TIMELINE_EVENT_TYPE_CATEGORY_ACTUAL_VESSEL_DEPARTURE_FROM_PORT_OF_LOADING = 103;
+  TIMELINE_EVENT_TYPE_CATEGORY_ACTUAL_VESSEL_ARRIVAL_AT_PORT_OF_DISCHARGE = 104;
+
+  // for estimated
+  TIMELINE_EVENT_TYPE_CATEGORY_ESTIMATED_TIME_OF_DEPARTURE_FROM_PORT_OF_LOADING = 105;
+  TIMELINE_EVENT_TYPE_CATEGORY_ESTIMATED_TIME_OF_ARRIVAL_TO_PORT_OF_DISCHARGE = 106;
+  TIMELINE_EVENT_TYPE_CATEGORY_ESTIMATED_OUT_GATE_AT_PORT_OF_ARRIVAL = 107;
+  TIMELINE_EVENT_TYPE_CATEGORY_ESTIMATED_TIME_OF_ARRIVAL_AT_CONSIGNEE_LOCATION = 108;
+  TIMELINE_EVENT_TYPE_CATEGORY_ESTIMATED_DEPARTURE_FROM_SHIPPER = 109;
+
+  // for final
+  TIMELINE_EVENT_TYPE_CATEGORY_ARRIVED_AT_FINAL_DESTINATION = 110;
+
+  // for ocean
+  TIMELINE_EVENT_TYPE_CATEGORY_FREE_TIME_EXPIRED_OCEAN = 111;
+
+  // for appointment
+  TIMELINE_EVENT_TYPE_CATEGORY_SCHEDULED_PICK_UP_APPOINTMENT = 112;
+  TIMELINE_EVENT_TYPE_CATEGORY_DELIVERY_APPOINTMENT_SCHEDULED = 113;
+  TIMELINE_EVENT_TYPE_CATEGORY_DELIVERY_APPOINTMENT_REQUESTED_AT = 114;
+  TIMELINE_EVENT_TYPE_CATEGORY_DELIVERY_APPOINTMENT_REQUESTED_FOR = 115;
+
+  // for pick up
+  TIMELINE_EVENT_TYPE_CATEGORY_PICK_UP_NUMBER_ADDED_AVAILABLE_FOR_PICK_UP = 116;
+
+  // for container
+  TIMELINE_EVENT_TYPE_CATEGORY_CONTAINER_LOADED_ON_VESSEL_AT_PORT_OF_LOADING = 201;
+  TIMELINE_EVENT_TYPE_CATEGORY_CONTAINER_LOADED_ON_VESSEL_AT_TRANSSHIP_PORT = 202;
+  TIMELINE_EVENT_TYPE_CATEGORY_CONTAINER_UNLOADED_FROM_VESSEL_AT_PORT_OF_DISCHARGE = 203;
+  TIMELINE_EVENT_TYPE_CATEGORY_CONTAINER_GATED_OUT = 204;
+  TIMELINE_EVENT_TYPE_CATEGORY_EMPTY_CONTAINER_RETURNED_TO_TERMINAL = 205;
+
+  // for rail
+  TIMELINE_EVENT_TYPE_CATEGORY_ACTUAL_RAIL_DEPARTURE = 301;
+  TIMELINE_EVENT_TYPE_CATEGORY_ACTUAL_RAIL_ARRIVAL = 302;
+  TIMELINE_EVENT_TYPE_CATEGORY_RAIL_DERAMPED = 303;
+  TIMELINE_EVENT_TYPE_CATEGORY_FREE_TIME_EXPIRED_RAIL = 304;
+  TIMELINE_EVENT_TYPE_CATEGORY_GATE_OUT_AT_DESTINATION_RAIL_RAMP = 305;
+
+  // for order created
+  TIMELINE_EVENT_TYPE_CATEGORY_ORDER_CREATED = 500;
+}
+
+// instance of an event
+message TimelineEvent {
+  int64 id = 11;
+  string fid = 1;
+  TimelineEventTypeCategory timeline_event_type_category = 2;
+  string flexport_event_code = 3;
+  // when the event is created/persisted
+  google.protobuf.Timestamp created_time = 4;
+  // when the event is emitted,
+  google.protobuf.Timestamp published_time = 5;
+  string shipment_fid = 6;
+  string execution_order_fid = 7;
+  string timeline_fid = 8;
+  TimelineEventState state = 9;
+  // for debug and other metadata from upstream,
+  // i.e., which event/source triggered current event
+  TimelineEventMetadata metadata = 10;
+
+  oneof event_details {
+    TimelineEventArrivedAtFinalDestination arrived_at_final_destination = 20;
+    TimelineEventEstimatedTimeOfArrivalToDestination estimated_time_of_arrival_to_destination = 21;
+    TimelineEventDepartureFromOriginTerminal departure_from_original_terminal = 22;
+  }
+}
+message TimelineEventState {
+  TimelineEventStatusCode status_code = 1;
+  // TODO : we also need the exceptions associated with the status,
+  // i.e., validation error should have corresponding exceptions/reason for debug
+}
+enum TimelineEventStatusCode {
+  TIMELINE_EVENT_STATUS_CODE_INVALID = 0;
+  TIMELINE_EVENT_STATUS_CODE_CREATED = 1;
+  TIMELINE_EVENT_STATUS_CODE_PUBLISHED = 2;
+  TIMELINE_EVENT_STATUS_CODE_VALIDATION_ERROR = 3;
+}
+
+message TimelineEventType {
+  int64 id = 1;
+  string fid = 2;
+  string name = 3;
+  TimelineEventTypeCategory type_category = 4;
+  string description = 5;
+}
+
+message TimelineEventMetadata {
+  // which event triggered the current event creation
+  string create_source_fid = 1;
+  // which event triggered the current event publish
+  string publish_source_fid = 2;
+}

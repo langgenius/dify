@@ -1,0 +1,64 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.documentflow.documentschema.v2beta1;
+
+import "flexport/documentflow/documentschema/v2beta1/primitive_document_field.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsBillProto";
+option java_package = "com.flexport.documentflow.documentschema.v2beta1";
+option ruby_package = "Flexport::DocumentFlow::DocumentSchema::V2Beta1";
+
+// Next ID: 22
+message CustomsBill {
+  TimestampDocumentField clearance_date = 1;
+  DocumentField customs_declaration_number = 2;
+  CurrencyDocumentField invoice_currency = 3;
+  MoneyDocumentField total_invoice = 4;
+  MoneyDocumentField freight_charges = 5;
+  MoneyDocumentField insurance_charges = 6;
+  IncotermsDocumentField incoterms = 7;
+  DocumentField import_broker = 8;
+  WeightDocumentField total_weight = 9;
+  DocumentField tax_id = 10;
+  CountryDocumentField country_of_import = 11;
+  CurrencyDocumentField customs_currency = 12;
+  DocumentField exchange_rate = 13;
+  MoneyDocumentField total_duties = 14;
+  oneof total_tax {
+    // depends on country
+
+    MoneyDocumentField total_vat = 15;
+    MoneyDocumentField total_gst = 16;
+  }
+  MoneyDocumentField total_add = 17;
+  MoneyDocumentField total_cvd = 18;
+  MoneyDocumentField total_other = 19;
+  BooleanDocumentField duty_deferred = 20;
+  repeated CustomsBillLineItem line_items = 21;
+}
+
+// Next ID: 16
+message CustomsBillLineItem {
+  DocumentField description = 1;
+  QuantityDocumentField quantity = 2;
+  // QuantityDocumentField unit = 3; // Consolidated into quantity field
+  DocumentField hs_codes = 4;
+  MoneyDocumentField value = 5;
+  MoneyDocumentField vat_value = 6;
+  MoneyDocumentField duties = 7;
+  oneof tax {
+    // depends on country
+
+    MoneyDocumentField vat = 8;
+    MoneyDocumentField gst = 9;
+  }
+  MoneyDocumentField add = 10;
+  MoneyDocumentField cvd = 11;
+  CountryDocumentField country_of_origin_code = 12;
+  DocumentField special_program_code = 13;
+  DocumentField duty_rate = 14;
+  DocumentField vat_rate = 15;
+}

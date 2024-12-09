@@ -1,0 +1,32 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TruckingTrailerLoadingFinishedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "google/protobuf/timestamp.proto";
+
+// The cargo has been loaded on the truck at the origin location as it departs for the
+// final destination of the cargo. Note that this is only applicable for FTL deliveries.
+// Additionally, this event is only emitted if the consignee has requested special
+// tracking of high-visibility milestones.
+// CargoTransitDateChanged is better suited as a general event for cargo departing for
+// a destination.
+message TruckingTrailerLoadingFinished {
+  string cargo_fid = 1;
+  // The fid of the immutable address instance this delivery is leaving from.
+  string origin_address_fid = 2;
+  // The fid of the immutable address instance this delivery is going to.
+  string destination_address_fid = 3;
+  // The carrier responsible for moving the cargo.
+  string carrier_fid = 4;
+  // The value when the cargo was finished being loaded on the truck.
+  // This is specified rather than using `occurred_at` because it may be set
+  // after the fact.
+  google.protobuf.Timestamp loaded_on_truck_time = 5;
+}

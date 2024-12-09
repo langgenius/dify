@@ -1,0 +1,27 @@
+// TEAM: customs_gateway
+
+syntax = "proto3";
+
+package flexport.monolith.productlibrary.product.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "FeeProto";
+option java_package = "com.flexport.monolith.productlibrary.product.v1beta1";
+option ruby_package = "Flexport::Monolith::ProductLibrary::Product::V1Beta1";
+
+message Fee {
+  FeeType type = 1;
+  FeeStatus status = 2;
+}
+
+enum FeeType {
+  FEE_TYPE_INVALID = 0;
+  FEE_TYPE_COTTON = 1;
+}
+
+enum FeeStatus {
+  FEE_STATUS_INVALID = 0;
+  FEE_STATUS_APPLIED = 1;
+  FEE_STATUS_EXEMPT = 2;
+  FEE_STATUS_PENDING = 3;
+}

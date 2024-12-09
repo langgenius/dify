@@ -1,0 +1,53 @@
+// TEAM: work_management
+
+syntax = "proto3";
+
+package flexport.operatingprocedures.procedures.v4beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DataStudioProcedureEntityProto";
+option java_package = "com.flexport.operatingprocedures.procedures.v4beta1";
+option ruby_package = "Flexport::OperatingProcedures::Procedures::V4Beta1";
+
+// Represents a Data Studio Procedure entity.
+message DataStudioProcedureEntity {
+  int64 id = 1;
+  string category = 2;
+  string client_fid = 3;
+  string company_entity_fid = 4;
+  string consignee = 5;
+  repeated string consignee_fids = 6;
+  string created_by_fid = 7;
+  google.protobuf.Timestamp deleted_at = 8;
+  string destination = 9;
+  string destination_country = 10;
+  repeated string destination_country_codes = 11;
+  string destination_original = 12;
+  repeated string destination_port_fids = 13;
+  int32 export_import = 14;
+  string flexport_standard = 15;
+  string inland = 16;
+  string inland_original = 17;
+  repeated string inland_port_fids = 18;
+  string office = 19;
+  string origin = 20;
+  string origin_country = 21;
+  repeated string origin_country_codes = 22;
+  repeated string origin_port_fids = 23;
+  string other_instructions = 24;
+  string other_instructions_prompt = 25;
+  string procedure_item = 26;
+  string process_owner = 27;
+  repeated int32 service_types = 28;
+  string services = 29;
+  string shipper = 30;
+  repeated string shipper_fids = 31;
+  string squad = 32;
+  string structured_option = 33;
+  string structured_option_prompt = 34;
+  string updated_by_fid = 35;
+  google.protobuf.Timestamp created_at = 36;
+  google.protobuf.Timestamp updated_at = 37;
+}

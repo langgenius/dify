@@ -1,0 +1,93 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.otp.v1beta1;
+
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+import "flexport/otp/v1beta1/time.proto";
+import "google/protobuf/duration.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "SpanProto";
+option java_package = "com.flexport.otp.v1beta1";
+option ruby_package = "Flexport::Otp::V1Beta1";
+
+// A mis-ordering of two timestamps. Common examples include "now" being after an estimated Time,
+// or the Time of one Milestone being before a Time of its predecessor. The severity of the
+// violation is indicated by its type.
+message Violation {
+  string timeline_fid = 1;
+  ViolationType type = 2;
+  ViolationReason reason = 4;
+  Span span = 3;
+  google.protobuf.Duration limit = 5;
+}
+
+// An Interval is an instance of an Interval Rule for a particular Span (generally two Milestones sharing the
+// same cargo). The limit is either a maximum or a minimum for the Span's duration, depending on
+// the direction.
+message Interval {
+  string timeline_fid = 1;
+  string category = 2;
+  string name = 3;
+  Span span = 4;
+  google.protobuf.Duration limit = 5;
+}
+
+// A duration between two timestamp anchors.
+message Span {
+  Anchor start_anchor = 1;
+  Anchor end_anchor = 2;
+  google.protobuf.Duration duration = 3;
+}
+
+// A timestamp with extra information (indicated by the attachment) about how the timestamp was
+// captured.
+message Anchor {
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime when = 1;
+  oneof attachment {
+    NowAttachment now_attachment = 2;
+    TimeAttachment time_attachment = 3;
+    QuotedDeliveryDateAttachment quoted_delivery_date_attachment = 4 [deprecated = true];
+    SlaAttachment sla_attachment = 5;
+  }
+}
+
+// The anchor is based on one of a Milestone's Times.
+message TimeAttachment {
+  string milestone_fid = 1;
+  TimeType time_type = 2;
+}
+
+// The anchor is based on the current wall clock time.
+message NowAttachment {}
+
+// The anchor is based on the quoted delivery date of a Shipment.
+message QuotedDeliveryDateAttachment {}
+
+message SlaAttachment {
+  string category = 1;
+  string name = 2;
+}
+
+enum ViolationType {
+  VIOLATION_TYPE_INVALID = 0;
+  // Failure is likely.
+  VIOLATION_TYPE_AT_RISK = 2;
+  // Failure might have happened.
+  VIOLATION_TYPE_INCOMPLETE = 1;
+  // Failure has happened.
+  VIOLATION_TYPE_OFF_TRACK = 3;
+}
+
+enum ViolationReason {
+  VIOLATION_REASON_INVALID = 0;
+  VIOLATION_REASON_ESTIMATED_TIME_EXPIRED = 1;
+  VIOLATION_REASON_ESTIMATED_TIME_PLANNED_TO_FAIL = 2;
+  VIOLATION_REASON_QUOTED_DELIVERY_DATE_EXPIRED = 3;
+  VIOLATION_REASON_QUOTED_DELIVERY_DATE_PLANNED_TO_FAIL = 4;
+  VIOLATION_REASON_AFTER_SLA_BREACHED = 5;
+  VIOLATION_REASON_BEFORE_SLA_BREACHED = 6;
+  VIOLATION_REASON_SERVICE_SCHEDULE_DELAYED = 7;
+}

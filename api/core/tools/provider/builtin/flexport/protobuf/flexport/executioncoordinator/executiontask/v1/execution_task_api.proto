@@ -1,0 +1,97 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontask.v1;
+
+// import "flexport/executioncoordinator/executionplan/v1/execution_revision_source.proto";
+import "flexport/executioncoordinator/executiontask/v1/execution_task.proto";
+import "flexport/executioncoordinator/executiontask/v1/nullable_execution_task.proto";
+import "flexport/executioncoordinator/executiontask/v1/query_filters.proto";
+import "flexport/executioncoordinator/types/query/v1/filters.proto";
+import "flexport/executioncoordinator/types/query/v1/order_by.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionTaskApiProto";
+option java_package = "com.flexport.executioncoordinator.executiontask.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTask::V1";
+
+// An API for interacting with ExecutionTask entities.
+service ExecutionTaskAPI {
+  // Retrieves an ExecutionTask.
+  rpc GetExecutionTask(GetExecutionTaskRequest) returns (GetExecutionTaskResponse);
+  // Retrieves ExecutionTasks for a provided query.
+  rpc ListExecutionTasks(ListExecutionTasksRequest) returns (ListExecutionTasksResponse);
+  // Retrieves all revisions of an ExecutionTask, sorted in chronological order (earliest revision first).
+  rpc ListExecutionTaskRevisions(ListExecutionTaskRevisionsRequest) returns (ListExecutionTaskRevisionsResponse);
+  // Retrieves a batch of ExecutionTasks.
+  rpc BatchGetExecutionTasks(BatchGetExecutionTasksRequest) returns (BatchGetExecutionTasksResponse);
+}
+
+// The request message for GetExecutionTask.
+message GetExecutionTaskRequest {
+  string fid = 1;
+  //
+  // Specific revision to get, if any. The default value (0) returns the current revision.
+  uint32 revision = 2;
+}
+
+// The response message for GetExecutionTask.
+message GetExecutionTaskResponse {
+  flexport.executioncoordinator.executiontask.v1.ExecutionTask execution_task = 1;
+}
+
+// The request message containing the query to retrieve ExecutionTasks for.
+message ListExecutionTasksRequest {
+  //
+  // The maximum number of entries to return. Defaults to 100, with a maximum limit of 10000.
+  // If the value provided exceeds 10000, then 10000 will be used as the limit.
+  uint32 limit = 1;
+  //
+  // All filters are "ANDed" together. All filters default to "null" unless otherwise noted.
+  flexport.executioncoordinator.types.query.v1.TimestampFilter created_time = 2;
+  flexport.executioncoordinator.types.query.v1.TimestampFilter updated_time = 9;
+  flexport.executioncoordinator.types.query.v1.StringFilter execution_order_fid = 4;
+  flexport.executioncoordinator.types.query.v1.StringFilter parent_execution_order_fid = 8;
+  flexport.executioncoordinator.types.query.v1.StringFilter shipment_fid = 5;
+  flexport.executioncoordinator.types.query.v1.StringFilter params_case = 7;
+  flexport.executioncoordinator.types.query.v1.IntegerFilter revision_number = 10;
+  flexport.executioncoordinator.types.query.v1.StringFilter company_entity_fid = 12;
+  ExecutionTaskParamsFilter params = 3;
+  //
+  // The "planning_status" filter defaults to exclude cancelled tasks, ie:
+  // {negated: true, matchesAny: ["cancelled"]}
+  flexport.executioncoordinator.types.query.v1.StringFilter planning_status = 6;
+  //
+  // The order of the results. Default is undefined.
+  flexport.executioncoordinator.types.query.v1.OrderBy order_by = 11;
+}
+
+// The response message containing the ExecutionTasks for the provided query.
+message ListExecutionTasksResponse {
+  repeated flexport.executioncoordinator.executiontask.v1.ExecutionTask execution_tasks = 1;
+}
+
+// The request message for ListExecutionTaskRevisions.
+message ListExecutionTaskRevisionsRequest {
+  string fid = 1;
+}
+
+// The response message for ListExecutionTaskRevisions.
+message ListExecutionTaskRevisionsResponse {
+  repeated flexport.executioncoordinator.executiontask.v1.ExecutionTask revisions = 1;
+}
+
+// The request message for BatchGetExecutionTasks.
+message BatchGetExecutionTasksRequest {
+  repeated string fids = 1;
+}
+
+// The order of the returned results matches the order of the fids in the request.
+// If no ExecutionTask is found for a given fid, then an empty NullableExecutionTask
+// message is included at that array index in the response so that ordering is preserved.
+// In other words, nullable_execution_tasks.size in the response will always equal
+// fids.size in the request, and the ordering will be consistent.
+message BatchGetExecutionTasksResponse {
+  repeated flexport.executioncoordinator.executiontask.v1.NullableExecutionTask nullable_execution_tasks = 1;
+}

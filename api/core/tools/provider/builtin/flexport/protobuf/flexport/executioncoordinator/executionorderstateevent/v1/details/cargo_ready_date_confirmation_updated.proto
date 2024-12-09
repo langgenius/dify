@@ -1,0 +1,29 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+import "flexport/executioncoordinator/types/enums/v1/checklist_item_status.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoReadyDateConfirmationUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+// Emitted when the confirm cargo ready date checklist item's status changed.
+message CargoReadyDateConfirmationUpdated {
+  string shipment_fid = 1;
+  // DEPRECATED: use `confirmation_status` instead.
+  ConfirmationStatus status = 2 [deprecated = true];
+  flexport.executioncoordinator.types.enums.v1.ChecklistItemStatus confirmation_status = 3;
+}
+
+// This represents the actioned checklist item's state.
+enum ConfirmationStatus {
+  option deprecated = true;
+  CONFIRMATION_STATUS_INVALID = 0;
+  CONFIRMATION_STATUS_DEFAULT = 1;
+  CONFIRMATION_STATUS_VERIFIED = 2;
+  CONFIRMATION_STATUS_FLAGGED = 3;
+}

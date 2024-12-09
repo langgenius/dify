@@ -1,0 +1,26 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionoffering.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TransitExecutionOfferingProto";
+option java_package = "com.flexport.executioncoordinator.executionoffering.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOffering::V1";
+
+import "flexport/executioncoordinator/executionoffering/v1/transit/air_execution_offering.proto";
+import "flexport/executioncoordinator/executionoffering/v1/transit/ocean_fcl_execution_offering.proto";
+import "flexport/executioncoordinator/executionoffering/v1/transit/ocean_non_fcl_execution_offering.proto";
+import "flexport/executioncoordinator/executionoffering/v1/transit/trucking_only_execution_offering.proto";
+
+// A wrapper message for any transit ExecutionOffering.
+// More details on go/execution-offering wiki.
+message TransitExecutionOffering {
+  oneof offering {
+    AirExecutionOffering air = 1;
+    OceanNonFclExecutionOffering ocean_non_fcl = 3;
+    OceanFclExecutionOffering ocean_fcl = 4;
+    TruckingOnlyExecutionOffering trucking_only = 5;
+  }
+}

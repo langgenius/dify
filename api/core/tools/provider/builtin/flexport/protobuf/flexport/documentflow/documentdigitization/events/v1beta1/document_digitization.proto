@@ -1,0 +1,44 @@
+// TEAM: origin_ops
+
+syntax = "proto3";
+
+package flexport.documentflow.documentdigitization.events.v1beta1;
+
+import "flexport/documentflow/documentdigitization/enums/v1beta1/task_status.proto";
+import "flexport/documentflow/documentdigitization/v1beta1/document_digitization.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DocumentDigitizationEventProto";
+option java_package = "com.flexport.documentflow.documentdigitization.events.v1beta1";
+option ruby_package = "Flexport::DocumentFlow::DocumentDigitization::Events::V1Beta1";
+
+message DocumentDigitizationTask {
+  string id = 1;
+  string document_type_slug = 2;
+
+  uint32 retry_count = 11;
+  uint32 max_retry_times = 12;
+
+  google.protobuf.Timestamp created_at = 21;
+  optional google.protobuf.Timestamp latest_retry_at = 22;
+}
+
+message DocumentDigitizationUpdateEvent {
+  string id = 1;
+  string document_fid = 2;
+  string document_type_slug = 3;
+  string documentable_fid = 4;
+  string documentable_type = 5;
+  string file_object_fid = 6;
+
+  // latest digitization results
+  optional google.protobuf.Struct current_results = 11;
+  // change logs for current digitization results version
+  enums.v1beta1.TaskStatus status = 12;
+  repeated documentdigitization.v1beta1.ChangeLog change_logs = 13;
+
+  google.protobuf.Timestamp created_at = 21;
+  google.protobuf.Timestamp updated_at = 22;
+}

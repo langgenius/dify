@@ -1,0 +1,28 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.compliance.form.event.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "FormStatusChangedProto";
+option java_package = "com.flexport.compliance.form.event.v1beta1";
+option ruby_package = "Flexport::Compliance::Form::Event::V1Beta1";
+
+import "flexport/compliance/form/constant/v1beta1/form_status.proto";
+import "flexport/compliance/form/constant/v1beta1/form_type.proto";
+import "google/protobuf/timestamp.proto";
+
+// Request to create a new form of a given form type and form version.
+message FormStatusChanged {
+  // The DateTime this event was created.
+  google.protobuf.Timestamp created_time = 1;
+  // The fid of the form.
+  string form_fid = 2;
+  // The type of form.
+  flexport.compliance.form.constant.v1beta1.FormType form_type = 3;
+  // The new status for the form.
+  flexport.compliance.form.constant.v1beta1.FormStatus form_status = 4;
+  // The fid of the client.
+  string client_fid = 5;
+}

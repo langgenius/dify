@@ -1,0 +1,119 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executionmilestones.shipmentstate.v1beta1;
+
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierBookingShipmentStateProto";
+option java_package = "com.flexport.executionmilestones.shipmentstate.v1beta1";
+option ruby_package = "Flexport::ExecutionMilestones::ShipmentState::V1Beta1";
+
+// The State to store carrier booking related data in EMS.
+message CarrierBookingShipmentState {
+  string shipment_fid = 1;
+  repeated CarrierBookingExtract carrier_booking_extracts = 2;
+}
+
+// A carrier booking extract data.
+message CarrierBookingExtract {
+  string fid = 1;
+  string booking_number = 4;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime etd_time = 6;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime si_cutoff_time = 7;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime vgm_cutoff_time = 8;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime cy_cutoff_time = 9;
+  CarrierBookingStatus status_enum = 10;
+  CarrierBookingReleaseStatus release_status_enum = 11;
+  repeated CarrierBookingContainerRequest carrier_booking_container_requests = 12 [deprecated = true];
+  repeated string so_numbers = 13;
+  repeated BookingContainer container_requests = 14;
+  BookingIntegration booking_integration = 15;
+  // digitized so fids
+  repeated string so_document_fids = 16;
+  // digitized and undigitized so fids
+  repeated string all_so_document_fids = 17;
+  CarrierContract carrier_contract = 18;
+  google.protobuf.Timestamp attached_at = 19;
+  optional string updated_by_user_fid = 20;
+  optional google.protobuf.Timestamp updated_by_user_time = 21;
+  optional string so_updated_by_user_fid = 22;
+  optional google.protobuf.Timestamp so_updated_at = 23;
+  string carrier_fid = 24;
+  repeated ShippingOrder shipping_orders = 25;
+  // digitized and undigitzed and archived
+  repeated string uploaded_so_document_fids = 26;
+}
+
+message ShippingOrder{
+  string uuid = 1;
+  optional string created_by = 2;
+  optional google.protobuf.Timestamp created_at = 3;
+}
+
+// Represents the status of a carrier booking.
+enum CarrierBookingStatus {
+  CARRIER_BOOKING_STATUS_INVALID = 0;
+  CARRIER_BOOKING_STATUS_CREATED = 1;
+  CARRIER_BOOKING_STATUS_REQUESTED = 2;
+  CARRIER_BOOKING_STATUS_PENDING = 3;
+  CARRIER_BOOKING_STATUS_CONFIRMED = 4;
+  CARRIER_BOOKING_STATUS_DECLINED = 5;
+  CARRIER_BOOKING_STATUS_CANCELLED = 6;
+  CARRIER_BOOKING_STATUS_UNBOOKED = 7;
+  CARRIER_BOOKING_STATUS_ERROR = 8;
+  CARRIER_BOOKING_STATUS_SLA_VIOLATION = 9;
+  CARRIER_BOOKING_STATUS_REVISING = 10;
+}
+
+// Represents the release status of a carrier booking.
+enum CarrierBookingReleaseStatus {
+  CARRIER_BOOKING_RELEASE_STATUS_INVALID = 0;
+  CARRIER_BOOKING_RELEASE_STATUS_FULLY_RELEASED = 1;
+  CARRIER_BOOKING_RELEASE_STATUS_PARTIALLY_RELEASED = 2;
+  CARRIER_BOOKING_RELEASE_STATUS_NOT_RELEASED = 3;
+}
+
+// Carrier booking container representation.
+message CarrierBookingContainerRequest {
+  string container_type = 1;
+  string containe_size = 2;
+  int32 quantity = 3;
+  int32 carrier_teu = 4;
+}
+
+// Booking container info from oex's carrier_booking_bundle.proto.
+message BookingContainer {
+  // ISO container code, e.g. 22G0, 45G0.
+  string iso_container_type = 1;
+  int64 quantity = 2;
+}
+
+// from carrier_booking_bundle.proto
+message BookingIntegration {
+  enum BookingIntegrationPartner {
+    BOOKING_INTEGRATION_PARTNER_INVALID = 0;
+    BOOKING_INTEGRATION_PARTNER_INTTRA = 1;
+    BOOKING_INTEGRATION_PARTNER_CMA = 2;
+    BOOKING_INTEGRATION_PARTNER_BOOMI = 3;
+    BOOKING_INTEGRATION_PARTNER_OIT = 4;
+    BOOKING_INTEGRATION_PARTNER_TRANSOCEAN = 5;
+    BOOKING_INTEGRATION_PARTNER_CMLOG = 6;
+  }
+  enum BookingPlacedExternally {
+    BOOKING_PLACED_EXTERNALLY_INVALID = 0;
+    BOOKING_PLACED_EXTERNALLY_OTHER = 1;
+    BOOKING_PLACED_EXTERNALLY_SYNCONHUB_WEBSITE = 2;
+  }
+  optional BookingIntegrationPartner integration_partner = 1;
+  optional string internal_reference = 14;
+}
+
+// Carrier contract info from oceanplanning's contract.proto.
+message CarrierContract {
+  string fid = 1;
+  string contract_number = 2;
+}

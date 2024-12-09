@@ -1,0 +1,21 @@
+// TEAM: network_entities
+
+syntax = "proto3";
+
+package flexport.network.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TzWorldProto";
+option java_package = "com.flexport.network.v1beta1";
+option ruby_package = "Flexport::Network::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// A close analogue of the Network::TZWorld ActiveRecord model.
+message TZWorld {
+  int32 gid = 1;
+  google.protobuf.StringValue tzid = 2;
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}

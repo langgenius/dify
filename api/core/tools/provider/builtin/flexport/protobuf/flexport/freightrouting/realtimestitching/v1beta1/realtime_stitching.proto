@@ -1,0 +1,403 @@
+// TEAM: tetrominos
+
+syntax = "proto3";
+
+package flexport.freightrouting.realtimestitching.v1beta1;
+
+import "flexport/catalog/chargeitem/v1/charge_item_api.proto";
+import "flexport/commerce/merchandising/catalog/data_authority/offering/v1beta1/offering.proto";
+import "flexport/os/v1/types/incoterm/v1/incoterm.proto";
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RealtimeStitchingProto";
+option java_package = "com.flexport.freightrouting.realtimestitching.v1beta1";
+option ruby_package = "Flexport::FreightRouting::RealtimeStitching::V1Beta1";
+
+message CfsToPortMapping {
+  string fid = 1;
+  string cfs_fid = 2;
+  string port_fid = 3;
+  string carrier_fid = 4;
+  google.protobuf.BoolValue supports_import = 5;
+  google.protobuf.BoolValue supports_export = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// The freight type we should stitch a route for.
+enum FreightType {
+  FREIGHT_TYPE_INVALID = 0;
+  FREIGHT_TYPE_DOOR_TO_DOOR = 1;
+  FREIGHT_TYPE_DOOR_TO_PORT = 2;
+  FREIGHT_TYPE_PORT_TO_DOOR = 3;
+  FREIGHT_TYPE_PORT_TO_PORT = 4;
+}
+
+// Air Service Levels
+enum AirServiceLevel {
+  AIR_SERVICE_LEVEL_INVALID = 0;
+  AIR_SERVICE_LEVEL_DEFERRED = 1;
+  AIR_SERVICE_LEVEL_EXPRESS = 2;
+  AIR_SERVICE_LEVEL_STANDARD = 3;
+}
+
+// LCL Service Levels
+enum LclServiceLevel {
+  LCL_SERVICE_LEVEL_INVALID = 0;
+  LCL_SERVICE_LEVEL_PREMIUM = 1;
+  LCL_SERVICE_LEVEL_STANDARD = 2;
+}
+
+// FCL Service Levels
+enum FclServiceLevel {
+  FCL_SERVICE_LEVEL_INVALID = 0;
+  FCL_SERVICE_LEVEL_CARRIER_HAULAGE_FROM_DOOR = 1;
+  FCL_SERVICE_LEVEL_DEFERRED = 2;
+  FCL_SERVICE_LEVEL_DIRECT = 3;
+  FCL_SERVICE_LEVEL_ECONOMY = 4;
+  FCL_SERVICE_LEVEL_EXTENDED_FREE_TIME = 5;
+  FCL_SERVICE_LEVEL_EXTENDED_VALIDITY = 6;
+  FCL_SERVICE_LEVEL_INDIRECT = 7;
+  FCL_SERVICE_LEVEL_NEXT_AVAILABLE_SAILING = 8;
+  FCL_SERVICE_LEVEL_NO_ROLL = 9;
+  FCL_SERVICE_LEVEL_NON_SUBJECT_TO_GRI = 10;
+  FCL_SERVICE_LEVEL_NOR = 11;
+  FCL_SERVICE_LEVEL_PLUS = 12;
+  FCL_SERVICE_LEVEL_PREMIUM = 13;
+  FCL_SERVICE_LEVEL_PRIORITY = 14;
+  FCL_SERVICE_LEVEL_PROMOTIONAL = 15;
+  FCL_SERVICE_LEVEL_SPECIFIC_SAILING_DAYS = 16;
+  FCL_SERVICE_LEVEL_STANDARD = 17;
+  FCL_SERVICE_LEVEL_SUBJECT_TO_ROLL = 18;
+  FCL_SERVICE_LEVEL_TRIAL_NET_NEW_SHIPPERS = 19;
+}
+
+// Address Information
+message Address {
+  // The fid should be populated for port addresses
+  google.protobuf.StringValue fid = 1;
+
+  // Latitude of the address, this should be populated for door addresses
+  google.protobuf.DoubleValue latitude = 2;
+
+  // Longitude of the address, this should be populated for door addresses
+  google.protobuf.DoubleValue longitude = 3;
+
+  // The country code of the address
+  google.protobuf.StringValue country_code = 4;
+}
+
+// The points of the route we want to stitch for.
+// For example for a door to door shipment, the origin_address and destination_address
+message Route {
+  // The origin address, used for DOOR_TO_DOOR and DOOR_TO_PORT shipments.
+  Address origin_address = 1;
+
+  // The origin ports, used for PORT_TO_DOOR and PORT_TO_PORT shipments.
+  repeated Address origin_port = 2;
+
+  // The destination address, used for DOOR_TO_DOOR and PORT_TO_DOOR shipments.
+  Address destination_address = 3;
+
+  // The destination ports, used for DOOR_TO_PORT and PORT_TO_PORT shipments.
+  repeated Address destination_port = 4;
+}
+
+// Quote attributes will be used to filter the offerings during search
+message QuoteAttributes {
+  // The client fid for which the quote is being requested
+  google.protobuf.StringValue client_fid = 1;
+
+  // The incoterm for the shipment
+  flexport.os.v1.types.incoterm.v1.Incoterm incoterm = 2;
+
+  // The cargo ready date for the shipment
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate cargo_ready_date = 3;
+
+  // Whether or not we want to include customs in the quote
+  google.protobuf.BoolValue wants_export_customs = 4;
+
+  // Whether or not we want to include customs in the quote
+  google.protobuf.BoolValue wants_import_customs = 5;
+
+  // If coming from the prefill quote phase (core)
+  google.protobuf.Int32Value quote_request_id = 6;
+
+  // If coming from the prefill quote phase (core)
+  google.protobuf.Int32Value shipment_id = 7;
+}
+
+// Charge attributes that will be passed into charges api directly
+message ChargeAttributes {
+  // The isf filing party type
+  google.protobuf.StringValue isf_filing_party_type = 1;
+
+  // The pricing tier
+  google.protobuf.Int32Value pricing_tier = 2;
+}
+
+// Associate charges with an offering
+message OfferingWithCharges {
+  // The offering instance from CDA
+  flexport.commerce.merchandising.catalog.data_authority.offering.v1beta1.Offering offering = 1;
+
+  // The charge items that belong to the offering instance
+  repeated flexport.catalog.chargeitem.v1.ChargeItem charge_items = 3;
+}
+
+// The type of stitched route
+enum StitchedRouteType {
+  STITCHED_ROUTE_TYPE_INVALID = 0;
+  STITCHED_ROUTE_TYPE_FASTEST = 1;
+  STITCHED_ROUTE_TYPE_CHEAPEST = 2;
+  STITCHED_ROUTE_TYPE_PREFERRED = 3;
+}
+
+// A stitched route
+message StitchedRoute {
+  // The type of stitched route
+  StitchedRouteType type = 1;
+
+  // The offerings (with charges) that make up the e2e route
+  repeated OfferingWithCharges offerings_with_charges = 2;
+
+  // The charge items that belong to the entire e2e route
+  repeated flexport.catalog.chargeitem.v1.ChargeItem charge_items = 3;
+}
+
+// The fids of the  stitched routes
+message StitchedFids {
+  // CDA offering fid
+  repeated string fid = 1;
+}
+
+// Additional data aside from the selected stitched routes
+// Will contain all routes and offerings
+message AdditionalStitcherData {
+  // The enumerated stitched routes, will only contain transportation offerings (i.e cartage, lcl) for LCL
+  repeated StitchedFids all_stitched_fids = 1;
+
+  // All the possible origin booking offering fids
+  repeated string origin_booking_offering_fids = 2;
+
+  // All the possible import customs offering fids
+  repeated string import_customs_offering_fids = 3;
+
+  // All the possible export customs offering fids
+  repeated string export_customs_offering_fids = 4;
+
+  // All the offerings with their respective charges
+  repeated OfferingWithCharges offerings_with_charges = 5;
+}
+
+// Origin booking offering filters
+message OriginBookingFilters {
+  // The freight partners we want to include, if blank all freight partners will be included
+  repeated string freight_partner_fid = 1;
+
+  // Whether or not we want to include NAC offerings
+  google.protobuf.BoolValue include_nac = 2;
+}
+
+// Import customs offering filters
+message ImportCustomsFilters {
+  // The freight partners we want to include, if blank all freight partners will be included
+  repeated string freight_partner_fid = 1;
+
+  // Whether or not we want to include NAC offerings
+  google.protobuf.BoolValue include_nac = 2;
+}
+
+// Export customs offering filters
+message ExportCustomsFilters {
+  // The freight partners we want to include, if blank all freight partners will be included
+  repeated string freight_partner_fid = 1;
+
+  // Whether or not we want to include NAC offerings
+  google.protobuf.BoolValue include_nac = 2;
+}
+
+// Cartage offering filters
+message CartageFilters {
+  // The freight partners we want to include, if blank all freight partners will be included
+  repeated string freight_partner_fid = 1;
+
+  // The carriers we want to include, if blank all carriers will be included
+  repeated string carrier_fid = 2;
+
+  // Whether or not we want to include NAC offerings
+  google.protobuf.BoolValue include_nac = 3;
+}
+
+// Drayage offering filters
+message DrayageFilters {
+  // The freight partners we want to include, if blank all freight partners will be included
+  repeated string freight_partner_fid = 1;
+
+  // The carriers we want to include, if blank all carriers will be included
+  repeated string carrier_fid = 2;
+
+  // Whether or not we want to include NAC offerings
+  google.protobuf.BoolValue include_nac = 3;
+}
+
+// Air main freight offering filters
+message AirMainFreightFilters {
+  // The freight partners we want to include, if blank all freight partners will be included
+  repeated string freight_partner_fid = 1;
+
+  // The carriers we want to include, if blank all carriers will be included
+  repeated string carrier_fid = 2;
+
+  // The service levels we want to include, if blank all service levels will be included
+  repeated AirServiceLevel service_level = 3;
+
+  // Whether or not we want to include NAC offerings
+  google.protobuf.BoolValue include_nac = 4;
+}
+
+// LCL main freight offering filters
+message LclMainFreightFilters {
+  // The freight partners we want to include, if blank all freight partners will be included
+  repeated string freight_partner_fid = 1;
+
+  // The carriers we want to include, if blank all carriers will be included
+  repeated string carrier_fid = 2;
+
+  // The service levels we want to include, if blank all service levels will be included
+  repeated LclServiceLevel service_level = 3;
+
+  // Whether or not we want to include NAC offerings
+  google.protobuf.BoolValue include_nac = 4;
+}
+
+// FCL main freight offering filters
+message FclMainFreightFilters {
+  // The freight partners we want to include, if blank all freight partners will be included
+  repeated string freight_partner_fid = 1;
+
+  // The carriers we want to include, if blank all carriers will be included
+  repeated string carrier_fid = 2;
+
+  // The service levels we want to include, if blank all service levels will be included
+  repeated FclServiceLevel service_level = 3;
+
+  // Whether or not we want to include NAC offerings
+  google.protobuf.BoolValue include_nac = 4;
+}
+
+// All the filters for an e2e Air route
+message AirFilters {
+  // The filters for the origin booking
+  OriginBookingFilters origin_booking_filters = 1;
+
+  // The filters for the import customs
+  ImportCustomsFilters import_customs_filters = 2;
+
+  // The filters for the export customs
+  ExportCustomsFilters export_customs_filters = 3;
+
+  // The filters for the origin cartage
+  CartageFilters origin_cartage_filters = 4;
+
+  // The filters for the main freight
+  AirMainFreightFilters main_freight_filters = 5;
+
+  // The filters for the destination cartage
+  CartageFilters destination_cartage_filters = 6;
+}
+
+// All the filters for an e2e LCL route
+message LclFilters {
+  // The filters for the origin booking
+  OriginBookingFilters origin_booking_filters = 1;
+
+  // The filters for the import customs
+  ImportCustomsFilters import_customs_filters = 2;
+
+  // The filters for the export customs
+  ExportCustomsFilters export_customs_filters = 3;
+
+  // The filters for the origin cartage
+  CartageFilters origin_cartage_filters = 4;
+
+  // The filters for the main freight
+  LclMainFreightFilters main_freight_filters = 5;
+
+  // The filters for the destination cartage
+  CartageFilters destination_cartage_filters = 6;
+}
+
+// All the filters for an e2e FCL route
+message FclFilters {
+  // The filters for the origin booking
+  OriginBookingFilters origin_booking_filters = 1;
+
+  // The filters for the import customs
+  ImportCustomsFilters import_customs_filters = 2;
+
+  // The filters for the export customs
+  ExportCustomsFilters export_customs_filters = 3;
+
+  // The filters for the origin cartage
+  DrayageFilters origin_drayage_filters = 4;
+
+  // The filters for the main freight
+  FclMainFreightFilters main_freight_filters = 5;
+
+  // The filters for the destination cartage
+  DrayageFilters destination_drayage_filters = 6;
+}
+
+// FCL cargo details used to determine rates
+message FclCargoDetails {
+  // The number of 20ft containers
+  google.protobuf.Int32Value container_count_twenty_ft = 1;
+
+  // The number of 40ft containers
+  google.protobuf.Int32Value container_count_forty_ft = 2;
+
+  // The number of 40ft HC containers
+  google.protobuf.Int32Value container_count_forty_ft_hc = 3;
+
+  // The number of 45ft HC containers
+  google.protobuf.Int32Value container_count_forty_five_ft_hc = 4;
+
+  // The weight of the cargo
+  oneof weight {
+    google.protobuf.DoubleValue weight_kg = 5;
+    google.protobuf.DoubleValue weight_lbs = 6;
+  }
+}
+
+// LCL cargo details used to determine rates
+message LclCargoDetails {
+  // The weight of the cargo
+  oneof weight {
+    google.protobuf.DoubleValue weight_kg = 5;
+    google.protobuf.DoubleValue weight_lbs = 6;
+  }
+
+  // The volume of the cargo
+  oneof volume {
+    google.protobuf.DoubleValue volume_cbm = 7;
+    google.protobuf.DoubleValue volume_cbft = 8;
+  }
+}
+
+// Air cargo details used to determine rates
+message AirCargoDetails {
+  // The weight of the cargo
+  oneof weight {
+    google.protobuf.DoubleValue weight_kg = 5;
+    google.protobuf.DoubleValue weight_lbs = 6;
+  }
+
+  // The volume of the cargo
+  oneof volume {
+    google.protobuf.DoubleValue volume_cbm = 7;
+    google.protobuf.DoubleValue volume_cbft = 8;
+  }
+}

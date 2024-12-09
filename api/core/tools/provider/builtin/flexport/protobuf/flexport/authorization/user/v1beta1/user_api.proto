@@ -1,0 +1,36 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.authorization.user.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "UserApiProto";
+option java_package = "com.flexport.authorization.user.v1beta1";
+option ruby_package = "Flexport::Authorization::User::V1Beta1";
+
+// Operations relevant to a user.
+service UserAPI {
+  // Deactivates the user with the supplied email. This RPC will call out to AuthZ's Auth0 ManagementAPI to remove
+  // any Auth0 accounts associated with the given email. This call will be successful in the following cases:
+  // 1) The user getting deactivated in the monolith does not have any associated accounts in Auth0.
+  // 2) The user has associated accounts in Auth0 and all have been deleted.
+  // For other cases, RPC will fail with an exception
+  rpc DeactivateUserByEmail(DeactivateUserByEmailRequest) returns (DeactivateUserByEmailResponse);
+}
+
+message DeactivateUserByEmailRequest {
+  string email = 1;
+}
+
+message DeactivateUserByEmailResponse {}
+
+message DeactivateUserByEmailErrorDetail {
+  DeactivateUserByEmailErrorType type = 1;
+  string message = 2;
+}
+
+enum DeactivateUserByEmailErrorType {
+  DEACTIVATE_USER_BY_EMAIL_ERROR_TYPE_INVALID = 0;
+  DEACTIVATE_USER_BY_EMAIL_ERROR_TYPE_INVALID_EMAIL = 1;
+}

@@ -1,0 +1,32 @@
+// TEAM: tetrominos
+
+syntax = "proto3";
+
+package flexport.shipmentplanner.recommendations.v1beta1;
+
+import "flexport/os/grpc/type/datetime/v1beta1/iso_8601_datetime.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentPlannerProto";
+option java_package = "com.flexport.shipmentplanner.recommendations.v1beta1";
+option ruby_package = "Flexport::ShipmentPlanner::Recommendations::V1Beta1";
+
+message Affinity {
+  // The target utilization rate of the container, 0.0 to 1.0, optional
+  optional float utilization = 1;
+  // FIDs for all shipments that are members of this affinity.
+  repeated string shipment_fid = 2;
+}
+
+message ShipmentConstraintDetail {
+  string shipment_fid = 1;
+  // The time by which the shipment must arrive at the destination
+  flexport.os.grpc.type.datetime.v1beta1.Iso8601Datetime must_arrive_by_date = 2;
+  // The time by which the shipment must be ready for consolidation
+  flexport.os.grpc.type.datetime.v1beta1.Iso8601Datetime first_consolidation_date = 3;
+}
+
+message OceanConsolidationShipmentConstraintRecommendation {
+  repeated Affinity affinities = 1;
+  repeated ShipmentConstraintDetail shipment_constraint_details = 2;
+}

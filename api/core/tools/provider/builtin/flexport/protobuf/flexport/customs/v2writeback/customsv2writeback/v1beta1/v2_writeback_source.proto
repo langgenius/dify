@@ -1,0 +1,13 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.v2writeback.customsv2writeback.v1beta1;
+
+option ruby_package = "Flexport::Customs::V2Writeback::CustomsV2Writeback::V1Beta1";
+
+enum V2WritebackSource {
+  V2_WRITEBACK_SOURCE_INVALID = 0;
+  V2_WRITEBACK_SOURCE_V2_ENTITY = 1;
+  V2_WRITEBACK_SOURCE_DEMO_DATA = 2;
+}

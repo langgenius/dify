@@ -1,0 +1,18 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.model.v1;
+
+import "flexport/assignment/enums/v1/poc_type.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PocUserProto";
+option java_package = "com.flexport.assignment.model.v1";
+option ruby_package = "Flexport::Assignment::Model::V1";
+
+message PocUser {
+  string shipment_fid = 1;
+  flexport.assignment.enums.v1.PocType poc_type = 2;
+  string user_fid = 3;
+}

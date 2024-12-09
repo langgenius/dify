@@ -1,0 +1,71 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.authorization.applicationsubscription.v1beta1;
+
+import "google/api/annotations.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ApplicationSubscriptionApiProto";
+option java_package = "com.flexport.authorization.applicationsubscription.v1beta1";
+option ruby_package = "Flexport::Authorization::ApplicationSubscription::V1Beta1";
+
+// These APIs will be exposed as json over Http.
+service ApplicationSubscriptionAPI {
+  // Create an Application Subscription. This API will be called from Auth0. The User will not have createApplication
+  //  Subscription permission but client_Admin role. we should provide createApplicationSubscription to Auth0
+  //  clientId/ClientSecret to have a proper auth check
+  rpc CreateApplicationSubscription(CreateApplicationSubscriptionRequest) returns (CreateApplicationSubscriptionResponse) {
+    option (google.api.http) = {
+      post: "/authorization/application/subscriptions"
+    };
+  }
+
+  // Third party will will not have store application_id/ApplicationSubscription. We need to drive application/
+  // ApplicationSubscription information from clientCredential and user_id from JWT.
+  rpc UpdateApplicationSubscriptionStatus(UpdateApplicationSubscriptionStatusRequest) returns (UpdateApplicationSubscriptionStatusResponse) {
+    option (google.api.http) = {
+      patch: "/authorization/application/subscriptions/{application_subscription_fid}"
+    };
+  }
+
+  // Get the applicationSubscription status. True means active, False means inactive or unsubscribe.
+  rpc GetApplicationSubscriptionStatus(GetApplicationSubscriptionStatusRequest) returns (GetApplicationSubscriptionStatusResponse) {
+    option (google.api.http) = {
+      get: "/authorization/application/subscriptions/{application_subscription_fid}"
+    };
+  }
+}
+
+message CreateApplicationSubscriptionRequest {
+  string application_fid = 1;
+  string consented_at = 2;
+  string consentuser_fid = 3;
+  string client_fid = 4;
+  string company_fid = 5;
+  repeated string roles = 6;
+}
+
+message CreateApplicationSubscriptionResponse {
+  string application_subscription_fid = 1;
+}
+
+// User will be passed as part of jwt token.
+message UpdateApplicationSubscriptionStatusRequest {
+  string application_subscription_fid = 1;
+  bool active = 2;
+}
+
+message UpdateApplicationSubscriptionStatusResponse {
+  bool active = 1;
+}
+
+// User will be passed as part of jwt token.
+message GetApplicationSubscriptionStatusRequest {
+  string application_subscription_fid = 1;
+}
+
+message GetApplicationSubscriptionStatusResponse {
+  bool active = 1;
+}

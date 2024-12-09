@@ -1,0 +1,54 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customscaadapter.b3.v1beta1;
+
+import "flexport/customscaadapter/customerinfo/v1beta1/customer_info.proto";
+import "flexport/customscaadapter/shipmentinfo/v1beta1/shipment_info.proto";
+import "google/protobuf/timestamp.proto";
+import "google/type/decimal.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customscaadapter.b3.v1beta1";
+option ruby_package = "Flexport::CustomsCaAdapter::B3::V1Beta1";
+
+message B3Created {
+  flexport.customscaadapter.customerinfo.v1beta1.CustomerInfo customer_info = 1;
+  flexport.customscaadapter.shipmentinfo.v1beta1.ShipmentInfo shipment_info = 2;
+  B3Info b3_info = 3;
+  // deprecated
+  string b3_pdf_link = 4 [deprecated = true];
+  string b3_recap_pdf_link = 5 [deprecated = true];
+
+  S3Object b3_pdf = 6;
+  S3Object b3_recap_pdf = 7;
+
+  message S3Object {
+    string region = 1;
+    string bucket_name = 2;
+    string key = 3;
+  }
+}
+
+message B3Info {
+  // Weight is always in kilograms
+  int32 weight = 1;
+  google.type.Decimal total_sima = 2;
+  google.type.Decimal total_duty = 3;
+  google.type.Decimal exchange_rate = 4;
+  google.type.Decimal total_gst = 5;
+  google.protobuf.Timestamp release_date = 6;
+  repeated B3LineItem line_items = 7;
+  string currency_code = 8;
+}
+
+message B3LineItem {
+  string description = 1;
+  int32 quantity = 2;
+  string unit_of_measure = 3;
+  string gst_code = 4;
+  google.type.Decimal sima = 5;
+  google.type.Decimal duty = 6;
+  google.type.Decimal gst = 7;
+}
+

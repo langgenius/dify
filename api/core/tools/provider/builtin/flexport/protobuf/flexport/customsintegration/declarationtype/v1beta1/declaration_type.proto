@@ -1,0 +1,20 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsintegration.declarationtype.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DeclarationTypeProto";
+option java_package = "com.flexport.customsintegration.declarationtype.v1beta1";
+option ruby_package = "Flexport::CustomsIntegration::DeclarationType::V1Beta1";
+
+// The type of a declaration.
+enum DeclarationType {
+  DECLARATION_TYPE_INVALID = 0;
+  DECLARATION_TYPE_SAD = 1;
+  DECLARATION_TYPE_T1 = 2;
+  DECLARATION_TYPE_US_IMPORT_ENTRY = 3;
+  DECLARATION_TYPE_GENERIC_CUSTOMS_CLEARANCE = 4;
+  DECLARATION_TYPE_FTZ_E214 = 5;
+}

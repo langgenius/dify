@@ -1,0 +1,25 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.monolith.masterhousebilloflading.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "MasterHouseBillOfLadingApiProto";
+option java_package = "com.flexport.monolith.masterhousebilloflading.v1beta1";
+option ruby_package = "Flexport::Monolith::MasterHouseBillOfLading::V1Beta1";
+
+service MasterHouseBillOfLadingAPI {
+  rpc ArchiveMasterHouseBillOfLading(ArchiveMasterHouseBillOfLadingRequest)
+      returns (ArchiveMasterHouseBillOfLadingResponse);
+}
+
+message ArchiveMasterHouseBillOfLadingRequest {
+  string shipment_fid = 1;
+  string master_house_bill_of_lading_number = 2;
+  string archived_by_fid = 3;
+}
+
+message ArchiveMasterHouseBillOfLadingResponse {
+  int32 master_house_bill_of_lading_id = 2;
+}

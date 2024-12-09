@@ -1,0 +1,23 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.documentprocessor.util.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "UtilsProto";
+option java_package = "com.flexport.documentprocessor.util.v1beta1";
+option ruby_package = "Flexport::DocumentProcessor::Util::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+
+// Result with errors message.
+message ErrorResult {
+  repeated string errors = 1;
+}
+
+// Date Range message.
+message DateRange {
+  google.protobuf.Timestamp start_date_time = 1;
+  google.protobuf.Timestamp end_date_time = 2;
+}

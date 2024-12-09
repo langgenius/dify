@@ -1,0 +1,18 @@
+// TEAM: client_app
+
+syntax = "proto3";
+
+package flexport.quoting.quotevoided.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "QuoteVoidedProto";
+option java_package = "com.flexport.quoting.quotevoided.v1beta1";
+option ruby_package = "Flexport::Quoting::QuoteVoided::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+
+// A Kinesis event signifying a request for quotes has been created.
+message QuoteVoided {
+  string quote_fid = 1;
+  google.protobuf.Timestamp voided_at_time = 2;
+}

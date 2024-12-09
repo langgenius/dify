@@ -1,0 +1,26 @@
+// TEAM: finance_platform
+
+syntax = "proto3";
+
+package flexport.payments.netsuitecompanyentity.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "NetsuiteCompanyEntityProto";
+option java_package = "com.flexport.payments.netsuitecompanyentity.v1beta1";
+option ruby_package = "Flexport::Payments::NetsuiteCompanyEntity::V1Beta1";
+
+// The Netsuite company entity object.
+message NetsuiteCompanyEntity {
+  string fid = 1;
+  google.protobuf.StringValue company_entity_fid = 2;
+  google.protobuf.StringValue netsuite_approval_category = 3 [deprecated = true];
+  google.protobuf.Int64Value netsuite_billing_terms = 4;
+  repeated string netsuite_currency_codes = 5;
+  repeated string text = 6;
+  google.protobuf.Int64Value netsuite_id = 7;
+  google.protobuf.Timestamp created_at_time = 8;
+  google.protobuf.Timestamp updated_at_time = 9;
+}

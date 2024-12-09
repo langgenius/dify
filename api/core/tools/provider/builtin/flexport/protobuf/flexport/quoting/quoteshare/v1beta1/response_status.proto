@@ -1,0 +1,19 @@
+// TEAM: quoting
+
+syntax = "proto3";
+
+package flexport.quoting.quoteshare.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ResponseStatusProto";
+option java_package = "com.flexport.quoting.quoteshare.v1beta1";
+option ruby_package = "Flexport::Quoting::QuoteShare::V1Beta1";
+
+// Accept quote statuses.
+enum AcceptQuoteResponseCode {
+  ACCEPT_QUOTE_RESPONSE_CODE_INVALID = 0;
+  ACCEPT_QUOTE_RESPONSE_CODE_SUCCESS = 1;
+  ACCEPT_QUOTE_RESPONSE_CODE_INTERNAL_ERROR = 2;
+  ACCEPT_QUOTE_RESPONSE_CODE_FAIL_TO_FETCH = 3;
+  ACCEPT_QUOTE_RESPONSE_CODE_CANNOT_ACCEPT = 4;
+}

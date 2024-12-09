@@ -1,0 +1,25 @@
+// TEAM: client_app
+
+syntax = "proto3";
+
+package flexport.rulebasedshipmentuseraccess.userenrollment.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "UserEnrollmentApiProto";
+option java_package = "com.flexport.rulebasedshipmentuseraccess.userenrollment.v1beta1";
+option ruby_package = "Flexport::RuleBasedShipmentUserAccess::UserEnrollment::V1Beta1";
+
+// This service is used to retrieve RBSUA enrollment status for a user.
+service UserEnrollmentAPI {
+  // Returns enrollment status for a given user.
+  rpc GetUserEnrollmentStatus(GetUserEnrollmentStatusRequest) returns (GetUserEnrollmentStatusResponse);
+}
+
+message GetUserEnrollmentStatusRequest {
+  string user_fid = 1;
+  string company_fid = 2;
+}
+
+message GetUserEnrollmentStatusResponse {
+  bool enrolled = 1;
+}

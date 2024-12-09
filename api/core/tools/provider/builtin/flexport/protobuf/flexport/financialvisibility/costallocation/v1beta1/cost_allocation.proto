@@ -1,0 +1,53 @@
+// TEAM: cost_capture
+
+syntax = "proto3";
+
+package flexport.financialledger.costallocation.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CostAllocationProto";
+option java_package = "com.flexport.financialledger.costallocation.v1beta1";
+option ruby_package = "Flexport::FinancialLedger::CostAllocation::V1Beta1";
+
+// CostAllocation object.
+message CostAllocationDto {
+  reserved 2, 3;
+  reserved "allocated_id", "allocated_type";
+  google.protobuf.Int64Value fid = 1;
+  string strategy_type = 4;
+  map<string, string> strategy_params = 5;
+  google.protobuf.Timestamp created_at_time = 6;
+  google.protobuf.Timestamp updated_at_time = 7;
+  repeated TargetDto targets = 8;
+  google.protobuf.Timestamp deleted_at_time = 9;
+  int32 supply_service_id = 10;
+}
+
+// CostAllocationTarget object.
+message TargetDto {
+  google.protobuf.Int64Value fid = 1;
+  string target_type = 2;
+  string target_id = 3;
+  google.protobuf.Int64Value cost_allocation_fid = 4;
+  google.protobuf.Timestamp created_at_time = 5;
+  google.protobuf.Timestamp updated_at_time = 6;
+  google.protobuf.Timestamp deleted_at_time = 7;
+}
+
+// Parameters for a cost allocation target.
+// Only direct allocation to shipment - FinancialLedger::AllocationTargetTypes::SHIPMENT is allowed as a type
+message TargetParamsDto {
+  string target_type = 1;
+  string target_id = 2;
+  map<string, string> details = 3;
+}
+
+// Kinesis message emitted by the FinancialLedger RegisterCostAllocation service
+// when a cost allocation is registered.
+message CostAllocationRegistered {
+  flexport.financialledger.costallocation.v1beta1.CostAllocationDto cost_allocation = 1;
+  google.protobuf.Timestamp registered_at_time = 2;
+}

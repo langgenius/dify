@@ -1,0 +1,21 @@
+// TEAM: wms_shanghai
+
+syntax = "proto3";
+
+package flexport.wmscell.outboundloadtransaction.entity.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OutboundLoadTransactionEntityProto";
+option java_package = "com.flexport.wmscell.outboundloadtransaction.entity.v1";
+
+message OutboundLoadTransactionEntity {
+  string transaction_id = 1;
+  string outbound_load_pk = 2;
+  google.protobuf.Timestamp transaction_time = 3;
+  string transaction_type = 4;
+  string warehouse_code = 5;
+  string user_id = 6;
+  string note = 7;
+}

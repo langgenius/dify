@@ -1,0 +1,24 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TruckingCarrierAcceptedDeliveryOrderProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// A trucking carrier has accepted a delivery order.
+message TruckingCarrierAcceptedDeliveryOrder {
+  string cargo_fid = 1;
+  // do_flex_id is a unique identifier for DeliveryOrder. e.g. FLEX-1234A
+  string do_flex_id = 5;
+  string do_fid = 6;
+  // The fid of the immutable address instance this delivery order originates from.
+  string origin_address_fid = 2;
+  // The fid of the immutable address instance this delivery order will go to.
+  string destination_address_fid = 3;
+  // The carrier that confirmed this delivery order.
+  string carrier_fid = 4;
+}

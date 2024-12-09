@@ -1,0 +1,75 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.otp.v1beta1;
+
+import "flexport/exceptionmanagement/enums/v1beta1/exception_status.proto";
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "MilestoneProto";
+option java_package = "com.flexport.otp.v1beta1";
+option ruby_package = "Flexport::Otp::V1Beta1";
+
+enum ValidationType {
+  VALIDATION_TYPE_INVALID = 0;
+  VALIDATION_TYPE_MISSING_HBL = 1;
+  VALIDATION_TYPE_MISSING_MBL = 2;
+  VALIDATION_TYPE_MISSING_VESSEL_ID = 3;
+  VALIDATION_TYPE_MISSING_CONTAINER_ID = 4;
+}
+
+message ValidationFailure {
+  ValidationType type = 1;
+  string details = 2;
+  string exception_fid = 3;
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionStatus exception_status = 5;
+  google.protobuf.Timestamp exception_status_timestamp = 6;
+  google.protobuf.Timestamp exception_created_at = 4;
+}
+
+message Milestone {
+  string fid = 1;
+  uint32 revision = 13;
+  string timeline_fid = 2;
+  string execution_task_fid = 3;
+  string route_shape_node_fid = 4;
+  string execution_cargo_fid = 5;
+  string container_fid = 12;
+  string address_fid = 8;
+  MilestoneType type = 6;
+  map<string, flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime> times = 7;
+  map<string, string> properties = 9;
+  repeated string predecessor_milestone_fids = 10;
+  Side side = 11;
+  repeated ValidationFailure failed_validations = 14;
+}
+
+enum MilestoneType {
+  MILESTONE_TYPE_INVALID = 0;
+  MILESTONE_TYPE_PORT_ARRIVAL = 1;
+  MILESTONE_TYPE_PORT_DEPARTURE = 2;
+  MILESTONE_TYPE_PORT_PICKUP = 3;
+  MILESTONE_TYPE_PORT_PICKUP_READY = 16;
+  MILESTONE_TYPE_PORT_DROPOFF = 4;
+  MILESTONE_TYPE_CFS_DROPOFF = 5;
+  MILESTONE_TYPE_CFS_PICKUP = 6;
+  MILESTONE_TYPE_CFS_RECEIPT = 7;
+  MILESTONE_TYPE_INITIAL_PICKUP = 8;
+  MILESTONE_TYPE_FINAL_DROPOFF = 9;
+  MILESTONE_TYPE_ORIGIN_PORT_DROPOFF = 10;
+  MILESTONE_TYPE_ORIGIN_PORT_DEPARTURE = 11;
+  MILESTONE_TYPE_DESTINATION_PORT_ARRIVAL = 12;
+  MILESTONE_TYPE_DESTINATION_PORT_PICKUP = 13;
+  MILESTONE_TYPE_SERVICE_START = 14;
+  MILESTONE_TYPE_SERVICE_END = 15;
+}
+
+enum Side {
+  SIDE_INVALID = 0;
+  SIDE_ORIGIN = 1;
+  SIDE_DESTINATION = 2;
+  SIDE_NONE = 3;
+}

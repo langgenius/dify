@@ -1,0 +1,27 @@
+// TEAM: network_entities
+
+syntax = "proto3";
+
+package flexport.network.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "NetworkOrderByProto";
+option java_package = "com.flexport.network.v1beta1";
+option ruby_package = "Flexport::Network::V1Beta1";
+
+// Order by the `name` field.
+message OrderByName {}
+
+// Order by distance from the specified coordinates.
+message OrderByDistance {
+  double lat = 1;
+  double lng = 2;
+}
+
+// Order by distance from the specified Address.
+message OrderByAddressDistance {
+  oneof address_id_discriminator {
+    int32 address_id = 1;
+    string address_fid = 2;
+  }
+}

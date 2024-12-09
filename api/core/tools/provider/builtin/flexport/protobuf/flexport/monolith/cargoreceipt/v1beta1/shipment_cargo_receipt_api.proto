@@ -1,0 +1,62 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.monolith.cargoreceipt.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentCargoReceiptApiProto";
+option java_package = "com.flexport.monolith.cargoreceipt.v1beta1";
+option ruby_package = "Flexport::Monolith::CargoReceipt::V1Beta1";
+
+service ShipmentCargoReceiptAPI {
+  rpc ListShipmentCargoReceiptsByShipmentId(ListShipmentCargoReceiptsByShipmentIdRequest) returns (ListShipmentCargoReceiptsByShipmentIdResponse);
+  rpc ListShipmentCargoReceiptsByShipmentIds(ListShipmentCargoReceiptsByShipmentIdsRequest) returns (ListShipmentCargoReceiptsByShipmentIdsResponse);
+}
+
+message ListShipmentCargoReceiptsByShipmentIdRequest {
+  int32 shipment_id = 1;
+}
+
+message ListShipmentCargoReceiptsByShipmentIdResponse {
+  repeated ShipmentCargoReceipt shipment_cargo_receipts = 1;
+}
+
+message ListShipmentCargoReceiptsByShipmentIdsRequest {
+  repeated int32 shipment_ids = 1;
+}
+
+message ListShipmentCargoReceiptsByShipmentIdsResponse {
+  repeated ShipmentCargoReceipt shipment_cargo_receipts = 1;
+}
+
+// A simple model for ShipmentCargoReceipt, only have some necessary data we need to access in EMS, feel free to add more
+message ShipmentCargoReceipt {
+  string name = 1;
+  float gross_weight_in_kg = 2;
+  float gross_volume_in_cbm = 3;
+  bool complete = 4;
+  repeated MeasurementGroup measurement_groups = 5;
+  int32 document_id = 6;
+  google.protobuf.Timestamp created_at = 7;
+  Damage damage = 8;
+  int32 shipment_id = 9;
+}
+
+message MeasurementGroup {
+  float weight = 1;
+  float volume_in_cbm = 2;
+  string unit_type = 3;
+  int32 count = 4;
+  string pallet_type = 5;
+  float pallet_weight = 6;
+  float length = 7;
+  float width = 8;
+  float height = 9;
+}
+
+message Damage {
+  string remarks = 1;
+}

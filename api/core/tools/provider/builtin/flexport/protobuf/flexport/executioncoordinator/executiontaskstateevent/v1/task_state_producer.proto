@@ -1,0 +1,31 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TaskStateProducerProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// A "service or group" (a la http://go/fid) that produces ExecutionTaskStateEvents
+// via Kinesis stream.
+//
+// At Flexport we use the terms "event publisher" and "event emitter" colloquially,
+// but the idiomatic term is "event producer":
+// https://docs.aws.amazon.com/streams/latest/dev/amazon-kinesis-producers.html
+//
+// When adding a new value, please:
+// (1) Order this list alphabetically (not by field number).
+// (2) Use "service or group" names that are consistent with the other EC registries:
+//     OrderUpserter, PlanUpserter, OrderStateProducer.
+enum TaskStateProducer {
+  TASK_STATE_PRODUCER_INVALID = 0;
+  TASK_STATE_PRODUCER_AIR_PROVIDER = 3;
+  TASK_STATE_PRODUCER_CUSTOMS_PROVIDER = 5;
+  TASK_STATE_PRODUCER_OCEAN_CONSOL_PROVIDER = 6;
+  TASK_STATE_PRODUCER_OCEAN_FCL_PROVIDER = 2;
+  TASK_STATE_PRODUCER_TRUCKING_PROVIDER = 1;
+  TASK_STATE_PRODUCER_WAREHOUSING_PROVIDER = 4;
+}

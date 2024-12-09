@@ -1,0 +1,19 @@
+// TEAM: ocean_allocations
+
+syntax = "proto3";
+
+package flexport.oceansupply.utils.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "FilterProto";
+option java_package = "com.flexport.oceansupply.utils.v1beta1";
+option ruby_package = "Flexport::OceanSupply::Utils::V1Beta1";
+
+// Flexible filter proto message supporting inclusion or exclusion of specified values
+// If a Filter is left out, it can still assumed to be present, because the default value for
+// `bool is_inclusive` is false (exclude) and for `repeated string values` it's an empty list
+// and excluding none is the same as not using a Filter.
+message Filter {
+  bool is_inclusive = 1;
+  repeated string values = 2;
+}

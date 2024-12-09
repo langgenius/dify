@@ -1,0 +1,23 @@
+// TEAM: work_management
+
+syntax = "proto3";
+
+package flexport.executionmilestones.quotingstate.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "QuotingStateProto";
+option java_package = "com.flexport.executionmilestones.quotingstate.v1beta1";
+
+// Represent quoting state.
+// Next ID: 3
+message QuotingState {
+  int32 detention_free_days = 1;
+  QuotingStatus quoting_status = 2;
+}
+
+enum QuotingStatus {
+  QUOTING_STATUS_INVALID = 0;
+  QUOTING_STATUS_ACCEPTED = 1;
+  QUOTING_STATUS_VOIDED = 2;
+  QUOTING_STATUS_DELETED = 3;
+}

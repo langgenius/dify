@@ -1,0 +1,35 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.transcription.entityevent.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TranscriptionJobEntityProto";
+option java_package = "com.flexport.transcription.entityevent.v1beta1";
+option ruby_package = "Flexport::Transcription::EntityEvent::V1Beta1";
+
+import "flexport/transcription/transcriptionservice/v1beta1/transcription_job.proto";
+import "flexport/transcription/transcriptionservice/v1beta1/transcription_result.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// The entity that contains the transcribed data and metadata about the job.
+message TranscriptionJobEntity {
+  // Fid that corresponds to database entry.
+  google.protobuf.StringValue transcription_job_fid = 1;
+  // Document type (mbl, hbl, hawb, pgbl, an).
+  google.protobuf.StringValue document_type = 2;
+  // JSON string with the results from digitization.
+  google.protobuf.StringValue transcription_raw_result = 3;
+  // Status of the job.
+  flexport.transcription.transcriptionservice.v1beta1.TranscriptionStatus status = 4;
+  google.protobuf.Timestamp created_at_time = 5;
+  google.protobuf.Timestamp updated_at_time = 6;
+  // Structured representation of the transcribed document
+  flexport.transcription.transcriptionservice.v1beta1.TranscribedDocument transcribed_document = 7;
+  // List of fids associated with a job.
+  repeated string topic_fids = 8;
+  // URL associated with audit task.
+  google.protobuf.StringValue provider_audit_task_url = 9;
+}

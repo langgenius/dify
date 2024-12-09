@@ -1,0 +1,36 @@
+// TEAM: warehousing
+
+syntax = "proto3";
+
+package flexport.warehouse.inventory.events.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "WarehouseInventoryApiProto";
+option java_package = "com.flexport.warehouse.inventory.events.v1";
+option ruby_package = "Flexport::Warehouse::Inventory::Events::V1";
+
+enum EventType {
+  EVENT_TYPE_INVALID = 0;
+  EVENT_TYPE_INVENTORY_RECORD_RECEIVED = 1;
+  EVENT_TYPE_INVENTORY_RECORD_DEPARTED = 2;
+}
+
+message InventoryRecordUpdated {
+  EventType event_type = 1;
+
+  string event_subject_fid = 2;
+  // External event version - used to ensure that events for
+  // a particular subject are processed in order. Starts at 0
+  // and increments by 1 for each change.
+  int32 event_version = 3;
+
+  google.protobuf.Timestamp event_time = 4;
+
+  string actor_fid = 5;
+  string trace_id = 6;
+
+  google.protobuf.Struct event_data = 7;
+}

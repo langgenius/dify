@@ -1,0 +1,116 @@
+// TEAM: emerald
+
+syntax = "proto3";
+
+package flexport.monolith.messaging.v1beta1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "MessageProto";
+option java_package = "com.flexport.monolith.messaging.v1beta1";
+option ruby_package = "Flexport::Monolith::Messaging::V1Beta1";
+
+// DTO for retrieval.
+message Message {
+  string fid = 1;
+  string application_namespace = 2;
+  // Main text.
+  string body = 3;
+  // Message creation time.
+  google.protobuf.Timestamp created_time = 5;
+  // Usually unused. Updated by ORM on SQL UPDATE.
+  google.protobuf.Timestamp updated_time = 6;
+  // Use it. Updated only on body change.
+  google.protobuf.Timestamp body_edited_time = 7;
+  // If this message is parent having children, deletion will make it presented as an empty message in UI,
+  //   with children still presented after it.
+  google.protobuf.Timestamp deleted_with_existing_children_time = 8;
+  string author_fid = 9;
+  // Example: "shipment::12315::external_messages::delivery_order::56789".
+  string topic_key = 10;
+  Threading threading = 11;
+  Visibility visibility = 12;
+  Task task = 13;
+  Hashtaggable hashtaggable = 14;
+  Mentionable mentionable = 15;
+  Attachments attachments = 16;
+  reserved 17;
+  // A feature used by a few namespaces.
+  ReadReceipts read_receipts = 18;
+  repeated string topic_key_list = 19;
+}
+
+// Threading plugin object.
+// A message "B" replying to a message "A" is a child of message "A",
+// i.e. message "A" is the parent of message "B".
+message Threading {
+  // The root parent message FID.
+  string reply_root_fid = 1;
+  // The replied (parent) message FID.
+  string reply_to_fid = 2;
+}
+
+// Visibility plugin object.
+message Visibility {
+  // Companies permitted to view this message
+  repeated ViewableParty viewable_parties = 1;
+}
+
+// Viewable party information in a message.
+message ViewableParty {
+  string fid = 1;
+  // Unused
+  string label = 2;
+}
+
+// Task plugin object.
+message Task {
+  // When false, all other fields should be empty.
+  bool is_task = 1;
+  string assigner_fid = 2;
+  repeated string assignee_fids = 3;
+  string resolver_fid = 4;
+  google.protobuf.Timestamp resolved_time = 5;
+}
+
+// Hashtaggable plugin object.
+message Hashtaggable {
+  repeated string hashtags = 1;
+}
+
+// Mentionable plugin object.
+message Mentionable {
+  repeated Mention mentions = 1;
+}
+
+// Mention object.
+message Mention {
+  string fid = 1;
+  string type = 2;
+  string tag = 3;
+}
+
+// Attachments plugin object.
+message Attachments {
+  repeated Attachment attachments = 1;
+  repeated Attachment inline_attachments = 2;
+}
+
+// DTO for a MessageAttachment record.
+message Attachment {
+  string fid = 1;
+  // Read-only fields
+  string markdown_link = 3;
+  string service_url = 4;
+  string filename = 5;
+  // Read-only for simplicity, could be editable in the future
+  repeated google.protobuf.Struct custom_attributes = 6;
+}
+
+// ReadReceipts plugin object. A feature used by a few namespaces.
+message ReadReceipts {
+  // Users who have read the message.
+  repeated string read_by_fids = 1;
+}

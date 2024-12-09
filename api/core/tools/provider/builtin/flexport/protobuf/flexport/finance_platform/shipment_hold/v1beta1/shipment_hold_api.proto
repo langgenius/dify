@@ -1,0 +1,30 @@
+// TEAM: finance_platform
+
+syntax = "proto3";
+
+package flexport.finance_platform.shipment_hold.v1beta1;
+
+import "flexport/finance_platform/shipment_hold/v1beta1/shipment_hold.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentHoldApiProto";
+option java_package = "com.flexport.financeplatform.shipment_hold.v1beta1";
+option ruby_package = "Flexport::FinancePlatform::ShipmentHold::V1Beta1";
+
+
+// API to retrieve a shipment's financial hold reasons.
+service ShipmentHoldAPI {
+  // Gets financial hold reasons for the requested shipment.
+  rpc GetShipmentHold (GetShipmentHoldRequest) returns (GetShipmentHoldResponse);
+}
+
+// The request message contains the shipment's fid.
+message GetShipmentHoldRequest {
+  string shipment_fid = 1;
+}
+
+// The response contains potential hold reasons for the shipment. Empty means the shipment is not being held.
+message GetShipmentHoldResponse {
+  repeated HoldReason hold_reasons = 1;
+}
+

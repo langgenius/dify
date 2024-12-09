@@ -1,0 +1,30 @@
+// TEAM: client_order
+
+syntax = "proto3";
+
+package flexport.commerce.facts.contracts.common.v1beta1;
+
+import "flexport/commerce/facts/contracts/options/v1/options.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CommonProto";
+option java_package = "com.flexport.commerce.facts.contracts.common.v1beta1";
+option ruby_package = "Flexport::Commerce::Facts::Contracts::Common::V1Beta1";
+
+message ChangeReason {
+  string source = 1;
+  string reason = 2;
+  optional string actor_fid = 3;
+
+  string fragment_facts_full_name = 4;
+
+  flexport.commerce.facts.contracts.options.v1.ChangeAwareness change_awareness = 5;
+}
+
+message ValidateError {
+  // The readable description of the error.
+  string description = 1;
+  // The fields corresponding to the error, it's used for the UI.
+  // Either in camelCase or snake_case, but finally it will be converted to camelCase for the UI.
+  repeated string fields = 2;
+}

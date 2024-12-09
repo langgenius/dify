@@ -1,0 +1,27 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.executionmilestones.invoicingstate.v1beta1;
+
+import "flexport/freightinvoice/chargereview/v1beta1/charge_review.proto";
+import "flexport/freightinvoice/draftinvoice/v1beta1/draft_invoice.proto";
+import "flexport/freightinvoice/leakagereview/v1beta1/leakage_review.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "InvoicingStateProto";
+option java_package = "com.flexport.executionmilestones.invoicingstate.v1beta1";
+
+message InvoicingState {
+  // maps invoice fid to DraftInvoice
+  map<string, flexport.freightinvoice.draftinvoice.v1beta1.DraftInvoice> draft_invoices = 1;
+  flexport.freightinvoice.chargereview.v1beta1.ChargeReview charge_review = 2;
+  InvoicingMilestoneSupplementalData invoicing_milestone_supplemental_data = 3;
+  flexport.freightinvoice.leakagereview.v1beta1.LeakageReviewReport leakage_review = 4;
+}
+
+message InvoicingMilestoneSupplementalData {
+  google.protobuf.Timestamp customs_cleared_at_time = 1;
+  google.protobuf.Timestamp customs_released_at_time = 2;
+}

@@ -1,0 +1,37 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionoverride.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionOverrideStatusInfoProto";
+option java_package = "com.flexport.executioncoordinator.executionoverride.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOverride::V1";
+
+import "google/protobuf/timestamp.proto";
+
+// An ExecutionOverrideStatusInfo entity tracking timestamps of async writes.
+message ExecutionOverrideStatusInfo {
+  //
+  // Time when the entity was created.
+  google.protobuf.Timestamp created_time = 1;
+  //
+  // Time when EC begins processing event.
+  google.protobuf.Timestamp ec_consumed_time = 2;
+  //
+  // Time when monolith writeback begins processing event.
+  google.protobuf.Timestamp ec_writeback_consumed_time = 3;
+  //
+  // Time when monolith writeback succeeds.
+  google.protobuf.Timestamp ec_writeback_succeeded_time = 4;
+  //
+  // Time when monolith writeback fails.
+  google.protobuf.Timestamp ec_writeback_failed_time = 5;
+  //
+  // Time when derived shipment is extracted.
+  google.protobuf.Timestamp derived_shipment_extracted_time = 6;
+  //
+  // Time when derived shipment is successfully persisted.
+  google.protobuf.Timestamp derived_shipment_persisted_time = 7;
+}

@@ -1,0 +1,26 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executioncargo.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoUpserterProto";
+option java_package = "com.flexport.executioncoordinator.executioncargo.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionCargo::V1";
+
+// A "service or group" (a la http://go/fid) that upserts ExecutionCargos via gRPC.
+// When adding a new value, please:
+// (1) Order this list alphabetically (not by field number).
+// (2) Use "service or group" names that are consistent with the other EC registries:
+//     OrderUpserter, PlanUpserter, OrderStateProducer, TaskStateProducer.
+// (3) Remeber to add one or more new values to CargoProcess for your upserter.
+// Next field number: 5
+enum CargoUpserter {
+  CARGO_UPSERTER_INVALID = 0;
+  CARGO_UPSERTER_BOOKING = 1;
+  CARGO_UPSERTER_OCEAN_PLANNING = 2;
+  CARGO_UPSERTER_MONOLITH_EXTRACT_ENGINE = 3;
+  CARGO_UPSERTER_WAREHOUSE_APP = 4;
+  CARGO_UPSERTER_EXECUTION_COORDINATOR = 5;
+}

@@ -1,0 +1,20 @@
+// TEAM: wingstop
+
+syntax = "proto3";
+
+package flexport.monolith.airexecution.buildplan.v1beta1;
+
+import "flexport/executioncoordinator/types/enums/v1/air_direct_handling_type.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BuildPlanProto";
+option java_package = "com.flexport.monolith.airexecution.buildplan.v1beta1";
+option ruby_package = "Flexport::Monolith::AirExecution::BuildPlan::V1Beta1";
+
+// Represents the plan for how individual shipments should be consolidated.
+// This is a subset of the full build plan dataset to unblock teams until
+// we can get this properly modelled in the EC.
+message BuildPlan {
+  string build_plan_id = 1;
+  flexport.executioncoordinator.types.enums.v1.AirDirectHandlingType handling_type = 2;
+}

@@ -1,0 +1,20 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontask.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoLinkProto";
+option java_package = "com.flexport.executioncoordinator.executiontask.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTask::V1";
+
+// A reference to some cargo that is not the main cargo for this task.
+message CargoLink {
+  //
+  // The task that gives context for this cargo
+  string execution_task_fid = 1;
+  //
+  // The execution cargo being linked
+  string cargo_fid = 2;
+}

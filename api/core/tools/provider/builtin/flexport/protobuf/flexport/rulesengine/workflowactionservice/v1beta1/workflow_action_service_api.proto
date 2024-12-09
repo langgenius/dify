@@ -1,0 +1,39 @@
+// TEAM: workflow_platform
+
+syntax = "proto3";
+
+package flexport.rulesengine.workflowactionservice.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "WorkflowActionServiceApiProto";
+option java_package = "com.flexport.rulesengine.workflowactionservice.v1beta1";
+option ruby_package = "Flexport::RulesEngine::WorkflowActionService::V1Beta1";
+
+import "flexport/rulesengine/options/v1/options.proto";
+import "flexport/workflow/prelude/options/v1/options.proto";
+
+// WorkflowActionServiceAPI. This is a demo API for using Protobuf for defining rules for rules_engine.
+service WorkflowActionServiceAPI {
+  // Greet.
+  rpc Greet(GreetRequest) returns (GreetResponse) {
+    option (flexport.workflow.prelude.options.v1.grpc_wp_action).description = "An example of Greet gRPC API in rules engine";
+    option (flexport.workflow.prelude.options.v1.grpc_wp_action).icon = "slack";
+    option (flexport.workflow.prelude.options.v1.grpc_wp_action).name = "gRPC Greet";
+    option (flexport.workflow.prelude.options.v1.grpc_wp_action).resource_key = "flx::rules_engine:wp_action:greet";
+    option (flexport.workflow.prelude.options.v1.grpc_wp_action).service_name = "rules_engine";
+  }
+}
+
+message GreetRequest {
+  string name = 1 [
+    (flexport.rulesengine.options.v1.field_component) = {
+      text_area: {
+        min_rows: 3
+      }
+    }
+  ];
+}
+
+message GreetResponse {
+  string message = 2;
+}

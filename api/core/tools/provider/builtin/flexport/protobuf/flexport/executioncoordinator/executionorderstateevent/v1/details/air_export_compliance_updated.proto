@@ -1,0 +1,21 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+import "flexport/executioncoordinator/types/regulatedagent/v1/regulated_agent_eu_details.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AirExportComplianceUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+// Published by compliance when an air export shipment is updated
+// Intended for use by Regulated Agent (RA) - Air Export for EU
+message AirExportComplianceUpdated {
+  string shipment_fid = 1;
+  oneof security_program_details {
+    flexport.executioncoordinator.types.regulatedagent.v1.RegulatedAgentEuDetails regulated_agent_eu_details = 2;
+  }
+}

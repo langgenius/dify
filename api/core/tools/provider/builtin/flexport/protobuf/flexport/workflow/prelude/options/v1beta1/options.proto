@@ -1,0 +1,10 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.workflow.prelude.options.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OptionsProto";
+option java_package = "com.flexport.workflow.prelude.options.v1beta1";
+option ruby_package = "Flexport::Workflow::Prelude::Options::V1Beta1";

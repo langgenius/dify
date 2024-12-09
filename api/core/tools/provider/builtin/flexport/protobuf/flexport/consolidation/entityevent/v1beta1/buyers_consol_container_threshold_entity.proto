@@ -1,0 +1,24 @@
+// TEAM: tetrominos
+
+syntax = "proto3";
+
+package flexport.consolidation.entityevent.v1beta1;
+
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BuyersConsolContainerThresholdEntityProto";
+option java_package = "com.flexport.consolidation.entityevent.v1beta1";
+option ruby_package = "Flexport::Consolidation::EntityEvent::V1Beta1";
+
+// Proto message for Buyers Consol Container Threshold object.
+message BuyersConsolContainerThresholdEntity {
+  int32 id = 1;
+  string client_config_fid = 2;
+  flexport.os.v1.types.cargo.v1.Iso6346ContainerSize container_type = 3;
+  float min_volume_percentage = 4;
+  float total_capacity_cbm = 5;
+  float min_volume_threshold_cbm = 6;
+  float max_volume_capacity_cbm = 7;
+  float max_weight_limitation_kg = 8;
+}

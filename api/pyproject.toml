@@ -6,6 +6,117 @@ requires-python = ">=3.11,<3.13"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.ruff]
+exclude=[
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "**/generated/**",
+    "migrations",
+]
+line-length = 120
+target-version = "py38"
+
+[tool.ruff.lint]
+preview = true
+select = [
+    "B", # flake8-bugbear rules
+    "C4", # flake8-comprehensions
+    "E", # pycodestyle E rules
+    "F", # pyflakes rules
+    "FURB", # refurb rules
+    "I", # isort rules
+    "N", # pep8-naming
+    "PT", # flake8-pytest-style rules
+    "PLC0208", # iteration-over-set
+    "PLC2801", # unnecessary-dunder-call
+    "PLC0414", # useless-import-alias
+    "PLR0402", # manual-from-import
+    "PLR1711", # useless-return
+    "PLR1714", # repeated-equality-comparison
+    "RUF013", # implicit-optional
+    "RUF019", # unnecessary-key-check
+    "RUF100", # unused-noqa
+    "RUF101", # redirected-noqa
+    "S506", # unsafe-yaml-load
+    "SIM", # flake8-simplify rules
+    "TRY400", # error-instead-of-exception
+    "TRY401", # verbose-log-message
+    "UP", # pyupgrade rules
+    "W191", # tab-indentation
+    "W605", # invalid-escape-sequence
+]
+ignore = [
+    "E402", # module-import-not-at-top-of-file
+    "E711", # none-comparison
+    "E712", # true-false-comparison
+    "E721", # type-comparison
+    "E722", # bare-except
+    "E731", # lambda-assignment
+    "F821", # undefined-name
+    "F841", # unused-variable
+    "FURB113", # repeated-append
+    "FURB152", # math-constant
+    "UP007", # non-pep604-annotation
+    "UP032", # f-string
+    "B005", # strip-with-multi-characters
+    "B006", # mutable-argument-default
+    "B007", # unused-loop-control-variable
+    "B026", # star-arg-unpacking-after-keyword-arg
+    "B904", # raise-without-from-inside-except
+    "B905", # zip-without-explicit-strict
+    "N806", # non-lowercase-variable-in-function
+    "N815", # mixed-case-variable-in-class-scope
+    "PT011", # pytest-raises-too-broad
+    "SIM102", # collapsible-if
+    "SIM103", # needless-bool
+    "SIM105", # suppressible-exception
+    "SIM107", # return-in-try-except-finally
+    "SIM108", # if-else-block-instead-of-if-exp
+    "SIM113", # eumerate-for-loop
+    "SIM117", # multiple-with-statements
+    "SIM210", # if-expr-with-true-false
+    "SIM300", # yoda-conditions,
+]
+
+[tool.ruff.lint.per-file-ignores]
+"app.py" = [
+]
+"__init__.py" = [
+    "F401", # unused-import
+    "F811", # redefined-while-unused
+]
+"configs/*" = [
+    "N802", # invalid-function-name
+]
+"libs/gmpy2_pkcs10aep_cipher.py" = [
+    "N803", # invalid-argument-name
+]
+"tests/*" = [
+    "F811", # redefined-while-unused
+    "F401", # unused-import
+]
+"**/generated/**" = [
+    "N802",  # Function name should be lowercase
+    "N803",  # Argument name should be lowercase
+    "N806",  # Variable name should be lowercase
+    "N815",  # Mixed case variable name
+    "N816",  # Mixed case variable name in global scope
+    "N817",  # CamelCase imported as acronym
+]
+
+[tool.ruff.lint.pyflakes]
+extend-generics=[
+    "_pytest.monkeypatch",
+    "tests.integration_tests",
+]
+
+[tool.ruff.format]
+exclude = [
+]
+
 [tool.poetry]
 package-mode = false
 
@@ -37,7 +148,6 @@ flask-restful = "~0.3.10"
 flask-sqlalchemy = "~3.1.1"
 gevent = "~24.11.1"
 gmpy2 = "~2.2.1"
-google-ai-generativelanguage = "0.6.9"
 google-api-core = "2.18.0"
 google-api-python-client = "2.90.0"
 google-auth = "2.29.0"
@@ -99,6 +209,9 @@ zhipuai = "~2.1.5"
 # Related transparent dependencies with pinned version
 # required by main implementations
 ############################################################
+grpcio = ">=1.48.2,<2.0.0"
+protobuf = ">=4.21.3"
+grpcio-tools = ">=1.48.2"
 [tool.poetry.group.indirect.dependencies]
 kaleido = "0.2.1"
 rank-bm25 = "~0.2.2"

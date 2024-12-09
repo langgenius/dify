@@ -1,0 +1,86 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.commerce.merchandising.catalog.data_authority.configuration.v1beta1;
+
+import "google/protobuf/any.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.commerce.merchandising.catalog.dataauthority.configuration.v1beta1";
+option ruby_package = "Flexport::Commerce::Merchandising::Catalog::DataAuthority::Configuration::V1Beta1";
+
+/// Documentation: go/cda-doc/commerce/merchandising/service-catalog/expressions/type-system
+
+// An "instance" of a AttributeDefinition.
+message Attribute {
+  // A canonical name in an attribute scope.
+  // The slug provides a linkage between Attribute and AttributeDefinition.
+  string slug = 1;
+
+  // The top level information for shape of the value.
+  AttributeType type = 2;
+
+  // The envelope for the value payload.
+  // Serialization of value is platform independent in wire protocol.
+  google.protobuf.Any value = 3;
+}
+
+// AttributeType is the major type metadata for an attribute.
+//
+// Note that the attribute type is expected to grow as more use cases added.
+enum AttributeType {
+  // Reserved for invalid.
+  ATTRIBUTE_TYPE_INVALID = 0;
+
+  /// Primitive types
+
+  // A signed 32-bit integer.
+  ATTRIBUTE_TYPE_INTEGER = 1;
+  // A UTF‐8 character sequence.
+  ATTRIBUTE_TYPE_STRING = 2;
+  // true or false.
+  ATTRIBUTE_TYPE_BOOLEAN = 3;
+  // A signed double-precision floating-point value.
+  ATTRIBUTE_TYPE_DECIMAL = 4;
+
+  /// Null case
+  ATTRIBUTE_TYPE_NULL = 9;
+
+  /// Types with Generics
+
+  // A special kind of scalar that is restricted to a particular set of allowed values.
+  // Allowed values are defined in AttributeDefinition.
+  ATTRIBUTE_TYPE_ENUM = 10;
+  // An ordered array of elements.
+  // Element types are defined in AttributeDefinition.
+  ATTRIBUTE_TYPE_LIST = 11;
+  // An un-ordered hash of key-value pairs.
+  // Key and Value typees are defined in AttributeDefinition
+  ATTRIBUTE_TYPE_MAP = 12;
+
+  /// Built-in supported types
+
+  // An instantaneous point on the time-line.
+  // The precision is at seconds.nanoseconds.
+  ATTRIBUTE_TYPE_TIMESTAMP = 20;
+
+  /// Reference types
+
+  // Network Place-like polymorphic types.
+  // Typical types are: Port, Warehouse, Factory.
+  // The concrete type is included in AttributeDefinition.
+  ATTRIBUTE_TYPE_PLACE = 30;
+  // Network::FreightPartener in monolith.
+  // FPOS doesn't have all the freight partner data.
+  ATTRIBUTE_TYPE_FREIGHT_PARTNER = 31;
+  // Network carrier reference.
+  ATTRIBUTE_TYPE_CARRIER = 32;
+
+  /// Geo-related types
+
+  // A legacy named geography for trucking use cases.
+  ATTRIBUTE_TYPE_SERVICE_AREA = 40;
+  // Trucking standardized locations.
+  ATTRIBUTE_TYPE_ZONE = 41;
+}

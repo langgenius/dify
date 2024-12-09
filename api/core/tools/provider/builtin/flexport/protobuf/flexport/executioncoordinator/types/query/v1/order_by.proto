@@ -1,0 +1,26 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.query.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OrderByProto";
+option java_package = "com.flexport.executioncoordinator.types.query.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Query::V1";
+
+// Enum used for sorting values in the ExecutionCoordinator List APIs.
+enum OrderBy {
+  ORDER_BY_INVALID = 0;
+  //
+  // For use with: ExecutionOrder, ExecutionTask.
+  ORDER_BY_CREATED_TIME_DESC = 1;
+  //
+  // For use with: ExecutionOrder, ExecutionTask.
+  // WARNING! THIS ONE IS NOT PERFORMANCE-OPTIMIZED! PING #forwarding-platform BEFORE USING!
+  ORDER_BY_REVISION_CREATED_TIME_DESC = 2;
+  //
+  // For use with: ExecutionOrderStateEvent, ExecutionTaskStateEvent.
+  ORDER_BY_PROCESSED_TIME_ASC = 4;
+  ORDER_BY_PROCESSED_TIME_DESC = 3;
+}

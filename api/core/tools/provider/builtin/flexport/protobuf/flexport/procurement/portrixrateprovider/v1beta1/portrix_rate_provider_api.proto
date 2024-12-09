@@ -1,0 +1,57 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.portrixrateprovider.v1beta1;
+
+import "flexport/procurement/portrixrateprovider/conditionalsurcharges/v1beta1/conditional_surcharges.proto";
+import "flexport/procurement/rates/v1beta1/rates.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PortrixRateProviderApiProto";
+option java_package = "com.flexport.procurement.portrixrateprovider.v1beta1";
+option ruby_package = "Flexport::Procurement::PortrixRateProvider::V1Beta1";
+
+// API for fetching ocean rates from Portrix.
+service PortrixRateProviderAPI {
+  // Request rates from Portrix.
+  rpc RequestRates(RequestRatesRequest) returns (RequestRatesResponse);
+  // Send portrix conditional surcharges.
+  rpc SendConditionalSurcharges(SendConditionalSurchargesRequest) returns (SendConditionalSurchargesResponse);
+}
+
+message RequestRatesRequest {
+  string origin_code = 1;
+  string destination_code = 2;
+  string contract_number = 3;
+  google.protobuf.Timestamp shipment_time = 4;
+  string carrier_code = 5;
+  bool hazardous = 6;
+  string client_fid = 7;
+  string via_origin_code = 8;
+  string via_destination_code = 9;
+  bool exclude_client_rates = 10;
+  bool exclude_origin_charges = 11;
+  bool exclude_destination_charges = 12;
+  repeated Container containers = 13;
+  // Describes a container for which we need a rate.
+  message Container {
+    string iso_container_code = 1;
+    int32 weight_in_kg = 2;
+  }
+  bool exclude_conditional_surcharges = 14;
+  repeated string imo_classes = 15;
+  repeated string shipment_route = 16;
+}
+
+message RequestRatesResponse {
+  bytes portrix_response = 1 [deprecated = true];
+  repeated flexport.procurement.rates.v1beta1.Rate rates = 2;
+}
+
+message SendConditionalSurchargesRequest {
+  repeated flexport.procurement.portrixrateprovider.conditionalsurcharges.v1beta1.ConditionalSurcharge conditional_surcharges = 1;
+}
+
+message SendConditionalSurchargesResponse {}

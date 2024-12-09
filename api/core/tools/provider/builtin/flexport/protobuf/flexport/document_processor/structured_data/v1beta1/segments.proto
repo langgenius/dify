@@ -1,0 +1,356 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.documentprocessor.structureddata.v1beta1;
+
+import "flexport/document_processor/structured_data/v1beta1/elements.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "SegmentsProto";
+option java_package = "com.flexport.documentprocessor.structureddata.v1beta1";
+option ruby_package = "Flexport::DocumentProcessor::StructuredData::V1Beta1";
+
+// A document segment representing a charge from a contract or line item.
+message ChargeSegment {
+  // The name for the charge as shown on the document.
+  string name = 1;
+  // A Flexport-internal FID for the charge, if applicable.
+  google.protobuf.StringValue fid = 2;
+}
+
+// The function or type of the currency.
+enum CurrencyFunction {
+  // Default invalid value.
+  CURRENCY_FUNCTION_INVALID = 0;
+  // Unknown currency type.
+  CURRENCY_FUNCTION_UNKNOWN = 1;
+  // Currency type for billing.
+  CURRENCY_FUNCTION_BILLING = 2;
+  // Currency type for payment. This should only be used if the payment amount
+  // and billed amounts are in different currencies.
+  CURRENCY_FUNCTION_PAYMENT = 3;
+  // Contracted currency type.
+  CURRENCY_FUNCTION_CONTRACT = 4;
+}
+
+// A document segment representing a currency in use on the document.
+message CurrencySegment {
+  // The function or usage of the currency.
+  CurrencyFunction function = 1;
+  // The 3-character ISO4217 code for the currency.
+  string code = 2;
+}
+
+// The type or function of an event.
+enum EventFunction {
+  // Default invalid value.
+  EVENT_FUNCTION_INVALID = 0;
+  // Unknown event type.
+  EVENT_FUNCTION_UNKNOWN = 1;
+  // Document issuance event.
+  EVENT_FUNCTION_ISSUED = 2;
+  // Document receipt event.
+  EVENT_FUNCTION_RECEIPT = 3;
+  // Payment due event.
+  EVENT_FUNCTION_PAYMENT_DUE = 4;
+  // Document received event.
+  EVENT_FUNCTION_RECEIVED = 5;
+  // Document reviewed event.
+  EVENT_FUNCTION_REVIEWED = 6;
+  // Document rejected event.
+  EVENT_FUNCTION_REJECTED = 7;
+  // Prepayment closed event.
+  EVENT_FUNCTION_CLOSED = 8;
+  //
+  // !!! THESE ENUM VALUES ARE NOT USED YET.
+  //
+  // // Document signature event.
+  // EVENT_FUNCTION_SIGNED = 5;
+  // // Cargo delivery event.
+  // EVENT_FUNCTION_DELIVERY = 6;
+  // // Cargo pickup event.
+  // EVENT_FUNCTION_PICKUP = 7;
+  // // Cargo discharge event.
+  // EVENT_FUNCTION_DISCHARGE = 8;
+  // // Cargo release event.
+  // EVENT_FUNCTION_RELEASE = 9;
+  // // Voyage departure event.
+  // EVENT_FUNCTION_DEPARTURE = 10;
+  // // Voyage arrival event.
+  // EVENT_FUNCTION_ARRIVAL = 11;
+}
+
+// The certainty or materiality of the event.
+enum EventCertainty {
+  // Default invalid value.
+  EVENT_CERTAINTY_INVALID = 0;
+  // Unknown certainty.
+  EVENT_CERTAINTY_UNKNOWN = 1;
+  // True, measured certainty.
+  EVENT_CERTAINTY_ACTUAL = 2;
+  // Scheduled certainty.
+  EVENT_CERTAINTY_SCHEDULED = 3;
+  //
+  // !!! THESE ENUM VALUES ARE NOT USED YET.
+  //
+  // // Estimated certainty.
+  // EVENT_CERTAINTY_ESTIMATED = 4;
+}
+
+// A document segment representing an event.
+message EventSegment {
+  // The type or function of the event.
+  EventFunction function = 1;
+  // The certainty or materiality of the event.
+  EventCertainty certainty = 2;
+  // The date or time when the event took place.
+  ChronoElement chrono = 3;
+}
+
+// An exchange rate between two currencies.
+message ExchangeRateSegment {
+  // The ISO4217 code for the source or reference currency.
+  string reference_code = 1;
+  // The ISO4217 code for the target currency.
+  string target_code = 2;
+  // The date or time of the currency conversion, if applicable.
+  ChronoElement exchange_rate_chrono = 3;
+  // The numeric conversion rate from the source to the target currency, if available.
+  google.protobuf.DoubleValue conversion_rate = 4;
+  // A Flexport-internal FID for an exchange rate record, if available.
+  google.protobuf.StringValue fid = 5;
+}
+
+// A line item for a financial transaction.
+message LineItemSegment {
+  // The line number from the original document.
+  int32 line = 1;
+  // One or more monetary amounts represented with the specific line item.
+  repeated MoneyElement amounts = 2;
+  // The charge corresponding to the line item.
+  ChargeSegment charge = 3;
+  //
+  // !! THESE FIELDS ARE NOT USED YET.
+  //
+  // Any rate information associated with the computation of the line item.
+  // RateElement rate = 4;
+}
+
+// The type or function of a party.
+enum PartyFunction {
+  // Default invalid value.
+  PARTY_FUNCTION_INVALID = 0;
+  // Unknown party type.
+  PARTY_FUNCTION_UNKNOWN = 1;
+  // The issuing party for a document.
+  PARTY_FUNCTION_ISSUER = 2;
+  // The receiving party for a document.
+  PARTY_FUNCTION_RECIPIENT = 3;
+  //
+  // !!! THESE ENUM VALUES ARE NOT USED YET
+  //
+  // // The shipper for some cargo.
+  // PARTY_FUNCTION_SHIPPER = 4;
+  // // The consignee for some cargo.
+  // PARTY_FUNCTION_CONSIGNEE = 5;
+  // // A notified party.
+  // PARTY_FUNCTION_NOTIFY = 6;
+  // // A forwarding party.
+  // PARTY_FUNCTION_FORWARDER = 7;
+}
+
+// A document segment representing a party.
+message PartySegment {
+  // The type or function of the party.
+  PartyFunction function = 1;
+  // The name or primary identifier for the party.
+  google.protobuf.StringValue name = 2;
+  // Any identifiers corresponding to the party.
+  repeated IdentifierElement identifiers = 3;
+  //
+  // !!! THESE FIELDS ARE NOT USED YET.
+  //
+  // // Any methods of contact for the party.
+  // repeated ContactSegment contacts = 4;
+  // // An address for the party, if applicable.
+  // AddressSegment address = 5;
+}
+
+// The payment detail segment.
+message PaymentDetailSegment {
+  // Any identifiers corresponding to the payment info.
+  repeated IdentifierElement identifiers = 1;
+}
+
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// !!! THESE SECTIONS ARE NOT NECESSARY YET
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//
+// // A document segment representing a street address.
+// message AddressSegment {
+//   // Required. The first portion of the street address.
+//   google.protobuf.StringValue street_address1 = 1;
+//   // The second portion of the street address, if present.
+//   google.protobuf.StringValue street_address2 = 2;
+//   // Required. The city containing the address.
+//   google.protobuf.StringValue city = 3;
+//   // Required. The state, region, or province containing the address.
+//   google.protobuf.StringValue state = 4;
+//   // The ZIP or postal code containing the address.
+//   google.protobuf.StringValue zip = 5;
+//   // The Country containing the address.
+//   google.protobuf.StringValue country = 6;
+//   // A Flexport-internal FID for the address, if applicable.
+//   google.protobuf.StringValue fid = 7;
+// }
+//
+// // A document segment representing a specific unit of cargo.
+// message CargoSegment {
+//   // The product (or products) contained in the cargo.
+//   ProductSegment product = 1;
+//   // Any identifiers corresponding to the unit of cargo.
+//   repeated IdentifierElement identifiers = 2;
+//   // Any references corresponding to the unit of cargo.
+//   repeated ReferenceElement references = 3;
+//   // Any measurements for the unit of cargo.
+//   repeated MeasurementElement measurements = 4;
+//   // Any quantities for the unit of cargo.
+//   repeated QuantityElement quantities = 5;
+// }
+//
+//
+// // The type or mode of contact.
+// enum ContactFunction {
+//   // Default invalid value.
+//   CONTACT_FUNCTION_INVALID = 0;
+//   // Unknown contact mode or type.
+//   CONTACT_FUNCTION_UNKNOWN = 1;
+//   // A phone number.
+//   CONTACT_FUNCTION_PHONE = 2;
+//   // A fax number.
+//   CONTACT_FUNCTION_FAX = 3;
+//   // An email address.
+//   CONTACT_FUNCTION_EMAIL = 4;
+// }
+//
+// // A document segment representing a method of contact for a party.
+// message ContactSegment {
+//   // The type or mode of contact.
+//   ContactFunction function = 1;
+//   // The code or address for contact.
+//   string value = 2;
+// }
+//
+// // The general type of the equipment.
+// enum EquipmentForm {
+//   // Default invalid value.
+//   EQUIPMENT_FORM_INVALID = 0;
+//   // Unknown equipment type.
+//   EQUIPMENT_FORM_UNKNOWN = 1;
+//   // A shipping container.
+//   EQUIPMENT_FORM_CONTAINER = 2;
+//   // A flat pallet or ULD.
+//   EQUIPMENT_FORM_PALLET = 3;
+//   // A truck chassis.
+//   EQUIPMENT_FORM_CHASSIS = 4;
+// }
+//
+// // The more specific form or features of the equipment.
+// enum EquipmentSubform {
+//   // Default invalid value.
+//   EQUIPMENT_SUBFORM_INVALID = 0;
+//   // Unknown (or unhandled) equipment form.
+//   EQUIPMENT_SUBFORM_UNKNOWN = 1;
+//   // 20FT shipping container.
+//   EQUIPMENT_SUBFORM_20FT = 2;
+//   // 40FT shipping container.
+//   EQUIPMENT_SUBFORM_40FT = 3;
+//   // 45FT shipping container.
+//   EQUIPMENT_SUBFORM_45FT = 4;
+//   // 40FT high cube shipping container.
+//   EQUIPMENT_SUBFORM_40FT_HC = 5;
+//   // 45FT high cube shipping container.
+//   EQUIPMENT_SUBFORM_45FT_HC = 6;
+// }
+//
+// // A document segment representing some piece (or pieces) of equipment.
+// message EquipmentSegment {
+//   // The general type of the equipment.
+//   EquipmentForm form = 1;
+//   // The more specific form or features of the equipment.
+//   EquipmentSubform subform = 2;
+//   // Any identifiers corresponding to the piece (or pieces) of equipment.
+//   repeated IdentifierElement identifiers = 3;
+//   // Any measurements corresponding to the piece (or pieces) of equipment.
+//   repeated MeasurementElement measurements = 4;
+//   // Any quanitities corresponding to the piece (or pieces) of equipment.
+//   repeated QuantityElement quantities = 5;
+// }
+// The type or function of a location.
+//
+// enum LocationFunction {
+//   // Default invalid value.
+//   LOCATION_FUNCTION_INVALID = 0;
+//   // Unknown location type.
+//   LOCATION_FUNCTION_UNKNOWN = 1;
+//   // Place of departure.
+//   LOCATION_FUNCTION_PLACE_OF_DEPARTURE = 2;
+//   // Place of loading.
+//   LOCATION_FUNCTION_PLACE_OF_LOADING = 3;
+//   // Place of arrival.
+//   LOCATION_FUNCTION_PLACE_OF_ARRIVAL = 4;
+//   // Place of discharge.
+//   LOCATION_FUNCTION_PLACE_OF_DISCHARGE = 5;
+//   // Origin location.
+//   LOCATION_FUNCTION_ORIGIN = 6;
+//   // Destination location.
+//   LOCATION_FUNCTION_DESTINATION = 7;
+//   // Intermediate route location.
+//   LOCATION_FUNCTION_ROUTE_VIA = 8;
+// }
+//
+// // A document segment representing a location.
+// message LocationSegment {
+//   // The type or function of the location.
+//   LocationFunction function = 1;
+//   // A name for the location, if applicable.
+//   google.protobuf.StringValues name = 2;
+//   // An address for the location, if applicable.
+//   AddressSegment address = 3;
+//   // Any identifiers corresponding to the location.
+//   repeated IdentifierElement identifiers = 4;
+// }
+//
+// // The method or mode of transportation.
+// enum TransportationMode {
+//   // Default invalid value.
+//   TRANSPORTATION_MODE_INVALID = 0;
+//   // Unknown transportation mode.
+//   TRANSPORTATION_MODE_UNKNOWN = 1;
+//   // Transportation by air.
+//   TRANSPORTATION_MODE_AIR = 2;
+//   // Transportation by ocean.
+//   TRANSPORTATION_MODE_OCEAN = 3;
+//   // Transportation by truck.
+//   TRANSPORTATION_MODE_TRUCKING = 4;
+//   // Transportation by rail.
+//   TRANSPORTATION_MODE_RAIL = 5;
+// }
+//
+// // A document segment representing some means of transportation.
+// message TransportationSegment {
+//   // The method or mode of transportation.
+//   TransportationMode mode = 1;
+//   // The name or primary identifier for the transportation.
+//   string name = 2;
+//   // Any identifiers corresponding to the transportation.
+//   repeated IdentifierElement identifiers = 3;
+// }
+//
+// message VoyageSegment {
+//   TransportationSegment transportation = 1;
+//   repeated EventfulLocationSegment stops = 2;
+//   repeated IdentifierElement identifiers = 3;
+// }

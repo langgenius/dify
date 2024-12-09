@@ -1,0 +1,53 @@
+// TEAM: shipper_exp
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.originvgmsubmission.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OriginVgmSubmissionProto";
+option java_package = "com.flexport.executioncoordinator.types.originvgmsubmission.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::OriginVgmSubmission::V1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Represents a origin vgm submission model.
+message OriginVgmSubmission {
+  string fid = 1;
+  string shipment_fid = 2;
+  string carrier_booking_fid = 3;
+  string submitted_by_fid = 4;
+  string submitting_company_entity_fid = 5;
+  google.protobuf.Timestamp created_at_time = 6;
+  google.protobuf.Timestamp updated_at_time = 7;
+  google.protobuf.BoolValue needs_amendment = 8;
+  VgmValue vgm_value = 9;
+  string document_fid = 10;
+  google.protobuf.Timestamp deleted_at_time = 11;
+  bool is_draft = 12;
+}
+
+// Represents a vgm content value.
+message VgmValue {
+  repeated VgmContainer containers = 1;
+  google.protobuf.Timestamp date_of_declaration_time = 2;
+  google.protobuf.StringValue shipper_company = 3;
+  google.protobuf.StringValue verified_by_user_name = 4;
+}
+
+// Represents shipper VGM container.
+message VgmContainer {
+  double cargo_weight_kg = 1;
+  string number = 2;
+  string so_number = 3;
+  double tare_weight_kg = 4;
+  double vgm_weight_kg = 5;
+  // Represents verification method.
+  enum VerificationMethod {
+    VERIFICATION_METHOD_INVALID = 0;
+    VERIFICATION_METHOD_SOLAS_1 = 1;
+    VERIFICATION_METHOD_SOLAS_2 = 2;
+  }
+  VerificationMethod verification_method = 6;
+}

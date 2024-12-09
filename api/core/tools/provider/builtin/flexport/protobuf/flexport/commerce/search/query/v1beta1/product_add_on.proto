@@ -1,0 +1,17 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.commerce.search.query.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ProductAddOnProto";
+option java_package = "com.flexport.commerce.search.query.v1beta1";
+option ruby_package = "Flexport::Commerce::Search::Query::V1Beta1";
+
+enum ProductAddOn {
+  PRODUCT_ADD_ON_INVALID = 0;
+  PRODUCT_ADD_ON_IMPORT_CUSTOMS = 1;
+  PRODUCT_ADD_ON_EXPORT_CUSTOMS = 2;
+  PRODUCT_ADD_ON_INSURANCE = 3;
+}

@@ -1,0 +1,21 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customscargomanifestquery.events.v1beta1;
+
+import "flexport/customscargomanifestquery/enums/v1beta1/customs_cargo_manifest_identifier_type.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsCargoManifestsOutdatedProto";
+option java_package = "com.flexport.customscargomanifestquery.events.v1beta1";
+option ruby_package = "Flexport::CustomsCargoManifestQuery::Events::V1Beta1";
+
+message CustomsCargoManifestOutdated {
+  string identifier_number = 1;
+  flexport.customscargomanifestquery.enums.v1beta1.CustomsCargoManifestIdentifierType identifier_type = 2;
+}
+
+message CustomsCargoManifestsOutdated {
+  repeated CustomsCargoManifestOutdated customs_cargo_manifests = 1;
+}

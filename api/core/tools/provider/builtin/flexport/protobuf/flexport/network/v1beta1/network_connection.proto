@@ -1,0 +1,50 @@
+// TEAM: network_entities
+
+syntax = "proto3";
+
+package flexport.network.v1beta1;
+
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "NetworkConnectionProto";
+option java_package = "com.flexport.network.v1beta1";
+option ruby_package = "Flexport::Network::V1Beta1";
+
+// A close analogue of the Network::NetworkConnection ActiveRecord model.
+message NetworkConnection {
+  int32 id = 1;
+  string fid = 2;
+  google.protobuf.Int32Value from_company_id = 3;
+  google.protobuf.StringValue from_company_fid = 4;
+  google.protobuf.Int32Value to_company_id = 5;
+  google.protobuf.StringValue to_company_fid = 6;
+  bool clients_editable = 7;
+  bool removable = 8;
+  NetworkConnectionVisibilityLevel visibility_level = 9;
+  RelationshipType relationship_type = 10;
+}
+
+// TODO put these enums inside NetworkConnection once that doesn't break Idiom
+enum NetworkConnectionVisibilityLevel {
+  NETWORK_CONNECTION_VISIBILITY_LEVEL_INVALID = 0;
+  NETWORK_CONNECTION_VISIBILITY_LEVEL_DEFAULT = 1;
+  NETWORK_CONNECTION_VISIBILITY_LEVEL_EXPLICIT = 2;
+}
+
+enum RelationshipType {
+  RELATIONSHIP_TYPE_INVALID = 0;
+  RELATIONSHIP_TYPE_UNSET = 1;
+  RELATIONSHIP_TYPE_INTEGRATED_FULFILLMENT_CENTER = 2;
+  RELATIONSHIP_TYPE_SELLER = 3;
+  RELATIONSHIP_TYPE_WAREHOUSE = 4;
+  RELATIONSHIP_TYPE_CUSTOMER = 5;
+  RELATIONSHIP_TYPE_OTHER = 6;
+  RELATIONSHIP_TYPE_SELF = 7;
+  RELATIONSHIP_TYPE_FULFILLMENT_CENTER = 8;
+  RELATIONSHIP_TYPE_BROKER = 9;
+  RELATIONSHIP_TYPE_MANUFACTURER = 10;
+  RELATIONSHIP_TYPE_WHOLESALER = 12;
+  RELATIONSHIP_TYPE_DISTRIBUTOR = 13;
+  RELATIONSHIP_TYPE_FREIGHT_FORWARDER = 14;
+}

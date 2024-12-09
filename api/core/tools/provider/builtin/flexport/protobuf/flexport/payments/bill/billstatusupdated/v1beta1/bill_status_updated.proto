@@ -1,0 +1,17 @@
+// TEAM: finance_platform
+
+syntax = "proto3";
+
+package flexport.payments.bill.billstatusupdated.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "BillStatusUpdatedProto";
+option java_package = "com.flexport.payments.bill.billstatusupdated.v1beta1";
+option ruby_package = "Flexport::Payments::Bill::BillStatusUpdated::V1Beta1";
+
+import "flexport/payments/bill/v1beta1/bill.proto";
+
+// The status of the bill has been changed. Likely updating paid in full or pending approval
+message BillStatusUpdated {
+  flexport.payments.bill.v1beta1.Bill bill = 1;
+}

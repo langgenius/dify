@@ -1,0 +1,74 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.airprovider.v2;
+
+import "flexport/procurement/airprovider/v2/route_term.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RouteTermApiProto";
+option java_package = "com.flexport.procurement.airprovider.v2";
+option ruby_package = "Flexport::Procurement::AirProvider::V2";
+
+// This service is used to manage route terms.
+service RouteTermAPI {
+  // Create route terms.
+  rpc CreateRouteTerms(CreateRouteTermsRequest) returns (CreateRouteTermsResponse);
+  // Update spot route terms.
+  rpc UpdateSpotRouteTerms(UpdateSpotRouteTermsRequest) returns (UpdateSpotRouteTermsResponse);
+  // Get route terms.
+  rpc GetRouteTerms(GetRouteTermsRequest) returns (GetRouteTermsResponse);
+  // Delete spot route term
+  rpc DeleteSpotRouteTerm(DeleteSpotRouteTermRequest) returns (DeleteSpotRouteTermResponse);
+  // List route terms.
+  rpc ListRouteTerms(ListRouteTermsRequest) returns (stream ListRouteTermsResponse);
+}
+
+message CreateRouteTermsRequest {
+  repeated RouteTerm route_terms = 1;
+  optional google.protobuf.Timestamp request_sent_at = 2;
+}
+
+message CreateRouteTermsResponse {
+  repeated RouteTerm route_terms = 1;
+}
+
+message UpdateSpotRouteTermsRequest {
+  repeated RouteTerm route_terms = 1;
+  optional google.protobuf.Timestamp request_sent_at = 2;
+}
+
+message UpdateSpotRouteTermsResponse {
+  repeated RouteTerm route_terms = 1;
+}
+
+message GetRouteTermsRequest {
+  ContractType contract_type = 1;
+  string contract_identifier = 2;
+  google.protobuf.Timestamp effective_from_time = 3;
+  google.protobuf.Timestamp effective_to_time = 4;
+}
+
+message GetRouteTermsResponse {
+  repeated RouteTerm route_terms = 1;
+}
+
+message DeleteSpotRouteTermRequest {
+  string contract_identifier = 1;
+  string updated_by_fid = 2;
+}
+
+message DeleteSpotRouteTermResponse {
+  RouteTerm route_term = 1 [deprecated = true];
+  repeated RouteTerm route_terms = 2;
+}
+
+message ListRouteTermsRequest {
+  repeated string contract_identifiers = 1;
+}
+
+message ListRouteTermsResponse {
+  RouteTerm route_term = 1;
+}

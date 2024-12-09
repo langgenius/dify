@@ -1,0 +1,21 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.workflow.autoasn.events.sendasnmilestonearrived.v1beta1;
+
+import "flexport/operatingprocedures/procedures/v3beta1/procedure.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "SendAsnMilestoneArrivedProto";
+option java_package = "com.flexport.workflow.autoasn.events.sendasnmilestonearrived.v1beta1";
+option ruby_package = "Flexport::Workflow::AutoAsn::Events::SendAsnMilestoneArrived::V1Beta1";
+
+// The code for sending ASN email is defined in the monolith. This event is sent
+// when the workflow in the workflow engine needs to send ASN email. Monolith
+// will consume this event and send ASN email. This event is used to define the
+// parameters for sending ASN email.
+message SendAsnMilestoneArrived {
+  string shipment_fid = 1;
+  flexport.operatingprocedures.procedures.v3beta1.Procedure procedure = 2;
+}

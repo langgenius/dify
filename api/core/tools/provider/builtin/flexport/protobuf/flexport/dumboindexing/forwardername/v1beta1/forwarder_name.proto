@@ -1,0 +1,15 @@
+// TEAM: application_framework
+
+syntax = "proto3";
+
+package flexport.dumboindexing.forwardername.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ForwarderNameProto";
+option java_package = "com.flexport.dumboindexing.forwardername.v1beta1";
+option ruby_package = "Flexport::DumboIndexing::ForwarderName::V1Beta1";
+
+// Data used to determine the forwarder name for a shipment.
+message ForwarderName {
+  string agent_name = 1;
+}

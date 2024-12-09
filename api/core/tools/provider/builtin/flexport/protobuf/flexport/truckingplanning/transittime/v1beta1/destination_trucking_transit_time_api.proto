@@ -1,0 +1,30 @@
+// TEAM: trucking_planning
+
+syntax = "proto3";
+
+package flexport.truckingplanning.transittime.v1beta1;
+
+import "flexport/truckingplanning/transittime/v1beta1/destination_trucking_transit_time.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DestinationTruckingTransitTimeApiProto";
+option java_package = "com.flexport.truckingplanning.transittime.v1beta1";
+
+// An API for interacting with Destination Trucking Transit Times.
+service DestinationTruckingTransitTimeAPI {
+  // Gets DestinationTruckingTransitTime
+  rpc GetDestinationTruckingTransitTime(GetDestinationTruckingTransitTimeRequest) returns (GetDestinationTruckingTransitTimeResponse);
+}
+
+// A request message containing a DestinationTruckingTransitTime to create.
+message GetDestinationTruckingTransitTimeRequest {
+  // The address fid of the origin of the trucking leg
+  string origin_address_fid = 1;
+  // The address fid of the destination of the trucking leg
+  string destination_address_fid = 2;
+}
+
+// The response message containing the DestinationTruckingTransitTime
+message GetDestinationTruckingTransitTimeResponse {
+  flexport.truckingplanning.transittime.v1beta1.DestinationTruckingTransitTime destination_trucking_transit_time = 1;
+}

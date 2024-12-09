@@ -1,0 +1,33 @@
+// TEAM: ocean_allocations
+
+syntax = "proto3";
+
+package flexport.oceansupply.entityevent.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PremiumProfileEntityProto";
+option java_package = "com.flexport.oceansupply.entityevent.v1beta1";
+option ruby_package = "Flexport::OceanSupply::EntityEvent::V1Beta1";
+
+message PremiumProfileEntity {
+  google.protobuf.UInt64Value id = 1;
+  google.protobuf.StringValue fid = 2;
+  google.protobuf.StringValue carrier_fid = 3;
+  google.protobuf.StringValue contract_fid = 4;
+  google.protobuf.StringValue booking_reference = 5;
+  google.protobuf.StringValue composite_string = 6;
+  google.protobuf.StringValue service_name = 7;
+  google.protobuf.StringValue service_level = 8 [deprecated = true];
+  google.protobuf.StringValue origin_port_fid = 9;
+  google.protobuf.StringValue origin_via_port_fid = 10;
+  google.protobuf.StringValue destination_via_port_fid = 11;
+  google.protobuf.StringValue destination_port_fid = 12;
+  google.protobuf.Timestamp invalidity_start_date = 13;
+  google.protobuf.Timestamp invalidity_end_date = 14;
+  google.protobuf.StringValue string_name = 15;
+  google.protobuf.StringValue open_carrier_tier = 16;
+  repeated google.protobuf.StringValue service_levels = 17;
+}

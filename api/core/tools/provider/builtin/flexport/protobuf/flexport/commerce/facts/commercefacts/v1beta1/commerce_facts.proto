@@ -1,0 +1,110 @@
+// TEAM: client_order
+
+syntax = "proto3";
+
+package flexport.commerce.facts.commercefacts.v1beta1;
+
+import "flexport/commerce/facts/codegen/options/v1/options.proto";
+import "flexport/commerce/facts/commercefacts/common/commercetypes/v1beta1/commerce_types.proto";
+import "flexport/commerce/facts/contracts/options/v1/options.proto";
+import "flexport/os/v1/types/incoterm/v1/incoterm.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CommerceFactsProto";
+option java_package = "com.flexport.commerce.facts.commercefacts.v1beta1";
+option ruby_package = "Flexport::Commerce::Facts::CommerceFacts::V1Beta1";
+
+// Commerce Facts is the full set of the fields that may be used in a commerce transaction.
+// Fields in this message are constructed by different fragments.
+message CommerceFacts {
+  option (flexport.commerce.facts.contracts.options.v1.repository).name = "commercefacts";
+
+  // Client Order built-in
+  optional string draft_client_order_fid = 51 [(flexport.commerce.facts.contracts.options.v1.packages) = "builtin"];
+  optional string client_order_fid = 52 [(flexport.commerce.facts.contracts.options.v1.packages) = "builtin"];
+  reserved 53 to 60;
+  repeated string offering_fids = 61 [
+    (flexport.commerce.facts.contracts.options.v1.packages) = "builtin",
+    (flexport.commerce.facts.codegen.options.v1.field_codegen) = {
+      optional: true
+    }
+  ];
+  reserved 62 to 69;
+
+  // Demand Facts Fragment
+  google.protobuf.StringValue name = 1 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+  repeated flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.ServiceMode service_modes = 2 [
+    (flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts",
+    (flexport.commerce.facts.codegen.options.v1.field_codegen) = {
+      optional: true
+    }
+  ];
+  optional flexport.os.v1.types.incoterm.v1.Incoterm incoterm = 3 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+  optional flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.InvolvedParties involved_parties = 4 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+  optional flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.Routes routes = 5 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+  repeated flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.ContainerCounts container_counts = 6 [
+    (flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts",
+    (flexport.commerce.facts.codegen.options.v1.field_codegen) = {
+      optional: true
+    }
+  ];
+  optional flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.Cargo cargo = 7 [
+    (flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts",
+    (flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.insurance"
+  ];
+  optional flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.Compliance compliance = 8 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+  optional flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.MainFreight main_freight = 9 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+  optional flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.ValueAddedService value_added_service = 10 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+  repeated flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.UserDefinedMetadata user_defined_meta_data = 11 [
+    (flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts",
+    (flexport.commerce.facts.codegen.options.v1.field_codegen) = {
+      optional: true
+    }
+  ];
+  optional flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.ShippingDates shipping_dates = 12 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+  optional flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.FreightInfo freight_info = 13 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+  optional flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.TradeService trade_service = 14 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+  optional flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.ContactInfo contact_info = 15 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+  optional flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.Note note = 16 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+  optional flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.Discount discount = 17 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+  optional flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.Insurance insurance = 18 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+  optional flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.RequestedPriority requested_priority = 19 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+  optional google.protobuf.Struct additional_metadata = 20 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+  optional flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.QuoteInstruction quote_instruction = 21 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+  optional flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1.Tracker tracker = 22 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.demand_facts"];
+
+  reserved 23 to 50;
+  reserved 70 to 100;
+
+  // Freight Only Fragment
+  optional string freight_name = 101 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.freight"];
+  reserved 102 to 150;
+
+  // Ocean FCL Fragment
+  optional string carrier_number = 151 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.ocean_fcl"];
+  reserved 152 to 200;
+
+  // Ocean LCL Fragment
+  reserved 201 to 250;
+
+  // Air Fragment
+  reserved 251 to 300;
+
+  // Drayage Fragment
+  reserved 301 to 350;
+
+  // Customs Only Fragment
+  optional string customs_number = 501 [(flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.customs_only"];
+  reserved 502 to 550;
+
+  // Visibility Only Fragment
+  repeated string container_numbers = 551 [
+    (flexport.commerce.facts.contracts.options.v1.packages) = "demandfacts.visibility",
+    (flexport.commerce.facts.codegen.options.v1.field_codegen) = {
+      optional: true
+    }
+  ];
+  reserved 552 to 1999;
+}

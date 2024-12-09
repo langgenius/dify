@@ -1,0 +1,27 @@
+// TEAM: trucking_carriers
+
+syntax = "proto3";
+
+package flexport.funnelmanagementgateway.shipwell.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipwellApiProto";
+option java_package = "com.flexport.funnelmanagementgateway.api.shipwell.v1";
+option ruby_package = "Flexport::FunnelManagementGateway::Api::Shipwell::V1";
+
+// Shipwell API Service.
+service ShipwellAPI {
+  // Get carrier list from Shipwell.
+  rpc GetCarrierRelationships(ShipwellAPIGetCarrierRelationshipsRequest) returns (ShipwellAPIGetCarrierRelationshipsResponse);
+}
+
+// The request message with the page and page size to query from Shipwell.
+message ShipwellAPIGetCarrierRelationshipsRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+// The response message with the raw json data returned from Shipwell.
+message ShipwellAPIGetCarrierRelationshipsResponse {
+  string data = 1;
+}

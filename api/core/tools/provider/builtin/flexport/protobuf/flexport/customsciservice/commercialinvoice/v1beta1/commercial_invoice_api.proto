@@ -1,0 +1,62 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsciservice.commercialinvoice.v1beta1;
+
+import "flexport/customsciservice/commercialinvoice/v1beta1/commercial_invoice.proto";
+import "flexport/customsciservice/commercialinvoice/v1beta1/commercial_invoice_payload.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CommercialInvoiceApiProto";
+option java_package = "com.flexport.customsciservice.commercialinvoice.v1beta1";
+option ruby_package = "Flexport::CustomsCiService::CommercialInvoice::V1Beta1";
+
+// Provides the CommercialInvoice document
+service CommercialInvoiceAPI {
+  // Returns the CommercialInvoice, see the proto definition for more details.
+  rpc GetCommercialInvoice(GetCommercialInvoiceRequest) returns (GetCommercialInvoiceResponse);
+
+  // Creates a Commercial Invoice in the Customs CI Service.
+  rpc CreateCommercialInvoice(CreateCommercialInvoiceRequest) returns (CreateCommercialInvoiceResponse);
+
+  // Updates the processing status of a Raw Commercial Invoice
+  rpc UpdateProcessingStatus(UpdateProcessingStatusRequest) returns (UpdateProcessingStatusResponse);
+}
+
+message GetCommercialInvoiceRequest {
+  string client_fid = 1;
+  string invoice_number = 2;
+  ProcessingStatus status = 3;
+}
+
+message GetCommercialInvoiceResponse {
+  flexport.customsciservice.commercialinvoice.v1beta1.CommercialInvoice commercial_invoice = 1;
+  string request_id = 2;
+  string webhook_id = 3;
+}
+
+message CreateCommercialInvoiceRequest {
+  string client_fid = 1;
+  flexport.customsciservice.commercialinvoice.v1beta1.CommercialInvoicePayload commercial_invoice_payload = 2;
+}
+
+message CreateCommercialInvoiceResponse {
+  uint32 commercial_invoice_id = 1;
+  string error = 2;
+}
+
+message UpdateProcessingStatusRequest {
+  uint32 commercial_invoice_id = 1;
+  ProcessingStatus status = 2;
+  string error = 3;
+}
+
+message UpdateProcessingStatusResponse {}
+
+enum ProcessingStatus {
+  PROCESSING_STATUS_INVALID = 0;
+  PROCESSING_STATUS_SUCCESSFUL = 1;
+  PROCESSING_STATUS_FAILED = 2;
+  PROCESSING_STATUS_UNPROCESSED = 3;
+}

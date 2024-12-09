@@ -1,0 +1,65 @@
+// TEAM: client_app
+
+syntax = "proto3";
+
+package flexport.clientfreightdata.aggregatedshipmentroutes.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AggregatedShipmentRoutesProto";
+option java_package = "com.flexport.clientfreightdata.aggregatedshipmentroutes.v1beta1";
+option ruby_package = "Flexport::ClientFreightData::AggregatedShipmentRoutes::V1Beta1";
+
+// Based off CFDS ComputedTransportationStatus enum values
+enum ComputedTransportationStatus {
+  COMPUTED_TRANSPORTATION_STATUS_INVALID = 0;
+  COMPUTED_TRANSPORTATION_STATUS_AT_DEPARTURE_PORT = 1;
+  COMPUTED_TRANSPORTATION_STATUS_TRANSIT_TO_ARRIVAL_PORT = 2;
+  COMPUTED_TRANSPORTATION_STATUS_AT_ARRIVAL_PORT = 3;
+  COMPUTED_TRANSPORTATION_STATUS_GATED_OUT = 4;
+  COMPUTED_TRANSPORTATION_STATUS_AT_FINAL_DESTINATION = 5;
+  COMPUTED_TRANSPORTATION_STATUS_UNKNOWN = 6;
+}
+
+// Based off CFDS TransitMode enum values
+enum TransportationMode {
+  TRANSPORTATION_MODE_INVALID = 0;
+  TRANSPORTATION_MODE_OCEAN = 1;
+  TRANSPORTATION_MODE_AIR = 2;
+  TRANSPORTATION_MODE_RAIL = 3;
+  TRANSPORTATION_MODE_TRUCK = 4;
+}
+
+message ShipmentLeg {
+  // the Core FID for the origin of this leg
+  string origin_core_fid = 1;
+  // the Core FID for the destination of this leg
+  string destination_core_fid = 2;
+  // transportation mode for this leg
+  TransportationMode transportation_mode = 3;
+  // the vessel IMO
+  string vessel_imo = 4;
+}
+
+message ContainerRoute {
+  string container_number = 1;
+  repeated ShipmentLeg container_route_legs = 2;
+}
+
+// Payload to be sent on any shipment related update
+message AggregatedShipmentRoutes {
+  // the time at which this event was created
+  google.protobuf.Timestamp created_at = 1;
+  // client_fid is the client's core FID.
+  string client_fid = 2;
+  // shipment_flex_id is the FLEX-ID associated with the shipment
+  string shipment_flex_id = 3;
+  // shipment_status is the computed status of the shipment
+  ComputedTransportationStatus shipment_status = 4;
+  // container_numbers is all the containers that are being tracked with the shipment
+  repeated string all_container_numbers = 5;
+  // shipping_legs are contiguous routes that form all of the shipment.
+  //  In the current 4PL schema, there is only one leg. In the future, we will support multi-leg
+  repeated ContainerRoute container_routes = 6;
+}

@@ -1,0 +1,106 @@
+// TEAM: work_management
+
+syntax = "proto3";
+
+package flexport.operatingprocedures.procedures.v4beta1;
+
+import "flexport/operatingprocedures/procedures/v4beta1/procedure.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ProcedureApiProto";
+option java_package = "com.flexport.operatingprocedures.procedures.v4beta1";
+option ruby_package = "Flexport::OperatingProcedures::Procedures::V4Beta1";
+
+service ProcedureAPI {
+  // Retrieves a procedure by its procedure FID
+  rpc GetSSDProcedureByProcedureFID(GetSSDProcedureByProcedureFIDRequest) returns (GetSSDProcedureByProcedureFIDResponse);
+
+  // Retrieves the matching procedure for a given client and type
+  rpc GetSSDProcedureOfTypeForTopic(GetSSDProcedureOfTypeForTopicRequest) returns (GetSSDProcedureOfTypeForTopicResponse);
+
+  rpc CreateSSDProcedure(CreateSSDProcedureRequest) returns (CreateSSDProcedureResponse);
+
+  rpc DestroySSDProcedure(DestroySSDProcedureRequest) returns (DestroySSDProcedureResponse);
+
+  rpc UpdateSSDProcedure(UpdateSSDProcedureRequest) returns (UpdateSSDProcedureResponse);
+
+  rpc GetMatchingConfiguration(GetMatchingConfigurationRequest) returns (GetMatchingConfigurationResponse);
+}
+
+message CreateSSDProcedureRequest {
+  Procedure procedure = 1;
+  string created_by_fid = 2;
+}
+
+message CreateSSDProcedureResponse {
+  bool success = 1;
+  string procedure_fid = 2;
+  repeated string errors = 3;
+}
+
+message UpdateSSDProcedureRequest {
+  string procedure_fid = 1;
+  string updated_by_fid = 2;
+  Procedure procedure = 3;
+}
+
+message UpdateSSDProcedureResponse {
+  bool success = 1;
+  string procedure_fid = 2;
+  repeated string errors = 3;
+}
+
+message DestroySSDProcedureRequest {
+  string procedure_fid = 1;
+  string deleted_by_fid = 2;
+}
+
+message DestroySSDProcedureResponse {
+  bool success = 1;
+  string procedure_fid = 2;
+  repeated string errors = 3;
+}
+
+message GetSSDProcedureByProcedureFIDRequest {
+  string procedure_fid = 1;
+  CallerName caller = 2;
+}
+
+message GetSSDProcedureByProcedureFIDResponse {
+  Procedure procedure = 1;
+}
+
+enum SupportedTopic {
+  SUPPORTED_TOPIC_INVALID = 0;
+  SUPPORTED_TOPIC_SHIPMENT = 1;
+  SUPPORTED_TOPIC_DELIVERY_ORDER = 2;
+  // Add other topics later as we support them
+}
+
+enum CallerName {
+  CALLER_NAME_INVALID = 0;
+  CALLER_NAME_WORK_ITEMS_AUTOMATION = 1;
+  CALLER_NAME_EMAIL_GENERATOR = 2;
+  CALLER_NAME_CUSTOMS_CLIENT_ENGINE = 3;
+  // Other services that want to call GetSSDProcedureByProcedureFID should add themselves here
+}
+
+message GetSSDProcedureOfTypeForTopicRequest {
+  string category = 1;
+  SupportedTopic topic_type = 2;
+  string topic_fid = 3;
+}
+
+message GetSSDProcedureOfTypeForTopicResponse {
+  Procedure procedure = 1;
+  repeated string errors = 2;
+}
+
+message GetMatchingConfigurationRequest {
+  string category = 1;
+  string shipment_fid = 2;
+}
+
+message GetMatchingConfigurationResponse {
+  string output_body_json = 1;
+}

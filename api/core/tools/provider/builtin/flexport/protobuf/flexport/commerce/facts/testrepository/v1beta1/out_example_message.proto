@@ -1,0 +1,59 @@
+// TEAM: client_order
+
+syntax = "proto3";
+
+package flexport.commerce.facts.testrepository.v1beta1;
+
+import "flexport/commerce/facts/codegen/options/v1/options.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OutExampleMessageProto";
+option java_package = "com.flexport.commerce.facts.testrepository.v1beta1";
+option ruby_package = "Flexport::Commerce::Facts::TestRepository::V1Beta1";
+
+message OutExampleMessage {
+  option deprecated = true;
+  option (flexport.commerce.facts.codegen.options.v1.message_codegen).type_name = "OutExampleMessage";
+
+  string day = 1;
+  NestedMessage1 message = 2;
+  repeated ExampleEnum1 enum1 = 3;
+  optional ExampleEnum2 enum2 = 4;
+  google.protobuf.StringValue str = 5;
+  google.protobuf.Timestamp time = 6;
+  map<string, string> map_strings = 8;
+  map<string, NestedMessage1> map_messages = 9;
+}
+
+message OneOfExampleMessage {
+  option deprecated = true;
+  string name = 1;
+}
+
+enum ExampleEnum1 {
+  option deprecated = true;
+  option (flexport.commerce.facts.codegen.options.v1.enum_codegen).type_name = "ExampleEnum1";
+
+  EXAMPLE_ENUM1_INVALID = 0;
+  EXAMPLE_ENUM1_FOO = 1;
+  EXAMPLE_ENUM1_BAR = 2;
+  EXAMPLE_ENUM1_BAZ = 3;
+}
+
+enum ExampleEnum2 {
+  option deprecated = true;
+  EXAMPLE_ENUM2_INVALID = 0;
+  EXAMPLE_ENUM2_FOO = 1 [deprecated = true];
+  EXAMPLE_ENUM2_BAR = 2;
+  EXAMPLE_ENUM2_BAZ = 3;
+}
+
+message NestedMessage1 {
+  NestedMessage2 message = 1;
+}
+
+message NestedMessage2 {
+  OutExampleMessage message = 1;
+}

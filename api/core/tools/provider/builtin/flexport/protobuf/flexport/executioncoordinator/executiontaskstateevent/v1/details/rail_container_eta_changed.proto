@@ -1,0 +1,41 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RailContainerEtaChangedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+// A change in estimated time-of-arrival of equipment at either an interchange point, rail destination,
+// or customer industry occurred.
+//
+// Sources of data:
+// - track_and_trace engine's RailEta simple PubSub event from Rail Inc.
+//
+// This event is not currently emitted when OperationalRoute::Graph data changes for rail legs.
+// If you want rail container movements based on OperationalRoute::Graph data, use the derived
+// CargoTransitDateChanged events instead (which may be emitted upon this event being consumed
+// from Rail Inc, or may not if the Rail Inc update is rejected).
+message RailContainerEtaChanged {
+  string container_fid = 12;
+  string container_number = 1;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime eta_date_time = 3;
+  // Code identifying ETA type (e.g. "deramped").
+  string eta_event = 4;
+  string station_name = 5;
+  string state = 6;
+  // https://en.wikipedia.org/wiki/Standard_Point_Location_Code
+  string splc = 7;
+  string destination_station_name = 8;
+  string destination_state = 9;
+  // https://en.wikipedia.org/wiki/Standard_Point_Location_Code
+  string destination_splc = 2;
+  string latitude = 10;
+  string longitude = 11;
+  string track_and_trace_event_fid = 13;
+}

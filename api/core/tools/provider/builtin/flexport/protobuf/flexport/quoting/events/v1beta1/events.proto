@@ -1,0 +1,178 @@
+// TEAM: quoting
+
+syntax = "proto3";
+
+package flexport.quoting.events.v1beta1;
+
+import "flexport/network/v1beta1/address.proto";
+import "flexport/network/v1beta1/company_entity.proto";
+import "flexport/network/v1beta1/freight_partner.proto";
+import "flexport/originops/quotestatus/v1/quote_status.proto";
+import "flexport/os/v1/types/cargo/v1/container_counts.proto";
+import "flexport/quoting/events/v1beta1/ssat_allocation_info.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "EventsProto";
+option java_package = "com.flexport.quoting.events.v1beta1";
+option ruby_package = "Flexport::Quoting::Events::V1Beta1";
+
+// Kinesis event specifying a quote has been shared.
+// This is only published&consumed by booking.
+message QuoteCreated {
+  // RFQ identifier.
+  string request_for_quotes_fid = 1;
+  // The quote published.
+  Quote quote = 2;
+}
+
+// Information about the quote.
+message Quote {
+  // Global identifier for this quote.
+  string fid = 1;
+  // The time this quote expires. Assigned when the quote is constructed.
+  google.protobuf.Timestamp rate_expiration_time = 2;
+  // Arrival port
+  flexport.network.v1beta1.Address arrival_port = 3;
+  // Departure port
+  flexport.network.v1beta1.Address departure_port = 4;
+  // FMC port of unloading
+  flexport.network.v1beta1.Address fmc_port_of_unloading = 5;
+  // Inland port
+  flexport.network.v1beta1.Address inland_port = 6;
+  // Via ports
+  repeated flexport.network.v1beta1.Address via_ports = 7;
+  // Freight partner company
+  flexport.network.v1beta1.CompanyEntity freight_partner_company = 8;
+  // Import customs agent
+  flexport.network.v1beta1.CompanyEntity import_customs_agent = 9;
+  // Import customs broker
+  flexport.network.v1beta1.FreightPartner import_customs_broker = 10;
+  // Origin address
+  flexport.network.v1beta1.Address origin_address = 11;
+  // Origin agent
+  flexport.network.v1beta1.CompanyEntity origin_agent = 12;
+  // Trucking broker
+  flexport.network.v1beta1.CompanyEntity trucking_broker = 13;
+  // Destination addresses
+  repeated flexport.network.v1beta1.Address destination_addresses = 14;
+  // Shipment Fid associated with the Quote
+  string shipment_fid = 15;
+  google.protobuf.Struct full_record = 16;
+  repeated google.protobuf.Struct line_items_records = 17;
+  // The line items of the quote
+  repeated QuoteLineItem line_items = 18;
+  // The name of the quote
+  string name = 19;
+  // The created_at time of the quote
+  google.protobuf.Timestamp created_at = 20;
+  // The time the quote was accepted at
+  google.protobuf.Timestamp accepted_at = 21;
+  // The time the quote was voided at
+  google.protobuf.Timestamp voided_at = 22;
+  // The time the quote was updated at
+  google.protobuf.Timestamp updated_at = 23;
+
+  flexport.quoting.events.v1beta1.SsatAllocationInfo ssat_allocation_info = 24;
+  // Identifier of the paying client.
+  string client_fid = 25;
+  // Container counts for the quote.
+  flexport.os.v1.types.cargo.v1.ContainerCounts quoted_container_counts = 26;
+  // The time the quote was shared at
+  google.protobuf.Timestamp submitted_at = 27;
+  // Client requested container counts.
+  flexport.os.v1.types.cargo.v1.ContainerCounts requested_container_counts = 28;
+}
+
+message QuoteLineItem {
+  // The time at which this line item was created
+  google.protobuf.Timestamp created_at = 1;
+  // The currency code of the price quoted to the customer
+  string price_currency_code = 2;
+  // The price per unit quote to the customer
+  double frozen_rate_per_unit = 3;
+  // The currency code of the cost of this line item for Flexport
+  string cost_currency_code = 4;
+  // The total price of this line item at the time the quote was accepted by the customer
+  double frozen_price = 5;
+  // The slug of the line item
+  string slug = 6;
+  // The category of the line item
+  string category = 7;
+  // The description of the line item
+  string description = 8;
+  // Number of items
+  int32 item_count = 9;
+  // The total cost of this line item for Flexport
+  double estimated_cost = 10;
+  // The cost per unit of this line item for Flexport
+  double estimated_cost_per_unit = 11;
+  // The template fid
+  string template_fid = 12;
+  // Indicates if this line item is dormant or not
+  bool is_dormant = 13;
+}
+
+// Kinesis event specifying a quote has been created.
+message NewQuoteCreated {
+  // The newly created quote.
+  Quote quote = 1;
+  // The quote request associated with the quote
+  QuoteRequest quote_request = 2;
+}
+
+// Kinesis event specifying a quote has been shared.
+message QuoteShared {
+  // The quote shared.
+  Quote quote = 1;
+}
+
+// Kinesis event specifying a quote has been voided.
+message QuoteVoided {
+  // The quote voided.
+  Quote quote = 1;
+  // Monolith shipment FID
+  string shipment_fid = 2;
+}
+
+// Kinesis event specifying a quote has been edited.
+message QuoteEdited {
+  // The quote edited.
+  Quote quote = 1;
+  // The quote request associated with the quote
+  QuoteRequest quote_request = 2;
+}
+
+// Kinesis event specifying a quote has been accepted.
+message QuoteAccepted {
+  // The quote accepted.
+  Quote quote = 1;
+  // Monolith shipment FID
+  string shipment_fid = 2;
+  google.protobuf.Timestamp quote_accepted_time = 3;
+}
+
+// Kinesis event specifying a quote has been deleted.
+message QuoteDeleted {
+  // The quote deleted.
+  Quote quote = 1;
+  // Monolith shipment FID
+  string shipment_fid = 2;
+}
+
+// Message used in NewQuoteCreated and QuoteEdited.
+message QuoteRequest {
+  // fid of the quote request associated with the quote
+  string fid = 1;
+  // flex id of this quote request.
+  string flex_id = 2;
+}
+
+// Shipment#quote_status is derived state of quotes from a single shipment. It
+// refers to the last action performed on the active quote.
+message ShipmentQuoteStatusChanged {
+  // Monolith shipment FID
+  string shipment_fid = 1;
+  flexport.originops.quotestatus.v1.QuoteStatus quote_status = 2;
+}

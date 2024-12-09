@@ -1,0 +1,56 @@
+// TEAM: application_framework
+
+syntax = "proto3";
+
+package flexport.geo.geocoding.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "GeocodingApiProto";
+option java_package = "com.flexport.geo.geocoding.v1beta1";
+option ruby_package = "Flexport::Geo::Geocoding::V1Beta1";
+
+import "flexport/geo/geocoding/v1beta1/geocoding.proto";
+
+// A simple api for parsing addresses and determining their locations in a geographic
+// coordinate system.
+service GeocodingAPI {
+  // Given an address, return its geographic coordinates.
+  rpc Geocode(GeocodeRequest) returns (GeocodeResponse);
+  // Given geographic coordinates, return a human-readable address.
+  rpc ReverseGeocode(ReverseGeocodeRequest) returns (ReverseGeocodeResponse);
+}
+
+message GeocodeRequest {
+  // The address to geocode.
+  string address = 1;
+  // Components can be included in a GeocodeRequest to filter geocoding responses to a specific area.
+  // The component filter consists of a list of 'component:value' pairs.
+  // See https://developers.google.com/maps/documentation/geocoding/overview#component-filtering for more info.
+  repeated ComponentFilter components = 2;
+}
+
+message GeocodeResponse {
+  // A Geocode result, containing a geographic coordinate.
+  message Result {
+    Coordinate coordinate = 1;
+  }
+  // A List of Geocode results. Generally, only one entry is returned in the
+  // results, but there may be multiple results if address queries are ambiguous.
+  repeated Result results = 1;
+}
+
+message ReverseGeocodeRequest {
+  // The geographic coordinates to reverse geocode.
+  Coordinate coordinate = 1;
+}
+
+message ReverseGeocodeResponse {
+  // A Reverse Geocode result, containing an address.
+  message Result {
+    string address = 1;
+  }
+  // A list of Reverse Geocode results. Addresses in results can be any way to
+  // geographically name a location, not just a street address (e.g. "San Francisco, CA 94103, USA").
+  // Addresses are returned in order from most specific to least specific.
+  repeated Result results = 1;
+}

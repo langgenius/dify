@@ -1,0 +1,20 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanConsolOriginCfsCutoffChangedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/executioncoordinator/types/enums/v1/ocean_consol_origin_cfs_cutoff.proto";
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+// An ocean consol cutoff date has been changed.
+message OceanConsolOriginCfsCutoffChanged {
+  string container_freight_station_fid = 1;
+  flexport.executioncoordinator.types.enums.v1.OceanConsolOriginCfsCutoff cutoff_type = 2;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime cutoff_time = 3;
+}

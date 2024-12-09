@@ -1,0 +1,55 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customs.declaration.eu.types.v1beta1;
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.declaration.eu.types.v1beta1";
+option ruby_package = "Flexport::Customs::Declaration::EU::Types::V1Beta1";
+
+// Union codes for the type of guarantee used for the operation.
+enum GuaranteeType {
+  GUARANTEE_TYPE_INVALID = 0;
+  // For guarantee waiver
+  GUARANTEE_TYPE_0 = 1;
+  // For comprehensive guarantee (Article 89(5) of the Code)
+  GUARANTEE_TYPE_1 = 2;
+  // 	For individual guarantee in the form of an undertaking by a guarantor (Article 92(1)(b) of the Code)
+  GUARANTEE_TYPE_2 = 3;
+  // For individual guarantee in cash or other means of payment recognised by the customs authorities as being equivalent to a cash deposit,
+  // made in euro or in the currency of the Member State in which the guarantee is required (Article 92(1)(a) of the Code)
+  GUARANTEE_TYPE_3 = 4;
+  // For individual guarantee in the form of vouchers (Article 92(1)(b) of the Code and Article 160
+  GUARANTEE_TYPE_4 = 5;
+  // For guarantee waiver where the amount of import or export duty to be secured does not exceed the statistical value threshold for
+  // declarations laid down in accordance with Article 3(4) of Regulation (EC) No 471/2009 of the European Parliament and of the Council (Article 89(9) of the Code)
+  GUARANTEE_TYPE_5 = 6;
+  // For guarantee not required for certain public bodies (Article 89(7) of the Code)
+  GUARANTEE_TYPE_8 = 7;
+  // For guarantee furnished for goods dispatched under TIR procedure
+  GUARANTEE_TYPE_B = 8;
+  // For guarantee not required for goods carried by fix transport installations (Article 89(8)(b) of the Code)
+  GUARANTEE_TYPE_C = 9;
+  // For guarantee not required for goods placed under the temporary admission procedure
+  // in accordance with Article 81(a) of Delegated Regulation (EU) 2015/2446 (Article 89(8)(c) of the Code)
+  GUARANTEE_TYPE_D = 10;
+  // For guarantee not required for goods placed under the temporary admission procedure
+  // in accordance with Article 81(b) of Delegated Regulation (EU) 2015/2446 (Article 89(8)(c) of the Code)
+  GUARANTEE_TYPE_E = 11;
+  // For guarantee not required for goods placed under the temporary admission procedure
+  // in accordance with Article81(c) of Delegated Regulation (EU) 2015/2446 (Article 89(8)(c) of the Code)
+  GUARANTEE_TYPE_F = 12;
+  // For guarantee not required for goods placed under the temporary admission procedure
+  // in accordance with Article 81(d) of Delegated Regulation (EU) 2015/2446 (Article 89(8)(c) of the Code)
+  GUARANTEE_TYPE_G = 13;
+  // 	For guarantee not required for goods placed under the Union transit procedure in accordance with Article 89(8)(d) of the Code
+  GUARANTEE_TYPE_H = 14;
+  // For individual guarantee in another form which provides equivalent assurance that the amount of import or export duty corresponding
+  // to the customs debt and other charges will be paid (Article 92(1)(c) of the Code)
+  GUARANTEE_TYPE_I = 15;
+  // Guarantee not required for the journey between customs office of departure and customs office of transit -
+  // Article 10(2)(b) of the Convention of 20 May 1987 on a common transit procedure
+  GUARANTEE_TYPE_J = 16;
+  // For guarantee not required for goods carried on the Rhine, the Rhine waterways, the Danube or the Danube waterways (Article 89(8)(a) of the Code
+  GUARANTEE_TYPE_R = 17;
+}

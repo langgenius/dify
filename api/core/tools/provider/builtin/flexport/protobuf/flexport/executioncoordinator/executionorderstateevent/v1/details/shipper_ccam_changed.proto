@@ -1,0 +1,18 @@
+// TEAM: shipper_exp
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+import "flexport/shipperexp/shipperdocument/v1/shipper_ccam.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipperCcamChangedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+// Represent the shipper CCAM changed event.
+message ShipperCcamChanged {
+  // Represent the shipper CCAM.
+  flexport.shipperexp.shipperdocument.v1.ShipperCcam shipper_ccam = 1;
+}

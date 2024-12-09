@@ -1,0 +1,202 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.documentprocessor.structureddata.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ElementsProto";
+option java_package = "com.flexport.documentprocessor.structureddata.v1beta1";
+option ruby_package = "Flexport::DocumentProcessor::StructuredData::V1Beta1";
+
+// A general time element which may hold either a date or a datetime.
+message ChronoElement {
+  oneof chrono_value {
+    DateElement date = 1;
+    DateTimeElement date_time = 2;
+  }
+}
+
+// A date element.
+message DateElement {
+  // The packed timestamp value for the date.
+  google.protobuf.Timestamp value_time = 1;
+}
+
+// A datetime element.
+message DateTimeElement {
+  // The packed timestamp value for the datetime.
+  google.protobuf.Timestamp value_time = 1;
+}
+
+// The type of an identifier.
+enum IdentifierFunction {
+  // Default invalid value.
+  IDENTIFIER_FUNCTION_INVALID = 0;
+  // Unknown identifier type.
+  IDENTIFIER_FUNCTION_UNKNOWN = 1;
+  // Flexport-internal FID identifier.
+  IDENTIFIER_FUNCTION_FID = 2;
+  // Flexport shipment FLEX-ID identifier.
+  IDENTIFIER_FUNCTION_FLEX_ID = 3;
+  // Document identifier.
+  IDENTIFIER_FUNCTION_DOCUMENT_NUMBER = 4;
+  // Container identifier.
+  IDENTIFIER_FUNCTION_CONTAINER_NUMBER = 5;
+  // Bank account number identifier.
+  IDENTIFIER_FUNCTION_IBAN = 6;
+  // !!! THESE ENUM VALUES ARE NOT USED YET.
+  // IDENTIFIER_FUNCTION_EIN = 4;
+  // IDENTIFIER_FUNCTION_USCI = 5;
+  // IDENTIFIER_FUNCTION_PORT_CODE = 6;
+
+  // IDENTIFIER_FUNCTION_SEAL_NUMBER = 8;
+  // IDENTIFIER_FUNCTION_VOYAGE_NUMBER = 9;
+  // IDENTIFIER_FUNCTION_AIRPORT_CODE = 10;
+  // IDENTIFIER_FUNCTION_MUTUALLY_DEFINED = 11;
+
+  // IDENTIFIER_FUNCTION_FMC = 13;
+  // IDENTIFIER_FUNCTION_SERIAL = 14;
+  // IDENTIFIER_FUNCTION_HS_CODE = 15;
+}
+
+// A generic identifier.
+message IdentifierElement {
+  // The type or form of the identifier.
+  IdentifierFunction function = 1;
+  // The string value of the identifier.
+  string value = 2;
+}
+
+// The function or purpose of a monetary amount.
+enum MoneyFunction {
+  // Default invalid value.
+  MONEY_FUNCTION_INVALID = 0;
+  // Unknown monetary purpose.
+  MONEY_FUNCTION_UNKNOWN = 1;
+  // Monetary amount for collection.
+  MONEY_FUNCTION_COLLECT = 2;
+  // Monetary amount for billing.
+  MONEY_FUNCTION_BILLING = 3;
+  // Monetary amount for payment.
+  MONEY_FUNCTION_PAYMENT = 4;
+  // Prepaid monetary amount.
+  MONEY_FUNCTION_PREPAID = 5;
+  //
+  // !!! THESE ENUM VALUES ARE NOT USED YET.
+  //
+  // MONEY_FUNCTION_QUOTING = 6;
+  // MONEY_FUNCTION_CONTRACT = 7;
+}
+
+// A generic monetary amount.
+message MoneyElement {
+  // The function or purpose of the monetary amount.
+  MoneyFunction function = 1;
+  // The actual amount.
+  double amount = 2;
+  // The ISO4217 currency code for the monetary amount.
+  string currency_code = 3;
+  // The arbitrary precision amount.
+  string decimal_amount = 4;
+}
+
+// The type or form of a reference.
+enum ReferenceForm {
+  // Default invalid value.
+  REFERENCE_FORM_INVALID = 0;
+  // Unknown reference type.
+  REFERENCE_FORM_UNKNOWN = 1;
+  // Referenced shipment.
+  REFERENCE_FORM_SHIPMENT = 2;
+  // Referenced document.
+  REFERENCE_FORM_DOCUMENT = 3;
+  // Referenced container.
+  REFERENCE_FORM_CONTAINER = 4;
+  //
+  // !!! THESE ENUM VALUES ARE NOT USED YET.
+  //
+  // REFERENCE_FORM_PARTY = 4;
+  // REFERENCE_FORM_SERVICE = 5;
+}
+
+// The more specific form of the entity being referenced.
+enum ReferenceSubform {
+  // Default invalid value.
+  REFERENCE_SUBFORM_INVALID = 0;
+  // Unknown reference form.
+  REFERENCE_SUBFORM_UNKNOWN = 1;
+  // Referenced delivery order document.
+  REFERENCE_SUBFORM_DELIVERY_ORDER = 2;
+  // Referenced invoice.
+  REFERENCE_SUBFORM_INVOICE = 3;
+  // Referenced master bill of landing.
+  REFERENCE_SUBFORM_MASTER_BILL_OF_LADING = 4;
+  // Referenced contract
+  REFERENCE_SUBFORM_CONTRACT = 5;
+  // Referenced master air waybill.
+  REFERENCE_SUBFORM_MASTER_AIR_WAYBILL = 6;
+  //
+  // !!! THESE ENUM VALUES ARE NOT USED YET.
+  //
+  // REFERENCE_SUBFORM_HOUSE_BILL_OF_LADING = 7;
+  // REFERENCE_SUBFORM_HOUSE_AIR_WAYBILL = 8;
+  // REFERENCE_SUBFORM_IMPORT_DECLARATION_FORM = 9;
+  // REFERENCE_SUBFORM_PURCHASE_ORDER = 10;
+}
+
+// A reference to some external document or other entity.
+message ReferenceElement {
+  // The type or function of the reference identifier.
+  IdentifierFunction function = 1;
+  // The type of the entity being referenced.
+  ReferenceForm form = 2;
+  // The more specific form of the entity being referenced.
+  ReferenceSubform subform = 3;
+  // The reference identifier value.
+  string value = 4;
+}
+
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// !!! THESE MESSAGES ARE NOT USED YET.
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// message AmountWithUnitsElement {
+//   double amount = 1;
+//   repeated UnitElement units = 2;
+// }
+//
+// enum MeasurementFunction {
+//   MEASUREMENT_FUNCTION_INVALID = 0;
+//   MEASUREMENT_FUNCTION_UNKNOWN = 1;
+//   MEASUREMENT_FUNCTION_WEIGHT = 2;
+//   MEASUREMENT_FUNCTION_GROSS_WEIGHT = 3;
+//   MEASUREMENT_FUNCTION_CHARGEABLE_WEIGHT = 4;
+//   MEASUREMENT_FUNCTION_VOLUME = 5;
+//   MEASUREMENT_FUNCTION_LENGTH = 6;
+//   MEASUREMENT_FUNCTION_WIDTH = 7;
+//   MEASUREMENT_FUNCTION_HEIGHT = 8;
+//   MEASUREMENT_FUNCTION_DEPTH = 9;
+// }
+//
+// message MeasurementElement {
+//   MeasurementFunction function = 1;
+//   AmountWithUnitsElement value = 2;
+// }
+//
+// enum QuantityFunction {
+//   QUANTITY_FUNCTION_INVALID = 0;
+//   QUANTITY_FUNCTION_UNKNOWN = 1;
+//   QUANTITY_FUNCTION_GENERIC_COUNT = 2;
+// }
+//
+// message QuantityElement {
+//   QuantityFunction function = 1;
+//   AmountWithUnitsElement value = 2;
+// }
+//
+// message UnitElement {
+//   string name = 1;
+//   int32 power = 2;
+// }

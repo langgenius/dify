@@ -1,0 +1,48 @@
+// TEAM: cost_capture
+
+syntax = "proto3";
+
+package flexport.financialvisibility.netrevenue.v1;
+
+import "flexport/financialvisibility/servicecostedevent/v1beta1/service_costed_event.proto";
+import "flexport/financialvisibility/supplyservice/v1beta1/supply_service.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "NetRevenueProto";
+option java_package = "com.flexport.financialvisibility.netrevenue.v1";
+option ruby_package = "Flexport::FinancialVisibility::NetRevenue::V1";
+
+// Line item of the net revenue calculation.
+message NRLineItem {
+  reserved 1;
+  reserved "shiment_fid";
+
+  flexport.financialledger.supplyservice.v1beta1.Category category = 2;
+  string charge_code_fid = 3;
+  sint64 amount_micros_usd = 4;
+  string shipment_fid = 5;
+}
+
+// CostRecord is the data needed to calculate the net revenue of a shipment.
+message CostRecord {
+  oneof cost {
+    DirectCosts direct_costs = 1;
+    IndirectCosts indirect_costs = 2;
+  }
+}
+
+// Direct costs are used to calculate net revenue of the shipment using shipment allocation and cost line items.
+message DirectCosts {
+  flexport.financialledger.supplyservice.v1beta1.SupplyMode mode = 1;
+  repeated flexport.financialledger.servicecostedevent.v1beta1.ShipmentAllocation shipment_allocation = 2;
+  repeated flexport.financialledger.servicecostedevent.v1beta1.CostLineItem costs = 3;
+  google.protobuf.FloatValue utilization_factor = 4;
+}
+
+// Indirect cost request is used to calculate net revenue of the shipment
+// using the supply service identified by external identifier.
+message IndirectCosts {
+  DirectCosts fallback = 1;
+  flexport.financialledger.supplyservice.v1beta1.ExternalIdentifier identifier = 2;
+}

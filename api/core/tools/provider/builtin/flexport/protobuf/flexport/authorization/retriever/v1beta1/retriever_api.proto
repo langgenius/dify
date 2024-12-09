@@ -1,0 +1,85 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.authorization.retriever.v1beta1;
+
+import "flexport/authorization/v1/common.proto";
+import "flexport/authorization/v2/common.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RetrieverApiProto";
+option java_package = "com.flexport.authorization.retriever.v1beta1";
+option ruby_package = "Flexport::Authorization::Retriever::V1Beta1";
+
+// Retrieve operations and resources relevant to permissions.
+service RetrieverAPI {
+  // Returns all permitted operations not tied to a resource.
+  rpc GetOperations(GetOperationsRequest) returns (GetOperationsResponse);
+  // Returns all resources that the actor can perform the given operation on.
+  rpc GetResourcesForOperation(GetResourcesForOperationRequest) returns (GetResourcesForOperationResponse);
+  // Returns all resources in the passed-in list that the actor can perform the given operation on.
+  rpc FilterResourcesForOperation(FilterResourcesForOperationRequest) returns (FilterResourcesForOperationResponse);
+  // Returns all permissions in the passed-in list that the actor has access to.
+  rpc FilterPermissionsForActor(FilterPermissionsForActorRequest) returns (FilterPermissionsForActorResponse);
+}
+
+message GetOperationsRequest {
+  repeated flexport.authorization.v1.Actor actors = 3 [deprecated = true];
+  repeated string actor_fids = 4;
+}
+
+message GetOperationsResponse {
+  repeated ActorOperations actors_operations = 2;
+  // Encapsulates the operations for a particular actor.
+  message ActorOperations {
+    flexport.authorization.v1.Actor actor = 1 [deprecated = true];
+    repeated string operation_slugs = 2;
+    string actor_fid = 3;
+  }
+}
+
+// This endpoint is deprecated. This endpoint is problematic: (1) it could potentially return a
+// large number of results, (2) it could leak resources that the caller didn't know about (which
+// lends itself to being used for product-purposes rather than purely auth-related purposes), and
+// (3) limits our optionality when it comes to DevEx, e.g. with other endpoints it would be possible
+// to allow all permissions in dev environments, but this particular endpoint, that would be
+// impossible.
+//
+// `FilterResourcesForOperation` is the recommended alternative.
+message GetResourcesForOperationRequest {
+  option deprecated = true;
+  flexport.authorization.v1.Actor actor = 1 [deprecated = true];
+  flexport.authorization.v1.Operation operation = 2;
+  string actor_fid = 3;
+}
+
+message GetResourcesForOperationResponse {
+  repeated flexport.authorization.v1.Resource resources = 1;
+}
+
+message FilterResourcesForOperationRequest {
+  flexport.authorization.v1.Actor actor = 1 [deprecated = true];
+  flexport.authorization.v1.Operation operation = 2;
+  repeated flexport.authorization.v1.Resource resources = 3 [deprecated = true];
+  repeated string resource_fids = 4;
+  string actor_fid = 5;
+}
+
+message FilterResourcesForOperationResponse {
+  repeated flexport.authorization.v1.Resource resources = 1 [deprecated = true];
+  repeated string resource_fids = 2;
+}
+
+// NextID: 6
+message FilterPermissionsForActorRequest {
+  flexport.authorization.v1.Actor actor = 1 [deprecated = true];
+  repeated flexport.authorization.v2.Permission permissions_with_fid = 3;
+  string actor_fid = 4;
+  bool filter_out_invalid_permissions = 5;
+}
+
+// NextID: 3
+message FilterPermissionsForActorResponse {
+  repeated flexport.authorization.v2.Permission permissions = 2;
+}

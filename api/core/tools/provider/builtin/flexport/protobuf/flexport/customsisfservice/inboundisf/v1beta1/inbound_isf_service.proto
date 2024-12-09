@@ -1,0 +1,28 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsisfservice.inboundisf.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "InboundIsfService";
+option java_package = "com.flexport.customsisfservice.inboundisf.v1beta1";
+option ruby_package = "Flexport::CustomsIsfService::InboundIsf::V1Beta1";
+
+service InboundIsfServiceAPI {
+  rpc SubmitInboundIsfV1(SubmitInboundIsfV1Request) returns (SubmitInboundIsfV1Response);
+}
+
+/**
+ * Submit a customs v1 inbound isf request, corresponding to a payload from the "2023-07-01" version of the public API:
+ * https://apidocs.flexport.com/2023-07-01/tag/Customs-ISF#paths/~1customs_document~1isf/post
+ */
+message SubmitInboundIsfV1Request {
+  string json_payload = 1;
+  string client_fid = 2;
+  optional string integration_key = 3;
+}
+
+message SubmitInboundIsfV1Response {
+  string inbound_isf_fid = 1;
+}

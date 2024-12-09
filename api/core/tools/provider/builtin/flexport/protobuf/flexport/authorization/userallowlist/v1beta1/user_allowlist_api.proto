@@ -1,0 +1,29 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.authorization.userallowlist.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "UserAllowlistApiProto";
+option java_package = "com.flexport.authorization.userallowlist.v1beta1";
+option ruby_package = "Flexport::Authorization::UserAllowlist::V1Beta1";
+
+// The gRPC API for http://go/user-allowlists.
+service UserAllowlistAPI {
+  // Checks whether the user has access to the given service. Takes:
+  // the user’s email,
+  // the service's hostname (e.g.: core.flexport.com),
+  // the connection the user is attempting to log in with (e.g.: ProdCustomDB)
+  rpc HasAccessToService(HasAccessToServiceRequest) returns (HasAccessToServiceResponse);
+}
+
+message HasAccessToServiceRequest {
+  string email = 1;
+  string service_hostname = 2;
+  string service_connection = 3;
+}
+
+message HasAccessToServiceResponse {
+  bool can_access = 1;
+}

@@ -1,0 +1,18 @@
+// TEAM: trucking
+
+syntax = "proto3";
+
+package flexport.truckingprovider.boomi.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CompanyProto";
+option java_package = "com.flexport.truckingprovider.boomi.v1beta1";
+option ruby_package = "Flexport::TruckingProvider::Boomi::V1Beta1";
+
+import "flexport/truckingprovider/boomi/v1beta1/address.proto";
+
+// Company.
+message Company {
+  string name = 1;
+  Address address = 2;
+}

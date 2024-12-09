@@ -1,0 +1,20 @@
+// TEAM: trucking_pricing_rate_management
+
+syntax = "proto3";
+
+package flexport.monolith.truckingprocurement.cartageoptions.v1beta1;
+
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CartageOptionsRequest";
+option java_package = "com.flexport.monolith.truckingprocurement.cartageoptions.v1beta1";
+option ruby_package = "Flexport::Monolith::TruckingProcurement::CartageOptions::V1Beta1";
+
+message GetCartageOptionsRequest {
+  string origin_address_fid = 1;
+  string destination_address_fid = 2;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate pickup_date = 3;
+  string client_fid = 4;
+  uint32 total_weight_kg = 5;
+}

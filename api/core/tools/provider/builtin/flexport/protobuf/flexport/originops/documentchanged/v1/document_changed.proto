@@ -1,0 +1,36 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.originops.documentchanged.v1;
+
+import "flexport/originops/eventrootcontext/v1/event_root_context.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DocumentChangedProto";
+option java_package = "com.flexport.originops.documentchanged.v1";
+option ruby_package = "Flexport::OriginOps::DocumentChanged::V1";
+
+// An events that contains document change.
+// uuid is not allowed in protobuf, so we use u_u_i_d instead.
+message DocumentChanged {
+  string id = 1;
+  string documentable_id = 2;
+  string documentable_type = 3;
+  string document_type_id = 4;
+  string document_type_name = 5;
+  string attachment_filename = 6;
+  string attachment_content_type = 7;
+  string uploaded_by_user_id = 8;
+  google.protobuf.Timestamp created_at_time = 9;
+  google.protobuf.Timestamp updated_at_time = 10;
+  google.protobuf.Timestamp archived_at_time = 11;
+  string document_type_slug = 12;
+  flexport.originops.eventrootcontext.v1.EventRootContext event_root_context = 13;
+  google.protobuf.Timestamp attachment_updated_at_time = 14;
+  string u_u_i_d = 15;
+  string uploaded_by_user_name = 16;
+  string archived_by_user_id = 17;
+  string archived_by_user_name = 18;
+}

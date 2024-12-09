@@ -1,0 +1,223 @@
+// TEAM: flexport_os
+// TODO https://flexport.atlassian.net/browse/FPOSINF-619 Use original instead of this copy
+// Copyright 2020 Flexport Corp.
+//
+// All rights reserved
+
+syntax = "proto3";
+
+package flexport.os.grpc.type.datetime.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DatetimeProto";
+option java_package = "com.flexport.os.grpc.type.datetime.v1beta1";
+option ruby_package = "Flexport::OS::Grpc::Type::DateTime::V1Beta1";
+
+import "flexport/os/grpc/type/datetime/v1beta1/iso_8601_datetime.proto";
+import "flexport/os/grpc/type/datetime/v1beta1/time_zones.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+import "google/type/date.proto";
+import "google/type/timeofday.proto";
+
+// An instant in time, with an associated "span" represented by a time unit.
+// i.e. an Instant can be a second or a day depending on the Business
+// Use case requirements
+//
+// The instant corresponds to the natural unit that includes the provided
+// specification of time
+// For now, Gregorian Calendar is assumed
+// All Instants, if submitted to the API, will have only millisecond precision as a return value
+message Instant {
+  // The point in time that identifies the instant
+  oneof by {
+    Epoch epoch = 1;
+    //TODO: to be retired in the future
+    PeriodBoundary at_boundary = 2;
+    DateTime date_time = 3;
+    Iso8601Datetime iso8601 = 4;
+  }
+  // The Unit that determines the span of the instant.
+  TimeUnit unit = 5;
+}
+
+// The point in time that identifies the wall time in client time zone.
+message WallTimeInstant {
+  oneof by {
+    Epoch epoch = 1;
+    Iso8601DatetimeWallTime iso8601 = 2;
+    WallTimeInstantCanonical instant = 3;
+  }
+}
+
+// The point in time that identifies the wall time in client time zone in canonical form.
+message WallTimeInstantCanonical {
+  google.type.Date date = 1;
+  google.type.TimeOfDay time = 2;
+}
+
+// A point in time expressed as a UNIX Epoch with an associated Timezone to
+// be able to determine the enclosing day, week, etc... with an optional nanos
+// field for precision beyond the seconds
+message Epoch {
+  // The Unix Epoch value with nanos
+  google.protobuf.Timestamp epoch_time = 1;
+  // The timezone that allows determination of the enclosing day, etc...
+  // If not provided, UTC should be assumed by the receiving endpoint.
+  TimeZone tz = 2;
+}
+
+// A point in time expressed as a date, a time for the day and a Timezone.
+message DateTime {
+  google.type.Date date = 1;
+  google.type.TimeOfDay time = 2;
+  TimeZone reference_timezone = 3;
+}
+
+// A point in time determined by the beginning or the end of a standard
+// time until period. (e.g. beginning of month, end of day)
+message PeriodBoundary {
+  oneof by {
+    Epoch epoch = 1;
+    DateTime date_time = 2;
+    Iso8601Datetime iso8601 = 3;
+  }
+  // The period to consider
+  TimeUnit period = 4;
+  // Begin or end of period
+  TimeBoundary at = 5;
+}
+
+// A duration of time expressed as an integer count of a time unit.
+message UnitDuration {
+  google.protobuf.UInt32Value count = 1;
+  TimeUnit unit = 2;
+}
+
+// A simple duration of time.
+message SimpleDuration {
+  oneof by {
+    Iso8601Duration iso8601 = 1;
+    UnitDuration unit = 2;
+  }
+}
+
+// A duration of time that is the combination of its components.
+message Duration {
+  repeated SimpleDuration element = 1;
+}
+
+// A time period with a well defined beginning and end that can be expressed
+// in multiple ways.
+message Interval {
+  oneof by {
+    UnitInterval unit = 1;
+    StartEndInterval start_end = 2;
+    StartDurationInterval start_for_duration = 3;
+    DurationEndInterval duration_until_end = 4;
+    Iso8601Interval iso8601 = 5;
+  }
+}
+
+// An interval expressed by a point in time and a unit of time to express its
+// duration.
+message UnitInterval {
+  oneof around {
+    Epoch epoch = 1;
+    // For End of period, the Interval is the unit immediately preceding its end.
+    // For Beginning of Period, the interval is the unit immediately following its start
+    PeriodBoundary at_boundary = 2;
+    Iso8601Interval iso8601 = 3;
+  }
+  TimeUnit unit = 4;
+}
+
+// An interval expressed with a beginning and an end instants.
+//
+// The interval spans from the beginning of the "start" instant to the end of the
+// "end" instant.
+message StartEndInterval {
+  Instant start = 1;
+  Instant end = 2;
+}
+
+// An interval expressed with a beginning instant and a time duration
+// The interval starts at the beginning of the "start" instant.
+message StartDurationInterval {
+  Instant start = 1;
+  Duration until = 2;
+}
+
+// An interval expressed with a duration and an end instant.
+// The interval ends at the end of the "end" instant.
+message DurationEndInterval {
+  Duration until = 1;
+  Instant end = 2;
+}
+
+// An expression of calendar repetition expressed as:
+//
+// @param start: The instant when the repetition starts
+// @param period: The base period for repetition
+// @param every_count: The number of periods between repetitions
+// @param except: The days of the week (or special days) to be ommitted from the repetition
+//               (e.g. repeat daily except for weekends)
+// @param end: The end of the repetition sequence. If ommitted, the sequence never ends
+message Recurrence {
+  Instant start = 1;
+  TimeUnit period = 2;
+  google.protobuf.UInt32Value every_count = 3;
+  repeated WeekDay except = 4;
+  Instant end = 5;
+}
+
+// An set of intervals in a day that repeats according to the given recurrence.
+message CalendarSpecification {
+  Recurrence recurrence = 1;
+  // Intervals must be within 24 hours of the start of day. Otherwise they are truncated
+  repeated Interval slots = 2;
+}
+
+// TODO(mpinilla): add documentation.
+enum TimeBoundary {
+  TIME_BOUNDARY_INVALID = 0;
+  TIME_BOUNDARY_START = 1;
+  TIME_BOUNDARY_END = 2;
+}
+
+// TODO(mpinilla): add documentation.
+enum WeekDay {
+  WEEK_DAY_INVALID = 0;
+  WEEK_DAY_MONDAY = 1;
+  WEEK_DAY_TUESDAY = 2;
+  WEEK_DAY_WEDNESDAY = 3;
+  WEEK_DAY_THURSDAY = 4;
+  WEEK_DAY_FRIDAY = 5;
+  WEEK_DAY_SATURDAY = 6;
+  WEEK_DAY_SUNDAY = 7;
+  WEEK_DAY_PUBLIC_HOLIDAY = 8;
+  WEEK_DAY_WORK_DAY = 9;
+  WEEK_DAY_WEEKEND = 10;
+  // Reserved for usage in special calendars.
+  WEEK_DAY_SPECIAL = 11;
+}
+
+// Definitions follow [ISO 8601](https://en.wikipedia.org/wiki/ISO_week_date).
+// Unknown defaults to seconds.
+enum TimeUnit {
+  TIME_UNIT_INVALID = 0;
+  TIME_UNIT_SECOND = 1;
+  TIME_UNIT_NANO = 2;
+  TIME_UNIT_MICRO = 3;
+  TIME_UNIT_MILI = 4;
+  TIME_UNIT_MINUTE = 5;
+  TIME_UNIT_HOUR = 6;
+  TIME_UNIT_DAY = 7;
+  TIME_UNIT_WEEK = 8;
+  //TIME_UNIT_FORTNIGHT = 9;
+  TIME_UNIT_MONTH = 10;
+  TIME_UNIT_QUARTER = 11;
+  //TIME_UNIT_HALF_YEAR = 12;
+  TIME_UNIT_YEAR = 13;
+  TIME_UNIT_CENTURY = 14;
+}

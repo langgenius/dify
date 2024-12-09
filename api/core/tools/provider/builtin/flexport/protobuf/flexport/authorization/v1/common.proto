@@ -1,0 +1,183 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.authorization.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CommonProto";
+option java_package = "com.flexport.authorization.v1";
+option ruby_package = "Flexport::Authorization::V1";
+
+// Permission checks check if an actor can perform an operation.
+// Roles are granted to actors.
+//
+// Deprecated: Use an FID if available.
+message Actor {
+  option deprecated = true;
+  string actor_id = 1;
+  ActorType actor_type = 2;
+}
+
+// Type of the actor.
+//
+// Deprecated: Use an FID if available.
+enum ActorType {
+  option deprecated = true;
+  ACTOR_TYPE_INVALID = 0;
+  ACTOR_TYPE_USER = 1;
+  ACTOR_TYPE_API_ENTITY = 2;
+}
+
+// Permission checks can check if an actor can perform an operation on a specific resource.
+//
+// Deprecated: Use an FID if available.
+message Resource {
+  option deprecated = true;
+  //
+  // DANGER!
+  //
+  // For curious historical reasons, this id field will *sometimes* be a database id and will
+  // also sometimes be an FID. As you can imagine, this can cause unexpected behavior. If
+  // there exists an alternative in w/e api you are using to specify an FID instead of this
+  // Resource message, you should do so.
+  string resource_id = 1;
+  ResourceType resource_type = 2;
+}
+
+// Type of the resource.
+//
+// Deprecated: Use an FID if available.
+enum ResourceType {
+  option deprecated = true;
+  RESOURCE_TYPE_INVALID = 0;
+  RESOURCE_TYPE_COMMERCIAL_INVOICE = 1;
+  RESOURCE_TYPE_SHIPMENT = 2;
+  RESOURCE_TYPE_SQUAD = 3;
+  RESOURCE_TYPE_COMPANY = 4;
+  RESOURCE_TYPE_CLIENT = 5;
+  RESOURCE_TYPE_FREIGHT_PARTNER = 6;
+  RESOURCE_TYPE_USER = 7;
+  RESOURCE_TYPE_TEAM = 8;
+  RESOURCE_TYPE_BOOKING = 9;
+  RESOURCE_TYPE_BOOKING_AMENDMENT = 10;
+  RESOURCE_TYPE_COMPANY_ENTITY = 11;
+  RESOURCE_TYPE_WORKSPACE = 12;
+  RESOURCE_TYPE_API_ENTITY = 13;
+  RESOURCE_TYPE_LOCATION = 14;
+  RESOURCE_TYPE_GLOBAL = 15;
+  RESOURCE_TYPE_COUNTRY = 16;
+  RESOURCE_TYPE_PORT = 17;
+  RESOURCE_TYPE_CARRIER_BOOKING = 18;
+  RESOURCE_TYPE_CLIENT_ORDER = 19;
+}
+
+// Roles are assigned to actors. Having a role is what gives the actor permissions
+// for different operations.
+message Role {
+  string name = 1;
+  ActorType actor_type = 2;
+  RoleParameterType role_parameter_type = 3;
+  // TODO: consider exposing.
+  // bool is_role_parameter_same_as_actor = 4;
+}
+
+// Permission checks check if an actor can perform an operation.
+message Operation {
+  string name = 1;
+}
+
+// Type of the role parameter that's included in a role grant.
+//
+// Deprecated: Use an FID if available.
+enum RoleParameterType {
+  option deprecated = true;
+  ROLE_PARAMETER_TYPE_INVALID = 0;
+  ROLE_PARAMETER_TYPE_USER = 1;
+  ROLE_PARAMETER_TYPE_API_ENTITY = 2;
+}
+
+// Roles are granted to users and tracked as role grants.
+message RoleGrant {
+  Actor actor = 1 [deprecated = true];
+  Role role = 2;
+  RoleParameter role_parameter = 3;
+  google.protobuf.Timestamp deleted_time = 4;
+  google.protobuf.Timestamp created_time = 5;
+  string actor_fid = 6;
+}
+
+// Role parameter is passed in a role grant to add context to the role grant.
+//
+// Deprecated: Use an FID if available.
+message RoleParameter {
+  option deprecated = true;
+  string role_parameter_id = 1;
+  RoleParameterType role_parameter_type = 2;
+}
+
+// Mappings from objects of one type to another type.
+//
+// Deprecated: Use Kinesis events instead.
+enum DomainMapping {
+  option deprecated = true;
+  DOMAIN_MAPPING_INVALID = 0;
+  DOMAIN_MAPPING_IDENTITY = 1;
+}
+
+// Type of the domain mapping.
+//
+// Deprecated: Use Kinesis events instead.
+enum DomainMappingType {
+  option deprecated = true;
+  DOMAIN_MAPPING_TYPE_INVALID = 0;
+  DOMAIN_MAPPING_TYPE_COMPANY_TO_CLIENT = 1;
+  // TODO: need to impl.
+  DOMAIN_MAPPING_TYPE_USER_TO_SQUAD = 2;
+  DOMAIN_MAPPING_TYPE_COMPANY_TO_COMPANY_ENTITY = 3;
+  DOMAIN_MAPPING_TYPE_USER_TO_COMPANY = 4;
+  DOMAIN_MAPPING_TYPE_COMPANY_ENTITY_AS_DESTINATION_AGENT_TO_SHIPMENT = 5;
+  DOMAIN_MAPPING_TYPE_COMPANY_ENTITY_AS_IMPORT_CUSTOMS_AGENT_TO_SHIPMENT = 6;
+  DOMAIN_MAPPING_TYPE_COMPANY_TO_FREIGHT_PARTNER = 7;
+  DOMAIN_MAPPING_TYPE_CLIENT_TO_SQUAD = 8;
+  DOMAIN_MAPPING_TYPE_USER_LEAD_TO_TEAM = 9;
+  DOMAIN_MAPPING_TYPE_TEAM_TO_MEMBER_USER = 10;
+  DOMAIN_MAPPING_TYPE_COMPANY_ENTITY_TO_BOOKING = 11;
+  DOMAIN_MAPPING_TYPE_COMPANY_ENTITY_TO_AMENDABLE_BOOKING = 12;
+  DOMAIN_MAPPING_TYPE_COMPANY_ENTITY_TO_BOOKING_AMENDMENT = 13;
+  DOMAIN_MAPPING_TYPE_COMPANY_ENTITY_AS_ORIGIN_AGENT_TO_SHIPMENT = 14;
+}
+
+// Mapping object between the from resource and the resources it maps to.
+//
+// Deprecated: Use Kinesis events instead.
+message DomainMappingEntry {
+  option deprecated = true;
+  Resource from_resource = 1;
+  repeated Resource to_resources = 2;
+}
+
+// Represent the fact that an actor could potentially have permission to perform the
+// given operation, optionally on a defined set of resources.
+//
+// Deprecated: Use message in v2/common.proto if available.
+message Permission {
+  option deprecated = true;
+  Operation operation = 1;
+  Resource resource = 2;
+}
+
+// Represents the type of Token that is being passed.
+enum TokenType {
+  TOKEN_TYPE_INVALID = 0;
+  TOKEN_TYPE_AUTH0_ACCESS = 1;
+  TOKEN_TYPE_API_BEARER = 2;
+  TOKEN_TYPE_UNKNOWN = 3;
+}
+
+// Proserve sandbox allowlist entity proto.
+message ProserveSandboxAllowlistEntity {
+  string email = 1;
+}

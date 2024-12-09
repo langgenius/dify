@@ -1,0 +1,151 @@
+// TEAM: dot_org
+
+syntax = "proto3";
+
+package flexport.dotorg.carboncalculation.v1beta1;
+
+import "flexport/catalog/chargeitem/v1/charge_item_api.proto";
+import "flexport/dotorg/carboncalculation/v1beta1/carbon_calculation_request_leg.proto";
+import "flexport/dotorg/carboncalculation/v1beta1/carbon_calculation_response.proto";
+import "flexport/dotorg/carboncalculation/v1beta1/ipb_carbon_calculation_request_leg.proto";
+import "flexport/executioncoordinator/executionoffering/v1/transit_execution_offering.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/carbon_emissions_calculated.proto";
+import "flexport/executioncoordinator/types/routeshape/v1/route_shape.proto";
+import "flexport/os/v1/types/cargo/v1/shipment_cargo.proto";
+import "google/protobuf/struct.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarbonCalculationApiProto";
+option java_package = "com.flexport.dotorg.carboncalculation.v1beta1";
+option ruby_package = "Flexport::DotOrg::CarbonCalculation::V1Beta1";
+
+// The API for all carbon calulcations.
+service CarbonCalculationAPI {
+  // Calculate the carbon emissions given an execution order and execution plan.
+  rpc CalculateCarbonEmissions(CalculateCarbonEmissionsRequest) returns (CalculateCarbonEmissionsResponse);
+  // Calculate the predicted carbon emissions given a transit execution offering and its shipment cargo.
+  rpc CalculatePredictedCarbonEmissions(CalculatePredictedCarbonEmissionsRequest) returns (CalculatePredictedCarbonEmissionsResponse);
+  // Fetch the carbon emission data for an execution order.
+  rpc GetExecutionOrderCarbonEmissions(GetExecutionOrderCarbonEmissionsRequest) returns (GetExecutionOrderCarbonEmissionsResponse);
+  // Fetch leg-level carbon emission data for an execution order.
+  rpc GetExecutionOrderLegCarbonEmissions(GetExecutionOrderLegCarbonEmissionsRequest) returns (GetExecutionOrderLegCarbonEmissionsResponse);
+  // Fetch leg-level carbon emission data for a shipment.
+  rpc GetShipmentLegCarbonCalculatorRequestLegs(GetShipmentLegCarbonCalculatorRequestLegsRequest) returns (GetShipmentLegCarbonCalculatorRequestLegsResponse);
+  // Calculates carbon emissions given a list of request legs.
+  rpc CalculateRequestLegCarbonEmissions(CalculateRequestLegCarbonEmissionsRequest) returns (CalculateRequestLegCarbonEmissionsResponse);
+  // Returns data preparation values for request legs.
+  rpc CalculateDataPreparationRequestLeg(CalculateDataPreparationRequestLegRequest) returns (CalculateDataPreparationRequestLegResponse);
+  // Returns data preparation values for request legs.
+  rpc CalculateIpbCarbonEmissions(CalculateIpbCarbonEmissionsRequest) returns (CalculateIpbCarbonEmissionsResponse);
+  // calculate carbon emissions using offerings
+  rpc CalculateCarbonEmissionsUsingOfferings(CalculateCarbonEmissionsUsingOfferingsRequest) returns (CalculateCarbonEmissionsUsingOfferingsResponse);
+}
+
+// This request is identical to flexport.catalog.chargeitem.v1.GetChargeItemsRequest
+message CalculateCarbonEmissionsUsingOfferingsRequest {
+  flexport.catalog.chargeitem.v1.CommonAttributes common_attributes = 1;
+  repeated flexport.catalog.chargeitem.v1.Offering offering_instances = 2;
+}
+
+message CalculateCarbonEmissionsUsingOfferingsResponse {
+  double total_tonnes_of_co2 = 1;
+}
+
+// Request to calculate the carbon emissions given an execution order and execution plan.
+message CalculateCarbonEmissionsRequest {
+  string execution_order_fid = 1;
+  string shipment_fid = 2;
+  flexport.executioncoordinator.types.routeshape.v1.RouteShape route_shape = 3;
+  bool persist_shipment_data = 4;
+  flexport.executioncoordinator.executionorderstateevent.v1.RecalculationSource recalculation_source = 5;
+}
+
+// This represents the response of the carbon calculator in tonnes of CO2e.
+message CalculateCarbonEmissionsResponse {
+  double tonnes_of_co2 = 1;
+  CarbonCalculationByMode tonnes_of_co2_by_mode = 2;
+  repeated google.protobuf.Struct errors = 3;
+}
+
+// Request to calculate the carbon emissions given an execution order and execution plan.
+message CalculatePredictedCarbonEmissionsRequest {
+  flexport.executioncoordinator.executionoffering.v1.TransitExecutionOffering transit_execution_offering = 1;
+  flexport.os.v1.types.cargo.v1.ShipmentCargo shipment_cargo = 2;
+}
+
+// This represents the response of the carbon calculator in PREDICTED tonnes of CO2e.
+message CalculatePredictedCarbonEmissionsResponse {
+  double tonnes_of_co2 = 1;
+  CarbonCalculationByMode tonnes_of_co2_by_mode = 2;
+  repeated google.protobuf.Struct errors = 3;
+}
+
+// Request to fetch the carbon emission data for an execution order
+message GetExecutionOrderCarbonEmissionsRequest {
+  string execution_order_fid = 1;
+  string shipment_fid = 2;
+}
+
+// Response to fetch the carbon emission data for an execution order
+message GetExecutionOrderCarbonEmissionsResponse {
+  double tonnes_of_co2 = 1;
+}
+
+// Request to fetch the carbon calculator leg request data for a shipment
+message GetShipmentLegCarbonCalculatorRequestLegsRequest {
+  string shipment_fid = 1;
+}
+
+message GetShipmentLegCarbonCalculatorRequestLegsResponse {
+  repeated CarbonCalculationRequestLeg legs = 1;
+}
+
+// Request to fetch the carbon emission leg data for an execution order
+message GetExecutionOrderLegCarbonEmissionsRequest {
+  oneof id {
+    string execution_order_fid = 1;
+    string shipment_fid = 2;
+  }
+}
+
+// Response to fetch the carbon emission leg data for an execution order
+message GetExecutionOrderLegCarbonEmissionsResponse {
+  // Map of leg_fid => tonnes_of_co2 per each leg of an execution order
+  map<string, string> leg_emissions = 1;
+}
+
+// Request to calculate the carbon emissions given a list of request legs.
+message CalculateRequestLegCarbonEmissionsRequest {
+  repeated CarbonCalculationRequestLeg legs = 1;
+  // Whether or not to save request leg.
+  bool persist_request_leg_data = 2;
+}
+
+// Request to calculate the carbon emissions given a list of request legs.
+message CalculateIpbCarbonEmissionsRequest {
+  repeated IpbCarbonCalculationRequestLeg legs = 1;
+}
+
+// This represents the response of the carbon calculator in tonnes of CO2e for each leg for an IPB request.
+message CalculateIpbCarbonEmissionsResponse {
+  repeated LegCarbonCalculationResult leg_tonnes_of_co2 = 1;
+  double total_tonnes_of_co2 = 2;
+  CarbonCalculationByMode tonnes_of_co2_by_mode = 3;
+}
+
+// This represents the response of the carbon calculator in tonnes of CO2e for each leg.
+message CalculateRequestLegCarbonEmissionsResponse {
+  repeated LegCarbonCalculationResult leg_tonnes_of_co2 = 1;
+  double total_tonnes_of_co2 = 2;
+  CarbonCalculationByMode tonnes_of_co2_by_mode = 3;
+}
+
+// Request to calculate the weight/distance given a list of request legs.
+message CalculateDataPreparationRequestLegRequest {
+  repeated CarbonCalculationRequestLeg legs = 1;
+}
+
+// This represents the response of the data preparation for request legs.
+message CalculateDataPreparationRequestLegResponse {
+  repeated DataPreparationResult leg_results = 1;
+}

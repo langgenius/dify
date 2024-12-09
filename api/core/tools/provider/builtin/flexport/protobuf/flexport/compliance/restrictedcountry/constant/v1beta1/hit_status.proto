@@ -1,0 +1,24 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.compliance.restrictedcountry.constant.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RestrictedCountryHitStatusProto";
+option java_package = "com.flexport.compliance.restrictedcountry.constant.v1beta1";
+option ruby_package = "Flexport::Compliance::RestrictedCountry::Constant::V1Beta1";
+
+// The hit status of a restricted country hit on a shipment
+enum HitStatus {
+  // Invalid hit status
+  HIT_STATUS_INVALID = 0;
+  // The hit has been marked as completed by a compliance officer
+  HIT_STATUS_COMPLETED = 1;
+  // The hit is pending review by a compliance officer
+  HIT_STATUS_PENDING = 2;
+  // The hit has been marked as denied by a compliance officer
+  HIT_STATUS_DENIED = 3;
+  // The hit is marked as in progress by a compliance officer
+  HIT_STATUS_IN_PROGRESS = 4;
+}

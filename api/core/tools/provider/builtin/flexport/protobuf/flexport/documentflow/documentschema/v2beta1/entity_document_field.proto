@@ -1,0 +1,202 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.documentflow.documentschema.v2beta1;
+
+import "flexport/documentflow/documentschema/v2beta1/primitive_document_field.proto";
+import "flexport/transcription/transcriptionservice/v2beta1/transcription_result.proto";
+import "flexport/workflow/email/models/carrier/v1beta1/carrier.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "EntityDocumentFieldProto";
+option java_package = "com.flexport.documentflow.documentschema.v2beta1";
+option ruby_package = "Flexport::DocumentFlow::DocumentSchema::V2Beta1";
+
+// Next ID: 5
+message BillOfLadingDocumentField {
+  // Raw string extracted from the PDF
+  string raw_value = 1;
+  // Scoped to the range [0,1]
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+
+  string fid = 4;
+}
+
+// Next ID: 6
+message VesselDocumentField {
+  // Raw string extracted from the PDF
+  string raw_value = 1;
+  // Scoped to the range [0,1]
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  string parsed_value = 4;
+
+  string fid = 5;
+}
+
+// Next ID: 6
+message CarrierDocumentField {
+  // Raw string extracted from the PDF
+  string raw_value = 1;
+  // Scoped to the range [0,1]
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  flexport.workflow.email.models.carrier.v1beta1.Carrier parsed_value = 4;
+
+  string fid = 5;
+}
+
+// Next ID: 6
+message WarehouseOrTerminalDocumentField {
+  // Raw string extracted from the PDF
+  string raw_value = 1;
+  // Scoped to the range [0,1]
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  string parsed_value = 4;
+
+  string network_entity_fid = 5;
+}
+
+// Next ID: 27
+message ContainerDocumentField {
+  // Container number
+  DocumentField container_number = 1;
+  // Container type
+  ContainerTypeDocumentField container_type = 9;
+  // Container Seal Number
+  DocumentField seal_number = 11;
+  // Terminal Last free day
+  LocalDateTimeDocumentField last_free_day = 2;
+  // Pick up number (for FR: pin or IG number if pin is not present)
+  DocumentField pickup_number = 3;
+  // IT number
+  DocumentField it_number = 4;
+  // Weight
+  WeightDocumentField weight = 5;
+  // Bill of lading number
+  BillOfLadingDocumentField bl_number = 6;
+  // Cartons
+  IntegerDocumentField cartons = 8;
+  // Description of Goods
+  DocumentField description_of_goods = 10;
+  // Marks and Numbers
+  DocumentField marks_and_numbers = 12;
+  // Consignee name & address
+  DocumentField consignee_name_and_address = 13;
+  // Shipper name & address
+  DocumentField shipper_name_and_address = 14;
+  // Notify party
+  DocumentField notify_party = 15;
+  // HBL Release Type
+  HblReleaseTypeDocumentField hbl_release_type = 16;
+  // Container volume
+  VolumeDocumentField volume = 17;
+  // Package count
+  IntegerDocumentField package_count = 18;
+  // Package type
+  DocumentField package_type = 19;
+  // HS Code
+  DocumentField hs_code = 20;
+  // IG Number (for FR, fill this field when pin is present and ig_number is different from pin)
+  DocumentField ig_number = 21;
+  // Pick Up Number Expiration Date
+  TimestampDocumentField pickup_number_expiration_date = 22;
+  // Pick Up Location
+  WarehouseOrTerminalDocumentField pickup_location = 23;
+  // Empty Return Number
+  DocumentField empty_return_number = 24;
+  // Empty Return Location
+  WarehouseOrTerminalDocumentField empty_return_location = 25;
+  // ATB Number
+  DocumentField atb_number = 26;
+  // Carrier Last free day
+  LocalDateTimeDocumentField carrier_last_free_day = 27;
+  string fid = 7;
+}
+
+// Next ID: 4
+message MBLContainerDocumentField {
+  // Container number
+  DocumentField container_number = 1;
+  // Container type or size
+  ContainerTypeDocumentField container_type = 2;
+  // Carton count
+  IntegerDocumentField carton_count = 3;
+}
+
+// Next ID: 2
+message PurchaseOrderNumberDocumentField {
+  DocumentField purchase_order_number = 1;
+}
+
+// Next ID: 3
+message ShippingOrderContainerDocumentField {
+  // Container size type
+  DocumentField iso_container_type = 1;
+  // Quantity
+  IntegerDocumentField quantity = 2;
+}
+
+// Next ID: 11
+message ShippingOrderVoyageDocumentField {
+  // Vessel name
+  DocumentField vessel_name = 1;
+  // Voyage number
+  DocumentField voyage_number = 2;
+  // From
+  DocumentField from = 3;
+  // To
+  DocumentField to = 4;
+  // ETA
+  TimestampDocumentField eta = 5;
+  // ETD
+  TimestampDocumentField etd = 6;
+  // From Locode
+  DocumentField from_locode = 7;
+  // To Locode
+  DocumentField to_locode = 8;
+  // Transportation Mode
+  DocumentField mode = 9;
+  // Service
+  DocumentField service_string = 10;
+}
+
+// Next ID: 7
+message ShippersLetterOfInstructionUSPPIDocumentField {
+  DocumentField usppi_name = 1;
+  DocumentField usppi_city = 2;
+  DocumentField usppi_country = 3;
+  DocumentField usppi_line1 = 4;
+  DocumentField usppi_postal_code = 5;
+  DocumentField usppi_state = 6;
+}
+
+// Next ID: 6
+message ShippersLetterOfInstructionUltimateConsigneeDocumentField {
+  DocumentField consignee_name = 1;
+  DocumentField consignee_city = 2;
+  DocumentField consignee_country = 3;
+  DocumentField consignee_line1 = 4;
+  DocumentField consignee_type = 5;
+}
+
+// Next ID: 11
+message ShippersLetterOfInstructionExportLineItemDocumentField {
+  DocumentField export_code = 1;
+  DocumentField export_control_classification = 2;
+  DocumentField license_authority = 3;
+  DocumentField license_code = 4;
+  DocumentField origin = 5;
+  IntegerDocumentField schedule_b_quantity = 6;
+  DocumentField schedule_b_quantity_code = 7;
+  DocumentField product_description = 8;
+  FloatDocumentField product_gross_weight = 9;
+  FloatDocumentField product_value = 10;
+}

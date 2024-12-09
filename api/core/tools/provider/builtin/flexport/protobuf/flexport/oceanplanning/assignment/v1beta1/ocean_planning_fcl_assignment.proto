@@ -1,0 +1,130 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.oceanplanning.assignment.v1beta1;
+
+import "flexport/oceansupply/carrierspace/v1beta1/carrier_space.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanPlanningFclAssignmentProto";
+option java_package = "com.flexport.oceanplanning.assignment.v1beta1";
+option ruby_package = "Flexport::OceanPlanning::Assignment::V1Beta1";
+
+// represents an assignment made by Ocean Planning NIS
+message OceanPlanningFclAssignment {
+  string shipment_fid = 1;
+  string assignment_note = 2;
+  int32 requested_teus = 3;
+  repeated string associated_inventory_refs = 4;
+  OceanPlanningInventory inventory = 5;
+  flexport.oceansupply.carrierspace.v1beta1.CarrierServiceString carrier_service_string = 6;
+  repeated flexport.oceansupply.carrierspace.v1beta1.RouteSegment route_segments = 7;
+  repeated string commodity_codes = 8;
+  string carrier_fid = 9;
+  int32 estimated_cost_micros = 10;
+  string client_fid = 11;
+  flexport.oceansupply.carrierspace.v1beta1.NacOption nac_option = 12;
+  flexport.oceansupply.carrierspace.v1beta1.PremiumOption premium_option = 13;
+  string carrier_profile_fid = 21 [deprecated = true];
+  OceanPlanningCarrierProfile carrier_profile = 23;
+  string origin_fid = 14;
+  string origin_via_fid = 15;
+  string destination_via_fid = 16;
+  string destination_fid = 17;
+  google.protobuf.Timestamp proforma_etd_date = 18;
+  google.protobuf.Timestamp estimated_etd_date = 19;
+  google.protobuf.StringValue override_reason = 20;
+  repeated AssignmentFlag assignment_flags = 22;
+  google.protobuf.StringValue created_by_user_fid = 24;
+  AssignmentSystemCommitType system_commit_type = 25;
+  google.protobuf.StringValue carrier_space_key = 26;
+}
+
+// flattened inventory snapshot for an Ocean Planning assignment --
+// this is NOT the source of truth for this information,
+// reference Ocean Supply for real time allocation information
+message OceanPlanningInventory {
+  string inventory_fid = 1;
+  string inventory_bucket_fid = 2;
+  string provider_fid = 3;
+  string receiver_fid = 4;
+  repeated flexport.oceansupply.carrierspace.v1beta1.ApplicableRateTypes applicable_rate_types = 5;
+  repeated string contract_numbers = 6;
+  string carrier_booking_instruction = 7;
+  flexport.oceansupply.carrierspace.v1beta1.InlandRouteRestriction pre_carriage_baseport_restriction = 8;
+  flexport.oceansupply.carrierspace.v1beta1.InlandRouteRestriction on_carriage_baseport_restriction = 9;
+  int32 carrier_priority = 10;
+  google.protobuf.Timestamp window_start_date = 11;
+  int32 carrier_week = 12;
+  int32 carrier_year = 13;
+  int32 iso_week = 14;
+  int32 iso_year = 15;
+  string confirming_authority = 16;
+  string notes = 17;
+}
+
+message OceanPlanningCarrierProfile {
+  // for "wildcard" (generated and unpersisted) profiles, the fid will be blank
+  string fid = 1;
+  string contract_fid = 2;
+}
+
+// The assignment flags indicate reasons that an assignment is considered
+// "suboptimal" by BAE -- the user is not necessarily prevented from committing
+// an assignment with these problems via direct override or assignment search
+enum AssignmentFlag {
+  ASSIGNMENT_FLAG_INVALID = 0;
+  ASSIGNMENT_FLAG_SHOULD_USE_NAC = 1 [deprecated = true];
+  ASSIGNMENT_FLAG_SHOULD_NOT_USE_NAC = 2 [deprecated = true];
+  ASSIGNMENT_FLAG_NO_CARRIER_PREFERENCES_RESPECTED = 3 [deprecated = true];
+  ASSIGNMENT_FLAG_MAX_CRD_TO_ETD_SLA_EXCEEDED = 4 [deprecated = true];
+  ASSIGNMENT_FLAG_PRIORITY_SHIPMENT = 5 [deprecated = true];
+  ASSIGNMENT_FLAG_ASSIGNMENT_GENERATED_WITH_IBO = 6 [deprecated = true];
+
+  ASSIGNMENT_FLAG_WRONG_ALLOCATION_EQUIPMENT_TYPE = 7;
+  ASSIGNMENT_FLAG_CARRIER_IN_BLOCKLIST = 8;
+  ASSIGNMENT_FLAG_CARRIER_CONSTRAINT_PRIORITY = 9;
+  ASSIGNMENT_FLAG_CARRIER_CONSTRAINT_BATTERIES = 10;
+  ASSIGNMENT_FLAG_WRONG_CLIENT = 11;
+  ASSIGNMENT_FLAG_PORT_WRONG_ORIGIN = 12;
+  ASSIGNMENT_FLAG_PORT_WRONG_DESTINATION_VIA = 13;
+  ASSIGNMENT_FLAG_PORT_WRONG_DESTINATION = 14;
+  ASSIGNMENT_FLAG_PRODUCT_SET_PREMIUM_MISMATCH = 15;
+  ASSIGNMENT_FLAG_PRODUCT_SET_PREMIUM_UNDETERMINED = 16;
+  ASSIGNMENT_FLAG_PRODUCT_SET_RATE_TYPE_MISMATCH = 17;
+  ASSIGNMENT_FLAG_PRODUCT_SET_CARRIER_SERVICE_STRING_MISMATCH = 18;
+  ASSIGNMENT_FLAG_PRODUCT_SET_CONTRACT_MISMATCH = 19;
+  ASSIGNMENT_FLAG_PRODUCT_SET_CARRIER_MISMATCH = 20;
+  ASSIGNMENT_FLAG_PRODUCT_SET_ORIGIN_MISMATCH = 21;
+  ASSIGNMENT_FLAG_PRODUCT_SET_ORIGIN_VIA_MISMATCH = 22;
+  ASSIGNMENT_FLAG_PRODUCT_SET_DESTINATION_VIA_MISMATCH = 23;
+  ASSIGNMENT_FLAG_PRODUCT_SET_DESTINATION_MISMATCH = 24;
+  ASSIGNMENT_FLAG_PRODUCT_SET_ORIGIN_TRANSHIPMENT_NOT_ALLOWED = 25;
+  ASSIGNMENT_FLAG_PRODUCT_SET_ORIGIN_FEEDER_NOT_ALLOWED = 26;
+  ASSIGNMENT_FLAG_PRODUCT_SET_DESTINATION_IPI_NOT_ALLOWED = 27;
+  ASSIGNMENT_FLAG_PRODUCT_SET_PREMIUM_SERVICE_NOT_ALLOWED = 28;
+  ASSIGNMENT_FLAG_PRODUCT_SET_SERVICE_LEVELS_NOT_ALLOWED = 29;
+  ASSIGNMENT_FLAG_SAILING_WINDOW_NO_ETD = 30;
+  ASSIGNMENT_FLAG_SAILING_WINDOW_NO_SI_CUTOFF = 31;
+  ASSIGNMENT_FLAG_SAILING_WINDOW_EXCEEDS_SI_CUTOFF = 32;
+  ASSIGNMENT_FLAG_SAILING_WINDOW_EXCEEDS_CRD_TO_ETD = 33;
+  ASSIGNMENT_FLAG_NOT_ENOUGH_TEUS = 34;
+  ASSIGNMENT_FLAG_SAILING_OUTSIDE_TARGET_ETD_WINDOW = 35;
+  ASSIGNMENT_FLAG_PRODUCT_SET_ORIGIN_STOPS_MISMATCH = 36;
+  ASSIGNMENT_FLAG_FREIGHT_TYPE_NOT_APPLICABLE = 37;
+}
+
+enum AssignmentSystemCommitType {
+  ASSIGNMENT_SYSTEM_COMMIT_TYPE_INVALID = 0;
+  ASSIGNMENT_SYSTEM_COMMIT_TYPE_BULK_OVERRIDES = 1;
+  ASSIGNMENT_SYSTEM_COMMIT_TYPE_BAE_PREFERRED = 2;
+  ASSIGNMENT_SYSTEM_COMMIT_TYPE_NON_BAE_PREFERRED = 3;
+  ASSIGNMENT_SYSTEM_COMMIT_TYPE_ASSIGNMENT_SEARCH = 4;
+  ASSIGNMENT_SYSTEM_COMMIT_TYPE_ASSIGNMENT_OVERRIDE = 5;
+  ASSIGNMENT_SYSTEM_COMMIT_TYPE_BACKFILLS = 6;
+  ASSIGNMENT_SYSTEM_COMMIT_TYPE_FMT = 7;
+  ASSIGNMENT_SYSTEM_COMMIT_TYPE_PREVIOUS_ASSIGNMENT = 8;
+}

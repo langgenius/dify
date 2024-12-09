@@ -1,0 +1,22 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TruckingCarrierAddedTrackingNumberProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// The trucking carrier added a Tracking Number for a Delivery Order.
+// It is also known as "Pro Number" in the LTL trucking world.
+message TruckingCarrierAddedTrackingNumber {
+  string cargo_fid = 1;
+  // A unique identifier for DeliveryOrder, e.g. FLEX-1234A.
+  string do_flex_id = 2;
+  string carrier_fid = 3;
+  // tracking number allows ops to track the status of deliveries, it's how carriers
+  // that we're integrated with uniquely identify deliveries on their end.
+  string tracking_number = 4;
+}

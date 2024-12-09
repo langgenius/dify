@@ -1,0 +1,51 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.monolith.container.v1;
+
+import "flexport/monolith/container/v1/container.proto";
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerApiProto";
+option java_package = "com.flexport.monolith.container.v1";
+option ruby_package = "Flexport::Monolith::Container::V1";
+
+// Retrieve container information from the monolith.
+// Note that this only gets static information about a physical container,
+// without any shipment specific information.
+service ContainerAPI {
+  // Get information for a given fid.
+  rpc GetContainer(GetContainerRequest) returns (GetContainerResponse);
+  // Get information for a given container number.
+  rpc GetContainerByContainerNumber(GetContainerByContainerNumberRequest) returns (GetContainerByContainerNumberResponse);
+  // Create a new physical container.
+  rpc CreateContainer(CreateContainerRequest) returns (CreateContainerResponse);
+}
+
+message GetContainerRequest {
+  string container_fid = 1;
+}
+
+message GetContainerResponse {
+  Container container = 1;
+}
+
+message GetContainerByContainerNumberRequest {
+  string container_number = 1;
+}
+
+message GetContainerByContainerNumberResponse {
+  Container container = 1;
+}
+
+message CreateContainerRequest {
+  string container_number = 1;
+  flexport.os.v1.types.cargo.v1.Iso6346ContainerSize container_size = 2;
+  flexport.os.v1.types.cargo.v1.Iso6346ContainerType container_type = 3;
+}
+
+message CreateContainerResponse {
+  Container container = 1;
+}

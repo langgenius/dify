@@ -1,0 +1,41 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanCarrierBookingShippingOrdersUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// A digitized shipping order has been changed.
+// The shipping order document provides information about the space that was released by the ocean carrier after a carrier booking is confirmed.
+// It specifies the route, the number and types of containers, and the cutoff dates for submitting documentation and the deadline to drop off their container(s) at the container yard.
+// A carrier may release space on a booking as either a single shipping order or many (up to one shipping order per container).
+// In the real world, the shipping order is a PDF that is usually attached to an email that is sent to the origin agent by the ocean carrier.
+message OceanCarrierBookingShippingOrdersUpdated {
+  string carrier_booking_fid = 1;
+  repeated OceanCarrierBookingShippingOrder shipping_orders = 2;
+}
+
+// Represents a shipping order.
+message OceanCarrierBookingShippingOrder {
+  string shipping_order_fid = 1 [deprecated = true];
+  string shipping_order_number = 2;
+  repeated string sub_shipping_order_numbers = 3;
+  // Date by which the container must be delivered to the container yard in order to get on the sailing
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate cy_cutoff_date = 4 [deprecated = true];
+  // Date by which shipping instructions are due
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate shipping_instruction_cutoff_date = 5 [deprecated = true];
+
+  repeated string document_fids = 6;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime cy_cutoff_date_time = 7;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime shipping_instruction_cutoff_date_time = 8;
+
+  string carrier_booking_fid = 9;
+  string shipping_order_uuid = 10;
+}

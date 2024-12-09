@@ -1,0 +1,28 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.query.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PageInfoProto";
+option java_package = "com.flexport.executioncoordinator.types.query.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Query::V1";
+
+// Returns infomation on pagination exactly like GraphQL connections PageInfo.
+// See for more info: https://relay.dev/graphql/connections.htm#sec-undefined.PageInfo
+message PageInfo {
+  // When paginating forwards, the cursor of the last element (to continue the next page).
+  // Base 64 encoded string.
+  string end_cursor = 1;
+  //
+  // When paginating forwards, determines if there are more items.
+  bool has_next_page = 2;
+  //
+  // When paginating backwards, the cursor of first element (to continue the previous page).
+  // Base 64 encoded string.
+  string start_cursor = 3;
+  //
+  // When paginating backwards, determines if there are more items.
+  bool has_previous_page = 4;
+}

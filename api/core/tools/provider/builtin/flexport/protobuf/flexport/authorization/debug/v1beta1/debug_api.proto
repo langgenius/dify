@@ -1,0 +1,104 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.authorization.debug.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DebugApiProto";
+option java_package = "com.flexport.authorization.debug.v1beta1";
+option ruby_package = "Flexport::Authorization::Debug::V1Beta1";
+
+import "flexport/authorization/v1/common.proto";
+import "flexport/authorization/v2/common.proto";
+
+// Provides data for a read-only admin dashboard for the Authorization service.
+service DebugAPI {
+  // Returns row counts for database tables.
+  rpc GetRowCounts(GetRowCountsRequest) returns (GetRowCountsResponse);
+  // Returns the total policy count over all roles.
+  rpc GetPolicyCount(GetPolicyCountRequest) returns (GetPolicyCountResponse);
+  // Returns all domain mappings from an FID.
+  rpc GetDomainMappingsFromFid(GetDomainMappingsFromFidRequest) returns (GetDomainMappingsFromFidResponse);
+  // Returns all role grants for an actor. Includes revoked role grants.
+  rpc GetRoleGrantsByActorFid(GetRoleGrantsByActorFidRequest) returns (GetRoleGrantsByActorFidResponse);
+  // Returns the most recently touched domain mappings.
+  rpc GetLatestDomainMappings(GetLatestDomainMappingsRequest) returns (GetLatestDomainMappingsResponse);
+  // Returns a list of all roles.
+  rpc GetRoles(GetRolesRequest) returns (GetRolesResponse);
+  // Returns statistics for a particular domain mapping slug.
+  rpc GetDomainMappingInfo(GetDomainMappingInfoRequest) returns (GetDomainMappingInfoResponse);
+  // Returns info on behavior changes that are active from "development mode."
+  rpc GetDevModeInfo(GetDevModeInfoRequest) returns (GetDevModeInfoResponse);
+  // Causes an unhandled exception. Used for testing monitoring/alerting.
+  rpc ForceError(ForceErrorRequest) returns (ForceErrorResponse);
+  // Causes a Sentry to be captured. Used for testing monitoring/alerting.
+  rpc TestSentry(TestSentryRequest) returns (TestSentryResponse);
+}
+
+message GetRowCountsRequest {}
+
+message GetRowCountsResponse {
+  int32 role_grant_count = 1;
+  int32 domain_mapping_count = 2;
+}
+
+message GetPolicyCountRequest {}
+
+message GetPolicyCountResponse {
+  int32 policy_count = 1;
+}
+
+message GetDomainMappingsFromFidRequest {
+  string from_fid = 1;
+}
+
+message GetDomainMappingsFromFidResponse {
+  repeated flexport.authorization.v2.DomainMapping domain_mapping = 1;
+}
+
+message GetRoleGrantsByActorFidRequest {
+  // The monolith db id of a user actor. This ought to be an fid.
+  string id = 1 [deprecated = true];
+}
+
+message GetRoleGrantsByActorFidResponse {
+  repeated flexport.authorization.v1.RoleGrant role_grant = 1;
+}
+
+message GetLatestDomainMappingsRequest {}
+
+message GetLatestDomainMappingsResponse {
+  repeated flexport.authorization.v2.DomainMapping domain_mapping = 1;
+}
+
+message GetRolesRequest {}
+
+message GetRolesResponse {
+  repeated string role_slug = 1;
+}
+
+message GetDomainMappingInfoRequest {
+  string domain_mapping_slug = 1;
+}
+
+message GetDomainMappingInfoResponse {
+  int32 domain_mapping_total_count = 1;
+  int32 domain_mapping_active_count = 2;
+  int32 domain_mapping_active_snapshotted_count = 3;
+}
+
+message GetDevModeInfoRequest {}
+
+message GetDevModeInfoResponse {
+  bool is_active_for_rbac = 1;
+  bool is_active_for_prbac = 2;
+}
+
+message ForceErrorRequest {}
+
+message ForceErrorResponse {}
+
+message TestSentryRequest {}
+
+message TestSentryResponse {}

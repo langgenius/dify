@@ -1,0 +1,58 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.rates.v2;
+
+option java_multiple_files = true;
+option java_outer_classname = "FclRates";
+option java_package = "com.flexport.procurement.rates.v2";
+option ruby_package = "Flexport::Procurement::Rates::V2";
+
+enum Variant {
+  VARIANT_INVALID = 0;
+  VARIANT_NON_ARB_BASE_FREIGHT = 1;
+  VARIANT_ARB_BASE_FREIGHT = 2;
+  VARIANT_PART_OF_FREIGHT_SURCHARGE = 3;
+  VARIANT_ORIGIN_LOCAL_SURCHARGE = 4;
+  VARIANT_DESTINATION_LOCAL_SURCHARGE = 5;
+}
+
+message FclRate {
+  repeated FclRateItem rate_items = 1;
+}
+
+message FclRateItem {
+  string flexport_charge_name = 1;
+  string source_charge_name = 2;
+  string charge_group_fid = 3;
+  oneof pricing_structure {
+    Included included_structure = 4;
+    Flat flat_structure = 5;
+    PerContainer per_container_structure = 6;
+  }
+}
+
+message Included {}
+
+message Flat {
+  Amount amount = 1;
+}
+
+message PerContainer {
+  Amount amount = 1;
+  SupportedContainerType container_type = 2;
+}
+
+message Amount {
+  int64 micros = 1;
+  string currency_code = 2;
+}
+
+enum SupportedContainerType {
+  SUPPORTED_CONTAINER_TYPE_INVALID = 0;
+  SUPPORTED_CONTAINER_TYPE_20 = 1;
+  SUPPORTED_CONTAINER_TYPE_40 = 2;
+  SUPPORTED_CONTAINER_TYPE_40_HC = 3;
+  SUPPORTED_CONTAINER_TYPE_45_HC = 4;
+}

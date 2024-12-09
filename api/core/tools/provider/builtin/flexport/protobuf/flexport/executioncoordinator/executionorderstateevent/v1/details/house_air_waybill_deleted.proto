@@ -1,0 +1,20 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "HouseAirWaybillDeletedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+import "google/protobuf/timestamp.proto";
+
+// The house air waybill has been deleted.
+message HouseAirWaybillDeleted {
+  // The fid of the house air waybill entity, not the document id.
+  string house_air_waybill_fid = 1;
+  // The time that the house air waybill was deleted.
+  google.protobuf.Timestamp deleted_time = 2;
+}

@@ -1,0 +1,16 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.compliance.form.constant.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "FormTypeProto";
+option java_package = "com.flexport.compliance.form.constant.v1beta1";
+option ruby_package = "Flexport::Compliance::Form::Constant::V1Beta1";
+
+// Different types and versions of forms.
+enum FormType {
+  FORM_TYPE_INVALID = 0;
+  FORM_TYPE_CTPAT_ALPHA = 1;
+}

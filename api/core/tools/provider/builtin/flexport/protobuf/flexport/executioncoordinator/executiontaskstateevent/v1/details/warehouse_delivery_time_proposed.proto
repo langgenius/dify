@@ -1,0 +1,24 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "WarehouseDeliveryTimeProposedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/os/v1/types/walltimerange/v1/wall_time_range.proto";
+
+// Event emitted when warehouse operations proposes a delivery time.
+message WarehouseDeliveryTimeProposed {
+  // Cargo that is being delivered
+  string cargo_fid = 1;
+  // Address of the warehouse where the delivery will happen
+  string address_fid = 2;
+  // The time for which the delivery appointment was proposed
+  flexport.os.v1.types.walltimerange.v1.WallTimeRange time_range = 3;
+  // The container being delivered (if any).
+  string container_number = 4;
+}

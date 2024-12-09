@@ -1,0 +1,26 @@
+// TEAM: order_management
+
+syntax = "proto3";
+
+package flexport.monolith.ordermanagement.purchaseorderbooking.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PurchaseOrderBookingProto";
+option java_package = "com.flexport.monolith.ordermanagement.purchaseorderbooking.v1beta1";
+option ruby_package = "Flexport::Monolith::OrderManagement::PurchaseOrderBooking::V1Beta1";
+
+// Represents a purchase order and it's line items that are booked on a particular shipment.
+message PurchaseOrderBooking {
+  string purchase_order_fid = 1;
+  string purchase_order_name = 2;
+  repeated LineItemBooking line_item_bookings = 3;
+}
+
+// Represents a line item booking on a purchase order.
+message LineItemBooking {
+  string purchase_order_line_item_fid = 1;
+  string sku = 2;
+  string item_key = 3;
+  int32 requested_units = 4;
+  int32 booked_units = 5;
+}

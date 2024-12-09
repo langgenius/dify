@@ -1,0 +1,38 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.monolith.oceanplanning.carrierpremium.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierPremiumApiProto";
+option java_package = "com.flexport.monolith.oceanplanning.carrierpremium.v1";
+option ruby_package = "Flexport::Monolith::OceanPlanning::CarrierPremium::V1";
+
+import "flexport/monolith/oceanplanning/carrierpremium/v1/carrier_premium.proto";
+
+// Retrieve information on ocean carrier premium services.
+service CarrierPremiumAPI {
+  // Fetches premium information for a given list of FIDs.
+  //
+  // Only FIDs that were found will be returned as results.
+  rpc GetByFid(GetByFidRequest) returns (GetByFidResponse);
+  // Look up the list of premium services for a given carrier.
+  rpc GetByCarrier(GetByCarrierRequest) returns (GetByCarrierResponse);
+}
+
+message GetByFidRequest {
+  repeated string fids = 1;
+}
+
+message GetByFidResponse {
+  repeated CarrierPremium carrier_premiums = 1;
+}
+
+message GetByCarrierRequest {
+  repeated string carrier_fids = 1;
+}
+
+message GetByCarrierResponse {
+  repeated CarrierPremium carrier_premiums = 1;
+}

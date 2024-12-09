@@ -1,0 +1,17 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.freightinvoice.draftinvoicedestroyed.v1beta1;
+
+import "flexport/freightinvoice/draftinvoice/v1beta1/draft_invoice.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DraftInvoiceDestroyedProto";
+option java_package = "com.flexport.freightinvoice.draftinvoicedestroyed.v1beta1";
+option ruby_package = "Flexport::FreightInvoice::DraftInvoiceDestroyed::V1Beta1";
+
+// An invoice has been destroyed.
+message DraftInvoiceDestroyed {
+  flexport.freightinvoice.draftinvoice.v1beta1.DraftInvoice invoice = 1;
+}

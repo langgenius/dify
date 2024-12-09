@@ -1,0 +1,23 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.escalationengine.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsPreOrderEscalationProto";
+option java_package = "com.flexport.customs.escalationengine.v1";
+option ruby_package = "Flexport::Customs::EscalationEngine::V1";
+
+// Escalation for a CustomsPreOrder
+message CustomsPreOrderEscalation {
+  // The type of escalation.
+  enum Type {
+    TYPE_INVALID = 0;
+    // M1 task 11
+    TYPE_PORTS_MISSING = 1;
+    // M1 task 13
+    TYPE_FORWARDING_AGENT_NOT_SET = 2;
+  }
+  Type type = 1;
+}

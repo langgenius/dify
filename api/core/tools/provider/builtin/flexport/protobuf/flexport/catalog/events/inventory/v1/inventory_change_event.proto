@@ -1,0 +1,44 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.events.inventory.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "InventoryChangeEventProto";
+option java_package = "com.flexport.catalog.events.inventory.v1";
+option ruby_package = "Flexport::Catalog::Events::InventoryEvent::V1";
+
+// Catalog inventory change event structure.
+message InventoryChangeEvent {
+  // Metadata contains optional information for external system processing.
+  message Metadata {
+    // (Optional) E.g. IPS.
+    string external_source_id = 1;
+    // (Optional) E.g. IPS reference uuid.
+    string external_ref_id = 2;
+    // (Optional) E.g. TpebFloatingOpenCarrier_CNYTN_USOAK.
+    string external_inventory_ref_id = 3;
+    // (Optional) E.g. FLEX-12345
+    // Note that there could be non-quoting related contribution to inventory change.
+    string flex_id = 4;
+  }
+  // The inventory change event type.
+  // Note that the status might be further split into sub-states.
+  enum EventType {
+    EVENT_TYPE_INVALID = 0;
+    EVENT_TYPE_SOFT_BOOKED = 1;
+    EVENT_TYPE_HARD_BOOKED = 2;
+    EVENT_TYPE_CANCELLED = 3;
+  }
+  // Type of the change event.
+  EventType event_type = 1;
+  // Epoch timestamp of the business event.
+  google.protobuf.Timestamp business_event_time = 2;
+  // Service offering uuid.
+  string offering_id = 3;
+  // Metadata associated with the event.
+  Metadata metadata = 4;
+}

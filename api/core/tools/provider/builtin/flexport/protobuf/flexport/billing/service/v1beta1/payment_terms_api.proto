@@ -1,0 +1,38 @@
+// TEAM: Billing
+
+syntax = "proto3";
+
+package flexport.billing.service.v1beta1;
+
+import "flexport/billing/util/v1beta1/error_result.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BillingDueDateApiProto";
+option java_package = "com.flexport.billing.service.v1beta1";
+option ruby_package = "Flexport::Billing::Service::V1Beta1";
+
+service PaymentTermsAPI {
+  rpc CalculateDueDate(CalculateDueDateRequest) returns (CalculateDueDateResponse);
+}
+
+message CalculateDueDateRequest {
+  string vendor_company_fid = 1;
+  google.protobuf.StringValue vendor_entity_fid = 2;
+  string receiving_entity_fid = 3;
+  google.protobuf.Timestamp issued_date = 4;
+  google.protobuf.Timestamp received_date = 5;
+  repeated string charge_code_fids = 6;
+}
+
+message CalculateDueDateResponse {
+  oneof result {
+    flexport.billing.service.v1beta1.DueDateCalculation success_result = 1;
+    flexport.billing.util.v1beta1.ErrorResult failure_result = 2;
+  }
+}
+
+message DueDateCalculation {
+  google.protobuf.Timestamp due_date = 1;
+}

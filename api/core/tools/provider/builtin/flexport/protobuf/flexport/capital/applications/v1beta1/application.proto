@@ -1,0 +1,88 @@
+// TEAM: capital
+
+syntax = "proto3";
+
+package flexport.capital.applications.v1beta1;
+
+import "google/type/calendar_period.proto";
+import "google/type/date.proto";
+import "google/type/money.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ApplicationProto";
+option java_package = "com.flexport.capital.applications.v1beta1";
+option ruby_package = "Flexport::Capital::Applications::V1Beta1";
+
+message Application {
+  string id = 1;
+  ApplicationStatus status = 2;
+  ApplicationDetails application_details = 3;
+  ApplicationType application_type = 4;
+}
+
+message ApplicationDetails {
+  string client_fid = 1;
+  oneof application_details {
+    SmbApplicationDetails smb_application_details = 2;
+    // Add other application details types here.
+  }
+  string submitter_email = 3;
+  string submitted_by = 4;
+}
+
+message SmbApplicationDetails {
+  string title = 1;
+  FinancingDetails financing_details = 2;
+  InventoryFinanceDetails inventory_finance_details = 3;
+  BusinessDetails business_details = 4;
+  string shipment_id = 5;
+  map<string, string> metadata = 6;
+}
+
+message InventoryFinanceDetails {
+  google.type.Money loan_amount = 1;
+  string supplier_name = 2;
+  google.type.Date supplier_payment_date = 3;
+}
+
+message FinancingDetails {
+  bool is_interested_in_inventory_financing = 1;
+  bool is_interested_in_logistics_financing = 2;
+  Duration preferred_duration = 3;
+}
+
+message BusinessDetails {
+  string ein = 1;
+  string legal_entity_name = 2;
+  string owner_name = 3;
+  string driving_license_identifier = 4;
+  google.type.Money ttm_revenue = 6;
+  float estimated_markup_percentage = 7;
+  string articles_of_incorporation_identifier = 8;
+  string state_of_incorporation = 9;
+  string state_of_hq = 10;
+}
+
+message Duration {
+  int32 value = 1;
+  google.type.CalendarPeriod unit = 2;
+}
+
+enum ApplicationStatus {
+  APPLICATION_STATUS_INVALID = 0;
+  APPLICATION_STATUS_DRAFT = 1;
+  APPLICATION_STATUS_SUBMITTED = 2;
+  APPLICATION_STATUS_APPROVED = 3;
+  APPLICATION_STATUS_REJECTED = 4;
+  APPLICATION_STATUS_CANCELLED = 5;
+}
+
+enum ApplicationType {
+  APPLICATION_TYPE_INVALID = 0;
+  APPLICATION_TYPE_PURCHASE_ORDER = 1;
+  APPLICATION_TYPE_INVENTORY = 2;
+  APPLICATION_TYPE_LOGISTICS = 3;
+  APPLICATION_TYPE_TERM_LOAN = 4;
+  APPLICATION_TYPE_SMB_SCF = 5;
+  APPLICATION_TYPE_DEPOSIT = 6;
+}

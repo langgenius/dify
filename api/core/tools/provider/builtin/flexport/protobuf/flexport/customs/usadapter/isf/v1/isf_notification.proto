@@ -1,0 +1,23 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.isf.v1;
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.isf.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::Isf::V1";
+
+message IsfNotification {
+  string id = 1;
+  string filing_id = 2; // Tracks a filing through full customs process
+  string isf_transaction_number = 3;
+  string bill_number = 4;
+  repeated Disposition dispositions = 5;
+  string reference = 6;
+}
+
+message Disposition {
+  string code = 1;
+  string remarks = 2;
+}

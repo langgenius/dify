@@ -1,0 +1,34 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.airshippingdoc.houseairwaybill.v1beta1;
+
+import "flexport/airshippingdoc/houseairwaybill/v1beta1/house_air_waybill.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "HouseAirWaybillApiProto";
+option java_package = "com.flexport.airshippingdoc.houseairwaybill.v1beta1";
+option ruby_package = "Flexport::AirShippingDoc::HouseAirWaybill::V1Beta1";
+
+service HouseAirWaybillAPI {
+  rpc ListHouseAirWaybills(ListHouseAirWaybillsRequest) returns (ListHouseAirWaybillsResponse);
+  rpc SaveHouseAirWaybill(SaveHouseAirWaybillRequest) returns (SaveHouseAirWaybillResponse);
+}
+
+message ListHouseAirWaybillsRequest {
+  google.protobuf.Int32Value shipment_id = 1;
+}
+
+message ListHouseAirWaybillsResponse {
+  repeated HouseAirWaybill house_air_waybills = 1;
+}
+
+message SaveHouseAirWaybillRequest {
+  HouseAirWaybill house_air_waybill = 1;
+}
+
+message SaveHouseAirWaybillResponse {
+  google.protobuf.Int32Value shipment_id = 1;
+}

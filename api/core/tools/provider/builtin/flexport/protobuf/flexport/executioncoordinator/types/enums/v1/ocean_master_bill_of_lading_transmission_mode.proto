@@ -1,0 +1,19 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanMasterBillOfLadingTransmissionModeProto";
+option java_package = "com.flexport.executioncoordinator.types.enums.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Enums::V1";
+
+// Type of release process, e.g. "Original" or "Expressed".
+enum OceanMasterBillOfLadingTransmissionMode {
+  OCEAN_MASTER_BILL_OF_LADING_TRANSMISSION_MODE_INVALID = 0;
+  OCEAN_MASTER_BILL_OF_LADING_TRANSMISSION_MODE_ORIGINAL = 1;
+  OCEAN_MASTER_BILL_OF_LADING_TRANSMISSION_MODE_EXPRESS = 2;
+  OCEAN_MASTER_BILL_OF_LADING_TRANSMISSION_MODE_STRAIGHT = 3;
+  OCEAN_MASTER_BILL_OF_LADING_TRANSMISSION_MODE_UNKNOWN = 4;
+}

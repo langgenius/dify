@@ -1,0 +1,31 @@
+// TEAM: smb
+
+syntax = "proto3";
+
+package flexport.smb.subscription.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "SubscriptionEventProto";
+option java_package = "com.flexport.smb.subscription.v1beta1";
+
+message SubscriptionEvent {
+  string client_fid = 1;
+
+  enum EventType {
+    EVENT_TYPE_INVALID = 0;
+    EVENT_TYPE_INITIATE_PURCHASE = 1;
+    EVENT_TYPE_COMPLETE_PURCHASE = 2;
+    EVENT_TYPE_INITIATE_RENEWAL = 3;
+    EVENT_TYPE_COMPLETE_RENEWAL = 4;
+    EVENT_TYPE_PAUSE = 5;
+    EVENT_TYPE_CANCEL = 6;
+    EVENT_TYPE_EXPIRE = 7;
+  }
+
+  EventType event_type = 2;
+
+  string subscription_sku_slug = 3;
+  string subscription_sku_version = 4;
+  int32 subscription_id = 5;
+  string payment_id = 6;
+}

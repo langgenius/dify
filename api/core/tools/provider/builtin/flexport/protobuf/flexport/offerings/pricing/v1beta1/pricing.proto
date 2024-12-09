@@ -1,0 +1,255 @@
+// TEAM: ocean_service_offerings
+
+syntax = "proto3";
+
+package flexport.offerings.pricing.v1beta1;
+
+import "flexport/catalog/charge/v3/charge_api.proto";
+import "flexport/catalog/rate/v1/rate.proto";
+import "flexport/commerce/merchandising/catalog/data_authority/offering/v1beta1/offering.proto";
+import "google/rpc/status.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PricingProto";
+option java_package = "com.flexport.offerings.pricing.v1beta1";
+option ruby_package = "Flexport::Offerings::Pricing::V1Beta1";
+
+message OceanFCLPricingRule {
+  string origin_port_locode = 1;
+  string destination_port_locode = 2;
+  // FREIGHT_TYPE_INVALID value is not allowed.
+  FreightType freight_type = 3;
+  Segment segment = 4;
+  // Client identifier, not an fid. Example value "42977"
+  string client_id = 5;
+  // Markup percentage value for container. Example: "100.00" for a hundred percent.
+  string omda_markup = 6;
+  // Lower guardrail percentage value. Example: "100.00" for a hundred percent.
+  string omda_lower_guardrail = 7;
+  // Upper guardrail percentage value. Example: "100.00" for a hundred percent.
+  string omda_upper_guardrail = 8;
+  // Source of the pricing rule. Enum field: only "DS" or "List" or "RM" allowed.
+  RuleSource rule_source = 9;
+  // Port fid is needed to match the offering during online process
+  string origin_port_fid = 10;
+  string destination_port_fid = 11;
+}
+
+// Flexports overall responsibility for freight movement.
+// It covers the boundary of a freight service.
+enum FreightType {
+  FREIGHT_TYPE_INVALID = 0;
+  FREIGHT_TYPE_PORT_TO_PORT = 1;
+  FREIGHT_TYPE_PORT_TO_DOOR = 2;
+  FREIGHT_TYPE_DOOR_TO_PORT = 3;
+  FREIGHT_TYPE_DOOR_TO_DOOR = 4;
+}
+
+// Method of transportation for the freight. Currently only the below options are supported.
+enum FreightMethod {
+  FREIGHT_METHOD_INVALID = 0;
+  FREIGHT_METHOD_OCEAN_FCL = 1;
+  FREIGHT_METHOD_AIR = 2;
+}
+
+// A group or classification of accounts.
+// https://flexport.atlassian.net/wiki/spaces/CBO/pages/2495053907/Account+Segment+Definitions
+enum Segment {
+  // Segment is optional for Ocean FCL and Air pricing rules.
+  // SEGMENT_INVALID value is not allowed.
+  SEGMENT_INVALID = 0;
+  SEGMENT_ENTERPRISE = 1;
+  SEGMENT_OTHER = 2;
+  SEGMENT_SMB = 3;
+  SEGMENT_KEY = 4;
+  // SEGMENT_EMPTY means the segment is not set, which is a valid case.
+  SEGMENT_EMPTY = 5;
+}
+
+message ClientSegment {
+  string client_id = 1;
+  Segment segment = 2;
+}
+
+// Source of the pricing rule.
+enum RuleSource {
+  RULE_SOURCE_INVALID = 0;
+  RULE_SOURCE_DS = 1;
+  RULE_SOURCE_LIST = 2;
+  RULE_SOURCE_RM = 3;
+}
+
+message AirPricingRule {
+  string origin_port_iata = 1;
+  string destination_port_iata = 2;
+  ServiceTier service_tier = 3;
+  // FREIGHT_TYPE_INVALID value is not allowed.
+  FreightType freight_type = 4;
+  Segment segment = 5;
+  // Client identifier, not an fid. Example value "42977"
+  string client_id = 6;
+  // Markup percentage value for container. Example: "100.00" for a hundred percent.
+  string omda_markup = 7;
+  // Lower guardrail percentage value. Example: "100.00" for a hundred percent.
+  string omda_lower_guardrail = 8;
+  // Upper guardrail percentage value. Example: "100.00" for a hundred percent.
+  string omda_upper_guardrail = 9;
+  // Source of the pricing rule. Enum field: only "DS" or "List" or "RM" allowed.
+  RuleSource rule_source = 10;
+  // Port fid is needed to match the offering during online process
+  string origin_port_fid = 11;
+  string destination_port_fid = 12;
+}
+
+// Service tier of the air shipment. Deprecated, use AirServiceTier instead.
+enum ServiceTier {
+  option deprecated = true;
+  SERVICE_TIER_INVALID = 0;
+  SERVICE_TIER_EXPRESS = 1;
+  SERVICE_TIER_STANDARD = 3;
+  SERVICE_TIER_DEFERRED = 4;
+}
+
+// Air service tier of the air shipment.
+enum AirServiceTier {
+  AIR_SERVICE_TIER_INVALID = 0;
+  AIR_SERVICE_TIER_EXPRESS = 1;
+  AIR_SERVICE_TIER_STANDARD = 3;
+  AIR_SERVICE_TIER_DEFERRED = 4;
+}
+
+// Customer specific pricing rule match level
+enum MatchLevel {
+  MATCH_LEVEL_INVALID = 0;
+  MATCH_LEVEL_EXACT = 1;
+  MATCH_LEVEL_FUZZY = 2;
+  MATCH_LEVEL_NONE = 3;
+}
+
+// Sell rate type that can be requested to offerings service in any of the Get...SellRates APIs
+enum SellRateType {
+  SELL_RATE_TYPE_INVALID = 0;
+  SELL_RATE_TYPE_LIST_PRICE = 1;
+}
+
+message AirListPricingRule {
+  string trade_lane = 1;
+  string origin_country_code = 2;
+  string origin_port_iata_code = 3;
+  // Port fid is needed to match the offering during online process
+  string origin_port_fid = 4;
+  string destination_country_code = 5;
+  string destination_port_iata_code = 6;
+  string destination_port_fid = 7;
+  // Lower guardrail percentage value. Example: "100.00" for a hundred percent.
+  string omda_lower_guardrail = 8;
+  // Upper guardrail percentage value. Example: "100.00" for a hundred percent.
+  string omda_upper_guardrail = 9;
+}
+
+message CartageListPricingRule {
+  string country_code = 1;
+  string port_code = 2;
+  string port_fid = 3;
+  // Address fid is specific for Cartage to match the offering
+  string address_fid = 4;
+  // Lower guardrail percentage value. Example: "100.00" for a hundred percent.
+  string omda_lower_guardrail = 5;
+  // Upper guardrail percentage value. Example: "100.00" for a hundred percent.
+  string omda_upper_guardrail = 6;
+}
+
+message OceanFCLListPricingRule {
+  string trade_lane = 1;
+  string origin_country_code = 2;
+  string origin_port_locode = 3;
+  string origin_port_fid = 4;
+  string destination_country_code = 5;
+  string destination_port_locode = 6;
+  string destination_port_fid = 7;
+  // Lower guardrail percentage value. Example: "100.00" for a hundred percent.
+  string omda_lower_guardrail = 8;
+  // Upper guardrail percentage value. Example: "100.00" for a hundred percent.
+  string omda_upper_guardrail = 9;
+}
+
+message DrayageListPricingRule {
+  string country_code = 1;
+  string port_locode = 2;
+  string port_fid = 3;
+  // Lower guardrail percentage value. Example: "100.00" for a hundred percent.
+  string omda_lower_guardrail = 4;
+  // Upper guardrail percentage value. Example: "100.00" for a hundred percent.
+  string omda_upper_guardrail = 5;
+}
+
+// Since protobuf does not allow message type in map key, we define a map entry type here
+message OfferingToChargesMapEntry {
+  commerce.merchandising.catalog.data_authority.offering.v1beta1.Offering key = 1;
+  repeated catalog.charge.v3.Charge value = 2;
+}
+
+message OfferingToChargesMap {
+  // Customized map of offerings to charges
+  repeated OfferingToChargesMapEntry entries = 1;
+}
+
+// Represents a charge is changed by this API by applying a markup. A new sell_rate will be returned.
+// Only possible to adjust a charge for now, will be able to add or delete a charge in future
+enum ChargeStatus {
+  CHARGE_STATUS_INVALID = 0;
+  CHARGE_STATUS_ADJUSTED = 1;
+}
+
+// Represents how the caller should enforce the guardrail, e.g. 'hard blocking'
+// the user from adjusting beyond the guardrail threshold.
+enum GuardrailEnforcementType {
+  GUARDRAIL_ENFORCEMENT_TYPE_INVALID = 0;
+  // Show a warning message to the user.  The user can proceed if not within the guardrail.
+  GUARDRAIL_ENFORCEMENT_TYPE_WARNING = 1;
+  // Cannot proceed if not within the guardrail.
+  GUARDRAIL_ENFORCEMENT_TYPE_BLOCKING = 2;
+}
+
+// Guardrail information for a charge, which defines rate threshold and enforcement rules.
+message Guardrail {
+  catalog.rate.v1.RateDto rate_threshold = 1;
+  GuardrailEnforcementType guardrail_enforcement_type = 2;
+  string warning_message = 3;
+}
+
+// Represents a charge with its new sell rate and optional guardrail information.
+message SellRateWithGuardrail {
+  ChargeStatus charge_status = 1;
+  catalog.rate.v1.RateDto rate_dto = 2;
+  Guardrail min_guardrail = 3;
+  Guardrail max_guardrail = 4;
+  string slug = 5;
+}
+
+message ListOfSellRateWithGuardrail {
+  // List of sell rate with guardrail
+  repeated SellRateWithGuardrail sell_rate_with_guardrail = 1;
+}
+
+// Represents sub reason code for overall status
+enum OverallStatusReasonCode {
+  OVERALL_STATUS_REASON_CODE_INVALID = 0;
+  // Success, at least one charge is adjusted
+  OVERALL_STATUS_REASON_CODE_SUCCESS_ADJUSTED = 1;
+  // Success, no charge is adjusted
+  OVERALL_STATUS_REASON_CODE_SUCCESS_UNMODIFIED = 2;
+  // Client error, invalid input
+  OVERALL_STATUS_REASON_CODE_CLIENT_ERROR_INVALID_INPUT = 3;
+  // Server error, due to service internal error
+  OVERALL_STATUS_REASON_CODE_SERVER_ERROR_SERVICE_UNAVAILABLE = 4;
+  // Server error, due to abnormal pricing (e.g. $1 for Ocean FCL offering) detected.
+  OVERALL_STATUS_REASON_CODE_SERVER_ERROR_ABNORMAL_PRICE = 5;
+  // Unknown server error
+  OVERALL_STATUS_REASON_CODE_SERVER_ERROR_UNKNOWN = 6;
+}
+
+message APIResponseStatus {
+  google.rpc.Status overall_status = 1;
+  OverallStatusReasonCode status_reason_code = 2;
+}

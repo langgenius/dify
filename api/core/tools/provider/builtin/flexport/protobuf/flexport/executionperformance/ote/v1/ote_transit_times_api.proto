@@ -1,0 +1,43 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.executionperformance.ote.v1;
+
+import "flexport/executionperformance/ote/v1/common.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OteTransitTimesApiProto";
+option java_package = "com.flexport.executionperformance.ote.v1";
+option ruby_package = "Flexport::ExecutionPerformance::Ote::V1";
+
+service OteTransitTimesAPI {
+  rpc GetOteTransitTimes(GetOteTransitTimesRequest) returns (GetOteTransitTimesResponse);
+}
+
+message GetOteTransitTimesRequest {
+  oneof transit_times_request {
+    TruckingTransitTimesRequest trucking_transit_times_request = 1;
+  }
+}
+
+message GetOteTransitTimesResponse {
+  oneof transit_times_response {
+    TruckingTransitTimesResponse trucking_transit_times_response = 1;
+  }
+}
+
+message TruckingTransitTimesRequest {
+  RegionType region = 1;
+  string country_code = 2;
+  ServiceTypeType service_type = 3;
+  ImportExportType import_export = 4;
+  PortType port_type = 5;
+  bool intermodal = 6;
+  int32 distance = 7;
+}
+
+message TruckingTransitTimesResponse {
+  double pickup_to_dropoff = 1; // transit time
+  double available_to_pickup = 2; // container pickup
+}

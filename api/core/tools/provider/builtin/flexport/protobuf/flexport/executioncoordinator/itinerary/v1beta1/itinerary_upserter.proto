@@ -1,0 +1,41 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.itinerary.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ItineraryUpserterProto";
+option java_package = "com.flexport.executioncoordinator.itinerary.v1beta1";
+option ruby_package = "Flexport::ExecutionCoordinator::Itinerary::V1Beta1";
+
+// A "service or group" (a la http://go/fid) that sourced changes for an Itinerary update.
+// When adding a new value, please:
+// (1) Order this list alphabetically (not by field number).
+// (2) Use "service or group" names that are consistent with the other EC registries:
+//     ItineraryUpserter
+// (3) Remember to add one or more new values to ItineraryProcess for your upserter.
+// Next ID: 21
+enum ItineraryUpserter {
+  ITINERARY_UPSERTER_INVALID = 0;
+  ITINERARY_UPSERTER_AIR_PROPAGATION = 14;
+  ITINERARY_UPSERTER_BOOKING = 5;
+  ITINERARY_UPSERTER_CARRIER_SHIPPING_DOC_AUTOMATION = 20;
+  ITINERARY_UPSERTER_CUSTOMS_ORDER = 8;
+  ITINERARY_UPSERTER_DEMO_ACCOUNT = 9;
+  ITINERARY_UPSERTER_EXECUTION_COORDINATOR = 1;
+  ITINERARY_UPSERTER_EXECUTION_WORKSPACE = 2;
+  ITINERARY_UPSERTER_LCL_PROPAGATION = 13;
+  ITINERARY_UPSERTER_MONOLITH_EXTRACT_ENGINE = 11;
+  ITINERARY_UPSERTER_MONORAIL = 16;
+  ITINERARY_UPSERTER_MOVE_SHIPMENT_DATES_SERVICE = 12;
+  ITINERARY_UPSERTER_OCEAN_CARRIER_BOOKING = 15;
+  ITINERARY_UPSERTER_OCEAN_COLOADER_BOOKING = 19;
+  ITINERARY_UPSERTER_SCHEDULE_BUILDER = 7;
+  ITINERARY_UPSERTER_SCHEDULE_MANAGER = 4;
+  ITINERARY_UPSERTER_TRUCKING = 3;
+  ITINERARY_UPSERTER_VISIBILITY_AIR = 6;
+  ITINERARY_UPSERTER_VISIBILITY_OCEAN = 10;
+  ITINERARY_UPSERTER_VISIBILITY_RAIL = 17;
+  ITINERARY_UPSERTER_WAREHOUSE_MANAGEMENT_SYSTEM = 18;
+}

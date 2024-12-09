@@ -1,0 +1,33 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanCarrierShippingInstructionSubmissionChangedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// Carrier Shipping Instruction submission has been updated. This event shall be emitted upon change
+// of any attribute defined in this message.
+message OceanCarrierShippingInstructionSubmissionChanged {
+  //
+  // Carrier booking fid
+  string carrier_booking_fid = 1;
+  //
+  //user submission type
+  string submission_type = 4;
+  //
+  // Submission status
+  string user_submission_status = 5;
+  //
+  // Time status updated, actual value is server time that triggered
+  // status changed
+  google.protobuf.Timestamp status_updated_time = 6;
+
+  // Fid of the user who submitted the shipping instruction
+  string submitted_by_fid = 7;
+}

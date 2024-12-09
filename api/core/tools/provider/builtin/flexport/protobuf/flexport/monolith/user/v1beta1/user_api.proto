@@ -1,0 +1,51 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.monolith.user.v1beta1;
+
+import "flexport/monolith/user/v1beta1/user.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "UserApiProto";
+option java_package = "com.flexport.monolith.user.v1beta1";
+option ruby_package = "Flexport::Monolith::User::V1Beta1";
+
+// An API for User data.
+service UserAPI {
+  // Get users by company fid.
+  // There is a limit to the number of users returned to avoid someone
+  // accidentally using this service to query Flexport company.
+  rpc GetUsersByCompanyFid(GetUsersByCompanyFidRequest) returns (GetUsersByCompanyFidResponse);
+  // Get list of users by their fids.
+  rpc GetUsersByFids(GetUsersByFidsRequest) returns (GetUsersByFidsResponse);
+  rpc GetUsersByEmails(GetUsersByEmailsRequest) returns (GetUsersByEmailsResponse);
+}
+
+message GetUsersByCompanyFidRequest {
+  google.protobuf.StringValue company_fid = 1;
+  // If active_users_only is true, returns only active users
+  google.protobuf.BoolValue active_users_only = 2;
+}
+
+message GetUsersByCompanyFidResponse {
+  repeated flexport.monolith.user.v1beta1.User users = 1;
+}
+
+message GetUsersByEmailsRequest {
+  repeated string emails = 1;
+}
+
+message GetUsersByEmailsResponse {
+  repeated flexport.monolith.user.v1beta1.User users = 1;
+}
+
+message GetUsersByFidsRequest {
+  reserved 1;
+  repeated string user_fids = 2;
+}
+
+message GetUsersByFidsResponse {
+  repeated flexport.monolith.user.v1beta1.User users = 1;
+}

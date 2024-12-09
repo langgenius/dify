@@ -1,0 +1,67 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.storage.bin.v1beta1;
+
+import "flexport/procurement/common/v1beta1/types.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ProurementRateItemEntityProto";
+option java_package = "com.flexport.procurement.storage.bin.v1beta1";
+option ruby_package = "Flexport::Procurement::Storage::Bin::V1Beta1";
+
+message ProcurementRateItemEntity {
+  enum ContractType {
+    CONTRACT_TYPE_INVALID = 0;
+    CONTRACT_TYPE_UNKNOWN = 1;
+    CONTRACT_TYPE_AMENDMENT = 2;
+    CONTRACT_TYPE_GUIDELINE = 3;
+  }
+
+  enum DataSource {
+    DATA_SOURCE_INVALID = 0;
+    DATA_SOURCE_UNKNOWN = 1;
+    DATA_SOURCE_AI_PARSER = 2;
+    DATA_SOURCE_PPS = 3;
+    DATA_SOURCE_PORTRIX = 4;
+    DATA_SOURCE_CARRIER_API = 5;
+  }
+
+  google.protobuf.StringValue carrier_scac = 1;
+  google.protobuf.StringValue contract_number = 2;
+  google.protobuf.StringValue amendment_number = 3;
+  google.protobuf.StringValue origin_locode = 4;
+  google.protobuf.StringValue destination_locode = 5;
+  google.protobuf.StringValue origin_via_locode = 6;
+  google.protobuf.StringValue destination_via_locode = 7;
+  /*
+    If present, it will be a locode, eg rateOver = SGSIN on an arb rate item
+    from CNYTN to KRPUS. That means for a shipment going
+    CNYTN to KRPUS to USLAX, we use this arb but the main leg rate
+    comes from a SGSIN to USLAX rate item as opposed to a KRPUS to USLAX one.
+   */
+  google.protobuf.StringValue rate_over_locode = 8;
+  flexport.procurement.common.v1beta1.Date valid_from = 9;
+  flexport.procurement.common.v1beta1.Date valid_to = 10;
+  google.protobuf.StringValue source_charge_name = 11;
+  google.protobuf.StringValue currency_code = 12;
+  google.protobuf.Int64Value price_20_micros = 13;
+  google.protobuf.Int64Value price_40_micros = 14;
+  google.protobuf.Int64Value price_40_hc_micros = 15;
+  google.protobuf.Int64Value price_45_hc_micros = 16;
+  ContractType contract_type = 17;
+  google.protobuf.StringValue legacy_commodity_label = 18;
+  google.protobuf.StringValue commodity_description = 19;
+  google.protobuf.StringValue service_string = 20;
+  google.protobuf.StringValue bullet_group = 21;
+  DataSource data_source = 22;
+  google.protobuf.StringValue client_fid = 23;
+  google.protobuf.Int32Value asset_dbid = 24;
+  google.protobuf.StringValue arb_restriction = 25;
+  // Null and false both mean arb not allowed.
+  bool arb_allowed = 26;
+  // Can be blank which means unknown.
+  string source_sheet_name = 27;
+}

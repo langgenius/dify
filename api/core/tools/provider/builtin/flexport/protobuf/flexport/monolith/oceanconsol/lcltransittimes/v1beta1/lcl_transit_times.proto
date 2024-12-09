@@ -1,0 +1,62 @@
+// TEAM: tetrominos
+
+syntax = "proto3";
+
+package flexport.monolith.oceanconsol.lcltransittimes.v1beta1;
+
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "LclTransitTimesProto";
+option java_package = "com.flexport.monolith.oceanconsol.lcltransittimes.v1beta1";
+option ruby_package = "Flexport::Monolith::OceanConsol::LclTransitTimes::V1Beta1";
+
+// For querying LCL transit times.
+message LclTransitTimesRequest {
+  int32 origin_id = 1;
+  int32 destination_id = 2;
+  google.protobuf.Int32Value origin_via_id = 3;
+  google.protobuf.Int32Value destination_via_id = 4;
+  ServiceLevel service_level = 5;
+  google.protobuf.Int32Value client_id = 6;
+  google.protobuf.Int32Value transit_time_min = 7;
+  google.protobuf.Int32Value transit_time_max = 8;
+  google.protobuf.Int32Value origin_cfs_id = 9;
+  google.protobuf.Int32Value destination_cfs_id = 10;
+  google.protobuf.Int32Value inland_cfs_id = 11;
+}
+
+// Response with OTE, QTT, and original query request.
+message LclTransitTimesResponse {
+  LclTransitTimesRequest lcl_transit_times_request = 1;
+  OnTimeExecutionTimes on_time_execution_times = 2;
+  QuotedTransitTimes quoted_transit_times = 3;
+}
+
+// On time execution SLAs.
+message OnTimeExecutionTimes {
+  string consolidation_processing_days = 1;
+  string delivery_to_port_days = 2;
+  string origin_ingate_departure_days = 3;
+  string port_to_port_days = 4;
+  string destination_arrival_avail_unload_days = 5;
+  string port_recovery_days = 6;
+  string deconsolidation_processing_days = 7;
+}
+
+// Quoted Transit Time SLAs.
+message QuotedTransitTimes {
+  int32 consolidation_days = 1;
+  int32 origin_dwell_days = 2;
+  int32 port_to_port_days = 3;
+  int32 destination_dwell_days = 4;
+  int32 deconsolidation_days = 5;
+}
+
+// Constants based on the expected format of the Service Level field of Lcl Transit Times input files.
+enum ServiceLevel {
+  SERVICE_LEVEL_INVALID = 0;
+  SERVICE_LEVEL_PREMIUM = 1;
+  SERVICE_LEVEL_STANDARD = 2;
+  SERVICE_LEVEL_FLEXIBLE = 3;
+}

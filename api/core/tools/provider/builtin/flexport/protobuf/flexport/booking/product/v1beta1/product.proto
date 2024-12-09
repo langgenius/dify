@@ -1,0 +1,20 @@
+// TEAM: bookings
+
+syntax = "proto3";
+
+package flexport.booking.product.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ProductProto";
+option java_package = "com.flexport.booking.product.v1beta1";
+option ruby_package = "Flexport::Booking::Product::V1Beta1";
+
+//The message for product data.
+message Product {
+  string hs_code = 1;
+  string description = 2;
+  // Optional. TODO: replace with wrapper type.
+  string localized_export_description = 3;
+  // Two-digit country code for the HS code.
+  string country_code = 4;
+}

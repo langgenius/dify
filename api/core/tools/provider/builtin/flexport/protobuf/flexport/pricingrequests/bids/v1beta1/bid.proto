@@ -1,0 +1,66 @@
+// TEAM: pricing_opportunities
+
+syntax = "proto3";
+
+package flexport.pricingrequests.bids.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "BidProto";
+option java_package = "com.flexport.pricingrequests.bids.v1beta1";
+option ruby_package = "Flexport::PricingRequests::Bids::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// A Bid as is modeled in the current monolith.
+message Bid {
+  string fid = 1;
+  google.protobuf.StringValue additional_info = 2;
+  repeated string award_methods = 3;
+  google.protobuf.StringValue awarded_status = 4;
+  google.protobuf.StringValue client_sales_stage = 5;
+  google.protobuf.Timestamp closed_at_time = 6;
+  google.protobuf.StringValue commodity = 7;
+  google.protobuf.StringValue competition = 8;
+  google.protobuf.BoolValue completed = 9;
+  google.protobuf.Int32Value computed_awarded_cargo_volume = 10;
+  google.protobuf.Int32Value computed_requested_cargo_volume = 11;
+  google.protobuf.StringValue dangerous_goods = 12;
+  google.protobuf.Timestamp deleted_at_time = 13;
+  google.protobuf.BoolValue demand_review_needed = 14;
+  repeated string equipments = 15;
+  google.protobuf.Int32Value expected_rounds = 16;
+  google.protobuf.Timestamp first_submitted_at_time = 17;
+  google.protobuf.StringValue incumbent = 18;
+  google.protobuf.BoolValue is_being_amended = 19;
+  google.protobuf.BoolValue is_fixture = 20;
+  google.protobuf.BoolValue is_formal = 21;
+  google.protobuf.BoolValue is_lane_count_large = 22;
+  repeated string loss_reasons = 23;
+  repeated string overweight_equipment = 24;
+  google.protobuf.StringValue partial_response_accepted = 25;
+  google.protobuf.BoolValue pricing_manager_kickoff_needed = 26;
+  google.protobuf.Timestamp pricing_needed_by_time = 27;
+  google.protobuf.BoolValue pricing_review_needed = 28;
+  repeated string pricing_terms = 29;
+  google.protobuf.Timestamp renewal_sync_started_time = 30;
+  google.protobuf.Timestamp rfp_packet_last_downloaded_at_time = 31;
+  google.protobuf.Int32Value round = 32;
+  google.protobuf.Timestamp round_last_moved_at_time = 33;
+  google.protobuf.Timestamp salesforce_last_pulled_at_time = 34;
+  google.protobuf.StringValue salesforce_ref = 35;
+  google.protobuf.StringValue seasonality = 36;
+  google.protobuf.StringValue squad_office = 37;
+  google.protobuf.StringValue status = 38;
+  google.protobuf.Timestamp status_updated_at_time = 39;
+  google.protobuf.BoolValue submitted = 40;
+  repeated string validities = 41;
+  google.protobuf.Timestamp validity_start_date_time = 42;
+  repeated string will_not_bid_reasons = 43;
+  google.protobuf.Timestamp created_at_time = 44;
+  google.protobuf.Timestamp updated_at_time = 45;
+  google.protobuf.Int32Value client_id = 46;
+  google.protobuf.Int32Value opportunity_owner_id = 47;
+  google.protobuf.Int32Value renewed_from_id = 48;
+  google.protobuf.Int32Value requested_by_id = 49;
+}

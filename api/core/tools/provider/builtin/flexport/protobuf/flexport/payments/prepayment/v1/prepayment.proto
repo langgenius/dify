@@ -1,0 +1,97 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.payments.prepayment.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PrepaymentProto";
+option java_package = "com.flexport.payments.prepayment.v1";
+option ruby_package = "Flexport::Payments::Prepayment::V1";
+
+import "google/protobuf/timestamp.proto";
+
+// Information about a freight prepayment.
+message FreightContext {
+  string shipment_fid = 1;
+  oneof service_item {
+    string service_item_template_fid = 2;
+    string service_item_name = 3;
+  }
+}
+
+// Information about a freight multi shipment prepayment.
+message FreightMultiLineItemContext {
+  repeated Allocation expected_amount_cost_allocation = 1;
+}
+
+// Allocation details.
+message Allocation {
+  string shipment_fid = 1;
+  string container_fid = 2;
+  oneof service_item {
+    string service_item_template_fid = 3;
+    string service_item_name = 4;
+  }
+  int64 amount_micros = 5;
+  repeated Fee other_fees = 6;
+}
+
+// Fee information.
+message Fee {
+  FeeType type = 1;
+  int64 amount_micros = 2;
+}
+
+// Types of fee.
+enum FeeType {
+  FEE_TYPE_INVALID = 0;
+  FEE_TYPE_SERVICE_FEE = 1;
+}
+
+// Why the prepayment was closed.
+enum CloseReason {
+  CLOSE_REASON_INVALID = 0;
+  CLOSE_REASON_STILL_OPEN = 1;
+  CLOSE_REASON_FINALIZED = 2;
+  CLOSE_REASON_UNUSED = 3;
+}
+
+// Payment method.
+enum PaymentMethod {
+  PAYMENT_METHOD_INVALID = 0;
+  PAYMENT_METHOD_STRIPE = 1;
+}
+
+// A payment that was prepared before we got the bill for it.
+message Prepayment {
+  string fid = 1;
+  // Status
+  string created_by_user_fid = 2;
+  google.protobuf.Timestamp created_at_time = 3;
+  google.protobuf.Timestamp closed_at_time = 4;
+  CloseReason close_reason = 5;
+  // Payer
+  string payer_entity_fid = 6;
+  string payer_entity_currency_code = 7;
+  int64 payer_entity_actual_amount = 8;
+  // Payee
+  oneof payee_entity {
+    string payee_entity_fid = 9;
+    string payee_entity_name = 10;
+  }
+  string payee_entity_currency_code = 11;
+  int64 payee_entity_expected_amount = 12;
+  int64 payee_entity_actual_amount = 13;
+  // Context
+  oneof context {
+    FreightContext context_freight = 14;
+    FreightMultiLineItemContext context_freight_multi_line_item = 17;
+  }
+  // Receipt
+  string receipt_storage_fid = 15;
+  string no_receipt_reason = 16;
+  PaymentMethod payment_method = 18;
+  // Payment reference. For Stripe, it will be stripe card ID.
+  string payment_reference = 19;
+}

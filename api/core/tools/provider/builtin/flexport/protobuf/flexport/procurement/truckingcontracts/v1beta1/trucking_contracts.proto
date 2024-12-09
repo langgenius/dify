@@ -1,0 +1,203 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.truckingcontracts.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TruckingContractsProto";
+option java_package = "com.flexport.procurement.truckingcontracts.v1beta1";
+option ruby_package = "Flexport::Procurement::TruckingContracts::V1Beta1";
+
+// A trucking contract that can be one of lane, accessorial, or fleet.
+message Contract {
+  oneof contract {
+    LaneContract lane_contract = 1;
+    AccessorialContract accessorial_contract = 2;
+    FleetContract fleet_contract = 3;
+  }
+  string source_json = 4;
+}
+
+// A type of trucking contract that is always applied.
+message LaneContract {
+  string client_company_fid = 1;
+  string company_fid = 2;
+  string destination_city = 3;
+  string destination_firms_code = 4;
+  string destination_port_fid = 5;
+  // Actually the destination_service_area_uuid, but uuid is outlawed.
+  string destination_service_area_id = 6;
+  string destination_state = 7;
+  string destination_warehouse_fid = 8;
+  string destination_zip = 9;
+  google.protobuf.Timestamp effective_at_time = 10;
+  google.protobuf.Timestamp expires_at_time = 11;
+  string origin_city = 12;
+  string origin_firms_code = 13;
+  string origin_port_fid = 14;
+  // Actually the origin_service_area_uuid, but uuid is outlawed.
+  string origin_service_area_id = 15;
+  string origin_state = 16;
+  string origin_warehouse_fid = 17;
+  string origin_zip = 18;
+  string partner_company_fid = 19;
+  string source_json = 20;
+  string created_by_fid = 21;
+  string shipment_fid = 24;
+  repeated LineItem line_items = 25;
+}
+
+// A type of trucking contract that is only applied when 'something actually happened'.
+message AccessorialContract {
+  string accessorial_slug = 1;
+  string client_company_fid = 2;
+  string company_fid = 3;
+  string destination_firms_code = 4;
+  string destination_port_fid = 5;
+  // Actually the destination_service_area_uuid, but uuid is outlawed.
+  string destination_service_area_id = 6;
+  string destination_warehouse_fid = 7;
+  string destination_zip = 8;
+  google.protobuf.Timestamp effective_at_time = 9;
+  google.protobuf.Timestamp expires_at_time = 10;
+  string origin_firms_code = 11;
+  string origin_port_fid = 12;
+  // Actually the origin_service_area_uuid, but uuid is outlawed.
+  string origin_service_area_id = 13;
+  string origin_warehouse_fid = 14;
+  string origin_zip = 15;
+  string partner_company_fid = 16;
+  RateBasis rate_basis = 17;
+  string port_fid = 20;
+  string shipment_fid = 21;
+  repeated LineItem line_items = 22;
+}
+
+// A type of trucking contract for fleets.
+message FleetContract {
+  string company_fid = 1;
+  google.protobuf.Timestamp effective_at_time = 2;
+  google.protobuf.Timestamp expires_at_time = 3;
+  string name = 4;
+  repeated LineItem line_items = 5;
+}
+
+// The charges defined in a trucking contract.
+message LineItem {
+  string rate_json = 1;
+  LineItemSlug line_item_slug = 2;
+}
+
+// Rate Basis an accessorial contract is for.
+enum RateBasis {
+  RATE_BASIS_INVALID = 0;
+  RATE_BASIS_HOUR = 1;
+  RATE_BASIS_OCCURRENCE = 2;
+  RATE_BASIS_CONTAINER_COUNT = 3;
+  RATE_BASIS_CONTAINER_DAY = 4;
+  RATE_BASIS_MINUTE = 5;
+  RATE_BASIS_PALLET = 6;
+}
+
+// Line item slug.
+enum LineItemSlug {
+  LINE_ITEM_SLUG_INVALID = 0;
+  LINE_ITEM_SLUG_DRAYAGE_BASE = 1;
+  LINE_ITEM_SLUG_CARTAGE_BASE = 2;
+  LINE_ITEM_SLUG_FTL_BASE = 3;
+  LINE_ITEM_SLUG_LTL_BASE = 4;
+  LINE_ITEM_SLUG_FUEL_SURCHARGE = 5;
+  LINE_ITEM_SLUG_CHASSIS_FEE = 6;
+  LINE_ITEM_SLUG_LINEHAUL_FEE = 7;
+  LINE_ITEM_SLUG_AIRPORT_TRANSFER = 8;
+  LINE_ITEM_SLUG_TRAILER_TIME = 9;
+  LINE_ITEM_SLUG_BOBTAIL_TIME = 10;
+  LINE_ITEM_SLUG_TRAILER_OVERTIME = 11;
+  LINE_ITEM_SLUG_BOBTAIL_OVERTIME = 12;
+  LINE_ITEM_SLUG_TRUCKING_WAIT_TIME = 13;
+  LINE_ITEM_SLUG_PORT_CONGESTION = 14;
+  LINE_ITEM_SLUG_CHASSIS_SPLIT = 15;
+  LINE_ITEM_SLUG_PRE_PULL = 16;
+  LINE_ITEM_SLUG_REFRIGERATED_FEE = 17;
+  LINE_ITEM_SLUG_HAZMAT_FEE = 18;
+  LINE_ITEM_SLUG_YARD_STORAGE = 19;
+  LINE_ITEM_SLUG_TRI_AXLE_FEE = 20;
+  LINE_ITEM_SLUG_SCALING_FEE = 21;
+  LINE_ITEM_SLUG_STOP_OFF_FEE = 22;
+  LINE_ITEM_SLUG_LAYOVER = 23;
+  LINE_ITEM_SLUG_OVERWEIGHT_FEE = 24;
+  LINE_ITEM_SLUG_RESIDENTIAL_DELIVERY = 25;
+  LINE_ITEM_SLUG_CHASSIS_FLIP = 26;
+  LINE_ITEM_SLUG_LIFT_FEE = 27;
+  LINE_ITEM_SLUG_RAIL_SURCHARGE = 28;
+  LINE_ITEM_SLUG_ADDITIONAL_DROP_OFF_CHARGE = 29;
+  LINE_ITEM_SLUG_ADDITIONAL_PICK_UP_CHARGE = 30;
+  LINE_ITEM_SLUG_DOWNTOWN_DELIVERY_FEE = 31;
+  LINE_ITEM_SLUG_DRIVER_ASSIST_FEE = 32;
+  LINE_ITEM_SLUG_EXTRA_MAN_SERVICE = 33;
+  LINE_ITEM_SLUG_LABOR_CHARGE = 34;
+  LINE_ITEM_SLUG_RESIDENTIAL_DELIVERY_FEE = 35;
+  LINE_ITEM_SLUG_DROP_FEE = 36;
+  LINE_ITEM_SLUG_LIFT_GATE = 37;
+  LINE_ITEM_SLUG_SAME_DAY_DELIVERY = 38;
+  LINE_ITEM_SLUG_BOBTAIL_FEE = 39;
+  LINE_ITEM_SLUG_DRY_RUN = 40;
+  LINE_ITEM_SLUG_ADMINISTRATION_FEE = 41;
+  LINE_ITEM_SLUG_APPOINTMENT_FEE = 42;
+  LINE_ITEM_SLUG_BOOKING_FEE = 43;
+  LINE_ITEM_SLUG_CLEAN_TRUCK_FEE = 44;
+  LINE_ITEM_SLUG_CREDIT_CARD_SURCHARGE = 45;
+  LINE_ITEM_SLUG_CUSTOMS_DUTY = 46;
+  LINE_ITEM_SLUG_CUSTOMS_EXAMINATION = 47;
+  LINE_ITEM_SLUG_DEMURRAGE = 48;
+  LINE_ITEM_SLUG_DESTINATION_CFS_FEE = 49;
+  LINE_ITEM_SLUG_DESTINATION_CHARGES = 50;
+  LINE_ITEM_SLUG_DESTINATION_VAT_IMPORT_TAX = 51;
+  LINE_ITEM_SLUG_DETENTION = 52;
+  LINE_ITEM_SLUG_DEVANNING_FEE = 53;
+  LINE_ITEM_SLUG_DOCUMENT_TURNOVER = 54;
+  LINE_ITEM_SLUG_DOWNTOWN_PICKUP_FEE = 55;
+  LINE_ITEM_SLUG_EQUIPMENT_CLEANING = 56;
+  LINE_ITEM_SLUG_EXPORT_CUSTOMS_CLEARANCE = 57;
+  LINE_ITEM_SLUG_GENSET = 58;
+  LINE_ITEM_SLUG_HANDLING = 59;
+  LINE_ITEM_SLUG_HOLIDAY_CHARGES = 60;
+  LINE_ITEM_SLUG_IN_BOND_FILING = 61;
+  LINE_ITEM_SLUG_INSIDE_DELIVERY = 62;
+  LINE_ITEM_SLUG_INSIDE_PICK_UP = 63;
+  LINE_ITEM_SLUG_LABELING = 64;
+  LINE_ITEM_SLUG_LUMPER_FEE = 65;
+  LINE_ITEM_SLUG_ORIGIN_DOCUMENT = 66;
+  LINE_ITEM_SLUG_OUTLAY_FEE = 67;
+  LINE_ITEM_SLUG_PALLET_EXCHANGE = 68;
+  LINE_ITEM_SLUG_PALLET_IN_OUT = 69;
+  LINE_ITEM_SLUG_PALLET_JACK = 70;
+  LINE_ITEM_SLUG_PALLETIZATION = 71;
+  LINE_ITEM_SLUG_PIER_PASS = 72;
+  LINE_ITEM_SLUG_REFRIGERATED_TEMPORARY_STORAGE = 73;
+  LINE_ITEM_SLUG_RESIDENTIAL_PICK_UP_FEE = 74;
+  LINE_ITEM_SLUG_SCREENING_CHARGE = 75;
+  LINE_ITEM_SLUG_SEAL_FEE = 76;
+  LINE_ITEM_SLUG_SORTING_AND_SEGREGATION = 77;
+  LINE_ITEM_SLUG_SPECIAL_DELIVERY = 78;
+  LINE_ITEM_SLUG_SPECIAL_EQUIPMENT = 79;
+  LINE_ITEM_SLUG_TERMINAL_BREAKDOWN = 80;
+  LINE_ITEM_SLUG_TERMINAL_HANDLING_CHARGE = 81;
+  LINE_ITEM_SLUG_TOLL_FEE = 82;
+  LINE_ITEM_SLUG_TRADESHOW_DELIVERY_FEE = 83;
+  LINE_ITEM_SLUG_TRANSLOAD = 84;
+  LINE_ITEM_SLUG_VERIFIED_GROSS_MASS = 85;
+  LINE_ITEM_SLUG_WAREHOUSE_STORAGE = 86;
+  LINE_ITEM_SLUG_YARD_REPOSITIONING_SERVICE = 87;
+  LINE_ITEM_SLUG_FLIP_FEE = 88;
+  LINE_ITEM_SLUG_TRUCKING_ORDER_NOT_USED = 89;
+  LINE_ITEM_SLUG_ATTEMPTED_DELIVERY = 90;
+  LINE_ITEM_SLUG_DISBURSEMENT_FEE = 91;
+  LINE_ITEM_SLUG_INSIDE_SERVICE = 92;
+  LINE_ITEM_SLUG_BRIDGE_TOLL = 93;
+  LINE_ITEM_SLUG_PTT_FILING_FEE = 94;
+  LINE_ITEM_SLUG_EMPTY_STORAGE = 95;
+}

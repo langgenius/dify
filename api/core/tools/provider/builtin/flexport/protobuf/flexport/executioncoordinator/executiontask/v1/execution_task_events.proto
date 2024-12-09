@@ -1,0 +1,29 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontask.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionTaskEventsProto";
+option java_package = "com.flexport.executioncoordinator.executiontask.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTask::V1";
+
+import "flexport/executioncoordinator/executiontask/v1/execution_task.proto";
+
+// Kinesis event emitted by the ExecutionCoordinator when an ExecutionTask has been created.
+// ExecutionProviders consume the event to know when to make bookings with vendors etc.
+message ExecutionTaskCreated {
+  string execution_task_fid = 1;
+  ExecutionTask execution_task = 2;
+  // This is the uuid of the ExecutionTaskCreated event.
+  string execution_task_event_fid = 3;
+}
+
+// Kinesis event emitted by the ExecutionCoordinator when an ExecutionTask has been changed.
+message ExecutionTaskChanged {
+  string execution_task_fid = 1;
+  ExecutionTask execution_task = 2;
+  // This is the uuid of the ExecutionTaskChanged event.
+  string execution_task_event_fid = 3;
+}

@@ -1,0 +1,155 @@
+// TEAM: workflow_platform
+
+syntax = "proto3";
+
+package flexport.rulesengine.sampleservice.v1beta1;
+
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+import "flexport/rulesengine/options/v1/options.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "SampleServiceApiProto";
+option java_package = "com.flexport.rulesengine.sampleservice.v1beta1";
+option ruby_package = "Flexport::RulesEngine::SampleService::V1Beta1";
+
+// SampleServiceAPI. This is a sample API for using Protobuf for defining rules for rules_engine.
+service SampleServiceAPI {
+  option (flexport.rulesengine.options.v1.rule_facade).service_name = "rules_engine";
+  // Grade.
+  rpc Grade(GradeRequest) returns (GradeResponse) {
+    option (flexport.rulesengine.options.v1.decision_table).use = true;
+    option (flexport.rulesengine.options.v1.rule).api_name = "com.flexport.rulesengine.grading";
+    option (flexport.rulesengine.options.v1.rule).description = "gRPC grading";
+    option (flexport.rulesengine.options.v1.rule).evaluate_output_container = true;
+    option (flexport.rulesengine.options.v1.rule).include_null_result = true;
+    option (flexport.rulesengine.options.v1.rule).multiple_input = true;
+    option (flexport.rulesengine.options.v1.rule).tolerate_evaluation_error = false;
+    option (flexport.rulesengine.options.v1.rule).workspace = "test";
+    option (flexport.rulesengine.options.v1.rule_set).use = true;
+  }
+  // Example.
+  rpc Example(ExampleRequest) returns (ExampleResponse) {
+    option (flexport.rulesengine.options.v1.rule).api_name = "com.flexport.rulesengine.example";
+    option (flexport.rulesengine.options.v1.rule).description = "gRPC grading";
+    option (flexport.rulesengine.options.v1.rule).tolerate_evaluation_error = false;
+    option (flexport.rulesengine.options.v1.rule).workspace = "test";
+  }
+}
+
+message GradeRequest {
+  option (flexport.rulesengine.options.v1.message_description) = "Grade Request";
+  uint64 score = 1;
+}
+
+message GradeResponse {
+  option (flexport.rulesengine.options.v1.message_description) = "Grade Response";
+  // Grade.
+  enum Grade {
+    option (flexport.rulesengine.options.v1.enum_description) = "Grade";
+    GRADE_INVALID = 0;
+    GRADE_A = 1;
+    GRADE_B = 2;
+    GRADE_C = 3;
+    GRADE_D = 4;
+    GRADE_E = 5;
+    GRADE_F = 6 [(flexport.rulesengine.options.v1.enum_value_description) = "F?"];
+  }
+  Grade grade = 1 [
+    (flexport.rulesengine.options.v1.field_description) = "Grade",
+    (flexport.rulesengine.options.v1.field_title) = "Grade"
+  ];
+  string message = 2 [(flexport.rulesengine.options.v1.template_type) = TEMPLATE_TYPE_SPEL];
+}
+
+message ExampleRequest {
+  bool bool_value = 1;
+  int32 int32_value = 2;
+  int64 int64_value = 3;
+  uint32 uint32_value = 4;
+  uint64 uint64_value = 5;
+  sint32 sint32_value = 6;
+  sint64 sint64_value = 7;
+  fixed32 fixed32_value = 8;
+  fixed64 fixed64_value = 9;
+  sfixed32 sfixed32_value = 10;
+  sfixed64 sfixed64_value = 11;
+  float float_value = 12;
+  double double_value = 13;
+  string string_value = 14;
+  bytes bytes_value = 15;
+  map<string, MessageA> map_value = 16;
+  google.protobuf.BoolValue bool_wrapper = 101;
+  google.protobuf.Int32Value int32_wrapper = 102;
+  google.protobuf.Int64Value int64_wrapper = 103;
+  google.protobuf.UInt32Value uint32_wrapper = 104;
+  google.protobuf.UInt64Value uint64_wrapper = 105;
+  google.protobuf.FloatValue float_wrapper = 106;
+  google.protobuf.DoubleValue double_wrapper = 107;
+  google.protobuf.StringValue string_wrapper = 108;
+  google.protobuf.BytesValue bytes_wrapper = 109;
+  google.protobuf.Struct struct_value = 110;
+  // EnumExample.
+  enum EnumExample {
+    ENUM_EXAMPLE_INVALID = 0;
+    ENUM_EXAMPLE_A = 1;
+    ENUM_EXAMPLE_B = 2;
+    ENUM_EXAMPLE_C = 3;
+  }
+  EnumExample enum_value = 20;
+  google.protobuf.Timestamp timestamp_time = 21;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime date_time_value = 22;
+  repeated EnumExample enum_values = 25;
+  repeated google.protobuf.Timestamp timestamps_time = 26;
+  repeated flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime date_time_values = 27;
+  string controlling_field_value_a = 31 [
+    (flexport.rulesengine.options.v1.controlling_fields) = {
+      field: "enum_value"
+      values: [
+        "ENUM_EXAMPLE_A"
+      ]
+    },
+    (flexport.rulesengine.options.v1.controlling_fields) = {
+      field: "enum_value"
+      values: [
+        "ENUM_EXAMPLE_B"
+      ]
+    }
+  ];
+  string controlling_field_value_b = 32 [(flexport.rulesengine.options.v1.controlling_fields) = {
+    field: "enum_value"
+    values: [
+      "ENUM_EXAMPLE_C"
+    ]
+  }];
+  string algolia_index_value_a = 41 [(flexport.rulesengine.options.v1.algolia_index).index_name = "Client"];
+  string algolia_index_value_b = 42 [
+    (flexport.rulesengine.options.v1.algolia_index).index_name = "Port",
+    (flexport.rulesengine.options.v1.algolia_index).label_field = "name",
+    (flexport.rulesengine.options.v1.algolia_index).search_options = "{\"facetFilters\": \"status:active\"}",
+    (flexport.rulesengine.options.v1.algolia_index).value_field = "loc_code"
+  ];
+  // MessageA.
+  message MessageA {
+    MessageA message_a = 1;
+    MessageB message_b = 2;
+  }
+  // MessageB.
+  message MessageB {
+    MessageA message_a = 1;
+    MessageB message_b = 2;
+  }
+  MessageA message_a = 51;
+  MessageB message_b = 52;
+}
+
+message ExampleResponse {
+  optional bool bool_value = 1;
+  oneof rate {
+    uint64 absolute = 3;
+    uint64 percentage = 2;
+  }
+  optional uint64 uint64_value = 4 [(flexport.rulesengine.options.v1.optional_output) = true];
+}

@@ -1,0 +1,30 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.grpc.v1;
+
+import "flexport/assignment/enums/v1/organization_unit_function.proto";
+import "flexport/assignment/enums/v1/organization_unit_service.proto";
+import "flexport/assignment/enums/v1/organization_unit_type.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OrganizationUnitProto";
+option java_package = "com.flexport.assignment.grpc.v1";
+option ruby_package = "Flexport::Assignment::Grpc::V1";
+
+// Represent an organization, such as a department, a team.
+message OrganizationUnit {
+  string fid = 1;
+  string name = 2;
+  flexport.assignment.enums.v1.OrganizationUnitType organization_unit_type = 3;
+  string company_fid = 4;
+  string email = 5;
+  repeated flexport.assignment.enums.v1.OrganizationUnitFunction functions = 6;
+  repeated flexport.assignment.enums.v1.OrganizationUnitService services = 7;
+  string office = 8;
+  repeated string manager_fids = 9;
+  repeated string member_fids = 10;
+  string parent_organization_unit_fid = 11;
+  repeated string children_organization_unit_fids = 12;
+}

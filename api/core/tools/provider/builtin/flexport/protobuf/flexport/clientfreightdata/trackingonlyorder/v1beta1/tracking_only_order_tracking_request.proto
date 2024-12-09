@@ -1,0 +1,15 @@
+// TEAM: client_app
+syntax = "proto3";
+
+package flexport.clientfreightdata.trackingonlyorder.v1beta1;
+
+message TrackingOnlyOrderTrackingRequest {
+  // Id of the trackingOnlyOrderTrackingRequest
+  int64 id = 1;
+  // Client fid of the user
+  string client_fid = 2;
+  // S3 file key of csv file
+  string s3_file_key = 3;
+  // Fid of the company associated with the client
+  string client_company_fid = 4;
+}

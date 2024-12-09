@@ -1,0 +1,21 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.monolith.client.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ClientProto";
+option java_package = "com.flexport.monolith.client.v1beta1";
+option ruby_package = "Flexport::Monolith::Clients::V1Beta1";
+
+// User information.
+message Client {
+  google.protobuf.StringValue client_fid = 1;
+  // Time of client creation
+  google.protobuf.Timestamp client_created_at = 2;
+  google.protobuf.StringValue deliverr_seller_id = 3;
+}

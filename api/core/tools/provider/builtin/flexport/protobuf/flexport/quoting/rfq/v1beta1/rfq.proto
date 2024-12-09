@@ -1,0 +1,51 @@
+// TEAM: quoting
+
+syntax = "proto3";
+
+package flexport.quoting.rfq.v1;
+
+// NOTE: This was accidentally added with v1 although the folder name is v1beta1, and now we can't
+// remove it because of the prototool break checker.
+option java_multiple_files = true;
+option java_outer_classname = "RfqProto";
+option java_package = "com.flexport.quoting.rfq.v1";
+option ruby_package = "Flexport::Quoting::Rfq::V1";
+
+// DEPRECATED - use v2.
+// Rfq describes a quote request coming from monolith ruby code.
+// It's created to support rendering an offering to service, could be expanded and used for other purposes in the future.
+message Rfq {
+  uint64 origin_port_id = 1;
+  uint64 destination_port_id = 2;
+  uint64 shipment_id = 3;
+  uint64 client_id = 4;
+  string origin_country_code = 5;
+  string destination_country_code = 6;
+  string destination_address_country_code = 7;
+  uint64 origin_address_id = 8;
+  uint64 destination_address_id = 9;
+  uint64 freight_partner_id = 10;
+  string cargo_ready_date = 11;
+  bool wants_pickup_service = 12;
+  bool wants_delivery_service = 13;
+  bool wants_flexport_insurance = 14;
+  bool wants_export_customs_service = 15;
+  bool wants_import_customs_service = 16;
+  bool wants_carbon_offset = 17;
+  string incoterm = 18;
+  bool is_lcl = 19;
+  string transportation_mode = 20;
+  string quote_transportation_mode = 21;
+  string quote_booking_mode = 22;
+  ContainerCounts container_counts = 23;
+  float air_chargeable_weight_kg = 24;
+  float cartage_chargeable_weight_kg = 25;
+}
+
+// This represents the counts of different type of containers.
+message ContainerCounts {
+  uint32 twenty_ft = 1;
+  uint32 fourty_ft = 2;
+  uint32 fourty_ft_hc = 3;
+  uint32 fourty_five_ft_hc = 4;
+}

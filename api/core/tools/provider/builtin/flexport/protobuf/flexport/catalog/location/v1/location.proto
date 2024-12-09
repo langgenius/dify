@@ -1,0 +1,19 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.location.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "LocationProto";
+option java_package = "com.flexport.catalog.location.v1";
+option ruby_package = "Flexport::Catalog::Location::V1";
+
+import "google/protobuf/wrappers.proto";
+
+// Either a lat/lng point or an area within the radius of a point.
+message LocationDto {
+  google.protobuf.StringValue lat = 1;
+  google.protobuf.StringValue lng = 2;
+  google.protobuf.StringValue radius = 3;
+}

@@ -1,0 +1,162 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.transcription.transcriptionservice.v2beta1;
+
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TranscriptionResultProto";
+option java_package = "com.flexport.transcription.transcriptionservice.v2beta1";
+option ruby_package = "Flexport::Transcription::TranscriptionService::V2Beta1";
+
+// The transcription result to send to the kinesis stream.
+message TranscriptionResult {
+  string transcription_job_fid = 1;
+
+  string file_object_fid = 3;
+
+  // Third party provider used for transcription.
+  enum Provider {
+    PROVIDER_INVALID = 0;
+    PROVIDER_SCALE = 1;
+    PROVIDER_ROSSUM = 2;
+    PROVIDER_GCP = 3;
+    PROVIDER_LLM = 4;
+  }
+  Provider provider = 4;
+  // Deprecated field isError. DO NOT USE
+  bool is_error = 5;
+  // Revision number increases if we retranscribe same fid.
+  int32 revision_number = 6;
+  TranscribedDocument transcribed_document = 7;
+  // For some error types, we may still get transcription responses.
+  Error error = 8;
+  // What is the config_id associated with this proto.
+  string config_id = 9;
+
+  reserved 2;
+}
+
+message Error {
+  enum ErrorType {
+    ERROR_TYPE_INVALID = 0;
+    /**
+      A catch all error code if an error happens on the provider or within the
+      transcription service that we can't detect
+     */
+    ERROR_TYPE_UNKNOWN = 1;
+    /**
+      For this error code, we might still have the transcription response
+      (For rossum, we try polling Rossum for best effort transcriptions as
+      transcriptions may get stuck in the manual review queue, and may not be
+      reviewed by human operators on time)
+     */
+    ERROR_TYPE_TRANSCRIPTION_JOB_DEADLINE_VIOLATED = 2;
+    ERROR_TYPE_PROVIDER_SIDE_MANUAL_REJECTION = 3;
+    ERROR_TYPE_UNABLE_TO_CONVERT_RESULTS_TO_NORMALIZED_PROTO = 4;
+    // Add more errors as we refine what we need to detect. For now, anything
+    // else will take ERROR_UNKNOWN
+  }
+  ErrorType error_type = 1;
+}
+
+// A canonical, provider-agnostic representation of a transcription result.
+message TranscribedDocument {
+  // Document type.
+  google.protobuf.StringValue document_type = 1;
+  // Pages of the transcribed document.
+  repeated Page pages = 2;
+  // Annotations capturing content extracted from the document.
+  repeated Annotation annotations = 3;
+  // Raw extracted text from the document.
+  google.protobuf.StringValue raw_text = 4;
+  // S3 URL of transcribed document.
+  string s3_url = 5;
+}
+
+// A page in a transcribed document.
+message Page {
+  // 0-based index of the page.
+  int32 page_index = 1;
+  // Page width.
+  float width = 2;
+  // Page height.
+  float height = 3;
+  // Dimension unit.
+  string unit = 4;
+}
+
+// Represents a point in the page.
+// The coordinate values are relative to the page and range from 0 to 1.
+message NormalizedVertex {
+  // The relative distance from the left edge of the page.
+  float x = 1;
+  // The relative distance from the top edge of the page.
+  float y = 2;
+}
+
+// A bounding polygon for specifying the location of an annotation.
+message BoundingPolygon {
+  // The vertices for the bounding polygon.
+  repeated NormalizedVertex vertices = 1;
+}
+
+// A text reference indexing into the extracted text that indicates the location of an annotation.
+message TextAnchor {
+  // The text segments from the raw text.
+  repeated TextSegment segments = 1;
+  // The content of the text span so that users do not have to look it up in the textSegments.
+  google.protobuf.StringValue content = 2;
+}
+
+// A segment from the raw text.
+message TextSegment {
+  // The start index of the text segment.
+  int64 start_index = 1;
+  // The end index of the text segment.
+  int64 end_index = 2;
+}
+
+// An annotation on a transcribed document.
+message Annotation {
+  // An identifier for the annotation.
+  string id = 1;
+  // The possible annotation types.
+  enum Category {
+    // Invalid category.
+    CATEGORY_INVALID = 0;
+    // Represents a data field with a single value.
+    CATEGORY_DATAPOINT = 1;
+    // Represents a container for a data field with multiple values.
+    CATEGORY_MULTIVALUE = 2;
+    // Represents a container for tabular data with related values.
+    CATEGORY_TUPLE = 3;
+    // Represents a container for a table of values.
+    CATEGORY_TABLE = 4;
+  }
+  // The type of the annotation object.
+  Category category = 2;
+  // The standardized field name.
+  string field_name = 3;
+  // The extracted value in the document. This is only defined for datapoint
+  // annotations.
+  google.protobuf.StringValue value = 4;
+  // An array of Annotation IDs that correspond to objects that belong to this
+  // annotation. This is generally used for multivalue and tuple annotations.
+  repeated string annotation_children_ids = 5;
+  // 0-based index of the page.
+  int32 page_index = 6;
+  // Confidence (estimated probability) that the field was extracted correctly
+  // (0 to 1).
+  float confidence = 7;
+  // The location of the annotation.
+  BoundingPolygon bounding_polygon = 8;
+  // Annotation id for the header row of the table. This is only defined for table annotations.
+  google.protobuf.StringValue table_header_row_id = 9;
+  // Array of annotation ids for the body rows of the table. This is only defined for table annotations.
+  repeated string table_body_row_ids = 10;
+  // The indices that indicate the location of the annotation in the raw text.
+  TextAnchor text_anchor = 11;
+}

@@ -1,0 +1,26 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanCarrierBookingCopyScheduleAttemptedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// Attempted to copy schedule from carrier booking to shipment
+// error_message field will be provided if copy failed
+message OceanCarrierBookingCopyScheduleAttempted {
+  string carrier_booking_fid = 1;
+  OceanCarrierBookingCopyScheduleStatus status = 2;
+  // error_message is a human readable string of copy schedule failure reason
+  string error_message = 3;
+}
+
+// Represents the copy schedule status of a carrier booking.
+enum OceanCarrierBookingCopyScheduleStatus {
+  OCEAN_CARRIER_BOOKING_COPY_SCHEDULE_STATUS_INVALID = 0;
+  OCEAN_CARRIER_BOOKING_COPY_SCHEDULE_STATUS_SUCCEED = 1;
+  OCEAN_CARRIER_BOOKING_COPY_SCHEDULE_STATUS_ERROR = 2;
+}

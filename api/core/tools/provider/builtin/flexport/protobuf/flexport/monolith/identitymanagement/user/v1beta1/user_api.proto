@@ -1,0 +1,120 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.monolith.identitymanagement.user.v1beta1;
+
+import "flexport/monolith/identitymanagement/user/v1beta1/identity.proto";
+import "flexport/monolith/identitymanagement/user/v1beta1/user.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "UserApiProto";
+option java_package = "com.flexport.monolith.identitymanagement.user.v1beta1";
+option ruby_package = "Flexport::Monolith::IdentityManagement::User::V1Beta1";
+
+//  User data.
+service UserAPI {
+  // Creates an identity; normally this would be in it's own API, but in the legacy
+  // system, there's no delineation between user/identity so for convenience we define
+  // it here.
+  rpc CreateIdentity(CreateIdentityRequest) returns (CreateIdentityResponse);
+  // Get Identity.
+  rpc GetIdentity(GetIdentityRequest) returns (GetIdentityResponse);
+  // Create User.
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  // Update User.
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+  // Create User with Identity information.
+  rpc CreateUserIdentity(CreateUserIdentityRequest) returns (CreateUserIdentityResponse);
+  // Get User.
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+}
+
+message CreateIdentityRequest {
+  // User email
+  google.protobuf.StringValue email = 4;
+  // User password
+  google.protobuf.StringValue password = 5;
+}
+
+message CreateIdentityResponse {
+  // Created identity
+  flexport.monolith.identitymanagement.user.v1beta1.Identity identity = 1;
+}
+
+message CreateUserRequest {
+  // User's identity
+  google.protobuf.StringValue identity_id = 1; // TODO(jkim2): rename this to fid
+  // User's tenant
+  google.protobuf.StringValue tenant_id = 2; // TODO(jkim2): rename this to fid
+  // User first name
+  google.protobuf.StringValue first_name = 3;
+  // User last name
+  google.protobuf.StringValue last_name = 4;
+}
+
+// This is the create request message for the new user API that combines the createIdentity and the createUser APIs
+message CreateUserIdentityRequest {
+  // User's identity
+  google.protobuf.StringValue identity_fid = 1;
+  // User's tenant
+  google.protobuf.StringValue tenant_fid = 2;
+  // User first name
+  google.protobuf.StringValue first_name = 3;
+  // User last name
+  google.protobuf.StringValue last_name = 4;
+  // User email
+  google.protobuf.StringValue email = 5;
+  // User password
+  google.protobuf.StringValue password = 6;
+}
+
+message CreateUserResponse {
+  // Created legacy user
+  flexport.monolith.identitymanagement.user.v1beta1.User user = 1;
+}
+
+// This looks the same as CreateUserResponse because the User message has identity field in it
+// Whether we need this is debatable, but, adding this for clarity
+message CreateUserIdentityResponse {
+  // Created legacy user
+  flexport.monolith.identitymanagement.user.v1beta1.User user = 1;
+}
+
+message UpdateUserRequest {
+  google.protobuf.StringValue user_id = 1;
+  // User first name
+  google.protobuf.StringValue first_name = 2;
+  // User last name
+  google.protobuf.StringValue last_name = 3;
+  // User password
+  google.protobuf.StringValue password = 4;
+  // Whether the user is active, null/unspecified does not update the user's active state
+  google.protobuf.BoolValue active = 5;
+}
+
+message UpdateUserResponse {
+  // Updated legacy user
+  flexport.monolith.identitymanagement.user.v1beta1.User user = 1;
+}
+
+message GetUserRequest {
+  // User id
+  google.protobuf.StringValue id = 1; // TODO(jkim2): rename this to fid
+}
+
+message GetUserResponse {
+  // Return User information.
+  flexport.monolith.identitymanagement.user.v1beta1.User user = 1;
+}
+
+message GetIdentityRequest {
+  // Identity id
+  google.protobuf.StringValue id = 1; // TODO(jkim2): rename this to fid
+}
+
+message GetIdentityResponse {
+  // Return User information.
+  flexport.monolith.identitymanagement.user.v1beta1.Identity identity = 1;
+}

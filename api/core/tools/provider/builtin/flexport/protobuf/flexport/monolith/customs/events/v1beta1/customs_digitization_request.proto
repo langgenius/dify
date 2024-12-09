@@ -1,0 +1,18 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.monolith.customs.events.v1beta1;
+
+import "flexport/monolith/documents/monolith_documents/v1beta1/monolith_documents.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsDigitizationRequestProto";
+option java_package = "com.flexport.monolith.customs.events.v1beta1";
+option ruby_package = "Flexport::Monolith::Customs::Events::V1Beta1";
+
+// This event represent a request to digitize a document.
+message CustomsDigitizationRequest {
+  string document_fid = 1;
+  flexport.monolith.documents.monolithdocuments.v1beta1.Document document = 2;
+}

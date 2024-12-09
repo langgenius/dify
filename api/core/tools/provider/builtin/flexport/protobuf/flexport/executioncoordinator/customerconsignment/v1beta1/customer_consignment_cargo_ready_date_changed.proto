@@ -1,0 +1,21 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.customerconsignment.v1beta1;
+
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomerConsignmentCargoReadyDateChangedProto";
+option java_package = "com.flexport.executioncoordinator.customerconsignment.v1beta1";
+option ruby_package = "Flexport::ExecutionCoordinator::CustomerConsignment::V1Beta1";
+
+// A Customer Consignment Cargo Ready Date Changed event.
+message CustomerConsignmentCargoReadyDateChanged {
+  // The previous cargo ready date.
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate old_cargo_ready_date = 1;
+
+  // The new cargo ready date.
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate new_cargo_ready_date = 2;
+}

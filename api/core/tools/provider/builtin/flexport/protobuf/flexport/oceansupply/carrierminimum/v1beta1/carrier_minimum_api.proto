@@ -1,0 +1,34 @@
+// TEAM: ocean_allocations
+
+syntax = "proto3";
+
+package flexport.oceansupply.carrierminimum.v1beta1;
+
+import "flexport/oceansupply/carrierminimum/v1beta1/carrier_minimum.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierMinimumApiProto";
+option java_package = "com.flexport.oceansupply.carrierminimum.v1beta1";
+option ruby_package = "Flexport::OceanSupply::CarrierMinimum::V1Beta1";
+
+// An API for reading InventoryBuckets and Inventories.
+service CarrierMinimumAPI {
+  // Fetch `all` carrier minimum weeks.
+  rpc ListAllCarrierMinimumWeeks(ListAllCarrierMinimumWeeksRequest) returns (ListAllCarrierMinimumWeeksResponse);
+}
+
+message ListAllCarrierMinimumWeeksRequest {
+  int32 start_week = 1;
+  int32 start_year = 2;
+  int32 end_week = 3;
+  int32 end_year = 4;
+  //  limit of max number of carrier minimums (not carrier minimum week)to load. Default value 100.
+  int32 limit = 5;
+  //  a token returned from response used to load next batch. Default value is 0.
+  google.protobuf.Int32Value offset = 6;
+}
+
+message ListAllCarrierMinimumWeeksResponse {
+  repeated CarrierMinimumWeek carrier_minimum_weeks = 1;
+}

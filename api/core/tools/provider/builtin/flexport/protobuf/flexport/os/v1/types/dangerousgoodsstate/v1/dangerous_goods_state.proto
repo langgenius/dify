@@ -1,0 +1,43 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.os.v1.types.dangerousgoodsstate.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DangerousGoodsStateProto";
+option java_package = "com.flexport.os.v1.types.dangerousgoodsstate.v1";
+option ruby_package = "Flexport::OS::V1::Types::DangerousGoodsState::V1";
+
+import "google/protobuf/wrappers.proto";
+
+// From cargo.rb.
+message DangerousGoodsState {
+  google.protobuf.BoolValue contains_hazmat = 1;
+  google.protobuf.BoolValue contains_magnets = 2;
+  google.protobuf.BoolValue contains_lithium_ion_battery = 3;
+  google.protobuf.BoolValue contains_non_lithium_ion_battery = 4;
+  google.protobuf.BoolValue contains_other_dangerous_goods = 5;
+  repeated BatteryPackingTypes lithium_ion_battery_packing_types = 7;
+  // TODO - remove this in another PR.
+  LithiumIonBatteryStatus lithium_ion_battery_status = 6 [deprecated = true];
+}
+
+// From LithiumBatteriesPackingTypes.
+enum BatteryPackingTypes {
+  BATTERY_PACKING_TYPES_INVALID = 0;
+  BATTERY_PACKING_TYPES_PACKED_LOOSE = 1;
+  BATTERY_PACKING_TYPES_PACKED_WITH_EQUIPMENT = 2;
+  BATTERY_PACKING_TYPES_CONTAINED_IN_EQUIPMENT = 3;
+  BATTERY_PACKING_TYPES_CONTAINED_IN_BATTERY_POWERED_VEHICLE = 4;
+}
+
+// From LithiumBatteriesPackingTypes.
+enum LithiumIonBatteryStatus {
+  // The status was unknown, or not specified.
+  LITHIUM_ION_BATTERY_STATUS_INVALID = 0;
+  LITHIUM_ION_BATTERY_STATUS_PACKED_LOOSE = 1;
+  LITHIUM_ION_BATTERY_STATUS_PACKED_WITH_EQUIPMENT = 2;
+  LITHIUM_ION_BATTERY_STATUS_CONTAINED_IN_EQUIPMENT = 3;
+  LITHIUM_ION_BATTERY_STATUS_CONTAINED_IN_BATTERY_POWERED_VEHICLE = 4;
+}

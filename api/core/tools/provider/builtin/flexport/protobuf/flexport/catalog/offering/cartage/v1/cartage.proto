@@ -1,0 +1,45 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.offering.cartage.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CartageProto";
+option java_package = "com.flexport.catalog.offering.cartage.v1";
+option ruby_package = "Flexport::Catalog::Offering::Cartage::V1";
+
+import "flexport/catalog/location/v1/location.proto";
+import "google/protobuf/wrappers.proto";
+
+// Cartage attributes.
+message CartageAttributesDto {
+  google.protobuf.Int64Value carrier_id = 1;
+  google.protobuf.StringValue direction = 2;
+  google.protobuf.Int64Value address_id = 3;
+  google.protobuf.Int64Value service_area_id = 4;
+  google.protobuf.Int64Value facility_id = 5;
+  google.protobuf.Int32Value transit_time_min_days = 6;
+  google.protobuf.Int32Value transit_time_max_days = 7;
+}
+
+// Cartage query attributes.
+message CartageQueryAttributesDto {
+  repeated int64 carrier_ids = 1;
+  repeated google.protobuf.StringValue direction = 2;
+  repeated int64 port_ids = 3;
+  repeated int64 service_area_ids = 4;
+  // Service areas are a collection of geo bounds. Other things, like zip codes, also have geo
+  // bounds. Use this to match offerings with service areas which have any of the same geo bounds.
+  repeated int64 geobound_ids = 5;
+  // When provided, matches with offerings whose service areas include this location.
+  // If the location includes a radius, any nearby offerings where the service area intersects with
+  // the circle defined by this point and radius are also included.
+  // Required when sorting by distance. Offerings which do not service this location are ordered
+  // based on the proximity of their service area to this location.
+  catalog.location.v1.LocationDto location = 6;
+  repeated int64 facility_ids = 7;
+  google.protobuf.FloatValue weight_kg = 8;
+  google.protobuf.BoolValue allow_seaports = 9;
+  google.protobuf.BoolValue allow_airports = 10;
+}

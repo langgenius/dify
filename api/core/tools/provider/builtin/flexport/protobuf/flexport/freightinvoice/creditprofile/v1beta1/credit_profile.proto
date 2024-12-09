@@ -1,0 +1,53 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.freightinvoice.creditprofile.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CreditProfileProto";
+option java_package = "com.flexport.freightinvoice.creditprofile.v1beta1";
+option ruby_package = "Flexport::FreightInvoice::CreditProfile::V1Beta1";
+
+import "flexport/freightinvoice/date/v1/date.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// From client_insurance_terms.rb.
+enum ClientInsuranceTerm {
+  CLIENT_INSURANCE_TERM_INVALID = 0;
+  CLIENT_INSURANCE_TERM_OTHERS = 1;
+  CLIENT_INSURANCE_TERM_FP_ANNUAL_FLAT = 2;
+  CLIENT_INSURANCE_TERM_FP_TRIAL = 3;
+  CLIENT_INSURANCE_TERM_FP_PER_SHIPMENT = 4;
+  CLIENT_INSURANCE_TERM_NO_INSURANCE = 5;
+}
+
+// A credit profile.
+message CreditProfile {
+  string fid = 1;
+  string company_fid = 2;
+  google.protobuf.Timestamp created_at_time = 3;
+  flexport.freightinvoice.date.v1.Date approval_date_date = 4;
+  flexport.freightinvoice.date.v1.Date review_date_date = 5;
+  google.protobuf.Timestamp updated_at_time = 6;
+  google.protobuf.BoolValue approved_wrapper = 7;
+  google.protobuf.BoolValue auto_charging_wrapper = 8;
+  google.protobuf.BoolValue wants_commercial_invoice_transcription_wrapper = 10;
+  google.protobuf.BoolValue send_physical_mail_wrapper = 11;
+  google.protobuf.BoolValue wants_flexport_insurance_wrapper = 12;
+  google.protobuf.Int32Value approved_by_wrapper = 13;
+  google.protobuf.Int32Value credit_line_wrapper = 14;
+  google.protobuf.Int32Value credit_terms_wrapper = 15;
+  google.protobuf.Int32Value customs_credit_line_wrapper = 16;
+  google.protobuf.Int32Value customs_credit_terms_wrapper = 17;
+  ClientInsuranceTerm insurance_term_enum = 18;
+  google.protobuf.Int32Value last_updated_by_wrapper = 19;
+  google.protobuf.Int32Value reviewed_by_id_wrapper = 20;
+  google.protobuf.Struct credit_block_parameter_overrides_struct = 21;
+  string insurance_rate = 22;
+  string margin = 23;
+  string credit_currency_code = 24;
+  int32 id = 25;
+}

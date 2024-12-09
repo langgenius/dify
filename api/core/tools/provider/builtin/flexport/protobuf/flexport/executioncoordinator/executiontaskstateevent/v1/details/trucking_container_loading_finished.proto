@@ -1,0 +1,21 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TruckingContainerLoadingFinishedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// The cargo was placed into a container.
+message TruckingContainerLoadingFinished {
+  string cargo_fid = 1;
+  // The place where the cargo was loaded into the container.
+  string address_fid = 2;
+  // The unique identifier of the IS06346 container which was filled.
+  string container_number = 3;
+  // The ISO code of the container.
+  string iso_code = 4;
+}

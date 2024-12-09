@@ -1,0 +1,48 @@
+// TEAM: pricing_opportunities
+
+syntax = "proto3";
+
+package flexport.pricingrequests.entityevent.v3;
+
+option java_multiple_files = true;
+option java_outer_classname = "LightweightPricingRequestEntityProto";
+option java_package = "com.flexport.pricingrequests.entityevent.v3";
+option ruby_package = "Flexport::PricingRequests::EntityEvent::V3";
+
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Data eng entity for Lightweight Pricing Requests.
+message LightweightPricingRequestEntity {
+  google.protobuf.StringValue requested_by_fid = 1;
+  google.protobuf.StringValue client_fid = 2;
+  google.protobuf.StringValue client_segment = 3;
+  google.protobuf.StringValue stage_with_client = 4;
+  string request_type = 5;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate client_due_date = 6;
+  google.protobuf.StringValue bid_fid = 7;
+  google.protobuf.StringValue commodity = 8;
+  repeated string dangerous_goods = 9;
+  google.protobuf.StringValue additional_notes = 10;
+  google.protobuf.StringValue method_of_sharing_rates = 11;
+  google.protobuf.StringValue incumbent_provider_fid = 12;
+  google.protobuf.StringValue incumbent_provider_name = 13;
+  google.protobuf.Timestamp created_at_time = 14;
+  repeated string recipient_emails = 15;
+  repeated string cc_emails = 16;
+  repeated FreightService freight_services = 17;
+}
+
+// Data eng entity for FreightService.
+message FreightService {
+  string freight_mode = 1;
+  google.protobuf.StringValue validity = 2;
+  google.protobuf.StringValue pricing_term = 3;
+  repeated string trade_lanes = 4;
+  repeated string additional_services = 5;
+  google.protobuf.StringValue service_details = 6;
+  google.protobuf.StringValue transport_details = 7;
+  google.protobuf.DoubleValue opportunity_volume = 8;
+  google.protobuf.DoubleValue annual_volume = 9;
+}

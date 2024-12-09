@@ -1,0 +1,47 @@
+// TEAM: wms_shanghai
+
+syntax = "proto3";
+
+package flexport.wmscell.outboundload.entity.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OutboundLoadEntityProto";
+option java_package = "com.flexport.wmscell.outboundload.entity.v1";
+
+message OutboundLoadEntity {
+  string load_pk = 1;
+  string load_id = 2;
+  string warehouse_code = 3;
+  string load_status = 4;
+  string location_id = 5;
+  oneof payload {
+    OceanOutboundLoadPayload ocean_outbound_load_payload = 6;
+    TruckOutboundLoadPayload truck_outbound_load_payload = 7;
+    AirOutboundLoadPayload air_outbound_load_payload = 8;
+  }
+  string freight_mode = 9;
+  google.protobuf.Timestamp estimated_departure_time = 10;
+  string outbound_plan_pk = 11;
+  string load_id_namespace = 12;
+}
+
+message OceanOutboundLoadPayload {
+  string container_number = 1;
+  string seal_number = 2;
+  string container_tare_weight = 3;
+  string assigned_dock_door = 4;
+}
+
+message TruckOutboundLoadPayload {
+  string trailer_number = 1;
+  string seal_number = 2;
+  string scac = 3;
+  string pro_number = 4;
+  string assigned_dock_door = 5;
+}
+
+message AirOutboundLoadPayload {
+  // TODO: placeholder for air outbound load payload
+}

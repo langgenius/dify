@@ -1,0 +1,33 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.vatossurchargeprovider.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "VatosPortProto";
+option java_package = "com.flexport.procurement.vatossurchargeprovider.v1";
+option ruby_package = "Flexport::Procurement::VatosSurchargeProvider::V1";
+
+// Incoming data for a vatos port.
+message VatosPort {
+  string fid = 1;
+  // Internal country number - reference to vatosline_ports table.
+  int64 port_id = 2;
+  // Name of this country.
+  string port_name = 3;
+  // UN/LOCODE of this port. */
+  string port_un_locode = 4;
+  // Internal area number
+  int64 area_id = 5;
+  // Name of the ports area, could be taken from areas table as well.
+  string area_name = 6;
+  // Internal country number - reference to vatosline_ports table.
+  int64 country_id = 7;
+  // Name of the ports country, also used in surchargedata table.
+  string country_name = 8;
+  // This port is in use by vatosline.
+  bool active = 9;
+  // Core port fid
+  string port_fid = 10;
+}

@@ -1,0 +1,79 @@
+// TEAM: ocean_allocations
+
+syntax = "proto3";
+
+package flexport.oceansupply.entityevent.v1beta1;
+
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "InventoryBucketEntityProto";
+option java_package = "com.flexport.oceansupply.entityevent.v1beta1";
+option ruby_package = "Flexport::OceanSupply::EntityEvent::V1Beta1";
+
+// Represents an allocation from a carrier with some information and a bunch of restrictions
+// limiting which types of shipments we can use on this allocation.
+// Note: missing field 3 was unintentional and should be cleaned up once beta is deprecated.
+message InventoryBucketEntity {
+  google.protobuf.Timestamp created_time = 1;
+  google.protobuf.Timestamp updated_time = 2;
+  google.protobuf.StringValue carrier_fid = 4;
+  google.protobuf.StringValue provider_company_fid = 5;
+  google.protobuf.StringValue receiver_company_fid = 6;
+  google.protobuf.StringValue notes = 7;
+  repeated google.protobuf.StringValue contract_fids = 8;
+  repeated google.protobuf.StringValue client_fids = 9;
+  repeated google.protobuf.StringValue origin_port_fids = 10;
+  repeated google.protobuf.StringValue destination_port_fids = 11;
+  repeated google.protobuf.StringValue allocation_ids = 12;
+  repeated google.protobuf.StringValue string_fids = 13 [deprecated = true];
+  repeated flexport.os.v1.types.cargo.v1.Iso6346ContainerSize equipment_sizes = 14;
+  repeated google.protobuf.StringValue applicable_rate_types = 15;
+  google.protobuf.StringValue pre_carriage_restriction = 16;
+  google.protobuf.StringValue on_carriage_restriction = 17;
+  bool is_migrated = 18;
+  google.protobuf.StringValue carrier_booking_instructions = 19;
+  google.protobuf.Int32Value cached_first_port_carrier_week_offset = 20;
+  google.protobuf.BoolValue is_premium = 21;
+  repeated google.protobuf.StringValue composite_strings = 22;
+  google.protobuf.StringValue extra_loader_string_name = 23;
+  google.protobuf.Int32Value carrier_priority = 24;
+  google.protobuf.StringValue tradelane = 25;
+  /**
+   * Most teu inventory is granted on a weekly basis, which is represented by the Inventory model
+   * where each one has a single week. However, sometimes (especially in BCO) you might have say 8
+   * teus of space for some lane over the whole life of the contract, which could be a year. This
+   * space rolls over week to week, so it's treated very differently than weekly inventory. We
+   * represent it with a single field on the bucket, with the intention that if a new contract is
+   * signed with a different yearly allocation then a new bucket would be created with its own
+   * value.
+   */
+  int32 rolling_teus = 26;
+  google.protobuf.StringValue service_type = 27;
+  /**
+   * These four fields define specific feeder or inland port restrictions that are separate
+   * from the origin_port_fids, destination_port_fids and baseport restrictions.
+   * See go/allocation-routes for more details.
+   */
+  bool route_origin_port_fids_filter_is_inclusive = 28;
+  repeated string route_origin_port_fids_filter_values = 29;
+  bool route_destination_port_fids_filter_is_inclusive = 30;
+  repeated string route_destination_port_fids_filter_values = 31;
+  /**
+   * Archived is different than deleted. Buckets are meant to be archived when they are
+   * no longer in use but past assignments made on them are legitimate. Buckets with
+   * past assignments are not meant to be deleted.
+   */
+  google.protobuf.Timestamp archived_time = 32;
+  /**
+   * When determining if a bucket is compatible with a route (context could be carrier space route,
+   * profile, carrier booking, etc) and specifically considering the service string aspect, if this
+   * field is true, then it is compatible. Otherwise, the bucket's list of strings should be used as
+   * it always has been. For buckets where this is true, we will still try to populate all feasible
+   * strings into the bucket's strings field, but that should be seen as derived information
+   * stemming from this field being true and our schedule data.
+   */
+  bool supports_all_strings = 33;
+}

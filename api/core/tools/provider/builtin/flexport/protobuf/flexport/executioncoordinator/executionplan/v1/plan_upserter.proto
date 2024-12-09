@@ -1,0 +1,42 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionplan.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PlanUpserterProto";
+option java_package = "com.flexport.executioncoordinator.executionplan.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionPlan::V1";
+
+// A "service or group" (a la http://go/fid) that upserts ExecutionPlans.
+// When adding a new value, please:
+// (1) Order this list alphabetically (not by field number).
+// (2) Use "service or group" names that are consistent with the other EC registries:
+//     OrderUpserter, OrderStateProducer, TaskStateProducer.
+// (3) Remember to add one or more new values to PlanningProcess for your upserter.
+// next ID: 20
+enum PlanUpserter {
+  PLAN_UPSERTER_INVALID = 0;
+  PLAN_UPSERTER_AIR_EXECUTION_PROVIDER = 6;
+  PLAN_UPSERTER_AIR_PLANNING = 7;
+  PLAN_UPSERTER_AIR_SUPPLY = 11;
+  PLAN_UPSERTER_COMMERCE = 18;
+  PLAN_UPSERTER_CONSOLIDATION = 8;
+  PLAN_UPSERTER_CONSOL_PLANNER = 2;
+  PLAN_UPSERTER_CONSOL_PLANNING_MANAGER = 15;
+  PLAN_UPSERTER_CONTAINER = 9;
+  PLAN_UPSERTER_CUSTOMS_ASN_SERVICE = 13;
+  PLAN_UPSERTER_CUSTOMS_OPS_WORKFLOW = 14;
+  PLAN_UPSERTER_CUSTOMS_PLANNER = 17;
+  PLAN_UPSERTER_DO_EDITOR = 4;
+  // This is the replanner from consumed events.
+  // As of Dec 2021, this lives Inside the EC NIS.
+  PLAN_UPSERTER_EXECUTION_REPLANNER = 5;
+  PLAN_UPSERTER_EXECUTION_WORKSPACE = 3;
+  PLAN_UPSERTER_MONOLITH_EXTRACT_ENGINE = 1;
+  PLAN_UPSERTER_OCEAN_PLANNER = 10;
+  PLAN_UPSERTER_SHIPMENT_INVOLVED_PARTIES_UPDATE = 16;
+  PLAN_UPSERTER_TRUCKING_PLANNING = 12;
+  PLAN_UPSERTER_EXECUTION_ORDER = 19;
+}

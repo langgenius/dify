@@ -1,0 +1,26 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.truckingcontracts.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TruckingContractsApiProto";
+option java_package = "com.flexport.procurement.truckingcontracts.v1beta1";
+option ruby_package = "Flexport::Procurement::TruckingContracts::V1Beta1";
+
+import "flexport/procurement/truckingcontracts/v1beta1/trucking_contracts.proto";
+
+// This service is used to send contracts.
+service TruckingContractsAPI {
+  // Send trucking contract.
+  rpc SendTruckingContracts(SendTruckingContractsRequest) returns (SendTruckingContractsResponse);
+}
+
+message SendTruckingContractsRequest {
+  repeated Contract contracts = 1;
+}
+
+message SendTruckingContractsResponse {
+  repeated string contract_fids = 1;
+}

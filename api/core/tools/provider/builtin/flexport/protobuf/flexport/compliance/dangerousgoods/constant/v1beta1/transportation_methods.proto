@@ -1,0 +1,22 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.compliance.dangerousgoods.constant.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TransportationMethodProto";
+option java_package = "com.flexport.compliance.dangerousgoods.constant.v1beta1";
+option ruby_package = "Flexport::Compliance::DangerousGoods::Constant::V1Beta1";
+
+enum TransportationMethod {
+  TRANSPORTATION_METHOD_INVALID = 0;
+  TRANSPORTATION_METHOD_AIR = 1;
+  TRANSPORTATION_METHOD_OCEAN = 2;
+  TRANSPORTATION_METHOD_OCEAN_AIR = 3;
+  TRANSPORTATION_METHOD_RAIL = 4;
+  TRANSPORTATION_METHOD_TRUCK = 5;
+  TRANSPORTATION_METHOD_TRUCK_INTL = 6;
+  TRANSPORTATION_METHOD_UNKNOWN_TRANSPORTATION = 7;
+  TRANSPORTATION_METHOD_WAREHOUSE_STORAGE = 8;
+}

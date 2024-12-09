@@ -1,0 +1,22 @@
+// TEAM: bookings
+
+syntax = "proto3";
+
+package flexport.booking.needamendmentverdict.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "NeedAmendmentVerdictProto";
+option java_package = "com.flexport.booking.needamendmentverdict.v1beta1";
+option ruby_package = "Flexport::Booking::Needamendmentverdict::V1Beta1";
+
+import "flexport/booking/enums/booking_user_role/v1beta1/booking_user_role.proto";
+
+// A GRPC event signifying a booking amendment needs to be manually approved.
+message NeedAmendmentVerdict {
+  // FID of the booking execution is being requested for
+  string booking_fid = 1;
+  string order_proposal_fid = 2;
+  repeated flexport.booking.enums.bookinguserrole.v1beta1.BookingUserRole approved_user_roles = 3;
+  repeated flexport.booking.enums.bookinguserrole.v1beta1.BookingUserRole denied_user_roles = 4;
+  repeated flexport.booking.enums.bookinguserrole.v1beta1.BookingUserRole pending_user_approval_user_roles = 5;
+}

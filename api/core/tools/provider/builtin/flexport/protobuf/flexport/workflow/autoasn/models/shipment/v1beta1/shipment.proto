@@ -1,0 +1,112 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.workflow.autoasn.models.shipment.v1beta1;
+
+import "flexport/workflow/prelude/options/v1/options.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentProto";
+option java_package = "com.flexport.workflow.autoasn.models.shipment.v1beta1";
+option ruby_package = "Flexport::Workflow::AutoAsn::Models::Shipment::V1Beta1";
+
+// Shipment info.
+message Shipment {
+  option (flexport.workflow.prelude.options.v1.wp_message_key) = "fid";
+  string fid = 1;
+  // Filter SOP from SSD
+  repeated Company shippers = 2;
+  repeated Company consignees = 3;
+  Graph graph = 4;
+  repeated CommercialInvoice commercial_invoices = 5;
+  string priority = 6;
+  string booking_mode = 7;
+  // ASN
+  ChecklistSendAsn checklist_send_asn = 8;
+  // Documents
+  repeated Document documents = 9;
+  Client client = 10;
+}
+
+// Client.
+message Client {
+  string fid = 1;
+}
+
+// Company.
+message Company {
+  string fid = 1;
+  int64 id = 2;
+  string name = 3;
+}
+
+// Commercial Invoice.
+message CommercialInvoice {
+  string fid = 1;
+  repeated Product products = 2;
+}
+
+// Product.
+message Product {
+  string fid = 1;
+}
+
+// Graph.
+message Graph {
+  repeated ShipmentNode nodes = 11;
+  repeated Address origin_addresses = 15;
+  repeated Address destination_addresses = 16;
+}
+
+// Shipment Node.
+message ShipmentNode {
+  int64 id = 1;
+  Address place = 2;
+}
+
+// Address.
+message Address {
+  string fid = 1;
+  Location location = 2;
+  string country_code = 3;
+}
+
+// Location.
+message Location {
+  string fid = 1;
+}
+
+// Checklist Send ASN.
+message ChecklistSendAsn {
+  int64 id = 1;
+  string type = 2;
+  string status = 3;
+  string status_reason = 4;
+  google.protobuf.Timestamp updated_time = 5;
+}
+
+// Document.
+message Document {
+  string fid = 1;
+  // Attachment
+  string attachment_content_type = 2;
+  string attachment_filename = 3;
+  google.protobuf.Timestamp attachment_updated_time = 4;
+  // Name
+  string name = 5;
+  // Document Type
+  int64 document_type_id = 6;
+  DocumentType document_type = 7;
+  google.protobuf.Timestamp updated_time = 8;
+  google.protobuf.Timestamp archived_time = 9;
+  google.protobuf.Timestamp expires_time = 10;
+}
+
+// Document Type.
+message DocumentType {
+  string fid = 1;
+  string name = 2;
+  string slug = 3;
+}

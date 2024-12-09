@@ -1,0 +1,21 @@
+// TEAM: ocean_allocations
+
+syntax = "proto3";
+
+package flexport.oceansupply.entityevent.v1beta1;
+
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CommodityGroupEntityProto";
+option java_package = "com.flexport.oceansupply.entityevent.v1beta1";
+option ruby_package = "Flexport::OceanSupply::EntityEvent::V1Beta1";
+
+message CommodityGroupEntity {
+  google.protobuf.UInt64Value id = 1;
+  google.protobuf.StringValue carrier_fid = 2;
+  google.protobuf.StringValue name = 3;
+  repeated google.protobuf.StringValue hs_codes = 4;
+  google.protobuf.StringValue commodity_group_hscode_type = 5;
+  repeated google.protobuf.StringValue hs_code_text_inputs = 6;
+}

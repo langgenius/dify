@@ -1,0 +1,20 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerCarrierReleasedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// A container has been released from a carrier hold.
+message ContainerCarrierReleased {
+  string container_fid = 1;
+  // The date time the container was released from carrier hold.
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime released_date_time = 3;
+  string address_fid = 4;
+}

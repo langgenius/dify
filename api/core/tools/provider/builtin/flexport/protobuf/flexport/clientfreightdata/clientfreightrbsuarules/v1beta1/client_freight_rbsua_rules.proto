@@ -1,0 +1,19 @@
+// TEAM: client_app
+
+syntax = "proto3";
+
+package flexport.clientfreightdata.clientfreightrbsuarules.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ClientFreightRbsuaRulesProto";
+option java_package = "com.flexport.clientfreightdata.clientfreightrbsuarules.v1beta1";
+option ruby_package = "Flexport::ClientFreightData::ClientFreightRbsuaRules::V1Beta1";
+
+message ClientFreightRbsuaRules {
+    // The user who owns this set of rules.
+    string user_fid = 1;
+    // This is the JSON String of the rules.
+    string rules = 2;
+    // Client fid of the user.
+    string client_fid = 3;
+}

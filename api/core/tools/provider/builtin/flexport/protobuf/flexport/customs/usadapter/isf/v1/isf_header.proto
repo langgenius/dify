@@ -1,0 +1,43 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.isf.v1;
+
+import "flexport/customs/usadapter/isf/v1/bond_information.proto";
+import "flexport/customs/usadapter/isf/v1/isf_importer.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.isf.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::Isf::V1";
+
+message IsfHeader {
+  IsfSubmissionType isf_submission_type = 1;
+  ShipmentType shipment_type = 2;
+  flexport.customs.usadapter.isf.v1.IsfImporter isf_importer = 3;
+  flexport.customs.usadapter.isf.v1.IsfBondInformation bond_information = 4;
+  optional string isf_transaction_number = 5;
+}
+
+enum IsfSubmissionType {
+  ISF_SUBMISSION_TYPE_INVALID = 0;
+  ISF_SUBMISSION_TYPE_ISF_10 = 1;
+  ISF_SUBMISSION_TYPE_ISF_5 = 2;
+  ISF_SUBMISSION_TYPE_CHANGE_ISF_5_TO_ISF_10 = 3;
+  ISF_SUBMISSION_TYPE_CHANGE_ISF_10_TO_ISF_5 = 4;
+}
+
+enum ShipmentType {
+  SHIPMENT_TYPE_INVALID = 0;
+  SHIPMENT_TYPE_STANDARD_OR_REGULAR_FILINGS = 1;
+  SHIPMENT_TYPE_TO_ORDER_SHIPMENTS = 2;
+  SHIPMENT_TYPE_HOUSEHOLD_GOODS_PERSONAL_EFFECTS = 3;
+  SHIPMENT_TYPE_MILITARY_GOVERNMENT = 4;
+  SHIPMENT_TYPE_DIPLOMATIC_SHIPMENT = 5;
+  SHIPMENT_TYPE_CARNET = 6;
+  SHIPMENT_TYPE_US_GOODS_RETURNED = 7;
+  SHIPMENT_TYPE_FTZ_SHIPMENTS = 8;
+  SHIPMENT_TYPE_INTERNATIONAL_MAIL_SHIPMENTS = 9;
+  SHIPMENT_TYPE_OUTER_CONTINENTAL_SHELF_SHIPMENTS = 10;
+  SHIPMENT_TYPE_INFORMAL = 11;
+}

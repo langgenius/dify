@@ -1,0 +1,103 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.query.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "FiltersProto";
+option java_package = "com.flexport.executioncoordinator.types.query.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Query::V1";
+
+import "google/protobuf/timestamp.proto";
+
+// Filters to only strings that match any of the provided values.
+message StringFilter {
+  repeated string matches_any = 1;
+  //
+  // Whether to apply negation to the filter so that values matching the filter are excluded.
+  // Defaults to false, ie values matching the filter are included.
+  bool negated = 2;
+}
+
+// Filters only integer values that fall between the specified range.
+message IntegerFilter {
+  int32 upper_bound_inclusive = 1;
+  int32 lower_bound_inclusive = 2;
+}
+
+// Filters only integer values that fall between the specified range.
+message IntegerValueFilter {
+  repeated int32 matches_any = 1;
+  //
+  // Whether to apply negation to the filter so that values matching the filter are excluded.
+  // Defaults to false, ie values matching the filter are included.
+  bool negated = 2;
+}
+
+// Filters to time ranges that match the provided UTC timestamp ranges. Both edges are inclusive.
+// Omit fields to specify unbounded queries. Examples:
+//
+// Match ranges that start on or after a certain time:
+//
+//   t1 = DateTime.now.utc.iso8601  # "2020-08-31T12:39:14Z"
+//   TimestampRangeFilter.new(start: TimestampFilter.new(from_time: t1))
+//
+// Match ranges that start on a certain date in Chicago:
+//
+//   chi = ActiveSupport::TimeZone["America/Chicago"]
+//   t2 = chi.local(2020, 3, 1).utc.iso8601              # "2020-03-01T06:00:00Z"
+//   t3 = chi.local(2020, 3, 1).end_of_day.utc.iso8601   # "2020-03-02T05:59:59Z", t3.nsec == 999999999
+//   TimestampRangeFilter.new(start: TimestampFilter.new(from_time: t2, to_time: t3))
+//
+// Match ranges that start and end on a certain date in Chicago:
+//
+//   TimestampRangeFilter.new(
+//     start: TimestampFilter.new(from_time: t2),
+//     end: TimestampFilter.new(to_time: t3),
+//   )
+//
+// Match ranges that correspond to a specific date (generally a 24-hour window) in Chicago:
+//
+//   TimestampRangeFilter.new(
+//     start: TimestampFilter.new(from_time: t2, to_time: t2),
+//     end: TimestampFilter.new(from_time: t3, to_time: t3),
+//   )
+//
+message TimestampRangeFilter {
+  TimestampFilter start = 1;
+  TimestampFilter end = 2;
+}
+
+// Filters to times within a range or before/after a provided timestamp. Both edges are inclusive.
+// Omit fields to specify unbounded queries. Examples:
+//
+// Match times on or after a certain time:
+//
+//   t1 = DateTime.now.utc.iso8601  # "2020-08-31T12:39:14Z"
+//   TimestampFilter.new(from_time: t1)
+//
+// Match times after today in Chicago:
+//
+//   t2 = DateTime.tomorrow.in_time_zone("America/Chicago").utc.iso8601  # "2020-09-01T05:00:00Z"
+//   TimestampFilter.new(from_time: t3)
+//
+// Match times in the month of March 2020 in Chicago:
+//
+//   # Note the offset change due to daylights savings, which took effect Sunday, March 8th.
+//   chi = ActiveSupport::TimeZone["America/Chicago"]
+//   t3 = chi.local(2020, 3, 1).utc.iso8601              # "2020-03-01T06:00:00Z"
+//   t4 = chi.local(2020, 3, 31).end_of_day.utc.iso8601  # "2020-04-01T04:59:59Z"
+//   TimestampFilter.new(from_time: t3, to_time: t4)
+//
+message TimestampFilter {
+  google.protobuf.Timestamp from_time = 1;
+  google.protobuf.Timestamp to_time = 2;
+}
+
+// Filters to points within the given distance of the given coordinate.
+message NearestFilter {
+  double lat = 1;
+  double lng = 2;
+  double distance = 3;
+}

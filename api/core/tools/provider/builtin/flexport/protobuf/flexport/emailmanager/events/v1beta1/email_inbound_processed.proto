@@ -1,0 +1,22 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.emailmanager.events.v1beta1;
+
+import "flexport/emailmanager/email/v1beta1/email.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "EmailInboundProcessedProto";
+option java_package = "com.flexport.emailmanager.events.v1beta1";
+option ruby_package = "Flexport::EmailManager::Events::V1Beta1";
+
+// Inbound email processed event.
+message EmailInboundProcessed {
+  string fid = 1;
+  google.protobuf.Timestamp created_time = 2;
+  string email_type = 3;
+  map<string, flexport.emailmanager.email.v1beta1.LabelValue> labels = 4;
+  repeated flexport.emailmanager.email.v1beta1.Attachment attachments = 5;
+}

@@ -1,0 +1,23 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customs.productlibrary.regulations.v1beta1;
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.productlibrary.regulations";
+option ruby_package = "Flexport::Customs::ProductLibrary::Regulations";
+
+// There are around 2100 unit of measures based on few websites.
+// The unit of measures can be country specific and there is no
+// global list. Hence this is not an enum.
+// For US Imports valid unit_of_measure strings are defined in...
+// https://www.cbp.gov/sites/default/files/assets/documents/2019-Jan/ACE%20Appendix%20K%20-%20Unit%20of%20Measure%20Codes_01302019.pdf
+// The unit_of_measure field is validated against the "Proprietary Format Code" column of the above link.
+// In future, we can add other fields to this type to facilitate unit
+// conversion:
+//   - physical_property - enum of quatities like length, mass, etc
+//   - conversion_factor - factor to convert to base units like meters & kg
+
+message Measure {
+  string unit_of_measure = 1;
+}

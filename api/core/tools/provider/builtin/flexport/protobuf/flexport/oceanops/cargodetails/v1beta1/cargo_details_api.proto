@@ -1,0 +1,52 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.oceanops.cargodetails.v1beta1;
+
+import "flexport/rulesengine/options/v1/options.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoDetailsApiProto";
+option java_package = "com.flexport.oceanops.cargodetails.v1beta1";
+option ruby_package = "Flexport::OceanOps::CargoDetails::V1Beta1";
+
+// Determines the default description of goods, hs codes, quantity in cartons and weight per TEU in kgs.
+service CargoDetailsAPI {
+  option (flexport.rulesengine.options.v1.rule_facade).service_name = "ocean_ops";
+  // Compute the default values for various cargo details data.
+  rpc CargoDetails(CargoDetailsRequest) returns (CargoDetailsResponse) {
+    option (flexport.rulesengine.options.v1.decision_table).use = true;
+    option (flexport.rulesengine.options.v1.rule).allow_evaluation_from_frontend = true;
+    option (flexport.rulesengine.options.v1.rule).api_name = "com.flexport.oceanops.cargodetails";
+    option (flexport.rulesengine.options.v1.rule).description = "Determines the default description of goods, hs codes, quantity in cartons and weight per TEU in kgs.";
+    option (flexport.rulesengine.options.v1.rule).tolerate_evaluation_error = false;
+    option (flexport.rulesengine.options.v1.rule).workspace = "ocean_ops";
+  }
+}
+
+// The input fields come from the spreadsheet
+// https://docs.google.com/spreadsheets/d/13N1fvqjNdG7pBCw2f2QLevmwbwqjFsUK19RtXXCftyc/edit?usp=sharing
+message CargoDetailsRequest {
+  // Valid values are:
+  // "PRE" (for Shanghai)
+  // "PRS" (for Shenzhen, Hong Kong)
+  string region = 1;
+  string carrier_scac = 2;
+  // Valid values are:
+  // "Direct to Carrier"
+  // "INTTRA"
+  // "OIT"
+  // "Cargo Smart"
+  string carrier_booking_integration_method = 3;
+}
+
+message CargoDetailsResponse {
+  // A.k.a. description of goods
+  string commodity = 1;
+  string hs_code = 2;
+  // Quantity in carton
+  int64 quantity = 3;
+  int64 weight_per_teu = 4;
+  int64 volume_per_teu = 5;
+}

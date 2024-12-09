@@ -1,0 +1,26 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsdocumentservice.transcribeddocument.v1beta1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TranscribedDocumentProto";
+option java_package = "com.flexport.customsdocumentservice.transcribeddocumnet.v1beta1";
+option ruby_package = "Flexport::CustomsDocumentService::TranscribedDocument::V1Beta1";
+
+// The Transcribed Customs Document sent to the Kafka Stream
+message TranscribedDocument {
+  string file_object_fid = 1;
+  google.protobuf.StringValue document_type = 2;
+  string config_id = 3;
+  google.protobuf.Struct annotations = 4;
+  repeated LineItem line_item_annotations = 5;
+}
+message LineItem {
+  google.protobuf.StringValue line_item_field_name = 1;
+  google.protobuf.Struct annotations = 2;
+}

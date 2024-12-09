@@ -1,0 +1,28 @@
+// TEAM: customs_gateway
+
+syntax = "proto3";
+
+package flexport.filinginfoaggregator.filinginfo.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "FilingInfoApiProto";
+option java_package = "com.flexport.filinginfoaggregator.filinginfo.v1beta1";
+option ruby_package = "Flexport::FilingInfoAggregator::FilingInfo::V1Beta1";
+
+import "flexport/filinginfoaggregator/filinginfo/v1beta1/filing_info.proto";
+
+// Provides information required for building customs filings.
+service FilingInfoAPI {
+  // Returns information required for building customs filings.
+  rpc GetFilingInfo(GetFilingInfoRequest) returns (GetFilingInfoResponse);
+}
+
+message GetFilingInfoRequest {
+  oneof filing_info_identifier {
+    string shipment_fid = 1;
+  }
+}
+
+message GetFilingInfoResponse {
+  flexport.filinginfoaggregator.filinginfo.v1beta1.FilingInfo filing_info = 1;
+}

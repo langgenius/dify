@@ -1,0 +1,241 @@
+// TEAM: client_order
+
+syntax = "proto3";
+
+package flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1;
+
+import "flexport/executioncoordinator/types/enums/v1/shipment_priority.proto";
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+import "flexport/os/v1/types/dangerousgoodsstate/v1/dangerous_goods_state.proto";
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CommerceTypesProto";
+option java_package = "com.flexport.commerce.facts.commercefacts.common.commercetypes.v1beta1";
+option ruby_package = "Flexport::Commerce::Facts::CommerceFacts::Common::CommerceTypes::V1Beta1";
+
+// This file contains shared types across the whole commerce systems (Sales Transaction System & Merchandising System), sharing the types
+// has the following benefits:
+// 1. Reduce the number of types that need to be defined in both systems
+// 2. Reduce the number of types that need to be converted between the two systems
+
+// Before adding new types to this file, make sure you have went through all the types
+// and see if there is any existing types that can be reused.
+
+// The shipping date in
+message ShippingDates {
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate estimated_cargo_ready_date = 1;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate estimated_target_delivery_date = 2;
+}
+
+message InvolvedParties {
+  google.protobuf.StringValue shipper_entity_fid = 1;
+  google.protobuf.StringValue consignee_entity_fid = 2;
+  google.protobuf.StringValue seller_entity_fid = 3;
+  google.protobuf.StringValue buyer_entity_fid = 4;
+  google.protobuf.StringValue manufacturer_entity_fid = 5;
+  google.protobuf.StringValue notify_party_contact_entity_fid = 6;
+  google.protobuf.StringValue origin_warehouse_entity_fid = 7;
+  google.protobuf.StringValue destination_warehouse_entity_fid = 8;
+
+  // Custom Only
+  google.protobuf.StringValue consolidator_entity_fid = 9;
+  google.protobuf.StringValue stuffing_location_entity_fid = 10; // TODO: what kind of entity is this?
+  google.protobuf.StringValue ship_to_entity_fid = 11; // TODO: location or company entity?
+
+  google.protobuf.StringValue importer_of_record_entity_fid = 12;
+}
+
+message Routes {
+  google.protobuf.StringValue origin_address_fid = 1;
+  google.protobuf.StringValue origin_port_fid = 2;
+  google.protobuf.StringValue via_port_fid = 3;
+  google.protobuf.StringValue destination_port_fid = 4;
+  google.protobuf.StringValue destination_address_fid = 5;
+}
+
+message ContainerCounts {
+  flexport.os.v1.types.cargo.v1.Iso6346ContainerSize size = 1;
+  flexport.os.v1.types.cargo.v1.Iso6346ContainerType type = 2;
+  google.protobuf.Int32Value count = 3;
+}
+
+// Information about the cargo in the client order and the goods contained within.
+message Cargo {
+  CargoTotal total = 1;
+  repeated PackageDetails package_details = 2;
+  CargoDescription description = 3;
+  google.protobuf.Int32Value estimated_commercial_invoice_value = 4;
+}
+
+message CargoTotal {
+  google.protobuf.DoubleValue weight = 1;
+  google.protobuf.DoubleValue volume = 2;
+  // Shippers Load, Stow, and Count.
+  google.protobuf.Int32Value slac = 3;
+  // Total cargo metric units.
+  google.protobuf.BoolValue metric_units = 4;
+}
+
+message CargoDescription {
+  google.protobuf.StringValue marks_and_numbers = 1;
+  repeated CargoProduct products = 2;
+}
+
+message CargoProduct {
+  google.protobuf.StringValue product_description = 1;
+  google.protobuf.StringValue product_description_in_local_language = 2;
+  google.protobuf.StringValue six_digit_hs_code = 3;
+}
+
+// Units that make up the cargo, aka shipping units.
+message PackageDetails {
+  flexport.os.v1.types.cargo.v1.CargoUnit unit_type = 1;
+  flexport.os.v1.types.cargo.v1.CargoUnit sub_unit_type = 2;
+  // Only required for air.
+  Measurement measurement = 3;
+  // Weight per unit.
+  google.protobuf.DoubleValue weight = 4;
+  // Volume per unit.
+  google.protobuf.DoubleValue volume = 5;
+  google.protobuf.BoolValue metric_units = 6;
+  // Number of packages in this unit.
+  google.protobuf.Int32Value count = 7;
+  // Usually same as count, unless packaged on pallets, in which case count refers to pallets and
+  // atomic_count refers to cartons (multiple per pallet).
+  google.protobuf.Int32Value atomic_count = 8;
+  // The optional name of package details.
+  google.protobuf.StringValue name = 9;
+}
+
+// Only required for air.
+message Measurement {
+  google.protobuf.DoubleValue length = 1;
+  google.protobuf.DoubleValue width = 2;
+  google.protobuf.DoubleValue height = 3;
+  google.protobuf.BoolValue metric_units = 4;
+}
+
+message Compliance {
+  // Whether or not the client order is declared as dangerous.
+  DeclaredAsDangerous declared_as_dangerous = 1;
+  // Dangerous goods state.
+  flexport.os.v1.types.dangerousgoodsstate.v1.DangerousGoodsState dangerous_goods_state = 2;
+  // Whether or not the client order is subject to export control.
+  google.protobuf.BoolValue subject_to_export_control = 3;
+  // The export control code for the client order.
+  google.protobuf.StringValue export_control_code = 4;
+}
+
+message MainFreight {
+  // Whether this order requires flexport to handle freight service, if no then it's a bco order
+  google.protobuf.BoolValue wants_flexport_freight = 1;
+  google.protobuf.StringValue service_tier = 2;
+  optional FreightType freight_type = 3 [deprecated = true];
+  CarrierSpecs carrier_specs = 4;
+}
+
+message ValueAddedService {
+  google.protobuf.BoolValue wants_pickup_service = 1;
+  google.protobuf.BoolValue wants_delivery_service = 2;
+  google.protobuf.BoolValue wants_export_customs_service = 3;
+  google.protobuf.BoolValue wants_import_customs_service = 4;
+  google.protobuf.BoolValue wants_flexport_insurance = 5;
+  google.protobuf.BoolValue wants_in_bond_transit = 6;
+  google.protobuf.BoolValue wants_free_detention_days = 7;
+  google.protobuf.BoolValue wants_no_roll_service = 8;
+  google.protobuf.BoolValue wants_trade_declaration_service = 9;
+}
+
+// User defined metadata, aka "shipment tags"
+message UserDefinedMetadata {
+  google.protobuf.StringValue label = 1;
+  repeated string values = 2;
+}
+
+message ContactInfo {
+  google.protobuf.StringValue shipper_contact_fid = 1;
+}
+
+message Note {
+  google.protobuf.StringValue special_instructions = 1;
+}
+
+message CarrierSpecs {
+  // For bco cases
+  google.protobuf.StringValue carrier_fid = 1;
+  google.protobuf.StringValue contract_number = 2;
+}
+
+// Custom Only
+message FreightInfo {
+  google.protobuf.StringValue country_of_origin = 1;
+  google.protobuf.StringValue country_of_destination = 2;
+  google.protobuf.StringValue mbl_number = 3;
+  google.protobuf.StringValue container_number = 4;
+  google.protobuf.StringValue voyage_number = 5;
+  google.protobuf.StringValue vessel_name = 6;
+}
+
+// Custom Only
+message TradeService {
+  google.protobuf.BoolValue customs_service_type = 1;
+  google.protobuf.BoolValue customs_bond = 2;
+}
+
+message Discount {
+  google.protobuf.BoolValue is_flexport_plus = 1;
+  google.protobuf.BoolValue is_freight_storage_bundled = 2;
+  google.protobuf.BoolValue apply_fixed_amount_off = 3;
+  google.protobuf.BoolValue apply_100_percent_off = 4;
+}
+
+message Insurance {
+  google.protobuf.DoubleValue cargo_value = 1;
+  google.protobuf.DoubleValue insurance_premium = 2;
+}
+
+message RequestedPriority {
+  flexport.executioncoordinator.types.enums.v1.ShipmentPriority priority = 1;
+}
+
+message QuoteInstruction {
+  google.protobuf.BoolValue request_manual_quote = 1;
+}
+
+message Tracker {
+  CreationSource creation_source = 1;
+}
+
+message CreationSource {
+  google.protobuf.BoolValue is_from_smb_app = 1;
+}
+
+// DEPRECATED: it will be calculated by the system
+enum FreightType {
+  FREIGHT_TYPE_INVALID = 0;
+  FREIGHT_TYPE_PORT_TO_PORT = 1;
+  FREIGHT_TYPE_PORT_TO_DOOR = 2;
+  FREIGHT_TYPE_DOOR_TO_PORT = 3;
+  FREIGHT_TYPE_DOOR_TO_DOOR = 4;
+}
+
+// Service Mode
+enum ServiceMode {
+  SERVICE_MODE_INVALID = 0;
+  SERVICE_MODE_OCEAN_FCL = 1;
+  SERVICE_MODE_OCEAN_LCL = 2;
+  SERVICE_MODE_AIR = 3;
+  SERVICE_MODE_CUSTOMS = 4;
+  SERVICE_MODE_GCB = 5;
+}
+
+// How much of this client order contains dangerous goods.
+enum DeclaredAsDangerous {
+  DECLARED_AS_DANGEROUS_INVALID = 0;
+  DECLARED_AS_DANGEROUS_EVERYTHING = 1;
+  DECLARED_AS_DANGEROUS_PARTIAL = 2;
+  DECLARED_AS_DANGEROUS_NOTHING = 3;
+  DECLARED_AS_DANGEROUS_UNSURE = 4;
+}

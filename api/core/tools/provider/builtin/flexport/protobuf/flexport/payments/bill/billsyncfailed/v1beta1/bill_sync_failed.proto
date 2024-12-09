@@ -1,0 +1,20 @@
+// TEAM: finance_platform
+
+syntax = "proto3";
+
+package flexport.payments.bill.billsyncfailed.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "BillSyncFailedProto";
+option java_package = "com.flexport.payments.bill.billsyncfailed.v1beta1";
+option ruby_package = "Flexport::Payments::Bill::BillSyncFailed::V1Beta1";
+
+import "flexport/payments/bill/v1beta1/bill.proto";
+import "google/protobuf/timestamp.proto";
+
+// Event emitted when a Payments::Bill fails to sync to NetSuite.
+message BillSyncFailed {
+  flexport.payments.bill.v1beta1.Bill bill = 1;
+  google.protobuf.Timestamp failed_at_time = 2;
+  repeated string errors = 3;
+}

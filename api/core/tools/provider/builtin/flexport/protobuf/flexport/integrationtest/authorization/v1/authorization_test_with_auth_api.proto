@@ -1,0 +1,34 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.integrationtest.authorization.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "AuthorizationTestWithAuthApiProto";
+option java_package = "com.flexport.integrationtest.authorization.v1";
+option ruby_package = "Flexport::IntegrationTest::Authorization::V1";
+
+// The API for authorization integration tests.
+service AuthorizationTestWithAuthAPI {
+  // Test endpoint for authorization integration test, not included on the dont_enforce_mandatory_auth_for_methods list. This endpoint also enforces auth check by calling the CheckAuth module in ruby SDK
+  rpc ServerInterceptorTestRegularWithAuthCheck(ServerInterceptorTestRegularWithAuthCheckRequest) returns (ServerInterceptorTestRegularWithAuthCheckResponse);
+  // Test endpoint for authorization integration test, included on the dont_enforce_mandatory_auth_for_methods list. This endpoint also enforces auth check by calling the CheckAuth module in ruby SDK
+  rpc ServerInterceptorNoMandatoryAuthWithAuthCheck(ServerInterceptorNoMandatoryAuthWithAuthCheckRequest) returns (ServerInterceptorNoMandatoryAuthWithAuthCheckResponse);
+}
+
+// The request message for the server interceptor test endpoint with auth check.
+message ServerInterceptorTestRegularWithAuthCheckRequest {}
+
+// The response for the server interceptor test endpoint with auth check.
+message ServerInterceptorTestRegularWithAuthCheckResponse {
+  string sub = 1;
+}
+
+// The request message for the server interceptor test endpoint, without mandatory auth. However auth check is invoked.
+message ServerInterceptorNoMandatoryAuthWithAuthCheckRequest {}
+
+// The response message for the server interceptor test endpoint, without mandatory auth. However auth check is invoked.
+message ServerInterceptorNoMandatoryAuthWithAuthCheckResponse {
+  string sub = 1;
+}

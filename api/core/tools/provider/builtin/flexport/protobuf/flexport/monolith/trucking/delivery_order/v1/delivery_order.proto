@@ -1,0 +1,37 @@
+// TEAM: trucking
+
+syntax = "proto3";
+
+package flexport.monolith.trucking.delivery_order.v1;
+
+import "flexport/executioncoordinator/types/enums/v1/shipment_priority.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DeliveryOrderProto";
+option java_package = "com.flexport.monolith.trucking.delivery_order.v1";
+option ruby_package = "Flexport::Monolith::Trucking::DeliveryOrder::V1";
+
+// Part of Trucking::DeliveryOrder needed by other NISes
+message DeliveryOrderDTO {
+  string fid = 1;
+  DeliveryOrderStatus last_sent_as = 2;
+  google.protobuf.Timestamp last_sent_at = 3;
+  google.protobuf.Timestamp declined_at = 4;
+  string client_fid = 5;
+  string carrier_fid = 6;
+  string consignee_company_entity_fid = 7;
+  string delivery_location_fid = 8;
+  string service_type = 9;
+  flexport.executioncoordinator.types.enums.v1.ShipmentPriority shipment_priority = 10;
+  string pick_up_location_fid = 11;
+  string document_fid = 12;
+}
+
+enum DeliveryOrderStatus {
+  DELIVERY_ORDER_STATUS_INVALID = 0;
+  // fully available is also called "released"
+  DELIVERY_ORDER_STATUS_FULLY_AVAILABLE = 1;
+  DELIVERY_ORDER_STATUS_RECOVER_AND_HOLD = 2;
+  DELIVERY_ORDER_STATUS_NOTICE = 3;
+}

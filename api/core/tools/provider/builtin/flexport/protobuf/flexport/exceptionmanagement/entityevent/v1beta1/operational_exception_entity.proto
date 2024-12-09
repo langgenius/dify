@@ -1,0 +1,57 @@
+// TEAM: origin_ops
+
+syntax = "proto3";
+
+package flexport.exceptionmanagement.entityevent.v1beta1;
+
+import "flexport/exceptionmanagement/enums/v1beta1/exception_priority.proto";
+import "flexport/exceptionmanagement/enums/v1beta1/exception_reason_code.proto";
+import "flexport/exceptionmanagement/enums/v1beta1/exception_status.proto";
+import "flexport/exceptionmanagement/enums/v1beta1/exception_target_type.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OperationalExceptionEntityProto";
+option java_package = "com.flexport.exceptionmanagement.entityevent.v1beta1";
+option ruby_package = "Flexport::ExceptionManagement::EntityEvent::V1Beta1";
+
+// this looks like flexport.exceptionmanagement.types.v1beta1.OperationalException,
+// but they are in different domains. In the future we might add some pre-cauculated values
+// in entities for analysis but not add them in domain events or grpc
+message OperationalExceptionEntity {
+  string fid = 1;
+  google.protobuf.StringValue legacy_uuid = 2;
+  string exception_type_fid = 3;
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionTargetType target_type = 4;
+  string target_fid = 5;
+  google.protobuf.StringValue assigned_user_fid = 6;
+  google.protobuf.Timestamp due_date_time = 7;
+  // just json blob, it's likely the messaging format changed but we don't need to update looker tables
+  google.protobuf.StringValue messaging = 8;
+  repeated string visible_party_slugs = 9;
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionPriority priority = 10;
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionStatus status = 11;
+  uint32 revision = 12;
+  google.protobuf.StringValue attrs = 13;
+  google.protobuf.StringValue created_by_user_fid = 14;
+  google.protobuf.Timestamp created_at_time = 15;
+  google.protobuf.StringValue updated_by_user_fid = 16;
+  google.protobuf.Timestamp updated_at_time = 17;
+  google.protobuf.StringValue deleted_by_user_fid = 18;
+  google.protobuf.Timestamp deleted_at_time = 19;
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionReasonCode reason_code = 20;
+  google.protobuf.StringValue container_fid = 21;
+  // use json blob to avoid unnecessary looker table update
+  google.protobuf.StringValue attached_files = 22;
+  google.protobuf.StringValue ffa_work_item_fid = 23;
+  google.protobuf.StringValue root_cause = 24;
+  google.protobuf.Timestamp time_of_occurrence_time = 25;
+  google.protobuf.Timestamp actual_resolved_at_time = 26;
+  google.protobuf.Int32Value estimated_transit_time_impact = 27;
+
+  // add dbid for better joining in looker
+  int64 dbid = 28;
+  // Valid exception type revision > 0, 0 is null.
+  uint32 exception_type_revision = 29;
+}

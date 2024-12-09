@@ -1,0 +1,20 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ImporterOfRecordUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+// Emitted when a membership with type "importer_of_record" changes from an involved party group.
+// The importer of record (IOR) is responsible for ensuring the correct declaration of goods and for paying applicable customs duties and tariffs.
+// It needs to be assigned in the Involved Party to unblock the Customs Pre-alert review.
+// For more information please check out https://flexport.atlassian.net/l/cp/QsDXdNZg
+message ImporterOfRecordUpdated {
+  string involved_party_group_fid = 1;
+  string company_entity_fid = 2;
+  string previous_company_entity_fid = 3;
+}

@@ -1,0 +1,30 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.commerce.fpos.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerSizeGeneralNameProto";
+option java_package = "com.flexport.commerce.fpos.v1beta1";
+option ruby_package = "Flexport::Commerce::Fpos::V1Beta1";
+
+// adapted from: https://github.flexport.io/flexport/fpos_shared/blob/master/oas3-rest/src/main/resources/schemas/network/rest/v2.0.0/rest_api_3.0.json#L3539
+enum ContainerSizeGeneralName {
+  CONTAINER_SIZE_GENERAL_NAME_INVALID = 0;
+  CONTAINER_SIZE_GENERAL_NAME_TEN_FT = 1;
+  CONTAINER_SIZE_GENERAL_NAME_TWENTY_FT = 2;
+  CONTAINER_SIZE_GENERAL_NAME_TWENTY_FT_STANDARD = 3;
+  CONTAINER_SIZE_GENERAL_NAME_TWENTY_FT_HIGH_CUBE = 4;
+  CONTAINER_SIZE_GENERAL_NAME_THIRTY_FT = 5;
+  CONTAINER_SIZE_GENERAL_NAME_THIRTY_FT_STANDARD = 6;
+  CONTAINER_SIZE_GENERAL_NAME_THIRTY_FT_HIGH_CUBE = 7;
+  CONTAINER_SIZE_GENERAL_NAME_FORTY_FT = 8;
+  CONTAINER_SIZE_GENERAL_NAME_FORTY_FT_STANDARD = 9;
+  CONTAINER_SIZE_GENERAL_NAME_FORTY_FT_HIGH_CUBE = 10;
+  CONTAINER_SIZE_GENERAL_NAME_FORTY_FIVE_FT_STANDARD = 11;
+  CONTAINER_SIZE_GENERAL_NAME_FORTY_FIVE_FT_HIGH_CUBE = 12;
+  CONTAINER_SIZE_GENERAL_NAME_FORTY_EIGHT_FT_HIGH_CUBE = 13;
+  CONTAINER_SIZE_GENERAL_NAME_FIFTY_THREE_FT_HIGH_CUBE = 14;
+  CONTAINER_SIZE_GENERAL_NAME_UNKNOWN = 15;
+}

@@ -1,0 +1,19 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerDemurrageAmountReportedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "google/protobuf/wrappers.proto";
+
+// Signifies that the demurrage amount for container has changed.
+message ContainerDemurrageAmountReported {
+  string container_fid = 1;
+  // Demurrage amount value
+  google.protobuf.FloatValue demurrage_amount = 2;
+}

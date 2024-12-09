@@ -1,0 +1,32 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customs.declaration.eu.common.v1beta1;
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.declaration.eu.common.v1beta1";
+option ruby_package = "Flexport::Customs::Declaration::EU::Common::V1Beta1";
+
+// [Data Element: 18 09 000 000]
+message CommodityCode {
+  // Harmonized System sub-heading code.
+  //
+  // [Data Element: 18 09 056 000]
+  string hs_subheading_code = 1;
+  // Combined nomenclature code.
+  //
+  // [Data Element: 18 09 057 000]
+  string cn_code = 2;
+  // Taric code.
+  //
+  // [Data Element: 18 09 058 000]
+  string taric_code = 3;
+  // Taric additional code.
+  //
+  // [Data Element: 18 09 059 000]
+  string taric_additional_code = 4;
+  // National additional code.
+  //
+  // [Data Element: 18 09 060 000]
+  string national_additional_code = 5;
+}

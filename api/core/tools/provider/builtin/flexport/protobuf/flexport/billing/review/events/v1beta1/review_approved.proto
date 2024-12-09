@@ -1,0 +1,29 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billing.review.events.v1beta1;
+
+import "flexport/billing/bill/v1beta1/bill.proto";
+import "flexport/billing/review/events/v1beta1/review_metadata.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ReviewApprovedProto";
+option java_package = "com.flexport.billing.review.events.v1beta1";
+option ruby_package = "Flexport::Billing::Review::Events::V1Beta1";
+
+// Event emitted when a Review is updated.
+message ReviewApproved {
+  string review_fid = 1;
+  flexport.billing.bill.v1beta1.Bill reviewed_bill = 2;
+  google.protobuf.Timestamp approved_at_time = 3;
+  billing.review.events.v1beta1.ReviewMetadata metadata = 4;
+  string primary_document_fid = 5;
+  bool payment_required = 6;
+  bool pending_audit = 7;
+  google.protobuf.StringValue notes = 8;
+  bool auto_approved = 9;
+  google.protobuf.StringValue approved_by_fid = 10;
+}

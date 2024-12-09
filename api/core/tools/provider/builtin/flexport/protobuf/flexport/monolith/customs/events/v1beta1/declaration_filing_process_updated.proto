@@ -1,0 +1,43 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.monolith.customs.events.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DeclarationFilingProcessUpdatedProto";
+option java_package = "com.flexport.monolith.customs.events.v1beta1";
+option ruby_package = "Flexport::Monolith::Customs::Events::V1Beta1";
+
+// Event which is triggered when a customs declaration filing process is updated.
+message DeclarationFilingProcessUpdated {
+  // fid of declaration entity this update message is for
+  string customs_declaration_filing_process_fid = 1;
+  string shipment_fid = 2;
+
+  /**
+   * The required declaration this filing was done for, can be used to link back the declaration to the
+   * CustomsDeclarationExecutionTaskParams.
+   * see https://flexport.atlassian.net/wiki/spaces/CU/pages/2641363211/Customs+Planning+EC
+   */
+  string required_declaration_fid = 3;
+
+  /**
+    * Whether the filing process is completed, that is (inbond) released or cancelled.
+    * WARNING: do not use this field to determine if cargo is released. Doing so carries large compliance risks.
+    * Instead use the customs status API to determine release status, see:
+    * gRPC      flexport.monolith.customs.v1beta1.CustomsStatusAPI.CustomsStatus
+    * monorail  ::CustomsStatus::Api::CustomsStatusApi#customs_status
+    */
+  bool completed = 4;
+
+  google.protobuf.Timestamp created_at = 5;
+  string created_by_user_fid = 6;
+
+  google.protobuf.Timestamp updated_at = 7;
+  string updated_by_user_fid = 8;
+
+  optional google.protobuf.Timestamp deleted_at = 9;
+}

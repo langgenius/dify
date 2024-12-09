@@ -1,0 +1,63 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.monolith.useraffiliation.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "UserAffiliationEnumsProto";
+option java_package = "com.flexport.monolith.useraffiliation.v1";
+option ruby_package = "Flexport::Monolith::UserAffiliation::V1";
+
+// UserAffiliationType.
+enum UserAffiliationType {
+  USER_AFFILIATION_TYPE_INVALID = 0;
+  //
+  // The primary role of the user's company in the supply chain.
+  USER_AFFILIATION_TYPE_COMPANY_ROLE = 1;
+  //
+  // The user's employment status with Flexport.
+  USER_AFFILIATION_TYPE_FLEXPORT_EMPLOYMENT = 2;
+  //
+  // The department within Flexport the user is associated with.
+  USER_AFFILIATION_TYPE_FLEXPORT_DEPARTMENT = 3;
+  //
+  // The default entry point for the user to interact with the system.
+  // Values come from flexport.executioncoordinator.types.enums.v1.EntryPoint.
+  // Link to that file on Github: http://go/entry-points.
+  USER_AFFILIATION_TYPE_PRIMARY_ENTRY_POINT = 4;
+  //
+  // A boolean-esque enum type for indicating whether the user is a bot.
+  USER_AFFILIATION_TYPE_IS_BOT = 5;
+}
+
+// UserAffiliationIsBot.
+enum UserAffiliationIsBot {
+  USER_AFFILIATION_IS_BOT_INVALID = 0;
+  USER_AFFILIATION_IS_BOT_TRUE = 1;
+  USER_AFFILIATION_IS_BOT_FALSE = 2;
+}
+
+// UserAffiliationCompanyRole.
+enum UserAffiliationCompanyRole {
+  USER_AFFILIATION_COMPANY_ROLE_INVALID = 0;
+  USER_AFFILIATION_COMPANY_ROLE_FLEXPORT = 1;
+  USER_AFFILIATION_COMPANY_ROLE_TRADE_CLIENT = 2;
+  USER_AFFILIATION_COMPANY_ROLE_TRUCKING_CARRIER = 3;
+  USER_AFFILIATION_COMPANY_ROLE_PARTNER_FORWARDING_AGENT = 4;
+}
+
+// UserAffiliationFlexportEmployment.
+enum UserAffiliationFlexportEmployment {
+  USER_AFFILIATION_FLEXPORT_EMPLOYMENT_INVALID = 0;
+  USER_AFFILIATION_FLEXPORT_EMPLOYMENT_EMPLOYEE = 1;
+  USER_AFFILIATION_FLEXPORT_EMPLOYMENT_CONTRACTOR = 2;
+  USER_AFFILIATION_FLEXPORT_EMPLOYMENT_NONE = 3;
+}
+
+// UserAffiliationFlexportDepartment.
+enum UserAffiliationFlexportDepartment {
+  USER_AFFILIATION_FLEXPORT_DEPARTMENT_INVALID = 0;
+  USER_AFFILIATION_FLEXPORT_DEPARTMENT_SUPPLY_CHAIN_OPS = 1;
+  USER_AFFILIATION_FLEXPORT_DEPARTMENT_CLIENT_SOLUTIONS = 2;
+}

@@ -1,0 +1,30 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.db.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionTaskDerivedProto";
+option java_package = "com.flexport.executioncoordinator.types.db.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Db::V1";
+
+import "flexport/executioncoordinator/executiontask/v1/execution_task.proto";
+import "google/protobuf/timestamp.proto";
+
+// An ExecutionTask derived data row. There may be multiple derived rows per ExecutionTask.
+message ExecutionTaskDerived {
+  flexport.executioncoordinator.executiontask.v1.ExecutionTask execution_task = 1;
+  string shipment_fid = 4;
+  //
+  // From taskProto.getParams().getParamsCase().toString(), eg "AIR_CONSOL" or "DRAYAGE".
+  string params_case = 5;
+  //
+  // Fields below are only set for certain kinds of ExecutionTask params.
+  string cargo_fid = 6;
+  string container_fid = 7;
+  google.protobuf.Timestamp estimated_departure_inclusive_start_time = 8;
+  google.protobuf.Timestamp estimated_departure_inclusive_end_time = 9;
+  google.protobuf.Timestamp estimated_arrival_inclusive_start_time = 10;
+  google.protobuf.Timestamp estimated_arrival_inclusive_end_time = 11;
+}

@@ -1,0 +1,84 @@
+// TEAM: cost_capture
+
+syntax = "proto3";
+
+package flexport.financialvisibility.costevent.v1beta1;
+
+import "flexport/financialvisibility/common/v1beta1/common.proto";
+import "flexport/financialvisibility/supplyservice/v1beta1/supply_service.proto";
+import "flexport/os/grpc/type/datetime/v1beta1/datetime.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CostEventProto";
+option java_package = "com.flexport.financialvisibility.costevent.v1beta1";
+option ruby_package = "Flexport::FinancialVisibility::CostEvent::V1Beta1";
+
+// Allocated cost event that has multiple cost items (per shipment level, per supply service).
+message CostEvent {
+  uint64 shipment_id = 1;
+  string supply_service_fid = 2;
+  uint64 vendor_id = 3;
+  flexport.os.grpc.type.datetime.v1beta1.Instant cost_date_time = 4;
+  flexport.os.grpc.type.datetime.v1beta1.Instant event_date_time = 5;
+  flexport.financialvisibility.common.v1beta1.SupplyMode supply_mode = 6;
+  CostType cost_type = 7;
+  repeated CostItem cost_items = 8;
+  string cost_id = 9;
+  uint64 revision = 10;
+}
+
+// Cost that has been revoked, because the shipment is removed from allocation, or the supply service has been cancelled
+message RevokedCostEvent {
+  uint64 shipment_id = 1;
+  string supply_service_fid = 2;
+  int32 vendor_company_id = 3;
+  flexport.os.grpc.type.datetime.v1beta1.Instant event_date_time = 4;
+  CostType cost_type = 5;
+  string cost_id = 6;
+  uint64 revision = 7;
+}
+
+// A supply service level cost event that has multiple cost items.
+message SupplyCostEvent {
+  string supply_service_fid = 2;
+  uint64 vendor_id = 3;
+  flexport.os.grpc.type.datetime.v1beta1.Instant cost_date_time = 4;
+  flexport.os.grpc.type.datetime.v1beta1.Instant event_date_time = 5;
+  flexport.financialvisibility.common.v1beta1.SupplyMode supply_mode = 6;
+  CostType cost_type = 7;
+  repeated CostItem cost_items = 8;
+  string supply_cost_id = 9;
+  uint64 revision = 10;
+}
+
+// Cost that has been revoked, because the supply service has been cancelled
+message RevokedSupplyCostEvent {
+  string supply_service_fid = 1;
+  int32 vendor_company_id = 2;
+  flexport.os.grpc.type.datetime.v1beta1.Instant event_date_time = 3;
+  CostType cost_type = 4;
+  string supply_cost_id = 5;
+  uint64 revision = 6;
+}
+
+// A cost item record representing a single line item.
+message CostItem {
+  string name = 1;
+  sint64 amount_micros = 2;
+  google.protobuf.Int64Value amount_micros_usd = 6;
+  string currency_code = 3;
+  string charge_code_fid = 4;
+  google.protobuf.StringValue blended_charge_code_fid = 7;
+  flexport.financialledger.supplyservice.v1beta1.Category category = 5;
+}
+
+// The type of the cost.
+enum CostType {
+  COST_TYPE_INVALID = 0;
+  COST_TYPE_EXPECTED = 1;
+  COST_TYPE_ACTUAL = 2;
+  COST_TYPE_ALLOCATED = 3;
+  COST_TYPE_REMAINING = 4;
+  COST_TYPE_REMAINING_ALLOCATED = 5;
+}

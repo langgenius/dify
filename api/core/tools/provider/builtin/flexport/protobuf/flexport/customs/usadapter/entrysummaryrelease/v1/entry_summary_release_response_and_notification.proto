@@ -1,0 +1,19 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.entrysummaryrelease.v1;
+
+import "flexport/customs/usadapter/entrysummaryrelease/v1/entry_summary_release_notification.proto";
+import "flexport/customs/usadapter/entrysummaryrelease/v1/entry_summary_release_response.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.entrysummaryrelease.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::EntrySummaryRelease::V1";
+
+message EntrySummaryReleaseResponseAndNotification {
+  oneof response_type {
+    EntrySummaryReleaseResponse response = 1;
+    EntrySummaryReleaseNotification notification = 2;
+  }
+}

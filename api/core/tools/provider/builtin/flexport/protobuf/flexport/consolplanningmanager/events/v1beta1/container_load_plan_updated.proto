@@ -1,0 +1,43 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.consolplanningmanager.events.v1beta1;
+
+import "flexport/consolplanningmanager/shipment/v1beta1/shipment.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerLoadPlanUpdatedProto";
+option java_package = "com.flexport.consolplanningmanager.events.v1beta1";
+option ruby_package = "Flexport::ConsolPlanningManager::Events::V1Beta1";
+
+message ContainerLoadPlanUpdated {
+  string shipment_fid = 1;
+  google.protobuf.Timestamp updated_at = 2;
+  string updated_by_user_fid = 3;
+  uint64 load_plan_bc_revision = 4;
+  repeated flexport.consolplanningmanager.shipment.v1beta1.DemandShipment demand_shipment = 5;
+  string aggr_quoted_vol = 6;
+  ConsolPlanStatus status = 7;
+  oneof comment {
+    HoldOnReason hold_on_reason = 8;
+  }
+}
+
+message HoldOnReason {
+  string code = 1; // reason code
+  string comment = 2; // free text
+}
+
+enum ConsolPlanStatus {
+  CONSOL_PLAN_STATUS_INVALID = 0;
+  CONSOL_PLAN_STATUS_INITIAL = 1;
+  CONSOL_PLAN_STATUS_UPDATING = 2;
+  CONSOL_PLAN_STATUS_FINAL = 3;
+  CONSOL_PLAN_STATUS_DRAFT = 4;
+  CONSOL_PLAN_STATUS_REQUEST_APPROVED = 5;
+  CONSOL_PLAN_STATUS_CUSTOMER_HOLD = 6;
+  CONSOL_PLAN_STATUS_REQUEST_UPDATING = 7;
+  CONSOL_PLAN_STATUS_PENDING_REVIEW = 8;
+}

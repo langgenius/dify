@@ -1,0 +1,49 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.standingrate.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "StandingRateApiProto";
+option java_package = "com.flexport.catalog.standingrate.v1beta1";
+option ruby_package = "Flexport::Catalog::StandingRate::V1Beta1";
+
+import "flexport/catalog/standingrate/oceanfcl/v1beta1/ocean_fcl.proto";
+import "flexport/catalog/standingrate/v1beta1/standing_rate.proto";
+import "google/protobuf/wrappers.proto";
+
+// The standing rate service definition.
+service StandingRateAPI {
+  // Refresh the standing rates from the google sheet.
+  rpc RefreshStandingRates(RefreshStandingRatesRequest) returns (RefreshStandingRatesResponse);
+  // Get the cost standing rates for ocean FCL services.
+  rpc GetOceanFCLCostStandingRates(GetOceanFCLCostStandingRatesRequest) returns (GetOceanFCLCostStandingRatesResponse);
+  // Get the sell standing rates for ocean FCL services.
+  rpc GetOceanFCLSellStandingRates(GetOceanFCLSellStandingRatesRequest) returns (GetOceanFCLSellStandingRatesResponse);
+}
+
+message RefreshStandingRatesRequest {
+  google.protobuf.Int32Value user_id = 1;
+}
+
+message RefreshStandingRatesResponse {
+  RefreshResult result = 1;
+  google.protobuf.StringValue error = 2;
+}
+
+message GetOceanFCLCostStandingRatesRequest {
+  repeated catalog.standingrate.oceanfcl.v1beta1.OceanFclRateRequest items = 1;
+}
+
+message GetOceanFCLCostStandingRatesResponse {
+  repeated catalog.standingrate.oceanfcl.v1beta1.OceanFclRateResponse items = 1;
+}
+
+message GetOceanFCLSellStandingRatesRequest {
+  repeated catalog.standingrate.oceanfcl.v1beta1.OceanFclRateRequest items = 1;
+}
+
+message GetOceanFCLSellStandingRatesResponse {
+  repeated catalog.standingrate.oceanfcl.v1beta1.OceanFclRateResponse items = 1;
+}

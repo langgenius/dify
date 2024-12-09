@@ -1,0 +1,20 @@
+// TEAM: wingstop
+
+syntax = "proto3";
+
+package flexport.consolplanner.air.v1beta1;
+
+import "flexport/consolplanner/entityevent/v1/air_fae_recommendation_feedback_entity.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.consolplanner.air.v1beta1";
+option ruby_package = "Flexport::ConsolPlanner::Air::V1Beta1";
+
+message FaeRecommendationFeedback {
+  string solution_id = 1;
+  string allotment_schedule_instance_fid = 2;
+  string shipment_fid = 3;
+  string user_fid = 4;
+  flexport.consolplanner.entityevent.v1.ActionType action_type = 5;
+  optional string reason = 6;
+}

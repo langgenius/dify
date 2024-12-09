@@ -1,0 +1,23 @@
+// TEAM: sutro
+
+syntax = "proto3";
+
+package flexport.monolith.customsopsworkflow.cargomanifestquery.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoManifestQueryApiProto";
+option java_package = "com.flexport.monolith.customsopsworkflow.cargomanifestquery.v1beta1";
+option ruby_package = "Flexport::Monolith::CustomsOpsWorkflow::CargoManifestQuery::V1Beta1";
+
+service CargoManifestQueryAPI {
+  // RPC to check the existence of IT numbers in CMQ
+  rpc CheckItNumbersExistence(CheckItNumbersExistenceRequest) returns (CheckItNumbersExistenceResponse);
+}
+
+message CheckItNumbersExistenceRequest {
+  string shipment_fid = 1;
+}
+
+message CheckItNumbersExistenceResponse {
+  bool it_numbers_exist = 1;
+}

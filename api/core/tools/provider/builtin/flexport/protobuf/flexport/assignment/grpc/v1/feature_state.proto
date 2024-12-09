@@ -1,0 +1,21 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.grpc.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "FeatureStateProto";
+option java_package = "com.flexport.assignment.grpc.v1";
+option ruby_package = "Flexport::Assignment::Grpc::V1";
+
+message FeatureStateRequest {
+  string feature_slug = 1;
+  string user_fid = 2;
+}
+
+message FeatureStateResponse {
+  string feature_slug = 1;
+  string user_fid = 2;
+  bool is_active = 3;
+}

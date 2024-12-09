@@ -1,0 +1,27 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.escalationengine.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "EnumsProto";
+option java_package = "com.flexport.customs.escalationengine.v1";
+option ruby_package = "Flexport::Customs::EscalationEngine::V1";
+
+enum ModeOfTransport {
+  MODE_OF_TRANSPORT_INVALID = 0;
+  MODE_OF_TRANSPORT_OCEAN_FCL = 1;
+  MODE_OF_TRANSPORT_OCEAN_LCL = 2;
+  MODE_OF_TRANSPORT_TRUCKING_FTL = 3;
+  MODE_OF_TRANSPORT_TRUCKING_LTL = 4;
+  MODE_OF_TRANSPORT_AIR = 5;
+}
+
+// If an escalation covers both service types, set PRE_DEPARTURE_AUTHORIZATION as the service type. We assume that
+// this will result in the highest overall priority.
+enum ServiceType {
+  SERVICE_TYPE_INVALID = 0;
+  SERVICE_TYPE_PRE_DEPARTURE_AUTHORIZATION = 1;
+  SERVICE_TYPE_IMPORT_FILING = 2;
+}

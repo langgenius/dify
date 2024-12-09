@@ -1,0 +1,49 @@
+// TEAM: commerce_foundation
+
+syntax = "proto3";
+
+package flexport.dcrs.digitalclientratesheet.v1beta1;
+
+import "flexport/commerce/merchandising/catalog/data_authority/offering/v1beta1/offering.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DigitalClientRateSheetProto";
+option java_package = "com.flexport.dcrs.digitalclientratesheet.v1beta1";
+option ruby_package = "Flexport::Dcrs::DigitalClientRateSheet::V1Beta1";
+
+// Digital Client Rate Sheet Offering
+message DigitalClientRateSheetOffering {
+  // Offering fid
+  string fid = 1;
+  // Date used to evaluate the charges.
+  optional google.protobuf.Timestamp selected_date = 2;
+  // Accessorial charges selected.
+  repeated string accessorial_slugs = 3;
+}
+
+// Digital Client Rate Sheet Offering Metadata, which are selected options for each type of offering
+message DigitalClientRateSheetOfferingMetadata {
+  // Origin drayage offering only applies to shipments with EXW incoterm
+  // For F-term shipments, shippers are responsible for origin drayage
+  optional DigitalClientRateSheetOffering origin_drayage_offering = 1;
+  optional DigitalClientRateSheetOffering destination_drayage_offering = 2;
+  optional DigitalClientRateSheetOffering destination_offering = 3;
+  optional DigitalClientRateSheetOffering insurance_offering = 4;
+}
+
+// Digital Client Rate Sheet for quoting
+// It contains offerings and offering metadata converted from a DCRS
+// Only DCRSes that are not archived can be fetched
+message DigitalClientRateSheet {
+  google.protobuf.StringValue fid = 1;
+  repeated flexport.commerce.merchandising.catalog.data_authority.offering.v1beta1.Offering offerings = 2;
+  DigitalClientRateSheetOfferingMetadata offering_metadata = 3;
+}
+
+message DCRSOfferings {
+  google.protobuf.StringValue fid = 1;
+  repeated flexport.commerce.merchandising.catalog.data_authority.offering.v1beta1.Offering offerings = 2;
+  DigitalClientRateSheetOfferingMetadata offering_metadata = 3;
+}

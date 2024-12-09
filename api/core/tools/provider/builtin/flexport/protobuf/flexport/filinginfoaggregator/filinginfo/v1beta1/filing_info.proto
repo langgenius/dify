@@ -1,0 +1,27 @@
+// TEAM: customs_gateway
+
+syntax = "proto3";
+
+package flexport.filinginfoaggregator.filinginfo.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "FilingInfoProto";
+option java_package = "com.flexport.filinginfoaggregator.filinginfo.v1beta1";
+option ruby_package = "Flexport::FilingInfoAggregator::FilingInfo::V1Beta1";
+
+import "flexport/executioncoordinator/derivedshipment/v1/derived_shipment.proto";
+import "flexport/monolith/filinginfomigration/customsisf/v1beta1/customs_isf.proto";
+import "google/protobuf/wrappers.proto";
+import "google/type/money.proto";
+
+// Information required for building customs filings.
+message FilingInfo {
+  string shipment_fid = 1;
+  repeated flexport.monolith.filinginfomigration.customsisf.v1beta1.CustomsIsf customs_isfs = 2;
+  flexport.executioncoordinator.derivedshipment.v1.DerivedShipmentTransportMode transportation_mode = 3;
+  // Name of vessel that carries cargo to port of unloading.
+  google.protobuf.StringValue unloading_vessel_name = 4;
+  // An estimate of freight charges for this shipment, based upon the weight or volume of the cargo. Used in cases where
+  // real freight charges are unavailable.
+  google.type.Money estimated_freight_charges = 5;
+}

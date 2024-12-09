@@ -1,0 +1,25 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billing.bill.v1beta1;
+
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ReferenceProto";
+option java_package = "com.flexport.billing.bill.v1beta1";
+option ruby_package = "Flexport::Billing::Bill::V1Beta1";
+
+message Reference {
+  google.protobuf.StringValue reference_number = 1;
+  ReferenceType reference_type = 2;
+}
+
+enum ReferenceType {
+  REFERENCE_TYPE_INVALID = 0;
+  REFERENCE_TYPE_UNKNOWN = 1;
+  REFERENCE_TYPE_DELIVERY_ORDER = 2;
+  REFERENCE_TYPE_MASTER_BILL_OF_LADING = 3;
+  REFERENCE_TYPE_MASTER_AIR_WAYBILL = 4;
+}

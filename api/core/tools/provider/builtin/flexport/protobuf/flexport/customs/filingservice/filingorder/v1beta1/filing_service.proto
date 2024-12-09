@@ -1,0 +1,26 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.filingservice.filingorder.v1beta1;
+
+import "flexport/customs/filingservice/filingorder/v1beta1/enums.proto";
+import "flexport/customs/filingservice/filingorder/v1beta1/filing.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "FilingServiceProto";
+option java_package = "com.flexport.customs.filingservice.filingorder.v1beta1";
+option ruby_package = "Flexport::Customs::FilingService::FilingOrder::V1Beta1";
+
+message FilingService {
+  string fid = 1;
+  string filing_order_fid = 2;
+  ServiceType service_type = 3;
+  FilingType filing_type = 4;
+  ServiceStatus service_status = 5;
+
+  google.protobuf.Timestamp updated_at = 11;
+
+  repeated Filing filings = 21;
+}

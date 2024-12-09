@@ -1,0 +1,28 @@
+// TEAM: origin_ops
+
+syntax = "proto3";
+
+package flexport.exceptionmanagement.entityevent.v1beta1;
+
+import "flexport/exceptionmanagement/enums/v1beta1/exception_action_type.proto";
+import "flexport/exceptionmanagement/enums/v1beta1/exception_status.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ExceptionActionLogEntityProto";
+option java_package = "com.flexport.exceptionmanagement.entityevent.v1beta1";
+option ruby_package = "Flexport::ExceptionManagement::EntityEvent::V1Beta1";
+
+message ExceptionActionLogEntity {
+  int64 dbid = 1;
+  int64 operational_exception_id = 2;
+  uint32 revision = 3;
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionStatus before_status = 4;
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionStatus after_status = 5;
+  google.protobuf.StringValue actor_user_fid = 6;
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionActionType action_type = 7;
+  // use json blob to avoid unnecessary looker table update
+  google.protobuf.StringValue context = 8;
+  google.protobuf.Timestamp created_at_time = 9;
+}

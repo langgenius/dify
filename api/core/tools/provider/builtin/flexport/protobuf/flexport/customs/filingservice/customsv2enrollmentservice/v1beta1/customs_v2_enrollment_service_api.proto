@@ -1,0 +1,64 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.filingservice.customsv2enrollmentservice.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsV2EnrollmentServiceProto";
+option java_package = "com.flexport.customs.filingservice.customsv2enrollmentservice.v1beta1";
+option ruby_package = "Flexport::Customs::FilingService::CustomsV2EnrollmentService::V1Beta1";
+
+service CustomsV2EnrollmentServiceAPI {
+  rpc GetEnrollmentStatuses(GetEnrollmentStatusesRequest) returns (GetEnrollmentStatusesResponse) {
+    option deprecated = true;
+  }
+
+  rpc GetV2EnrollmentStatuses(GetV2EnrollmentStatusesRequest) returns (GetV2EnrollmentStatusesResponse);
+}
+
+message GetV2EnrollmentStatusesRequest {
+  repeated string external_references = 1;
+}
+
+message GetV2EnrollmentStatusesResponse {
+  repeated CustomsV2EnrollmentStatuses enrollment_statuses = 1;
+}
+
+message CustomsV2EnrollmentStatuses {
+  string external_reference = 1;
+  EnrollmentStatus pre_departure_authorization_service = 2;
+  EnrollmentStatus import_clearance_service = 3;
+  EnrollmentStatus commercial_invoice_digitization_service = 4;
+  EnrollmentStatus product_classification_service = 5;
+
+  enum EnrollmentStatus {
+    ENROLLMENT_STATUS_INVALID = 0;
+    ENROLLMENT_STATUS_UNKNOWN = 1;
+    ENROLLMENT_STATUS_V1 = 2;
+    ENROLLMENT_STATUS_V2 = 3;
+  }
+}
+
+message GetEnrollmentStatusesRequest {
+  option deprecated = true;
+  repeated string external_references = 1;
+}
+
+message GetEnrollmentStatusesResponse {
+  option deprecated = true;
+  repeated CustomsV2EnrollmentStatus enrollment_statuses = 1;
+}
+
+message CustomsV2EnrollmentStatus {
+  option deprecated = true;
+  string external_reference = 1;
+  Status status = 2;
+
+  enum Status {
+    STATUS_INVALID = 0;
+    STATUS_UNKNOWN = 1;
+    STATUS_V1 = 2;
+    STATUS_V2 = 3;
+  }
+}

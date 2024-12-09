@@ -1,0 +1,137 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.offering.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OfferingProto";
+option java_package = "com.flexport.catalog.offering.v1";
+option ruby_package = "Flexport::Catalog::Offering::V1";
+
+import "flexport/catalog/charge/v1/charge.proto";
+import "flexport/catalog/date/v1/date.proto";
+import "flexport/catalog/offering/air/v1/air.proto";
+import "flexport/catalog/offering/carbonoffset/v1/carbon_offset.proto";
+import "flexport/catalog/offering/cartage/v1/cartage.proto";
+import "flexport/catalog/offering/destination/v1/destination.proto";
+import "flexport/catalog/offering/drayage/v1/drayage.proto";
+import "flexport/catalog/offering/exportcustoms/v1/export_customs.proto";
+import "flexport/catalog/offering/importcustoms/v1/import_customs.proto";
+import "flexport/catalog/offering/insurance/v1/insurance.proto";
+import "flexport/catalog/offering/linehaul/v1/line_haul.proto";
+import "flexport/catalog/offering/oceanfcl/v1/ocean_fcl.proto";
+import "flexport/catalog/offering/oceanlcl/v1/ocean_lcl.proto";
+import "flexport/catalog/offering/origin/v1/origin.proto";
+import "flexport/catalog/restrictions/v1/restrictions.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Offering types.
+enum OfferingTypeDto {
+  OFFERING_TYPE_DTO_INVALID = 0;
+  OFFERING_TYPE_DTO_AIR = 1;
+  OFFERING_TYPE_DTO_OCEAN_FCL = 2;
+  OFFERING_TYPE_DTO_OCEAN_LCL = 3;
+  OFFERING_TYPE_DTO_CARTAGE = 4;
+  OFFERING_TYPE_DTO_DRAYAGE = 5;
+  OFFERING_TYPE_DTO_EXPORT_CUSTOMS = 6;
+  OFFERING_TYPE_DTO_IMPORT_CUSTOMS = 7;
+  OFFERING_TYPE_DTO_ORIGIN = 8;
+  OFFERING_TYPE_DTO_DESTINATION = 9;
+  OFFERING_TYPE_DTO_INSURANCE = 10;
+  OFFERING_TYPE_DTO_CARBON_OFFSET = 11;
+  OFFERING_TYPE_DTO_LINE_HAUL = 12;
+}
+
+// Offering statuses.
+enum OfferingStatusDto {
+  OFFERING_STATUS_DTO_INVALID = 0;
+  OFFERING_STATUS_DTO_ACTIVE_AVAILABLE_IN_QUOTING = 1;
+  OFFERING_STATUS_DTO_ACTIVE_HIDDEN_IN_QUOTING = 2;
+  OFFERING_STATUS_DTO_ARCHIVED = 3;
+  OFFERING_STATUS_DTO_DRAFT = 4;
+}
+
+// Create offering job statuses.
+enum CreateOfferingJobStatusDto {
+  CREATE_OFFERING_JOB_STATUS_DTO_INVALID = 0;
+  CREATE_OFFERING_JOB_STATUS_DTO_UNPROCESSED = 1;
+  CREATE_OFFERING_JOB_STATUS_DTO_PROCESSING = 2;
+  CREATE_OFFERING_JOB_STATUS_DTO_COMPLETE = 3;
+  CREATE_OFFERING_JOB_STATUS_DTO_INTERNAL_ERROR = 4;
+  CREATE_OFFERING_JOB_STATUS_DTO_VALIDATION_ERROR = 5;
+}
+
+// Sort by options.
+enum SortByDto {
+  SORT_BY_DTO_INVALID = 0;
+  // Only supported for ocean FCL offerings and only sorts by the base rate
+  // with container count search attributes plugged in.
+  SORT_BY_DTO_COST = 1;
+  SORT_BY_DTO_TRANSIT_TIME = 2;
+  SORT_BY_DTO_OFFERING_STATUS = 3;
+  // For offerings with service areas. Requires a location search attribute
+  // to measure the distance between it and the service area.
+  SORT_BY_DTO_DISTANCE = 4;
+}
+
+// Offering.
+message OfferingDto {
+  google.protobuf.StringValue id = 1;
+  OfferingStatusDto status = 2;
+  catalog.date.v1.DateDto activation_date = 3;
+  catalog.date.v1.DateDto expiration_date = 4;
+  google.protobuf.Int64Value freight_partner_id = 5;
+  google.protobuf.StringValue external_source_id = 6;
+  google.protobuf.StringValue external_ref_id = 7;
+  google.protobuf.Int64Value procurement_request_id = 8;
+  google.protobuf.Int64Value rate_sheet_upload_id = 9;
+  google.protobuf.StringValue free_text = 10;
+  google.protobuf.Int64Value created_by_id = 11;
+  google.protobuf.Timestamp created_at_time = 12;
+  google.protobuf.Int64Value offering_config_id = 13;
+  repeated int64 client_ids = 14;
+  repeated catalog.charge.v1.ChargeDto charges = 15;
+  catalog.restrictions.v1.RestrictionsDto restrictions = 16;
+  // Offering type-specific attributes...
+  oneof type_attributes {
+    catalog.offering.air.v1.AirAttributesDto air = 101;
+    catalog.offering.carbonoffset.v1.CarbonOffsetAttributesDto carbon_offset = 102;
+    catalog.offering.cartage.v1.CartageAttributesDto cartage = 103;
+    catalog.offering.destination.v1.DestinationAttributesDto destination = 104;
+    catalog.offering.drayage.v1.DrayageAttributesDto drayage = 105;
+    catalog.offering.exportcustoms.v1.ExportCustomsAttributesDto export_customs = 106;
+    catalog.offering.importcustoms.v1.ImportCustomsAttributesDto import_customs = 107;
+    catalog.offering.insurance.v1.InsuranceAttributesDto insurance = 108;
+    catalog.offering.linehaul.v1.LineHaulAttributesDto line_haul = 109;
+    catalog.offering.oceanfcl.v1.OceanFclAttributesDto ocean_fcl = 110;
+    catalog.offering.oceanlcl.v1.OceanLclAttributesDto ocean_lcl = 111;
+    catalog.offering.origin.v1.OriginAttributesDto origin = 112;
+  }
+}
+
+// Offering query attributes.
+message OfferingQueryAttributesDto {
+  catalog.date.v1.DateDto on_date = 1;
+  repeated OfferingStatusDto statuses = 2;
+  repeated int64 client_ids = 3;
+  google.protobuf.BoolValue all_clients = 4;
+  repeated int64 freight_partner_ids = 5;
+  google.protobuf.Int64Value rate_sheet_upload_id = 6;
+  // Offering type-specific attributes...
+  oneof type_attributes {
+    catalog.offering.air.v1.AirQueryAttributesDto air = 101;
+    catalog.offering.carbonoffset.v1.CarbonOffsetQueryAttributesDto carbon_offset = 102;
+    catalog.offering.cartage.v1.CartageQueryAttributesDto cartage = 103;
+    catalog.offering.destination.v1.DestinationQueryAttributesDto destination = 104;
+    catalog.offering.drayage.v1.DrayageQueryAttributesDto drayage = 105;
+    catalog.offering.exportcustoms.v1.ExportCustomsQueryAttributesDto export_customs = 106;
+    catalog.offering.importcustoms.v1.ImportCustomsQueryAttributesDto import_customs = 107;
+    catalog.offering.insurance.v1.InsuranceQueryAttributesDto insurance = 108;
+    catalog.offering.linehaul.v1.LineHaulQueryAttributesDto line_haul = 109;
+    catalog.offering.oceanfcl.v1.OceanFclQueryAttributesDto ocean_fcl = 110;
+    catalog.offering.oceanlcl.v1.OceanLclQueryAttributesDto ocean_lcl = 111;
+    catalog.offering.origin.v1.OriginQueryAttributesDto origin = 112;
+  }
+}

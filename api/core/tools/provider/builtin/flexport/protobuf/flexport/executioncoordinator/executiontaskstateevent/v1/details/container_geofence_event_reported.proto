@@ -1,0 +1,23 @@
+// TEAM: Visibility
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerGeofenceEventReportedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// Container has fulfilled the geofence event.
+message ContainerGeofenceEventReported {
+  string container_fid = 1;
+  // The short description to distinguish different geofence events.
+  string geofence_description = 2;
+  // Date and time when the geofence event was reported.
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime reported_date_time = 3;
+  // Event occurred flag means that this event is valid. False would invalidate the event.
+  bool event_occurred = 4;
+}

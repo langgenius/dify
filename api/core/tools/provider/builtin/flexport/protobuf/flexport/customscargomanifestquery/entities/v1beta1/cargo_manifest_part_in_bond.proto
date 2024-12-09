@@ -1,0 +1,20 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customscargomanifestquery.entities.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoManifestPartInBondProto";
+option java_package = "com.flexport.customscargomanifestquery.entities.v1beta1";
+option ruby_package = "Flexport::CustomsCargoManifestQuery::Entities::V1Beta1";
+
+message CargoManifestPartInBond {
+  string in_bond_number = 1;
+  string originating_port_code = 2;
+  string manifested_destination_port_code = 3;
+  string actual_destination_port_code_manual_diversion = 4;
+  string actual_destination_port_code_edi_diversion = 5;
+  string in_bond_status = 6;
+  string in_bond_entry_type = 7;
+}

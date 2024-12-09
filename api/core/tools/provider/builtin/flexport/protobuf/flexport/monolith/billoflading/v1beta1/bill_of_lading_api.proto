@@ -1,0 +1,421 @@
+// TEAM: kingsroad
+
+// test to trigger github action
+syntax = "proto3";
+
+package flexport.monolith.billoflading.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BillOfLadingApiProto";
+option java_package = "com.flexport.monolith.billoflading.v1beta1";
+option ruby_package = "Flexport::Monolith::BillOfLading::V1Beta1";
+
+service BillOfLadingAPI {
+  rpc GenerateBillOfLadingDocument(GenerateBillOfLadingDocumentRequest) returns (GenerateBillOfLadingDocumentResponse);
+
+  rpc GenerateBillOfLadingTelexDocument(GenerateBillOfLadingTelexDocumentRequest) returns (GenerateBillOfLadingTelexDocumentResponse);
+
+  rpc GetBillOfLadingById(GetBillOfLadingByIdRequest) returns (GetBillOfLadingByIdResponse);
+
+  rpc CreateBillOfLading(CreateBillOfLadingRequest) returns (CreateBillOfLadingResponse);
+
+  rpc UpdateBillOfLading(UpdateBillOfLadingRequest) returns (UpdateBillOfLadingResponse);
+
+  rpc DeleteBillOfLading(DeleteBillOfLadingRequest) returns (DeleteBillOfLadingResponse);
+
+  rpc PreviewBillOfLadingDraftDocument(PreviewBillOfLadingDraftDocumentRequest) returns (PreviewBillOfLadingDraftDocumentResponse);
+
+  rpc PreviewLetterOfIndemnity(PreviewLetterOfIndemnityRequest) returns (PreviewLetterOfIndemnityResponse);
+
+  rpc GetBillOfLadingsByShipmentFid(GetBillOfLadingsByShipmentFidRequest) returns (GetBillOfLadingsByShipmentFidResponse);
+
+  rpc ApproveDraftBillOfLading(ApproveDraftBillOfLadingRequest) returns (ApproveDraftBillOfLadingResponse);
+
+  rpc GetBillOfLadingHtmlDataById(GetBillOfLadingHtmlDataByIdRequest) returns (GetBillOfLadingHtmlDataByIdResponse);
+}
+
+message GetBillOfLadingsByShipmentFidRequest {
+  string shipment_fid = 1;
+}
+
+message GetBillOfLadingsByShipmentFidResponse {
+  repeated BillOfLadingDTO bill_of_ladings = 1;
+}
+
+message GenerateBillOfLadingDocumentRequest {
+  int32 bill_of_lading_id = 1;
+  int32 user_id = 2;
+}
+
+message GenerateBillOfLadingDocumentResponse {
+  oneof result {
+    GeneratedDocuments documents = 1;
+    ListOfErrors errors = 2;
+  }
+}
+
+message GeneratedDocuments {
+  int32 document_id = 1;
+  int32 original_document_id = 2;
+  int32 release_document_id = 3;
+}
+
+message GenerateBillOfLadingTelexDocumentRequest {
+  int32 bill_of_lading_id = 1;
+  int32 user_id = 2;
+}
+
+message GenerateBillOfLadingTelexDocumentResponse {
+  oneof result {
+    GeneratedDocuments documents = 1;
+    ListOfErrors errors = 2;
+  }
+}
+
+message ListOfErrors {
+  repeated string error_messages = 1;
+}
+
+message GetBillOfLadingByIdRequest {
+  int32 bill_of_lading_id = 1;
+}
+
+message GetBillOfLadingHtmlDataByIdRequest {
+  int32 bill_of_lading_id = 1;
+  bool validate_for_generation = 2;
+}
+
+message GetBillOfLadingByIdResponse {
+  oneof result {
+    BillOfLadingDTO bill_of_lading = 1;
+    ListOfErrors errors = 2;
+  }
+}
+
+message GetBillOfLadingHtmlDataByIdResponse {
+  oneof result {
+    BillOfLadingHtmlDTO bill_of_lading = 1;
+    ListOfErrors errors = 2;
+  }
+}
+
+message PreviewLetterOfIndemnityRequest {
+  int32 bill_of_lading_id = 1;
+  int32 user_id = 2;
+}
+
+message PreviewLetterOfIndemnityResponse {
+  oneof result {
+    DocumentData document_data = 1;
+    ListOfErrors errors = 2;
+  }
+}
+
+message DocumentData {
+  string document_expiring_url = 1;
+  string file_name = 2;
+}
+
+message BillOfLadingHtmlDTO {
+  string formatted_exporter_address = 1;
+  int32 shipment_id = 2;
+  string flxt_bill_number = 3;
+  string laden_date = 4;
+  string master_bill_number = 5;
+  string bill_number = 6;
+  string nra_number = 7;
+  string formatted_consignee_address = 8;
+  string place_of_receipt = 9;
+  string pre_carriage_by = 10;
+  string port_of_loading_name = 11;
+  string vessel_name = 12;
+  string voyage_tracking_number = 13;
+  string port_of_unloading_name = 14;
+  string place_of_delivery = 15;
+  string formatted_notify_address = 16;
+  string forwarding_agent_info = 17;
+  string destination_agent_info = 18;
+  string agent_reference_number = 19;
+  string free_trade_zone_number = 20;
+  string containerized = 21;
+  string weight_unit = 22;
+  string volume_unit = 23;
+  int32 slac_count = 24 [deprecated = true];
+  string slac_package_type = 25;
+  double total_weight = 26;
+  double total_volume = 27;
+  string declared_value = 28;
+  string special_instructions = 29;
+  string freight_payment_terms = 30;
+  repeated ContainerAssignmentHtml container_assignments = 31;
+  int32 id = 32;
+  TransmissionMode transmission_mode = 33;
+  ReleaseMethod release_method = 34;
+  int32 document_id = 35;
+  int32 original_document_id = 36;
+  string origin_and_destination_services = 37;
+  repeated string attachment_urls = 38;
+  string slac_count_string = 39;
+  string coloader_info = 40;
+}
+
+message ContainerAssignmentHtml {
+  string container_number = 1;
+  string seal_number = 2;
+  int32 quantity = 3;
+  string unit = 4;
+  double weight = 5;
+  double volume = 6;
+  repeated string marks_and_numbers = 7;
+  repeated string cargo_description = 8;
+  repeated string pieces = 9;
+  string container_size_name = 10;
+  string container_type_name = 11;
+  bool has_package_details = 13;
+}
+
+// next number 60
+message BillOfLadingDTO {
+  // HBL owned data
+  int32 id = 1;
+  string bill_number = 2;
+  string flxt_bill_number = 37;
+  TransmissionMode transmission_mode = 3;
+  ReleaseMethod release_method = 4;
+  repeated ContainerAssignment container_assignments = 5;
+  bool metric_units = 6;
+  string formatted_consignee_address = 7;
+  string formatted_exporter_address = 8;
+  string formatted_notify_party_address = 54;
+  string formatted_destination_agent_address = 55;
+  string place_of_pickup = 9;
+  string pre_carriage_by = 10;
+  string voyage_tracking_number = 11;
+  string declared_value = 12;
+  string free_trade_zone_number = 13;
+  string special_instructions = 14;
+  string mark_and_numbers = 15;
+  string description_of_goods = 16;
+  string total_volume = 57;
+  string total_weight = 58;
+
+  // Refs
+  int32 shipment_id = 17;
+  string shipper_si_fid = 18;
+  string shipper_fid = 39;
+  string shipper_entity_fid = 59;
+
+  // Network Refs
+  int32 port_of_loading_id = 19;
+  int32 fmc_port_of_unloading_id = 20;
+  int32 vessel_id = 21;
+  int32 carrier_id = 22;
+
+  // User Refs
+  int32 sent_to_partner_by_id = 23;
+  int32 draft_approved_by_id = 24;
+  int32 created_by_id = 25;
+
+  // Document Refs
+  int32 draft_document_id = 38;
+  int32 document_id = 26;
+  int32 release_document_id = 27;
+  int32 original_document_id = 28;
+  int32 loi_for_telex_release_document_id = 29;
+
+  // DateTime
+  google.protobuf.Timestamp original_document_printed_at = 30;
+  google.protobuf.Timestamp original_printed_document_collected_at = 31;
+  google.protobuf.Timestamp draft_approved_at = 32;
+  google.protobuf.Timestamp laden_date = 33;
+  google.protobuf.Timestamp sent_to_partner_at = 34;
+  google.protobuf.Timestamp created_at = 35;
+  google.protobuf.Timestamp updated_at = 36;
+  google.protobuf.Timestamp deleted_at = 56;
+
+  // Voyage Details
+  string place_of_receipt = 50;
+  int32 last_foreign_port_for_ams_id = 51;
+  int32 first_domestic_port_for_ams_id = 52;
+  google.protobuf.Timestamp estimated_date_of_unloading_for_ams_override = 40;
+  int32 last_foreign_port_for_aci_id = 41;
+  int32 first_domestic_port_for_aci_id = 42;
+
+  int32 exporter_address_id = 43;
+  int32 consignee_address_id = 44;
+  string shipment_detail_notify_party = 45;
+  string shipment_detail_destination_agent = 46;
+  string agent_reference_number = 47;
+  string shipment_freight_payment_terms = 48;
+  string pieces = 49;
+  string formatted_notify_address = 53;
+}
+
+message BillOfLadingChanges {
+  int32 bill_of_lading_id = 1;
+
+  // Shipment Identifiers
+  google.protobuf.StringValue bill_number = 2;
+
+  // Voyage Details
+  google.protobuf.StringValue place_of_receipt = 3;
+  google.protobuf.StringValue pre_carriage_by = 4;
+  google.protobuf.Int32Value port_of_loading_id = 5;
+  google.protobuf.Int32Value fmc_port_of_unloading_id = 6;
+  google.protobuf.Int32Value last_foreign_port_for_ams_id = 7;
+  google.protobuf.Int32Value first_domestic_port_for_ams_id = 8;
+  google.protobuf.Timestamp estimated_date_of_unloading_for_ams_override = 9;
+  google.protobuf.Int32Value last_foreign_port_for_aci_id = 10;
+  google.protobuf.Int32Value first_domestic_port_for_aci_id = 11;
+  google.protobuf.Int32Value carrier_id = 12;
+  google.protobuf.Int32Value vessel_id = 13;
+  google.protobuf.StringValue voyage_tracking_number = 14;
+  google.protobuf.StringValue free_trade_zone_number = 15;
+
+  // Involved Parties
+  google.protobuf.Int32Value exporter_address_id = 16;
+  google.protobuf.StringValue formatted_exporter_address = 17;
+  google.protobuf.Int32Value consignee_address_id = 18;
+  google.protobuf.StringValue formatted_consignee_address = 19;
+  google.protobuf.StringValue shipment_detail_notify_party = 20;
+  google.protobuf.StringValue shipment_detail_destination_agent = 21;
+  google.protobuf.StringValue agent_reference_number = 22;
+  google.protobuf.StringValue formatted_notify_party_address = 37;
+  google.protobuf.StringValue formatted_destination_agent_address = 38;
+
+  // Containers
+  repeated ContainerAssignment container_assignments = 23 [deprecated = true];
+
+  //  container_assignment_wrapper is used to fully-overwrite container_assignments
+  //  If you don't want to update container_assignments, please unset this field
+  //  If you want to delete all existed container_assignments, please set container_assignment_wrapper to empty list
+  //  All in all, please include all container_assignment you want to keep or update in this field
+  optional ContainerAssignmentWrapper container_assignment_wrapper = 41;
+
+  // cargo Details
+  google.protobuf.StringValue mark_and_numbers = 24;
+  google.protobuf.StringValue pieces = 25;
+  google.protobuf.StringValue description_of_goods = 26;
+  google.protobuf.StringValue declared_value = 27;
+  google.protobuf.StringValue total_weight = 39;
+  google.protobuf.StringValue total_volume = 40;
+
+  // Shipment Details
+  google.protobuf.StringValue shipment_freight_payment_terms = 28;
+  TransmissionMode transmission_mode = 29;
+  ReleaseMethod release_method = 30;
+  google.protobuf.StringValue special_instructions = 31;
+  google.protobuf.Timestamp laden_date = 32;
+  google.protobuf.Int32Value document_id = 33;
+  google.protobuf.Int32Value original_document_id = 34;
+  google.protobuf.Int32Value release_document_id = 35;
+  google.protobuf.Int32Value loi_for_telex_release_document_id = 36;
+  google.protobuf.Timestamp original_document_printed_at = 42;
+}
+
+enum TransmissionMode {
+  TRANSMISSION_MODE_INVALID = 0;
+  TRANSMISSION_MODE_UNKNOWN = 1;
+  TRANSMISSION_MODE_ORIGINAL = 2;
+  TRANSMISSION_MODE_EXPRESS = 3;
+}
+
+enum ReleaseMethod {
+  RELEASE_METHOD_INVALID = 0;
+  RELEASE_METHOD_UNSPECIFIED = 1;
+  RELEASE_METHOD_MAIL_COPY = 2;
+  RELEASE_METHOD_HOLD_FOR_TELEX = 3;
+}
+
+message ContainerAssignment {
+  google.protobuf.Int32Value id = 1;
+  string container_fid = 11;
+  google.protobuf.StringValue container_number = 2;
+  google.protobuf.DoubleValue weight = 3;
+  google.protobuf.DoubleValue volume = 4;
+  string weight_string = 9;
+  string volume_string = 10;
+  google.protobuf.Int32Value quantity = 5;
+  google.protobuf.StringValue unit = 6;
+  google.protobuf.StringValue cargo_description = 7;
+  google.protobuf.Int32Value container_use_id = 8;
+}
+
+message ContainerAssignmentWrapper {
+  repeated ContainerAssignment container_assignments = 1;
+}
+
+message CreateBillOfLadingRequest {
+  google.protobuf.StringValue shipment_fid = 1;
+  int32 user_id = 2;
+  google.protobuf.StringValue bill_number = 3;
+  TransmissionMode transmission_mode = 4;
+  ReleaseMethod release_method = 5;
+}
+
+message CreateBillOfLadingResponse {
+  oneof result {
+    BillOfLadingDTO bill_of_lading = 1;
+    ListOfErrors errors = 2;
+  }
+}
+
+message UpdateBillOfLadingRequest {
+  int32 bill_of_lading_id = 1;
+  BillOfLadingChanges bill_of_lading_changes = 2;
+  int32 user_id = 3;
+}
+
+message UpdateBillOfLadingResponse {
+  oneof result {
+    bool updated = 1;
+    ListOfErrors errors = 2;
+  }
+  BillOfLadingDTO bill_of_lading = 3;
+}
+
+message DeleteBillOfLadingRequest {
+  int32 bill_of_lading_id = 1;
+  int32 user_id = 2;
+  google.protobuf.StringValue reason = 3;
+  google.protobuf.StringValue additional_details = 4;
+}
+
+message DeleteBillOfLadingResponse {
+  oneof result {
+    bool deleted = 1;
+    ListOfErrors errors = 2;
+  }
+}
+
+message PreviewBillOfLadingDraftDocumentRequest {
+  int32 bill_of_lading_id = 1;
+  int32 user_id = 2;
+}
+
+message PreviewBillOfLadingDraftDocumentResponse {
+  oneof result {
+    PreviewBillOfLadingDraftDocumentSuccessResponse document_data = 1;
+    ListOfErrors errors = 2;
+  }
+}
+
+message PreviewBillOfLadingDraftDocumentSuccessResponse {
+  string document_expiring_url = 1;
+  string file_name = 2;
+}
+
+message ApproveDraftBillOfLadingRequest {
+  int32 bill_of_lading_id = 1;
+  int32 user_id = 2;
+}
+
+message ApproveDraftBillOfLadingResponse {
+  oneof result {
+    bool approved = 1;
+    ListOfErrors errors = 2;
+  }
+}

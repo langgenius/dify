@@ -1,0 +1,24 @@
+// TEAM: lumina
+
+syntax = "proto3";
+
+package flexport.monolith.warehouse.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "WarehouseResyncDataApiProto";
+option java_package = "com.flexport.monolith.warehouse.v1beta1";
+option ruby_package = "Flexport::Monolith::Warehouse::V1Beta1";
+
+service WarehouseResyncDataAPI {
+  rpc GenerateWmsS3File(GenerateWmsS3FileRequest) returns (GenerateWmsS3FileResponse);
+}
+
+message GenerateWmsS3FileRequest {
+  repeated string shipment_ids = 1; // Shipment IDs without "FLEX-" prefix
+  repeated string build_plan_ids = 2;
+}
+
+message GenerateWmsS3FileResponse {
+  bool success = 1;
+  repeated string errors = 2;
+}

@@ -1,0 +1,44 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customscaadapter.invoice.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/type/money.proto";
+import "flexport/customscaadapter/shipmentinfo/v1beta1/shipment_info.proto";
+import "flexport/customscaadapter/customerinfo/v1beta1/customer_info.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customscaadapter.invoice.v1beta1";
+option ruby_package = "Flexport::CustomsCaAdapter::Invoice::V1Beta1";
+
+message InvoiceCreated {
+  flexport.customscaadapter.customerinfo.v1beta1.CustomerInfo customer_info = 1;
+  flexport.customscaadapter.shipmentinfo.v1beta1.ShipmentInfo shipment_info = 2;
+  Invoice invoice = 3;
+}
+
+message Invoice {
+  // reference to the third-party system.
+  // In case of CANdata this will be the file number.
+  string external_reference = 1;
+  google.protobuf.Timestamp invoice_date = 2;
+  InvoiceStatus status = 3;
+  repeated InvoiceLineItem line_items = 4;
+  message InvoiceLineItem {
+    string id = 1;
+    string line_number = 2;
+    google.type.Money amount = 3;
+    // The description is the name of service client is charged for and charge_code is a code for that service.
+    // Since the description might change we should not rely on the string value to determine the charge type in flexport invoicing.
+    string description = 4;
+    string charge_code = 5;
+    string charge_code_currency = 6;
+  }
+
+  enum InvoiceStatus {
+    INVOICE_STATUS_INVALID = 0;
+    INVOICE_STATUS_CONFIRMED = 1;
+  }
+
+}

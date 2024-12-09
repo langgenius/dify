@@ -1,0 +1,225 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.documentflow.documentschema.v2beta1;
+
+import "flexport/documentflow/documentschema/v2beta1/primitive_document_field_enums.proto";
+import "flexport/monolith/customsorder/v1beta1/customs_order_adapter_types.proto";
+import "flexport/transcription/transcriptionservice/v2beta1/transcription_result.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PrimitiveDocumentFieldProto";
+option java_package = "com.flexport.documentflow.documentschema.v2beta1";
+option ruby_package = "Flexport::DocumentFlow::DocumentSchema::V2Beta1";
+
+/****************** Basic Document Field ******************/
+
+// Next ID: 4
+message DocumentField {
+  // Raw string extracted from the PDF
+  string raw_value = 1;
+  // Scoped to the range [0,1]
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+}
+
+/****************** Primitive Field with a parsed value ******************/
+
+// Next ID: 4
+message BooleanDocumentField {
+  // Raw string extracted from the PDF
+  string raw_value = 1;
+  // Scoped to the range [0,1]
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  bool parsed_value = 4;
+}
+
+// Next ID: 5
+message IntegerDocumentField {
+  // Raw string extracted from the PDF
+  string raw_value = 1;
+  // Scoped to the range [0,1]
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  int32 parsed_value = 4;
+}
+
+// Next ID: 5
+message LocalDateTimeDocumentField {
+  // Raw string extracted from the PDF
+  string raw_value = 1;
+  // Scoped to the range [0,1]
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  string parsed_iso_datetime_string = 4;
+}
+
+// Next ID: 5
+message TimestampDocumentField {
+  // Raw string extracted from the PDF
+  string raw_value = 1;
+  // Scoped to the range [0,1]
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  google.protobuf.Timestamp parsed_value = 4;
+}
+
+// Next ID: 5
+message FloatDocumentField {
+  // Raw string
+  string raw_value = 1;
+  // Scoped to the range [0,1]
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  float parsed_value = 4;
+}
+
+/****************** Primitive Field with a parsed value and/or an enum value ******************/
+
+// Next Id: 6
+message CargoCountDocumentField {
+  string raw_value = 1;
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  int32 parsed_value = 4;
+  CargoCountUnit unit = 5;
+}
+
+// Next Id: 5
+message CargoTypeDocumentField {
+  string raw_value = 1;
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  CargoType parsed_value = 4;
+}
+
+// Next Id: 5
+message ContainerTypeDocumentField {
+  string raw_value = 1;
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  ContainerType parsed_type = 4;
+}
+
+// Next ID: 7
+message CountryDocumentField {
+  string raw_value = 1;
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  string bounding_box_id = 4;
+  float parsed_value = 5;
+  CountryUnit unit = 6;
+  CountryCode country_code = 7;
+}
+
+// Next ID: 7
+message CurrencyDocumentField {
+  string raw_value = 1;
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  string bounding_box_id = 4;
+  float parsed_value = 5;
+  CurrencyUnit unit = 6;
+}
+
+// Next ID: 7
+message DimensionsDocumentField {
+  string raw_value = 1;
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  string bounding_box_id = 4;
+  float parsed_value = 5;
+  DimensionsUnit unit = 6;
+}
+
+// Next ID: 7
+message DimensionQuantityDocumentField {
+  string raw_value = 1;
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  repeated float parsed_dimensions = 4;
+  int32 parsed_quantity = 5;
+  DimensionsUnit unit = 6;
+}
+
+message HblReleaseTypeDocumentField {
+  string raw_value = 1;
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  HblReleaseType parsed_type = 4;
+}
+
+// Next ID: 5
+message IncotermsDocumentField {
+  string raw_value = 1;
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  flexport.monolith.customsorder.v1beta1.Incoterms parsed_value = 4;
+}
+
+// Next ID: 7 (SKIP 6)
+message MoneyDocumentField {
+  string raw_value = 1; // e.g. $1,234.56 USD
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  string bounding_box_id = 4;
+  MoneyParsedValue parsed_value = 5; // e.g. {amount: 1234.56, currency_unit: USD}
+}
+
+message MoneyParsedValue {
+  float amount = 1; // e.g. 1234.56
+  CurrencyUnit currency_unit = 2; // e.g. USD
+}
+
+// Next ID: 7
+message QuantityDocumentField {
+  string raw_value = 1;
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  string bounding_box_id = 4;
+  float parsed_value = 5;
+  QuantityUnit unit = 6;
+}
+
+// Next ID: 6
+message WeightDocumentField {
+  // Raw string extracted from the PDF
+  string raw_value = 1;
+  // Scoped to the range [0,1]
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  float parsed_value = 4;
+  WeightUnit unit = 5;
+}
+
+// Next ID: 7
+message VolumeDocumentField {
+  string raw_value = 1;
+  float confidence = 2;
+  // The vertices for the bounding polygon.
+  flexport.transcription.transcriptionservice.v2beta1.BoundingPolygon bounding_polygon = 3;
+  string bounding_box_id = 4;
+  float parsed_value = 5;
+  VolumeUnit unit = 6;
+}

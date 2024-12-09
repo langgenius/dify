@@ -1,0 +1,34 @@
+// TEAM: trucking_planning
+
+syntax = "proto3";
+
+package flexport.truckingplanning.truckingoption.v1beta1;
+
+import "flexport/truckingplanning/truckingoption/v1beta1/trucking_option.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TruckingOptionApiProto";
+option java_package = "com.flexport.truckingplanning.truckingoption.v1beta1";
+
+service TruckingOptionAPI {
+  rpc GetTruckingOptions(GetTruckingOptionsRequest) returns (GetTruckingOptionsResponse);
+}
+
+// A request message containing a DestinationTruckingTransitTime to create.
+message GetTruckingOptionsRequest {
+  // The address fid of the origin of the trucking leg
+  string origin_address_fid = 1;
+  // The address fid of the destination of the trucking leg
+  string destination_address_fid = 2;
+  // The fid of the shipment the trucking leg belongs to
+  string shipment_fid = 3;
+  // weight of the cargo to be transported with this trucking leg
+  int64 total_weight_kg = 4;
+  // number of pallets to be transported with this trucking leg
+  int64 pallet_count = 5;
+}
+
+// The response message containing the DestinationTruckingTransitTime
+message GetTruckingOptionsResponse {
+  flexport.truckingplanning.truckingoption.v1beta1.TruckingOptions trucking_options = 1;
+}

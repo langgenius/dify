@@ -1,0 +1,25 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.executionmilestones.shipmentschedulevalidation.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentScheduleValidationProto";
+option java_package = "com.flexport.executionmilestones.shipmentschedulevalidation.v1beta1";
+option ruby_package = "Flexport::ExecutionMilestones::ShipmentScheduleValidation::V1Beta1";
+
+// An API for querying invoking
+service ShipmentScheduleValidationAPI {
+  // Validate shipment schedule chronological order and completeness
+  rpc ValidateShipmentSchedule(ValidateShipmentScheduleRequest) returns (ValidateShipmentScheduleResponse);
+}
+
+message ValidateShipmentScheduleRequest {
+  string shipment_fid = 1;
+}
+
+message ValidateShipmentScheduleResponse {
+  bool is_valid = 1;
+  repeated string errors = 2;
+}

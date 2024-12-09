@@ -1,0 +1,290 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/air_export_compliance_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/air_shipment_documents_status.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/authority_to_make_entry_document_uploaded.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/carbon_emissions_calculated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/cargo_ready_date_confirmation_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/ccam_document_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/client_provided_tracking_document_uploaded.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/commercial_invoice_document_uploaded.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/commercial_invoice_packing_list_document_uploaded.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/consol_parent_arrival_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/consol_parent_route_changed.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/container_seal_number_added.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/customs_entry_submitted.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/derived_shipment_route_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/execution_order_exception_filed.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/fapiao_issued.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/fapiao_revoked.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/final_dangerous_goods_declaration_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/flexport_arrival_notice_status_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/forwarding_agents_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/house_air_waybill_deleted.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/house_air_waybill_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/import_customs_execution_offering_changed.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/importer_of_record_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/isf_worksheet_document_uploaded.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/monolith_shipment_created.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/nra_violation_blocking_status_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/ocean_consol_parent_origin_cfs_cutoff_changed.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/ocean_fcl_transit_time_diff_generated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/ocean_house_bill_of_lading_deleted.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/ocean_house_bill_of_lading_draft_approved.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/ocean_house_bill_of_lading_pdf_generated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/ocean_house_bill_of_lading_release_type_changed.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/ocean_house_bill_of_lading_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/ocean_send_ccam_to_oit_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/order_canceled.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/order_cargo_measurements_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/order_cargo_ready_date_info_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/order_last_cargo_ready_date_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/order_ocean_fcl_container_counts_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/order_ocean_fcl_role_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/order_reopened.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/origin_docs_match_status_changed.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/origin_document_snooze_status_changed.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/other_customs_document_uploaded.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/packing_list_document_uploaded.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/pre_alert_status_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/route_shape_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/schedule_confirmed.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/schedule_dates_overridden.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/schedule_initialized.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipment_address_known_status_changed.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipment_blocked_status_updated.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipment_cargo_finalized.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipment_diversion_update.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipment_marked_as_completed.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipment_marked_as_incomplete.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipment_schedule_cascaded.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipper_bank_slip_document_uploaded.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipper_ccam_changed.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipper_ccam_uploaded.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipper_isf_submitted.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipper_shipping_instruction_changed.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipper_si_submitted.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipper_vgm_changed.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipper_vgm_document_uploaded.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipper_vgm_form_submitted.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipper_vgm_submitted.proto";
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/shipping_order_released_to_shipper.proto";
+import "flexport/executioncoordinator/types/enums/v1/entry_point.proto";
+import "flexport/executioncoordinator/types/visibility/v1/metadata.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionOrderStateEventProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+// This file: http://go/eose-proto.
+//
+// ExecutionOrderStateEvents (EOSEs) are events about progress towards the completion of an
+// ExecutionOrder, _unrelated to any particular ExecutionTask_. Generally these events correspond
+// to interactions with consignees, shippers, and compliance.
+//
+// For events related to an ExecutionTask, use execution_task_state_event.proto instead.
+// See the wiki page http://go/eose-vs-etse for details.
+//
+// NEXT ID: 144
+message ExecutionOrderStateEvent {
+  //
+  // The event's unique identifier. Event publishers MUST assign an fid to each individual
+  // ExecutionOrderStateEvent. This is useful for building query APIs over the event stream
+  // and debugging, similar to what we have for http://go/etse-latest (ie recent ET state events).
+  // The service_name in the fid should match your service per the examples below:
+  //
+  // For "execution_plan_updated" events emitted by the ExecutionCoordinator itself:
+  //
+  //   flx::execution_coordinator:execution_order_state_event:foo123
+  //
+  // For "shipper_vgm_form_submitted" events emitted by shipper exp (this event is currently
+  // emitted from the monolith, but still uses the proper service_name):
+  //
+  //   flx::shipper_exp:execution_order_state_event:bar456
+  //
+  string fid = 1;
+  //
+  // The fid of the ExecutionOrder this event relates to.
+  string execution_order_fid = 2;
+  //
+  // The time this event was created.
+  google.protobuf.Timestamp created_time = 3;
+  //
+  // Time the entity was persisted in the EC-NIS.
+  google.protobuf.Timestamp processed_time = 7;
+  //
+  // The user responsible for triggering this event. If the event is automated can be a service user.
+  // Try to be as specific as possible. Generally if there is a human clicking a button that results
+  // in an event being published, that human's user_fid should be specified here.
+  string created_by_fid = 4;
+  //
+  // The original entry point through which this event entered the ExecutionCoordinator ecosystem.
+  // This is the "raw source" of the event such as shipment details, a workspace, or something else.
+  flexport.executioncoordinator.types.enums.v1.EntryPoint entry_point = 8;
+  // Store the metadata from upstream. eg. VisSource
+  flexport.executioncoordinator.types.visibility.v1.Metadata metadata = 9;
+  //
+  // Instructions for adding a new kind of event:
+  // (1) Cluster events by subdomain. Add a short comment explaining what the cluster is about.
+  //     Events within the same cluster should _tend_ to have the same prefix, but this is not
+  //     a strict requirement, as the clusters can/should evolve over time. Try to alphabetize
+  //     clusters by their prefixes when possible.
+  // (2) Use the first available field number over 100. (Previously we tried to use ranges to
+  //     differentiate clusters, but there are too many sparse clusters for that to work.)
+  // (3) Run `fx bazel proto-bindings --targets=core` to generate rb/rbi files.
+  // (4) If you are publishing from an NIS, ensure it has "put" permissions for the Kinesis topic
+  //     "forwarding-execution-order-state", similar to http://go/eose-put.
+  // (5) Add your NIS/engine to order_state_producer.proto if it's not there already.
+  // We are still figuring out the right idioms here. Ping #forwarding-platform with questions.
+  oneof event_details {
+    //
+    // ExecutionOrder revision summary events. These events are emitted by the ExecutionCoordinator
+    // when certain fields are updated on the ExecutionOrder. They are somewhat redundant with the
+    // top-level ExecutionOrderCreated and ExecutionOrderChanged events, but valuable for analytics
+    // and tracking when specific kinds of changes were made to the ExecutionOrder.
+    OrderCargoReadyDateInfoUpdated order_cargo_ready_date_info_updated = 121;
+    OrderLastCargoReadyDateUpdated order_last_cargo_ready_date_updated = 125;
+    OrderOceanFclRoleUpdated order_ocean_fcl_role_updated = 127;
+    OrderCargoMeasurementsUpdated order_cargo_measurements_updated = 131;
+    OrderOceanFclContainerCountsUpdated order_ocean_fcl_containers_counts_updated = 132;
+    OrderCanceled order_canceled = 140;
+    OrderReopened order_reopened = 141;
+
+    //
+    // Cargo ready date confirmed checklist item event.
+    CargoReadyDateConfirmationUpdated cargo_ready_date_confirmation_updated = 126;
+    // Plan change events. See execution_plan.proto.
+    ForwardingAgentsUpdated forwarding_agents_updated = 102;
+    RouteShapeUpdated route_shape_updated = 105;
+    //
+    // Involved party group events.
+    ImporterOfRecordUpdated importer_of_record_updated = 136;
+    //
+    // Fapiao events. In China, a fapiao is a legal receipt that serves as proof of purchase.
+    FapiaoIssued fapiao_issued = 204;
+    FapiaoRevoked fapiao_revoked = 205;
+    //
+    // NRA events.
+    NraViolationBlockingStatusUpdated nra_violation_blocking_status_updated = 213;
+    //
+    // Origin document events. Ops teams validate origin documentation at the FLEX-ID level.
+    OriginDocsMatchStatusChanged origin_docs_match_status_changed = 202;
+    OriginDocumentSnoozeStatusChanged origin_document_snooze_status_changed = 203;
+    //
+    // Ocean House Bill of Lading (HBL) events.
+    OceanHouseBillOfLadingDraftApproved ocean_house_bill_of_lading_draft_approved = 300;
+    OceanHouseBillOfLadingReleaseTypeChanged ocean_house_bill_of_lading_release_type_changed = 301;
+    OceanHouseBillOfLadingUpdated ocean_house_bill_of_lading_updated = 302;
+    OceanHouseBillOfLadingPdfGenerated ocean_house_bill_of_lading_pdf_generated = 303;
+    OceanHouseBillOfLadingDeleted ocean_house_bill_of_lading_deleted = 304;
+    //
+    // Ocean Send China Customs Advanced Manifest (CCAM) EOSE events.
+    OceanSendCcamToOitUpdated ocean_send_ccam_to_oit_updated = 305;
+    //
+    // Ocean parent/master events about consolidated shipments.
+    ConsolParentArrivalUpdated consol_parent_arrival_updated = 101 [deprecated = true];
+    OceanConsolParentOriginCfsCutoffChanged ocean_consol_parent_origin_cfs_cutoff_changed = 106;
+    ConsolParentRouteChanged consol_parent_route_changed = 210;
+    //
+    // Shipper-related ocean container Verified Gross Mass (VGM) events.
+    ShipperVgmSubmitted shipper_vgm_submitted = 207;
+    ShipperVgmDocumentUploaded shipper_vgm_document_uploaded = 200;
+    // ISF(Importer Security Filing) submitted by shipper.
+    ShipperIsfSubmitted shipper_isf_submitted = 206;
+    ShipperIsfV2Submitted shipper_isf_v2_submitted = 208;
+    // CCAM (China Customs Advanced Manifest)
+    ShipperCcamUploaded shipper_ccam_uploaded = 209;
+    // Air shipment related events.
+    AirShipmentDocumentsStatus air_shipment_documents_status = 211;
+    //
+    // Customs document events.
+    AuthorityToMakeEntryDocumentUploaded authority_to_make_entry_document_uploaded = 107;
+    ClientProvidedTrackingDocumentUploaded client_provided_tracking_document_uploaded = 108;
+    CommercialInvoiceDocumentUploaded commercial_invoice_document_uploaded = 109;
+    CommercialInvoicePackingListDocumentUploaded commercial_invoice_packing_list_document_uploaded = 110;
+    IsfWorksheetDocumentUploaded isf_worksheet_document_uploaded = 111;
+    OtherCustomsDocumentUploaded other_customs_document_uploaded = 112;
+    PackingListDocumentUploaded packing_list_document_uploaded = 113;
+    ShipperBankSlipDocumentUploaded shipper_bank_slip_document_uploaded = 123;
+    PreAlertStatusUpdated pre_alert_status_updated = 129;
+    FlexportArrivalNoticeStatusUpdated flexport_arrival_notice_status_updated = 137;
+    //
+    // Customs events.
+    CustomsEntrySubmitted customs_entry_submitted = 214;
+    ImportCustomsExecutionOfferingChanged import_customs_execution_offering_changed = 142;
+    //
+    // Monolith shipment related events.
+    MonolithShipmentCreated monolith_shipment_created = 114;
+    ShipmentMarkedAsCompleted shipment_marked_as_completed = 104;
+    ShipmentMarkedAsIncomplete shipment_marked_as_incomplete = 135;
+    ShipmentCargoFinalized shipment_cargo_finalized = 116;
+    ScheduleConfirmed schedule_confirmed = 117;
+    ScheduleDatesOverridden schedule_dates_overridden = 118;
+    ShipmentScheduleCascaded shipment_schedule_cascaded = 212;
+    ShipmentAddressKnownStatusChanged shipment_address_known_status_changed = 143;
+    //
+    // Container related events.
+    ContainerSealNumberAdded container_seal_number_added = 120;
+    //
+    // Carbon calculation events.
+    CarbonEmissionsCalculated carbon_emissions_calculated = 115;
+    //
+    // Exception events.
+    ExecutionOrderExceptionFiled exception_filed = 119;
+    //
+    // Transit events.
+    OceanFclTransitTimeDiffGenerated transit_time_diffs_generated = 122;
+    // Use DerivedShipmentRouteChanged event in derived_shipment_events instead
+    DerivedShipmentRouteUpdated derived_shipment_route_updated = 124 [deprecated = true];
+    //
+    // Compliance events.
+    ShipmentBlockedStatusUpdated shipment_blocked_status_updated = 130;
+    ShipmentDiversionUpdate shipment_diversion_update = 138;
+    AirExportComplianceUpdated air_export_compliance_updated = 139;
+    // Air events.
+    HouseAirWaybillUpdated house_air_waybill_updated = 133;
+    HouseAirWaybillDeleted house_air_waybill_deleted = 134;
+    // Deprecated events.
+    // TODO: Currently, no users use this event, will remove this field.
+    ShipperVgmFormSubmitted shipper_vgm_form_submitted = 201 [deprecated = true];
+    //
+    // Export Shipping Document CCAM events.
+    CcamDocumentUpdated ccam_document_updated = 400;
+    // Export Shipping Document SI events.
+    ShipperSiSubmitted shipper_si_submitted = 401;
+    // Export Final DGD is uploaded/modified/archived
+    FinalDangerousGoodsDeclarationUpdated final_dangerous_goods_declaration_updated = 402;
+    //
+    // Space Release related events.
+    ShippingOrderReleasedToShipper shipping_order_released_to_shipper = 403;
+    // Shipper SI updated events.
+    ShipperShippingInstructionChanged shipper_shipping_instruction_changed = 404;
+    // shipper CCAM updated events.
+    ShipperCcamChanged shipper_ccam_changed = 405;
+    // shipper VGM updated events.
+    ShipperVgmChanged shipper_vgm_changed = 406;
+    //
+    // Itinerary related events.
+    ScheduleInitialized schedule_initialized = 500;
+  }
+}
+
+// Kinesis event emitted when ExecutionOrder state changes.
+message ExecutionOrderStateEventCreated {
+  string execution_order_fid = 1;
+  ExecutionOrderStateEvent execution_order_state_event = 3;
+  //
+  // The time the wrapper proto message was created. There may be delay between when the inner
+  // ExecutionOrderStateEvent proto message event was created and when the wrapper was created
+  // if after-commit hooks are used to approximate transactional event publishing semantics.
+  // See "Transactional publishing" section on http://go/event-log. The timestamp on the wrapper
+  // message is mostly for infra-level debugging and instrumentation. Use the created_time within
+  // the inner message for the semantic time the event was created.
+  google.protobuf.Timestamp created_time = 2;
+}

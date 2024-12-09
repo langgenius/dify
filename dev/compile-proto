@@ -1,0 +1,132 @@
+#!/bin/bash
+
+# Get script directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+API_DIR="$SCRIPT_DIR/../api"
+
+# Set directories
+PROTO_DIR="$API_DIR/core/tools/provider/builtin/flexport/protobuf"
+OUTPUT_DIR="$API_DIR/core/tools/provider/builtin/flexport/generated"
+
+# Check if protoc is installed
+if ! command -v protoc &> /dev/null; then
+    echo "Error: protoc is not installed. Please install protobuf compiler first."
+    exit 1
+fi
+
+# Check if poetry is installed
+if ! command -v poetry &> /dev/null; then
+    echo "Error: poetry is not installed. Please install poetry first."
+    exit 1
+fi
+
+# Change to API directory to use project's Poetry environment
+cd "$API_DIR"
+
+# Verify required packages are installed
+poetry run python -c "import grpc_tools.protoc" || {
+    echo "Installing required packages..."
+    poetry add "protobuf==3.20.3" "grpcio==1.48.2" "grpcio-tools==1.48.2"
+}
+
+# Create output directory
+mkdir -p "$OUTPUT_DIR"
+
+# Function to compile proto files
+compile_proto() {
+    local proto_file="$1"
+    local relative_path="${proto_file#$PROTO_DIR/}"
+    local output_subdir="$OUTPUT_DIR/$(dirname "$relative_path")"
+    
+    mkdir -p "$output_subdir"
+    
+    echo "Compiling: $relative_path"
+    
+    # 使用项目的Poetry环境执行编译命令
+    poetry run python -m grpc_tools.protoc \
+        -I"$PROTO_DIR" \
+        --python_out="$OUTPUT_DIR" \
+        --grpc_python_out="$OUTPUT_DIR" \
+        "$proto_file"
+    
+    # Fix imports in generated files
+    local generated_file="$OUTPUT_DIR/${relative_path%.*}_pb2.py"
+    local grpc_file="$OUTPUT_DIR/${relative_path%.*}_pb2_grpc.py"
+    
+    if [ -f "$generated_file" ]; then
+        # Fix import statements
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS
+            sed -i '' "s/^import.*_pb2/from . import $(basename "${relative_path%.*}")_pb2/g" "$generated_file"
+            # Remove runtime_version import
+            sed -i '' '/from google.protobuf.internal import runtime_version/d' "$generated_file"
+            # Remove version check
+            sed -i '' '/_USE_C_DESCRIPTORS.*runtime_version/d' "$generated_file"
+        else
+            # Linux
+            sed -i "s/^import.*_pb2/from . import $(basename "${relative_path%.*}")_pb2/g" "$generated_file"
+            # Remove runtime_version import
+            sed -i '/from google.protobuf.internal import runtime_version/d' "$generated_file"
+            # Remove version check
+            sed -i '/_USE_C_DESCRIPTORS.*runtime_version/d' "$generated_file"
+        fi
+    fi
+    
+    if [ -f "$grpc_file" ]; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS
+            sed -i '' "s/^import.*_pb2/from . import $(basename "${relative_path%.*}")_pb2/g" "$grpc_file"
+            # Remove runtime_version import
+            sed -i '' '/from google.protobuf.internal import runtime_version/d' "$grpc_file"
+            # Remove version check
+            sed -i '' '/_USE_C_DESCRIPTORS.*runtime_version/d' "$grpc_file"
+        else
+            # Linux
+            sed -i "s/^import.*_pb2/from . import $(basename "${relative_path%.*}")_pb2/g" "$grpc_file"
+            # Remove runtime_version import
+            sed -i '/from google.protobuf.internal import runtime_version/d' "$grpc_file"
+            # Remove version check
+            sed -i '/_USE_C_DESCRIPTORS.*runtime_version/d' "$grpc_file"
+        fi
+    fi
+}
+
+# Create __init__.py files
+create_init_files() {
+    local dir="$1"
+    find "$dir" -type d -exec touch {}/__init__.py \;
+}
+
+echo "Starting proto compilation..."
+echo "Proto directory: $PROTO_DIR"
+echo "Output directory: $OUTPUT_DIR"
+
+# Clean output directory
+rm -rf "$OUTPUT_DIR"/*
+mkdir -p "$OUTPUT_DIR"
+
+# Find and compile all proto files
+find "$PROTO_DIR" -name "*.proto" | while read -r proto_file; do
+    compile_proto "$proto_file"
+done
+
+# Create __init__.py files in all directories
+create_init_files "$OUTPUT_DIR"
+
+# Check compilation result
+if [ $? -eq 0 ]; then
+    PROTO_COUNT=$(find "$PROTO_DIR" -name "*.proto" | wc -l)
+    GENERATED_COUNT=$(find "$OUTPUT_DIR" -name "*_pb2.py" | wc -l)
+    echo "Compilation successful!"
+    echo "Compiled $PROTO_COUNT proto files into $GENERATED_COUNT Python files"
+    echo "Output directory: $OUTPUT_DIR"
+    
+    # List all generated files
+    echo "Generated files:"
+    find "$OUTPUT_DIR" -type f -name "*_pb2*.py" | while read -r file; do
+        echo "  $file"
+    done
+else
+    echo "Compilation failed"
+    exit 1
+fi

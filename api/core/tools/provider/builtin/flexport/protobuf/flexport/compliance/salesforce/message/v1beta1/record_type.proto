@@ -1,0 +1,18 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.compliance.salesforce.message.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "SalesForceRecordTypeProto";
+option java_package = "com.flexport.compliance.salesforce.messages.v1beta1";
+option ruby_package = "Flexport::Compliance::SalesForce::Messages::V1Beta1";
+
+// All fields are defined from https://developer.salesforce.com/docs/atlas.en-us.238.0.object_reference.meta/object_reference/sforce_api_objects_opportunity.htm
+
+// Represents a record type from SalesForce.
+message SalesForceRecordType {
+  // Label of the record type in the user interface. Limit: 80 characters.
+  string name = 1;
+}

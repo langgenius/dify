@@ -1,0 +1,68 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontask.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CarbonServicesTaskParamsProto";
+option java_package = "com.flexport.executioncoordinator.executiontask.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTask::V1";
+
+import "google/protobuf/wrappers.proto";
+
+// Parameters for CarbonServices ExecutionTask.
+message CarbonServicesTaskParams {
+  OffsetType offset_type = 3;
+  repeated Leg legs = 4;
+}
+
+// Representing carbon details of a single leg of the EO shipment.
+message Leg {
+  string route_shape_leg_fid = 20;
+  repeated ServiceDetails service_details = 22;
+}
+
+// Carbon service details options (will be expanded to include reduction, biofuels, etc).
+message ServiceDetails {
+  oneof details {
+    OffsetServiceDetails offset_details = 30;
+  }
+}
+
+// Details for carbon offset service.
+message OffsetServiceDetails {
+  google.protobuf.DoubleValue rate = 33;
+  OffsetVendor vendor = 34;
+  OffsetType offset_type = 35;
+}
+
+// Type of offset status.
+enum OffsetStatus {
+  OFFSET_STATUS_INVALID = 0;
+  OFFSET_STATUS_NOT_OFFSET = 1;
+  OFFSET_STATUS_REQUESTED = 2;
+  OFFSET_STATUS_COMPLETE = 3;
+}
+
+// Type of vendor.
+enum OffsetVendor {
+  OFFSET_VENDOR_INVALID = 0;
+  OFFSET_VENDOR_CARBONFUND = 1;
+  OFFSET_VENDOR_PACHAMA = 2;
+}
+
+// Reasoning for carbon offset.
+enum OffsetType {
+  OFFSET_TYPE_INVALID = 0;
+  OFFSET_TYPE_FLEXPORT_FREIGHT = 1;
+  OFFSET_TYPE_VISIBILITY = 2;
+  OFFSET_TYPE_BATCH = 3;
+  OFFSET_TYPE_TIMED_BATCH = 4;
+  OFFSET_TYPE_HISTORICAL_BATCH = 5;
+  OFFSET_TYPE_FLEXPORT_LCL = 6;
+  OFFSET_TYPE_OCEANMATCH = 7;
+  OFFSET_TYPE_DISASTER_RELIEF = 8;
+  OFFSET_TYPE_OCEAN_PREMIUM = 9;
+  OFFSET_TYPE_MULTIPLE_BATCH = 10;
+}

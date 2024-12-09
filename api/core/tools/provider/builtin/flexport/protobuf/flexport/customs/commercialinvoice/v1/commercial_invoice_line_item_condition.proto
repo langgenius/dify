@@ -1,0 +1,43 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.commercialinvoice.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CommercialInvoiceLineItemConditionProto";
+option java_package = "com.flexport.customs.commercialinvoice.v1";
+option ruby_package = "Flexport::Customs::CommercialInvoice::V1";
+
+message CommercialInvoiceLineItemCondition {
+  enum CILineItemConditionType {
+    CI_LINE_ITEM_CONDITION_TYPE_INVALID = 0;
+    CI_LINE_ITEM_CONDITION_TYPE_PRODUCT_NOT_SET = 1;
+    CI_LINE_ITEM_CONDITION_TYPE_PO_NUMBER_NOT_SET = 2;
+    CI_LINE_ITEM_CONDITION_TYPE_UNIT_PRICE_NOT_SET = 3;
+    CI_LINE_ITEM_CONDITION_TYPE_CONTAINER_NUMBER_NOT_SET = 4;
+    CI_LINE_ITEM_CONDITION_TYPE_QUANTITY_NOT_SET = 5;
+    CI_LINE_ITEM_CONDITION_TYPE_GROSS_WEIGHT_NOT_SET = 6;
+    CI_LINE_ITEM_CONDITION_TYPE_NET_WEIGHT_NOT_SET = 7;
+    CI_LINE_ITEM_CONDITION_TYPE_MANUFACTURER_NOT_SET = 8;
+    CI_LINE_ITEM_CONDITION_TYPE_COUNTRY_OF_ORIGIN_NOT_SET = 9;
+    CI_LINE_ITEM_CONDITION_TYPE_SUPPLIER_NOT_SET = 10;
+    CI_LINE_ITEM_CONDITION_TYPE_VALUE_NOT_SET = 11;
+    CI_LINE_ITEM_CONDITION_TYPE_VOLUME_NOT_SET = 12;
+  }
+
+  CILineItemConditionType type = 1;
+  bool status = 2;
+  string reason = 3;
+  optional string message = 4;
+  google.protobuf.Timestamp last_evaluated_at = 5;
+
+// there's no usage for contexts right now, keeping it here as an example
+// oneof context {
+//   ProductNotSetContext product_not_set_context = 100;
+// }
+
+// message ProductNotSetContext {}
+}

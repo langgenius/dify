@@ -1,0 +1,18 @@
+// TEAM: flexport_os
+
+syntax = "proto3";
+
+package flexport.os.network.addressdeleted.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "AddressDeletedProto";
+option java_package = "com.flexport.os.network.addressdeleted.v1";
+option ruby_package = "Flexport::OS::Network::AddressDeleted::V1";
+
+import "google/protobuf/timestamp.proto";
+
+// Indicates an Address record was deleted in Core.
+message AddressDeleted {
+  string address_fid = 1;
+  google.protobuf.Timestamp deleted_time = 2;
+}

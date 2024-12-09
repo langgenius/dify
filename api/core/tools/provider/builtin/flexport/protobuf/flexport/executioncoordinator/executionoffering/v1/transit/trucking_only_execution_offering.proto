@@ -1,0 +1,73 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionoffering.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TruckingOnlyExecutionOfferingProto";
+option java_package = "com.flexport.executioncoordinator.executionoffering.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOffering::V1";
+
+import "flexport/executioncoordinator/executionoffering/v1/transit/common.proto";
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "google/protobuf/wrappers.proto";
+
+// An ExecutionOffering for trucking-only transportation.
+//
+// Note: This message is _not_ used for origin/destination trucking in support of air or ocean
+// shipments. See eg `pickups` and `deliveries` on ocean_fcl_execution_offering.proto instead.
+//
+// More details on go/execution-offering wiki.
+//
+message TruckingOnlyExecutionOffering {
+  oneof carrier {
+    SpecificCarrier specific_carrier = 1;
+    OpenCarrier open_carrier = 2;
+  }
+  repeated TruckingStop stops = 3;
+  TruckingMode trucking_mode = 4;
+  string freight_partner_fid = 5;
+  TruckingOnlyRole main_freight_role = 6;
+  google.protobuf.BoolValue is_international = 7;
+  TruckingTransitTime quoted_transit_time = 8;
+}
+
+// A trucking stop.
+message TruckingStop {
+  string address_fid = 1;
+  oneof stop_details {
+    TruckingPickup pickup = 3;
+    TruckingDropoff dropoff = 4;
+  }
+}
+
+// Transit time for a trucking only shipment.
+message TruckingTransitTime {
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate based_on_start_date = 1;
+  // The IANA timezone identifier for the quoted destination location.
+  string destination_timezone = 2;
+}
+
+// Details about a trucking pickup.
+message TruckingPickup {
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate cargo_ready_date = 1;
+}
+
+// Details about a trucking dropoff.
+message TruckingDropoff {}
+
+// A trucking mode.
+enum TruckingMode {
+  TRUCKING_MODE_INVALID = 0;
+  TRUCKING_MODE_ANY = 1;
+  TRUCKING_MODE_LTL = 2;
+  TRUCKING_MODE_FTL = 3;
+}
+
+// How the client wants Flexport to participate in the main trucking.
+enum TruckingOnlyRole {
+  TRUCKING_ONLY_ROLE_INVALID = 0;
+  TRUCKING_ONLY_ROLE_FULL_SERVICE = 1;
+  TRUCKING_ONLY_ROLE_NO_INVOLVEMENT = 2;
+}

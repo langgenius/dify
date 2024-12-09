@@ -1,0 +1,15 @@
+
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customscaadapter.customerinfo.v1beta1;
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customscaadapter.customerinfo.v1beta1";
+option ruby_package = "Flexport::CustomsCaAdapter::CustomerInfo::V1Beta1";
+
+
+message CustomerInfo {
+  string legal_entity_name = 1;
+  string business_number = 2;
+}

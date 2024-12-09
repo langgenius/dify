@@ -1,0 +1,31 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsworkflowinstrumentation.user.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsWorkflowInstrumentationUserApiProto";
+option java_package = "com.flexport.customsworkflowinstrumentation.user.v1beta1";
+option ruby_package = "Flexport::CustomsWorkflowInstrumentation::User::V1Beta1";
+
+service UserAPI {
+  rpc GetUsersByFids(GetUsersByFidsRequest) returns (GetUsersByFidsResponse);
+}
+
+message GetUsersByFidsRequest {
+  repeated string fids = 1;
+}
+
+message GetUsersByFidsResponse {
+  repeated CoreUser users = 1;
+}
+
+message CoreUser {
+  string fid = 1;
+  string email = 2;
+  string first_name = 3;
+  string last_name = 4;
+  repeated string roles = 5;
+  string office = 6;
+}

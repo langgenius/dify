@@ -1,0 +1,173 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "EntryPointProto";
+option java_package = "com.flexport.executioncoordinator.types.enums.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Enums::V1";
+
+// The entry points by which tracking data enters the ExecutionCoordinator ecosystem.
+// You can think of these as the "raw event sources" for state events. Some correspond
+// to integrations with external systems, and some correspond to UIs or sets of users.
+//
+// After adding a new Entry Point you must also update the following files across two PRs:
+// - FIRST PR:
+//  1. UPDATE: common/jvm/src/main/java/com/flexport/graphql/types/enums/GqlEntryPoint.java
+//  2. UPDATE: common/resources/forwarding_util/entry_point.yml
+//  3. UPDATE: execution_coordinator/src/main/resources/schema/enums/shared.graphqls
+//  4. GENERATE: graphql_gateway/schemas/execution_coordinator.graphqls
+//    - run: yarn dump-gateway-schemas (Generates from /enums/shared.graphqls
+//  5. GENERATE: entry_point_pb*: .rb, .rbi, and .idiom.rbi
+//    - run: bazel run //common/ruby/gems/flexproto:protobuf_require
+//      - more details at https://go/proto#working-with-protobufs-in-ruby
+//    - run: fx bazel proto-bindings --all
+//    - run: protoc --idiom_out=sorbet/generated/idiom -I protobuf protobuf/flexport/executioncoordinator/types/enums/v1/entry_point.proto
+//      - see https://go/idiom if you get (Gem::GemNotFoundException) failure, or want more details on Idiom
+// - SECOND PR:
+//  6. UPDATE: webpack/assets/javascripts/relay/supergraph_schema.graphql
+//    - run: yarn rover:fetch (Generates from above .graphqls files (once they are in production)
+//  7. UPDATE: migratory_modules/execution/utils/graphql/enum_converters/entryPoint.js
+//    - There will be flow issues until 'supergraph_schema.graphql' is updated
+//
+// NextID: 114
+enum EntryPoint {
+  ENTRY_POINT_INVALID = 0;
+  ENTRY_POINT_EXAMPLE = 1;
+
+  // Ops/Manual/UI
+  ENTRY_POINT_FLEXPORT_OPS = 3 [deprecated = true]; // used by too many sources
+  ENTRY_POINT_MANILA_OPS = 6;
+  ENTRY_POINT_PROVIDER_GRAPHQL = 14 [deprecated = true]; // used by too many sources
+  ENTRY_POINT_CVTQ = 79;
+  // Schedule Builder UI
+  ENTRY_POINT_SCHEDULE_BUILDER = 17;
+  ENTRY_POINT_SCHEDULE_BUILDER_QUEUE = 18;
+  ENTRY_POINT_SCHEDULE_BUILDER_FF_APP = 52;
+  ENTRY_POINT_SCHEDULE_BUILDER_GENERATE_SCHEDULE = 93;
+  ENTRY_POINT_SCHEDULE_BUILDER_EVALUATE_CASCADE = 94;
+  ENTRY_POINT_EC_DATE_OVERRIDES_MUTATION = 16 [deprecated = true];
+
+  // Schedule Manager
+  ENTRY_POINT_SCHEDULE_MANAGER = 76;
+  ENTRY_POINT_AUTO_CASCADE = 85;
+  ENTRY_POINT_AUTOBUILD_INITIAL_SCHEDULE = 86;
+  ENTRY_POINT_AUTO_ACTUALIZING = 98;
+  ENTRY_POINT_ENFORCE_MAX_SLA = 106;
+  ENTRY_POINT_SCHEDULES_AUTOMATIC_CASCADE = 69 [deprecated = true]; // no longer used
+
+  // Execution Coordinator
+  ENTRY_POINT_PLAN_REVISION = 48;
+  ENTRY_POINT_MONOLITH_BACKFILL = 49;
+  ENTRY_POINT_EC_CONTAINER = 80;
+  ENTRY_POINT_CONSOL_PLANNER_FINALIZE_BUILD_PLAN = 91;
+  ENTRY_POINT_EXECUTION_COORDINATOR_PROPAGATION = 92;
+  ENTRY_POINT_EXECUTION_COORDINATOR_GRAPHQL = 99;
+  ENTRY_POINT_EXECUTION_COORDINATOR_BACKFILL = 100;
+
+  // Trucking
+  ENTRY_POINT_CONVOY_TRUCKING_INTEGRATION = 109;
+  ENTRY_POINT_TRANSMISSION_MOBILE = 19;
+  ENTRY_POINT_TRANSMISSION_WEB = 20;
+  ENTRY_POINT_TRUCKING_INTEGRATION = 46;
+  ENTRY_POINT_TRUCKING_AUTOMATION = 50;
+  ENTRY_POINT_TRUCKING_LEGACY = 89;
+  ENTRY_POINT_TRUCKING_MANAGED_CARRIER_DATES = 97;
+
+  // Consolidation/Propagation - Parent->Child Alignment
+  ENTRY_POINT_DESTINATION_PLANNING_OCEAN_CONSOL_HANDLER = 22;
+  ENTRY_POINT_OCEAN_CONSOL_PROVIDER = 71;
+  ENTRY_POINT_CONSOLIDATION = 75;
+  ENTRY_POINT_CONSOL_PROVIDER = 87;
+  // Consol Planner NIS
+  ENTRY_POINT_CONSOL_PLANNER_TACO_INGESTOR = 77;
+  ENTRY_POINT_CONSOL_PLANNER_FAE_PREPLANNER = 78;
+
+  // Customs
+  ENTRY_POINT_CUSTOMS_ENTRY = 73;
+  ENTRY_POINT_CUSTOMS_ROUTE_MANAGER = 101;
+  ENTRY_POINT_CUSTOMS_ORDER_POST_PROCESSOR = 102;
+
+  // Visibility
+  ENTRY_POINT_FPOS_VISIBILITY = 13 [deprecated = true]; // used by too many sources
+  ENTRY_POINT_VISIBILITY_SCRAPERS = 32;
+  ENTRY_POINT_VESSEL_CHANGED_HANDLER = 104;
+
+  // Proserve
+  ENTRY_POINT_PROSERVE = 9 [deprecated = true];
+  ENTRY_POINT_PROSERVE_ONEY = 25;
+  ENTRY_POINT_PROSERVE_ZIMU = 26;
+  ENTRY_POINT_PROSERVE_EGLV = 27;
+  ENTRY_POINT_PROSERVE_YMLU = 28;
+  ENTRY_POINT_PROSERVE_INTTRA = 33;
+  ENTRY_POINT_PROSERVE_CARGOSMART = 34;
+  ENTRY_POINT_PROSERVE_MAEU = 35;
+  ENTRY_POINT_PROSERVE_CMACGM = 36;
+  ENTRY_POINT_PROSERVE_IILU = 37;
+  ENTRY_POINT_PROSERVE_YANGMING = 38;
+  ENTRY_POINT_PROSERVE_EVERGREEN = 39;
+  ENTRY_POINT_PROSERVE_VLS = 40;
+  ENTRY_POINT_PROSERVE_SEAU = 41;
+  ENTRY_POINT_PROSERVE_HLCU = 42;
+  ENTRY_POINT_PROSERVE_WWALLIANCE = 43;
+  ENTRY_POINT_PROSERVE_ECULINE = 44;
+  ENTRY_POINT_PROSERVE_WANHAI = 74;
+
+  // Air Track and Trace
+  ENTRY_POINT_AIR_TRACK_AND_TRACE_CARGO_EVENT_ADAPTER = 59;
+  ENTRY_POINT_AIR_TRACK_AND_TRACE_AIR_GRAPH = 60;
+  ENTRY_POINT_AIR_TRACK_AND_TRACE_ATLAS = 61;
+  ENTRY_POINT_AIR_TRACK_AND_TRACE_CHAMP = 62;
+  ENTRY_POINT_AIR_TRACK_AND_TRACE_CRUX = 63;
+  ENTRY_POINT_AIR_TRACK_AND_TRACE_JET_ONE_X_MVT = 64;
+  ENTRY_POINT_AIR_TRACK_AND_TRACE_JET_ONE_X_FLIGHT_SUMMARY = 65;
+  ENTRY_POINT_AIR_TRACK_AND_TRACE_PRO_SERVE = 66;
+  ENTRY_POINT_AIR_TRACK_AND_TRACE_NOA = 67;
+  ENTRY_POINT_AIR_TRACK_AND_TRACE_USER = 68;
+  ENTRY_POINT_AIR_TRACK_AND_TRACE_EMAIL_PARSER = 70;
+  ENTRY_POINT_AIR_TRACK_AND_TRACE_FLIGHT_AWARE = 82;
+
+  // Quoting / Requote
+  ENTRY_POINT_REQUOTE_ACCEPTED = 110;
+
+  // Uncategorized/Need Grouping
+  ENTRY_POINT_CRUX = 2;
+  ENTRY_POINT_CARGOSMART = 4;
+  ENTRY_POINT_RAILINC = 5;
+  ENTRY_POINT_AIS = 7;
+  ENTRY_POINT_NOA = 8;
+  ENTRY_POINT_INTTRA = 10;
+  ENTRY_POINT_MONOLITH_GRAPH = 11 [deprecated = true]; // used by too many sources
+  ENTRY_POINT_CARRIER_BOOKING = 12;
+  ENTRY_POINT_OCEAN_FCL_CARRIER_BOOKING = 15;
+  ENTRY_POINT_CARRIER_BOOKING_DETACHED = 84;
+  ENTRY_POINT_MONOLITH_SHIPMENT_CONTAINER_HOOK = 21;
+  ENTRY_POINT_GRAPHQL_CONTAINER_MUTATION = 72;
+  ENTRY_POINT_FPOS_MILESTONE_MANAGER_INTERFACE = 23;
+  ENTRY_POINT_ENTITY_SNAPSHOT = 24;
+  ENTRY_POINT_EXPORT_DOC_QUEUE = 29;
+  ENTRY_POINT_EXPORT_MNL_QUEUE = 30;
+  ENTRY_POINT_EXPORT_FAPIAO = 31;
+  ENTRY_POINT_TRACK_TABLE = 45;
+  ENTRY_POINT_WAREHOUSE_APP = 47;
+  ENTRY_POINT_WMS = 90;
+  ENTRY_POINT_WMS_PUBLIC_API = 113;
+  ENTRY_POINT_OCEAN_RELEASE_PAGE = 51;
+  ENTRY_POINT_DENIED_PARTY_SCREEN = 53;
+  ENTRY_POINT_OCEAN_AUTOMATION = 54;
+  ENTRY_POINT_DESTINATION_PARTNER_APP = 55;
+  ENTRY_POINT_ORIGIN_PARTNER_APP = 56;
+  ENTRY_POINT_WAREHOUSE_INTEGRATION_TIP_TOP = 57;
+  ENTRY_POINT_WAREHOUSE_INTEGRATION_BOS = 58;
+  ENTRY_POINT_COMPLIANCE_RESTRICTED_COUNTRY = 81;
+  ENTRY_POINT_COMPLIANCE_DIVERSION = 83;
+  ENTRY_POINT_SHIPMENT_COMPLETE_AUTOMATION = 88;
+  ENTRY_POINT_BOOKING_AUTOMATION = 103;
+  ENTRY_POINT_MOVE_DEMO_ACCOUNT_DATES = 105;
+  ENTRY_POINT_CUSTOMER_CONSIGNMENT = 107;
+  ENTRY_POINT_CARRIER_BOOKING_UPDATE_OCEAN_LEGS = 108;
+  ENTRY_POINT_COLOADER_BOOKING_UPDATE_OCEAN_LEGS = 111;
+  ENTRY_POINT_CARRIER_SHIPPING_DOC_SFN = 112;
+}

@@ -1,0 +1,69 @@
+// TEAM: cost_capture
+
+syntax = "proto3";
+
+package flexport.costlibrary.cost.v1beta1;
+
+import "flexport/costlibrary/cost/v1beta1/cost_snapshot.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CostSnapshotApiProto";
+option java_package = "com.flexport.costlibrary.cost.v1beta1";
+option ruby_package = "Flexport::CostLibrary::Cost::V1Beta1";
+
+service CostSnapshotAPI {
+  rpc RecordCostSnapshot(RecordCostSnapshotRequest) returns (RecordCostSnapshotResponse);
+  rpc GenerateAndRecordCostSnapshot(GenerateAndRecordCostSnapshotRequest) returns (GenerateAndRecordCostSnapshotResponse);
+  rpc FindCostSnapshots(FindCostSnapshotsRequest) returns (FindCostSnapshotsResponse);
+}
+
+message RecordCostSnapshotRequest {
+  CostSnapshot snapshot = 1;
+}
+
+message RecordCostSnapshotResponse {
+  oneof result {
+    CostSnapshotResult success = 1;
+    FailureResult failure = 2;
+  }
+}
+
+message GenerateAndRecordCostSnapshotRequest {
+  Costable costable = 1;
+}
+
+message GenerateAndRecordCostSnapshotResponse {
+  oneof result {
+    CostSnapshotResult success = 1;
+    FailureResult failure = 2;
+  }
+}
+
+message FindCostSnapshotsRequest {
+  oneof criteria {
+    SnapshotIdsCriteria ids = 1;
+  }
+}
+
+message SnapshotIdsCriteria {
+  repeated string ids = 1;
+}
+
+message FindCostSnapshotsResponse {
+  oneof result {
+    CostSnapshotsResult success = 1;
+    FailureResult failure = 2;
+  }
+}
+
+message CostSnapshotResult {
+  CostSnapshot snapshot = 1;
+}
+
+message CostSnapshotsResult {
+  repeated CostSnapshotResult snapshots = 1;
+}
+
+message FailureResult {
+  repeated string errors = 1;
+}

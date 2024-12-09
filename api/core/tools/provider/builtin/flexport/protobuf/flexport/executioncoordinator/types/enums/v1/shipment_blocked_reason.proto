@@ -1,0 +1,21 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentBlockedReasonProto";
+option java_package = "com.flexport.executioncoordinator.types.enums.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Enums::V1";
+
+// The different reasons and explanations for a block.
+enum ShipmentBlockedReason {
+  SHIPMENT_BLOCKED_REASON_INVALID = 0;
+  SHIPMENT_BLOCKED_REASON_DPS_HIT = 1;
+  SHIPMENT_BLOCKED_REASON_RESTRICTED_COUNTRY_HIT = 2;
+  // More cases will be added as LST team adds more Compliance actions, e.g.:
+  // SHIPMENT_BLOCKED_REASON_DANGEROUS_GOODS_FLAG
+  // SHIPMENT_BLOCKED_REASON_CTPAT_SREEN_FAILURE
+
+}

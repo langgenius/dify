@@ -1,0 +1,29 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.monolith.compliance.dangerousgoods.rpc.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DocumentScraperShipmentDetailsApiProto";
+option java_package = "com.flexport.monolith.compliance.dangerousgoods.rpc.v1beta1";
+option ruby_package = "Flexport::Monolith::Compliance::DangerousGoods::Rpc::V1Beta1";
+
+import "flexport/monolith/compliance/dangerousgoods/message/v1beta1/document_scraper_shipment_details.proto";
+
+// API for fetching shipment data needed for DocumentScraper screening decisions.
+service DocumentScraperShipmentDetailsAPI {
+  // Fetch shipment data for a given shipmentFid.
+  rpc GetDocumentScraperShipmentDetails(GetDocumentScraperShipmentDetailsRequest) returns (GetDocumentScraperShipmentDetailsResponse);
+}
+
+// Request to get Shipment details by shipmentFid.
+message GetDocumentScraperShipmentDetailsRequest {
+  // The fid of the shipment we need details on.
+  string shipment_fid = 1;
+}
+
+// The response with shipment details.
+message GetDocumentScraperShipmentDetailsResponse {
+  flexport.monolith.compliance.dangerousgoods.message.v1beta1.DocumentScraperShipmentDetails shipment_details = 1;
+}

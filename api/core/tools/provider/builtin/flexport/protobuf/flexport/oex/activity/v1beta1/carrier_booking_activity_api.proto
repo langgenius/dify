@@ -1,0 +1,37 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.oex.activity.v1beta1;
+
+import "flexport/oex/activity/v1beta1/carrier_booking_activity_context.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierBookingActivityApiProto";
+option java_package = "com.flexport.oex.activity.v1beta1";
+option ruby_package = "Flexport::OEX::Activity::V1Beta1";
+
+service CarrierBookingActivityAPI {
+  // Get all carrier booking activities for a given carrier booking and activity category.
+  rpc FetchCarrierBookingActivityByCategory(FetchCarrierBookingActivityByCategoryRequest) returns (FetchCarrierBookingActivityByCategoryResponse);
+  // Get the latest carrier booking activity for a given carrier booking and activity category.
+  rpc FetchLatestCarrierBookingActivityByCategory(FetchLatestCarrierBookingActivityByCategoryRequest) returns (FetchLatestCarrierBookingActivityByCategoryResponse);
+}
+
+message FetchCarrierBookingActivityByCategoryRequest {
+  string carrier_booking_fid = 1;
+  ActivityCategory activity_category = 2;
+}
+
+message FetchCarrierBookingActivityByCategoryResponse {
+  repeated CarrierBookingActivityContext carrier_booking_activity_context = 1;
+}
+
+message FetchLatestCarrierBookingActivityByCategoryRequest {
+  string carrier_booking_fid = 1;
+  ActivityCategory activity_category = 2;
+}
+
+message FetchLatestCarrierBookingActivityByCategoryResponse {
+  CarrierBookingActivityContext carrier_booking_activity_context = 1;
+}

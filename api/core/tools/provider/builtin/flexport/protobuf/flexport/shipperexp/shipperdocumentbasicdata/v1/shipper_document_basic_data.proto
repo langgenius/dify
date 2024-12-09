@@ -1,0 +1,273 @@
+// TEAM: shipper_exp
+
+syntax = "proto3";
+
+package flexport.shipperexp.shipperdocumentbasicdata.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipperDocumentBasicDataProto";
+option java_package = "com.flexport.shipperexp.shipperdocumentbasicdata.v1";
+option ruby_package = "Flexport::ShipperExp::ShipperDocumentBasicData::V1";
+
+// Represent transmission mode enum on the shipper doc, for HBL.
+enum TransmissionMode {
+  TRANSMISSION_MODE_INVALID = 0;
+  TRANSMISSION_MODE_UNKNOWN = 1;
+  TRANSMISSION_MODE_ORIGINAL = 2;
+  TRANSMISSION_MODE_EXPRESS = 3;
+  TRANSMISSION_MODE_STRAIGHT = 4;
+}
+
+// Represent release mode enum on the shipper doc, for HBL.
+enum ReleaseMethod {
+  RELEASE_METHOD_INVALID = 0;
+  RELEASE_METHOD_HOLD_FOR_TELEX = 1;
+  RELEASE_METHOD_MAIL_COPY = 2;
+  RELEASE_METHOD_UNSPECIFIED = 3;
+}
+
+// Represent VGM verificated method on the shipper doc, for VGM.
+enum VerificationMethod {
+  VERIFICATION_METHOD_INVALID = 0;
+  VERIFICATION_METHOD_SOLAS_1 = 1;
+  VERIFICATION_METHOD_SOLAS_2 = 2;
+}
+
+// Represent the cargo type on the shipper doc, for CCAM.
+enum CargoType {
+  CARGO_TYPE_INVALID = 0;
+  CARGO_TYPE_GENERAL = 1;
+  CARGO_TYPE_REEFER = 2;
+  CARGO_TYPE_DANGEROUS = 3;
+  CARGO_TYPE_AWKWARD = 4;
+  CARGO_TYPE_REEFER_DANGEROUS = 5;
+  CARGO_TYPE_AWKWARD_DANGEROUS = 6;
+}
+
+// Represent the cargo weight unit on the shipper doc.
+enum WeightUnit {
+  WEIGHT_UNIT_INVALID = 0;
+  WEIGHT_UNIT_KG = 1;
+  WEIGHT_UNIT_LB = 2;
+}
+
+// Represent the cargo volume unit on the shipper doc.
+enum VolumeUnit {
+  VOLUME_UNIT_INVALID = 0;
+  VOLUME_UNIT_CBM = 1;
+  VOLUME_UNIT_CFT = 2;
+}
+
+// Represent cargo unit type on the shipper doc.
+enum CargoUnitType {
+  CARGO_UNIT_TYPE_INVALID = 0;
+  CARGO_UNIT_TYPE_PALLET = 1;
+  CARGO_UNIT_TYPE_CARTON = 2;
+  CARGO_UNIT_TYPE_BAG = 3;
+  CARGO_UNIT_TYPE_BALE = 4;
+  CARGO_UNIT_TYPE_BARREL = 5;
+  CARGO_UNIT_TYPE_CRATE = 6;
+  CARGO_UNIT_TYPE_ROLL = 7;
+  CARGO_UNIT_TYPE_ULD = 8;
+  CARGO_UNIT_TYPE_PRODUCT = 9;
+  CARGO_UNIT_TYPE_PACKAGE = 10;
+  CARGO_UNIT_TYPE_BOX = 11;
+  CARGO_UNIT_TYPE_DRUM = 12;
+  CARGO_UNIT_TYPE_BUNDLE = 13;
+  CARGO_UNIT_TYPE_BULK = 14;
+  CARGO_UNIT_TYPE_TOTE = 15;
+  CARGO_UNIT_TYPE_SKID = 16;
+  CARGO_UNIT_TYPE_PIECE = 17;
+  CARGO_UNIT_TYPE_CASE = 18;
+  CARGO_UNIT_TYPE_PAIL = 19;
+  CARGO_UNIT_TYPE_SET = 20;
+  CARGO_UNIT_TYPE_BIN = 21;
+  CARGO_UNIT_TYPE_BASE = 22;
+  CARGO_UNIT_TYPE_BOARD = 23;
+  CARGO_UNIT_TYPE_BOTTLE = 24;
+  CARGO_UNIT_TYPE_CASK = 25;
+  CARGO_UNIT_TYPE_COIL = 26;
+  CARGO_UNIT_TYPE_FIRKIN = 27;
+  CARGO_UNIT_TYPE_FRAME = 28;
+  CARGO_UNIT_TYPE_FRUIT_CRATE = 29;
+  CARGO_UNIT_TYPE_IBC = 30;
+  CARGO_UNIT_TYPE_IRON_FRAMES = 31;
+  CARGO_UNIT_TYPE_ISO_TANK = 32;
+  CARGO_UNIT_TYPE_PAPER_BAG = 33;
+  CARGO_UNIT_TYPE_PIPE = 34;
+  CARGO_UNIT_TYPE_PLANK = 35;
+  CARGO_UNIT_TYPE_PLASTIC_BAG = 36;
+  CARGO_UNIT_TYPE_PLATE = 37;
+  CARGO_UNIT_TYPE_PLYWOOD_CASE = 38;
+  CARGO_UNIT_TYPE_PLYWOODEN_CASE = 39;
+  CARGO_UNIT_TYPE_POT = 40;
+  CARGO_UNIT_TYPE_PUNNET = 41;
+  CARGO_UNIT_TYPE_REEL = 42;
+  CARGO_UNIT_TYPE_RING = 43;
+  CARGO_UNIT_TYPE_ROD = 44;
+  CARGO_UNIT_TYPE_SACHET = 45;
+  CARGO_UNIT_TYPE_SACK = 46;
+  CARGO_UNIT_TYPE_SHEET = 47;
+  CARGO_UNIT_TYPE_SUITCASE = 48;
+  CARGO_UNIT_TYPE_TIN = 49;
+  CARGO_UNIT_TYPE_TRUNK = 50;
+  CARGO_UNIT_TYPE_TRUSS = 51;
+  CARGO_UNIT_TYPE_TUB = 52;
+  CARGO_UNIT_TYPE_TUBE = 53;
+  CARGO_UNIT_TYPE_UNIT = 54;
+  CARGO_UNIT_TYPE_VAT = 55;
+  CARGO_UNIT_TYPE_WOODEN_CASK = 56;
+  CARGO_UNIT_TYPE_WOODEN_CRATE = 57;
+  CARGO_UNIT_TYPE_WOODEN_PALLET = 58;
+  CARGO_UNIT_TYPE_FLEXITANK = 59;
+}
+
+// Represent container size on the shipper doc.
+enum ContainerSize {
+  CONTAINER_SIZE_INVALID = 0;
+  CONTAINER_SIZE_TWENTY_FT = 1;
+  CONTAINER_SIZE_TWENTY_FT_HC = 2;
+  CONTAINER_SIZE_FOURTY_FT = 3;
+  CONTAINER_SIZE_FOURTY_FT_HC = 4;
+  CONTAINER_SIZE_FOURTY_FIVE_FT_HC = 5;
+  CONTAINER_SIZE_FIFTY_THREE_FT = 6;
+  CONTAINER_SIZE_FIFTY_THREE_FT_HC = 7;
+}
+
+// Represent container type on the shipper doc.
+enum ContainerType {
+  CONTAINER_TYPE_INVALID = 0;
+  CONTAINER_TYPE_DRY = 1;
+  CONTAINER_TYPE_FLAT_RACK = 2;
+  CONTAINER_TYPE_HEADLOAD = 3;
+  CONTAINER_TYPE_OPEN = 4;
+  CONTAINER_TYPE_REEFER = 5;
+  CONTAINER_TYPE_TANK = 6;
+  CONTAINER_TYPE_VENTILATED = 7;
+  CONTAINER_TYPE_BULK = 8;
+  CONTAINER_TYPE_SPECIAL = 9;
+}
+
+// Represent the document type of the document.
+// VGM / SI / CCAM
+enum DocumentType {
+  DOCUMENT_TYPE_INVALID = 0;
+  DOCUMENT_TYPE_SI = 1;
+  DOCUMENT_TYPE_VGM = 2;
+  DOCUMENT_TYPE_CCAM = 3;
+}
+
+// Represent basic container container on shipper doc.
+message Container {
+  string container_number = 1;
+  ContainerSize container_size = 2;
+  ContainerType container_type = 3;
+}
+
+// Represent the basic cargo data.
+message BaseCargo {
+  WeightUnit weight_unit = 1;
+  VolumeUnit volume_unit = 2;
+  CargoUnitType unit_type = 3;
+  CargoUnitType sub_unit_type = 4;
+  google.protobuf.DoubleValue total_weight = 5;
+  google.protobuf.DoubleValue total_volume = 6;
+  google.protobuf.Int64Value count = 7;
+  google.protobuf.Int64Value atomic_count = 8;
+}
+
+// Represent the VGM data of one container.
+message VerifiedGrossMassData {
+  string so_number = 1;
+  VerificationMethod verification_method = 2;
+  google.protobuf.DoubleValue vgm_weight = 3;
+  google.protobuf.DoubleValue cargo_weight = 4;
+  google.protobuf.DoubleValue tare_weight = 5;
+}
+
+// Represent the HS code information.
+message HsCode {
+  int64 hs_code_id = 1;
+  string code = 2;
+  string description = 3;
+}
+
+// Represent one particular shipper document (CCAM/VGM/SI).
+message DocumentInformation {
+  bool required = 1;
+  bool finalized = 2;
+  string created_by = 3;
+  string updated_by = 4;
+  string document_fid = 5;
+  google.protobuf.Timestamp created_at_time = 6;
+  google.protobuf.Timestamp updated_at_time = 7;
+}
+
+// Represent the particular document status.
+// This data structure does not include any other calcualted or generated data.
+message DocumentStatusInformation {
+  bool required = 1;
+  bool finalized = 2;
+}
+
+// Represent VGM declaration.
+message VerifiedGrossMassDeclaration {
+  string company_name = 1;
+  string authorized_person = 2;
+}
+
+// Represent the DG information on the shipper doc.
+message DgInformation {
+  string soc_logo = 1;
+  string dg_class = 2;
+  string contact_person = 3;
+  string flash_point = 4;
+  string un_code = 5;
+}
+
+// Represent one product on the shipper doc.
+message Product {
+  HsCode hs_code = 1;
+  BaseCargo cargo = 2;
+  string sub_so = 3;
+  CargoType cargo_type = 4;
+  DgInformation dg_information = 5;
+}
+
+// Represent ReeferInformation per container.
+message ReeferInformation {
+  string ventilation_rate = 1;
+  string temperature_setting = 2;
+}
+
+// Represent the container data on shipper document.
+message ShipperDocumentContainer {
+  string seal_number = 1;
+  Container container = 2;
+  VerifiedGrossMassData verified_gross_mass_data = 3;
+  repeated ContainerCargo cargos = 4;
+  ReeferInformation reefer_information = 5;
+}
+
+// Represent the Sub-SO leval cargo information.
+message SubSoPackage {
+  string sub_so = 1;
+  BaseCargo cargo = 2;
+}
+
+// Represent one cargo data on one container.
+message ContainerCargo {
+  string name = 1;
+  bool sub_so_cargo_enabled = 2;
+  bool product_cargo_enabled = 3;
+  string marks_and_numbers_on_bill_of_lading = 4;
+  string marks_and_numbers_on_ccam = 5;
+  string description_on_bill_of_lading = 6;
+  string description_on_ccam = 7;
+  BaseCargo total_cargo = 8;
+  repeated Product products = 9;
+  repeated SubSoPackage sub_so_packages = 10;
+}

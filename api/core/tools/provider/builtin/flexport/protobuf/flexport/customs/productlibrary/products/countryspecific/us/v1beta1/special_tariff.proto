@@ -1,0 +1,14 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.productlibrary.products.countryspecific.us.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "UsSpecialTariffProto";
+option java_package = "com.flexport.customs.productlibrary.products.countryspecific.us.v1beta1";
+option ruby_package = "Flexport::Customs::ProductLibrary::Products::CountrySpecific::US::V1Beta1";
+
+message UsSpecialTariff {
+  string hs_code = 1;
+}

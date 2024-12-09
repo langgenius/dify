@@ -1,0 +1,67 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.taskmanager.taskservice.v1;
+
+import "flexport/customs/taskmanager/task/v1/task.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TaskManagerApiProto";
+option java_package = "com.flexport.customs.taskmanager.taskservice.v1";
+option ruby_package = "Flexport::Customs::TaskManager::TaskService::V1";
+
+service TaskServiceAPI {
+  rpc UpsertTask(UpsertTaskRequest) returns (UpsertTaskResponse);
+  rpc CompleteTask(CompleteTaskRequest) returns (CompleteTaskResponse);
+  rpc CompleteTasks(CompleteTasksRequest) returns (CompleteTasksResponse);
+  rpc GetTaskByFid(GetTaskByFidRequest) returns (GetTaskByFidResponse);
+  rpc GetTasksByFids(GetTasksByFidsRequest) returns (GetTasksByFidsResponse);
+}
+
+message UpsertTaskRequest {
+  flexport.customs.taskmanager.task.v1.Task task = 1;
+}
+
+message UpsertTaskResponse {
+  flexport.customs.taskmanager.task.v1.Task task = 1;
+}
+
+message CompleteTaskRequest {
+  string task_fid = 1;
+}
+
+message CompleteTaskResponse {
+  flexport.customs.taskmanager.task.v1.Task task = 1;
+}
+
+message CompleteTasksRequest {
+  // Supply up to 1000 fids.
+  // If task_fids.count > 1000, the service will return an error
+  repeated string task_fids = 1;
+}
+
+message CompleteTasksResponse {
+  // Returns all the tasks that were found. Will not return an error if a task is missing
+  repeated flexport.customs.taskmanager.task.v1.Task tasks = 1;
+}
+
+message GetTaskByFidRequest {
+  string task_fid = 1;
+}
+
+message GetTaskByFidResponse {
+  flexport.customs.taskmanager.task.v1.Task task = 1;
+}
+
+message GetTasksByFidsRequest {
+  // Supply up to 1000 fids.
+  // If task_fids.count > 1000, the service will return an error
+  repeated string task_fids = 1;
+}
+
+message GetTasksByFidsResponse {
+  // Returns all the tasks that were found. Will not return an error if a task is missing
+  repeated flexport.customs.taskmanager.task.v1.Task tasks = 1;
+}
+

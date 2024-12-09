@@ -1,0 +1,18 @@
+// TEAM: sutro
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "FlexportArrivalNoticeStatusUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+// Published when the "Send Flexport Arrival Notice to 3PB" action item is completed.
+message FlexportArrivalNoticeStatusUpdated {
+  // Represent the status of the Flexport AN
+  bool sent = 1;
+  // If the AN was sent, then capture user attribution
+  string last_updated_by = 2;
+}

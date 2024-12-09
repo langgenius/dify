@@ -1,0 +1,33 @@
+// TEAM: work_management
+
+syntax = "proto3";
+
+package flexport.operatingprocedures.procedures.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ProcedureProto";
+option java_package = "com.flexport.operatingprocedures.procedures.v1";
+option ruby_package = "Flexport::OperatingProcedures::Procedures::V1";
+
+// Represents a Destination CoordinationProcedure in the operating_procedure NIS (for trucking).
+message DestinationCoordinationProcedure {
+  string category = 1;
+  DestinationCoordinationSopType body = 2;
+  string created_by_fid = 3;
+  string updated_by_fid = 4;
+}
+
+// Represents the body schema of a destination coordination SOP type.
+message DestinationCoordinationSopType {
+  repeated string additional_ccs = 1;
+  repeated string additional_subscriber_fids = 2;
+  string additional_email_body = 3;
+  DestinationCoordinationCriteriaType criteria = 4;
+}
+
+// Represents the criteria schema of a destination coordination SOP type.
+message DestinationCoordinationCriteriaType {
+  repeated string service_types = 1;
+  repeated string carrier_fids = 2;
+  repeated string delivery_location_fids = 3;
+}

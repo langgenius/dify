@@ -1,0 +1,79 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executioncargo.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionCargoApiProto";
+option java_package = "com.flexport.executioncoordinator.executioncargo.v1beta1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionCargo::V1Beta1";
+
+import "flexport/executioncoordinator/executioncargo/v1/execution_cargo.proto";
+import "flexport/executioncoordinator/types/query/v1/filters.proto";
+
+// An API for interacting with ExecutionCargo entities.
+service ExecutionCargoAPI {
+  // Creates an ExecutionCargo entity.
+  rpc CreateExecutionCargo(CreateExecutionCargoRequest) returns (CreateExecutionCargoResponse);
+  // Retrieves an ExecutionCargo entity.
+  rpc GetExecutionCargo(GetExecutionCargoRequest) returns (GetExecutionCargoResponse);
+  // Retrieves all revisions of an ExecutionCargo, sorted in chronological order (earliest revision first).
+  rpc ListExecutionCargoRevisions(ListExecutionCargoRevisionsRequest) returns (ListExecutionCargoRevisionsResponse);
+  // Retrieves a List of ExecutionCargo entity.
+  rpc ListExecutionCargo(ListExecutionCargoRequest) returns (ListExecutionCargoResponse);
+  // Updates an ExecutionCargo entity. If there are no changes, the current revision is returned.
+  rpc UpdateExecutionCargo(UpdateExecutionCargoRequest) returns (UpdateExecutionCargoResponse);
+}
+
+message CreateExecutionCargoRequest {
+  // Must not include an fid.
+  flexport.executioncoordinator.executioncargo.v1.ExecutionCargo execution_cargo = 1;
+  flexport.executioncoordinator.executioncargo.v1.ExecutionCargoRevisionSource revision_source = 2;
+}
+
+message CreateExecutionCargoResponse {
+  flexport.executioncoordinator.executioncargo.v1.ExecutionCargo execution_cargo = 1;
+}
+
+message GetExecutionCargoRequest {
+  string fid = 1;
+  //
+  // Specific revision to get, if any. The default value (0) returns the current revision.
+  uint32 revision = 2;
+}
+
+message GetExecutionCargoResponse {
+  flexport.executioncoordinator.executioncargo.v1.ExecutionCargo execution_cargo = 1;
+}
+
+// The request message for ListExecutionCargoRevisions.
+message ListExecutionCargoRevisionsRequest {
+  string fid = 1;
+}
+
+// The response message for ListExecutionCargoRevisions.
+message ListExecutionCargoRevisionsResponse {
+  repeated flexport.executioncoordinator.executioncargo.v1.ExecutionCargo revisions = 1;
+}
+
+message ListExecutionCargoRequest {
+  // The maximum number of entries to return. If a value of zero (the default) is provided, then 100 will be used.
+  // If the value provided exceeds 10,000, then 10,000 will be used.
+  uint32 limit = 1;
+  flexport.executioncoordinator.types.query.v1.StringFilter cargo_fid = 2;
+}
+
+message ListExecutionCargoResponse {
+  repeated flexport.executioncoordinator.executioncargo.v1.ExecutionCargo execution_cargo = 1;
+}
+
+message UpdateExecutionCargoRequest {
+  string fid = 1;
+  flexport.executioncoordinator.executioncargo.v1.ExecutionCargo execution_cargo = 2;
+  flexport.executioncoordinator.executioncargo.v1.ExecutionCargoRevisionSource revision_source = 3;
+}
+
+message UpdateExecutionCargoResponse {
+  flexport.executioncoordinator.executioncargo.v1.ExecutionCargo execution_cargo = 1;
+}

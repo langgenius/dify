@@ -1,0 +1,29 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billing.bill.events.v1beta1;
+
+import "flexport/billing/bill/v1beta1/bill.proto";
+import "flexport/billing/bill/v1beta1/money.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BillApprovedProto";
+option java_package = "com.flexport.billing.bill.events.v1beta1";
+option ruby_package = "Flexport::Billing::Bill::Events::V1Beta1";
+
+// Event emitted when a Bill is fully approved for payment.
+message BillApproved {
+  flexport.billing.bill.v1beta1.Bill bill = 1;
+  ApprovedBillMetadata approved_bill_metadata = 2;
+  google.protobuf.Timestamp approved_at_time = 4;
+}
+
+// Approved bill metadata message.
+message ApprovedBillMetadata {
+  string draft_bill_fid = 1;
+  google.protobuf.StringValue approved_by_fid = 2;
+  flexport.billing.bill.v1beta1.Money approved_total = 3;
+}

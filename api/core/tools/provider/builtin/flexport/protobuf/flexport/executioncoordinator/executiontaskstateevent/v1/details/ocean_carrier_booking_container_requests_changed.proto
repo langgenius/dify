@@ -1,0 +1,29 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanCarrierBookingContainerRequestsChangedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+import "google/protobuf/wrappers.proto";
+
+// The container requests associated with the carrier booking have been updated.
+//
+message OceanCarrierBookingContainerRequestsChanged {
+  string carrier_booking_fid = 1;
+  repeated ContainerRequest container_requests = 2;
+}
+
+// Representation of the containers we requested in the carrier booking and the carrier response.
+message ContainerRequest {
+  flexport.os.v1.types.cargo.v1.Iso6346ContainerSize container_size = 1;
+  flexport.os.v1.types.cargo.v1.Iso6346ContainerType container_type = 2;
+  int32 quantity = 3;
+  google.protobuf.BoolValue subject_to_roll = 4;
+  int32 teu_count = 5;
+}

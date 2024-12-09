@@ -1,0 +1,17 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.consol.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ConsolChildInfoProto";
+option java_package = "com.flexport.executioncoordinator.consol.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Consol::V1";
+
+// A Consol child info.
+message ConsolChildInfo {
+  string consol_execution_task_fid = 1;
+  string execution_order_fid = 2;
+  string shipment_fid = 3;
+}

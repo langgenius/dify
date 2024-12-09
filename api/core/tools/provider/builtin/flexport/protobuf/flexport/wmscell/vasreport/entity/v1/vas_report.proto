@@ -1,0 +1,47 @@
+// TEAM: lumina
+
+syntax = "proto3";
+
+package flexport.wmscell.vasreport.entity.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "VasReportEntityProto";
+option java_package = "com.flexport.wmscell.vasreport.entity.v1";
+
+message VasReportEntity {
+  string vas_report_pk = 1;
+  string consignee = 2;
+  string warehouse_request_id = 3;
+  string warehouse_code = 4;
+  string inbound_leg_container = 5;
+  string outbound_leg_id = 6;
+  string chargeable_weight = 7;
+  float cbm = 8;
+  int32 carton_count = 9;
+  int32 pallet_count = 10;
+  google.protobuf.Timestamp arrival_date = 11;
+  google.protobuf.Timestamp departure_date = 12;
+  string owner = 13;
+  string inbound_type = 14;
+  bool amazon = 15;
+  string container_size = 16;
+  string warehouse_notes = 17;
+  bool carton_labels = 18;
+  bool pallet_labels = 19;
+  bool sort_and_segregation = 20;
+  bool urgent_transload = 21;
+  bool use_corner_boards = 22;
+  int32 number_of_corner_boards = 23;
+  bool use_load_straps = 24;
+  int32 number_of_load_straps = 25;
+  bool use_air_bags = 26;
+  int32 number_of_air_bags = 27;
+  bool need_carton_rework = 28;
+  int32 number_of_carton_rework = 29;
+  bool need_dunnage = 30;
+  bool need_block_and_brace = 31;
+  string inbound_load_pk = 32;
+  google.protobuf.Timestamp available_for_pickup_date = 33;
+}

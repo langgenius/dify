@@ -1,0 +1,16 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerGroupRolledProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// Container group rolled for unspecified reason.
+message ContainerGroupRolled {
+  // Impacted container fids
+  repeated string rolled_container_fids = 1;
+}

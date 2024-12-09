@@ -1,0 +1,52 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontask.v1;
+
+import "flexport/executioncoordinator/executioncargo/v1/execution_cargo.proto";
+import "flexport/os/v1/types/walltimerange/v1/wall_time_range.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoReceiptExecutionTaskParamsProto";
+option java_package = "com.flexport.executioncoordinator.executiontask.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTask::V1";
+
+// Parameters for CargoReceipt ExecutionTask.
+message CargoReceiptExecutionTaskParams {
+  //
+  // Details about the cargo to be received.
+  flexport.executioncoordinator.executioncargo.v1.ExecutionCargo execution_cargo = 2;
+  //
+  // When the cargo is expected to be received.
+  flexport.os.v1.types.walltimerange.v1.WallTimeRange time_range = 3;
+  //
+  // Describes the cargo expected within the received enclosure(s).
+  repeated ReceivedCargo received_cargos = 4;
+  //
+  // Unique identifier of the address of the warehouse (or other facility) to receive cargo.
+  string destination_address_fid = 5;
+  //
+  // Optional: Equipment cargo plan fid
+  string equipment_cargo_plan_fid = 6;
+  //
+  // Optional: Is this delivery represented on ULD tasks
+  bool is_present_on_uld_tasks = 7;
+  //
+  // The fid identifier for the inbound route_shape_leg to the warehouse receiving the cargo.
+  string arriving_route_shape_leg_fid = 8;
+  //
+  // Unique identifier of the address of the origin (may or may not be a warehouse) that
+  // the cargo is coming from.
+  // To be used on ULD tasks only since we don't associate them correctly with a consol
+  // leg, and hackily associate them just with one leg of one shipment on the ULD.
+  // Without this, we will miss updating the ULD if the original leg we associated the ULD with
+  // has its origin updated, but not destination, and leave the ULD pointing to a deleted leg.
+  string origin_address_fid = 9;
+}
+
+// Describes one set of cargo within the received enclosure(s).
+message ReceivedCargo {
+  // Weights and measures of this portion of the enclosed cargo.
+  flexport.executioncoordinator.executioncargo.v1.ExecutionCargo execution_cargo = 1;
+}

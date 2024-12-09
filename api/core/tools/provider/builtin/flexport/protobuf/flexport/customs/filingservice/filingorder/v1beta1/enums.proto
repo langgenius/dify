@@ -1,0 +1,60 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.filingservice.filingorder.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "Enums";
+option java_package = "com.flexport.customs.filingservice.filingorder.v1beta1";
+option ruby_package = "Flexport::Customs::FilingService::FilingOrder::V1Beta1";
+
+enum ModeOfTransport {
+  MODE_OF_TRANSPORT_INVALID = 0;
+  MODE_OF_TRANSPORT_OCEAN_FCL = 1;
+  MODE_OF_TRANSPORT_OCEAN_LCL = 2;
+  MODE_OF_TRANSPORT_TRUCKING_FTL = 3;
+  MODE_OF_TRANSPORT_TRUCKING_LTL = 4;
+  MODE_OF_TRANSPORT_AIR = 5;
+}
+
+enum OrderStatus {
+  ORDER_STATUS_INVALID = 0;
+  ORDER_STATUS_CREATED = 1;
+  ORDER_STATUS_COMPLETED = 2;
+  ORDER_STATUS_CANCELLED = 3;
+}
+
+enum ServiceStatus {
+  SERVICE_STATUS_INVALID = 0;
+  SERVICE_STATUS_CREATED = 1;
+  SERVICE_STATUS_PROCESSING = 2;
+  SERVICE_STATUS_COMPLETED = 3;
+  SERVICE_STATUS_CANCELLED = 4;
+}
+
+enum ServiceType {
+  SERVICE_TYPE_INVALID = 0;
+  SERVICE_TYPE_PRE_DEPARTURE_AUTHORIZATION = 1;
+  SERVICE_TYPE_IMPORT_FILING = 2;
+  SERVICE_TYPE_INBOND_FILING = 3;
+  SERVICE_TYPE_EXPORT_FILING = 4;
+  SERVICE_TYPE_COMMERCIAL_INVOICE_DIGITIZATION = 5;
+  SERVICE_TYPE_PRODUCT_CLASSIFICATION = 6;
+}
+
+enum FilingType {
+  FILING_TYPE_INVALID = 0;
+  FILING_TYPE_US_ISF = 1;
+  FILING_TYPE_US_ENTRY_SUMMARY = 2;
+}
+
+enum FilingStatus {
+  FILING_STATUS_INVALID = 0;
+  FILING_STATUS_PROCESSING = 1;
+  FILING_STATUS_READY_TO_TRANSMIT = 2;
+  FILING_STATUS_TRANSMITTED = 3;
+  FILING_STATUS_FILING_COMPLETE = 4;
+  FILING_STATUS_FINALIZED = 5;
+  FILING_STATUS_CANCELLED = 6;
+}

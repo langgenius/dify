@@ -1,0 +1,169 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customs.declaration.eu.import.v1beta1;
+
+import "flexport/customs/declaration/eu/common/v1beta1/addition_deduction.proto";
+import "flexport/customs/declaration/eu/common/v1beta1/additional.proto";
+import "flexport/customs/declaration/eu/common/v1beta1/authorisation.proto";
+import "flexport/customs/declaration/eu/common/v1beta1/commodity_code.proto";
+import "flexport/customs/declaration/eu/common/v1beta1/documents.proto";
+import "flexport/customs/declaration/eu/common/v1beta1/duty_tax.proto";
+import "flexport/customs/declaration/eu/common/v1beta1/involved_parties.proto";
+import "flexport/customs/declaration/eu/common/v1beta1/packaging.proto";
+import "google/type/date.proto";
+import "google/type/money.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.declaration.eu.imports.v1beta1";
+option ruby_package = "Flexport::Customs::Declaration::EU::Import::V1Beta1";
+
+// The GoodsShipmentItem message contains all the data elements that are needed for the Government Agency Goods Item level
+// of a declaration. This contains all detail information of one single Item in a Goods Shipment.
+//
+// Next ID: 43
+message GoodsShipmentItem {
+  // [Data Element: 11 03 000 000]
+  int32 number = 1;
+  // The codes to be entered in this subdivision are four-digit codes, composed of a two-digit code representing the procedure requested,
+  // followed by a second two-digit code representing the previous procedure.
+  //
+  // For example 4000 = 40 (procedure requested) + 00 (previous procedure)
+  // meaning Simultaneous release for free circulation and home use of goods with no previous procedure.
+  //
+  // [Data Element: 11 09 000 000]
+  message Procedure {
+    // Two digit code indicating the customs procedure to which the goods are being entered.
+    //
+    // [Data Element: 11 09 001 000]
+    string requested_procedure = 1;
+
+    // Two digit code indicating the customs procedure from which the goods are being removed.
+    // The procedure under which the goods were placed before being placed under the procedure requested.
+    //
+    // [Data Element: 11 09 002 000]
+    string previous_procedure = 2;
+  }
+  // The procedure under which the goods are to be placed.
+  // [Data Element: 11 09 000 000]
+  Procedure procedure = 2;
+  // Three digit code identifying the additional procedure.
+  // This can be either a national procedure or a Union procedure.
+  //
+  // [Data Element: 11 10 000 000]
+  string additional_procedure = 3;
+  // [Data Element: 12 01 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.PreviousDocument previous_document = 4;
+  // [Data Element: 12 02 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.AdditionalInformation additional_information = 5;
+  // [Data Element: 12 03 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.SupportingDocument supporting_documents = 6;
+  // [Data Element: 12 04 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.AdditionalReference additional_references = 7;
+  // [Data Element: 12 05 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.TransportDocument transport_documents = 8;
+  // [Data Element: 12 08 000 000]
+  string unique_consignment_reference = 9;
+  // [Data Element: 12 12 000 000]
+  flexport.customs.declaration.eu.common.v1beta1.Authorisation authorisation = 14;
+  // [Data Element: 13 01 000 000]
+  flexport.customs.declaration.eu.common.v1beta1.Exporter exporter = 15;
+  // [Data Element:13 04 000 000]
+  flexport.customs.declaration.eu.common.v1beta1.Importer importer = 16;
+  // [Data Element: 13 08 000 000]
+  flexport.customs.declaration.eu.common.v1beta1.Seller seller = 17;
+  // [Data Element: 13 09 000 000]
+  flexport.customs.declaration.eu.common.v1beta1.Buyer buyer = 18;
+  // [Data Element: 13 14 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.AdditionalSupplyChainActor additional_supply_chain_actors = 19;
+  // [Data Element: 13 16 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.AdditionalFiscalReference additional_fiscal_references = 20;
+  // [Data Element: 14 03 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.DutyTax duties_and_taxes = 21;
+  // [Data Element: 14 04 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.AdditionDeduction additions_and_deductions = 22;
+  // [Data Element: 14 07 001 000]
+  string valuation_indicator = 23;
+  // Currency needs to match the currency of the goods shipment.
+  // [Data Element: 14 08 000 000]
+  google.type.Money item_amount_invoiced = 24;
+
+  // Valuation Method describes the method used to calculate the value of the goods.
+  // There are six primary methods for determining the customs value under the WTO Valuation Agreement
+  enum ValuationMethod {
+    VALUATION_METHOD_INVALID = 0;
+    VALUATION_METHOD_TRANSACTION_VALUE = 1;
+    VALUATION_METHOD_TRANSACTION_VALUE_IDENTICAL_GOODS = 2;
+    VALUATION_METHOD_TRANSACTION_VALUE_SIMILAR_GOODS = 3;
+    VALUATION_METHOD_DEDUCTIVE = 4;
+    VALUATION_METHOD_COMPUTED_VALUE = 5;
+    VALUATION_METHOD_FALLBACK = 6;
+  }
+  // [Data Element: 14 10 000 000]
+  ValuationMethod valuation_method = 25;
+  // [Data Element: 14 11 000 000]
+  string preference = 26;
+  // Content-piece, declared-value: Currency code and monetary value of the content piece, declared for customs purposes.
+  //
+  // [Data Element: 14 12 000 000]
+  // | [Data Element: 14 12 012 000] Currency
+  // | [Data Element: 14 12 014 000] Amount
+  google.type.Money postal_value = 27;
+  // Intrinsic value of the goods per item in the invoice currency.
+  //
+  // [Data Element: 14 14 000 000]
+  // | [Data Element: 14 14 012 000] Currency
+  // | [Data Element: 14 14 014 000] Amount
+  google.type.Money intrinsic_value = 28;
+  // Transport and insurance costs up to the place of final destination in the invoice currency.
+  //
+  // [Data Element: 14 15 000 000]
+  google.type.Money transport_insurance_destination = 29;
+  // The total amount of duties and taxes for the goods concerned.
+  //
+  // [Data Element: 14 16 000 000]
+  // [Data Element: 14 17 000 000] Internal currency unit
+  google.type.Money total_duties_and_taxes = 30;
+  // [Data Element: 15 09 000 000]
+  google.type.Date date_of_acceptance = 31;
+  // [Data Element: 16 03 000 000]
+  string country_of_destination = 32;
+  // [Data Element: 16 04 000 000]
+  string region_of_destination = 33;
+  // [Data Element: 16 06 000 000]
+  string country_of_dispatch = 34;
+  // [Data Element: 16 08 000 000]
+  string country_of_origin = 35;
+  // [Data Element: 16 09 000 000]s
+  string country_of_preferential_origin = 36;
+  // The net mass of the goods item.
+  //
+  // [Data Element: 18 01 000 000]
+  double net_mass = 10;
+  // The supplementary units of the goods item.
+  //
+  // [Data Element: 18 02 000 000]
+  string supplementary_units = 11;
+  // The gross mass of the goods item.
+  //
+  // [Data Element: 18 04 000 000]
+  double gross_mass = 12;
+  // The description of the goods item.
+  //
+  // [Data Element: 18 05 000 000]
+  string description_of_goods = 13;
+  // [Data Element: 18 06 000 000]
+  repeated flexport.customs.declaration.eu.common.v1beta1.Packaging packaging = 37;
+  // [Data Element: 18 08 000 000]
+  string cus_code = 38;
+  // [Data Element: 18 09 000 000]
+  flexport.customs.declaration.eu.common.v1beta1.CommodityCode commodity_code = 39;
+  // The order number of the tariff quota for which the declarant is applying.
+  //
+  // [Data Element: 99 01 000 000]
+  string quota_order_number = 40;
+  // [Data Element: 99 05 000 000]
+  uint32 nature_of_transaction = 41;
+  // [Data Element: 99 06 000 000]
+  double statistical_value = 42;
+}

@@ -1,0 +1,50 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsasnservice.shipmentdata.v1beta1;
+
+import "flexport/customsasnservice/shipmentdata/v1beta1/shipment_data_payload.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentDataApiProto";
+option java_package = "com.flexport.customsasnservice.shipmentdata.v1beta1";
+option ruby_package = "Flexport::CustomsASNService::ShipmentData::V1beta1";
+
+service ShipmentDataAPI {
+  // This endpoint is responsible for creating or updating a customs order with the shipment data. This also acts as the endpoint to keep ASN up to date with all the latest shipment related information.
+  // Please refer to the gRPC contract for additional details - https://docs.google.com/document/d/1JRQMfDAZrfgiBopgbbbx0CX7PyLriZfPhBw67PZqLJ8/edit?usp=sharing
+  rpc UpsertShipmentData(UpsertShipmentDataRequest) returns (UpsertShipmentDataResponse);
+}
+
+message UpsertShipmentDataRequest {
+  flexport.customsasnservice.shipmentdata.v1beta1.ShipmentDataPayload shipment_data_payload = 1;
+  RequestContext request_context = 2;
+  Source source = 3;
+}
+
+message UpsertShipmentDataResponse {
+  repeated Error errors = 2;
+  string customs_pre_order_fid = 3;
+  optional string shipment_fid = 4;
+  optional string execution_order_fid = 5;
+}
+
+message RequestContext {
+  string client_fid = 1;
+  string source = 2;
+  string shipment_fid = 4;
+  string execution_order_fid = 5;
+  string request_id = 6;
+  string customs_pre_order_fid = 7;
+}
+
+message Error {
+  string field = 1;
+  string message = 2;
+}
+
+enum Source {
+  SOURCE_INVALID = 0;
+  SOURCE_ISF_WORKSHEET = 1;
+}

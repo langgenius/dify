@@ -1,0 +1,44 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.carriershippingdoc.inboundemailstepfunction.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "InboundEmailStepFunctionApiProto";
+option java_package = "com.flexport.carriershippingdoc.inboundemailstepfunction.v1beta1";
+option ruby_package = "Flexport::CarrierShippingDoc::StepFunction::V1Beta1";
+
+service InboundEmailStepFunctionAPI {
+  rpc GetInboundEmailStepFunction(GetInboundEmailStepFunctionRequest) returns (GetInboundEmailStepFunctionResponse);
+  rpc UpdateInboundEmailStepFunction(UpdateInboundEmailStepFunctionRequest) returns (UpdateInboundEmailStepFunctionResponse);
+}
+
+enum ExecutionStatus {
+  EXECUTION_STATUS_INVALID = 0;
+  EXECUTION_STATUS_SUCCESS = 1;
+  EXECUTION_STATUS_FAILURE = 2;
+  EXECUTION_STATUS_IN_PROGRESS = 3;
+}
+
+message GetInboundEmailStepFunctionRequest {
+  string execution_arn = 1;
+}
+
+message GetInboundEmailStepFunctionResponse {
+  string execution_arn = 1;
+  string email_record_fid = 2;
+  ExecutionStatus status = 3;
+  optional string documentable_fid = 4;
+}
+
+message UpdateInboundEmailStepFunctionRequest {
+  string execution_arn = 1;
+  ExecutionStatus status = 2;
+  optional string documentable_fid = 3;
+}
+
+message UpdateInboundEmailStepFunctionResponse {
+  ExecutionStatus status = 1;
+  optional string documentable_fid = 2;
+}

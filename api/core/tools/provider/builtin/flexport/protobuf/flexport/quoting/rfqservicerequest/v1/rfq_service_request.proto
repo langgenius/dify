@@ -1,0 +1,21 @@
+// TEAM: quoting
+
+syntax = "proto3";
+
+package flexport.quoting.rfqservicerequest.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RfqServiceRequestProto";
+option java_package = "com.flexport.quoting.rfqservicerequest.v1";
+option ruby_package = "Flexport::Quoting::RfqServiceRequest::V1";
+
+// RfqServiceRequests identifies yes/no preferences from the quote request.
+enum RfqServiceRequest {
+  RFQ_SERVICE_REQUEST_INVALID = 0;
+  RFQ_SERVICE_REQUEST_WANTS_PICKUP_SERVICE = 1;
+  RFQ_SERVICE_REQUEST_WANTS_DELIVERY_SERVICE = 2;
+  RFQ_SERVICE_REQUEST_WANTS_FLEXPORT_INSURANCE = 3;
+  RFQ_SERVICE_REQUEST_WANTS_EXPORT_CUSTOMS_SERVICE = 4;
+  RFQ_SERVICE_REQUEST_WANTS_IMPORT_CUSTOMS_SERVICE = 5;
+  RFQ_SERVICE_REQUEST_WANTS_CARBON_OFFSET = 6;
+}

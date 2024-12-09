@@ -1,0 +1,67 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.freightinvoice.draftinvoice.v1beta1;
+
+import "flexport/freightinvoice/draftinvoice/v1beta1/draft_invoice_item.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DraftInvoiceProto";
+option java_package = "com.flexport.freightinvoice.draftinvoice.v1beta1";
+option ruby_package = "Flexport::FreightInvoice::DraftInvoice::V1Beta1";
+
+// A draft invoice.
+message DraftInvoice {
+  string fid = 1;
+  google.protobuf.Timestamp created_at_time = 2;
+  repeated flexport.freightinvoice.draftinvoice.v1beta1.DraftInvoiceItem items = 3;
+  string invoiceable_fid = 4;
+  string invoicing_entity_fid = 5;
+  string receiving_entity_fid = 6;
+  InvoiceType invoice_type = 7;
+  string name = 8;
+  bool was_shared = 9;
+  google.protobuf.Timestamp first_shared_at_time = 10;
+  string notes = 11;
+  int32 exchange_rate_id = 12;
+  google.protobuf.Timestamp updated_at_time = 13;
+  bool is_capital_invoice = 14;
+  google.protobuf.StringValue recipient_fid = 15;
+  google.protobuf.StringValue deleted_by_fid = 16;
+  google.protobuf.Timestamp deleted_at_time = 17;
+  google.protobuf.StringValue shared_by_fid = 18;
+  google.protobuf.StringValue created_by_fid = 19;
+  InvoiceableType invoiceable_type = 20;
+  InvoiceStatus status = 21;
+}
+
+// Enum for invoice type.
+enum InvoiceType {
+  INVOICE_TYPE_INVALID = 0;
+  INVOICE_TYPE_GENERAL = 1;
+  INVOICE_TYPE_CUSTOMS = 2;
+  INVOICE_TYPE_SHIPPER = 3;
+  INVOICE_TYPE_DRAWBACK = 4;
+  INVOICE_TYPE_DETENTION_AND_DEMURRAGE = 5;
+}
+
+// Enum for invoiceable type.
+enum InvoiceableType {
+  INVOICEABLE_TYPE_INVALID = 0;
+  INVOICEABLE_TYPE_SHIPMENT = 1;
+  INVOICEABLE_TYPE_CLIENT = 2;
+}
+
+// Enum for invoice status.
+enum InvoiceStatus {
+  INVOICE_STATUS_INVALID = 0;
+  INVOICE_STATUS_UNSHARED = 1;
+  INVOICE_STATUS_OUTSTANDING = 2;
+  INVOICE_STATUS_PAYMENT_PENDING = 3;
+  INVOICE_STATUS_PAID = 4;
+  INVOICE_STATUS_DELETED = 5;
+  INVOICE_STATUS_VOID = 6;
+}

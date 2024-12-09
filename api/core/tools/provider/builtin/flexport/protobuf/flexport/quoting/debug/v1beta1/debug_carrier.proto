@@ -1,0 +1,16 @@
+// TEAM: quoting
+
+syntax = "proto3";
+
+package flexport.quoting.debug.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DebugCarrierProto";
+option java_package = "com.flexport.quoting.debug.v1beta1";
+option ruby_package = "Flexport::Quoting::Debug::V1Beta1";
+
+// The Carrier object returned in the response from the call to the internal-api.
+message DebugCarrier {
+  uint64 id = 1;
+  string name = 2;
+}

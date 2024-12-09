@@ -1,0 +1,18 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.isf.v1;
+
+import "flexport/customs/usadapter/isf/v1/entity_address_component.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.isf.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::Isf::V1";
+
+message EntityAddress {
+  repeated flexport.customs.usadapter.isf.v1.EntityAddressComponent address_components = 1;
+  string city_name = 2;
+  string postal_code = 3;
+  string country_code = 4;
+}

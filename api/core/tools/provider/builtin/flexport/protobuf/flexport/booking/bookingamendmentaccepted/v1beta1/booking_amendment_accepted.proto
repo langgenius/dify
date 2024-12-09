@@ -1,0 +1,25 @@
+// TEAM: bookings
+
+syntax = "proto3";
+
+package flexport.booking.bookingamendmentaccepted.v1beta1;
+
+import "flexport/booking/enums/bookingeventsource/v1beta1/booking_event_source.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BookingAmendmentAcceptedProto";
+option java_package = "com.flexport.booking.bookingamendmentaccepted.v1beta1";
+option ruby_package = "Flexport::Booking::BookingAmendmentAccepted::V1Beta1";
+
+// A Kinesis event signifying a booking amendment has been accepted.
+message BookingAmendmentAccepted {
+  // FID of the booking, used to aggregate events on this topic.
+  string agg_booking_fid = 1;
+  // The fid of the entity (user, company or client) that accepted the booking amendment.
+  string created_by_actor_fid = 2;
+  flexport.booking.enums.bookingeventsource.v1beta1.BookingEventSource booking_event_source = 3;
+  // shipment FID
+  string shipment_fid = 4;
+  // if the booking is verified by shipper
+  bool is_verified_by_shipper = 5;
+}

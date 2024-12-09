@@ -1,0 +1,26 @@
+// TEAM: shipper_exp
+
+syntax = "proto3";
+
+package flexport.shipperexp.sharedvalues.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "SharedValuesProto";
+option java_package = "com.flexport.shipperexp.sharedvalues.v1";
+option ruby_package = "Flexport::ShipperExp::SharedValues::V1";
+
+// Represent container on the old shipper SI and the old shipper CCAM.
+message Container {
+  string container_number = 1;
+  string container_size = 2;
+  string container_type = 3;
+}
+
+// Represent shipper HS code on the old shipper SI and the old shipper CCAM.
+message ShipperHsCode {
+  string description = 1;
+  string description_for_export_customs = 2;
+  string description_for_export_customs_locale = 3;
+  int32 shipper_hs_code_id = 4;
+  string code = 5;
+}

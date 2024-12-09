@@ -1,0 +1,29 @@
+// TEAM: smb_ipb
+
+syntax = "proto3";
+
+package flexport.smb.commercesearch.v1beta1;
+
+import "flexport/commerce/search/query/v1beta1/query_api.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CommerceSearchEventProto";
+option java_package = "com.flexport.smb.commercesearch.v1beta1";
+
+message CommerceSearchEvent {
+  flexport.commerce.search.query.v1beta1.QueryRequest request = 1;
+  string origin_city = 2;
+  string destination_city = 3;
+  CommerceSearchEventResult result = 4;
+}
+
+message CommerceSearchEventResult {
+  uint32 total_offering_count = 1;
+  uint32 total_offering_count_after_filtering = 2;
+  uint32 air_offering_count = 3;
+  uint32 air_offering_count_after_filtering = 4;
+  uint32 ocean_lcl_offering_count = 5;
+  uint32 ocean_lcl_offering_count_after_filtering = 6;
+  uint32 ocean_fcl_offering_count = 7;
+  uint32 ocean_fcl_offering_count_after_filtering = 8;
+}

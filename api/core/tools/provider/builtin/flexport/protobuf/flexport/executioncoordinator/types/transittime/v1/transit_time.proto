@@ -1,0 +1,131 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.transittime.v1;
+
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TransitTimeProto";
+option java_package = "com.flexport.executioncoordinator.types.transittime.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::TransitTime::V1";
+
+// Quoted transit time for an air shipment.
+message AirTransitTime {
+  int32 min_hours = 1;
+  int32 max_hours = 2;
+  AirTransitTimeStart start = 3;
+  AirTransitTimeEnd end = 4;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate based_on_start_date = 5;
+  int32 consolidation_days = 6;
+  int32 deconsolidation_days = 7;
+  int32 port_to_port_days = 8;
+  int32 origin_days = 9;
+  int32 destination_days = 10;
+  // The IANA timezone identifier for the quoted destination location.
+  string destination_timezone = 11;
+}
+
+// Start event for transit time for an air shipment.
+enum AirTransitTimeStart {
+  AIR_TRANSIT_TIME_START_INVALID = 0;
+  // For door-to-*.
+  AIR_TRANSIT_TIME_START_DOOR_CARGO_READY = 1;
+  // For cfs-to-*.
+  AIR_TRANSIT_TIME_START_CFS_ARRIVAL = 2;
+  // For airport-to-*.
+  AIR_TRANSIT_TIME_START_AIRPORT_ARRIVAL = 3;
+}
+
+// End event for transit time for an air shipment.
+enum AirTransitTimeEnd {
+  AIR_TRANSIT_TIME_END_INVALID = 0;
+  // For *-to-door.
+  AIR_TRANSIT_TIME_END_DOOR_ARRIVAL = 1;
+  // For *-to-cfs.
+  AIR_TRANSIT_TIME_END_CFS_AVAILABLE_FOR_PICKUP = 2;
+  // For *-to-airport.
+  AIR_TRANSIT_TIME_END_AIRPORT_AVAILABLE_FOR_PICKUP = 3;
+}
+
+// Transit time for an ocean non-FCL shipment.
+message OceanNonFclTransitTime {
+  int32 min_days = 1;
+  int32 max_days = 2;
+  OceanNonFclTransitTimeStart start = 3;
+  OceanNonFclTransitTimeEnd end = 4;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate based_on_start_date = 5;
+  // The IANA timezone identifier for the quoted destination location.
+  string destination_timezone = 6;
+  int32 origin_days = 7;
+  int32 consolidation_days = 8;
+  int32 origin_dwell_days = 9;
+  int32 port_to_port_days = 10;
+  int32 destination_dwell_days = 11;
+  int32 deconsolidation_days = 12;
+  int32 destination_days = 13;
+}
+
+// Start event for transit time for an ocean non-FCL shipment.
+enum OceanNonFclTransitTimeStart {
+  OCEAN_NON_FCL_TRANSIT_TIME_START_INVALID = 0;
+  // For door-to-*.
+  OCEAN_NON_FCL_TRANSIT_TIME_START_DOOR_CARGO_READY = 1;
+  // For cfs-to-*.
+  OCEAN_NON_FCL_TRANSIT_TIME_START_CFS_ARRIVAL = 2;
+  // Not currently supported, but for sellers consolidation cy-to-*, could also include:
+  // OCEAN_NON_FCL_TRANSIT_TIME_START_CY_ARRIVAL
+}
+
+// End event for transit time for an ocean non-FCL shipment.
+enum OceanNonFclTransitTimeEnd {
+  OCEAN_NON_FCL_TRANSIT_TIME_END_INVALID = 0;
+  // For *-to-door.
+  OCEAN_NON_FCL_TRANSIT_TIME_END_DOOR_ARRIVAL = 1;
+  // For *-to-cfs.
+  OCEAN_NON_FCL_TRANSIT_TIME_END_CFS_AVAILABLE_FOR_PICKUP = 2;
+  // Not currently supported, but for buyers consolidation to *-to-cy, could also include:
+  // OCEAN_NON_FCL_TRANSIT_TIME_END_CY_AVAILABLE_FOR_PICKUP
+}
+
+// Transit time for an ocean FCL shipment in days.
+message OceanFclTransitTime {
+  int32 min_days = 1;
+  int32 max_days = 2;
+  OceanFclTransitTimeStart start = 3;
+  OceanFclTransitTimeEnd end = 4;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate based_on_start_date = 5;
+  // The IANA timezone identifier for the quoted destination location.
+  string destination_timezone = 6;
+  int32 origin_days = 7;
+  int32 origin_dwell_days = 8;
+  int32 port_to_port_days = 9;
+  int32 destination_dwell_days = 10;
+  int32 destination_days = 11;
+}
+
+// Start event for transit time for an ocean FCL shipment.
+enum OceanFclTransitTimeStart {
+  OCEAN_FCL_TRANSIT_TIME_START_INVALID = 0;
+  // For door-to-*.
+  OCEAN_FCL_TRANSIT_TIME_START_DOOR_CARGO_READY = 1;
+  // For cy-to-*.
+  OCEAN_FCL_TRANSIT_TIME_START_CY_ARRIVAL = 2;
+}
+
+// End event for transit time for an ocean FCL shipment.
+enum OceanFclTransitTimeEnd {
+  OCEAN_FCL_TRANSIT_TIME_END_INVALID = 0;
+  // For *-to-door.
+  OCEAN_FCL_TRANSIT_TIME_END_DOOR_ARRIVAL = 1;
+  // For *-to-cy.
+  OCEAN_FCL_TRANSIT_TIME_END_CY_AVAILABLE_FOR_PICKUP = 2;
+}
+
+// Transit time for a trucking only shipment.
+message TruckingTransitTime {
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate based_on_start_date = 1;
+  // The IANA timezone identifier for the quoted destination location.
+  string destination_timezone = 2;
+}

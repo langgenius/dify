@@ -1,0 +1,17 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.isf.v1;
+
+import "flexport/customs/usadapter/isf/v1/importer_security_filing.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.isf.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::Isf::V1";
+
+message TransmitIsfRequest {
+  string filing_id = 1; // Tracks a filing through full customs process
+  flexport.customs.usadapter.isf.v1.ImporterSecurityFiling isf = 2;
+  string reference = 3;
+}

@@ -1,0 +1,34 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.consolplanningmanager.shipment.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentProto";
+option java_package = "com.flexport.consolplanningmanager.shipment.v1beta1";
+option ruby_package = "Flexport::ConsolPlanningManager::Shipment::V1Beta1";
+
+message DemandShipment {
+  string shipment_fid = 1;
+  string so_number = 2;
+  string shippable_volume = 3;
+  string shippable_weight = 4;
+  string shippable_uom = 5;
+  string shippable_pkg_count = 6;
+  string declared_pkg_count = 7;
+  string declared_uom = 8;
+  string declared_weight = 9;
+  // this volume is a hbl volume
+  string volume = 10;
+  repeated Declaration declaration = 11;
+}
+
+message Declaration {
+  string sub_shipment = 1;
+  string weight = 2;
+  string volume = 3;
+  string so_number = 4;
+  string pkg_count = 5;
+  string declared_uom = 6;
+}

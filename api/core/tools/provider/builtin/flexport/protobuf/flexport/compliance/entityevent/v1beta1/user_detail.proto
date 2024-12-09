@@ -1,0 +1,24 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.compliance.entityevent.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "UserDetailProto";
+option java_package = "com.flexport.compliance.entityevent.v1beta1";
+option ruby_package = "Flexport::Compliance::EntityEvent::V1Beta1";
+
+// User detail.
+message UserDetail {
+  // User first name.
+  string first_name = 1;
+  // User last name.
+  string last_name = 2;
+  // User city.
+  string city = 3;
+  // User state.
+  string state = 4;
+  // User country.
+  string country = 5;
+}

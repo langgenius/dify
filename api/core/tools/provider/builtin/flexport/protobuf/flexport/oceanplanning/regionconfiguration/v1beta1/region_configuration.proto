@@ -1,0 +1,93 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.oceanplanning.regionconfiguration.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanPlanningRegionProto";
+option java_package = "com.flexport.oceanplanning.regionconfiguration.v1beta1";
+option ruby_package = "Flexport::OceanPlanning::RegionConfiguration::V1Beta1";
+
+// Ocean planning region object that houses region specific configuration and switches
+message OceanPlanningRegion {
+  RegionSlug region_slug = 1;
+  string region_name = 2;
+  bool active = 3;
+  int32 utc_offset_hours = 4;
+  google.protobuf.Timestamp filter_crds_before = 5;
+  OceanPlanningRegionConfiguration region_config = 6;
+  repeated OceanPlanningRegionSwitch region_switches = 7;
+}
+
+// Region specific configurations to drive the ocean planning algorithm.
+message OceanPlanningRegionConfiguration {
+  RegionSlug region_slug = 1;
+  int32 max_crd_etd_cutoff = 2;
+  int32 crd_etd_sla = 3;
+  int32 default_crd_to_si_days = 4;
+  int32 earliest_etd_cutoff = 5;
+  int32 days_before_etd_for_gate_in = 11;
+  bool ignore_master_pol = 6;
+  bool enable_blank_sailings_logic = 7;
+  int64 id = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+  int32 load_shipment_crd_within_weeks = 12;
+}
+
+// Region specific instance of switch used to drive functionality and feature rollouts.
+message OceanPlanningRegionSwitch {
+  bool value = 1;
+  RegionSlug region_slug = 2;
+  OceanPlanningSwitchDefinition ocean_planning_switch_definition = 3;
+  int64 id = 4;
+}
+
+// Global switch definition used to define all switches across regions.
+message OceanPlanningSwitchDefinition {
+  string switch_definition_name = 1;
+  string switch_definition_slug = 2;
+  int64 id = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+  google.protobuf.Timestamp deleted_at = 6;
+}
+
+message OceanPlanningTradeLanePorts {
+  TradeLane trade_lane = 1;
+  repeated string origin_port_fids = 2;
+  repeated string destination_port_fids = 3;
+}
+
+//Enum representing all trade lane that FMT supports
+enum TradeLane {
+  TRADE_LANE_INVALID = 0;
+  TRADE_LANE_TPEB = 1;
+  TRADE_LANE_FEWB = 2;
+  TRADE_LANE_TAWB = 3;
+}
+
+// Enum representing all FMT regions, this enum must be updated when a new region is added.
+enum RegionSlug {
+  REGION_SLUG_INVALID = 0;
+  REGION_SLUG_PRS_TPEB = 1;
+  REGION_SLUG_PRE_TPEB = 2 [deprecated = true];
+  REGION_SLUG_PRN_TPEB = 3;
+  REGION_SLUG_TAIWAN_TPEB = 4;
+  REGION_SLUG_XMN_FOC_TPEB = 5;
+  REGION_SLUG_PRS_FEWB = 6;
+  REGION_SLUG_PRE_FEWB = 7;
+  REGION_SLUG_PRN_FEWB = 8;
+  REGION_SLUG_TAIWAN_FEWB = 9;
+  REGION_SLUG_XMN_FOC_FEWB = 10;
+  REGION_SLUG_SHA_TPEB = 11;
+  REGION_SLUG_NGB_TPEB = 12;
+  REGION_SLUG_VNM_TPEB = 13;
+  REGION_SLUG_ONEU_TAWB = 14; // ONEU stands for Origin North Europe which is a different set of ports the NEU
+  REGION_SLUG_THA_TPEB = 15;
+  REGION_SLUG_ISC_TPEB = 16;
+  REGION_SLUG_MY_TPEB = 17;
+}

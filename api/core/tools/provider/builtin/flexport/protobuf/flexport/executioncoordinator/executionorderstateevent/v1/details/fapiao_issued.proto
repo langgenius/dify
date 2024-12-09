@@ -1,0 +1,21 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+import "flexport/executioncoordinator/types/fapiao/v1/fapiao.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "FapiaoIssuedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+// Emitted when internal users upload fapiao csv file.
+// In China, a "fapiao" is a legal receipt that serves as proof of purchase for goods and services.
+// https://www.china-briefing.com/news/understanding-chinas-fapiao-invoice-system/
+message FapiaoIssued {
+  flexport.executioncoordinator.types.fapiao.v1.Fapiao fapiao = 1;
+  string uploaded_by_user_fid = 2;
+  string fapiao_note = 3 [deprecated = true];
+}

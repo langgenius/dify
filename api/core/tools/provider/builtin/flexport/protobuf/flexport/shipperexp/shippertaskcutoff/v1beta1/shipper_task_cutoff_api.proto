@@ -1,0 +1,32 @@
+// TEAM: shipper_exp
+
+syntax = "proto3";
+
+package flexport.shipperexp.shippertaskcutoff.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipperTaskCutoffApiProto";
+option java_package = "com.flexport.shipperexp.shippertaskcutoff.v1beta1";
+option ruby_package = "Flexport::ShipperExp::ShipperTaskCutoff::V1Beta1";
+
+import "flexport/shipperexp/shippertaskcutoff/v1beta1/shipper_task_cutoff.proto";
+import "google/protobuf/timestamp.proto";
+
+// ShipperTaskCutoff service.
+service ShipperTaskCutoffAPI {
+  // Create shipper task cutoff or update it if exists.
+  rpc CreateOrUpdateShipperTaskCutoff(CreateOrUpdateShipperTaskCutoffRequest) returns (CreateOrUpdateShipperTaskCutoffResponse);
+}
+
+// Create or update shippert task cutoff request.
+message CreateOrUpdateShipperTaskCutoffRequest {
+  int64 shipment_id = 1;
+  string task_type = 2;
+  google.protobuf.Timestamp cutoff_time = 3;
+  string exception_reason = 4;
+}
+
+// Create or update shippert task cutoff response
+message CreateOrUpdateShipperTaskCutoffResponse {
+  ShipperTaskCutoff shipper_task_cutoff = 1;
+}

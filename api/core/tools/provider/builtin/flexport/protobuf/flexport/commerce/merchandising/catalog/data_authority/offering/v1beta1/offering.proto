@@ -1,0 +1,113 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.commerce.merchandising.catalog.data_authority.offering.v1beta1;
+
+import "flexport/commerce/merchandising/catalog/data_authority/configuration/v1beta1/attribute.proto";
+import "flexport/commerce/merchandising/catalog/data_authority/offering/v1beta1/charge.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.commerce.merchandising.catalog.dataauthority.offering.v1beta1";
+option ruby_package = "Flexport::Commerce::Merchandising::Catalog::DataAuthority::Offering::V1Beta1";
+
+// An offering is a purchasable entity with associated attributes.
+//
+// The offering object merges the attributes on offering and product level.
+message Offering {
+  // A versioned identifier, e.g. "flx::commerce.mechandising.catalog:offering:ocean_fcl-561465_561482_3092_9skhlzg1-client_68174"
+  string offering_fid = 1;
+
+  // The status of the offering.
+  // For non-latest offering, the status is always OFFERING_STATUS_ARCHIVED.
+  OfferingStatus status = 2;
+
+  // The configuration fid, e.g. "flx::commerce.mechandising.catalog:configuration:ocean_fcl"
+  string configuration_fid = 3;
+
+  // The product fid, e.g. "flx::commerce.mechandising.catalog:product:ocean_fcl-561465_561482_3092_9skhlzg1"
+  string product_fid = 4;
+
+  // The distinct_key on the product.
+  string product_distinct_key = 5;
+
+  // Attributes from offering and attributes inherited from product.
+  repeated flexport.commerce.merchandising.catalog.data_authority.configuration.v1beta1.Attribute attributes = 6;
+
+  // The client fid, if the offering is client-specific.
+  optional string client_fid = 10;
+
+  // The Pricing Availability UUID that can be used in other services
+  optional string pricing_availability_uuid = 11;
+
+  // The associated metadata for the offering.
+  OfferingMetadata metadata = 15;
+
+  // one or more pricing policies for the offering.
+  // The pricing_policies are exclusive within an offering.
+  repeated PricingPolicy pricing_policies = 16;
+
+  // The fulfillment related attributes for the offering.
+  FulfillmentContext fulfillment_context = 17;
+
+  // The availability related attributes for the offering.
+  optional Availability availability = 18;
+
+  // The bundle components for bundle offerings.
+  // This field is only set when requested due to performance reasons.
+  // For BatchUpsertOfferings, return_bundle_components must be set to true to include this field.
+  optional BundleComponents bundle_components = 19;
+
+  // The bundle components fids for bundle offerings, always set for bundle.
+  optional BundleOfferingFids bundle_offering_fids = 20;
+}
+
+message FulfillmentContext {
+  // The fulfillment endpoint.
+  string endpoint = 1;
+  // The fulfillment related attributes.
+  // These attributes are not inherited from product.
+  repeated flexport.commerce.merchandising.catalog.data_authority.configuration.v1beta1.Attribute fulfillment_attributes = 2;
+}
+
+message Availability {
+  // The type of the availability.
+  // Currently, only Ocean FCL support the availability concept.
+  string type = 1;
+  // The availability related attributes.
+  repeated flexport.commerce.merchandising.catalog.data_authority.configuration.v1beta1.Attribute availability_attributes = 2;
+}
+
+message OfferingMetadata {
+  // When the first version of the offering is initially created.
+  google.protobuf.Timestamp created_at = 1;
+  // When the product under requested product_fid is updated or archived.
+  google.protobuf.Timestamp updated_at = 2;
+}
+
+message BundleComponents {
+  // The nested bundle componnets offering instance.
+  repeated Offering offerings = 1;
+}
+
+// http://go/commerce-doc/commerce/integration/oar-multimodal-integration-proposal
+message BundleOfferingFids {
+  // The non-versioned offering fids.
+  // When resolved at runtime, the latest version of the offering will be used.
+  repeated string offering_fids = 1;
+}
+
+enum OfferingStatus {
+  // Placeholder value required by protobuf.
+  OFFERING_STATUS_INVALID = 0;
+  // The offering is active.
+  // Note that the buyable/quotable still needs to be resolved at runtime, e.g. the pricing schedule is only available in the future.
+  // Expired offerings will automatically becomes not buyable/quotable and excluded from search/order.
+  OFFERING_STATUS_ACTIVE = 1;
+  // The offering is explicitly set to inactive.
+  OFFERING_STATUS_INACTIVE = 2;
+  // The offering instance is not the latest.
+  // E.g. price has been updated to a new version.
+  OFFERING_STATUS_ARCHIVED = 3;
+}

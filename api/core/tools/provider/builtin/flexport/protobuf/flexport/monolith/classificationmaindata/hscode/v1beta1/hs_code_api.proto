@@ -1,0 +1,27 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.monolith.classificationmaindata.hscode.v1beta1;
+
+import "flexport/monolith/classificationmaindata/hscode/v1beta1/hs_code.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "HsCodeApiProto";
+option java_package = "com.flexport.monolith.classificationmaindata.hscode.v1beta1";
+option ruby_package = "Flexport::Monolith::ClassificationMainData::HsCode::V1Beta1";
+
+// An API for Hs code
+service HsCodeAPI {
+  // Get client by client fid.
+  rpc ListHsCodeEntities(ListHsCodeEntitiesRequest) returns (ListHsCodeEntitiesResponse);
+}
+
+message ListHsCodeEntitiesRequest {
+  repeated string codes = 1;
+  string country_code = 2;
+}
+
+message ListHsCodeEntitiesResponse {
+  repeated flexport.monolith.classificationmaindata.hscode.v1beta1.HsCode hs_codes = 1;
+}

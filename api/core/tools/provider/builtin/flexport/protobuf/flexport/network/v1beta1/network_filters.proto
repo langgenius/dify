@@ -1,0 +1,143 @@
+// TEAM: network_entities
+
+syntax = "proto3";
+
+package flexport.network.v1beta1;
+
+import "flexport/executioncoordinator/types/query/v1/filters.proto";
+import "flexport/network/v1beta1/address.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "NetworkFiltersProto";
+option java_package = "com.flexport.network.v1beta1";
+option ruby_package = "Flexport::Network::V1Beta1";
+
+// Filters to only the given boolean value.
+message BoolFilter {
+  bool matches = 1;
+}
+
+// The logic to determine visibility.
+enum VisibilityLevel {
+  VISIBILITY_LEVEL_INVALID = 0;
+  VISIBILITY_LEVEL_DEFAULT = 1; // TODO rename to VISIBLE
+  VISIBILITY_LEVEL_CONNECTED = 2;
+  VISIBILITY_LEVEL_EXPLICIT = 3;
+}
+
+// Filters to only strings that match any of the provided values.
+message VisibilityFilter {
+  oneof actor_discriminator {
+    int32 user_id = 1;
+    string user_fid = 2;
+    int32 company_id = 4;
+    string company_fid = 5;
+  }
+  VisibilityLevel level = 3;
+}
+
+// Filters to carrier name.
+message RateSheetQueryFilter {
+  string name = 1;
+}
+
+// A filter for address types.
+message AddressTypeFilter {
+  repeated AddressType matches_any = 1;
+  //
+  // Whether to apply negation to the filter so that values matching the filter are excluded.
+  // Defaults to false, ie values matching the filter are included.
+  bool negated = 2;
+}
+
+// A filter for the given coordinate.
+message CoordinateFilter {
+  double lat = 1;
+  double lng = 2;
+}
+
+// A filter for Factory-only data.
+message FactoryFilter {
+  oneof manufacturer_code_discriminator {
+    string manufacturer_code = 1;
+    flexport.executioncoordinator.types.query.v1.StringFilter manufacturer_code_filter = 2;
+  }
+}
+
+// A filter for Port-only data.
+message PortFilter {
+  // Specifying multiple port filters means any result must match _all_ of them.
+  BoolFilter seaport_filter = 9;
+  BoolFilter airport_filter = 10;
+  BoolFilter railport_filter = 11;
+  BoolFilter roadport_filter = 12;
+  repeated PortTypeFilter port_type_filter = 1;
+  oneof port_code_discriminator {
+    string port_code = 13;
+    flexport.executioncoordinator.types.query.v1.StringFilter port_code_filter = 14;
+  }
+}
+
+// This defines a filter on the port types.
+message PortTypeFilter {
+  PortType port_type = 1;
+}
+
+// A filter for TerminalOrCfs-only data.
+message TerminalOrCfsFilter {
+  oneof facility_type_discriminator {
+    FacilityType facility_type = 1;
+    FacilityTypeFilter facility_type_filter = 2;
+  }
+  oneof firms_code_discriminator {
+    string firms_code = 3;
+    flexport.executioncoordinator.types.query.v1.StringFilter firms_code_filter = 4;
+  }
+  oneof port_code_discriminator {
+    string port_code = 5;
+    flexport.executioncoordinator.types.query.v1.StringFilter port_code_filter = 6;
+  }
+  oneof port_id_discriminator {
+    int32 port_id = 7;
+    flexport.executioncoordinator.types.query.v1.IntegerValueFilter port_id_filter = 8;
+    string port_fid = 9;
+    flexport.executioncoordinator.types.query.v1.StringFilter port_fid_filter = 10;
+  }
+}
+
+// A filter on the facility type of an entity.
+message FacilityTypeFilter {
+  repeated FacilityType matches_any = 1;
+  //
+  // Whether to apply negation to the filter so that values matching the filter are excluded.
+  // Defaults to false, ie values matching the filter are included.
+  bool negated = 2;
+}
+
+// A filter on the sharing level of an entity.
+message SharingLevelFilter {
+  SharingLevel sharing_level = 1;
+}
+
+// A sharing level and company ids to share with.
+message Sharing {
+  SharingLevel sharing_level = 1;
+  repeated int32 shared_with_companies = 2;
+}
+
+// The restriction level that an entity can be shared by.
+enum SharingLevel {
+  SHARING_LEVEL_INVALID = 0;
+  SHARING_LEVEL_EXPLICIT = 1;
+  SHARING_LEVEL_CONNECTED = 2;
+  SHARING_LEVEL_GLOBAL = 3;
+}
+
+// The port types.
+enum PortType {
+  PORT_TYPE_INVALID = 0;
+  PORT_TYPE_AIRPORT = 1;
+  PORT_TYPE_SEAPORT = 2;
+  PORT_TYPE_ROADPORT = 3;
+  PORT_TYPE_RAILPORT = 4;
+}

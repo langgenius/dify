@@ -1,0 +1,25 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.originops.dangerousgoodsclassificationclass.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DangerousGoodsClassificationClassProto";
+option java_package = "com.flexport.originops.dangerousgoodsclassificationclass.v1";
+option ruby_package = "Flexport::OriginOps::DangerousGoodsClassificationClass::V1";
+
+// Represents a dangerous goods classification class status.
+enum DangerousGoodsClassificationClass {
+  DANGEROUS_GOODS_CLASSIFICATION_CLASS_INVALID = 0;
+  DANGEROUS_GOODS_CLASSIFICATION_CLASS_NON_DANGEROUS = 1;
+  DANGEROUS_GOODS_CLASSIFICATION_CLASS_EXPLOSIVES = 2;
+  DANGEROUS_GOODS_CLASSIFICATION_CLASS_GASES = 3;
+  DANGEROUS_GOODS_CLASSIFICATION_CLASS_FLAMMABLE_LIQUIDS = 4;
+  DANGEROUS_GOODS_CLASSIFICATION_CLASS_FLAMMABLE_COMBUSTIBLE_SOLIDS = 5;
+  DANGEROUS_GOODS_CLASSIFICATION_CLASS_OXIDIZING_SUBSTANCES_ORGANIC_PEROXIDES = 6;
+  DANGEROUS_GOODS_CLASSIFICATION_CLASS_TOXIC_INFECTIOUS_SUBSTANCES = 7;
+  DANGEROUS_GOODS_CLASSIFICATION_CLASS_RADIOACTIVE_MATERIAL = 8;
+  DANGEROUS_GOODS_CLASSIFICATION_CLASS_CORROSIVES = 9;
+  DANGEROUS_GOODS_CLASSIFICATION_CLASS_MISCELLANEOUS = 10;
+}

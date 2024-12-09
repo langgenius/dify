@@ -1,0 +1,31 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionoffering.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ExportCustomsExecutionOfferingProto";
+option java_package = "com.flexport.executioncoordinator.executionoffering.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOffering::V1";
+
+// ExportCustomsExecutionOffering is a value-add execution offering for handling customs clearance
+// on the origin side.
+message ExportCustomsExecutionOffering {
+  //
+  // Freight partner responsible for ensuring customs is cleared.
+  string freight_partner_fid = 1;
+  //
+  // Identifier of the company entity of the export customs agent.
+  string export_customs_agent_company_entity_fid = 3;
+  //
+  // The role Flexport plays in the export customs process.
+  ExportCustomsClearanceRole clearance_role = 10;
+}
+
+// Flexport role in export customs clearance.
+enum ExportCustomsClearanceRole {
+  EXPORT_CUSTOMS_CLEARANCE_ROLE_INVALID = 0;
+  EXPORT_CUSTOMS_CLEARANCE_ROLE_FULL_SERVICE = 1;
+  EXPORT_CUSTOMS_CLEARANCE_ROLE_NO_INVOLVEMENT = 2;
+}

@@ -1,0 +1,18 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customscaadapter.b3.v1beta1;
+
+import "google/protobuf/struct.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customscaadapter.b3.v1beta1";
+option ruby_package = "Flexport::CustomsCaAdapter::B3::V1Beta1";
+
+// Used for internal queue processing in canada adapter
+message B3Queue {
+  // Single B3 object we get from CANdata get B3 endpoint
+  google.protobuf.Struct b3 = 1 [deprecated = true];
+  string b3_json = 2;
+  bool is_healing_message = 3;
+}

@@ -1,0 +1,41 @@
+// TEAM: lumina
+
+syntax = "proto3";
+
+package flexport.wmscell.publicapi.partnerintegration.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PartnerIntegrationTypeProto";
+option java_package = "com.flexport.wmscell.publicapi.partnerintegration.v1beta1";
+
+message CargoItem {
+  string unit_type = 1; // enum: pallet, carton
+  int32 count = 2;
+  CargoDimension dimension = 3;
+  CargoWeight weight = 4;
+}
+
+message CargoDimension {
+  double length = 1;
+  double width = 2;
+  double height = 3;
+  string dimension_unit = 4; // enum: cm, in
+}
+
+message CargoWeight {
+  double value = 1;
+  string unit = 2; // enum: kg, lb
+}
+
+message Damage {
+  string damage_type = 1; // enum: CRUSHED, WET, TORN, OTHER
+}
+
+message DangerousGood {
+  string classification = 1; // enum: UN_3091, UN3080...
+  int32 count = 2;
+}
+
+message DeliveryData {
+  string driver_name = 1;
+}

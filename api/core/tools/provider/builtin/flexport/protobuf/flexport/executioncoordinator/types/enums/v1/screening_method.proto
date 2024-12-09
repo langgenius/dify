@@ -1,0 +1,25 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ScreeningMethodProto";
+option java_package = "com.flexport.executioncoordinator.types.enums.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Enums::V1";
+
+// The possible screening methods
+enum ScreeningMethod {
+  SCREENING_METHOD_INVALID = 0;
+  SCREENING_METHOD_KNOWN_CONSIGNOR = 1;
+  SCREENING_METHOD_REGULATED_AGENT = 2;
+  SCREENING_METHOD_XRAY = 3;
+  SCREENING_METHOD_EXPLOSIVE_TRACE_DETECTION = 4;
+  SCREENING_METHOD_EXPLOSIVE_DETECTION_DOG = 5;
+  SCREENING_METHOD_VISUAL_CHECK = 6;
+  SCREENING_METHOD_HAND_SEARCH = 7;
+  SCREENING_METHOD_ANY_OTHER_METHOD = 8;
+  SCREENING_METHOD_ATTACHED_DOCUMENT = 9;
+  SCREENING_METHOD_SEE_MANIFEST = 10;
+}

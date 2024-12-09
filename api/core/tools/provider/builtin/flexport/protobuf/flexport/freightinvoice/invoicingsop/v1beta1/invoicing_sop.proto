@@ -1,0 +1,53 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.freightinvoice.invoicingsop.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "InvoicingSopProto";
+option java_package = "com.flexport.freightinvoice.invoicingsop.v1beta1";
+option ruby_package = "Flexport::FreightInvoice::InvoicingSop::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Invoices per shipment type.
+enum InvoicesPerShipmentType {
+  INVOICES_PER_SHIPMENT_TYPE_INVALID = 0;
+  INVOICES_PER_SHIPMENT_TYPE_MULTI_INVOICE = 1;
+  INVOICES_PER_SHIPMENT_TYPE_SINGLE_INVOICE = 2;
+}
+
+// Invoice shared milestone type.
+enum InvoiceSharedMilestoneType {
+  INVOICE_SHARED_MILESTONE_TYPE_INVALID = 0;
+  INVOICE_SHARED_MILESTONE_TYPE_WHEN_MOST_CHARGES_AVAILABLE = 1;
+  INVOICE_SHARED_MILESTONE_TYPE_AT_DEPARTURE = 2;
+  INVOICE_SHARED_MILESTONE_TYPE_AT_EARLY_MILESTONE = 3;
+  INVOICE_SHARED_MILESTONE_TYPE_AT_DELIVERY = 4;
+}
+
+// Invoice periodic billing type.
+enum InvoicePeriodicBillingType {
+  INVOICE_PERIODIC_BILLING_TYPE_INVALID = 0;
+  INVOICE_PERIODIC_BILLING_TYPE_WEEKLY = 1;
+  INVOICE_PERIODIC_BILLING_TYPE_BI_WEEKLY = 2;
+  INVOICE_PERIODIC_BILLING_TYPE_MONTHLY = 3;
+}
+
+// A Invoicing SOP.
+message InvoicingSop {
+  string fid = 1;
+  int32 client_id = 2;
+  google.protobuf.StringValue company_fid_wrapper = 3;
+  google.protobuf.Timestamp created_at_time = 4;
+  google.protobuf.Timestamp updated_at_time = 5;
+  google.protobuf.BoolValue customs_split_invoicing_enabled_wrapper = 6;
+  InvoicePeriodicBillingType periodic_billing_enum = 7;
+  InvoiceSharedMilestoneType first_invoice_shared_milestone_enum = 8;
+  InvoicesPerShipmentType invoices_per_shipment_enum = 9;
+  bool client_has_credit_terms = 10;
+  bool consolidated_invoicing_enabled = 11;
+  bool integration_enabled = 12;
+}

@@ -1,0 +1,13 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.forwardingcustomsmanager.customsdocumentvalidation.events.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DocumentValidationEventsProto";
+option java_package = "com.flexport.forwardingcustomsmanager.customsdocumentvalidation.events.v1beta1";
+
+message DocumentValidationEvents{
+  string documentable_fid = 1;
+}

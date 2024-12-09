@@ -1,0 +1,21 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.customerconsignment.v1beta1;
+
+import "flexport/executioncoordinator/itinerary/v1beta1/itinerary.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomerConsignmentRouteUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.customerconsignment.v1beta1";
+option ruby_package = "Flexport::ExecutionCoordinator::CustomerConsignment::V1Beta1";
+
+// A Customer Consignment Route has been updated.
+message CustomerConsignmentRouteUpdated {
+  // The previous itinerary.
+  flexport.executioncoordinator.itinerary.v1beta1.Itinerary old_itinerary = 1;
+
+  // The new itinerary.
+  flexport.executioncoordinator.itinerary.v1beta1.Itinerary new_itinerary = 2;
+}

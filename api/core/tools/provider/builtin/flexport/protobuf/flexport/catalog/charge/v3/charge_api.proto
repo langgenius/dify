@@ -1,0 +1,284 @@
+// TEAM: commerce_charges
+
+syntax = "proto3";
+
+package flexport.catalog.charge.v3;
+
+import "flexport/catalog/chargesource/v1/charge_source.proto";
+import "flexport/catalog/common/v1/warehouse.proto";
+import "flexport/catalog/date/v1/date.proto";
+import "flexport/catalog/rate/v1/rate.proto";
+import "flexport/commerce/merchandising/catalog/data_authority/offering/v1beta1/offering.proto";
+import "flexport/monolith/catalog/v1beta1/core_service.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ChargeManagementApiProto";
+option java_package = "com.flexport.catalog.charge.v3";
+option ruby_package = "Flexport::Catalog::Charge::V3";
+
+service ChargeAPI {
+  option deprecated = true;
+  rpc GetCharges(GetChargesRequest) returns (GetChargesResponse) {
+    option deprecated = true;
+  }
+  rpc GetChargesBatch(GetChargesBatchRequest) returns (GetChargesBatchResponse) {
+    option deprecated = true;
+  }
+}
+
+message GetChargesRequest {
+  GetChargesCommonAttributes get_charges_common = 1;
+
+  // Offerings to determine charges for.
+  // Should represent offerings in a single order as some charges need to be deduped across the entire order.
+  //   TODO we need a way to unpack offering applicability criteria from the metadata
+  //   examples of needed fields here:
+  //   https://github.flexport.io/flexport/flexport/blob/master/protobuf/flexport/catalog/offering/v2beta1/offering.proto#L45-L77
+  repeated flexport.commerce.merchandising.catalog.data_authority.offering.v1beta1.Offering offering_instances = 2;
+}
+
+message GetChargesResponse {
+  string deprecation_warning = 2; // Optional field for deprecation warnings
+  // List of OfferingFids mapped to all the charges that apply to the offering
+  repeated ChargesForOfferingFid charges_for_offerings = 1;
+}
+
+message GetChargesBatchRequest {
+  GetChargesCommonAttributes get_charges_common = 1;
+
+  // List of offering_instance_combinations to determine charges for.
+  repeated OfferingInstanceCombination offering_instance_combination = 2;
+}
+
+message GetChargesBatchResponse {
+  string deprecation_warning = 2; // Optional field for deprecation warnings
+  // The order of charges_for_offering_instance_combination matches
+  // the order of the offering_instance_combination in the request
+  repeated ChargesForOfferingCombination charges_for_offering_instance_combinations = 1;
+}
+
+message ChargesForOfferingCombination {
+  repeated ChargesForOfferingFid charges_for_offerings = 1;
+}
+
+message ChargesForOfferingFid {
+  string offering_fid = 1;
+  repeated Charge charges = 2;
+
+  // Monetary insured amount for the shipment
+  // will only be included if the offering_fid is a relevant insurance offering AND
+  // OrderAttributesForRateEvaluation input was provided
+  // doc: https://docs.google.com/document/d/1uH7L7rYjPE0iCbgX1_Z4138dV9V3zhpt-yE5_nGQbUs/edit#heading=h.n53saav4q00h
+  catalog.rate.v1.AmountWithCurrency per_shipment_insured_amount_with_currency = 3;
+}
+
+// Request attributes common to both GetCharges and GetChargesBatch
+message GetChargesCommonAttributes {
+  // Used to gate test charges (via marketplace_test_charges and marketplace_show_test_charge switches)
+  google.protobuf.StringValue current_user_fid = 1;
+
+  flexport.monolith.catalog.v1beta1.Client client = 2;
+
+  // All attributes optional. Omit entirely if there is no relevant order.
+  OrderAttributesForApplicability order_attributes_for_applicability = 4;
+
+  // Optional. If this is included, a best effort is made to evaluate the cost + sell rates into total monetary amounts.
+  OrderAttributesForRateEvaluation order_attributes_for_rate_evaluation = 5;
+
+  // Optional. If true then the pricing engine will be used to compute the sell rate for each charge.
+  // This will override the default sell rate computed by charge management.
+  bool use_pricing_engine_sell_rate = 6;
+}
+
+// Each OfferingInstanceCombination should represent a single "bookable combination" of offerings
+// (charges need to be deduped across the entire combination)
+message OfferingInstanceCombination {
+  repeated flexport.commerce.merchandising.catalog.data_authority.offering.v1beta1.Offering offering_instances = 1;
+}
+
+// Charge definition, with client-specific rates
+//   (Migrated/adapted from flexport.catalog.charge.v2beta1.ClientChargeDto)
+message Charge {
+  // FID of source where the charge comes from.
+  // 1) The charge included on the offering in the database.
+  //    flx::catalog:charge:<uuid>
+  // 2) The charge policy responsible for including this charge.
+  //    flx::catalog:charge_policy:<uuid>
+  google.protobuf.StringValue source = 1;
+  // Slug identifier for this charge type.
+  google.protobuf.StringValue slug = 2;
+  // The estimated cost rate.
+  catalog.rate.v1.RateDto cost_rate = 3;
+  // FID of source where the cost rate comes from
+  google.protobuf.StringValue cost_rate_source = 4;
+  // Client-specific sell rate. Takes into consideration things like a negotiated rate, client segment, etc.
+  catalog.rate.v1.RateDto sell_rate = 5;
+
+  // Source of the sell rate. Valid values are:
+  // "client_override": The sell rate was provided by the client.
+  // "segment_override": The sell rate was provided by the client segment.
+  // "umbrella_markup": The sell rate was calculated using the umbrella markup.
+  // "charge_management_markup": The sell rate was calculated using the charge management markup.
+  // "cartage_minimum_sell_markup": The sell rate was calculated using the cartage minimum sell markup.
+  // "default": The sell rate was calculated using the default markup.
+  // "pricing_engine": The sell rate was calculated using the pricing engine.
+  google.protobuf.StringValue sell_rate_source = 6;
+
+  // Whether this charge is subject-to for this offering
+  bool is_dormant = 7;
+
+  catalog.date.v1.DateDto activation_date = 8;
+  catalog.date.v1.DateDto expiration_date = 9;
+
+  // Additional (debugging) context around the sell rate source (e.g. rule fid).
+  map<string, string> sell_rate_source_context = 10;
+
+  // Included in response only if OrderAttributesForRateEvaluation was provided
+  // AND only if the rate could be resolved with the rate parameters provided in OrderAttributesForRateEvaluation
+  EvaluatedRate evaluated_cost = 11;
+  EvaluatedRate evaluated_sell = 12;
+
+  // Is this Charge a "base" charge. See https://core.flexport.com/marketplace/service_offerings/configure for
+  // how base charges are configured.
+  bool is_base = 13;
+
+  // Should this Charge be rolled-up in the base charge. See https://core.flexport.com/marketplace/service_offerings/configure for
+  // how base charges and the "included" charges are configured.
+  bool is_included = 14;
+
+  // Unstable field exposing the raw markup rate if present. The information is more for debugging / auditing purpose.
+  optional catalog.rate.v1.RateDto markup_rate = 15;
+
+  ChargeMetadata charge_metadata = 16;
+
+  // The history of evaluated sell rates for this charge.
+  repeated EvaluatedSellRateHistory evaluated_sell_rate_history = 17;
+}
+
+message EvaluatedSellRateHistory {
+  // The evaluated sell rate at a given point in time.
+  EvaluatedRate evaluated_sell = 1;
+
+  // The source of the sell rate at a given point in time. See sell_rate_source in Charge for more details.
+  google.protobuf.StringValue sell_rate_source = 2;
+
+  // The time at which the sell rate was set.
+  google.protobuf.Timestamp set_at = 3;
+
+  // The system that set the sell rate.
+  SellRateSourceSystem source_system = 4;
+}
+
+// Source system for the sell rate. This is a higher level categorization of the source of the sell rate and represents the system that set the sell rate.
+enum SellRateSourceSystem {
+  SELL_RATE_SOURCE_SYSTEM_INVALID = 0;
+  SELL_RATE_SOURCE_SYSTEM_CHARGE_MANAGEMENT = 1;
+  SELL_RATE_SOURCE_SYSTEM_PRICING_ENGINE = 2;
+}
+
+message ChargeMetadata {
+  // If the Charge source is rules engine. This is the rule branch id related to the applicability of this charge.
+  string rule_branch_id = 1;
+
+  // The original cost source for this line item.
+  catalog.chargesource.v1.ChargeSource cost_source = 2;
+
+  // The original markup source for this line item.
+  catalog.chargesource.v1.ChargeSource markup_source = 3;
+}
+
+// Contains attributes for shipment/order applicability criteria
+//   This was assembled by manually copying attributes from flexport.catalog.charge.v2beta1.EvaluateChargesContext
+//   TODO We need a way to eliminate the redundancy - likely by having EvaluateChargesContext include this object
+message OrderAttributesForApplicability {
+  // Equivalent to shipment_created_at_time
+  google.protobuf.Timestamp order_created_at_time = 1;
+
+  // CargoReadyDate for charge rules evaluation.
+  catalog.date.v1.DateDto on_date = 2;
+
+  google.protobuf.StringValue isf_filing_party_type = 3;
+
+  // Used to extract allDestinationAddressesHaveLoadingDock and allDestinationAddressesCompanyFid applicability values
+  repeated string destination_address_fids = 4;
+
+  google.protobuf.BoolValue want_delivery_service = 5;
+  catalog.date.v1.DateDto business_event_date = 6;
+
+  //  as designated in design document for flexport plus : https://docs.google.com/document/d/1bOWZOlgRuDUySSFXSVli-61CobNiu75Dnk41WI-Fg7c/edit#heading=h.rvr0j7723fam
+  optional google.protobuf.BoolValue should_apply_flat_discount = 7;
+  optional google.protobuf.BoolValue should_waive_main_freight = 8;
+  optional google.protobuf.Int32Value pricing_tier = 9;
+  repeated string dangerous_goods_divisions = 10;
+  optional google.protobuf.StringValue incoterm = 11;
+  optional google.protobuf.BoolValue flexport_import_customs = 12;
+  optional google.protobuf.BoolValue flexport_export_customs = 13;
+  optional google.protobuf.BoolValue flexport_freight = 14;
+  optional google.protobuf.DoubleValue chargeable_weight_in_kg = 15;
+  optional google.protobuf.BoolValue contains_hazmat = 16;
+  repeated string cargo_types = 17;
+  // Company FID of the destination agent, e.g. "flx::core:company:dbid/883"
+  optional google.protobuf.StringValue destination_agent = 18;
+  optional google.protobuf.BoolValue in_bond_transit = 19;
+
+  // Map of Address Fid <> Address Dto, as per https://flexport.slack.com/archives/GP6JDLRNU/p1698179419865409
+  map<string, flexport.monolith.catalog.v1beta1.Address> address_fids_to_addresses = 20;
+
+  // NOTE: As of 2024-02-28 this field is not implemented in the charge evaluation logic. Follow RM-182 for updates.yy
+  // This is a workaround to support manual quoting's use-case. If the on_date is specified for a given offering
+  // in the map below, it will be used as the CargoReadyDate when evaluating charges for that offering. If no date
+  // is specified for an offering, the on_date from the OrderAttributes will be used.
+  map<string, catalog.date.v1.DateDto> offering_fids_to_on_dates = 21;
+
+  // Carbon offset charge applicability,
+  // sourced from flexport.catalog.chargeitem.v1.OrderAttributes
+  google.protobuf.BoolValue want_carbon_offset = 22;
+  reserved 23, 24;
+  // The warehouses on the shipment's itinerary
+  repeated catalog.common.v1.Warehouse warehouses = 25;
+}
+
+// Contains attributes for evaluating rates into total monetary amounts
+// Copied from flexport.catalog.rate.v1.EvaluateRatesRequest
+message OrderAttributesForRateEvaluation {
+  // this field has been deprecated because EvaluateRatesRequestItem is derived from catalog sharedvariables per logic in inputEvaluateItemBuilder.java. To avoid confusion, duplicate field is deprecated.
+  repeated EvaluateRatesRequestItem items = 1 [deprecated = true];
+  catalog.rate.v1.SharedVariables variables = 2;
+  // Currency for the evaluated amounts. Default is USD.
+  google.protobuf.StringValue currency_code = 3;
+
+  // per shipment insurance
+  // doc: https://docs.google.com/document/d/1uH7L7rYjPE0iCbgX1_Z4138dV9V3zhpt-yE5_nGQbUs/edit#heading=h.n53saav4q00h
+  optional catalog.rate.v1.AmountWithCurrency client_specified_cargo_value = 4;
+  google.protobuf.Int32Value total_cartons = 5;
+}
+
+// Copied from flexport.catalog.rate.v1.EvaluateRatesRequestItem
+// (removed rate and dormancy inputs)
+message EvaluateRatesRequestItem {
+  google.protobuf.Int64Value id = 1;
+  google.protobuf.StringValue evaluate_item_slug = 2;
+  google.protobuf.StringValue currency_code = 6;
+  catalog.rate.v1.ItemVariables variables = 8;
+}
+
+// Copied from flexport.catalog.rate.v1.EvaluateRatesResponse
+message EvaluatedRate {
+  repeated EvaluatedRateItem items = 1;
+  google.protobuf.StringValue total_amount = 2;
+  google.protobuf.StringValue currency_code = 3;
+}
+
+// Copied from flexport.catalog.rate.v1.EvaluateRatesResponseItem
+// flexport.catalog.rate.v1.EvaluateRatesResponseItem originally included isDormant
+// but this api already expresses it in the top-level Charge, so omitting it here
+message EvaluatedRateItem {
+  google.protobuf.Int64Value id = 1;
+  google.protobuf.StringValue evaluate_item_slug = 2;
+  google.protobuf.StringValue amount = 3;
+  google.protobuf.StringValue currency_code = 4;
+  catalog.rate.v1.RateDto effective_rate = 5;
+  flexport.catalog.rate.v1.UnitDetails unit_details = 6;
+}

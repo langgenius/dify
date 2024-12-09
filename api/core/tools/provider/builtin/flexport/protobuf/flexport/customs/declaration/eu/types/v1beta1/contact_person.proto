@@ -1,0 +1,14 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customs.declaration.eu.types.v1beta1;
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.declaration.eu.types.v1beta1";
+option ruby_package = "Flexport::Customs::Declaration::EU::Types::V1Beta1";
+
+message ContactPerson {
+  string name = 1;
+  string phone_number = 2;
+  string email_address = 3;
+}

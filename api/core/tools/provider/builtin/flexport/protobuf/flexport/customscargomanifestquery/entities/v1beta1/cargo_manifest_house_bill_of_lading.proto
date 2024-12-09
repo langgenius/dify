@@ -1,0 +1,33 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customscargomanifestquery.entities.v1beta1;
+
+import "flexport/customscargomanifestquery/entities/v1beta1/cargo_manifest_bill_of_lading_disposition.proto";
+import "flexport/customscargomanifestquery/entities/v1beta1/cargo_manifest_bill_of_lading_in_bond.proto";
+import "flexport/customscargomanifestquery/enums/v1beta1/customs_cargo_manifest_bill_of_lading_type.proto";
+import "google/type/date.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoManifestHouseBillOfLadingProto";
+option java_package = "com.flexport.customscargomanifestquery.entities.v1beta1";
+option ruby_package = "Flexport::CustomsCargoManifestQuery::Entities::V1Beta1";
+
+message CargoManifestHouseBillOfLading {
+  string house_bill_number = 1;
+  string unit = 2;
+  int32 manifest_quantity = 3;
+  string issuer_code = 4;
+  string firms_code = 5;
+  string firms_trip_number = 6;
+  optional int32 amended_quantity = 7;
+  string sub_house_bill_number = 8;
+  flexport.customscargomanifestquery.enums.v1beta1.CustomsCargoManifestBillOfLadingType bill_of_lading_type = 9;
+  bool isf_on_file = 10;
+  repeated CargoManifestBillOfLadingDisposition dispositions = 11;
+  repeated CargoManifestBillOfLadingInBond in_bonds = 12;
+  google.type.Date date_of_arrival = 13;
+  string voyage_or_trip_manifest_number = 14;
+  string importing_vessel_code_or_importing_conveyance_name = 15;
+}

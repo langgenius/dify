@@ -1,0 +1,27 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.isf.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.isf.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::Isf::V1";
+
+message IsfImporter {
+  IsfImporterNumberType isf_importer_number_type = 1;
+  string isf_importer_number = 2;
+  google.protobuf.Timestamp date_of_birth = 3;
+  string passport_issuance_country_code = 4;
+}
+
+enum IsfImporterNumberType {
+  ISF_IMPORTER_NUMBER_TYPE_INVALID = 0;
+  ISF_IMPORTER_NUMBER_TYPE_EMPLOYER_IDENTIFICATION_NUMBER = 1;
+  ISF_IMPORTER_NUMBER_TYPE_USCBP_ASSIGNED_NUMBER = 2;
+  ISF_IMPORTER_NUMBER_TYPE_SOCIAL_SECURITY_NUMBER = 3;
+  ISF_IMPORTER_NUMBER_TYPE_PASSPORT_NUMBER = 4;
+  ISF_IMPORTER_NUMBER_TYPE_SCAC = 5;
+}

@@ -1,0 +1,31 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.compliance.ctpat.event.v1beta1;
+
+import "flexport/compliance/ctpat/constant/v1beta1/supply_chain_security_status.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "SupplyChainSecurityStatusChangedProto";
+option java_package = "com.flexport.compliance.ctpat.event.v1beta1";
+option ruby_package = "Flexport::Compliance::CTPAT::Event::V1Beta1";
+
+// The Compliance Team’s decision for a client if they meet Flexport’s supply chain security standards.
+message SupplyChainSecurityStatusChanged {
+  // The DateTime this event was created.
+  google.protobuf.Timestamp created_time = 1;
+  // The Fid of the form.
+  string form_fid = 2;
+  // The FID of the person who made the decision.
+  string user_fid = 3;
+  // The FID of the client.
+  string client_fid = 4;
+  // The Compliance Team’s decision.
+  flexport.compliance.ctpat.constant.v1beta1.SupplyChainSecurityStatus status = 5;
+  // The expiration date for the decision.
+  google.protobuf.Timestamp end_time = 6;
+  // User selects which company entites form applies to when filling out. This is an array of the company entites' legal_names
+  repeated string company_entites = 7;
+}

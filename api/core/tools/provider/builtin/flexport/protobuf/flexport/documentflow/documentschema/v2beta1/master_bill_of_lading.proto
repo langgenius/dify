@@ -1,0 +1,36 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.documentflow.documentschema.v2beta1;
+
+import "flexport/documentflow/documentschema/v2beta1/entity_document_field.proto";
+import "flexport/documentflow/documentschema/v2beta1/primitive_document_field.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "MasterBillOfLadingProto";
+option java_package = "com.flexport.documentflow.documentschema.v2beta1";
+option ruby_package = "Flexport::DocumentFlow::DocumentSchema::V2Beta1";
+
+// Next ID: 18
+message MasterBillOfLading {
+  // Remove old vessel and voyage_number field
+  reserved 6, 7;
+  DocumentField mbl_number = 1;
+  TimestampDocumentField issue_date = 2;
+  TimestampDocumentField laden_on_board = 3;
+  repeated MBLContainerDocumentField containers = 4;
+
+  // Total carton count (sum of carton counts of all containers)
+  IntegerDocumentField carton_count = 5;
+  DocumentField port_of_loading = 8;
+  DocumentField port_of_discharge = 9;
+  DocumentField consignee = 10;
+  DocumentField notify_party = 11;
+  DocumentField place_of_delivery = 12;
+  DocumentField place_of_receipt = 13;
+  DocumentField shipper = 14;
+  DocumentField mbl_type = 15;
+  repeated VesselDocumentField vessels = 16;
+  repeated DocumentField voyage_numbers = 17;
+}

@@ -1,0 +1,307 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.airshippingdoc.flightpacket.v1beta1;
+
+import "flexport/airshippingdoc/genericmodel/v1beta1/generic_model.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "FlightPacketProto";
+option java_package = "com.flexport.airshippingdoc.flightpacket.v1beta1";
+option ruby_package = "Flexport::AirShippingDoc::FlightPacket::V1Beta1";
+
+message FlightPacket {
+  AirExecutionBooking booking = 1;
+  AirExecutionDocument master_air_waybill = 2 [deprecated = true];
+  repeated AirExecutionDocument house_air_waybills = 3 [deprecated = true];
+  AirExecutionDocument cargo_manifest = 4 [deprecated = true];
+  AirExecutionDocument cargo_labels = 5 [deprecated = true];
+  repeated BookingToShipment booking_to_shipment = 6;
+  bool direct_awb = 7;
+}
+
+message AirExecutionDocument {
+  google.protobuf.Int32Value dbid = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue uuid = 3;
+}
+
+message AirExecutionBooking {
+  google.protobuf.StringValue accounting_information = 1;
+  repeated google.protobuf.StringValue additional_special_handling_codes = 2;
+  google.protobuf.StringValue assigned_station_code = 3;
+  CargoRateClass cargo_rate_class = 4;
+  CargoSecurityStatus cargo_security_status = 5;
+  CargoTotals cargo_totals = 6;
+  CargoTotals cargo_totals_override = 7;
+
+  Carrier carrier = 8;
+  flexport.airshippingdoc.genericmodel.v1beta1.InvolvedPartyInformation consignee = 9;
+
+  google.protobuf.StringValue description_of_goods = 10;
+
+  google.protobuf.StringValue destination_iata_code = 11;
+  google.protobuf.StringValue efreight_special_handling_code = 12;
+
+  FinancialFields financial_fields = 13 [deprecated = true];
+
+  repeated FlightUnion flights = 14;
+  google.protobuf.StringValue handling_information = 15;
+  bool has_shipment_on_sensitive_countries_hold = 16;
+
+  IssuingAgent issuing_agent = 17;
+  google.protobuf.StringValue loading_instructions = 18;
+
+  MasterAirWaybillFormat master_air_waybill_format = 19;
+  google.protobuf.StringValue master_air_waybill_number = 20;
+
+  google.protobuf.StringValue origin_iata_code = 21;
+  repeated Carrier possible_carriers = 22;
+
+  repeated PossibleCompanyEntity possible_consignees = 23;
+  repeated PossibleCompanyEntity possible_filtered_shippers = 24;
+  repeated IssuingAgent possible_issuing_agents = 25;
+  repeated PossibleCompanyEntity possible_shippers = 26;
+
+  google.protobuf.StringValue sci = 27;
+  repeated google.protobuf.StringValue shipment_ids = 28;
+  google.protobuf.Struct shipments_nature_of_goods = 29;
+  flexport.airshippingdoc.genericmodel.v1beta1.InvolvedPartyInformation shipper = 30;
+  bool should_show_loading_information = 31;
+
+  google.protobuf.Timestamp updated_at = 32;
+
+  // newly added fields to keep align with persistence entity
+  google.protobuf.Timestamp created_at = 33;
+  google.protobuf.Int32Value status = 34;
+  google.protobuf.Int32Value issuing_agent_address_id = 35 [deprecated = true];
+  google.protobuf.Int32Value issuing_agent_company_entity_id = 36 [deprecated = true];
+  google.protobuf.Int32Value issuing_agent_contact_id = 37 [deprecated = true];
+  google.protobuf.StringValue issuing_agent_iata = 38 [deprecated = true];
+  google.protobuf.StringValue issuing_agent_name_city = 39 [deprecated = true];
+  google.protobuf.StringValue issuing_agent_iata_station = 40 [deprecated = true];
+  google.protobuf.StringValue carrier_agent_executed_at = 41;
+  google.protobuf.StringValue carrier_agent_executed_on = 42;
+  google.protobuf.StringValue carrier_agent_signature = 43;
+  google.protobuf.StringValue shipper_agent_signature = 44;
+  google.protobuf.Int32Value build_plan_id = 45;
+
+  google.protobuf.Int32Value cargo_override_id = 46;
+  google.protobuf.Int32Value cargo_override_count = 47;
+  google.protobuf.Int32Value cargo_override_slac = 48;
+  google.protobuf.StringValue cargo_override_weight = 49;
+  google.protobuf.StringValue cargo_override_volume = 50;
+  bool cargo_override_metric_units = 51;
+  google.protobuf.StringValue carrier_iata_code = 52;
+
+  FinancialFieldsV2 financial_fields_v2 = 53;
+  google.protobuf.StringValue cargo_override_rate_charge = 54;
+  map<string, string> shipment_nature_of_goods = 55;
+  google.protobuf.StringValue shipper_additional_info = 56 [deprecated = true];
+  google.protobuf.StringValue consignee_additional_info = 57 [deprecated = true];
+  google.protobuf.Timestamp deleted_at = 58;
+  google.protobuf.StringValue master_air_waybill_document_uuid = 59;
+  google.protobuf.StringValue cargo_manifest_document_uuid = 60;
+  google.protobuf.StringValue cargo_labels_document_uuid = 61;
+}
+
+message BookingToShipment {
+  int64 id = 1;
+  int32 flight_packet_id = 2;
+  int32 shipment_id = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+  google.protobuf.Timestamp deleted_at = 6;
+}
+
+message CargoTotals {
+  google.protobuf.Int32Value count = 1;
+  google.protobuf.FloatValue rate_charge = 2;
+  google.protobuf.Int32Value slac = 3;
+  google.protobuf.FloatValue volume = 4;
+  google.protobuf.FloatValue weight = 5;
+}
+
+message Carrier {
+  google.protobuf.Int32Value dbid = 1;
+  google.protobuf.StringValue iata_code = 2;
+  google.protobuf.StringValue name = 3;
+}
+
+message FinancialFields {
+  google.protobuf.StringValue chgs_code = 1;
+  google.protobuf.StringValue currency_code = 2;
+  google.protobuf.StringValue other_charges = 3;
+  google.protobuf.StringValue other_charges_prepaid_or_collect = 4;
+  google.protobuf.FloatValue tax = 5;
+  google.protobuf.FloatValue total_other_charges_due_agent = 6;
+  google.protobuf.FloatValue total_other_charges_due_carrier = 7;
+  google.protobuf.FloatValue valuation_charge = 8;
+  google.protobuf.FloatValue weight_charge = 9;
+  google.protobuf.StringValue wt_val_prepaid_or_collect = 10;
+}
+
+message FinancialFieldsV2 {
+  google.protobuf.StringValue chgs_code = 1;
+  google.protobuf.StringValue currency_code = 2;
+  google.protobuf.StringValue other_charges = 3;
+  flexport.airshippingdoc.genericmodel.v1beta1.PaymentMethod other_charges_prepaid_or_collect = 4;
+  google.protobuf.StringValue tax = 5;
+  google.protobuf.StringValue total_other_charges_due_agent = 6;
+  google.protobuf.StringValue total_other_charges_due_carrier = 7;
+  google.protobuf.StringValue valuation_charge = 8;
+  google.protobuf.StringValue weight_charge = 9;
+  flexport.airshippingdoc.genericmodel.v1beta1.PaymentMethod wt_val_prepaid_or_collect = 10;
+}
+
+message FlightUnion {
+  oneof flight_union {
+    FlightStatus flight_status = 1;
+    ManualFlight manual_flight = 2;
+  }
+}
+
+message FlightUnionForBooking {
+  oneof flight_union_for_booking {
+    FlightUuid flight_uuid = 1;
+    ManualFlight manual_flight = 2;
+  }
+}
+
+message FlightStatus {
+  google.protobuf.StringValue arr_port_iata_code = 1;
+  google.protobuf.StringValue arr_port_time_zone = 2;
+  google.protobuf.Timestamp arr_time = 3;
+  google.protobuf.StringValue carrier_iata_code = 4;
+  google.protobuf.StringValue dep_port_iata_code = 5;
+  google.protobuf.StringValue dep_port_time_zone = 6;
+  google.protobuf.Timestamp dep_time = 7;
+  google.protobuf.StringValue flight_number = 8;
+  google.protobuf.StringValue uuid = 9;
+}
+
+message ManualFlight {
+  google.protobuf.StringValue arr_port_iata_code = 1;
+  google.protobuf.StringValue dep_port_iata_code = 2;
+  google.protobuf.StringValue flight_number = 3;
+  google.protobuf.Timestamp departure_date = 4;
+}
+
+message FlightUuid {
+  google.protobuf.StringValue uuid = 1;
+}
+
+message IssuingAgent {
+  flexport.airshippingdoc.genericmodel.v1beta1.CompanyEntity company_entity = 1;
+  google.protobuf.StringValue station_code = 2;
+  google.protobuf.Int32Value address_id = 3;
+  google.protobuf.Int32Value contact_id = 4;
+  google.protobuf.StringValue iata = 5;
+  google.protobuf.StringValue name_city = 6;
+}
+
+message PossibleCompanyEntity {
+  google.protobuf.Int32Value dbid = 1;
+  google.protobuf.StringValue legal_name = 2;
+  google.protobuf.StringValue usci_number = 3;
+  repeated flexport.airshippingdoc.genericmodel.v1beta1.Address addresses = 4;
+}
+
+enum CargoRateClass {
+  CARGO_RATE_CLASS_INVALID = 0;
+  CARGO_RATE_CLASS_C = 1;
+  CARGO_RATE_CLASS_E = 2;
+  CARGO_RATE_CLASS_M = 3;
+  CARGO_RATE_CLASS_N = 4;
+  CARGO_RATE_CLASS_Q = 5;
+  CARGO_RATE_CLASS_R = 6;
+  CARGO_RATE_CLASS_S = 7;
+  CARGO_RATE_CLASS_U = 8;
+  CARGO_RATE_CLASS_X = 9;
+}
+
+enum CargoSecurityStatus {
+  CARGO_SECURITY_STATUS_INVALID = 0;
+  CARGO_SECURITY_STATUS_NONE = 1;
+  CARGO_SECURITY_STATUS_NSC = 2;
+  CARGO_SECURITY_STATUS_SCO = 3;
+  CARGO_SECURITY_STATUS_SHR = 4;
+  CARGO_SECURITY_STATUS_SPX = 5;
+}
+
+enum MasterAirWaybillFormat {
+  MASTER_AIR_WAYBILL_FORMAT_INVALID = 0;
+  MASTER_AIR_WAYBILL_FORMAT_A4 = 1;
+  MASTER_AIR_WAYBILL_FORMAT_DOT_MATRIX = 2;
+  MASTER_AIR_WAYBILL_FORMAT_LETTER = 3;
+}
+
+message FlightPacketDocuments {
+  AirExecutionDocument master_air_waybill = 1;
+  AirExecutionDocument cargo_manifest = 2;
+  AirExecutionDocument cargo_labels = 3;
+}
+
+// This entity is the input to generate flight packet documents.
+message FlightPacketEngineBooking {
+  google.protobuf.Int32Value id = 1;
+  google.protobuf.StringValue mawb_number = 2;
+  google.protobuf.Int32Value shipper_company_entity_id = 3;
+  google.protobuf.Int32Value shipper_address_id = 4;
+  google.protobuf.Int32Value shipper_contact_id = 5;
+  google.protobuf.Int32Value consignee_company_entity_id = 6;
+  google.protobuf.Int32Value consignee_address_id = 7;
+  google.protobuf.Int32Value consignee_contact_id = 8;
+  google.protobuf.Int32Value issuing_agent_company_entity_id = 9;
+  google.protobuf.StringValue issuing_agent_iata = 10;
+  google.protobuf.StringValue issuing_agent_iata_station = 11;
+  google.protobuf.StringValue carrier_iata_code = 12;
+  google.protobuf.Int32Value carrier_id = 13;
+  google.protobuf.StringValue carrier_agent_executed_at = 14;
+  google.protobuf.StringValue carrier_agent_executed_on = 15;
+  google.protobuf.StringValue carrier_agent_signature = 16;
+  google.protobuf.StringValue shipper_agent_signature = 17;
+  google.protobuf.Int32Value build_plan_id = 18;
+  google.protobuf.StringValue origin_iata_code = 19;
+  google.protobuf.StringValue destination_iata_code = 20;
+  repeated FlightUnionForBooking flights = 21;
+  map<string, string> shipments_nature_of_goods = 22;
+  google.protobuf.Int32Value cargo_override_count = 23;
+  google.protobuf.Int32Value cargo_override_slac = 24;
+  google.protobuf.StringValue cargo_override_weight = 25;
+  google.protobuf.StringValue cargo_override_volume = 26;
+  bool cargo_override_metric_units = 27;
+  google.protobuf.StringValue cargo_override_rate_charge = 28;
+  google.protobuf.StringValue description_of_goods = 29;
+  google.protobuf.StringValue accounting_information = 30;
+  google.protobuf.StringValue handling_information = 31;
+  google.protobuf.StringValue loading_information = 32;
+  bool should_show_loading_information = 33;
+  google.protobuf.StringValue currency_code = 34;
+  google.protobuf.StringValue wt_val_prepaid_or_collect = 35;
+  google.protobuf.StringValue other_charges_prepaid_or_collect = 36;
+  google.protobuf.StringValue weight_charge = 37;
+  google.protobuf.StringValue valuation_charge = 38;
+  google.protobuf.StringValue tax = 39;
+  google.protobuf.StringValue total_other_charges_due_agent = 40;
+  google.protobuf.StringValue total_other_charges_due_carrier = 41;
+  google.protobuf.StringValue other_charges = 42;
+  google.protobuf.Int32Value term_id = 43;
+  google.protobuf.StringValue cargo_security_status = 44;
+  google.protobuf.StringValue cargo_rate_class = 45;
+  google.protobuf.StringValue master_air_waybill_document_uuid = 46;
+  google.protobuf.StringValue cargo_manifest_document_uuid = 47;
+  google.protobuf.StringValue cargo_labels_document_uuid = 48;
+  google.protobuf.StringValue master_air_waybill_format = 49;
+  google.protobuf.StringValue shipper_additional_info = 50;
+  google.protobuf.StringValue consignee_additional_info = 51;
+  google.protobuf.StringValue chgs_code = 52;
+  google.protobuf.StringValue sci = 53;
+  google.protobuf.StringValue efreight_special_handling_code = 54;
+  repeated google.protobuf.StringValue additional_special_handling_codes = 55;
+  google.protobuf.Timestamp updated_at = 56;
+}

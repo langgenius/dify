@@ -1,0 +1,49 @@
+// TEAM: trucking_pricing_rate_management
+
+syntax = "proto3";
+
+package flexport.monolith.truckingprocurement.rates.v1beta1;
+
+import "flexport/monolith/truckingprocurement/rates/v1beta1/break_rate_structure.proto";
+import "flexport/monolith/truckingprocurement/rates/v1beta1/flat_rate_structure.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RateResponse";
+option java_package = "com.flexport.monolith.truckingprocurement.rates.v1beta1";
+option ruby_package = "Flexport::Monolith::TruckingProcurement::Rates::V1Beta1";
+
+message StructuredCharge {
+  oneof rate_structure {
+    FlatRateStructure flat_rate_structure = 1;
+    BreakRateStructure break_rate_structure = 2;
+  }
+}
+
+message Charge {
+  repeated string evaluated_charges = 1; // String representation of a float so that we can ensure precision.
+  repeated StructuredCharge unevaluated_charges = 2;
+  StructuredCharge unevaluated_derivative_charge = 3;
+  TruckingRateChargeStatus status = 4;
+}
+
+message CategorizedCharges {
+  Charge base_charge = 1;
+  map<string, Charge> surcharges = 2;
+  map<string, Charge> subject_to_charges = 3;
+}
+
+message CarrierRates {
+  string carrier = 1;
+  CategorizedCharges nac_charges = 2;
+  CategorizedCharges fak_charges = 3;
+}
+
+message RatesResponseItem {
+  map<string, CarrierRates> carrier_rates = 1;
+}
+
+enum TruckingRateChargeStatus {
+  TRUCKING_RATE_CHARGE_STATUS_INVALID = 0;
+  TRUCKING_RATE_CHARGE_STATUS_EVALUATED = 1;
+  TRUCKING_RATE_CHARGE_STATUS_STRUCTURED = 2;
+}

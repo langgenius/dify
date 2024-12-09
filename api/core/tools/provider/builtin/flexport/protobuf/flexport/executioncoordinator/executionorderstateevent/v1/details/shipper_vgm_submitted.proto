@@ -1,0 +1,26 @@
+// TEAM: shipper_exp
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipperVgmSubmittedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+import "flexport/executioncoordinator/types/originvgmsubmission/v1/origin_vgm_submission.proto";
+import "flexport/shipperexp/asyncjobvalues/v1beta1/async_job_values.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// An event to indicate shipper VGM is submitted.
+// This event will replace ShipperVgmFormSubmitted event.
+// TODO: protobuf/flexport/executioncoordinator/executionorderstateevent/v1/details/shipper_vgm_form_submitted.proto
+message ShipperVgmSubmitted {
+  string submitted_by = 1;
+  google.protobuf.Timestamp submitted_at_time = 2;
+  flexport.executioncoordinator.types.originvgmsubmission.v1.OriginVgmSubmission form_values = 3;
+  flexport.shipperexp.asyncjobvalues.v1beta1.AsyncJobValues async_job_values = 4;
+  google.protobuf.StringValue impersonated_by = 5;
+}

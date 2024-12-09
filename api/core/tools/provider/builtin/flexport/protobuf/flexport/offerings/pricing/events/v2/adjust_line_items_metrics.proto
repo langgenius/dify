@@ -1,0 +1,94 @@
+// TEAM: revenue_management
+
+syntax = "proto3";
+
+package flexport.offerings.pricing.events.v2;
+
+import "flexport/offerings/pricing/v1/line_item.proto";
+import "flexport/offerings/pricing/v1/pricing.proto";
+import "google/protobuf/timestamp.proto";
+import "google/type/decimal.proto";
+import "google/type/money.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AdjustLineItemsMetricsProto";
+option java_package = "com.flexport.offerings.pricing.events.v2";
+
+// AdjustLineItemsMetrics represents the input and output to the pricing engine for a given adjust line items request.
+// This is sent to Snowflake for analysis.
+message AdjustLineItemsMetrics {
+  // The id of the pricing engine request associated with the request. This is required and should be unique for each request.
+  string pricing_engine_request_id = 1;
+  // The id of the shipment associated with the request if available.
+  optional string shipment_id = 2;
+  // The id of the quote associated with the request if available.
+  optional string quote_id = 3;
+  // The target OMDA markup percent for the given freight type.
+  // This is the value returned by the pricing engine.
+  // If specified 0.11 means 11% markup. 0.0973 means 9.73% markup.
+  // If not set, it means a target OMDA markup could not be found and default value (0.0) should be treated as null.
+  optional google.type.Decimal target_omda_markup = 4 [deprecated = true];
+  // The timestamp of the request
+  google.protobuf.Timestamp request_timestamp = 5;
+  // A list of all the line items to adjust
+  repeated flexport.offerings.pricing.v1.LineItem input_line_items = 6;
+  // A list of all the line items after adjustment
+  repeated flexport.offerings.pricing.v1.LineItem output_line_items = 7;
+  // The type of adjustment to perform on the line items
+  flexport.offerings.pricing.v1.AdjustmentType adjustment_type = 8;
+  // The input and output to the distribution logic. This is only set if adjustment_type is set to ADJUSTMENT_TYPE_ADJUST_MARKUP.
+  optional DistributionLogic distribution_logic = 9;
+  // The target OMDA markup percent for the given freight type.
+  // This is the value returned by the get pricing recommendations API.
+  // If specified 11 means 11% markup. 9.73 means 9.73% markup.
+  // If adjustment_type is set to ADJUST_MARKUP, this field is required.
+  optional google.type.Decimal target_omda_markup_percent = 12;
+  // The computed OMDA markup from the adjusted line items
+  // If adjustment_type is set to ADJUST_MARKUP, this field is required.
+  optional google.type.Decimal adjusted_omda_markup_percent = 13;
+}
+
+// DistributionLogic contains the input to each category of the distribution logic
+message DistributionLogic {
+  // The input to the origin category of the distribution logic
+  DistributionLogicCategory origin = 1;
+  // The input to the main freight category of the distribution logic
+  DistributionLogicCategory main_freight = 2;
+  // The input to the destination category of the distribution logic
+  DistributionLogicCategory destination = 3;
+  // The input to the additional category of the distribution logic
+  DistributionLogicCategory additional = 4;
+}
+
+// DistributionLogicCategory contains the cost, price, and calculated markup for a line item category.
+// This represents the input and output to the distribution logic per category.
+message DistributionLogicCategory {
+  // The guardrail to apply. This will be null for the additional category.
+  optional flexport.offerings.pricing.v1.Guardrail guardrail = 1;
+  // The cost of the line item category broken down by cost type
+  Cost cost = 2;
+  // The price of the line item category broken down by cost type
+  Price price = 3;
+  // The calculated markup for the base freight line item category
+  google.type.Decimal calculated_markup = 4;
+  // Whether the min guardrails were applied.
+  bool min_guardrails_applied = 5;
+  // Whether the max guardrails were applied.
+  bool max_guardrails_applied = 6;
+  // The average initial base markup percent for the line item category
+  google.type.Decimal average_initial_base_markup_percent = 7;
+  // The default average initial base markup percent for the line item category
+  google.type.Decimal average_default_initial_base_markup_percent = 8;
+}
+
+message Cost {
+  // The total base cost of the line item category
+  google.type.Money base = 1;
+  // The total surcharges cost of the line item category
+  google.type.Money surcharges = 2;
+}
+
+message Price {
+  // The total surcharges cost of the line item category
+  google.type.Money surcharges = 1;
+}

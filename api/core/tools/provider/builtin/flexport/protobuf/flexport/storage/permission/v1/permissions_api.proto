@@ -1,0 +1,40 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.storage.permission.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PermissionsApiProto";
+option java_package = "com.flexport.storage.permission.v1";
+option ruby_package = "Flexport::Storage::Permission::V1";
+
+import "flexport/storage/permission/v1/permission.proto";
+
+// Operations to perform on storage permissions.
+service PermissionsAPI {
+  // Get permissions associated with a File Object.
+  rpc GetPermissions(GetPermissionsRequest) returns (GetPermissionsResponse);
+  // Update permissions associated with a File Object.
+  rpc UpdatePermissions(UpdatePermissionsRequest) returns (UpdatePermissionsResponse);
+}
+
+message GetPermissionsRequest {
+  string file_object_fid = 1;
+}
+
+message GetPermissionsResponse {
+  repeated flexport.storage.permission.v1.Permission permissions = 1;
+  string hash_code = 2;
+}
+
+message UpdatePermissionsRequest {
+  string file_object_fid = 1;
+  repeated flexport.storage.permission.v1.Permission permissions = 2;
+  string hash_code = 3;
+}
+
+message UpdatePermissionsResponse {
+  repeated flexport.storage.permission.v1.Permission permissions = 1;
+  string hash_code = 2;
+}

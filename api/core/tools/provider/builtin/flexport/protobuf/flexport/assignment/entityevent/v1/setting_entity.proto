@@ -1,0 +1,33 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.entityevent.v1;
+
+import "flexport/assignment/enums/v1/assignable_type.proto";
+import "flexport/assignment/enums/v1/work_item_type.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "SettingEntityProto";
+option java_package = "com.flexport.assignment.entityevent.v1";
+option ruby_package = "Flexport::Assignment::EntityEvent::V1";
+
+// A RBSA rule.
+message SettingEntity {
+  // DB id
+  uint64 id = 1;
+  flexport.assignment.enums.v1.AssignableType assignable_type = 2 [deprecated = true];
+  // The node this setting is attached to.
+  uint64 node_id = 3;
+  uint64 latest_revision = 4;
+  // Parent setting in setting dependency tree.
+  uint64 parent_id = 5;
+  google.protobuf.Timestamp created_at_time = 6;
+  google.protobuf.Timestamp updated_at_time = 7;
+  // Deleted date time.
+  google.protobuf.Timestamp detached_at_time = 8;
+  repeated uint64 missing_work_item_types = 9 [deprecated = true];
+  uint64 backup_setting_id = 10;
+  repeated flexport.assignment.enums.v1.WorkItemType concerned_work_item_types = 11;
+}

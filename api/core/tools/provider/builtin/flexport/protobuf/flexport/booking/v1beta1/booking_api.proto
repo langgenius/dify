@@ -1,0 +1,23 @@
+// TEAM: bookings
+
+syntax = "proto3";
+
+package flexport.booking.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "BookApiProto";
+option java_package = "com.flexport.booking.v1beta1";
+option ruby_package = "Flexport::Booking::V1Beta1";
+
+// An API for reading books special instruction.
+service BookingAPI {
+  rpc GetBookingSpecialInstructionByShipmentFid(GetBookingSpecialInstructionByShipmentFidRequest) returns (GetBookingSpecialInstructionByShipmentFidResponse);
+}
+
+message GetBookingSpecialInstructionByShipmentFidRequest {
+  string shipment_fid = 1;
+}
+
+message GetBookingSpecialInstructionByShipmentFidResponse {
+  string special_instruction = 1;
+}

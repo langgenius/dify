@@ -1,0 +1,12 @@
+identity:
+  author: Fujun Tan
+  name: flexport
+  label:
+    en_US: Flexport
+    zh_Hans: Flexport
+  description:
+    en_US: Flexport buildin tools
+    zh_Hans: Flexport 工具包
+  icon: icon.svg
+  tags:
+    - utilities

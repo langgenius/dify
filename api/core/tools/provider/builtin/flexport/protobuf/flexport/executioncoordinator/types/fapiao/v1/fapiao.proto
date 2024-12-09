@@ -1,0 +1,50 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.fapiao.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "FapiaoProto";
+option java_package = "com.flexport.executioncoordinator.types.fapiao.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Fapiao::V1";
+
+// We issue General VAT fapiao, tax exempted for all shippers with International Freight Forwarding Service.
+message Fapiao {
+  // This num represents the identifier of a fapiao under the same taxation subject.
+  string num = 1;
+  // This code represents the subject of the taxation.
+  string code = 2;
+  FapiaoType fapiao_type = 3;
+  FapiaoStatus fapiao_status = 4;
+  string pdf_download_url = 5;
+  // Invoice_label is retrived from Invoice#invoice_id column(e.g. FLEX-838896-3).
+  repeated string invoice_labels = 6;
+  // A fapiao can be issued for multiple invoices, which are possibly not associated with
+  // the same shipment.
+  repeated string shipment_fids = 7;
+  google.protobuf.Timestamp issued_time = 8;
+  // fapiao excel data, for event message & email
+  repeated string recipient_email_addresses = 9;
+  string corresponding_blue_fapiao_code = 10;
+  string corresponding_blue_fapiao_num = 11;
+}
+
+// Blue fapiao is the normal one. The red one is to revoke the previous one when
+// some exception happens(e.g. refund).
+enum FapiaoType {
+  FAPIAO_TYPE_INVALID = 0;
+  FAPIAO_TYPE_RED = 1;
+  FAPIAO_TYPE_BLUE = 2;
+}
+
+// A blue fapiao is not revoked by default. When a red fapiao is issued to revoke it,
+// its status will be changed to revoked. Red fapiaos' statuses are alwasy none.
+enum FapiaoStatus {
+  FAPIAO_STATUS_INVALID = 0;
+  FAPIAO_STATUS_REVOKED = 1;
+  FAPIAO_STATUS_NOT_REVOKED = 2;
+  FAPIAO_STATUS_NONE = 3;
+}

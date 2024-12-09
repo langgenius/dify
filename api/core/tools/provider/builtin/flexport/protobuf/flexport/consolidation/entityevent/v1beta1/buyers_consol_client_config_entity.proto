@@ -1,0 +1,26 @@
+// TEAM: tetrominos
+
+syntax = "proto3";
+
+package flexport.consolidation.entityevent.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BuyersConsolClientConfigEntityProto";
+option java_package = "com.flexport.consolidation.entityevent.v1beta1";
+option ruby_package = "Flexport::Consolidation::EntityEvent::V1Beta1";
+
+// Proto message for Buyers Consol Client Configuration object.
+message BuyersConsolClientConfigEntity {
+  int32 id = 1;
+  string fid = 2;
+  string client_fid = 3;
+  bool automated_clp_approval = 4;
+  bool clp_submit_notification = 5;
+  int32 shipping_date_tolerance_days = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  repeated string internal_email_recipients = 9;
+  repeated string external_email_recipients = 10;
+}

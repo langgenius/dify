@@ -1,0 +1,21 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.sellsideoffermanager.allocation.v1beta1;
+
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AllocationProto";
+option java_package = "com.flexport.sellsideoffermanager.allocation.v1beta1";
+option ruby_package = "Flexport::SellSideOfferManager::Allocation::V1Beta1";
+
+// An Allocation represents an SSAT allocation with the current usage information.
+message Allocation {
+  google.protobuf.Int32Value available_allocation = 1;
+  google.protobuf.Int32Value total_allocation = 2;
+  google.protobuf.Int32Value year = 3;
+  google.protobuf.Int32Value week = 4;
+  string allocation_id = 5;
+}

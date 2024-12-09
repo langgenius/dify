@@ -1,0 +1,59 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.authorization.grant.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "GrantApiProto";
+option java_package = "com.flexport.authorization.grant.v1";
+option ruby_package = "Flexport::Authorization::Grant::V1";
+
+import "flexport/authorization/v1/common.proto";
+
+// Handles role grants.
+service GrantAPI {
+  //  Grant role to an actor.
+  rpc GrantRole(GrantRoleRequest) returns (GrantRoleResponse) {
+    option deprecated = true;
+  }
+  //  Get all role grants for an actor.
+  rpc GetGrants(GetGrantsRequest) returns (GetGrantsResponse) {
+    option deprecated = true;
+  }
+  //  Revoke a role grant.
+  rpc RevokeGrant(RevokeGrantRequest) returns (RevokeGrantResponse) {
+    option deprecated = true;
+  }
+}
+
+message GrantRoleRequest {
+  option deprecated = true;
+  flexport.authorization.v1.Actor actor = 1;
+  string role_name = 2;
+  flexport.authorization.v1.RoleParameter role_parameter = 3;
+}
+
+message GrantRoleResponse {
+  option deprecated = true;
+  flexport.authorization.v1.RoleGrant role_grant = 1;
+}
+
+message GetGrantsRequest {
+  option deprecated = true;
+  flexport.authorization.v1.Actor actor = 1;
+}
+
+message GetGrantsResponse {
+  option deprecated = true;
+  repeated flexport.authorization.v1.RoleGrant role_grant = 1;
+}
+
+message RevokeGrantRequest {
+  option deprecated = true;
+  flexport.authorization.v1.Actor actor = 1;
+  string role_name = 2;
+  flexport.authorization.v1.RoleParameter role_parameter = 3;
+}
+
+message RevokeGrantResponse {}

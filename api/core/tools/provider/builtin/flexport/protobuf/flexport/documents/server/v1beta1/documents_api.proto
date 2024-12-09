@@ -1,0 +1,188 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.documents.server.v1beta1;
+
+import "flexport/documents/enums/v1beta1/status.proto";
+import "flexport/documents/types/v1beta1/document.proto";
+import "flexport/documents/types/v1beta1/document_type.proto";
+import "flexport/documents/types/v1beta1/document_type_visibility.proto";
+import "flexport/documents/types/v1beta1/entity_permission.proto";
+import "google/protobuf/field_mask.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DocumentsApiProto";
+option java_package = "com.flexport.documents.server.v1beta1";
+option ruby_package = "Flexport::Documents::Server::V1Beta1";
+
+// An API for Documents GRPC Service.
+service DocumentsAPI {
+  // Document
+  rpc CreateDocument(CreateDocumentRequest) returns (CreateDocumentResponse);
+  rpc UpdateDocuments(UpdateDocumentsRequest) returns (UpdateDocumentsResponse);
+  rpc UpdateDocumentsStatus(UpdateDocumentsStatusRequest) returns (UpdateDocumentsStatusResponse);
+  rpc DeleteDocuments(DeleteDocumentsRequest) returns (DeleteDocumentsResponse);
+  rpc GetDocumentDownloadUrls(GetDocumentDownloadUrlsRequest) returns (GetDocumentDownloadUrlsResponse);
+  rpc GetDocuments(GetDocumentsRequest) returns (GetDocumentsResponse);
+  rpc GetDocumentsOnDocumentable(GetDocumentsOnDocumentableRequest) returns (GetDocumentsOnDocumentableResponse);
+  rpc CopyDocuments(CopyDocumentsRequest) returns (CopyDocumentsResponse);
+
+  // Document Type
+  rpc GetDocumentTypes(GetDocumentTypesRequest) returns (GetDocumentTypesResponse);
+  // Only for migration
+  rpc UpsertDocumentType(UpsertDocumentTypeRequest) returns (UpsertDocumentTypeResponse);
+}
+
+message CreateDocumentRequest {
+  // Required. The type of the documentable object.
+  string documentable_type = 1;
+  // Required. The id of the documentable object.
+  string documentable_fid = 2;
+  // Required. document_type
+  oneof document_type {
+    string document_type_fid = 3;
+    string document_type_slug = 4;
+  }
+  // required storage
+  oneof storage {
+    string file_object_fid = 5;
+    bytes content = 6;
+  }
+  string file_name = 7;
+  string memo = 8;
+  string created_by_user_fid = 9;
+  string archived_by_user_fid = 10;
+  // will be added later
+  // repeated string viewer_company_fids = 11;
+
+
+  // permission
+  repeated flexport.documents.types.v1beta1.EntityPermission visible_company = 11;
+}
+
+message CreateDocumentResponse {
+  flexport.documents.types.v1beta1.Document document = 1;
+}
+
+message UpdateDocumentParameter {
+  // Required.
+  string document_fid = 1;
+  oneof document_type {
+    string document_type_fid = 2;
+    string document_type_slug = 3;
+  }
+  string file_name = 4;
+  string memo = 5;
+  // Required
+  google.protobuf.FieldMask update_mask = 6;
+}
+
+message UpdateDocumentsRequest {
+  // Required.
+  repeated UpdateDocumentParameter update_documents_request = 1; // up to 500
+  // Required.
+  string update_user_fid = 2;
+}
+
+message UpdateDocumentsResponse {
+  repeated flexport.documents.types.v1beta1.Document documents = 1;
+}
+
+message UpdateDocumentsStatusRequest {
+  // Required.
+  repeated string document_fids = 1; // up to 500
+  // Required.
+  string updated_by_user_fid = 2;
+  // Required. Set the document to active/inactive
+  flexport.documents.enums.v1beta1.Status status = 3;
+}
+
+message UpdateDocumentsStatusResponse {
+  repeated flexport.documents.types.v1beta1.Document documents = 1;
+}
+
+message DeleteDocumentsRequest {
+  // Required.
+  repeated string document_fids = 1; // up to 500
+  // Required.
+  string deleted_by_user_fid = 2;
+}
+
+message DeleteDocumentsResponse {
+  repeated string success_fids = 1;
+}
+
+message GetDocumentDownloadUrlsRequest {
+  // Required.
+  repeated string document_fids = 1; // up to 500
+  // Default is 600s (10 minutes)
+  int32 expires_in_seconds = 2;
+}
+
+message GetDocumentDownloadUrlsResponse {
+  map<string, string> document_download_urls = 1; // fid to download url
+}
+
+message GetDocumentsRequest {
+  // Required.
+  repeated string document_fids = 1; // up to 500
+  // Default is exclude archived documents
+  bool include_archived = 2;
+}
+
+message GetDocumentsResponse {
+  repeated flexport.documents.types.v1beta1.Document documents = 1;
+}
+
+message GetDocumentsOnDocumentableRequest {
+  // Required.
+  string documentable_type = 1;
+  // Required.
+  string documentable_fid = 2;
+  // Required.
+  repeated string document_type_slugs = 3;
+  // Default is exclude archived documents
+  bool include_archived = 4;
+}
+
+message GetDocumentsOnDocumentableResponse {
+  repeated flexport.documents.types.v1beta1.Document documents = 1;
+}
+
+message CopyDocumentsRequest {
+  // Required.
+  string target_documentable_type = 1;
+  // Required.
+  string target_documentable_fid = 2;
+  // Required. Up to 50
+  repeated string source_document_fids = 3;
+  // Required.
+  string operator_user_fid = 4;
+}
+
+message CopyDocumentsResponse {
+  map<string, flexport.documents.types.v1beta1.Document> source_fid_to_target_document = 1;
+}
+
+message GetDocumentTypesRequest {
+  // Optional. document_type_names/document_type_slugs/document_type_fids must be only one
+  repeated string document_type_names = 1;
+  // Optional.
+  repeated string document_type_slugs = 2;
+  // Optional.
+  repeated string document_type_fids = 3;
+}
+
+message GetDocumentTypesResponse {
+  repeated flexport.documents.types.v1beta1.DocumentType document_type = 1;
+}
+
+message UpsertDocumentTypeRequest {
+  flexport.documents.types.v1beta1.DocumentType document_type = 1;
+  repeated flexport.documents.types.v1beta1.DocumentTypeVisibility visibilities = 2;
+}
+
+message UpsertDocumentTypeResponse {
+  flexport.documents.types.v1beta1.DocumentType document_type = 1;
+}

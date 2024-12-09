@@ -1,0 +1,66 @@
+// TEAM: tetrominos
+
+syntax = "proto3";
+
+package flexport.shipmentplanner.solve.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "EdgeProto";
+option java_package = "com.flexport.shipmentPlanner.solve.v1beta1";
+option ruby_package = "Flexport::ShipmentPlanner::Solve::V1Beta1";
+
+enum UnitType {
+  UNIT_TYPE_INVALID = 0;
+  UNIT_TYPE_SHIPMENT = 1;
+  UNIT_TYPE_CONTAINER = 2;
+  UNIT_TYPE_CBM = 3;
+  UNIT_TYPE_CBM_PER_DAY = 4;
+  UNIT_TYPE_KG = 5;
+  UNIT_TYPE_CBM_PER_CONTAINER = 6;
+}
+
+message CostElement {
+  double amount_usd_cents_per_unit = 1;
+  UnitType cost_unit = 2; //e.g. $1 per shipment
+}
+
+message CapacityElement {
+  double amount = 1;
+  UnitType type = 3;
+}
+
+message EdgeCandidate {
+  oneof edge {
+    ItineraryEdge itinerary = 1;
+    BookableEdge bookable = 2;
+    StorageEdge storage = 3;
+  }
+}
+
+// represents an edge with a fixed itinerary
+message ItineraryEdge {
+  string inventory_fid = 1;
+  google.protobuf.Timestamp start = 2;
+  uint32 duration_seconds = 4;
+  repeated CostElement costs = 5;
+  repeated CapacityElement capacity = 6; //if any of these constraints is met, the edge is full
+}
+
+// represents an edge with a flexible start time but a fixed duration
+message BookableEdge {
+  string inventory_fid = 1;
+  google.protobuf.Timestamp min_start = 2;
+  google.protobuf.Timestamp max_start = 3;
+  uint32 duration_seconds = 4;
+  repeated CostElement costs = 5;
+  repeated CapacityElement capacity = 6; //if any of these constraints is met, the edge is full
+}
+
+// represents an edge with no fixed start or end time, and a flexible duration
+message StorageEdge {
+  string inventory_fid = 1;
+  repeated CostElement costs = 5;
+  repeated CapacityElement capacity = 6; //if any of these constraints is met, the edge is full
+}

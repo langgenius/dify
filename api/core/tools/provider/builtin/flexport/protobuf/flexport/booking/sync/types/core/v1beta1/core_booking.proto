@@ -1,0 +1,119 @@
+// TEAM: bookings
+
+syntax = "proto3";
+
+package flexport.booking.sync.types.core.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CoreBookingProto";
+option java_package = "com.flexport.booking.sync.types.core.v1beta1";
+option ruby_package = "Flexport::Booking::Sync::Types::Core::V1Beta1";
+
+import "flexport/booking/containercounts/v1beta1/container_counts.proto";
+import "flexport/booking/enums/declared_as_dangerous/v1beta1/declared_as_dangerous.proto";
+import "flexport/booking/enums/hkstrategiccommoditiesoption/v1beta1/hk_strategic_commodities_option.proto";
+import "flexport/booking/enums/shipmentpriority/v1beta1/shipment_priority.proto";
+import "flexport/booking/sync/types/core/v1beta1/cargo.proto";
+import "flexport/booking/sync/types/core/v1beta1/hs_code.proto";
+import "flexport/os/v1/types/incoterm/v1/incoterm.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// A snapshot of a booking in the core.
+// This is used to sync the booking data to the Booking NIS.
+message CoreBooking {
+  // Metadata
+  google.protobuf.Int64Value id = 1;
+  google.protobuf.StringValue fid = 2;
+  google.protobuf.Timestamp created_at_time = 3;
+  google.protobuf.Timestamp updated_at_time = 4;
+  google.protobuf.Timestamp submitted_at_time = 5;
+  google.protobuf.Timestamp archived_at_time = 6;
+  google.protobuf.Timestamp deleted_at_time = 7;
+  google.protobuf.Int64Value created_by_id = 8;
+  google.protobuf.StringValue created_by_fid = 9;
+  google.protobuf.Int64Value create_impersonated_by_id = 10;
+  google.protobuf.StringValue create_impersonated_by_fid = 11;
+  google.protobuf.Int64Value booking_template_id = 12;
+  google.protobuf.StringValue booking_template_fid = 13;
+  google.protobuf.StringValue name = 14;
+  google.protobuf.BoolValue is_template = 15;
+  google.protobuf.Int64Value submit_impersonated_by_id = 16;
+  google.protobuf.StringValue submit_impersonated_by_fid = 17;
+  google.protobuf.Int64Value submitted_by_id = 18;
+  google.protobuf.StringValue submitted_by_fid = 19;
+  google.protobuf.BoolValue created_from_api = 20;
+  // WHO
+  // Company shipping the goods.
+  google.protobuf.Int64Value shipper_entity_id = 21;
+  google.protobuf.StringValue shipper_entity_fid = 22;
+  // Company entity corresponding to the recipient of the shipment's goods
+  google.protobuf.Int64Value consignee_entity_id = 23;
+  google.protobuf.StringValue consignee_entity_fid = 24;
+  // Defines who is responsible for payment of which parts of the shipment.
+  flexport.os.v1.types.incoterm.v1.Incoterm incoterm = 25;
+  google.protobuf.StringValue notify_party = 26;
+  // WHAT
+  // Info about the packages in the shipment
+  google.protobuf.Int64Value shipment_id = 27;
+  google.protobuf.StringValue shipment_fid = 28;
+  flexport.booking.sync.types.core.v1beta1.Cargo cargo = 29;
+  repeated flexport.booking.sync.types.core.v1beta1.HsCode hs_codes = 30;
+  // How many of each size container is being shipped.
+  flexport.booking.containercounts.v1beta1.ContainerCounts container_counts = 31;
+  // dangerous goods options
+  flexport.booking.enums.declaredasdangerous.v1beta1.DeclaredAsDangerous declared_as_dangerous = 32;
+  // hk strategic commodities
+  flexport.booking.enums.hkstrategiccommoditiesoption.v1beta1.HkStrategicCommoditiesOption hk_strategic_commodities_option = 33;
+  google.protobuf.StringValue description_of_products = 34;
+  google.protobuf.StringValue eccn_codes = 35;
+  google.protobuf.Int32Value estimated_commercial_invoice_value = 36;
+  // WHEN
+  google.protobuf.Timestamp cargo_ready_date_time = 37;
+  google.protobuf.Timestamp delivery_date_time = 38;
+  // WHERE
+  // shipper side
+  google.protobuf.Int64Value origin_address_id = 39;
+  google.protobuf.StringValue origin_address_fid = 40;
+  google.protobuf.Int64Value port_of_loading_id = 41;
+  google.protobuf.StringValue port_of_loading_fid = 42;
+  // consingee side
+  google.protobuf.Int64Value destination_address_id = 43;
+  google.protobuf.StringValue destination_address_fid = 44;
+  google.protobuf.Int64Value port_of_unloading_id = 45;
+  google.protobuf.StringValue port_of_unloading_fid = 46;
+  // HOW
+  // transportation mode
+  bool air = 47;
+  bool ocean_fcl = 48;
+  bool ocean_lcl = 49;
+  bool truck_ftl = 50;
+  bool truck_ltl = 51;
+  // service
+  google.protobuf.BoolValue wants_delivery_service = 52;
+  google.protobuf.BoolValue wants_export_customs_service = 53;
+  google.protobuf.BoolValue wants_pickup_service = 54;
+  google.protobuf.BoolValue wants_trade_declaration_service = 55;
+  // priority level
+  flexport.booking.enums.shipmentpriority.v1beta1.ShipmentPriority priority = 56;
+  google.protobuf.StringValue priority_notes = 57;
+  // other business fields
+  google.protobuf.BoolValue cpsc_certified = 58;
+  google.protobuf.BoolValue fcc_registered = 59;
+  google.protobuf.BoolValue fda_registered = 60;
+  google.protobuf.StringValue memo = 61;
+  // Booking Collab
+  google.protobuf.Timestamp other_party_notified_at_time = 62;
+  google.protobuf.Timestamp first_shipper_verification_requested_at_time = 63;
+  google.protobuf.Timestamp last_shipper_verification_requested_at_time = 64;
+  google.protobuf.StringValue fills_rfq_role = 65;
+  bool requires_shipper_amendment = 66;
+  google.protobuf.Int64Value shipment_proposal_id = 67;
+  google.protobuf.Int64Value shipper_contact_edge_id = 68;
+  google.protobuf.StringValue origin_pickup_contact_fid = 69;
+  google.protobuf.StringValue origin_delivery_note = 70;
+  google.protobuf.BoolValue origin_needs_help_unloading = 71;
+  google.protobuf.StringValue origin_localized_address = 72;
+  google.protobuf.Int64Value company_id = 73;
+  google.protobuf.StringValue company_fid = 74;
+}

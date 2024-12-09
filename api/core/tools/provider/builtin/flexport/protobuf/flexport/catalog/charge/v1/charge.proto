@@ -1,0 +1,29 @@
+// TEAM: commerce_charges
+
+syntax = "proto3";
+
+package flexport.catalog.charge.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ChargeProto";
+option java_package = "com.flexport.catalog.charge.v1";
+option ruby_package = "Flexport::Catalog::Charge::V1";
+
+import "flexport/catalog/chargetype/v1/charge_type.proto";
+import "flexport/catalog/date/v1/date.proto";
+import "flexport/catalog/rate/v1/rate.proto";
+import "google/protobuf/wrappers.proto";
+
+// import "google/type/date.proto";
+
+// Charge Dto.
+message ChargeDto {
+  // uuid of the charge
+  google.protobuf.StringValue id = 1;
+  catalog.chargetype.v1.ChargeTypeDto charge_type = 2;
+  catalog.date.v1.DateDto activation_date = 3;
+  catalog.date.v1.DateDto expiration_date = 4;
+  catalog.rate.v1.RateDto rate = 5;
+  map<int64, catalog.rate.v1.RateDto> client_markup_override_map = 6;
+  map<string, catalog.rate.v1.RateDto> segment_markup_override_map = 7;
+}

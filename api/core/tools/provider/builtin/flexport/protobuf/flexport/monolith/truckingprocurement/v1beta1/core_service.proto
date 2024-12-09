@@ -1,0 +1,124 @@
+// TEAM: trucking
+
+syntax = "proto3";
+
+package flexport.monolith.truckingprocurement.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CoreServiceProto";
+option java_package = "com.flexport.monolith.truckingprocurement.v1beta1";
+option ruby_package = "Flexport::Monolith::TruckingProcurement::V1Beta1";
+
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+
+// Analogous to a DeliveryOrder, but constructable from a trucking ExecutionTask.
+message CostableTruckingMove {
+  // Stringified version of the BigDecimal, eg "2.20".
+  string weight = 1;
+  // Stringified version of the BigDecimal, eg "2.20".
+  string volume = 2;
+  ServiceType service_type = 3;
+  // Used by rate service in the monolith for now.
+  string shipment_fid = 4;
+  // For non-drayage, omit this field or set to 0.
+  uint32 num_drayage_containers = 5;
+  // For drayage, omit this field or set to 0, otherwise: the count of deliveries.
+  uint32 num_non_drayage_deliveries = 6;
+  float origin_distance_km = 7;
+  float destination_distance_km = 8;
+  repeated Container containers = 9;
+}
+
+// What kind of a trucking move is it.
+enum ServiceType {
+  SERVICE_TYPE_INVALID = 0;
+  SERVICE_TYPE_LTL = 1;
+  SERVICE_TYPE_FTL = 2;
+  SERVICE_TYPE_DRAYAGE = 3;
+  SERVICE_TYPE_CARTAGE = 4;
+}
+
+// Information about the physical container to help cost it.
+message Container {
+  // eg: "dry".
+  os.v1.types.cargo.v1.Iso6346ContainerType container_type = 1;
+  // eg: "twenty_ft_hc".
+  os.v1.types.cargo.v1.Iso6346ContainerSize container_size = 2;
+  // eg: "45G1".
+  string iso_code = 3;
+}
+
+// Represents a line item in a service contract with a trucking carrier.
+message ContractItem {
+  // Used for logging, the fid of the contract item in the procurement (monolith) DB.
+  string contract_item_fid = 1;
+  LineItemSlug slug = 2;
+  // An opaque json blob that the monolith rate services uses.
+  // eg: '{"type":"percentage","amount":"10.0","currency_code":"EUR","percent_base_slug":null}'.
+  string rate_json = 3;
+  // Used to differentiate accessorial contracts vs lane contracts.
+  ItemizableType itemizable_type = 4;
+}
+
+// Expresses the cost of something with contextual info.
+message CostItem {
+  // Could be the slug of the contract item.
+  string name = 1;
+  sint64 amount_micros = 2;
+  string currency_code = 3;
+  // Could include the rate used.
+  string context_json = 4;
+}
+
+// Taken from engines/trucking_procurement/app/constants/trucking_procurement/uploads/enums.rb,
+// list of valid slugs for contract items. Includes accessorial slugs.
+enum LineItemSlug {
+  LINE_ITEM_SLUG_INVALID = 0;
+  LINE_ITEM_SLUG_DRAYAGE_BASE = 1;
+  LINE_ITEM_SLUG_CARTAGE_BASE = 2;
+  LINE_ITEM_SLUG_FTL_BASE = 3;
+  LINE_ITEM_SLUG_LTL_BASE = 4;
+  LINE_ITEM_SLUG_FUEL_SURCHARGE = 5;
+  LINE_ITEM_SLUG_CHASSIS_FEE = 6;
+  LINE_ITEM_SLUG_LINEHAUL_FEE = 7;
+  LINE_ITEM_SLUG_AIRPORT_TRANSFER = 8;
+  LINE_ITEM_SLUG_TRAILER_TIME = 9;
+  LINE_ITEM_SLUG_BOBTAIL_TIME = 10;
+  LINE_ITEM_SLUG_TRAILER_OVERTIME = 11;
+  LINE_ITEM_SLUG_BOBTAIL_OVERTIME = 12;
+  LINE_ITEM_SLUG_TRUCKING_WAIT_TIME = 13;
+  LINE_ITEM_SLUG_PORT_CONGESTION = 14;
+  LINE_ITEM_SLUG_CHASSIS_SPLIT = 15;
+  LINE_ITEM_SLUG_PRE_PULL = 16;
+  LINE_ITEM_SLUG_REFRIGERATED_FEE = 17;
+  LINE_ITEM_SLUG_HAZMAT_FEE = 18;
+  LINE_ITEM_SLUG_YARD_STORAGE = 19;
+  LINE_ITEM_SLUG_TRI_AXLE_FEE = 20;
+  LINE_ITEM_SLUG_SCALING_FEE = 21;
+  LINE_ITEM_SLUG_STOP_OFF_FEE = 22;
+  LINE_ITEM_SLUG_LAYOVER = 23;
+  LINE_ITEM_SLUG_OVERWEIGHT_FEE = 24;
+  LINE_ITEM_SLUG_RESIDENTIAL_DELIVERY = 25;
+  LINE_ITEM_SLUG_CHASSIS_FLIP = 26;
+  LINE_ITEM_SLUG_LIFT_FEE = 27;
+  LINE_ITEM_SLUG_RAIL_SURCHARGE = 28;
+  LINE_ITEM_SLUG_ADDITIONAL_DROP_OFF_CHARGE = 29;
+  LINE_ITEM_SLUG_ADDITIONAL_PICK_UP_CHARGE = 30;
+  LINE_ITEM_SLUG_DOWNTOWN_DELIVERY_FEE = 31;
+  LINE_ITEM_SLUG_DRIVER_ASSIST_FEE = 32;
+  LINE_ITEM_SLUG_EXTRA_MAN_SERVICE = 33;
+  LINE_ITEM_SLUG_LABOR_CHARGE = 34;
+  LINE_ITEM_SLUG_RESIDENTIAL_DELIVERY_FEE = 35;
+  LINE_ITEM_SLUG_DROP_FEE = 36;
+  LINE_ITEM_SLUG_LIFT_GATE = 37;
+  LINE_ITEM_SLUG_SAME_DAY_DELIVERY = 38;
+  LINE_ITEM_SLUG_BOBTAIL_FEE = 39;
+}
+
+// Whether the line item (contract item) was tied to / part of
+// a lane contract or an accessorial contract. Used by cost calculator.
+enum ItemizableType {
+  ITEMIZABLE_TYPE_INVALID = 0;
+  ITEMIZABLE_TYPE_TRUCKING_PROCUREMENT_LANE_CONTRACT = 1;
+  ITEMIZABLE_TYPE_TRUCKING_PROCUREMENT_ACCESSORIAL_CONTRACT = 2;
+}

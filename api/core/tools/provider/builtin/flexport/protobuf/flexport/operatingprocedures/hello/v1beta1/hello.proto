@@ -1,0 +1,16 @@
+// TEAM: work_management
+
+syntax = "proto3";
+
+package flexport.operatingprocedures.hello.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "HelloProto";
+option java_package = "com.flexport.operatingprocedures.hello.v1beta1";
+option ruby_package = "Flexport::OperatingProcedures::Hello::V1Beta1";
+
+// Response to an account creation request.
+message DependencyHealth {
+  bool postgres_health = 1;
+  bool authorization_service_health = 2;
+}

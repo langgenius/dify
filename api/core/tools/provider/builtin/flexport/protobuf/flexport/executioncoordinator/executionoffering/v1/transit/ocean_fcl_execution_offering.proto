@@ -1,0 +1,299 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionoffering.v1;
+
+import "flexport/catalog/enums/v1/enums.proto";
+import "flexport/executioncoordinator/executionoffering/v1/transit/auxiliary_trucking.proto";
+import "flexport/executioncoordinator/executionoffering/v1/transit/common.proto";
+import "flexport/executioncoordinator/executionoffering/v1/transit/nra_constraints.proto";
+import "flexport/executioncoordinator/types/cargo/v1/active_iso_6346_container.proto";
+import "flexport/executioncoordinator/types/enums/v1/ocean_fcl_role.proto";
+import "flexport/executioncoordinator/types/noinvolvement/v1/ocean_fcl_no_involvement_info.proto";
+import "flexport/os/v1/types/cargo/v1/container_counts.proto";
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanFclExecutionOfferingProto";
+option java_package = "com.flexport.executioncoordinator.executionoffering.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOffering::V1";
+
+// An ExecutionOffering for movement of one or more ocean containers.
+// More details on go/execution-offering wiki.
+message OceanFclExecutionOffering {
+  //
+  // Client preferences about which vessel-owning ocean carrier to use.
+  oneof carrier {
+    OpenCarrier open_carrier = 7;
+    OceanFclSpecificCarrier specific_carrier = 8;
+    OceanFclOrderedCarrierPreferences ordered_carrier_preferences = 9;
+    OceanFclBlocklistedCarriers blocklisted_carriers = 4;
+  }
+  //
+  // Client preferences about the main freight CY-to-CY route.
+  oneof route {
+    OpenRoute open_route = 10;
+    OceanFclSpecificRoute specific_route = 11;
+  }
+  //
+  // Info about drayage before or after main freight. See go/pickups-and-deliveries wiki.
+  repeated AuxiliaryTruckingPickup pickups = 25;
+  repeated AuxiliaryTruckingDelivery deliveries = 26;
+
+  //
+  // Info about the transloading before or after drayage/cartage. See go/transloading wiki.
+  repeated AuxiliaryOriginTransloadingTrucking origin_transloading_truckings = 29;
+  repeated AuxiliaryDestinationTransloadingTrucking destination_transloading_truckings = 30;
+  //
+  // The quoted transit time represents the transit time we quoted to the client for this order.
+  OceanFclTransitTime quoted_transit_time = 27;
+  OceanFcLOteMilestones ote_milestones = 36;
+  //
+  // TODO(maxh): Investigate what this means and how it relates to involved parties.
+  string freight_partner_fid = 12;
+  //
+  // The service level associated with a Flexport ocean fcl shipment.
+  // Current service levels offered for ocean fcl are standard, express, and deferred.
+  // For reference: https://flexport.atlassian.net/wiki/spaces/KB/pages/2514125743/Ocean+FCL+FAK+Commercial+Service+Levels
+  string main_freight_service_level = 31;
+  ServiceLevel main_freight_service_level_enum = 34;
+  flexport.catalog.enums.v1.OceanTierDto catalog_tier = 35;
+
+  //
+  // Containers are represented in three ways:
+  // 1. quoted_container_counts comes from quote.quoted_container_counts and typically doesn't change.
+  // 2. requested_container_counts comes from shipment.container_counts and can change.
+  // 3. containers comes from shipment.container_uses/carrier bookings is updated during execution.
+  // See comment on "def current_container_counts" in shipment.rb for more details.
+  // We need product support and ops workflow changes to fully clean this up.
+  flexport.os.v1.types.cargo.v1.ContainerCounts quoted_container_counts = 28;
+  flexport.os.v1.types.cargo.v1.ContainerCounts requested_container_counts = 33;
+  repeated flexport.executioncoordinator.types.cargo.v1.ActiveIso6346Container containers = 24;
+  //
+  // The main freight role describes how Flexport intermediates the relationship between the
+  // client and the external ocean carrier. The "full service" role means we own and execute
+  // on our own ocean carrier contract. The other roles describe various levels of involvement
+  // on shipment with client-arranged contracts, either directly with carriers (BCO shipments)
+  // or via another forwarder/NVOCC.
+  flexport.executioncoordinator.types.enums.v1.OceanFclRole main_freight_role = 5;
+  //
+  // Info related to the main freight role. Multiple roles may correspond to a single "info", eg
+  // for a BCO shipment our role may be either "booking agent" or "no involvement". If our main
+  // freight role is "full service", then full_service_info must be specified. For the other roles,
+  // one of the other infos may optionally be specified.
+  oneof role_related_info {
+    OceanFclFullServiceInfo full_service_info = 1;
+    OceanFclBcoInfo bco_info = 2;
+    //
+    // Info related to the "no involvement" role is defined in a shared type and reused across
+    // the sell-side-facing ExecutionOffering and the buy-side-facing ExecutionTask. This is
+    // because there is no main freight planning process for such shipments: what is provided by
+    // the sell-side is immediately passed through to the buy-side. This is unlike BCO or full
+    // service shipments, where the planning process transforms the customer's preferences on
+    // the ExecutionOffering into not-necessarily-equivalent ExecutionTasks for the buy-side.
+    flexport.executioncoordinator.types.noinvolvement.v1.OceanFclNoInvolvementInfo no_involvement_info = 3;
+  }
+  //
+  // Flow Direct is creating a consolidated container for clients shipping from China to the same
+  // e-commerce Distribution Center in the US.  By consolidating shipments at origin based on their
+  // final door destination, we can skip the de-consolidation step in traditional LCL,
+  // improving transit time and reducing cost.
+  // For FCL shipments, they are basically fcl shipments on some fixed trade lanes that go to a set of
+  // fulfillment centers.
+  // Reference: https://flexport.atlassian.net/wiki/spaces/GCN/pages/2195656799/Flow+Direct
+  google.protobuf.BoolValue is_flow_direct = 32;
+}
+
+// Info specific to ocean FCL shipments with the "full service" main freight role.
+message OceanFclFullServiceInfo {
+  //
+  // The service boundary to appear on the House Bill of Lading issued by Flexport to the client.
+  // As of Oct 2020, this is almost always "CY-to-CY", with drayage executed as non-NVOCC forwarder.
+  // Required.
+  OceanFclBoundary hbl_boundary = 1;
+  //
+  // The constraints on the Negotiated Rate Agreement (NRA) define the terms of the ocean freight
+  // rate offered by Flexport as NVOCC. As of October 2020, this differs from "specific_route" in
+  // that (1) the NRA is expressed in terms of port groups where the offering defines ports and (2)
+  // the specific_route represents the client's preferences for a route, where as the NRA
+  // constraints represent compliance constraints. Eventually, we might relax or collapse these
+  // into a single route constraint.
+  // Required if shipment is to or from USA. Must be empty otherwise.
+  NraConstraints nra_constraints = 2;
+  //
+  // There are two use cases for the sell-side specifying buy-side rate type per shipment:
+  // 1. Specifying rates/contracts is the only way the sell-side can encode some other specific
+  //    attributes that were sold to a client as part of a service, such as a specific departure.
+  // 2. The buy-side ocean FCL planner should use NAC rates when possible. Carriers don't like it
+  //    when you book NAC clients on FAK. This is advantageous when the FAK rate is lower than the
+  //    fixed NAC one... but that’s gaming the system. Currently the ocean FCL planner gets its
+  //    signal about which rate type to use from the sell-side.
+  // Neither of these conceptually _require_ the sell-side to specify this information. The
+  // buy-side should be able to look up which contract type to use for a particular client, and the
+  // ExecutionOrder API should be expressive enough for the sell-side to properly encode customer
+  // preferences without relying on the roundabout mechanism of dictating buy-side rates/contracts.
+  // See: https://github.flexport.io/flexport/flexport/tree/master/slack_messages/C2LBAMPSQ_1591904189.186300.md
+  // Optional.
+  OceanFclRateType buy_side_rate_type = 3;
+  //
+  // Non-binding instructions specified by sell-side on how this shipment should be fulfilled.
+  FulfillmentGuidance fulfillment_guidance = 4;
+}
+
+// Info specific to beneficial cargo owner (BCO) shipments, wherein the client has a direct
+// contract with the vessel-owning ocean carrier.
+message OceanFclBcoInfo {
+  //
+  // The service boundary of the client-arranged vessel-owning carrier contract between client
+  // and VOCC. Might include origin and destination trucking (eg door-to-door).
+  OceanFclBoundary mbl_boundary = 1;
+}
+
+// Transit time for an ocean FCL shipment in days.
+message OceanFclTransitTime {
+  int32 min_days = 2;
+  int32 max_days = 3;
+  OceanFclTransitTimeStart start = 4;
+  OceanFclTransitTimeEnd end = 5;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate based_on_start_date = 6;
+  // The IANA timezone identifier for the quoted destination location.
+  string destination_timezone = 7;
+  int32 origin_days = 8;
+  int32 origin_dwell_days = 9;
+  int32 port_to_port_days = 10;
+  int32 destination_dwell_days = 11;
+  int32 destination_days = 12;
+}
+
+// On time execution metrics for an ocean FCL shipment. The numbers are in days.
+message OceanFcLOteMilestones {
+  float door_to_cfs_or_port = 1;
+  float origin_ingate_departure = 2;
+  float port_to_port = 3;
+  float dest_arrival_avail_unload = 4;
+  float available_to_pickup = 5;
+  float cfs_or_port_to_door = 6;
+}
+
+// Start event for transit time for an ocean FCL shipment.
+enum OceanFclTransitTimeStart {
+  OCEAN_FCL_TRANSIT_TIME_START_INVALID = 0;
+  // For door-to-*.
+  OCEAN_FCL_TRANSIT_TIME_START_DOOR_CARGO_READY = 1;
+  // For cy-to-*.
+  OCEAN_FCL_TRANSIT_TIME_START_CY_ARRIVAL = 2;
+}
+
+// End event for transit time for an ocean FCL shipment.
+enum OceanFclTransitTimeEnd {
+  OCEAN_FCL_TRANSIT_TIME_END_INVALID = 0;
+  // For *-to-door.
+  OCEAN_FCL_TRANSIT_TIME_END_DOOR_ARRIVAL = 1;
+  // For *-to-cy.
+  OCEAN_FCL_TRANSIT_TIME_END_CY_AVAILABLE_FOR_PICKUP = 2;
+}
+
+// A specific ocean FCL route.
+message OceanFclSpecificRoute {
+  // The following fields are populated from the quote
+  string port_of_loading_fid = 1;
+  repeated string via_port_fids = 2;
+  string port_of_unloading_fid = 3;
+  // The following field means destination_inland_port_fid
+  string inland_port_fid = 4;
+  // The following fields are populated from the fcl service offering if it exists
+  string origin_fid = 5;
+  string origin_via_fid = 6;
+  string destination_via_fid = 7;
+  string destination_fid = 8;
+  // The following field means origin_inland_port_fid, do not use until ICD project ready https://docs.google.com/document/d/14Etjssko-KMc29qbVQRAGNK5UnuTWLKSnWGZ3BO9sWM/edit?tab=t.0
+  string origin_inland_port_fid = 9;
+}
+
+// An ordered list of carrier preferences, which Flexport takes into account during the
+// ocean container-to-sailing assignment process.
+message OceanFclOrderedCarrierPreferences {
+  repeated OceanFclCarrierPreference preferences = 1;
+}
+
+// A carrier preference in a list of ordered carrier preferences.
+message OceanFclCarrierPreference {
+  //
+  // Unique identifier of the ocean carrier specified by the sell-side.
+  string carrier_fid = 1;
+  //
+  // Unique identifier of the ocean carrier contract as specified by the sell-side.
+  string contract_fid = 2;
+  //
+  // Name of the ocean carrier service string.
+  string service_string_fid = 6;
+  //
+  // The estimated departure from the port of loading.
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate estimated_departure = 4;
+  //
+  // In cases when there is no ocean carrier contract record associated with the
+  // [carrier, contract number] pair on the quoted carrier preference, we still pass the
+  // unrecognized contract number to the planner to avoid information loss.
+  //
+  // This field is ONLY set when:
+  // (1) there was a contract name specified on the original quoted carrier preference
+  // AND (2) contract_fid is empty (meaning no contract was found with that number for the carrier)
+  //
+  // TODO - marketplace/catalog should enforce contracts id/fids on carrier preferences instead
+  // of using an implicit association through the contract_number.
+  // See dashboard here: http://go/missing-fcl-contracts
+  string legacy_unrecognized_contract_number = 5;
+}
+
+// Unordered list of carriers that are specifically requested not to be assigned.
+message OceanFclBlocklistedCarriers {
+  repeated string carrier_fids = 1;
+}
+
+// A specific ocean carrier, with contract and booking details.
+message OceanFclSpecificCarrier {
+  string carrier_fid = 1;
+  string contract_fid = 2;
+  string booking_code = 3;
+}
+
+// Boundaries of an ocean FCL service.
+enum OceanFclBoundary {
+  OCEAN_FCL_BOUNDARY_INVALID = 0;
+  OCEAN_FCL_BOUNDARY_CY_TO_CY = 1;
+  OCEAN_FCL_BOUNDARY_CY_TO_DOOR = 2;
+  OCEAN_FCL_BOUNDARY_DOOR_TO_CY = 3;
+  OCEAN_FCL_BOUNDARY_DOOR_TO_DOOR = 4;
+}
+
+// Types of ocean FCL rates.
+enum OceanFclRateType {
+  OCEAN_FCL_RATE_TYPE_INVALID = 0;
+  //
+  // Freight All Kinds = open-market rates anyone can use (variable cost).
+  OCEAN_FCL_RATE_TYPE_FAK = 1;
+  //
+  // Named Account Contract = a three-party rate:
+  // "In the case of so-called named accounts, the forwarder discloses the identity of its shipper
+  //  to the carrier in return for the carrier agreeing to provide a discounted contract rate
+  //  applicable to that shipper only."
+  // https://www.joc.com/maritime-news/container-lines/maersk-line-limited/maersk-pressures-forwarders-amid-market-share-battle_20171219.html
+  OCEAN_FCL_RATE_TYPE_NAC = 2;
+}
+
+// Instructions provided by sell-side (eg. quoting associate).
+message FulfillmentGuidance {
+  //
+  // Identifier that links to a set of FCL inventories that may fulfill this shipment.
+  string inventory_backed_offering_fid = 1;
+  // Target sailing iso year week. Ex: 202252
+  int32 target_sailing_iso_year_week = 2;
+  // Identifier of the ocean fcl offering.
+  string cda_offering_fid = 3;
+  // Identifier of the ssat allocation.
+  optional string ssat_allocation_id = 4;
+  // The ssat v2 sailing week.
+  optional int32 ssat_sailing_week = 5;
+}

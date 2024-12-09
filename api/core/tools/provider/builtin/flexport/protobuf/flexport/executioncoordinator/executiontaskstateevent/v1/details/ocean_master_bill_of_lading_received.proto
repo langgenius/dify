@@ -1,0 +1,31 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+import "flexport/executioncoordinator/types/enums/v1/ocean_master_bill_of_lading_transmission_mode.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanMasterBillOfLadingReceivedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// A master bill of lading has been received from the ocean carrier.
+message OceanMasterBillOfLadingReceived {
+  string document_fid = 1;
+  // The master bill of lading number corresponding to the received document.
+  string master_bill_of_lading_number = 2;
+  // The fid corresponding to the master bill of lading.
+  string master_bill_of_lading_fid = 3;
+  // The release process corresponding to the received document.
+  flexport.executioncoordinator.types.enums.v1.OceanMasterBillOfLadingTransmissionMode transmission_mode = 4;
+  // The address fid of the place of receipt.
+  string place_of_receipt_fid = 5;
+  // The address fid of the port of loading.
+  string port_of_loading_fid = 6;
+  // The address fid of the port of discharge.
+  string port_of_unloading_fid = 7;
+  // The address fid of the final destination.
+  string place_of_delivery_fid = 8;
+}

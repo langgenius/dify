@@ -1,0 +1,47 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.escalationengine.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "UsIsfFilingProto";
+option java_package = "com.flexport.customs.escalationengine.v1";
+option ruby_package = "Flexport::Customs::EscalationEngine::V1";
+
+// Escalation for a US Importer Security Filing.
+message UsIsfFilingEscalation {
+  // The type of escalation.
+  enum Type {
+    TYPE_INVALID = 0;
+    TYPE_REQUIRED_DATA_MISSING = 1; // M1 task 170
+    TYPE_BILL_NOT_ON_FILE = 2; // M1 task 173
+    TYPE_INCORRECT_BILL_TYPE = 3; // M1 task 174
+    TYPE_EXISTING_DUPLICATE_ISF = 4; // M1 task 175
+    TYPE_REJECTED_BY_CBP = 5; // M1 task 176
+  }
+
+  Type type = 1;
+  oneof context {
+    RequiredDataMissingContext isf_required_data_missing_context = 2;
+    BillNotOnFileContext isf_bill_not_on_file_context = 3;
+    IncorrectBillTypeContext isf_incorrect_bill_type_context = 4;
+    ExistingDuplicateIsfContext isf_existing_duplicate_isf_context = 5;
+    RejectedByCbpContext isf_rejected_by_cbp_context = 6;
+  }
+
+  message RequiredDataMissingContext {
+    message InvalidField {
+      // This should contain a JsonPath reference to field of the ISF entity as per ADR-9
+      string field = 1;
+      string message = 2;
+    }
+
+    repeated InvalidField invalid_fields = 1;
+  }
+
+  message BillNotOnFileContext {}
+  message IncorrectBillTypeContext {}
+  message ExistingDuplicateIsfContext {}
+  message RejectedByCbpContext {}
+}

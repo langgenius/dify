@@ -1,0 +1,54 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customscaadapter.rns.v1beta1;
+
+import "flexport/customscaadapter/customerinfo/v1beta1/customer_info.proto";
+import "flexport/customscaadapter/shipmentinfo/v1beta1/shipment_info.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customscaadapter.rns.v1beta1";
+option ruby_package = "Flexport::CustomsCaAdapter::Rns::V1Beta1";
+
+message RNSCreated {
+  flexport.customscaadapter.customerinfo.v1beta1.CustomerInfo customer_info = 1;
+  flexport.customscaadapter.shipmentinfo.v1beta1.ShipmentInfo shipment_info = 2;
+  RNSInfo rns_info = 3;
+  // link is S3 object key
+  string rns_pdf_link = 4;
+  string rns_pdf_region = 5;
+  string rns_pdf_bucket_name = 6;
+}
+
+message RNSInfo {
+  ProcessingIndicator processing_indicator = 1;
+  google.protobuf.Timestamp release_date = 2;
+
+  // CANdata does not provide indicator when a shipment is first release but later block again
+  // We compute the status using RNSHistory and put the computed status in this field
+  ComputedProcessingStatus computed_rns_status = 3;
+
+  enum ProcessingIndicator {
+    PROCESSING_INDICATOR_INVALID = 0;
+    PROCESSING_INDICATOR_ACCEPTED = 1;
+    PROCESSING_INDICATOR_REJECTED = 2;
+    PROCESSING_INDICATOR_RELEASED = 3;
+    PROCESSING_INDICATOR_EXAM_REQUIRED = 4;
+    PROCESSING_INDICATOR_Y51_RELEASE = 5;
+    PROCESSING_INDICATOR_RELEASED_INSTRUCTIONS = 6;
+    PROCESSING_INDICATOR_DETAIN_TO_DESTINATION = 7;
+    PROCESSING_INDICATOR_ACCEPTED_WAITING = 8;
+    PROCESSING_INDICATOR_ERROR = 9;
+    PROCESSING_INDICATOR_AUTHORIZED_TO_DELIVER = 10;
+    PROCESSING_INDICATOR_EXAM_REQUIRED_INSTRUCTIONS = 11;
+    PROCESSING_INDICATOR_ACCEPTED_AWAITING_CUSTOMS = 12;
+  }
+
+  enum ComputedProcessingStatus {
+    COMPUTED_PROCESSING_STATUS_INVALID = 0;
+    COMPUTED_PROCESSING_STATUS_NOT_RELEASED = 1;
+    COMPUTED_PROCESSING_STATUS_RELEASED = 2;
+    COMPUTED_PROCESSING_STATUS_REVOKED = 3;
+  }
+}

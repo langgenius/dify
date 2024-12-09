@@ -1,0 +1,31 @@
+// TEAM: wingstop
+
+syntax = "proto3";
+
+package flexport.consolplanner.entityevent.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "MawbPlanEntityProto";
+option java_package = "com.flexport.consolplanner.entityevent.v1";
+option ruby_package = "Flexport::ConsolPlanner::EntityEvent::V1";
+
+// Next ID: 14
+message MawbPlanEntity {
+  int64 id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  google.protobuf.Timestamp deleted_at = 4;
+  string created_by = 12;
+  string last_updated_by = 13;
+  int64 air_build_plan_id = 5;
+  optional string destination_cfs_fid = 6;
+  optional string mawb_number = 7;
+  optional float designated_chargeable_weight_in_kg = 8;
+  optional float aggregated_gross_weight_in_kg = 9;
+  optional float aggregated_volume_in_cbm = 10;
+  // We record the calculated chargeable weight when the aggregated weight/volume changes, or when
+  // it is designated. Downstream can rely on this field after the build plan is finalized.
+  optional float calculated_chargeable_weight_in_kg = 11;
+}

@@ -1,0 +1,65 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontask.v1;
+
+import "flexport/executioncoordinator/executioncargo/v1/execution_cargo.proto";
+import "flexport/executioncoordinator/types/enums/v1/port_trucking_direction.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BargeExecutionTaskParamsProto";
+option java_package = "com.flexport.executioncoordinator.executiontask.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTask::V1";
+
+// Parameters for barge ExecutionTask.
+message BargeExecutionTaskParams {
+  //
+  // Address the cargo is departing from.
+  string origin_fid = 1;
+  //
+  // Address the cargo is arriving to.
+  string destination_fid = 2;
+  //
+  // The port terminals involved in this task, if any. Should only be specified if the related
+  // origin or destination is a port. Sometimes this value may be a CFS rather than an actual port
+  // terminal if the main freight carrier eg makes cargo available for pickup at an offsite CFS.
+  string origin_terminal_fid = 3;
+  string destination_terminal_fid = 4;
+  //
+  // Carrier of the barge carrier responsible for the task.
+  string carrier_fid = 5;
+  //
+  // Freight partner responsible for the task.
+  // "Flexport" if we are managing relationship with the trucking carrier.
+  string freight_partner_fid = 6;
+  //
+  // Broker responsible for the task.
+  string broker_fid = 7;
+  //
+  // The params for each container.
+  repeated BargeContainerParams container_params = 8;
+  //
+  // The direction of the barge move (eg "to port" or "from port").
+  flexport.executioncoordinator.types.enums.v1.PortTruckingDirection port_trucking_direction = 9;
+  //
+  // We only know whether we should recover and hold late into the shipment lifecycle. An absence
+  // here implies that we haven't yet determined whether we should recover and hold.
+  google.protobuf.BoolValue should_recover_and_hold = 10;
+  //
+  // Whether this ExecutionTask requires high-visibility tracking information, such as separate
+  // milestones for prepull legs.
+  google.protobuf.BoolValue requires_additional_tracking = 11;
+}
+
+// The params for each container.
+message BargeContainerParams {
+  //
+  // The container data and any per-container cargo data.
+  // The execution_cargo's value must be a ActiveIso6346Container.
+  // Kingsroad team is working on decoupling container data from Execution Cargo.
+  // Once that's done, we can deprecate this field and add a container_fids field.
+  flexport.executioncoordinator.executioncargo.v1.ExecutionCargo execution_cargo = 1;
+  string tracking_number = 2;
+}

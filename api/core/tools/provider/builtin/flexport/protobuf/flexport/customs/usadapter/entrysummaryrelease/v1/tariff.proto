@@ -1,0 +1,25 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.entrysummaryrelease.v1;
+
+import "flexport/customs/usadapter/pga/v1/pga.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.entrysummaryrelease.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::EntrySummaryRelease::V1";
+
+message Tariff {
+  string no = 1;
+  string value = 2;
+  string quantity = 3;
+  string unit = 4;
+  optional string quantity2 = 5;
+  optional string unit2 = 6;
+  optional string quantity3 = 7;
+  optional string unit3 = 8;
+  optional string special_code = 9;
+  optional string special_code2 = 10;
+  repeated flexport.customs.usadapter.pga.v1.Pga pgas = 11;
+}

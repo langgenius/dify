@@ -1,0 +1,26 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.originops.hashtagchanged.v1;
+
+import "flexport/originops/eventrootcontext/v1/event_root_context.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "HashtagChangedProto";
+option java_package = "com.flexport.originops.hashtagchanged.v1";
+option ruby_package = "Flexport::OriginOps::HashtagChanged::V1";
+
+// An events that contains hashtag instance change.
+message HashtagChanged {
+  // Deprecated by OOM-3605.
+  option deprecated = true;
+  string id = 1;
+  string token = 2;
+  string shipment_fid = 3;
+  flexport.originops.eventrootcontext.v1.EventRootContext event_root_context = 4;
+  google.protobuf.Timestamp created_at_time = 5;
+  google.protobuf.Timestamp updated_at_time = 6;
+  google.protobuf.Timestamp deleted_at_time = 7;
+}

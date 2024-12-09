@@ -1,0 +1,21 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.monolith.customs.events.v1beta1;
+
+import "flexport/monolith/customs/v1beta1/ams_api.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AmsFilingUpdatedProto";
+option java_package = "com.flexport.monolith.customs.events.v1beta1";
+option ruby_package = "Flexport::Monolith::Customs::Events::V1Beta1";
+
+// This event represents an update to an AMS filing.
+message AmsFilingUpdated {
+  string bill_number = 1;
+  flexport.monolith.customs.v1beta1.AmsFilingStatus status = 2;
+  google.protobuf.Timestamp created_at = 3;
+  repeated string shipment_fids = 4;
+}

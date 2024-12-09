@@ -1,0 +1,102 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.documentprocessor.documentschema.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "HawbProto";
+option java_package = "com.flexport.documentprocessor.documentschema.v1beta1";
+option ruby_package = "Flexport::DocumentProcessor::DocumentSchema::V1Beta1";
+
+// Schema used for all HAWB (House Air Way Bill) document types.
+message HAWB {
+  // Accounting
+  string accounting = 1;
+  // Agent's IATA Code
+  string agents_iata_code = 2;
+  // Air Waybill Number (HAWB)
+  string air_waybill_number = 3;
+  // Air Waybill Number (MAWB)
+  string air_waybill_number_mawb = 4;
+  // Airport of Departure
+  string airport_of_departure = 5;
+  // Airport of Destination
+  string airport_of_destination = 6;
+  // By (Second Carrier)
+  string by_second_carrier = 7;
+  // By First Carrier
+  string by_first_carrier = 8;
+  // Chargeable Weight
+  string chargeable_weight = 9;
+  // CHGS Code
+  string chgs_code = 10;
+  // Commodity Description
+  string commodity_description = 11;
+  // Consignee's Name and Address
+  string consignee_name_and_adress = 12;
+  // Currency
+  string currency = 13;
+  // Gross Weight
+  string gross_weight = 14;
+  // Handling Information
+  string handling_information = 15;
+  // Issue Date
+  string issue_date = 16;
+  // Issuing Carrier's Agent Name and City
+  string issuing_carrier_agent_name_and_city = 17;
+  // Issuing Carrier's Name and Address
+  string issuing_carriers_name_and_address = 18;
+  // KG / LB
+  string kg_lb = 19;
+  // Marks & Numbers
+  string marks_and_numbers = 20;
+  // Nature and Quantity of Goods
+  string nature_and_quantity_of_goods = 21;
+  // Number of Pieces and RCP
+  string number_of_pieces_and_rcp = 22;
+  // Other Charges
+  string other_charges = 23;
+  // Partial Container Cartons
+  string partial_container_cartons = 24;
+  // Partial Container Pallets
+  string partial_container_pallets = 25;
+  // Quantity
+  string quantity = 26;
+  // Rate Class
+  string rate_class = 27;
+  // Rate/Charge
+  string rate_charge = 28;
+  // Requested Date
+  string requested_date = 29;
+  // Requested Flight
+  string requested_flight = 30;
+  // Shippers Name and Address
+  string shipper_name_and_address = 31;
+  // SLAC Count
+  string slac_count = 32;
+  // To
+  string to = 33;
+  // To (by Second Carrier)
+  string to_second_carrier = 34;
+  // Total
+  string total = 35;
+  // Total Cartons
+  string total_cartons = 36;
+  // Total Container Cartons
+  string total_container_cartons = 37;
+  // Total Gross Weight
+  string total_gross_weight = 38;
+  // Total Number of Pieces
+  string total_number_of_pieces = 39;
+  // Total Pallets
+  string total_pallets = 40;
+  // Unit Type
+  string unit_type = 41;
+  // Volume
+  string volume = 42;
+  // Voyage Number
+  string voyage_number = 43;
+  // Weight
+  string weight = 44;
+}

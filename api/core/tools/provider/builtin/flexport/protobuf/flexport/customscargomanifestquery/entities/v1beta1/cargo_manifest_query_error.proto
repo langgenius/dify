@@ -1,0 +1,19 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customscargomanifestquery.entities.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsCargoManifestQueryErrorProto";
+option java_package = "com.flexport.customscargomanifestquery.entities.v1beta1";
+option ruby_package = "Flexport::CustomsCargoManifestQuery::Entities::V1Beta1";
+
+message CargoManifestQueryError {
+  string message = 1;
+  string message_identifier = 2;
+
+  google.protobuf.Timestamp last_retrieved_at = 3;
+}

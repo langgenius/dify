@@ -1,0 +1,32 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CfsInboundWorkflowUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// Enum for different state updates.
+// Next ID: 10
+enum CfsInboundUpdateType {
+  CFS_INBOUND_UPDATE_TYPE_INVALID = 0;
+  CFS_INBOUND_UPDATE_TYPE_CONFIRMED_DOCUMENTS = 1;
+  CFS_INBOUND_UPDATE_TYPE_CONFIRMED_PLANNING = 2;
+  CFS_INBOUND_UPDATE_TYPE_CONFIRMED_ARRIVAL_AT_INLAND_RAILYARD = 3;
+  CFS_INBOUND_UPDATE_TYPE_CONFIRMED_ARRIVAL_AT_PORT = 4;
+  CFS_INBOUND_UPDATE_TYPE_CONFIRMED_AVAILABILITY_AT_PORT_OR_RAILYARD = 5;
+  CFS_INBOUND_UPDATE_TYPE_CONFIRMED_PICKUP = 6;
+  CFS_INBOUND_UPDATE_TYPE_CONFIRMED_ARRIVAL_TO_CFS = 7;
+  CFS_INBOUND_UPDATE_TYPE_CONFIRMED_AVAILABILITY_AT_CFS = 8;
+  CFS_INBOUND_UPDATE_TYPE_UNDO_LAST_CONFIRMATION = 9;
+}
+
+// ETSE to update destination CFS inbound workflow state, design doc:
+// https://docs.google.com/document/d/1r-xTOd7aAoNJQiBsdPS8pCxCI-Q0TshKKaTo4AnKnGA
+// DEPRECATED
+message CfsInboundWorkflowUpdated {
+  CfsInboundUpdateType update_type = 1;
+}

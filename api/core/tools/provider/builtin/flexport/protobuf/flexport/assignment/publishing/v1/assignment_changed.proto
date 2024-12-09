@@ -1,0 +1,28 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.publishing.v1;
+
+import "flexport/assignment/model/v1/assignment.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AssignmentChangedProto";
+option java_package = "com.flexport.assignment.publishing.v1";
+option ruby_package = "Flexport::Assignment::Publishing::V1";
+
+// Populates the change(assigned/unassigned) of given assignable object(Shipment),
+// assignee(User) on a specific reposonsibility(e.g. sco_export).
+message AssignmentChanged {
+  string idempotency_key = 1;
+  flexport.assignment.model.v1.Assignment assignment = 2;
+  AssignmentChangeType type = 3;
+}
+
+// Assignment change type.
+enum AssignmentChangeType {
+  ASSIGNMENT_CHANGE_TYPE_INVALID = 0;
+  ASSIGNMENT_CHANGE_TYPE_ADD = 1;
+  ASSIGNMENT_CHANGE_TYPE_DELETE = 2;
+  ASSIGNMENT_CHANGE_TYPE_REASSIGN = 3;
+}

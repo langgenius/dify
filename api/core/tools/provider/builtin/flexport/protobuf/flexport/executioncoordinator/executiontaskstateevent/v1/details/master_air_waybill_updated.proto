@@ -1,0 +1,23 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "MasterAirWaybillUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/executioncoordinator/types/enums/v1/master_air_waybill_transmission_mode.proto";
+
+// One of the fundamental attributes
+// that defines the master air waybill has been updated.
+message MasterAirWaybillUpdated {
+  // The fid of the master air waybill entity, not the document id.
+  string master_air_waybill_fid = 1;
+  // The master air waybill number corresponding to the received document.
+  string master_air_waybill_number = 2;
+  // The release process corresponding to the master air waybill.
+  flexport.executioncoordinator.types.enums.v1.MasterAirWaybillTransmissionMode transmission_mode = 3;
+}

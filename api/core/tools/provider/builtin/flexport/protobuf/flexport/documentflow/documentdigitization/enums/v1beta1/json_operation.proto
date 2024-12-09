@@ -1,0 +1,21 @@
+// TEAM: origin_ops
+
+syntax = "proto3";
+
+package flexport.documentflow.documentdigitization.enums.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "JsonOperationProto";
+option java_package = "com.flexport.documentflow.documentdigitization.enums.v1beta1";
+option ruby_package = "Flexport::DocumentFlow::DocumentDigitization::Enums::V1Beta1";
+
+// operation type for change log
+enum JsonOperation {
+  JSON_OPERATION_INVALID = 0;
+
+  JSON_OPERATION_REPLACE = 1;
+  JSON_OPERATION_ADD = 2;
+  JSON_OPERATION_REMOVE = 3;
+  JSON_OPERATION_MOVE = 4;
+  JSON_OPERATION_COPY = 5;
+}

@@ -1,0 +1,35 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.entityevent.v1;
+
+import "flexport/assignment/enums/v1/responsibility.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "SettingRevisionEntityProto";
+option java_package = "com.flexport.assignment.entityevent.v1";
+option ruby_package = "Flexport::Assignment::EntityEvent::V1";
+
+// A history version of RBSA rule.
+message SettingRevisionEntity {
+  // DB id
+  uint64 id = 1;
+  uint64 setting_id = 2;
+  // The matching_criteria field is a nested and pretty complex data structure
+  // which represents a logic tree and contains many variant rules,
+  // we can just store it as a json string.
+  string matching_criteria = 3 [deprecated = true];
+  flexport.assignment.enums.v1.Responsibility responsibility = 4;
+  // Action log for creating this revision.
+  uint64 action_log_id = 5;
+  uint64 revision = 6;
+  google.protobuf.Timestamp created_at_time = 7;
+  // Deleted date time.
+  google.protobuf.Timestamp detached_at_time = 8;
+  flexport.assignment.enums.v1.Responsibility work_item_responsibility = 9;
+  bool out_of_office = 10;
+  string user_rule = 11;
+  string system_rule = 12;
+}

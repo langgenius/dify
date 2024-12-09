@@ -1,0 +1,31 @@
+// TEAM: demand
+
+syntax = "proto3";
+
+package flexport.monolith.demoaccount.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentConfigApiProto";
+option java_package = "com.flexport.monolith.demoaccount.v1beta1";
+option ruby_package = "Flexport::Monolith::DemoAccount::V1Beta1";
+
+service ShipmentConfigAPI {
+  rpc CreateDemoShipmentCallback(CreateDemoShipmentCallbackRequest) returns (CreateDemoShipmentCallbackResponse);
+}
+
+message CreateDemoShipmentCallbackRequest {
+  string shipment_config_fid = 1;
+  string new_shipment_fid = 2;
+  string old_shipment_fid = 3;
+  Status status = 4;
+  repeated string errors = 5;
+}
+
+enum Status {
+  STATUS_INVALID = 0;
+  STATUS_SUCCESS = 1;
+  STATUS_CREATE_AND_DELETE_FAILURE = 2;
+  STATUS_DELETE_FAILURE = 3;
+}
+
+message CreateDemoShipmentCallbackResponse {}

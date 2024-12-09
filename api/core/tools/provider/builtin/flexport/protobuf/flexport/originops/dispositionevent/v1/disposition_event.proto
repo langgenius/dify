@@ -1,0 +1,19 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.originops.dispositionevent.v1;
+
+import "flexport/originops/dispositioncode/v1/disposition_code.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DispositionEventProto";
+option java_package = "com.flexport.originops.dispositionevent.v1";
+option ruby_package = "Flexport::OriginOps::DispositionEvent::V1";
+
+// An event that contains document change.
+message DispositionEvent {
+  flexport.originops.dispositioncode.v1.DispositionCode disposition_code = 1;
+  google.protobuf.Timestamp date_time = 2;
+}

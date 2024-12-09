@@ -1,0 +1,21 @@
+// TEAM: wingstop
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ConsolChildRouteChangedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/executioncoordinator/types/routeshape/v1/route_shape.proto";
+
+// The route of a child consol ET has changed.
+//
+// Note: the route of the child consol ETs should stay in-sync with the
+// route of the parent EO.
+message ConsolChildRouteChanged {
+  flexport.executioncoordinator.types.routeshape.v1.RouteShape old_route_shape = 1;
+  flexport.executioncoordinator.types.routeshape.v1.RouteShape new_route_shape = 2;
+}

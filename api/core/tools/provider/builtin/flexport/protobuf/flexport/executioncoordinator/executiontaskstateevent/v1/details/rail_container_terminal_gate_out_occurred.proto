@@ -1,0 +1,42 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+import "flexport/executioncoordinator/types/enums/v1/node_tag.proto";
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RailContainerTerminalGateOutOccurredProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// A container was removed from a controlled area like a port – or inland
+// terminal. Gate out has been completed once the possession of the container has been
+// transferred from the operator of the terminal to the entity, who is picking up the
+// container.
+// https://dcsa.org/wp-content/uploads/2020/01/GLOSSARY-OF-TERMS-1.1.pdf.
+//
+// Sources of data:
+// - track_and_trace engine's RailTerminalGateOut simple PubSub event from Rail Inc.
+//
+// This event is not currently emitted when OperationalRoute::Graph data changes for rail legs.
+// If you want rail container movements based on OperationalRoute::Graph data, use the derived
+// CargoTransitDateChanged events instead (which may be emitted upon this event being consumed
+// from Rail Inc, or may not if the Rail Inc update is rejected).
+message RailContainerTerminalGateOutOccurred {
+  string container_fid = 8;
+  string container_number = 1;
+  string latitude = 2;
+  string longitude = 3;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime sighting_time = 4;
+  string station_name = 5;
+  string state = 6;
+  // https://en.wikipedia.org/wiki/Standard_Point_Location_Code
+  string splc = 7;
+  // The fid of the immutable place instance this event relates to, if known.
+  string place_fid = 9;
+  // Describe the place given by place_fid, if known.
+  repeated flexport.executioncoordinator.types.enums.v1.NodeTag node_tags = 10;
+}

@@ -1,0 +1,153 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.oceanplanning.entityevent.v1beta1;
+
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+import "flexport/procurement/rates/v1/universal_rates.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+import "google/type/date.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierSpaceRateEntityProto";
+option java_package = "com.flexport.oceanplanning.entityevent.v1beta1";
+option ruby_package = "Flexport::OceanPlanning::EntityEvent::V1Beta1";
+
+message CarrierSpaceRateEntity {
+  // Date
+  // The etd week and year match that of the carrier space. They correspond to the iso week of the proforma
+  // etd of the main leg origin.
+  int32 etd_week = 1; // required
+  int32 etd_year = 2; // required
+  // This is the live estimated (not proforma) etd from the overall origin (not necessarily main leg origin).
+  google.type.Date estimated_origin_etd = 3; // required
+
+  // General
+  string carrier_fid = 4; // required
+  // Checks for things like blank sailing, missing inventory bucket or estimated schedule, inactive profile
+  bool is_valid_for_planning = 5; // required
+  // The rate, only present if a rate was found when procurement was queried.
+  flexport.procurement.rates.v1.Rate rate = 6; // optional
+
+  // Schedule
+  // Will only be missing for extra-loaders
+  google.protobuf.StringValue proforma_schedule_fid = 8; // optional
+  // If we don't have an estimated schedule for the given week we will still create the carrier space
+  google.protobuf.StringValue estimated_schedule_fid = 7; // optional
+  // This is the middle part of the composite string. We will populate this for both regular strings
+  // and extra-loaders. It will be uppercase. Eg. 'PS4'
+  string service_string_name = 9; // required
+  // Will not be present for extra-loaders
+  SailingDirection sailing_direction = 10; // optional
+  // Will only be present for extra-loaders
+  google.protobuf.StringValue extra_loader_string_name = 11; // optional
+  // Not all routes use an origin connecting leg
+  google.protobuf.StringValue origin_connecting_leg_fid = 12; // optional
+  // Will be present iff origin_connecting_leg_fid is present
+  TransportMode origin_connecting_leg_mode = 13; // optional
+  // Not all routes use a destination connecting leg
+  google.protobuf.StringValue destination_connecting_leg_fid = 14; // optional
+  // Will be present iff destination_connecting_leg_fid is present
+  TransportMode destination_connecting_leg_mode = 15; // optional
+
+  // Route
+  // Route information will match schedule information, but both are included explicitly for convenience
+  string origin_port_fid = 16; // required
+  // Missing means no origin via port was used
+  google.protobuf.StringValue origin_via_port_fid = 17; // optional
+  // Missing means no destination_via port was used
+  google.protobuf.StringValue destination_via_port_fid = 18; // optional
+  string destination_port_fid = 19; // required
+
+  // Profile
+  // Will still be present even if the carrier space is using a 'wildcard' fak profile
+  string contract_fid = 20; // required
+  // Will not be present if the carrier space is using a 'wildcard' fak profile.
+  // If joining to nis_ocean_supply records, need to check both NAC and FAK profile tables. The FAK profiles
+  // table include ones that are premium, ie have a premium service present.
+  google.protobuf.StringValue carrier_profile_fid = 21; // optional
+  // Taken from the profile. Also called rate_group.
+  google.protobuf.StringValue booking_reference = 22; // optional
+  // Before we had profiles we used an optional field on the inventory_bucket for rate group related things,
+  // included here for completeness.
+  google.protobuf.StringValue inventory_booking_instructions = 23; // optional
+  // If a client fid is present, this profile is only for that client.
+  // Corresponds to the "clients" table in the monorail.
+  google.protobuf.StringValue client_fid = 24; // optional
+  // If a premium service fid is present, this carrier space is for that premium service. If it's missing,
+  // it's non-premium space.
+  // Corresponds to OceanCarrierBooking::CarrierPremiumService model in the monorail.
+  google.protobuf.StringValue premium_service_fid = 25; // optional
+  // Some profiles have active/valid dates that are separate from the contract. This field captures
+  // if the profile was active at the carrier spaces origin etd.
+  // If this is false, is_valid_for_planning should be false.
+  bool profile_active_at_origin_etd = 26; // required
+
+  // Inventory
+  // In some contexts when we don't have a matching valid bucket we will still make the carrier space
+  // but is_valid_for_planning will be false.
+  // These are available in nis_ocean_supply.inventory_bucket
+  google.protobuf.StringValue inventory_bucket_fid = 28; // optional
+  // If there's no bucket there won't be an inventory.
+  // These are available in nis_ocean_supply.inventory
+  google.protobuf.StringValue inventory_fid = 27; // optional
+  // This is the teus granted to us by the carrier (planning_teus) minus the lcl_reserved_teus
+  // which is reserved for LCL and not managed through BAE. Other teu fields are available on the inventory.
+  google.protobuf.Int32Value fcl_planning_teus = 29;
+  // This is the list of allowed equipment sizes from the inventory bucket, which for now is the definitive
+  // list of allowed equipment sizes for the carrier space.
+  repeated flexport.os.v1.types.cargo.v1.Iso6346ContainerSize inventory_equipment_sizes = 30;
+  // Indicates if the current rate on the carrier space is actual or estimated.
+  RateStatus rate_status = 31;
+  // Date of last rate request.
+  google.protobuf.Timestamp last_rate_fetch = 32;
+  // Status of last rate request. Examples: Success, Timeout, Other Error.
+  RequestStatus last_rate_fetch_status = 33;
+  // Date when last rate update occurred. The scenarios where rate updates can occur are as follows:
+  //   1) Rate fetch is successful and a rate is found.
+  //   2) Rate fetch is successful and no rate if found.
+  //   3) Rate fetch is unsuccessful and the error type is non-retryable (example: bad data sent to portrix).
+  google.protobuf.Timestamp last_rate_fetch_write = 34;
+  // Specific reason a rate was not found (Ex. No Contract Coverage)
+  string rate_not_found_reason = 35;
+  // Specific reason a request errored (Ex. Duplicate Clients)
+  string error_reason = 36;
+  // Carrier Space Fid
+  string fid = 37;
+  // Identifies where the main freight rate is sourced from
+  flexport.procurement.rates.v1.MainFreightSource main_freight_rate_source = 38;
+  // All connecting legs - used with full route v2
+  repeated string connecting_legs_info = 39;
+}
+
+enum TransportMode {
+  TRANSPORT_MODE_INVALID = 0;
+  TRANSPORT_MODE_OCEAN = 1;
+  TRANSPORT_MODE_RAIL = 2;
+  TRANSPORT_MODE_TRUCK = 3;
+  TRANSPORT_MODE_BARGE = 4;
+}
+
+enum SailingDirection {
+  SAILING_DIRECTION_INVALID = 0;
+  SAILING_DIRECTION_EASTBOUND = 1;
+  SAILING_DIRECTION_WESTBOUND = 2;
+  SAILING_DIRECTION_NORTHBOUND = 3;
+  SAILING_DIRECTION_SOUTHBOUND = 4;
+}
+
+enum RateStatus {
+  RATE_STATUS_INVALID = 0;
+  RATE_STATUS_ACTUAL = 1;
+  RATE_STATUS_ESTIMATED = 2;
+}
+
+enum RequestStatus {
+  REQUEST_STATUS_INVALID = 0;
+  REQUEST_STATUS_SUCCESS = 1;
+  REQUEST_STATUS_TIMEOUT = 2;
+  REQUEST_STATUS_NON_RETRYABLE_ERROR = 3;
+  REQUEST_STATUS_OTHER_RETRYABLE_ERROR = 4;
+}

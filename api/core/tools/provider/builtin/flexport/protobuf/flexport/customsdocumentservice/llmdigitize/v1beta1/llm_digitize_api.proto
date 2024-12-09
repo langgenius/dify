@@ -1,0 +1,26 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsdocumentservice.llmdigitize.v1beta1;
+
+import "google/protobuf/struct.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "LLMDigitizeAPIProto";
+option java_package = "com.flexport.customsdocumentservice.llmdigitize.v1beta1";
+option ruby_package = "Flexport::CustomsDocumentService::LLMDigitize::V1Beta1";
+
+// An API for using LLMs to digitize core documents.
+service LLMDigitizeAPI {
+  rpc LLMDigitize(LLMDigitizeRequest) returns (LLMDigitizeResponse);
+}
+
+message LLMDigitizeRequest {
+  string document_fid = 1;
+  string client_id = 2;
+}
+
+message LLMDigitizeResponse {
+  google.protobuf.Struct commercial_invoice_payload = 1;
+}

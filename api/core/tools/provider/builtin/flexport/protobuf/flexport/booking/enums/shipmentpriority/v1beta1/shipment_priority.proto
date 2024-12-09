@@ -1,0 +1,17 @@
+// TEAM: bookings
+
+syntax = "proto3";
+
+package flexport.booking.enums.shipmentpriority.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentPriorityProto";
+option java_package = "com.flexport.booking.enums.shipmentpriority.v1beta1";
+option ruby_package = "Flexport::Booking::Enums::ShipmentPriority::V1Beta1";
+
+// ShipmentPriority, from constants/shipment_priority/levels.rb
+enum ShipmentPriority {
+  SHIPMENT_PRIORITY_INVALID = 0;
+  SHIPMENT_PRIORITY_STANDARD = 1;
+  SHIPMENT_PRIORITY_HIGH = 2;
+}

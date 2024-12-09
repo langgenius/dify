@@ -1,0 +1,122 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.oceanplanning.fulfillmenttask.v2beta1;
+
+import "flexport/os/v1/types/cargo/v1/container_counts.proto";
+import "flexport/os/v1/types/dangerousgoodsstate/v1/dangerous_goods_state.proto";
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "FulfillmentTaskProto";
+option java_package = "com.flexport.oceanplanning.fulfillmenttask.v2beta1";
+option ruby_package = "Flexport::OceanPlanning::FulfillmentTask::V2Beta1";
+
+// Ocean planning region object that houses region specific configuration and switches
+// NOTE: notice there are v1, v2, and v2beta1 (this file) versions of fulfillment_task.proto
+// please use v2beta1 as v1,v2 version numbers that doesn't include `beta` in it doesn't allow any breaking change
+message OceanPlanningFulfillmentTask {
+  string fid = 1;
+  string shipment_fid = 2;
+  int64 current_fulfillment_request_id = 3;
+  repeated string open_exception_fids = 4;
+  int32 revision_number = 5;
+  OceanPlanningFulfillmentTaskStatus status = 6;
+  int32 priority_score = 7;
+  string priority_score_metadata = 8;
+  bool space_priority = 9;
+  bool is_trial = 10;
+  repeated OceanPlanningDemandPreference demand_preferences = 19;
+  repeated string carrier_blocklist = 12;
+  bool extend_crd_etd_window_for_nac = 13;
+  google.protobuf.Int32Value crd_si_override = 14;
+  google.protobuf.Timestamp created_at_time = 15;
+  google.protobuf.Timestamp updated_at_time = 16;
+  OceanPlanningFulfillmentRequest fulfillment_request = 17;
+  int64 id = 18;
+  string fulfillment_status = 20;
+  string fulfillment_message = 21;
+  AssignmentOverrideRequest assignment_override_request = 22;
+  FulfillmentTaskSource triggered_by = 23;
+  google.protobuf.StringValue replan_reason = 24;
+  repeated ReplanSelectionCriteria replan_reason_detail = 25;
+  google.protobuf.StringValue demand_modified_by_user_fid = 26;
+}
+
+message AssignmentOverrideRequest {
+  google.protobuf.StringValue carrier_fid = 1;
+  google.protobuf.StringValue contract_fid = 2;
+  google.protobuf.StringValue vessel_name = 3;
+  google.protobuf.StringValue voyage_number = 4;
+  google.protobuf.Timestamp etd = 5;
+  google.protobuf.Timestamp request_created_at = 6;
+  google.protobuf.StringValue vessel_imo = 7;
+}
+
+message OceanPlanningFulfillmentRequest {
+  string eo_fid = 1;
+  int32 eo_revision_number = 2;
+  string client_fid = 3;
+  string shipper_fid = 4;
+  string consignee_fid = 5;
+  string origin_agent_fid = 6;
+  string destination_agent_fid = 7;
+  string carrier_fid = 8;
+  string contract_fid = 9;
+  string booking_code = 10;
+  string other_instructions = 11;
+  string origin_fid = 12;
+  string destination_fid = 13;
+  string origin_via_fid = 14;
+  string destination_via_fid = 15;
+  string destination_connecting_mode = 16;
+  flexport.os.v1.types.cargo.v1.ContainerCounts container_details = 17;
+  float average_weight_per_teu = 18;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate global_cargo_ready_date = 19;
+  flexport.os.v1.types.dangerousgoodsstate.v1.DangerousGoodsState dangerous_good_details = 20;
+  string inventory_backed_offering_fid = 21;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate target_sailing_week = 22;
+  google.protobuf.Timestamp created_at_time = 23;
+  google.protobuf.Timestamp updated_at_time = 24;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate target_arrival_date = 26;
+  google.protobuf.Int64Value product_set_id = 27;
+}
+
+message OceanPlanningDemandPreference {
+  string preferred_carrier_fid = 1;
+  string preferred_contract_fid = 2;
+  string preferred_string_fid = 3;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate preferred_etd = 4;
+}
+
+enum OceanPlanningFulfillmentTaskStatus {
+  OCEAN_PLANNING_FULFILLMENT_TASK_STATUS_INVALID = 0;
+  OCEAN_PLANNING_FULFILLMENT_TASK_STATUS_NOT_APPLICABLE_FOR_PLANNING = 1;
+  OCEAN_PLANNING_FULFILLMENT_TASK_STATUS_NOT_READY_FOR_PLANNING = 2;
+  OCEAN_PLANNING_FULFILLMENT_TASK_STATUS_WAITING_INSTRUCTIONS = 3;
+  OCEAN_PLANNING_FULFILLMENT_TASK_STATUS_IN_PROGRESS = 4;
+  OCEAN_PLANNING_FULFILLMENT_TASK_STATUS_ASSIGNED = 5;
+  OCEAN_PLANNING_FULFILLMENT_TASK_STATUS_ON_HOLD = 6;
+  OCEAN_PLANNING_FULFILLMENT_TASK_STATUS_CANCELLED = 7;
+  OCEAN_PLANNING_FULFILLMENT_TASK_STATUS_ASSIGNMENT_OVERRIDE_REQUESTED = 8;
+}
+
+// The FulfillmentTaskSource indicates how the shipment (re)entered the
+// planning workflow:
+// - BASE: needs initial assignment; has never been assigned before
+// - EXCEPTION: a user filed an exception that retriggered planning
+// - REPLAN: a bot retriggered planning
+enum FulfillmentTaskSource {
+  FULFILLMENT_TASK_SOURCE_INVALID = 0;
+  FULFILLMENT_TASK_SOURCE_BASE = 1;
+  FULFILLMENT_TASK_SOURCE_EXCEPTION = 2;
+  FULFILLMENT_TASK_SOURCE_REPLAN = 3;
+}
+
+message ReplanSelectionCriteria {
+  string name = 1;
+  string value = 2;
+}

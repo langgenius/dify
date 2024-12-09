@@ -1,0 +1,23 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billautomation.manualreviewbill.events.v1beta1;
+
+import "flexport/billautomation/manualreviewbill/v1beta1/manual_review_bill.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ReviewVendorReassignedProto";
+option java_package = "com.flexport.billautomation.manualreviewbill.events.v1beta1";
+option ruby_package = "Flexport::BillAutomation::ManualReviewBill::Events::V1Beta1";
+
+// Event emitted when a ManualReviewBill is reassigned to another vendor.
+message ReviewVendorReassigned {
+  flexport.billautomation.manualreviewbill.v1beta1.ManualReviewBill manual_review_bill = 1;
+  google.protobuf.Timestamp vendor_reassigned_at_time = 2;
+  string reassigned_to_vendor_fid = 3;
+  string new_manual_review_bill_fid = 4; //nullable
+  google.protobuf.StringValue reassigned_to_vendor_entity_fid = 5;
+}

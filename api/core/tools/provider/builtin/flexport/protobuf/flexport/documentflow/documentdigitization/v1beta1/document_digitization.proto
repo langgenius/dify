@@ -1,0 +1,64 @@
+// TEAM: origin_ops
+
+syntax = "proto3";
+
+package flexport.documentflow.documentdigitization.v1beta1;
+
+import "flexport/documentflow/documentdigitization/enums/v1beta1/audit_results.proto";
+import "flexport/documentflow/documentdigitization/enums/v1beta1/audit_source.proto";
+import "flexport/documentflow/documentdigitization/enums/v1beta1/json_operation.proto";
+import "flexport/documentflow/documentdigitization/enums/v1beta1/task_status.proto";
+import "flexport/documentflow/documentdigitization/enums/v1beta1/update_reason.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DocumentDigitizationProto";
+option java_package = "com.flexport.documentflow.documentdigitization.v1beta1";
+option ruby_package = "Flexport::DocumentFlow::DocumentDigitization::V1Beta1";
+
+message DocumentDigitization {
+  string id = 1;
+  string document_fid = 2;
+  string document_type_slug = 3;
+  optional string extractor_name = 4; // name of the LLM extractor from digitize side
+  optional string digitization_task_id = 5; // task id from digitize side
+
+  optional google.protobuf.Struct initial_results = 11;
+  optional google.protobuf.Struct current_results = 12;
+  enums.v1beta1.TaskStatus status = 13;
+
+  google.protobuf.Timestamp created_at = 21;
+  google.protobuf.Timestamp updated_at = 22;
+  google.protobuf.Timestamp deleted_at = 23;
+  optional string created_by = 24;
+  optional string updated_by = 25;
+  optional string deleted_by = 26;
+}
+
+message ChangeLog {
+  string id = 1;
+  string digitization_id = 2;
+
+  enums.v1beta1.JsonOperation operation = 11;
+  string field_path = 12; // document schema to path: {a:[{}, {b:string}]} => /a/1/b
+  string old_value = 13;
+  string new_value = 14;
+
+  enums.v1beta1.AuditSource updater_source = 21;
+  enums.v1beta1.UpdateReason reason = 22;
+  google.protobuf.Timestamp created_at = 23;
+  optional string created_by = 24;
+}
+
+message AuditFeedback {
+  string id = 1;
+  string digitization_id = 2;
+
+  enums.v1beta1.AuditSource audit_source = 11;
+  enums.v1beta1.AuditResults audit_results = 12;
+  optional string feedback = 13;
+
+  google.protobuf.Timestamp created_at = 22;
+  optional string created_by = 23;
+}

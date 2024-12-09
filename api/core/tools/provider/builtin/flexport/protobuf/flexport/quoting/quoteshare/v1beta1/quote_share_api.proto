@@ -1,0 +1,122 @@
+// TEAM: quoting
+
+syntax = "proto3";
+
+package flexport.quoting.quoteshare.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "QuoteShareApiProto";
+option java_package = "com.flexport.quoting.quoteshare.v1beta1";
+option ruby_package = "Flexport::Quoting::QuoteShare::V1Beta1";
+
+import "flexport/quoting/quoteshare/v1beta1/quote.proto";
+import "flexport/quoting/quoteshare/v1beta1/response_status.proto";
+import "flexport/quoting/quoteshare/v1beta1/service_item_template.proto";
+import "flexport/quoting/rfq/v2/rfq.proto";
+
+// Methods concerning client-facing quote lifecycle.
+service QuoteShareAPI {
+  // Share a `Quote` for external use.
+  rpc ShareQuotesForRfq(ShareQuotesForRfqRequest) returns (ShareQuotesForRfqResponse);
+  // Void a `Quote` by FID.
+  rpc VoidQuoteByFID(VoidQuoteByFIDRequest) returns (VoidQuoteByFIDResponse);
+  // Fetch a `Quote` by FID.
+  rpc FetchQuoteByFID(FetchQuoteByFIDRequest) returns (FetchQuoteByFIDResponse);
+  // Accept a `Quote` by FID.
+  rpc AcceptQuoteByFID(AcceptQuoteByFIDRequest) returns (AcceptQuoteByFIDResponse);
+  // Void a `Quote` by DBID.
+  rpc VoidQuoteByDBID(VoidQuoteByDBIDRequest) returns (VoidQuoteByDBIDResponse);
+  // Fetch a `Quote` by DBID.
+  rpc FetchQuoteByDBID(FetchQuoteByDBIDRequest) returns (FetchQuoteByDBIDResponse);
+  // Accept a `Quote` by DBID.
+  rpc AcceptQuoteByDBID(AcceptQuoteByDBIDRequest) returns (AcceptQuoteByDBIDResponse);
+}
+
+// The request to share quotes.
+message ShareQuotesForRfqRequest {
+  // fid of the `RequestForQuotes`.
+  // reference: https://github.flexport.io/flexport/flexport/blob/master/protobuf/flexport/booking/requestforquotes/v1beta1/request_for_quotes.proto
+  string request_for_quotes_fid = 1;
+  // fid of the internal user who is sharing the quote.
+  string shared_by_internal_user_fid = 2;
+  // The list of draft quotes/plans to be shared as quotes.
+  repeated string draft_fids = 3;
+  // The request for quote
+  flexport.quoting.rfq.v2.Rfq rfq = 4;
+  // Applicable Service Item Templates
+  repeated ServiceItemTemplate service_item_templates = 5;
+}
+
+// Response from share quotes.
+message ShareQuotesForRfqResponse {
+  // The list of quotes created
+  repeated string quote_fids = 1;
+}
+
+// The request to void a quote.
+message VoidQuoteByFIDRequest {
+  // fid of the `Quote` to void.
+  string quote_fid = 1;
+  string user_fid = 2;
+}
+
+// Response from void quote.
+message VoidQuoteByFIDResponse {}
+
+// The request to fetch a quote.
+message FetchQuoteByFIDRequest {
+  string quote_fid = 1;
+}
+
+// Response from fetch quote.
+message FetchQuoteByFIDResponse {
+  Quote quote = 1;
+}
+
+// The request to accept a quote.
+message AcceptQuoteByFIDRequest {
+  // fid of the `Quote` to accept.
+  string quote_fid = 1;
+  string user_fid = 2;
+}
+
+// Response from void quote.
+message AcceptQuoteByFIDResponse {
+  AcceptQuoteResponseCode code = 1;
+  string message = 2;
+}
+
+// below are versions of the API that take a DBID instead of FID.
+
+// The request to accept a quote.
+message AcceptQuoteByDBIDRequest {
+  // dbid of the `Quote` to accept.
+  uint64 quote_dbid = 1;
+  string user_fid = 2;
+}
+
+// Response from accept quote.
+message AcceptQuoteByDBIDResponse {
+  AcceptQuoteResponseCode code = 1;
+  string message = 2;
+}
+
+// The request to void a quote.
+message VoidQuoteByDBIDRequest {
+  // dbid of the `Quote` to void.
+  uint64 quote_dbid = 1;
+  string user_fid = 2;
+}
+
+// Response from void quote.
+message VoidQuoteByDBIDResponse {}
+
+// The request to fetch a quote.
+message FetchQuoteByDBIDRequest {
+  uint64 quote_dbid = 1;
+}
+
+// Response from fetch quote.
+message FetchQuoteByDBIDResponse {
+  Quote quote = 1;
+}

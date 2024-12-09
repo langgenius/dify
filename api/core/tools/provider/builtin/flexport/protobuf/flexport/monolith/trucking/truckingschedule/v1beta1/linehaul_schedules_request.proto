@@ -1,0 +1,38 @@
+// TEAM: trucking_planning
+
+syntax = "proto3";
+
+package flexport.monolith.trucking.truckingschedule.v1beta1;
+
+import "flexport/monolith/trucking/truckingschedule/v1beta1/enums.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "LinehaulSchedulesRequest";
+option java_package = "com.flexport.monolith.trucking.truckingschedule.v1beta1";
+option ruby_package = "Flexport::Monolith::Trucking::TruckingSchedule::V1Beta1";
+
+// Possible search parameters when requesting linehaul schedules.
+message GetLinehaulSchedulesRequest {
+  optional string lane_name = 1;
+  optional string origin_fid = 2;
+  optional string destination_fid = 3;
+  optional string carrier_company_fid = 4;
+  optional string pickup_day = 5;
+  optional uint32 relative_loading_cutoff_hours = 6;
+  optional uint32 relative_finalize_loading_hours = 7;
+  optional string delivery_day = 8;
+  optional uint32 max_trucks = 9;
+  optional bool is_active = 10;
+  optional bool hv_trucking_carrier = 11;
+  optional bool is_scheduled = 12;
+  // Expected Transit time is in hours (from pickup).
+  optional uint32 expected_transit_time = 16;
+  optional string source_type = 17;
+  // Returns first page of results if unspecified.
+  optional uint32 page_offset = 18;
+  // Max page size is 300 for WITH_RATES view and 1000 for NO_RATES view.
+  // Uses max page size if unspecified
+  optional uint32 page_size = 19;
+  // Specifies what information should be returned about each schedule.
+  optional TruckingScheduleView view = 20;
+}

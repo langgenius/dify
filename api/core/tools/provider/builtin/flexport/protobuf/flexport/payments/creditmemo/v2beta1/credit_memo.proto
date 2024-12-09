@@ -1,0 +1,47 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.payments.creditmemo.v2beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CreditMemoProto";
+option java_package = "com.flexport.payments.creditmemo.v2beta1";
+option ruby_package = "Flexport::Payments::CreditMemo::V2Beta1";
+
+// A credit memo
+message CreditMemo {
+  string fid = 1;
+  int64 amount_micros = 2;
+  google.protobuf.Timestamp created_at = 3;
+  string currency = 4;
+  string invoice_fid = 5;
+  CreditType credit_type = 6;
+  string issuing_entity_fid = 7;
+  string receiving_entity_fid = 8;
+  repeated CreditMemoLineItem credit_memo_line_items = 9;
+  string transaction_id = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+// A credit memo line item
+message CreditMemoLineItem {
+  string fid = 1;
+  string reason = 2;
+  string category = 3;
+  string credit_memo_fid = 4;
+  string invoice_item_fid = 5;
+  google.protobuf.Timestamp created_at = 6;
+  int64 amount_micros = 7;
+  string invoice_item_slug = 8;
+}
+
+// enum for Credit Type
+enum CreditType {
+  CREDIT_TYPE_INVALID = 0;
+  CREDIT_TYPE_FULL_INVOICE_CREDIT = 1;
+  CREDIT_TYPE_LINE_ITEM_CREDIT = 2;
+  CREDIT_TYPE_COMPANY_LEVEL_CREDIT = 3;
+}

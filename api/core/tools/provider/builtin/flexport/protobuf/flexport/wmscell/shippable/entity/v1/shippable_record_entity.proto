@@ -1,0 +1,21 @@
+// TEAM: lumina
+
+syntax = "proto3";
+
+package flexport.wmscell.shippable.entity.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShippableRecordEntityProto";
+option java_package = "com.flexport.wmscell.shippable.entity.v1";
+
+message ShippableRecordEntity {
+  string shippable_transaction_pk = 1;
+  string warehouse_request_id = 2;
+  string warehouse_core = 3;
+  bool has_confirm_shippable = 4;
+  bool is_auto_confirm = 5;
+  google.protobuf.Timestamp transaction_time = 6;
+  string confirm_by = 7;
+}

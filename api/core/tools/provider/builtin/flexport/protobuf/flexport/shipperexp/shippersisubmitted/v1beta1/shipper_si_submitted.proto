@@ -1,0 +1,27 @@
+// TEAM: shipper_exp
+
+syntax = "proto3";
+
+package flexport.shipperexp.shippersisubmitted.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipperSiSubmittedProto";
+option java_package = "com.flexport.shipperexp.shippersisubmitted.v1beta1";
+option ruby_package = "Flexport::ShipperExp::ShipperSiSubmitted::V1Beta1";
+
+import "flexport/shipperexp/asyncjobvalues/v1beta1/async_job_values.proto";
+import "flexport/shipperexp/shippersisubmission/v1beta1/shipper_si_submission.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// An event to indicate Shipper SI is submitted.
+message ShipperSiSubmitted {
+  // user fid
+  string submitted_by = 1;
+  google.protobuf.Timestamp submitted_at_time = 2;
+  flexport.shipperexp.shippersisubmission.v1beta1.ShipperSiSubmission form_values = 3;
+  flexport.shipperexp.asyncjobvalues.v1beta1.AsyncJobValues async_job_values = 4;
+  // current draft / finalized
+  bool is_draft = 5;
+  google.protobuf.StringValue impersonated_by = 6;
+}

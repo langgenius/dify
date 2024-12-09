@@ -1,0 +1,35 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executionmilestones.workitemautomation.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "WorkItemAutomationApiProto";
+option java_package = "com.flexport.executionmilestones.WorkItemAutomation.v1beta1";
+option ruby_package = "Flexport::executionmilestones::WorkItemAutomation::V1Beta1";
+
+// An API for querying execution milestones.
+service WorkItemAutomationAPI {
+  rpc SaveWorkItemAutomationStatus(SaveWorkItemAutomationStatusRequest) returns (SaveWorkItemAutomationStatusResponse);
+}
+
+message SaveWorkItemAutomationStatusRequest {
+  // The name of the work item automation to save.
+  string shipment_fid = 1;
+  string work_item_type = 2;
+  // The status of the work item automation to save.
+  WorkItemAutomationStatus automation_status = 3;
+  optional string failure_cause = 4;
+  optional bool include_inapplicable = 5;
+}
+
+enum WorkItemAutomationStatus {
+  WORK_ITEM_AUTOMATION_STATUS_INVALID = 0;
+  WORK_ITEM_AUTOMATION_STATUS_SUCCESS = 1;
+  WORK_ITEM_AUTOMATION_STATUS_FAILURE = 2;
+}
+
+message SaveWorkItemAutomationStatusResponse {
+  repeated string errors = 1;
+}

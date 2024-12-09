@@ -1,0 +1,150 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.documentprocessor.documentschema.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "BolTelexReleaseProto";
+option java_package = "com.flexport.documentprocessor.documentschema.v1beta1";
+option ruby_package = "Flexport::DocumentProcessor::DocumentSchema::V1Beta1";
+
+// Schema used for all Bill of Lading (Telex Release) document types.
+message BolTelexRelease {
+  // Accounting
+  string accounting = 1;
+  // Agent's IATA Code
+  string agent_iata_code = 2;
+  // Air Waybill Number (HAWB)
+  string air_waybill_number_hawb = 3;
+  // Air Waybill Number (MAWB)
+  string air_waybill_number_mawb = 4;
+  // Airport of Departure
+  string airport_of_departure = 5;
+  // Airport of Destination
+  string airport_of_destination = 6;
+  // Bill Type
+  string bill_type = 7;
+  // By (Second Carrier)
+  string by_second_carrier = 8;
+  // By First Carrier
+  string by_first_carrier = 9;
+  // Carrier SCAC
+  string carrier_scac = 10;
+  // Chargeable Weight
+  string chargeable_weight = 11;
+  // CHGS Code
+  string chgs_code = 12;
+  // Commodity Description
+  string commodity_description = 13;
+  // Consignee (house) Name & Address
+  string consignee_house_name_and_address = 14;
+  // Consignee (master) Name & Address
+  string consignee_master_name_and_address = 15;
+  // Consignee's Name and Address
+  string consignee_name_and_address = 16;
+  // Container Number
+  string container_number = 17;
+  // Container Type
+  string container_type = 18;
+  // Currency
+  string currency = 19;
+  // Destination Agent
+  string destination_agent = 20;
+  // Flex Id
+  string flex_id = 21;
+  // Gross Weight
+  string gross_weight = 22;
+  // Handling Information
+  string handling_information = 23;
+  // HBL Number
+  string hbl_number = 24;
+  // Issue Date
+  string issue_date = 25;
+  // Issuing Carrier's Name and Address
+  string issuing_carrier_name_and_address = 26;
+  // KG / LB
+  string kg_lb = 27;
+  // Laden On Board Date
+  string laden_on_board_date = 28;
+  // Loaded on Board
+  string loaded_on_board = 29;
+  // Marks & Numbers
+  string marks_and_numbers = 30;
+  // MBL Number
+  string mbl_number = 31;
+  // Mother Vessel
+  string mother_vessel = 32;
+  // Movement Type
+  string movement_type = 33;
+  // Nature and Quantity of Goods
+  string nature_and_quantity_of_goods = 34;
+  // Notify Party
+  string notify_party = 35;
+  // Notify Party (HBL)
+  string notify_party_hbl = 36;
+  // Number of originals
+  string number_of_originals = 37;
+  // Number of Pieces and RCP
+  string number_of_pieces_and_rcp = 38;
+  // Other Charges
+  string other_charges = 39;
+  // Partial Container Cartons
+  string partial_container_cartons = 40;
+  // Partial Container Pallets
+  string container_pallets = 41;
+  // Place of Delivery
+  string place_of_delivery = 42;
+  // Place of Loading
+  string place_of_loading = 43;
+  // Place of receipt
+  string place_of_receipt = 44;
+  // Port of Discharge
+  string port_of_discharge = 45;
+  // Quantity
+  string quantity = 46;
+  // Rate Class
+  string rate_class = 47;
+  // Rate/Charge
+  string rate_charge = 48;
+  // Requested Date
+  string requested_date = 49;
+  // Requested Flight
+  string requested_flight = 50;
+  // Seal Number
+  string seal_number = 51;
+  // Service Contract No
+  string service_contract_number = 52;
+  // Shipment Type
+  string shipment_type = 53;
+  // Shipper (house) Name & Address
+  string shipper_house_name_and_address = 54;
+  // Shipper (master) Name & Address
+  string shipper_master_name_and_address = 55;
+  // Shippers Name and Address
+  string shipper_name_and_address = 56;
+  // SLAC Count
+  string slac_count = 57;
+  // To
+  string to = 58;
+  // To (by Second Carrier)
+  string to_second_carrier = 59;
+  // Total
+  string total = 60;
+  // Total Cartons
+  string total_cartons = 61;
+  // Total Container Cartons
+  string total_container_cartons = 62;
+  // Total Pallets
+  string total_pallets = 63;
+  // Unit Type
+  string unit_type = 64;
+  // Volume
+  string volume = 65;
+  // Voyage Number
+  string voyage_number = 66;
+  // Waybill
+  string waybill = 67;
+  // Weight
+  string weight = 68;
+}

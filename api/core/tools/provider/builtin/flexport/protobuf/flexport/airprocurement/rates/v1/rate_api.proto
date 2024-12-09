@@ -1,0 +1,72 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.airprocurement.rates.v1;
+
+import "flexport/airprocurement/rates/v1/rate_search_term_parameters.proto";
+import "flexport/airprocurement/rates/v1/universal_rates.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RateApiProto";
+option java_package = "com.flexport.airprocurement.rates.v1";
+option ruby_package = "Flexport::AirProcurement::Rates::V1";
+
+// Read API for Procurement Rates.
+service RateAPI {
+  // Find Rates whose rate terms are valid for the given search criteria.
+  rpc FindRates(FindRatesRequest) returns (FindRatesResponse);
+  // Find a Rate whose terms match the requested values. The more information
+  // that is provided in the request, the more specific the Rate's terms will
+  // be. Likewise, if minimal search parameters are provided, this will return a
+  // "standard rate" with the bare minimum terms and restrictions.
+  rpc FindRate(FindRateRequest) returns (FindRateResponse);
+}
+
+// Request for FindRates.
+message FindRatesRequest {
+  // TermParameters with null values will be treated as a wildcard search,
+  // matching any Term value (i.e., no filter is applied on the Term).
+  TermParameters term_parameters = 1;
+  // Finds rates matching the given exclude origin charges flag
+  // (excluded match or without excluded origin charges).
+  bool exclude_origin_charges = 2;
+  // Finds rates matching the given exclude destination charges flag
+  // (excluded match or without excluded destination charges).
+  // (exact match).
+  bool exclude_destination_charges = 3;
+}
+
+// Response for FindRates.
+message FindRatesResponse {
+  repeated Rate rates = 1;
+}
+
+// Request for FindRate.
+message FindRateRequest {
+  // TermParameters with null values will be treated as a search for a null
+  // Term value. For example, if the CarrierTermParameter is null,
+  // then the RateItems returned must all have a null CarrierTerm.
+  //
+  // Some Term values are non-nullable. Therefore the corresponding
+  // TermParameter fields are required:
+  //   * TransportMode (mode)
+  //   * Validity (valid_on)
+  //   * Route (origin_fid and destination_fid)
+  //
+  // Requests for a given mode may also have additional required TermParameters.
+  // Ocean:
+  //   * Container (iso_container_code(s))
+  //   * Contract (contract_number)
+  //   * Goods Classification (applicability)
+  TermParameters term_parameters = 1;
+  // Excludes origin charges from the returned Rate (default false).
+  bool exclude_origin_charges = 2;
+  // Excludes destination charges from the returned Rate (default false).
+  bool exclude_destination_charges = 3;
+}
+
+// Response for FindRate.
+message FindRateResponse {
+  Rate rate = 1;
+}

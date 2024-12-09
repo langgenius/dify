@@ -1,0 +1,24 @@
+// TEAM: trucking_planning
+
+syntax = "proto3";
+
+package flexport.truckingplanning.transittime.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DestinationTruckingTransitTimeProto";
+option java_package = "com.flexport.truckingplanning.transittime.v1beta1";
+
+message DestinationTruckingTransitTime {
+  repeated DeliveryLegTransitTime delivery_leg = 1;
+}
+
+message DeliveryLegTransitTime {
+  TransitTimeType type = 1;
+  uint64 transit_minutes = 2;
+}
+
+enum TransitTimeType {
+  TRANSIT_TIME_TYPE_INVALID = 0;
+  TRANSIT_TIME_TYPE_FAST = 1;
+  TRANSIT_TIME_TYPE_SLOW = 2;
+}

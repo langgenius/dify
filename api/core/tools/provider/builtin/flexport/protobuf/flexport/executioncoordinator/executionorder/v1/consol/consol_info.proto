@@ -1,0 +1,62 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorder.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ConsolInfoProto";
+option java_package = "com.flexport.executioncoordinator.executionorder.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrder::V1";
+
+// For a consolidated shipment, a list of pointers to the child ExecutionTasks.
+message ConsolInfo {
+  //
+  // Each child ExecutionTask contains data about the child shipment (eg execution_order_fid,
+  // from which shipper/consignee/FLEX-ID can be derived), as well as details about which cargo
+  // from the child order is included in this consolidation (could be all cargo or only a subset).
+  //
+  // Use ConsolAPI's GetConsolChildInfos method to easily fetch info about a consol shipment.
+  // We could add GetConsolParentInfo as well if that'd be useful.
+  // https://github.flexport.io/flexport/flexport/pull/105275
+  //
+  // A reference to the origin cargo loading plan.
+  string loading_plan_fid = 2;
+  //
+  // The legacy air build plan FID from which this consol was generated.
+  string legacy_air_build_plan_fid = 3;
+  //
+  // The type of consolidation that describes this consolidated shipment.
+  ConsolType consol_type = 4;
+  //
+  // Summary information about this consolidation.
+  oneof plan_info {
+    AirBuildPlanInfo air_build_plan_info = 5;
+  }
+}
+
+// The types of consolidation.
+enum ConsolType {
+  CONSOL_TYPE_INVALID = 0;
+  CONSOL_TYPE_BUYERS_CONSOL = 1;
+  CONSOL_TYPE_SELLERS_CONSOL = 2;
+  CONSOL_TYPE_FLEXPORT_INTERNAL = 3;
+}
+
+// Summary information about a build plan consolidation.
+message AirBuildPlanInfo {
+  // Summary information about each of the master airway bills in this build plan.
+  repeated MawbPlanInfo mawb_plan_infos = 1;
+}
+
+// Summary information about a master airway bill.
+message MawbPlanInfo {
+  string mawb_number = 1;
+  repeated MawbPlanChildInfo mawb_plan_child_infos = 2;
+}
+
+// A description of the child execution tasks within a master airway bill.
+message MawbPlanChildInfo {
+  string shipment_fid = 1;
+  string air_consol_execution_task_fid = 2;
+}

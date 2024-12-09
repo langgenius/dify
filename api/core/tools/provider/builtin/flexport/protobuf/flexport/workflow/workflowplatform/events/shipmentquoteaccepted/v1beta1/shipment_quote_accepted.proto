@@ -1,0 +1,21 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.workflow.workflowplatform.events.shipmentquoteaccepted.v1beta1;
+
+import "flexport/workflow/prelude/options/v1/options.proto";
+import "flexport/workflow/workflowplatform/models/shipmentchangedshipment/v1beta1/shipment_changed_shipment.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentQuoteAcceptedProto";
+option java_package = "com.flexport.workflow.workflowplatform.events.shipmentquoteaccepted.v1beta1";
+option ruby_package = "Flexport::Workflow::WorkflowPlatform::Events::ShipmentQuoteAccepted::V1Beta1";
+
+// Shipment quote accepted.
+message ShipmentQuoteAccepted {
+  option (flexport.workflow.prelude.options.v1.wp_event).name = "Shipment quote accepted";
+  option (flexport.workflow.prelude.options.v1.wp_event).description = "This event will be triggered when the shipment quote is accepted.";
+  option (flexport.workflow.prelude.options.v1.wp_message_key) = "shipment.shipment_id";
+  flexport.workflow.workflowplatform.models.shipmentchangedshipment.v1beta1.ShipmentChangedShipment shipment = 1;
+}

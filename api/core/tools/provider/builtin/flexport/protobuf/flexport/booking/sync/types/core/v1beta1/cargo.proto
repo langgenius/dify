@@ -1,0 +1,41 @@
+// TEAM: bookings
+
+syntax = "proto3";
+
+package flexport.booking.sync.types.core.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoProto";
+option java_package = "com.flexport.booking.sync.types.core.v1beta1";
+option ruby_package = "Flexport::Booking::Sync::Types::Core::V1Beta1";
+
+import "flexport/booking/sync/types/core/v1beta1/shipping_unit.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Information about the packages in the shipment and the goods contained within.
+message Cargo {
+  // Metadata
+  google.protobuf.Int64Value id = 1;
+  google.protobuf.StringValue fid = 2;
+  google.protobuf.Timestamp created_at_time = 3;
+  google.protobuf.Timestamp updated_at_time = 4;
+  google.protobuf.Timestamp deleted_at_time = 5;
+  google.protobuf.Timestamp confirmed_at_time = 6;
+  // Dangerous goods info
+  bool contains_hazmat = 7;
+  bool contains_li_ion = 8;
+  bool contains_magnets = 9;
+  google.protobuf.BoolValue contains_non_li_ion_battery = 10;
+  repeated google.protobuf.StringValue lithium_batteries_packing_types = 11;
+  bool contains_other_dangerous_goods = 12;
+  // Count
+  google.protobuf.StringValue description = 13;
+  google.protobuf.StringValue marks_and_numbers = 14;
+  google.protobuf.Int32Value slac = 15;
+  // Metrics
+  google.protobuf.StringValue volume = 16;
+  google.protobuf.StringValue weight = 17;
+  bool metric_units = 18;
+  repeated flexport.booking.sync.types.core.v1beta1.ShippingUnit shipping_units = 19;
+}

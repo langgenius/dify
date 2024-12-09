@@ -1,0 +1,34 @@
+// TEAM: sutro
+
+syntax = "proto3";
+
+package flexport.executionmilestones.airshipmentattributes.v1;
+
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AirShipmentDetailsProto";
+option java_package = "com.flexport.executionmilestones.airshipmentattributes.v1";
+option ruby_package = "Flexport::ExecutionMilestones::AirShipmentAttributes::V1";
+
+message AirShipmentDetails {
+  string shipment_fid = 1;
+  AirShipmentAttributes attributes = 2;
+}
+
+message AirShipmentAttributes {
+  AirShipmentTimestampAttribute arrival_port_last_free_day = 1;
+  AirShipmentTimestampAttribute arrival_port_ready_for_pickup_date = 2;
+}
+
+message AirShipmentTimestampValue {
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime timestamp = 1;
+  google.protobuf.Timestamp updated_at = 2;
+  string updated_by_fid = 3;
+}
+
+message AirShipmentTimestampAttribute {
+  AirShipmentTimestampValue user_updated_value = 1;
+  AirShipmentTimestampValue automation_value = 2;
+}

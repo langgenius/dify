@@ -1,0 +1,78 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.monolith.oceanplanning.carrierweekoffset.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierWeekOffsetProto";
+option java_package = "com.flexport.monolith.oceanplanning.carrierweekoffset.v1beta1";
+option ruby_package = "Flexport::Monolith::OceanPlanning::CarrierWeekOffset::V1Beta1";
+
+// Request message for an individual week offset query.
+// carrier_fid, service_identifier_fid, sailing_direction must be set to identify a schedule.
+// If carrier_week is not supplied, the default will be current week + 10 weeks into the future.
+message CarrierStringWeekOffsetQuery {
+  // Corresponds to the fid of the carrier that operates this ProformaSchedule.
+  string carrier_fid = 1;
+  // Corresponds to the fid of the service that this ProformaSchedule plans.
+  string service_fid = 2;
+  // Corresponds to the direction of the sailing. This field can be set to UNKNOWN for extra loaders.
+  SailingDirection sailing_direction = 3;
+  // The carrier week for this string to query for.
+  repeated IsoWeek carrier_weeks_requested = 4;
+}
+
+// For a (carrier, string, direction), contains the list of port week translations.
+message CarrierStringWeekOffsets {
+  // Corresponds to the fid of the carrier that operates this ProformaSchedule.
+  string carrier_fid = 1;
+  // Corresponds to the fid of the service that this ProformaSchedule plans.
+  string service_fid = 2;
+  // Corresponds to the direction of the sailing. This field can be set to UNKNOWN for extra loaders.
+  SailingDirection sailing_direction = 3;
+  // A list of known loading ports and their iso_week <> carrier_week translations.
+  repeated PortWeekTranslation port_week_translations = 4;
+}
+
+// Contains the iso_week <> carrier_week translation for a port.
+message PortWeekTranslation {
+  // Fid of the port.
+  string port_fid = 1;
+  // The iso week equivalent for this port.
+  IsoWeek iso_week = 2;
+  // A carrier week is the carrier supplied week number that follows their own numbering convention.
+  // i.e. ONE counts Jan 1, 2021  as Week 1, whereas the ISO standard starts every week on Monday.
+  CarrierWeek carrier_week = 3;
+  // The proforma day of week that this port departs on. (1-7)
+  int32 proforma_initial_departure_day_of_week = 4;
+}
+
+// Represents a week according to the ISO-8601 calendar.
+message IsoWeek {
+  // 1-based week (from 1 up to 52 or 53, depending on the year)
+  int32 week_of_year = 1;
+  // Calendar year (eg. 2021)
+  int32 year = 2;
+}
+
+// A carrier week is the carrier supplied week number that follows their own numbering convention.
+// i.e. ONE counts Jan 1, 2021  as Week 1, whereas the ISO standard starts every week on Monday.
+message CarrierWeek {
+  // 1-based week (from 1 up to 52 or 53, depending on the year)
+  int32 week_of_year = 1;
+  // Calendar year (eg. 2021)
+  int32 year = 2;
+}
+
+// Corresponds to the direction of the sailing.
+// Even though the sailing of a boat is a loop some carriers break it up into segments distinguished by direction.
+// For example, ONE services separate a sailing into two parts, eastbound and westbound.
+// Example: https://www.one-line.com/en/routes/current-services
+enum SailingDirection {
+  SAILING_DIRECTION_INVALID = 0;
+  SAILING_DIRECTION_EASTBOUND = 1;
+  SAILING_DIRECTION_WESTBOUND = 2;
+  SAILING_DIRECTION_NORTHBOUND = 3;
+  SAILING_DIRECTION_SOUTHBOUND = 4;
+}

@@ -1,0 +1,18 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billing.bill.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "MoneyProto";
+option java_package = "com.flexport.billing.bill.v1beta1";
+option ruby_package = "Flexport::Billing::Bill::V1Beta1";
+
+import "google/protobuf/wrappers.proto";
+
+// The money object.
+message Money {
+  google.protobuf.StringValue amount = 1;
+  google.protobuf.StringValue currency = 2;
+}

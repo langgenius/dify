@@ -1,0 +1,35 @@
+// TEAM: cost_capture
+
+syntax = "proto3";
+
+package flexport.financialledger.ingestion.event.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "EventProto";
+option java_package = "com.flexport.financialledger.ingestion.event.v1beta1";
+option ruby_package = "Flexport::FinancialLedger::Ingestion::Event::V1Beta1";
+
+// Ingestion Event object.
+message EventDto {
+  google.protobuf.StringValue fid = 1;
+  EventAttributesDto event_attributes = 2;
+  // Ingestion event type.
+  enum EventType {
+    EVENT_TYPE_INVALID = 0;
+    EVENT_TYPE_SUBLEDGER_CREATE_ATTEMPT = 1;
+    EVENT_TYPE_SUBLEDGER_CREATE_SUCCESS = 2;
+    EVENT_TYPE_SUBLEDGER_REVERSAL_ATTEMPT = 3;
+    EVENT_TYPE_SUBLEDGER_REVERSAL_SUCCESS = 4;
+  }
+  EventType event_type = 3;
+  google.protobuf.Timestamp created_at_time = 4;
+  google.protobuf.StringValue ingestion_fid = 5;
+}
+
+// Ingestion Event attributes record.
+message EventAttributesDto {
+  string json = 1;
+}

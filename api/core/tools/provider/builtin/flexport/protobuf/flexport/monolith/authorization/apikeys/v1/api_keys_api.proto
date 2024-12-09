@@ -1,0 +1,26 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.monolith.authorization.apikeys.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ApiKeysApiProto";
+option java_package = "com.flexport.monolith.authorization.apikeys.v1";
+option ruby_package = "Flexport::Monolith::Authorization::ApiKeys::V1";
+
+// This service is used to validate and fetch information regarding our public api keys.
+service ApiKeysAPI {
+  // Validates the token and returns client information related to the token.
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+}
+
+message ValidateTokenRequest {
+  string api_token = 1;
+}
+
+message ValidateTokenResponse {
+  string client_fid = 1;
+  string client_name = 2;
+  string company_fid = 3;
+}

@@ -1,0 +1,19 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.oceanops.port.v1beta1;
+
+import "flexport/rulesengine/options/v1/options.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PortProto";
+option java_package = "com.flexport.oceanops.port.v1beta1";
+option ruby_package = "Flexport::OceanOps::Port::V1Beta1";
+
+// Objects for matching ports.
+message Port {
+  option (flexport.rulesengine.options.v1.message_description) = "Port object";
+  string loc_code = 1;
+  string country_code = 2;
+}

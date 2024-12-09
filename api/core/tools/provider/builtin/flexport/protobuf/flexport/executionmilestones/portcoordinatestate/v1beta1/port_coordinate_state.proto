@@ -1,0 +1,17 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executionmilestones.portcoordinatestate.v1beta1;
+
+import "flexport/forwardingcustomsmanager/customsintegration/v1beta1/secure_chain.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PortCoordinateStateProto";
+option java_package = "com.flexport.executionmilestones.portcoordinatestate.v1beta1";
+option ruby_package = "Flexport::ExecutionMilestones::PortCoordinateState::V1Beta1";
+
+// Port coordinate state to store in the Execution Milestones service.
+message PortCoordinateState {
+  map<string, flexport.forwardingcustomsmanager.customsintegration.v1beta1.SecureChainContainerRelease> secure_chain_container_releases = 1;
+}

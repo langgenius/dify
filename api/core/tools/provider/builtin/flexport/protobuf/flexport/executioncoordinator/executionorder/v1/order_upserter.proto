@@ -1,0 +1,44 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorder.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OrderUpserterProto";
+option java_package = "com.flexport.executioncoordinator.executionorder.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrder::V1";
+
+// A "service or group" (a la http://go/fid) that upserts ExecutionOrders via gRPC.
+// When adding a new value, please:
+// (1) Order this list alphabetically (not by field number).
+// (2) Use "service or group" names that are consistent with the other EC registries:
+//     PlanUpserter, OrderStateProducer, TaskStateProducer.
+// (3) Remeber to add one or more new values to OrderingProcess for your upserter.
+// Next field number: 24
+enum OrderUpserter {
+  ORDER_UPSERTER_INVALID = 0;
+  ORDER_UPSERTER_AIR_EXECUTION_REPLAN_BUILD_PLAN = 6;
+  ORDER_UPSERTER_AIR_EXECUTION = 7;
+  ORDER_UPSERTER_BOOKING = 3;
+  ORDER_UPSERTER_BOOKING_ADAPTER = 2;
+  ORDER_UPSERTER_CONSOLIDATION_ENGINE = 10;
+  ORDER_UPSERTER_CONSOLIDATION_PLANNER_NIS = 11;
+  ORDER_UPSERTER_CONTAINER = 12;
+  ORDER_UPSERTER_CUSTOMS_ONLY_BOOKING = 5;
+  ORDER_UPSERTER_CUSTOMS_FILING_SERVICE = 17;
+  ORDER_UPSERTER_DEMO_ACCOUNT = 15;
+  ORDER_UPSERTER_EXCEPTION_EVENT_HANDLER = 18;
+  ORDER_UPSERTER_EXECUTION_PERFORMANCE = 14;
+  ORDER_UPSERTER_EXECUTION_WORKSPACE = 13;
+  ORDER_UPSERTER_EXPORT_WORK_ITEMS = 9;
+  ORDER_UPSERTER_MONOLITH_EXTRACT_ENGINE = 1;
+  ORDER_UPSERTER_MOVE_SHIPMENT_DATES_SERVICE = 16;
+  ORDER_UPSERTER_OPERATION_REQUEST_MANAGER = 22;
+  ORDER_UPSERTER_ORDER_ENTITY_UPDATE = 23;
+  ORDER_UPSERTER_QUOTE_ACCEPTANCE = 4;
+  ORDER_UPSERTER_SHIPMENTS_CONTROLLER = 8;
+  ORDER_UPSERTER_SHIPMENT_CARGO_UPDATE = 19;
+  ORDER_UPSERTER_SHIPMENT_DANGEROUS_GOODS_UPDATE = 20;
+  ORDER_UPSERTER_SHIPMENT_INVOLVED_PARTIES_UPDATE = 21;
+}

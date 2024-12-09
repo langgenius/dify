@@ -1,0 +1,177 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.monolith.shipments.v1beta1;
+
+import "flexport/executioncoordinator/executionorder/v1/execution_order.proto";
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+import "flexport/os/v1/types/cargo/v1/shipment_cargo.proto";
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentsApiProto";
+option java_package = "com.flexport.monolith.shipments.v1beta1";
+option ruby_package = "Flexport::Monolith::Shipments::V1Beta1";
+
+service ShipmentsAPI {
+  rpc GetUserDefinedMetadata(GetUserDefinedMetadataRequest) returns (GetUserDefinedMetadataResponse);
+  rpc GetShippersInfo(GetShippersInfoRequest) returns (GetShippersInfoResponse);
+  rpc GetShipmentCargoInfo(GetShipmentCargoInfoRequest) returns (GetShipmentCargoInfoResponse);
+  rpc GetShipmentValidated(GetShipmentValidatedRequest) returns (GetShipmentValidatedResponse);
+  rpc ReserveShipmentId(ReserveShipmentIdRequest) returns (ReserveShipmentIdResponse);
+  rpc CreateConsolShipment(CreateConsolShipmentRequest) returns (CreateConsolShipmentResponse);
+
+  // Get the number of shipments the company entity has
+  // involved in as a shipper within the given time range.
+  rpc GetShipperShipmentsCount(GetShipperShipmentsCountRequest) returns (GetShipperShipmentsCountResponse);
+  rpc GenerateAirCfsSo(GenerateAirCfsSoRequest) returns (GenerateAirCfsSoResponse);
+  rpc PrefillShipmentAttributes(PrefillShipmentAttributesRequest) returns (PrefillShipmentAttributesResponse);
+  rpc UpdateConsolCfsCutoff(UpdateConsolCfsCutoffRequest) returns (UpdateConsolCfsCutoffResponse);
+}
+
+message GetUserDefinedMetadataRequest {
+  string shipment_fid = 1;
+}
+
+message GetUserDefinedMetadataResponse {
+  map<string, ValueList> metadata = 1;
+}
+
+message ValueList {
+  repeated string values = 1;
+}
+
+message GetShippersInfoRequest {
+  string shipment_fid = 1;
+}
+
+message GetShippersInfoResponse {
+  repeated InvolvedPartyMembershipInfo shippers_info = 1;
+}
+
+message GetShipmentCargoInfoRequest {
+  string shipment_fid = 1;
+}
+
+message GetShipmentCargoInfoResponse {
+  flexport.os.v1.types.cargo.v1.ShipmentCargo shipment_cargo = 1;
+  google.protobuf.Timestamp updated_at = 2;
+}
+
+message GetShipmentValidatedRequest {
+  string shipment_fid = 1;
+}
+
+message GetShipmentValidatedResponse {
+  bool validated = 1;
+}
+
+message InvolvedPartyMembershipInfo {
+  string company_fid = 1;
+  string company_entity_fid = 2;
+  string primary_contact_user_email = 3;
+  string legal_name = 4;
+  string billing_contact_user_email = 5;
+}
+
+message ReserveShipmentIdRequest {}
+
+message ReserveShipmentIdResponse {
+  int64 shipment_id = 1;
+}
+
+message CreateConsolShipmentRequest {
+  repeated ConsolShipmentRouteNode route_nodes = 1;
+  string user_fid = 2;
+  flexport.executioncoordinator.executionorder.v1.InvolvedParty involved_party = 3;
+}
+
+message CreateConsolShipmentResponse {
+  int64 consol_shipment_id = 1;
+  bool success = 2;
+  string error_message = 3;
+}
+
+message ConsolShipmentRouteNode {
+  int64 address_id = 1;
+  string name = 2;
+  string address_type = 3;
+}
+
+// Type of vessels operated by the carrier.
+enum TransportationMode {
+  TRANSPORTATION_MODE_INVALID = 0;
+  TRANSPORTATION_MODE_AIR = 1;
+  TRANSPORTATION_MODE_OCEAN_FCL = 2;
+  TRANSPORTATION_MODE_OCEAN_LCL = 3;
+  TRANSPORTATION_MODE_TRUCK = 4;
+  TRANSPORTATION_MODE_RAIL = 5;
+}
+
+message GetShipperShipmentsCountRequest {
+  // The company entity fid.
+  string company_entity_fid = 1;
+  // The number of days to look back.
+  int32 num_days = 2;
+  // transportation mode
+  TransportationMode transportation_mode = 3;
+}
+
+message GetShipperShipmentsCountResponse {
+  // The number of shipments the company entity has
+  // involved in as a shipper within the given time range.
+  int32 count = 1;
+}
+
+message GenerateAirCfsSoRequest {
+  string shipment_fid = 1;
+  string language = 2;
+}
+
+message GenerateAirCfsSoResponse {
+  string document_fid = 1;
+}
+
+message PrefillShipmentAttributesRequest {
+  // Cargo attributes that will be updated. This field is mutable.
+  CargoAttributes cargo = 1;
+  // Unique identifier for the shipment. This field is immutable after creation.
+  string shipment_fid = 2;
+  // The name of the shipment to be updated. This field is mutable.
+  string shipment_name = 3;
+}
+
+message CargoAttributes {
+  string weight = 1;
+  string volume = 2;
+  int32 slac = 3;
+  flexport.os.v1.types.cargo.v1.CargoUnit unit_type = 4;
+  string hs_description = 5;
+  string hs_code = 6;
+}
+
+message PrefillShipmentAttributesResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+message UpdateConsolCfsCutoffRequest {
+  string shipment_fid = 1;
+  CfsCutoffType cfs_cutoff_type = 2;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime cfs_cutoff = 3;
+  string user_fid = 4;
+  string cfs_fid = 5;
+}
+
+enum CfsCutoffType {
+  CFS_CUTOFF_TYPE_INVALID = 0;
+  CFS_CUTOFF_TYPE_OPEN = 1;
+  CFS_CUTOFF_TYPE_CLOSE = 2;
+}
+
+message UpdateConsolCfsCutoffResponse {
+  bool success = 1;
+  string error_message = 2;
+}

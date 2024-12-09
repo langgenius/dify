@@ -1,0 +1,25 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.oceanplanning.feasibleassignment.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "FeasibleAssignmentAPIProto";
+option java_package = "com.flexport.oceanplanning.feasibleassignment.v1beta1";
+option ruby_package = "Flexport::OceanPlanning::FeasibleAssignment::V1Beta1";
+
+// Administration endpoints for managing/updating feasible assignments and
+// fetching information related to feasible assignments.
+service FeasibleAssignmentAPI {
+  // (re) Generate feasible assignments for a shipment's fulfillment task
+  rpc GenerateFeasibleAssignmentsForFulfillmentTask(GenerateFeasibleAssignmentsForFulfillmentTaskRequest) returns (GenerateFeasibleAssignmentsForFulfillmentTaskResponse);
+}
+
+message GenerateFeasibleAssignmentsForFulfillmentTaskRequest {
+  string shipment_fid = 1;
+}
+
+message GenerateFeasibleAssignmentsForFulfillmentTaskResponse {
+  bool success = 1;
+}

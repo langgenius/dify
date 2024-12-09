@@ -1,0 +1,21 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.documentflow.documentschema.v2beta1;
+
+import "flexport/documentflow/documentschema/v2beta1/primitive_document_field.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "MasterAirWaybillProto";
+option java_package = "com.flexport.documentflow.documentschema.v2beta1";
+option ruby_package = "Flexport::DocumentFlow::DocumentSchema::V2Beta1";
+
+// Next ID: 6
+message MasterAirWaybill {
+  DocumentField mawb_number = 1;
+  DocumentField carton_count = 2;
+  repeated DocumentField export_port = 3;
+  repeated DocumentField import_port = 4;
+  repeated DocumentField flight = 5;
+}

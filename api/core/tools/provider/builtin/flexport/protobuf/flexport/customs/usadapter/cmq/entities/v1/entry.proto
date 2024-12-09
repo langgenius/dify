@@ -1,0 +1,17 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.cmq.entities.v1;
+
+import "flexport/customs/usadapter/cmq/entities/v1/bill.proto";
+import "flexport/customs/usadapter/cmq/entities/v1/entry_info.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.cmq.entities.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::Cmq::V1";
+
+message Entry {
+  EntryInfo info = 1;
+  Bill bill = 2;
+}

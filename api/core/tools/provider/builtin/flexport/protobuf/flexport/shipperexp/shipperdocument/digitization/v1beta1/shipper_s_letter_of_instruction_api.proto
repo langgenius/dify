@@ -1,0 +1,25 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.shipperexp.shipperdocument.digitization.v1beta1;
+
+import "flexport/shipperexp/shipperdocument/digitization/v1beta1/shipper_s_letter_of_instruction.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShippersLetterOfInstructionApiProto";
+option java_package = "com.flexport.shipperexp.shipperdocument.digitization.v1beta1";
+option ruby_package = "Flexport::ShipperExp::ShipperDocument::Digitization::V1Beta1";
+
+service ShippersLetterOfInstructionAPI {
+  rpc GetShippersLetterOfInstruction(GetShippersLetterOfInstructionRequest) returns (GetShippersLetterOfInstructionResponse);
+}
+
+message GetShippersLetterOfInstructionRequest {
+  int32 shipment_id = 1;
+  optional int64 document_id = 2;
+}
+
+message GetShippersLetterOfInstructionResponse {
+  ShippersLetterOfInstruction shippers_letter_of_instruction = 1;
+}

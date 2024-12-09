@@ -1,0 +1,18 @@
+// TEAM: athena
+
+syntax = "proto3";
+
+package flexport.monolith.notifications.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "NotificationPreferenceProto";
+option java_package = "com.flexport.monolith.notifications.v1beta1";
+option ruby_package = "Flexport::Monolith::Notifications::V1Beta1";
+
+// Which notification preference to check.
+enum NotificationPreferenceCheck {
+  NOTIFICATION_PREFERENCE_CHECK_INVALID = 0;
+  NOTIFICATION_PREFERENCE_CHECK_SKIP = 1;
+  NOTIFICATION_PREFERENCE_CHECK_CORE = 2;
+  NOTIFICATION_PREFERENCE_CHECK_CLIENT = 3;
+}

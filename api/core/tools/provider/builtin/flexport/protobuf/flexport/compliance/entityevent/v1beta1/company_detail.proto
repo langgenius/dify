@@ -1,0 +1,28 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.compliance.entityevent.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CompanyDetailProto";
+option java_package = "com.flexport.compliance.entityevent.v1beta1";
+option ruby_package = "Flexport::Compliance::EntityEvent::V1Beta1";
+
+// Company detail.
+message CompanyDetail {
+  // Company name.
+  string name = 1;
+  // Company address one.
+  string address_one = 2;
+  // Company address two.
+  string address_two = 3;
+  // Company city.
+  string city = 4;
+  // Company state.
+  string state = 5;
+  // Company postal code.
+  string postal_code = 6;
+  // Company country.
+  string country = 7;
+}

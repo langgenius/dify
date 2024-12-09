@@ -1,0 +1,22 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.workflow.test.events.processinstancestarted.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ProcessInstanceStartedProto";
+option java_package = "com.flexport.workflow.test.events.processinstancestarted.v1beta1";
+option ruby_package = "Flexport::Workflow::Test::Events::ProcessInstanceStarted::V1Beta1";
+
+// When a new process instance is started, this event will be triggered.
+message ProcessInstanceStarted {
+  //
+  // The time this event was created.
+  google.protobuf.Timestamp created_time = 1;
+  //
+  // Process instance uid.
+  string process_instance_uid = 2;
+}

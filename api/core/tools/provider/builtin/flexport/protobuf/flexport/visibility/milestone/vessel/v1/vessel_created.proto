@@ -1,0 +1,25 @@
+// TEAM: visibility
+
+syntax = "proto3";
+
+package flexport.visibility.milestone.vessel.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "VesselCreatedProto";
+option java_package = "com.flexport.visibility.milestone.vessel.v1";
+option ruby_package = "Flexport::Visibility::Milestone::Vessel::V1";
+
+import "flexport/visibility/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Indicates a vessel milestone was created.
+message VesselCreated {
+  google.protobuf.Timestamp created_time = 1;
+  flexport.visibility.v1.EventClassification event_classification = 2;
+  flexport.visibility.v1.EventType event_type = 3;
+  google.protobuf.StringValue vehicle_id = 4;
+  flexport.visibility.v1.Place place = 5;
+  flexport.visibility.v1.DelayReason delay_reason = 6;
+  google.protobuf.StringValue change_remark = 7;
+}

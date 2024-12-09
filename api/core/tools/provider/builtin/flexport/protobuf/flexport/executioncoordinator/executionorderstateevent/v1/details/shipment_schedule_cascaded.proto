@@ -1,0 +1,25 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentScheduleCascadedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/date_changed_details.proto";
+
+// Emitted when a shipment schedule is automatically cascaded by the schedule engine in Rails.
+message ShipmentScheduleCascaded {
+  string shipment_fid = 1;
+  // All of the flagged heuristics before the schedule is cascaded. DEPRECATED by DateChangedDetails.
+  repeated string heuristic_names = 2;
+  // All of the CargoTransitDateChanged events published as part of this schedule cascading. DEPRECATED by DateChangedDetails.
+  repeated string cargo_transit_date_changed_fids = 3;
+  // CargoTransitDateChanged event details published as part of this schedule cascading.
+  repeated DateChangedDetails cargo_transit_date_changed_details = 4;
+  // OceanConsolDevanDateUpdated event details published as part of this schedule cascading. Empty when no devan date updated.
+  repeated DateChangedDetails ocean_consol_devan_date_updated_details = 5;
+}

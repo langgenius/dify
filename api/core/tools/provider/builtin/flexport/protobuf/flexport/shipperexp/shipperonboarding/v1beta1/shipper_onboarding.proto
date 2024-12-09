@@ -1,0 +1,72 @@
+// TEAM: shipper_exp
+
+syntax = "proto3";
+
+package flexport.shipperexp.shipperonboarding.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipperOnboardingProto";
+option java_package = "com.flexport.shipperexp.shipperonboarding.v1beta1";
+option ruby_package = "Flexport::ShipperExp::ShipperOnboarding::V1Beta1";
+
+import "flexport/shipperexp/asyncjobvalues/v1beta1/async_job_values.proto";
+import "google/protobuf/timestamp.proto";
+
+// A message contains a shipper onboarding info.
+message ShipperOnboardingSubmitted {
+  string invitation_token = 1;
+  string token = 2;
+  bool include_user_info = 3;
+  string submitted_by = 4;
+  google.protobuf.Timestamp submitted_at_time = 5;
+  CompanyInfo company_info = 6;
+  UserInfo user_info = 7;
+  flexport.shipperexp.asyncjobvalues.v1beta1.AsyncJobValues async_job_values = 8;
+}
+
+// Represents a CompanyEntity.
+message CompanyInfo {
+  int32 company_entity_id = 1;
+  string country_or_region = 2;
+  string state_or_province = 3;
+  string city = 4;
+  string zip_code = 5;
+  string legal_name_english = 6;
+  string address = 7;
+  string address2 = 8;
+  string registered_name_in_business_license = 9;
+  string registered_address_in_business_license = 10;
+  string legal_representative_full_name_in_chinese = 11;
+  string legal_representative_full_name_in_pinyin = 12;
+  string registration_number_of_business_license = 13;
+  string photo_of_business_license = 14;
+  bool apply_to_vat = 16;
+  bool skip_vat = 17;
+  CompanyVatInfo company_vat_info = 18;
+  string qcc_key_no = 19;
+}
+
+// Represents vat info for mainland China shippers.
+message CompanyVatInfo {
+  string bank_name = 1;
+  string bank_account_number = 2;
+  string registration_phone_number = 3;
+  string contact_phone_number = 4;
+  repeated string emails = 5;
+}
+
+// Represents a User.
+message UserInfo {
+  string first_name = 1;
+  string last_name = 2;
+  string first_name_pin_yin = 3;
+  string last_name_pin_yin = 4;
+  string full_name_in_chinese = 5;
+  string email = 6;
+  string phone_number = 7;
+  string title = 8;
+  string password = 9;
+  bool agree_to_terms_of_service = 10;
+  bool agree_to_confirmation_letter = 11;
+  string locale = 12;
+}

@@ -1,0 +1,41 @@
+// TEAM: customs_gateway
+
+syntax = "proto3";
+
+package flexport.monolith.customsorder.v1beta1;
+
+import "flexport/monolith/customsorder/v1beta1/customs_order_adapter_types.proto";
+import "flexport/rulesengine/options/v1/options.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RulesEngineApiProto";
+option java_package = "com.flexport.monolith.customsorder.v1beta1";
+option ruby_package = "Flexport::Monolith::CustomsOrder::V1Beta1";
+
+// RulesEngineAPI. These are the validation rules that determine if a request to create a customs-led order is valid
+service RulesEngineAPI {
+  option (flexport.rulesengine.options.v1.rule_facade).service_name = "customs_order";
+
+  rpc ValidateCustomsOrderCreation(ValidateCustomsOrderCreationRequest) returns (ValidateCustomsOrderCreationResponse) {
+    option (flexport.rulesengine.options.v1.rule_set).use = true;
+    option (flexport.rulesengine.options.v1.rule).api_name = "com.flexport.monolith.customsorder";
+    option (flexport.rulesengine.options.v1.rule).description = "Determine if there are errors or warnings involved in customs order creation validation";
+    option (flexport.rulesengine.options.v1.rule).tolerate_evaluation_error = false;
+    option (flexport.rulesengine.options.v1.rule).workspace = "customs_order";
+  }
+}
+
+message ValidateCustomsOrderCreationRequest {
+  int32 client_id = 1 [(flexport.rulesengine.options.v1.algolia_index).index_name = "Client"];
+  string name = 2;
+  optional TransportationMode transportation_mode = 3;
+  bool delivery_service = 4;
+  repeated InvolvedParty involved_parties = 5;
+  repeated ShipmentMetadata shipment_tags = 6;
+}
+
+message ValidateCustomsOrderCreationResponse {
+  bool is_error = 1;
+  string message = 2;
+  Field field = 3;
+}

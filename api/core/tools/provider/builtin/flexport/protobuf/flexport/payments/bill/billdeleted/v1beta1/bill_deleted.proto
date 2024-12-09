@@ -1,0 +1,25 @@
+// TEAM: finance_platform
+
+syntax = "proto3";
+
+package flexport.payments.bill.billdeleted.v1beta1;
+
+import "flexport/payments/bill/v1beta1/bill.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BillDeletedProto";
+option java_package = "com.flexport.payments.bill.billdeleted.v1beta1";
+option ruby_package = "Flexport::Payments::Bill::BillDeleted::V1Beta1";
+
+enum DeletedReason {
+  DELETED_REASON_INVALID = 0;
+  DELETED_REASON_OUTDATED = 1;
+}
+
+// A request for payment to a vendor has been deleted.
+message BillDeleted {
+  flexport.payments.bill.v1beta1.Bill bill = 1;
+  google.protobuf.Timestamp deleted_at_time = 2;
+  DeletedReason reason = 3;
+}

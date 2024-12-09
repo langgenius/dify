@@ -1,0 +1,33 @@
+// TEAM: work_management
+
+syntax = "proto3";
+
+package flexport.executionmilestones.dataqualitystate.v1beta1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DataQualityInfoProto";
+option java_package = "com.flexport.executionmilestones.dataqualitystate.v1beta1";
+
+message DataQualityInfo {
+  DataQualityIssueType data_quality_issue_type = 1;
+  // This is the time the issue is either first found or the first time
+  // it was detected after being marked resolved.
+  google.protobuf.Timestamp most_recent_trigger_time = 2;
+  bool resolved = 3;
+  string resolved_by_fid = 4;
+  // example upsert_key can be shipmentFid for shipment level data quality WIs
+  // or routeShapeLegFid for leg level data quality WIs
+  string upsert_key = 5;
+  google.protobuf.Struct work_context = 6;
+  repeated string topic_fids = 7;
+}
+
+enum DataQualityIssueType {
+  DATA_QUALITY_ISSUE_TYPE_INVALID = 0;
+  DATA_QUALITY_ISSUE_TYPE_DATA_QUALITY_DEFAULT = 1;
+  DATA_QUALITY_ISSUE_TYPE_IMPORT_INPUT_MISSING_DELIVERY_LEG = 2;
+  DATA_QUALITY_ISSUE_TYPE_MISSING_NODE_TAG = 3;
+}

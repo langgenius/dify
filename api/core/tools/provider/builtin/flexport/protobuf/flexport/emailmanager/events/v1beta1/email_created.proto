@@ -1,0 +1,31 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.emailmanager.events.v1beta1;
+
+import "flexport/emailmanager/email/v1beta1/email.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "EmailCreatedProto";
+option java_package = "com.flexport.emailmanager.events.v1beta1";
+option ruby_package = "Flexport::EmailManager::Events::V1Beta1";
+
+// Event emitted when an email is created.
+message EmailCreated {
+  string fid = 1;
+  google.protobuf.Timestamp created_time = 2;
+  string email_type = 3;
+  string subject = 4;
+  string from_address = 5;
+  string reply_to_address = 6;
+  repeated string to_addresses = 7;
+  repeated string cc_addresses = 8;
+  repeated string bcc_addresses = 9;
+  bool is_outbound = 10;
+  map<string, flexport.emailmanager.email.v1beta1.LabelValue> labels = 11;
+  repeated flexport.emailmanager.email.v1beta1.Attachment attachments = 12;
+  string context = 13;
+  string created_by_fid = 14;
+}

@@ -1,0 +1,96 @@
+// TEAM: smb_scone
+
+syntax = "proto3";
+
+package flexport.monolith.smb.v1beta1;
+
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentDetailsModuleSyncApiProto";
+option java_package = "com.flexport.monolith.smb.v1beta1";
+option ruby_package = "Flexport::Monolith::Smb::V1Beta1";
+
+// This service syncs and retrieves data from core.
+service ShipmentDetailsModuleSyncAPI {
+  rpc CreateAddress(CreateAddressRequest) returns (CreateAddressResponse);
+  rpc CreateNetworkConnection(CreateNetworkConnectionRequest) returns (CreateNetworkConnectionResponse);
+  rpc ListNetworkConnections(ListNetworkConnectionsRequest) returns (ListNetworkConnectionsResponse);
+  rpc UpdateCompanyEntityAddress(UpdateCompanyEntityAddressRequest) returns (UpdateCompanyEntityAddressResponse);
+  rpc CreateLocationContact(CreateLocationContactRequest) returns (CreateLocationContactResponse);
+  rpc ListLocationContacts(ListLocationContactsRequest) returns (ListLocationContactsResponse);
+}
+
+message CreateAddressRequest {
+  int32 for_company_id = 1;
+  Address address = 2;
+}
+
+message CreateAddressResponse {
+  int32 address_id = 1;
+}
+
+message CreateNetworkConnectionRequest {
+  int32 from_company_id = 1;
+  int32 to_company_id = 2;
+}
+
+message CreateNetworkConnectionResponse {
+  int32 network_connection_id = 1;
+}
+
+message ListNetworkConnectionsRequest {
+  int32 company_id = 1;
+}
+
+message ListNetworkConnectionsResponse {
+  repeated int32 company_ids = 1;
+}
+
+message UpdateCompanyEntityAddressRequest {
+  int32 company_entity_id = 1;
+  int32 mailing_address_id = 2;
+  int32 physical_address_id = 3;
+}
+
+message UpdateCompanyEntityAddressResponse {
+  int32 mailing_address_id = 1;
+  int32 physical_address_id = 2;
+}
+
+message CreateLocationContactRequest {
+  int32 location_id = 1;
+  Contact contact = 2;
+}
+
+message CreateLocationContactResponse {
+  int32 contact_id = 1;
+  int32 location_id = 2;
+}
+
+message ListLocationContactsRequest {
+  int32 location_id = 1;
+}
+
+message ListLocationContactsResponse {
+  repeated Contact contacts = 1;
+}
+
+message Address {
+  google.protobuf.StringValue name = 1;
+  google.protobuf.StringValue street_address = 2;
+  google.protobuf.StringValue street_address2 = 3;
+  google.protobuf.StringValue city = 4;
+  google.protobuf.StringValue state = 5;
+  google.protobuf.StringValue zip = 6;
+  google.protobuf.StringValue country_code = 7;
+  google.protobuf.BoolValue mailing = 8;
+  google.protobuf.BoolValue physical = 9;
+}
+
+message Contact {
+  google.protobuf.Int32Value contact_id = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue email = 3;
+  google.protobuf.StringValue phone = 4;
+}

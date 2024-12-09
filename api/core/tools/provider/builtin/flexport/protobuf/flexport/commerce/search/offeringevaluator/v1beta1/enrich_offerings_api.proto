@@ -1,0 +1,105 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.commerce.search.offeringevaluator.v1beta1;
+
+import "flexport/catalog/charge/v3/charge_api.proto";
+import "flexport/catalog/rate/v1/rate.proto";
+import "flexport/commerce/merchandising/catalog/data_authority/offering/v1beta1/offering.proto";
+import "flexport/monolith/catalog/v1beta1/core_service.proto";
+import "google/protobuf/wrappers.proto";
+import "google/rpc/status.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.commerce.search.offeringevaluator.v1beta1";
+option ruby_package = "Flexport::Commerce::Search::OfferingEvaluator::V1Beta1";
+
+service EnrichOfferingsAPI {
+  rpc EnrichOfferings(EnrichOfferingsRequest) returns (EnrichOfferingsResponse);
+  rpc EnrichOfferingsBatch(EnrichOfferingsBatchRequest) returns (EnrichOfferingsBatchResponse);
+}
+
+message EnrichOfferingsRequest {
+  OfferingCombination offering_combination = 1;
+  EnrichOfferingContext context = 2;
+}
+
+message EnrichOfferingsResponse {
+  EnrichedOfferingCombination enriched_offering_combination = 1;
+}
+
+message EnrichOfferingsBatchRequest {
+  repeated OfferingCombination offering_combinations = 1;
+  EnrichOfferingContext context = 2;
+}
+
+message EnrichOfferingsBatchResponse {
+  repeated EnrichedOfferingCombination enriched_offering_combinations = 1;
+}
+
+// OfferingCombination captures the idea that an order can includes multiple offerings even
+// if some offerings are inheritly a bundle.
+// For example, a client buys a freight-bundle (ocean fcl door to door) with insurance offering.
+message OfferingCombination {
+  // A provided ID for response identification.
+  // This order_id field will match the order_id field in EnrichedOfferingCombination.
+  optional string order_id = 1;
+  repeated flexport.commerce.merchandising.catalog.data_authority.offering.v1beta1.Offering offerings = 2;
+}
+
+message EnrichOfferingContext {
+  // Optional enrichment context will dictate if the enrichment step will run in evaluator.
+  // New enrichers should define its own context and add it to here to define as an enrichment step.
+  optional ChargesEnrichmentContext charges_enrichment_context = 1;
+}
+
+// refers to https://github.flexport.io/flexport/flexport/blob/master/protobuf/flexport/catalog/charge/v3/charge_api.proto#L68
+message ChargesEnrichmentContext {
+  google.protobuf.StringValue current_user_fid = 1;
+  optional flexport.monolith.catalog.v1beta1.Client client = 2;
+  flexport.catalog.charge.v3.OrderAttributesForApplicability order_attributes_for_applicability = 3;
+  flexport.catalog.charge.v3.OrderAttributesForRateEvaluation order_attributes_for_rate_evaluation = 4;
+  bool use_pricing_engine_sell_rate = 5;
+}
+
+message EnrichedOfferingCombination {
+  // A provided ID that corresponds from OfferingCombination.order_id.
+  optional string order_id = 1;
+  // This denotes whether all requested enrichments have successfully performed on a set of offerings.
+  // If successful, this field will have code = OK(0).
+  // If unsuccessful, the enriched offering object will contain at least the offering from input
+  // as base_offering but subject to any enrichment modification up to failure point.
+  google.rpc.Status status = 2;
+  repeated EnrichedOffering enriched_offerings = 3;
+
+  // =================================================================================================
+  // For enrichment data that applies to an order level. The following properties
+  // are additional data provided from enrichers to client for consumption.
+  // =================================================================================================
+  optional InsuranceDetails insurance_details = 4;
+}
+
+message EnrichedOffering {
+  // base_offering is a CDA formatted offering that potentially modified by enrichers
+  flexport.commerce.merchandising.catalog.data_authority.offering.v1beta1.Offering base_offering = 1;
+
+  // =================================================================================================
+  // For enrichment data that does not fit into offering shape and cannot be modified in place
+  // the following properties are additional data provided from enrichers to client for consumption.
+  // =================================================================================================
+
+  // cm_charges_for_offering are set of evaluated charges based on an provided point in time.
+  // Thus, it should not be confused with offering.pricing_policy which represent some unevaluated
+  // base charge of an offering.
+  // For bundle, this includes parent's offering fid and children's offering fids
+  repeated flexport.catalog.charge.v3.ChargesForOfferingFid cm_charges_for_offerings = 2;
+
+// to be extended as we add more enrichers
+}
+
+// refers to https://github.flexport.io/flexport/flexport/blob/master/protobuf/flexport/catalog/charge/v3/charge_api.proto#L35
+message InsuranceDetails {
+  catalog.rate.v1.AmountWithCurrency per_shipment_insured_amount = 1;
+  catalog.rate.v1.AmountWithCurrency per_shipment_insurance_premium = 2;
+}

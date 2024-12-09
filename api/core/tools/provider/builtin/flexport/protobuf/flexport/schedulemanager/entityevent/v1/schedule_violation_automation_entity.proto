@@ -1,0 +1,63 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.schedulemanager.entityevent.v1;
+
+import "flexport/executioncoordinator/types/enums/v1/entry_point.proto";
+import "flexport/schedulemanager/datechanges/v1/date_type.proto";
+import "flexport/schedulemanager/types/enums/v1/prediction_source.proto";
+import "flexport/schedulemanager/types/enums/v1/suggestion_type.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ScheduleViolationProto";
+option java_package = "com.flexport.schedulemanager.entityevent.v1";
+option ruby_package = "Flexport::ScheduleManager::EntityEvent::V1";
+
+// Representation of a shipment Schedule Violation, maintained by Schedule Manager service.
+message ScheduleViolation {
+  // Id/Fids
+  int64 id = 1;
+  string fid = 14;
+  string shipment_fid = 2;
+  string itinerary_id = 6;
+  uint32 itinerary_revision = 7;
+
+  // Violation context
+  string heuristic_name = 4;
+  string date_transit_type = 13;
+  flexport.schedulemanager.datechanges.v1.DateType date_type = 15;
+
+  // Violation attribution
+  string user_fid = 23;
+  flexport.executioncoordinator.types.enums.v1.EntryPoint entry_point = 24;
+
+  // Violation details
+  string violated_entity_fid = 11;
+  string violated_entity_type = 12;
+  int32 violation_days = 21;
+  int32 violated_by_days = 22;
+
+  // Suggestion details
+  string suggestion_entity_fid = 17;
+  flexport.schedulemanager.types.enums.v1.SuggestionType suggestion_type = 18;
+  int64 suggestion_days = 19;
+  flexport.schedulemanager.types.enums.v1.PredictionSource suggestion_prediction_source = 20;
+
+  // Metadata
+  google.protobuf.BoolValue is_flexport_owned = 16;
+
+  ViolationType violation_type = 3 [deprecated = true];
+  repeated string violated_entity_fids = 5 [deprecated = true];
+  repeated string triggering_entry_points = 8 [deprecated = true];
+  repeated string violated_leg_fids = 9 [deprecated = true];
+  repeated string violated_node_fids = 10 [deprecated = true];
+
+  enum ViolationType {
+    VIOLATION_TYPE_INVALID = 0;
+    VIOLATION_TYPE_NON_SEQUENTIAL = 1;
+    VIOLATION_TYPE_MISSING_DATES = 2;
+    VIOLATION_TYPE_STALE = 3;
+  }
+}

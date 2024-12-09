@@ -1,0 +1,76 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.workflow.workflowplatform.models.shipmentchangedshipment.v1beta1;
+
+import "flexport/workflow/prelude/options/v1/options.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentChangedShipmentProto";
+option java_package = "com.flexport.workflow.workflowplatform.models.shipmentchangedshipment.v1beta1";
+option ruby_package = "Flexport::Workflow::WorkflowPlatform::Models::ShipmentChangedShipment::V1Beta1";
+
+// Shipment changed.
+message ShipmentChangedShipment {
+  option (flexport.workflow.prelude.options.v1.wp_message_key) = "shipment_id";
+  int64 shipment_id = 1;
+  string transportation_mode = 2;
+  bool is_lcl = 3;
+  bool is_consol = 4;
+  bool wants_bco = 5;
+  string transportation_status = 6;
+  string status = 7;
+  Company client = 8;
+  repeated Company shippers = 9;
+  repeated Company consignees = 10;
+  repeated Company origin_agents = 11;
+  Port port_of_loading = 12;
+  Port port_of_unloading = 13;
+  Port departure_port = 14;
+  Port arrival_port = 15;
+  Carrier freight_carrier = 16;
+  repeated CarrierBooking carrier_bookings = 17;
+  repeated int64 subshipment_ids = 18;
+  repeated Assignment assignments = 19;
+}
+
+// Assignment.
+message Assignment {
+  int64 id = 1;
+  string role = 2;
+  int64 assignee_id = 3;
+  User assignee = 4;
+}
+
+// Carrier.
+message Carrier {
+  int64 id = 1;
+  string scac_code = 2;
+}
+
+// Carrier booking.
+message CarrierBooking {
+  int64 id = 1;
+  string release_status = 2;
+  string status = 3;
+}
+
+// Company.
+message Company {
+  int64 id = 1;
+  string name = 2;
+}
+
+// Port.
+message Port {
+  int64 id = 1;
+  string name = 2;
+}
+
+// User.
+message User {
+  int64 id = 1;
+  string name = 2;
+  string email = 3;
+}

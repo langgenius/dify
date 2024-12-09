@@ -1,0 +1,26 @@
+// TEAM: trucking
+
+syntax = "proto3";
+
+package flexport.truckingprovider.boomi.v1beta1;
+
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoRawProto";
+option java_package = "com.flexport.truckingprovider.boomi.v1beta1";
+option ruby_package = "Flexport::TruckingProvider::Boomi::V1Beta1";
+
+// Raw details for an individual unit of cargo.
+message CargoRaw {
+  int32 count = 1;
+  flexport.os.v1.types.cargo.v1.CargoUnit packing_unit = 2;
+  float height = 3;
+  float width = 4;
+  float length = 5;
+  float volume = 6;
+  float weight = 7;
+  bool volume_metric_units = 8;
+  bool weight_metric_units = 9;
+  bool dimension_metric_units = 10;
+}

@@ -1,0 +1,38 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsonlybooking.email.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "EmailApiProto";
+option java_package = "com.flexport.customsonlybooking.email.v1beta1";
+option ruby_package = "Flexport::CustomsOnlyBooking::Email::V1Beta1";
+
+import "flexport/customsonlybooking/email/v1beta1/email.proto";
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+import "google/protobuf/wrappers.proto";
+
+// The email service definition.
+service EmailAPI {
+  // Creates or updates email object.
+  rpc CreateOrUpdateEmail(CreateOrUpdateEmailRequest) returns (CreateOrUpdateEmailResponse);
+}
+
+// The request message containing client and email information.
+message CreateOrUpdateEmailRequest {
+  google.protobuf.StringValue client_fid = 1;
+  google.protobuf.StringValue message_id = 2;
+  EmailParticipant from = 3;
+  repeated EmailParticipant to = 4;
+  repeated EmailParticipant cc = 5;
+  google.protobuf.StringValue subject = 6;
+  google.protobuf.StringValue body = 7;
+  repeated google.protobuf.StringValue attachment_document_fids = 8;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime sent_at = 9;
+  google.protobuf.BoolValue processed = 10;
+  google.protobuf.StringValue client_name = 11;
+}
+
+// The response message containing a status and errors.
+message CreateOrUpdateEmailResponse {}

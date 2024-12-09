@@ -1,0 +1,75 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.documentprocessor.documentschema.v1beta1;
+
+import "flexport/documentprocessor/documentschema/v1beta1/document_field.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PackingListProto";
+option java_package = "com.flexport.documentprocessor.documentschema.v1beta1";
+option ruby_package = "Flexport::DocumentProcessor::DocumentSchema::V1Beta1";
+
+message PackingList {
+  DocumentField invoice_number = 1;
+  DocumentField issue_date = 2;
+  DocumentField country_of_origin = 3;
+  DocumentField currency = 4;
+  DocumentField delivery_address = 5;
+  DocumentField seller = 6;
+  DocumentField seller_address = 7;
+  DocumentField manufacturer = 8;
+  DocumentField manufacturer_address = 9;
+  DocumentField consignee = 10;
+  DocumentField shipper = 11;
+  DocumentField shipping_marks = 12;
+  repeated PackingListLineItem packing_list_line_item = 13;
+
+  // The following fields aren't necessarily on the document but are important to know
+  string flex_id = 14;
+  string shipment_fid = 15; // can be shipment FID or derived shipment FID
+  string submitted_by_fid = 16; // user who submitted the form
+  string submitted_at = 17;
+  string digitization_processed_at = 18;
+  string source = 19;
+  string link_to_source_document = 20;
+
+  // Added fields for totals
+  DocumentField total_quantity = 21;
+  DocumentField total_packages = 22;
+  DocumentField total_pallets = 23;
+  DocumentField total_net_weight = 24;
+  DocumentField total_gross_weight = 25;
+  DocumentField total_volume = 26;
+  DocumentField container_number = 27;
+  DocumentField seal_number = 28;
+  DocumentField total_volume_unit_type = 29;
+  DocumentField total_weight_unit_type = 30;
+  DocumentField total_packages_unit_type = 31;
+}
+
+message PackingListLineItem {
+  DocumentField sku = 1;
+  DocumentField product_description = 2;
+  DocumentField purchase_order_number = 3;
+  DocumentField quantity = 4;
+  DocumentField price_per_unit = 5;
+  DocumentField total_price = 6;
+  DocumentField dimensions = 7; // represent as a string for now, as not all PLs list the length/width/height
+  DocumentField dimension_unit_type = 8; // e.g. CBM
+  DocumentField gross_weight = 9;
+  DocumentField net_weight = 10;
+  DocumentField weight_unit_type = 11;
+  DocumentField volume = 12;
+  DocumentField product_to_be_exported_to_core = 13;
+  DocumentField container_number = 14;
+  DocumentField hs_code = 15;
+  DocumentField country_of_origin = 16;
+  DocumentField seal_number = 17;
+  DocumentField pallet_count = 18;
+  DocumentField carton_numbers = 19;
+  DocumentField carton_count = 20;
+  DocumentField inner_box_quantity = 21; // This number multiplied by carton_count should yield total_quantity
+  DocumentField total_quantity = 22;
+}

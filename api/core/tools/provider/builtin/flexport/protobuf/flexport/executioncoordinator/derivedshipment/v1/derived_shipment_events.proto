@@ -1,0 +1,66 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.derivedshipment.v1;
+
+import "flexport/executioncoordinator/derivedshipment/v1/derived_shipment.proto";
+import "flexport/executioncoordinator/derivedshipment/v1/derived_shipment_route.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DerivedShipmentEventsProto";
+option java_package = "com.flexport.executioncoordinator.derivedshipment.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::DerivedShipment::V1";
+
+// Publish separate event types for air shipments, since they don't have a real shipment associated with the derived shipment.
+message AirConsolDerivedShipmentCreated {
+  string execution_order_fid = 1;
+
+  flexport.executioncoordinator.derivedshipment.v1.DerivedShipment derived_shipment = 2;
+}
+
+message AirConsolDerivedShipmentChanged {
+  string execution_order_fid = 1;
+
+  flexport.executioncoordinator.derivedshipment.v1.DerivedShipment old_derived_shipment = 2;
+
+  flexport.executioncoordinator.derivedshipment.v1.DerivedShipment new_derived_shipment = 3;
+}
+
+// Note there is no shipment_id field in this message, compared to DerivedShipmentRouteChanged
+message AirConsolDerivedShipmentRouteChanged {
+  string execution_order_fid = 1;
+  //
+  // The old route before change.
+  flexport.executioncoordinator.derivedshipment.v1.DerivedShipmentRoute old_derived_shipment_route = 2;
+  //
+  // The new route after change.
+  flexport.executioncoordinator.derivedshipment.v1.DerivedShipmentRoute new_derived_shipment_route = 3;
+}
+
+// Kinesis event emitted by the ExecutionCoordinator, when a DerivedShipment has been created.
+message DerivedShipmentCreated {
+  flexport.executioncoordinator.derivedshipment.v1.DerivedShipment derived_shipment = 1;
+}
+
+// Kinesis event emitted by the ExecutionCoordinator, when a DerivedShipment has been changed.
+message DerivedShipmentChanged {
+  flexport.executioncoordinator.derivedshipment.v1.DerivedShipment derived_shipment = 1;
+  flexport.executioncoordinator.derivedshipment.v1.DerivedShipment old_derived_shipment = 2;
+}
+
+// Kinesis event emitted by the ExecutionCoordinator, when a DerivedShipmentRoute has been changed.
+message DerivedShipmentRouteChanged {
+  //
+  // The ExecutionOrder fid associated with this DerivedShipment. Null if the derived shipment is based on a monolith quote request.
+  string execution_order_fid = 1;
+  //
+  // The shipment.rb fid associated with this DerivedShipment. Always present.
+  string shipment_fid = 2;
+  //
+  // The old route before change.
+  flexport.executioncoordinator.derivedshipment.v1.DerivedShipmentRoute old_derived_shipment_route = 3;
+  //
+  // The new route after change.
+  flexport.executioncoordinator.derivedshipment.v1.DerivedShipmentRoute new_derived_shipment_route = 4;
+}

@@ -1,0 +1,24 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executiontimeline.event.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TimelineEventArrivedAtFinalDestinationProto";
+option java_package = "com.flexport.executiontimeline.event.v1beta1";
+option ruby_package = "Flexport::ExecutionTimeline::Event::V1Beta1";
+
+message TimelineEventArrivedAtFinalDestination {
+  string leg_fid = 1;
+  string cargo_fid = 2;
+  string carrier_fid = 3;
+  // The fid of the immutable address instance this delivery is coming from
+  string origin_address_fid = 4;
+  // The fid of the immutable address instance this delivery is going to.
+  string destination_address_fid = 5;
+  // The actual arrived time should be a range
+  google.protobuf.Timestamp final_destination_arrived_time = 6;
+}

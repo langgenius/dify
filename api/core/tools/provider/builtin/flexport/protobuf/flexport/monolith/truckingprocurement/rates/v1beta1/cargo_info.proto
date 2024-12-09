@@ -1,0 +1,52 @@
+// TEAM: trucking_pricing_rate_management
+
+syntax = "proto3";
+
+package flexport.monolith.truckingprocurement.rates.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RateRequestCargo";
+option java_package = "com.flexport.monolith.truckingprocurement.rates.v1beta1";
+option ruby_package = "Flexport::Monolith::TruckingProcurement::Rates::V1Beta1";
+
+message CargoDimensions {
+  TruckingRateUnitDistance unit = 1;
+  uint32 length = 2;
+  uint32 width = 3;
+  uint32 height = 4;
+}
+
+message CargoWeight {
+  TruckingRateUnitWeight unit = 1;
+  uint32 weight = 2;
+}
+
+message CargoInfoCollection {
+  CargoWeight weight = 1;
+  CargoDimensions dimensions = 2;
+  TruckingRateUnitCargoElement cargo_element = 3;
+  uint32 cargo_element_count = 4;
+}
+
+message CargoInfo {
+  repeated CargoInfoCollection cargo_info_collections = 1;
+}
+
+enum TruckingRateUnitDistance {
+  TRUCKING_RATE_UNIT_DISTANCE_INVALID = 0;
+  TRUCKING_RATE_UNIT_DISTANCE_CENTIMETER = 1;
+  TRUCKING_RATE_UNIT_DISTANCE_INCH = 2;
+}
+
+enum TruckingRateUnitWeight {
+  TRUCKING_RATE_UNIT_WEIGHT_INVALID = 0;
+  TRUCKING_RATE_UNIT_WEIGHT_LB = 1;
+  TRUCKING_RATE_UNIT_WEIGHT_KG = 2;
+}
+
+enum TruckingRateUnitCargoElement {
+  TRUCKING_RATE_UNIT_CARGO_ELEMENT_INVALID = 0;
+  TRUCKING_RATE_UNIT_CARGO_ELEMENT_CARTON = 1;
+  TRUCKING_RATE_UNIT_CARGO_ELEMENT_CONTAINER = 2;
+  TRUCKING_RATE_UNIT_CARGO_ELEMENT_PALLET = 3;
+}

@@ -1,0 +1,19 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanConsolOriginCfsCutoffProto";
+option java_package = "com.flexport.executioncoordinator.types.enums.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Enums::V1";
+
+// Represents the type of a cutoff date for an origin CFS for ocean consolidation.
+enum OceanConsolOriginCfsCutoff {
+  OCEAN_CONSOL_ORIGIN_CFS_CUTOFF_INVALID = 0;
+  // The first day that the cargo can be delivered to the warehouse for consolidation.
+  OCEAN_CONSOL_ORIGIN_CFS_CUTOFF_OPEN = 1;
+  // The last day that the cargo can be delivered to the warehouse for consolidation.
+  OCEAN_CONSOL_ORIGIN_CFS_CUTOFF_CLOSE = 2;
+}

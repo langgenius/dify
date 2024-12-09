@@ -1,0 +1,40 @@
+// TEAM: bookings
+
+syntax = "proto3";
+
+package flexport.monolith.booking.notification.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "BookingNotificationApiProto";
+option java_package = "com.flexport.monolith.booking.notification.v1beta1";
+option ruby_package = "Flexport::Monolith::Booking::Notification::V1Beta1";
+
+import "flexport/booking/notification/v1beta1/notification.proto";
+
+// This service is used internally by Booking to get the users to notify in app.
+service BookingNotificationAPI {
+  // Get the client user info with given client fids for booking notification.
+  rpc UsersForClientBookingNotification(UsersForClientBookingNotificationRequest) returns (UsersForClientBookingNotificationResponse);
+  // Get the core user info with given client fids for booking notification.
+  rpc UsersForCoreBookingNotification(UsersForCoreBookingNotificationRequest) returns (UsersForCoreBookingNotificationResponse);
+}
+
+message UsersForClientBookingNotificationRequest {
+  // Client fids to be checked
+  repeated string client_fids = 1;
+}
+
+message UsersForClientBookingNotificationResponse {
+  repeated flexport.booking.notification.v1beta1.NotificationUsers users = 1;
+}
+
+message UsersForCoreBookingNotificationRequest {
+  // Client fids to be checked
+  repeated string client_fids = 1;
+  // Notification type slug
+  string notification_type_slug = 2;
+}
+
+message UsersForCoreBookingNotificationResponse {
+  repeated flexport.booking.notification.v1beta1.NotificationUsers users = 1;
+}

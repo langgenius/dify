@@ -1,0 +1,35 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+import "flexport/executioncoordinator/types/enums/v1/entry_point.proto";
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AirCargoSplitProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+message AirCargoSplit {
+  repeated ScheduleLeg old_legs = 1;
+  repeated ScheduleLeg new_legs = 2;
+}
+
+message ScheduleLeg {
+  string mawb = 1;
+  string flight_number = 2;
+  string origin = 3;
+  string destination = 4;
+  os.v1.types.walltimedatetime.v1.WallTimeDateTime etd = 5;
+  types.enums.v1.EntryPoint etd_source = 6;
+  os.v1.types.walltimedatetime.v1.WallTimeDateTime atd = 7;
+  types.enums.v1.EntryPoint atd_source = 8;
+  os.v1.types.walltimedatetime.v1.WallTimeDateTime eta = 9;
+  types.enums.v1.EntryPoint eta_source = 10;
+  os.v1.types.walltimedatetime.v1.WallTimeDateTime ata = 11;
+  types.enums.v1.EntryPoint ata_source = 12;
+  bool has_schedule_event = 13;
+  uint32 number_of_pieces = 14;
+}

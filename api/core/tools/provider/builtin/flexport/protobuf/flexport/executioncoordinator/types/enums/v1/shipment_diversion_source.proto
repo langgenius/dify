@@ -1,0 +1,24 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentDiversionSourceProto";
+option java_package = "com.flexport.executioncoordinator.types.enums.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Enums::V1";
+
+// The possible sources of diversion requests
+enum ShipmentDiversionSource {
+  // Exists to ensure accidetnally unset value is not permitted (required by linter)
+  SHIPMENT_DIVERSION_SOURCE_INVALID = 0;
+  // Used for instances where diversion source can be applicable, but it is not collected.
+  // Field is used to support deprecated software (core route editor), it should not be used for new implementations
+  SHIPMENT_DIVERSION_SOURCE_DEPRECATED_UNKNOWN = 1 [deprecated = true];
+  SHIPMENT_DIVERSION_SOURCE_CARRIER = 2;
+  SHIPMENT_DIVERSION_SOURCE_SHIPPER = 3;
+  SHIPMENT_DIVERSION_SOURCE_CONSIGNEE = 4;
+  // Used for instances where diversion source is not required by compliance, and is therefore not collected
+  SHIPMENT_DIVERSION_SOURCE_NOT_APPLICABLE = 5;
+}

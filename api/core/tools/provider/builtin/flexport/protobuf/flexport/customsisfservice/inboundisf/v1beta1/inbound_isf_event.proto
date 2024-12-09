@@ -1,0 +1,39 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsisfservice.inboundisf.v1beta1;
+
+import "flexport/customsisfservice/inboundisf/v1beta1/inbound_isf.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "InboundIsfEventProto";
+option java_package = "com.flexport.customsisfservice.inboundisf.v1beta1";
+option ruby_package = "Flexport::CustomsIsfService::InboundIsf::V1Beta1";
+
+message InboundIsfEvent {
+  string uuid = 1;
+  InboundIsf inbound_isf = 2;
+
+  oneof event_type {
+    InboundIsfUpdatedEvent updated = 3; // execution order fid may not be present on inbound_isf
+    InboundIsfAttachedEvent attached = 4; // execution order fid must be present on inbound_isf
+    InboundIsfDeletedEvent deleted = 5;
+  }
+
+  // The version of the inbound ISF that this event is for.
+  uint32 generation = 6;
+}
+
+message InboundIsfUpdatedEvent {
+  google.protobuf.Timestamp timestamp = 1;
+}
+
+message InboundIsfAttachedEvent {
+  google.protobuf.Timestamp timestamp = 1;
+}
+
+message InboundIsfDeletedEvent {
+  google.protobuf.Timestamp timestamp = 1;
+}

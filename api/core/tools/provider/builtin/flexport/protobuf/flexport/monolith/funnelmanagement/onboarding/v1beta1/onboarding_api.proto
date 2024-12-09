@@ -1,0 +1,47 @@
+// TEAM: trucking_carriers
+
+syntax = "proto3";
+
+package flexport.monolith.funnelmanagement.onboarding.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OnboardingApiProto";
+option java_package = "com.flexport.monolith.funnelmanagement.onboarding.v1beta1";
+option ruby_package = "Flexport::Monolith::FunnelManagement::Onboarding::V1Beta1";
+
+//  Onboarding Documents
+service OnboardingAPI {
+  rpc OnboardDocumentByUserEmail(OnboardDocumentByUserEmailRequest) returns (OnboardDocumentByUserEmailResponse);
+}
+
+message OnboardDocumentByUserEmailRequest {
+  string file_object_fid = 1;
+  string user_email = 2;
+  Types.DocumentTypes document_type = 3;
+  // expires_at is optional and only valid for certain document types; in the future there may be a renewal/revalidation flow
+  google.protobuf.Timestamp expires_at = 4;
+}
+message OnboardDocumentByUserEmailResponse {
+  enum Result {
+    RESULT_INVALID = 0;
+    RESULT_USER_NOT_YET_AFFILIATED = 1;
+    RESULT_DOCUMENT_UPLOADED = 2;
+    RESULT_DOCUMENT_UPDATED = 3;
+    RESULT_DOCUMENT_ALREADY_EXISTS_AND_VERIFIED = 4;
+  }
+
+  Result result_status = 1;
+  string message = 2;
+}
+
+message Types {
+  enum DocumentTypes {
+    DOCUMENT_TYPES_INVALID = 0;
+    DOCUMENT_TYPES_PROFILE = 1;
+    DOCUMENT_TYPES_CERTIFICATE_OF_INSURANCE = 2;
+    DOCUMENT_TYPES_W9 = 4;
+    DOCUMENT_TYPES_SIGNED_BROKER_TO_CARRIER_AGREEMENT = 8;
+  }
+}

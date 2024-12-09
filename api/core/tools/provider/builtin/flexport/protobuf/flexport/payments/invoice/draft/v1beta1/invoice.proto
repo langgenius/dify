@@ -1,0 +1,141 @@
+// TEAM: finance_platform
+
+syntax = "proto3";
+
+package flexport.payments.invoice.draft.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "InvoiceProto";
+option java_package = "com.flexport.payments.invoice.draft.v1beta1";
+option ruby_package = "Flexport::Payments::Invoice::Draft::V1Beta1";
+
+import "flexport/payments/creditmemo/v1beta1/credit_memo.proto";
+import "flexport/payments/exchangerate/v1/exchange_rate_dto.proto";
+import "flexport/payments/invoice/date/v1/date.proto";
+import "flexport/payments/payment/draft/v1beta1/payment.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// An item on an invoice.
+message Item {
+  int64 amount_micros = 1;
+  string category = 2;
+  string currency_code = 3;
+  string name = 4;
+  int32 netsuite_id = 5;
+  google.protobuf.Struct meta = 6;
+  string quantity_description = 7;
+  string rate_description = 8;
+  repeated string container_numbers = 9;
+  string slug = 10;
+  google.protobuf.Struct rate_attributes = 11;
+  google.protobuf.Struct quantity_attributes = 12;
+}
+
+// An request for payment to flexport sent to a client.
+message Invoice {
+  string name = 1;
+  flexport.payments.invoice.date.v1.Date due_date = 2;
+  google.protobuf.Timestamp issued_at_time = 3;
+  string currency_code = 4;
+  google.protobuf.Struct display_context = 5;
+  repeated google.protobuf.Struct formatted_notes = 6;
+  int32 invoiceable_subledger_account_id = 7;
+  int32 issuing_entity_id = 8;
+  int32 receiving_entity_id = 9;
+  bool is_late_fee_invoice = 10;
+  string principle_invoice_name = 11;
+  NetsuiteContext netsuite_context = 12;
+  bool should_sync_to_netsuite = 13;
+  int32 exchange_rate_id = 14;
+  repeated Item items = 15;
+}
+
+// Information needed to sync this invoice to netsuite.
+message NetsuiteContext {
+  string client_name = 1;
+  string client_segment = 2;
+  int32 client_credit_terms = 3;
+}
+
+// An invoice dto from read api.
+message InvoiceDto {
+  google.protobuf.Int32Value id = 1;
+  google.protobuf.Int32Value amount_paid = 2;
+  google.protobuf.StringValue amount_paid_formatted = 3;
+  google.protobuf.Int64Value amount_paid_micros = 4;
+  google.protobuf.Int32Value amount_remaining = 5;
+  google.protobuf.StringValue amount_remaining_formatted = 6;
+  google.protobuf.Int64Value amount_remaining_micros = 7;
+  google.protobuf.Int32Value total = 8;
+  google.protobuf.StringValue total_formatted = 9;
+  google.protobuf.Int64Value total_micros = 10;
+  google.protobuf.Int64Value items_total_micros = 11;
+  google.protobuf.Timestamp created_at_time = 12;
+  google.protobuf.Timestamp overdue_at_time = 13;
+  google.protobuf.Timestamp issued_at_time = 14;
+  google.protobuf.Timestamp voided_at_time = 15;
+  google.protobuf.Int32Value overdue_by = 16;
+  google.protobuf.Timestamp paid_at_time = 17;
+  google.protobuf.Timestamp amended_at_time = 18;
+  google.protobuf.Struct issuing_entity = 19;
+  google.protobuf.Struct receiving_entity = 20;
+  google.protobuf.Int32Value issuing_entity_id = 21;
+  google.protobuf.Int32Value receiving_entity_id = 22;
+  flexport.payments.invoice.date.v1.Date due_date = 23;
+  google.protobuf.Int32Value credits_applied = 24;
+  google.protobuf.Int32Value item_count = 25;
+  google.protobuf.StringValue name = 26;
+  google.protobuf.StringValue base64_uu_id = 27;
+  google.protobuf.StringValue currency_code = 28;
+  repeated string consolidated_invoice_fids = 29;
+  repeated string unarchived_consolidated_invoice_fids = 30;
+  google.protobuf.Struct display_context = 31;
+  repeated google.protobuf.Struct formatted_notes = 32;
+  google.protobuf.BoolValue void = 33;
+  google.protobuf.BoolValue paid = 34;
+  google.protobuf.BoolValue outstanding = 35;
+  google.protobuf.BoolValue partially_paid = 36;
+  google.protobuf.BoolValue financed = 37;
+  google.protobuf.BoolValue repayment_invoice = 38;
+  google.protobuf.Int32Value invoiceable_subledger_account_id = 39;
+  repeated flexport.payments.payment.draft.v1beta1.PaymentLineItemDto payment_line_items = 40;
+  repeated flexport.payments.payment.draft.v1beta1.SurchargeItemDto surcharge_items = 41;
+  repeated flexport.payments.creditmemo.v1beta1.CreditMemoDto credit_memos = 42;
+  flexport.payments.exchangerate.v1.ExchangeRateDto exchange_rate = 43;
+  InvoiceStatus status = 44;
+  google.protobuf.Int32Value total_with_fees = 45;
+  repeated InvoiceItemDto items = 46;
+  // TODO: Add subledger account here.
+
+}
+
+// Invoice payment status.
+enum InvoiceStatus {
+  INVOICE_STATUS_INVALID = 0;
+  INVOICE_STATUS_PAST_DUE = 1;
+  INVOICE_STATUS_OUTSTANDING = 2;
+  INVOICE_STATUS_PAYMENT_PENDING = 3;
+  INVOICE_STATUS_PAID = 4;
+  INVOICE_STATUS_VOID = 5;
+}
+
+// An invoice item dto on invoice.
+message InvoiceItemDto {
+  google.protobuf.Int32Value id = 1;
+  google.protobuf.Int32Value draft_service_item_id = 2;
+  google.protobuf.StringValue currency_code = 3;
+  google.protobuf.StringValue name = 4;
+  google.protobuf.StringValue category = 5;
+  google.protobuf.StringValue raw_category = 6;
+  google.protobuf.StringValue slug = 7;
+  google.protobuf.StringValue quantity_description = 8;
+  google.protobuf.Int32Value amount = 9;
+  google.protobuf.Int64Value amount_micros = 10;
+  google.protobuf.StringValue principle_invoice_name = 11;
+  google.protobuf.StringValue rate_description = 12;
+  google.protobuf.Struct rate_attributes = 13;
+  google.protobuf.Struct quantity_attributes = 14;
+  repeated string container_numbers = 15;
+}

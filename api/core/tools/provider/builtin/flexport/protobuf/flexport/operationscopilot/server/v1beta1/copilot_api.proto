@@ -1,0 +1,53 @@
+// TEAM: starship
+// Note: Keep sync with ffapp-infra/operations_copilot/service_copilot_backend/protobuf/copilot_api.proto.
+syntax = "proto3";
+
+package flexport.operationscopilot.server.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CopilotApiProto";
+option java_package = "com.flexport.operationscopilot.server.v1beta1";
+option ruby_package = "Flexport::OperationsCopilot::Server::V1Beta1";
+
+
+service CopilotAPI {
+  rpc SlotExtract(SlotExtractRequest) returns (SlotExtractResponse);
+  rpc AskAI(AskAIRequest) returns (AskAIResponse);
+}
+
+message SlotExtractRequest {
+  // Typescript type definition of the slot schema.
+  // e.g.,
+  // `
+  // containerInfos: {
+  //     emptyReturnDate: string;
+  //     containerNumber: string;
+  //   }[];`
+  string slot_schema = 1;
+  // Additional instruction on how to extract slots.
+  string slot_description = 2;
+  string payload = 3;
+}
+
+message SlotExtractResponse {
+  // A json string of extracted slots.
+  string slots = 1;
+}
+
+message AskAIRequest {
+  // General instruction to the AI.
+  // e.g., `You are an assistant in freight forwarding industry who answers questions based on the following shipment(${flexId}) details in JSON format:
+  // \`\`\`
+  // ${JSON.stringify(shipmentData, null, 2)}
+  // \`\`\`
+  // Try to make your answers short.`
+  string instruction = 1;
+
+  // User questions.
+  repeated string user_messages = 2;
+}
+
+
+message AskAIResponse {
+  string answer = 1;
+}

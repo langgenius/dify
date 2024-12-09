@@ -1,0 +1,39 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.workflow.sampleactionservice.v1beta1;
+
+import "flexport/workflow/prelude/options/v1/options.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "SampleActionServiceApiProto";
+option java_package = "com.flexport.workflow.sampleactionservice.v1beta1";
+option ruby_package = "Flexport::Workflow::SampleActionService::V1Beta1";
+
+// SampleActionServiceAPI, for test only.
+service SampleActionServiceAPI {
+  // Greet.
+  rpc Greet(GreetRequest) returns (GreetResponse) {
+    option (flexport.workflow.prelude.options.v1.grpc_wp_action).icon = "greet";
+    option (flexport.workflow.prelude.options.v1.grpc_wp_action).name = "Sample gRPC Action";
+    option (flexport.workflow.prelude.options.v1.grpc_wp_action).resource_key = "flx::workflow:wp_action:sample/grpc_greet";
+    option (flexport.workflow.prelude.options.v1.grpc_wp_action).service_name = "flowable";
+  }
+  // NoAction.
+  rpc NoAction(NoActionRequest) returns (NoActionResponse);
+}
+
+message GreetRequest {
+  string name = 1;
+}
+
+message GreetResponse {
+  string message = 2;
+}
+
+message NoActionRequest {}
+
+message NoActionResponse {
+  string message = 2;
+}

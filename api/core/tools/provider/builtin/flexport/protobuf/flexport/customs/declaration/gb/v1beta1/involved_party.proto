@@ -1,0 +1,236 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customs.declaration.gb.v1beta1;
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.declaration.gb.v1beta1";
+option ruby_package = "Flexport::Customs::Declaration::GB::V1Beta1";
+
+// InvolvedParty is an generalisation of many of the parties listed
+// in Group 3: Parties.
+message InvolvedParty {
+  string company_name = 1;
+  string address_line = 2;
+  string zip = 3;
+  string country = 4;
+}
+
+// The unique identification number assigned to an economic operator of a third country in the framework of a trade partnership
+// programme developed in accordance with the World Customs Organization Framework of Standards to Secure
+// and Facilitate Global Trade which is recognised by the European Union.
+//
+// Used for [Data Element 3/37] in CDS.
+message AdditionalSupplyChainActorIdNumber {
+  enum RoleCode {
+    ROLE_CODE_INVALID = 0;
+
+    // Consolidator.
+    ROLE_CODE_CS = 1;
+
+    // Manufacturer.
+    ROLE_CODE_MF = 2;
+
+    // Freight forwarder.
+    ROLE_CODE_FW = 3;
+
+    // Warehousekeeper.
+    ROLE_CODE_WH = 4;
+  }
+
+  RoleCode role_code = 1;
+
+  // EORI number of the party.
+  string eori_number = 2;
+}
+
+// Holder of the Authorisation Identification Number (No Previous Reference).
+// Used for [Data Element 3/39] in CDS.
+message HolderAuthorisationIdNumber {
+  enum AuthorisationTypeCode {
+    // Invalid authorisation type code.
+    AUTHORISATION_TYPE_CODE_INVALID = 0;
+
+    // Authorised consignee for Union transit.
+    AUTHORISATION_TYPE_CODE_ACE = 1;
+
+    // Authorised issuer to establish the proof of the customs status of Union goods.
+    AUTHORISATION_TYPE_CODE_ACP = 2;
+
+    // Authorised consignor for Union transit.
+    AUTHORISATION_TYPE_CODE_ACR = 3;
+
+    // Authorised consignee for TIR procedure.
+    AUTHORISATION_TYPE_CODE_ACT = 4;
+
+    // Authorised Economic Operator — Customs simplifications.
+    AUTHORISATION_TYPE_CODE_AEOC = 5;
+
+    // Authorised Economic Operator — Customs simplifications/Security and safety.
+    AUTHORISATION_TYPE_CODE_AEOF = 6;
+
+    // Authorised Economic Operator — Security and safety.
+    AUTHORISATION_TYPE_CODE_AEOS = 7;
+
+    // Approved Exporter.
+    AUTHORISATION_TYPE_CODE_APEX = 8;
+
+    // Authorised Weigher of Bananas.
+    AUTHORISATION_TYPE_CODE_AWB = 9;
+
+    // Binding Origin Information.
+    AUTHORISATION_TYPE_CODE_BOI = 10;
+
+    // Bulk Import Reduced Data Set Authorisation.
+    AUTHORISATION_TYPE_CODE_BRD = 11;
+
+    // Binding Tariff Information.
+    AUTHORISATION_TYPE_CODE_BTI = 12;
+
+    // Authorisation for centralised clearance.
+    AUTHORISATION_TYPE_CODE_CCL = 13;
+
+    // Customs comprehensive guarantee.
+    AUTHORISATION_TYPE_CODE_CGU = 14;
+
+    // Community System of Duty Reliefs.
+    AUTHORISATION_TYPE_CODE_CSDR = 15;
+
+    // Customs Supervised Exports.
+    AUTHORISATION_TYPE_CODE_CSE = 16;
+
+    // Simplification of the determination of amounts being part of the customs value of goods.
+    AUTHORISATION_TYPE_CODE_CVA = 17;
+
+    // Operation of storage facilities for the customs warehousing of goods in a public customs warehouse type I.
+    AUTHORISATION_TYPE_CODE_CW1 = 18;
+
+    // Operation of storage facilities for the customs warehousing of goods in a public customs warehouse type II.
+    AUTHORISATION_TYPE_CODE_CW2 = 19;
+
+    // Operation of storage facilities for the customs warehousing of goods in a private customs warehouse.
+    AUTHORISATION_TYPE_CODE_CWP = 20;
+
+    // Designated Export Place.
+    AUTHORISATION_TYPE_CODE_DEP = 21;
+
+    // Deferment of payment authorisation.
+    AUTHORISATION_TYPE_CODE_DPO = 22;
+
+    // Authorisation for the use of customs declaration through an entry of data in the declarant’s records (EIDR).
+    AUTHORISATION_TYPE_CODE_EIR = 23;
+
+    // Economic Operator Registration and Identification.
+    AUTHORISATION_TYPE_CODE_EORI = 24;
+
+    // RORO Exporter.
+    AUTHORISATION_TYPE_CODE_EXRR = 25;
+
+    // Excise Payment Security System.
+    AUTHORISATION_TYPE_CODE_EPSS = 26;
+
+    // Electronic Transport Document (authorised for use as a customs declaration).
+    AUTHORISATION_TYPE_CODE_ETD = 27;
+
+    // End Use authorisation.
+    AUTHORISATION_TYPE_CODE_EUS = 28;
+
+    // Registered Consignee (Excise).
+    AUTHORISATION_TYPE_CODE_EXEE = 29;
+
+    // Registered Consignor (Excise).
+    AUTHORISATION_TYPE_CODE_EXOR = 30;
+
+    // Excise Warehouse.
+    AUTHORISATION_TYPE_CODE_EXW = 31;
+
+    // Excise Warehouse – Hydrocarbon Oils.
+    AUTHORISATION_TYPE_CODE_EXWH = 32;
+
+    // Flexible Accounting System.
+    AUTHORISATION_TYPE_CODE_FAS = 33;
+
+    // Freeport Authorisation.
+    AUTHORISATION_TYPE_CODE_FP = 34;
+
+    // Fixed Transport Installation.
+    AUTHORISATION_TYPE_CODE_FTI = 35;
+
+    // Free Zone (only for the use of the Isle of Man).
+    AUTHORISATION_TYPE_CODE_FZ = 36;
+
+    // General Guarantee Account.
+    AUTHORISATION_TYPE_CODE_GGA = 37;
+
+    // General Valuation Statement.
+    AUTHORISATION_TYPE_CODE_GVS = 38;
+
+    // Inward Processing authorisation.
+    AUTHORISATION_TYPE_CODE_IPO = 39;
+
+    // Memorandum of Understanding (approved exporters only).
+    AUTHORISATION_TYPE_CODE_MOU = 40;
+
+    // Outward Processing authorisation.
+    AUTHORISATION_TYPE_CODE_OPO = 41;
+
+    // Remission of the amounts of import or export duty.
+    AUTHORISATION_TYPE_CODE_REM = 42;
+
+    // Repayment of the amounts of import or export duty.
+    AUTHORISATION_TYPE_CODE_REP = 43;
+
+    // Registered Exporter.
+    AUTHORISATION_TYPE_CODE_REX = 44;
+
+    // Regular Shipping Services authorisation.
+    AUTHORISATION_TYPE_CODE_RSS = 45;
+
+    // Authorisation for self-assessment.
+    AUTHORISATION_TYPE_CODE_SAS = 46;
+
+    // Single Authorisation for Simplified Procedures.
+    AUTHORISATION_TYPE_CODE_SASP = 47;
+
+    // Simplified Declaration Procedure authorisation (SDP).
+    AUTHORISATION_TYPE_CODE_SDE = 48;
+
+    // Simplified Import VAT Accounting.
+    AUTHORISATION_TYPE_CODE_SIVA = 49;
+
+    // Authorisation for the use of seals of a special type.
+    AUTHORISATION_TYPE_CODE_SSE = 50;
+
+    // Temporary Admission authorisation.
+    AUTHORISATION_TYPE_CODE_TEA = 51;
+
+    // Temporary Admission authorisation – Auction Houses (no guarantee for VAT required).
+    AUTHORISATION_TYPE_CODE_TEAH = 52;
+
+    // Authorisation to use transit declaration with a reduced dataset.
+    AUTHORISATION_TYPE_CODE_TRD = 53;
+
+    // Authorisation to operate storage facilities for the temporary storage of goods.
+    AUTHORISATION_TYPE_CODE_TST = 54;
+
+    // UK Continental Shelf.
+    AUTHORISATION_TYPE_CODE_UKCS = 55;
+
+    // UK Destination Authorisation.
+    AUTHORISATION_TYPE_CODE_UKD = 56;
+
+    // UK Trader Scheme Authorisation.
+    AUTHORISATION_TYPE_CODE_UKTS = 57;
+  }
+
+  AuthorisationTypeCode authorisation_type_code = 1;
+  string id = 2;
+}
+
+// Additional Fiscal References Identification Number (No Previous Reference).
+// Used for [Data Element 3/40] in CDS.
+message AdditionalFiscalReferencesIdNumber {
+  // 3 character code.
+  string role_code = 1;
+  string id = 2;
+}
