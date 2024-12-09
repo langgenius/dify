@@ -73,7 +73,7 @@ const ConditionValue = ({
 
       <div
         className={cn(
-          'shrink-0  truncate text-xs font-medium text-text-accent',
+          'shrink-0 ml-0.5 truncate text-xs font-medium text-text-accent',
           !notHasValue && 'max-w-[70px]',
         )}
         title={variableName}

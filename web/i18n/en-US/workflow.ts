@@ -32,6 +32,7 @@ const translation = {
     restore: 'Restore',
     runApp: 'Run App',
     batchRunApp: 'Batch Run App',
+    openInExplore: 'Open in Explore',
     accessAPIReference: 'Access API Reference',
     embedIntoSite: 'Embed Into Site',
     addTitle: 'Add title...',

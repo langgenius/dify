@@ -69,6 +69,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                     error=f"Failed to get tool runtime: {str(e)}",
                 )
             )
+            return
 
         # get parameters
         tool_parameters = tool_runtime.get_merged_runtime_parameters() or []

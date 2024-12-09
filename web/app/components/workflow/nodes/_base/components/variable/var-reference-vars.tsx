@@ -274,7 +274,7 @@ const VarReferenceVars: FC<Props> = ({
       {
         !hideSearch && (
           <>
-            <div className={cn('mb-2 mx-1', searchBoxClassName)} onClick={e => e.stopPropagation()}>
+            <div className={cn('mb-1 mx-2 mt-2', searchBoxClassName)} onClick={e => e.stopPropagation()}>
               <Input
                 showLeftIcon
                 showClearIcon
