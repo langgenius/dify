@@ -20,86 +20,88 @@ class DefaultValueType(StrEnum):
 
 
 NumberType = Union[int, float]
-ObjectType = dict[str, Any]
 
 
 class DefaultValue(BaseModel):
-    value: Union[
-        str,
-        NumberType,
-        ObjectType,
-        list[NumberType],
-        list[str],
-        list[ObjectType],
-    ]
+    value: Any
     type: DefaultValueType
     key: str
 
+    @staticmethod
+    def _parse_json(value: str) -> Any:
+        """Unified JSON parsing handler"""
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            raise DefaultValueTypeError(f"Invalid JSON format for value: {value}")
+
+    @staticmethod
+    def _validate_array(value: Any, element_type: DefaultValueType) -> bool:
+        """Unified array type validation"""
+        return isinstance(value, list) and all(isinstance(x, element_type) for x in value)
+
+    @staticmethod
+    def _convert_number(value: str) -> float:
+        """Unified number conversion handler"""
+        try:
+            return float(value)
+        except ValueError:
+            raise DefaultValueTypeError(f"Cannot convert to number: {value}")
+
     @model_validator(mode="after")
-    def validate_value_type(self) -> Any:
-        value_type = self.type
-        value = self.value
-        if value_type is None:
+    def validate_value_type(self) -> "DefaultValue":
+        if self.type is None:
             raise DefaultValueTypeError("type field is required")
 
-        # validate string type
-        if value_type == DefaultValueType.STRING:
-            if not isinstance(value, str):
-                raise DefaultValueTypeError(f"Value must be string type for {value}")
+        # Type validation configuration
+        type_validators = {
+            DefaultValueType.STRING: {
+                "type": str,
+                "converter": lambda x: x,
+            },
+            DefaultValueType.NUMBER: {
+                "type": NumberType,
+                "converter": self._convert_number,
+            },
+            DefaultValueType.OBJECT: {
+                "type": dict,
+                "converter": self._parse_json,
+            },
+            DefaultValueType.ARRAY_NUMBER: {
+                "type": list,
+                "element_type": NumberType,
+                "converter": self._parse_json,
+            },
+            DefaultValueType.ARRAY_STRING: {
+                "type": list,
+                "element_type": str,
+                "converter": self._parse_json,
+            },
+            DefaultValueType.ARRAY_OBJECT: {
+                "type": list,
+                "element_type": dict,
+                "converter": self._parse_json,
+            },
+        }
 
-        # validate number type
-        elif value_type == DefaultValueType.NUMBER:
-            if not isinstance(value, NumberType):
-                raise DefaultValueTypeError(f"Value must be number type for {value}")
+        validator = type_validators.get(self.type)
+        if not validator:
+            if self.type == DefaultValueType.ARRAY_FILES:
+                # Handle files type
+                return self
+            raise DefaultValueTypeError(f"Unsupported type: {self.type}")
 
-        # validate object type
-        elif value_type == DefaultValueType.OBJECT:
-            if isinstance(value, str):
-                try:
-                    value = json.loads(value)
-                except json.JSONDecodeError:
-                    raise DefaultValueTypeError(f"Value must be object type for {value}")
-            if not isinstance(value, ObjectType):
-                raise DefaultValueTypeError(f"Value must be object type for {value}")
+        # Handle string input cases
+        if isinstance(self.value, str) and self.type != DefaultValueType.STRING:
+            self.value = validator["converter"](self.value)
 
-        # validate array[number] type
-        elif value_type == DefaultValueType.ARRAY_NUMBER:
-            if isinstance(value, str):
-                try:
-                    value = json.loads(value)
-                except json.JSONDecodeError:
-                    raise DefaultValueTypeError(f"Value must be object type for {value}")
-            if not isinstance(value, list):
-                raise DefaultValueTypeError(f"Value must be array type for {value}")
-            if not all(isinstance(x, NumberType) for x in value):
-                raise DefaultValueTypeError(f"All elements must be numbers for {value}")
+        # Validate base type
+        if not isinstance(self.value, validator["type"]):
+            raise DefaultValueTypeError(f"Value must be {validator['type'].__name__} type for {self.value}")
 
-        # validate array[string] type
-        elif value_type == DefaultValueType.ARRAY_STRING:
-            if isinstance(value, str):
-                try:
-                    value = json.loads(value)
-                except json.JSONDecodeError:
-                    raise DefaultValueTypeError(f"Value must be object type for {value}")
-            if not isinstance(value, list):
-                raise DefaultValueTypeError(f"Value must be array type for {value}")
-            if not all(isinstance(x, str) for x in value):
-                raise DefaultValueTypeError(f"All elements must be strings for {value}")
-
-        # validate array[object] type
-        elif value_type == DefaultValueType.ARRAY_OBJECT:
-            if isinstance(value, str):
-                try:
-                    value = json.loads(value)
-                except json.JSONDecodeError:
-                    raise DefaultValueTypeError(f"Value must be object type for {value}")
-            if not isinstance(value, list):
-                raise DefaultValueTypeError(f"Value must be array type for {value}")
-            if not all(isinstance(x, ObjectType) for x in value):
-                raise DefaultValueTypeError(f"All elements must be objects for {value}")
-        elif value_type == DefaultValueType.ARRAY_FILES:
-            # handle files type
-            pass
+        # Validate array element types
+        if validator["type"] == list and not self._validate_array(self.value, validator["element_type"]):
+            raise DefaultValueTypeError(f"All elements must be {validator['element_type'].__name__} for {self.value}")
 
         return self
 
