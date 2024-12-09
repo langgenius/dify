@@ -1,9 +1,12 @@
-# Dify Backend API
+# Commerce AI
+
+This project is fork from [Dify](https://github.com/langgenius/dify).Dify is an open-source LLM app development platform. Dify's intuitive interface combines AI workflow, RAG pipeline, agent capabilities, model management, observability features and more, letting you quickly go from prototype to production.
+
+We are building a platform for AI-powered commerce.
+
+# Backend API
 
 ## Usage
-
-> [!IMPORTANT]
-> In the v0.6.12 release, we deprecated `pip` as the package management tool for Dify API Backend service and replaced it with `poetry`.
 
 1. Start the docker-compose stack
 
@@ -11,9 +14,8 @@
 
    ```bash
    cd ../docker
-   cp middleware.env.example middleware.env
-   # change the profile to other vector database if you are not using weaviate
-   docker compose -f docker-compose.middleware.yaml --profile weaviate -p dify up -d
+   cp middleware.env.example middleware.env   
+   docker compose -f docker-compose.middleware.yaml up -d
    cd ../api
    ```
 
@@ -37,7 +39,7 @@
 
 4. Create environment.
 
-   Dify API service uses [Poetry](https://python-poetry.org/docs/) to manage dependencies. You can execute `poetry shell` to activate the environment.
+   API service uses [Poetry](https://python-poetry.org/docs/) to manage dependencies. You can execute `poetry shell` to activate the environment.
 
 5. Install dependencies
 
@@ -60,7 +62,7 @@
    poetry run python -m flask run --host 0.0.0.0 --port=5001 --debug
    ```
 
-8. Start Dify [web](../web) service.
+8. Start [web](../web) service.
 9. Setup your application by visiting `http://localhost:3000`...
 10. If you need to handle and debug the async tasks (e.g. dataset importing and documents indexing), please start the worker service.
 
@@ -83,7 +85,7 @@
    ```
 
 
-# Dify Frontend
+# Frontend
 
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
@@ -193,11 +195,7 @@ If you are not familiar with writing tests, here is some code to refer to:
 
 
 
-
 ## Documentation
 
 Visit <https://docs.dify.ai/getting-started/readme> to view the full documentation.
 
-## Community
-
-The Dify community can be found on [Discord community](https://discord.gg/5AEfbxcd9k), where you can ask questions, voice ideas, and share your projects.
