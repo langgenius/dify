@@ -531,8 +531,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                                 base64_data = data_split[1]
                                 if mime_type != "application/pdf":
                                     raise ValueError(
-                                        f"Unsupported document type {mime_type}, "
-                                        "only support application/pdf"
+                                        f"Unsupported document type {mime_type}, " "only support application/pdf"
                                     )
                                 sub_message_dict = {
                                     "type": "document",
