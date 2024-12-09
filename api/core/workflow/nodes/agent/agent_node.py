@@ -99,9 +99,9 @@ class AgentNode(ToolNode):
         Generate parameters based on the given tool parameters, variable pool, and node data.
 
         Args:
-            tool_parameters (Sequence[ToolParameter]): The list of tool parameters.
+            agent_parameters (Sequence[AgentParameter]): The list of agent parameters.
             variable_pool (VariablePool): The variable pool containing the variables.
-            node_data (ToolNodeData): The data associated with the tool node.
+            node_data (AgentNodeData): The data associated with the agent node.
 
         Returns:
             Mapping[str, Any]: A dictionary containing the generated parameters.

@@ -91,5 +91,6 @@ from .workspace import (
     models,
     plugin,
     tool_providers,
+    agent_providers,
     workspace,
 )
