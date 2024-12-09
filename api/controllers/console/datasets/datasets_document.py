@@ -291,7 +291,7 @@ class DatasetDocumentListApi(Resource):
 
         try:
             document_ids = request.args.getlist("document_id")
-            DatasetService.delete_documents(dataset, document_ids)
+            DocumentService.delete_documents(dataset, document_ids)
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
