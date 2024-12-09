@@ -62,6 +62,10 @@ class Storage:
                 from extensions.storage.supabase_storage import SupabaseStorage
 
                 return SupabaseStorage
+            case StorageType.OPENDAL:
+                from extensions.storage.opendal_storage import OpenDALStorage
+
+                return OpenDALStorage
             case StorageType.LOCAL | _:
                 from extensions.storage.local_fs_storage import LocalFsStorage
 
