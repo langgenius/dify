@@ -50,7 +50,7 @@ class ApolloClient:
         self._no_key = {}
         self._hash = {}
         self._pull_timeout = 75
-        self._cache_file_path = os.path.expanduser("~") + "/data/apollo/cache/"
+        self._cache_file_path = os.path.expanduser("~") + "/.dify/config/remote-settings/apollo/cache/"
         self._long_poll_thread = None
         self._change_listener = change_listener  # "add" "delete" "update"
         if _notification_map is None:
