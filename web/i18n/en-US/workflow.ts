@@ -312,8 +312,8 @@ const translation = {
         },
         defaultValue: {
           title: 'Default Value',
-          desc: 'When an error occurs, specify a static output content',
-          tip: 'On error, will return below value',
+          desc: 'When an error occurs, specify a static output content.',
+          tip: 'On error, will return below value.',
           inLog: 'Node exception, outputting according to default values.',
           output: 'Output Default Value',
         },
