@@ -1,7 +1,8 @@
 import type { FC } from 'react'
 import { createPortal } from 'react-dom'
 import { RiCloseLine } from '@remixicon/react'
-import React, { useEffect, useRef } from 'react'
+import React from 'react'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-short'
 
 type AudioPreviewProps = {
   url: string
@@ -13,25 +14,10 @@ const AudioPreview: FC<AudioPreviewProps> = ({
   title,
   onCancel,
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null)
+  useKeyboardShortcuts({
+      esc: onCancel
+  })
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape')
-        onCancel()
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-
-    // Set focus to the container element
-    if (containerRef.current)
-      containerRef.current.focus()
-
-    // Cleanup function
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [onCancel])
   return createPortal(
     <div
       className='fixed inset-0 p-8 flex items-center justify-center bg-black/80 z-[1000]'
