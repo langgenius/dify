@@ -127,8 +127,10 @@ Toast.notify = ({
       <ToastContext.Provider value={{
         notify: () => {},
         close: () => {
-          if (holder)
+          if (holder) {
+            root.unmount()
             holder.remove()
+          }
         },
       }}>
         <Toast type={type} size={size} message={message} duration={duration} className={className} />
@@ -136,8 +138,10 @@ Toast.notify = ({
     )
     document.body.appendChild(holder)
     setTimeout(() => {
-      if (holder)
+      if (holder) {
+        root.unmount()
         holder.remove()
+      }
     }, duration || defaultDuring)
   }
 }
