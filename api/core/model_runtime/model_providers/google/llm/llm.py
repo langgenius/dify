@@ -1,6 +1,6 @@
 import base64
-import os
 import json
+import os
 import tempfile
 import time
 from collections.abc import Generator
@@ -10,7 +10,7 @@ import google.ai.generativelanguage as glm
 import google.generativeai as genai
 import requests
 from google.api_core import exceptions
-from google.generativeai.types import ContentType, GenerateContentResponse, File
+from google.generativeai.types import ContentType, File, GenerateContentResponse
 from google.generativeai.types.content_types import to_part
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
@@ -18,13 +18,13 @@ from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     DocumentPromptMessageContent,
     ImagePromptMessageContent,
-    VideoPromptMessageContent,
     PromptMessage,
     PromptMessageContentType,
     PromptMessageTool,
     SystemPromptMessage,
     ToolPromptMessage,
     UserPromptMessage,
+    VideoPromptMessageContent,
 )
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
