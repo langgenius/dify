@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
 import { usePrevious } from 'ahooks'
-import CryptoJS from 'crypto-js'
 import { useTranslation } from 'react-i18next'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
@@ -38,7 +37,6 @@ const Flowchart = React.forwardRef((props: {
   const [svgCode, setSvgCode] = useState(null)
   const [look, setLook] = useState<'classic' | 'handDrawn'>('classic')
 
-  const chartId = useRef(`flowchart_${CryptoJS.MD5(props.PrimitiveCode).toString()}`)
   const prevPrimitiveCode = usePrevious(props.PrimitiveCode)
   const [isLoading, setIsLoading] = useState(true)
   const timeRef = useRef<NodeJS.Timeout>()
@@ -51,12 +49,10 @@ const Flowchart = React.forwardRef((props: {
 
     try {
       if (typeof window !== 'undefined' && mermaidAPI) {
-        const svgGraph = await mermaidAPI.render(chartId.current, PrimitiveCode)
+        const svgGraph = await mermaidAPI.render('flowchart', PrimitiveCode)
         const base64Svg: any = await svgToBase64(svgGraph.svg)
         setSvgCode(base64Svg)
         setIsLoading(false)
-        if (chartId.current && base64Svg)
-          localStorage.setItem(chartId.current, base64Svg)
       }
     }
     catch (error) {
@@ -79,19 +75,11 @@ const Flowchart = React.forwardRef((props: {
         },
       })
 
-      localStorage.removeItem(chartId.current)
       renderFlowchart(props.PrimitiveCode)
     }
   }, [look])
 
   useEffect(() => {
-    const cachedSvg: any = localStorage.getItem(chartId.current)
-
-    if (cachedSvg) {
-      setSvgCode(cachedSvg)
-      setIsLoading(false)
-      return
-    }
     if (timeRef.current)
       clearTimeout(timeRef.current)
 
