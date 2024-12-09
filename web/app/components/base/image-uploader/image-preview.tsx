@@ -194,11 +194,11 @@ const ImagePreview: FC<ImagePreviewProps> = ({
   }, [handleMouseUp])
 
   useKeyboardShortcuts({
-      esc: onCancel,
-      up: zoomIn,
-      down: zoomOut,
-      left: onPrev ? onPrev : () => {},
-      right: onNext ? onNext : () => {},
+    esc: onCancel,
+    up: zoomIn,
+    down: zoomOut,
+    left: onPrev || (() => {}),
+    right: onNext || (() => {}),
   })
 
   return createPortal(

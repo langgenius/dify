@@ -52,12 +52,12 @@ const PdfPreview: FC<PdfPreviewProps> = ({
       tabIndex={-1}
     >
       <div
-          className='h-[95vh] w-[100vw] max-w-full max-h-full overflow-hidden'
-          style={{ transform: `scale(${scale})`, transformOrigin: 'center', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        className='h-[95vh] w-[100vw] max-w-full max-h-full overflow-hidden'
+        style={{ transform: `scale(${scale})`, transformOrigin: 'center', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         <PdfLoader
-            url={url}
-            beforeLoad={<div className='flex justify-center items-center h-64'><Loading type='app' /></div>}
+          url={url}
+          beforeLoad={<div className='flex justify-center items-center h-64'><Loading type='app' /></div>}
         >
           {(pdfDocument) => {
             return (

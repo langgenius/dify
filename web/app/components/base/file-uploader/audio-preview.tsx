@@ -15,7 +15,7 @@ const AudioPreview: FC<AudioPreviewProps> = ({
   onCancel,
 }) => {
   useKeyboardShortcuts({
-      esc: onCancel
+    esc: onCancel,
   })
 
   return createPortal(
