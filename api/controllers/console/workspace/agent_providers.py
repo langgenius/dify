@@ -1,5 +1,6 @@
 from flask_login import current_user
 from flask_restful import Resource
+
 from controllers.console import api
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
