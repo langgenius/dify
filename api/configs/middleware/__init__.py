@@ -73,7 +73,7 @@ class KeywordStoreConfig(BaseSettings):
     )
 
 
-class DatabaseConfig:
+class DatabaseConfig(BaseSettings):
     DB_HOST: str = Field(
         description="Hostname or IP address of the database server.",
         default="localhost",
