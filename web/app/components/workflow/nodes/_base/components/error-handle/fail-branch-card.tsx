@@ -15,6 +15,13 @@ const FailBranchCard = () => {
         </div>
         <div className='system-xs-regular text-text-tertiary'>
           {t('workflow.nodes.common.errorHandle.failBranch.customizeTip')}
+          <a
+            href='https://docs.dify.ai/guides/workflow/error-handling'
+            target='_blank'
+            className='text-text-accent'
+          >
+            {t('workflow.common.learnMore')}
+          </a>
         </div>
       </div>
     </div>

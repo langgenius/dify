@@ -332,7 +332,7 @@ export const useWorkflowRun = () => {
               incomeEdges.forEach((edge) => {
                 const incomeNode = nodes.find(node => node.id === edge.source)!
                 if (
-                  !incomeNode.data._runningBranchId
+                  (!incomeNode.data._runningBranchId && edge.sourceHandle === 'source')
                   || (incomeNode.data._runningBranchId && edge.sourceHandle === incomeNode.data._runningBranchId)
                 ) {
                   edge.data = {

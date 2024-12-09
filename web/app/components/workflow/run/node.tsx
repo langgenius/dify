@@ -178,6 +178,13 @@ const NodePanel: FC<Props> = ({
               {(nodeInfo.status === 'exception') && (
                 <StatusContainer status='stopped'>
                   {nodeInfo.error}
+                  <a
+                    href='https://docs.dify.ai/guides/workflow/error-handling/predefined-nodes-failure-logic'
+                    target='_blank'
+                    className='text-text-accent'
+                  >
+                    {t('workflow.common.learnMore')}
+                  </a>
                 </StatusContainer>
               )}
               {nodeInfo.status === 'failed' && (

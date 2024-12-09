@@ -32,6 +32,13 @@ const DefaultValue = ({
     <div className='px-4 pt-2'>
       <div className='mb-2 body-xs-regular text-text-tertiary'>
         {t('workflow.nodes.common.errorHandle.defaultValue.desc')}
+        <a
+          href='https://docs.dify.ai/guides/workflow/error-handling'
+          target='_blank'
+          className='text-text-accent'
+        >
+          {t('workflow.common.learnMore')}
+        </a>
       </div>
       <div className='space-y-1'>
         {
