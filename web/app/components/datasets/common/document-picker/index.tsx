@@ -1,11 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useBoolean } from 'ahooks'
-import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
+import { RiArrowDownSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '../document-file-icon'
-import type { ParentMode, SimpleDocumentDetail } from '@/models/datasets'
+import DocumentList from './document-list'
+import type { DocumentItem, ParentMode, SimpleDocumentDetail } from '@/models/datasets'
 import { ProcessMode } from '@/models/datasets'
 import {
   PortalToFollowElem,
@@ -59,7 +60,12 @@ const DocumentPicker: FC<Props> = ({
     set: setOpen,
     toggle: togglePopup,
   }] = useBoolean(false)
-  const ArrowIcon = open ? RiArrowDownSLine : RiArrowUpSLine
+  const ArrowIcon = RiArrowDownSLine
+
+  const handleChange = useCallback(({ id }: DocumentItem) => {
+    onChange(documentsList?.find(item => item.id === id) as SimpleDocumentDetail)
+    setOpen(false)
+  }, [documentsList, onChange, setOpen])
 
   return (
     <PortalToFollowElem
@@ -86,28 +92,19 @@ const DocumentPicker: FC<Props> = ({
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>
-
         <div className='w-[360px] p-1 pt-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]'>
           <SearchInput value={query} onChange={setQuery} className='mx-1' />
           {documentsList
             ? (
-              <div className='mt-2'>
-                {documentsList.map(item => (
-                  <div
-                    key={item.id}
-                    className='flex items-center h-8 px-2 hover:bg-state-base-hover rounded-lg space-x-2 cursor-pointer'
-                    onClick={
-                      () => {
-                        onChange(item)
-                        setOpen(false)
-                      }
-                    }
-                  >
-                    <FileIcon name={item.name} extension={item.data_source_detail_dict?.upload_file.extension} size='sm' />
-                    <div className='truncate text-text-secondary text-sm'>{item.name}</div>
-                  </div>
-                ))}
-              </div>
+              <DocumentList
+                className='mt-2'
+                list={documentsList.map(d => ({
+                  id: d.id,
+                  name: d.name,
+                  extension: d.data_source_detail_dict?.upload_file.extension || '',
+                }))}
+                onChange={handleChange}
+              />
             )
             : (<div className='mt-2 flex items-center justify-center w-[360px] h-[100px]'>
               <Loading />

@@ -102,6 +102,12 @@ export type CustomFile = File & {
   created_at?: number
 }
 
+export type DocumentItem = {
+  id: string
+  name: string
+  extension: string
+}
+
 export type CrawlOptions = {
   crawl_sub_pages: boolean
   only_main_content: boolean
