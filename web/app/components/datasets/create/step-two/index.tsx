@@ -21,6 +21,7 @@ import { ChunkContainer, QAPreview } from '../../chunk'
 import { PreviewHeader } from '../../preview/header'
 import { FormattedText } from '../../formatted-text/formatted'
 import { PreviewSlice } from '../../formatted-text/flavours/preview-slice'
+import PreviewDocumentPicker from '../../common/document-picker/preview-document-picker'
 import s from './index.module.css'
 import unescape from './unescape'
 import escape from './escape'
@@ -28,7 +29,7 @@ import { OptionCard } from './option-card'
 import LanguageSelect from './language-select'
 import { DelimiterInput, MaxLengthInput, OverlapInput } from './inputs'
 import cn from '@/utils/classnames'
-import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FullDocumentDetail, ParentMode, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, DocumentItem, FullDocumentDetail, ParentMode, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 
 import Button from '@/app/components/base/button'
 import FloatRightContainer from '@/app/components/base/float-right-container'
@@ -57,7 +58,6 @@ import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocumen
 import Badge from '@/app/components/base/badge'
 import { SkeletonContanier, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Tooltip from '@/app/components/base/tooltip'
-import Select from '@/app/components/base/select'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='text-text-secondary text-xs font-semibold leading-none'>{props.children}</label>
@@ -168,7 +168,9 @@ const StepTwo = ({
       : IndexingType.ECONOMICAL,
   )
 
-  const [previewFileName, setPreviewFileName] = useState<string>()
+  const [previewFile, setPreviewFile] = useState<DocumentItem>(
+    (datasetId && documentDetail) ? documentDetail.file : files[0],
+  )
 
   // QA Related
   const [isLanguageSelectDisabled, setIsLanguageSelectDisabled] = useState(false)
@@ -229,8 +231,8 @@ const StepTwo = ({
     docForm,
     docLanguage,
     dataSourceType: DataSourceType.FILE,
-    files: previewFileName
-      ? [files.find(file => file.name === previewFileName)!]
+    files: previewFile
+      ? [files.find(file => file.name === previewFile.name)!]
       : files,
     indexingTechnique: getIndexing_technique() as any,
     processRule: getProcessRule(),
@@ -932,18 +934,14 @@ const StepTwo = ({
             title='Preview'
           >
             <div className='flex items-center gap-2'>
-              <Select
-                items={
-                  files.map(file => ({
-                    name: file.name,
-                    value: file.name,
-                  }))
-                }
-                onSelect={(selected) => {
+              <PreviewDocumentPicker
+                files={files.map(file => ({ name: file.name!, id: file.id!, extension: 'pdf' }))}
+                onChange={(selected) => {
                   currentEstimateMutation.reset()
-                  setPreviewFileName(selected.name)
+                  setPreviewFile(selected)
                   currentEstimateMutation.mutate()
                 }}
+                value={previewFile!}
               />
               <Badge text={t(
                 'datasetCreation.stepTwo.previewChunkCount', {
