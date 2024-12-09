@@ -93,6 +93,7 @@ const translation = {
   switchLabel: '作成されるアプリのコピー',
   removeOriginal: '元のアプリを削除する',
   switchStart: '切り替えを開始する',
+  openInExplore: '"探索" で開く',
   typeSelector: {
     all: 'すべてのタイプ',
     chatbot: 'チャットボット',
