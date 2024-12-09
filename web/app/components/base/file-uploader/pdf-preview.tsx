@@ -2,11 +2,13 @@ import type { FC } from 'react'
 import { createPortal } from 'react-dom'
 import 'react-pdf-highlighter/dist/style.css'
 import { PdfHighlighter, PdfLoader } from 'react-pdf-highlighter'
-import { RiCloseLine } from '@remixicon/react'
+import { t } from 'i18next'
+import { RiCloseLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
 import React, { useState } from 'react'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-short'
+import Tooltip from '@/app/components/base/tooltip'
 
 type PdfPreviewProps = {
   url: string
@@ -74,12 +76,25 @@ const PdfPreview: FC<PdfPreviewProps> = ({
           }}
         </PdfLoader>
       </div>
-      <div
-        className='absolute top-6 right-6 flex items-center justify-center w-8 h-8 bg-white/[0.08] rounded-lg backdrop-blur-[2px] cursor-pointer z-[10000]'
-        onClick={onCancel}
-      >
-        <RiCloseLine className='w-4 h-4 text-gray-500'/>
-      </div>
+      <Tooltip popupContent={t('common.operation.zoomOut')}>
+        <div className='absolute top-6 right-24 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
+          onClick={zoomOut}>
+          <RiZoomOutLine className='w-4 h-4 text-gray-500'/>
+        </div>
+      </Tooltip>
+      <Tooltip popupContent={t('common.operation.zoomIn')}>
+        <div className='absolute top-6 right-16 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
+          onClick={zoomIn}>
+          <RiZoomInLine className='w-4 h-4 text-gray-500'/>
+        </div>
+      </Tooltip>
+      <Tooltip popupContent={t('common.operation.cancel')}>
+        <div
+          className='absolute top-6 right-6 flex items-center justify-center w-8 h-8 bg-white/8 rounded-lg backdrop-blur-[2px] cursor-pointer'
+          onClick={onCancel}>
+          <RiCloseLine className='w-4 h-4 text-gray-500'/>
+        </div>
+      </Tooltip>
     </div>,
     document.body,
   )
