@@ -2,6 +2,7 @@ const translation = {
   common: {
     appUnavailable: 'แอพไม่พร้อมใช้งาน',
     appUnknownError: 'แอพไม่พร้อมใช้งาน',
+    welcome: '',
   },
   chat: {
     newChat: 'แชทใหม่',

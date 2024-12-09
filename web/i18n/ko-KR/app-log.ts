@@ -80,6 +80,8 @@ const translation = {
   runDetail: {
     title: '대화 로그',
     workflowTitle: '로그 세부 정보',
+    fileListDetail: '세부',
+    fileListLabel: '파일 세부 정보',
   },
   promptLog: '프롬프트 로그',
   agentLog: '에이전트 로그',

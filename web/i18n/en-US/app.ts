@@ -8,6 +8,10 @@ const translation = {
     completion: 'Completion',
   },
   duplicate: 'Duplicate',
+  mermaid: {
+    handDrawn: 'Hand Drawn',
+    classic: 'Classic',
+  },
   duplicateTitle: 'Duplicate App',
   export: 'Export DSL',
   exportFailed: 'Export DSL failed.',
@@ -97,6 +101,7 @@ const translation = {
   switchLabel: 'The app copy to be created',
   removeOriginal: 'Delete the original app',
   switchStart: 'Start switch',
+  openInExplore: 'Open in Explore',
   typeSelector: {
     all: 'ALL Types',
     chatbot: 'Chatbot',
