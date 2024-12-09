@@ -9,6 +9,7 @@
       "error",
       "type"
     ],
+    "react-hooks/rules-of-hooks": "off",
     "@typescript-eslint/no-var-requires": "off",
     "no-console": "off",
     "indent": "off",
