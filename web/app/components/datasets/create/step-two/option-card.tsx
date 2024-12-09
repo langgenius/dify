@@ -22,7 +22,7 @@ type OptionCardHeaderProps = {
 export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
   const { icon, title, description, isActive, activeClassName, effectImg } = props
   return <div className={classNames(
-    'flex h-full overflow-hidden rounded-xl relative',
+    'flex h-full overflow-hidden rounded-t-xl relative',
     isActive && activeClassName,
   )}>
     <div className='size-14 flex items-center justify-center relative overflow-hidden'>
