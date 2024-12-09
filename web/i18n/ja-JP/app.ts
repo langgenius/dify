@@ -128,7 +128,7 @@ const translation = {
     inUse: '使用中',
     configProvider: {
       title: '配置 ',
-      placeholder: 'あなた様の{{key}}を入力しでください',
+      placeholder: 'あなた様の{{key}}を入力してください',
       project: 'プロジェクト',
       publicKey: '公開キー',
       secretKey: '秘密キー',
