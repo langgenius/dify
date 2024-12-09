@@ -75,7 +75,7 @@ class DatasetDocumentSegmentListApi(Resource):
 
         query = DocumentSegment.query.filter(
             DocumentSegment.document_id == str(document_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        )
+        ).order_by(DocumentSegment.position.asc())
 
         if status_list:
             query = query.filter(DocumentSegment.status.in_(status_list))
