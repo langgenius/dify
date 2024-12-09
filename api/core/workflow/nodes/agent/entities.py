@@ -1,4 +1,5 @@
 from typing import Any, Literal, Union
+
 from pydantic import BaseModel, ValidationInfo, field_validator
 
 from core.workflow.nodes.base.entities import BaseNodeData

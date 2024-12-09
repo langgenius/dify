@@ -1,7 +1,6 @@
 from collections.abc import Generator
 from typing import Any, Optional
 
-
 from core.agent.entities import AgentInvokeMessage
 from core.plugin.entities.plugin import GenericProviderID
 from core.plugin.entities.plugin_daemon import (

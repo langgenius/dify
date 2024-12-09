@@ -1,4 +1,5 @@
 from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from core.tools.entities.common_entities import I18nObject
