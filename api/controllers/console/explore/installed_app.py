@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+from flask import request
 from flask_login import current_user
 from flask_restful import Resource, inputs, marshal_with, reqparse
 from sqlalchemy import and_
@@ -20,8 +21,17 @@ class InstalledAppsListApi(Resource):
     @account_initialization_required
     @marshal_with(installed_app_list_fields)
     def get(self):
+        app_id = request.args.get("app_id", default=None, type=str)
         current_tenant_id = current_user.current_tenant_id
-        installed_apps = db.session.query(InstalledApp).filter(InstalledApp.tenant_id == current_tenant_id).all()
+
+        if app_id:
+            installed_apps = (
+                db.session.query(InstalledApp)
+                .filter(and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == app_id))
+                .all()
+            )
+        else:
+            installed_apps = db.session.query(InstalledApp).filter(InstalledApp.tenant_id == current_tenant_id).all()
 
         current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
         installed_apps = [
