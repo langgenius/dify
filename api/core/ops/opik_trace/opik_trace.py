@@ -27,8 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 def wrap_dict(key_name, data):
-    """ Make sure that the input data is a dict
-    """
+    """Make sure that the input data is a dict"""
     if not isinstance(data, dict):
         return {key_name: data}
 
@@ -36,8 +35,7 @@ def wrap_dict(key_name, data):
 
 
 def wrap_metadata(metadata, **kwargs):
-    """ Add common metatada to all Traces and Spans
-    """
+    """Add common metatada to all Traces and Spans"""
     metadata["created_from"] = "opik"
 
     metadata.update(kwargs)
