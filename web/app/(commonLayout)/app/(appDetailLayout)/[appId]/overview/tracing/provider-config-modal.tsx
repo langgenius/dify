@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import Field from './field'
-import type { LangFuseConfig, LangSmithConfig } from './type'
+import type { LangFuseConfig, LangSmithConfig, OpikConfig } from './type'
 import { TracingProvider } from './type'
 import { docURL } from './config'
 import {
@@ -21,10 +21,10 @@ import Toast from '@/app/components/base/toast'
 type Props = {
   appId: string
   type: TracingProvider
-  payload?: LangSmithConfig | LangFuseConfig | null
+  payload?: LangSmithConfig | LangFuseConfig | OpikConfig | null
   onRemoved: () => void
   onCancel: () => void
-  onSaved: (payload: LangSmithConfig | LangFuseConfig) => void
+  onSaved: (payload: LangSmithConfig | LangFuseConfig | OpikConfig) => void
   onChosen: (provider: TracingProvider) => void
 }
 
@@ -42,6 +42,13 @@ const langFuseConfigTemplate = {
   host: '',
 }
 
+const opikConfigTemplate = {
+  api_key: '',
+  project: '',
+  url: '',
+  workspace: '',
+}
+
 const ProviderConfigModal: FC<Props> = ({
   appId,
   type,
@@ -55,14 +62,17 @@ const ProviderConfigModal: FC<Props> = ({
   const isEdit = !!payload
   const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)
-  const [config, setConfig] = useState<LangSmithConfig | LangFuseConfig>((() => {
+  const [config, setConfig] = useState<LangSmithConfig | LangFuseConfig | OpikConfig>((() => {
     if (isEdit)
       return payload
 
     if (type === TracingProvider.langSmith)
       return langSmithConfigTemplate
 
-    return langFuseConfigTemplate
+    else if (type === TracingProvider.langfuse)
+      return langFuseConfigTemplate
+
+    return opikConfigTemplate
   })())
   const [isShowRemoveConfirm, {
     setTrue: showRemoveConfirm,
@@ -109,6 +119,10 @@ const ProviderConfigModal: FC<Props> = ({
         errorMessage = t('common.errorMsg.fieldRequired', { field: t(`${I18N_PREFIX}.publicKey`) })
       if (!errorMessage && !postData.host)
         errorMessage = t('common.errorMsg.fieldRequired', { field: 'Host' })
+    }
+
+    if (type === TracingProvider.opik) {
+      const postData = config as OpikConfig
     }
 
     return errorMessage
@@ -212,6 +226,38 @@ const ProviderConfigModal: FC<Props> = ({
                             value={(config as LangFuseConfig).host}
                             onChange={handleConfigChange('host')}
                             placeholder='https://cloud.langfuse.com'
+                          />
+                        </>
+                      )}
+                      {type === TracingProvider.opik && (
+                        <>
+                          <Field
+                            label='API Key'
+                            labelClassName='!text-sm'
+                            value={(config as OpikConfig).api_key}
+                            onChange={handleConfigChange('api_key')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'API Key' })!}
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.project`)!}
+                            labelClassName='!text-sm'
+                            value={(config as OpikConfig).project}
+                            onChange={handleConfigChange('project')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.project`) })!}
+                          />
+                          <Field
+                            label='Workspace'
+                            labelClassName='!text-sm'
+                            value={(config as OpikConfig).workspace}
+                            onChange={handleConfigChange('workspace')}
+                            placeholder={'default'}
+                          />
+                          <Field
+                            label='Url'
+                            labelClassName='!text-sm'
+                            value={(config as OpikConfig).url}
+                            onChange={handleConfigChange('url')}
+                            placeholder={'https://www.comet.com/opik/api/'}
                           />
                         </>
                       )}
