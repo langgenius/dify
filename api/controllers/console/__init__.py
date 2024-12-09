@@ -84,6 +84,7 @@ from .tag import tags
 # Import workspace controllers
 from .workspace import (
     account,
+    agent_providers,
     endpoint,
     load_balancing_config,
     members,
