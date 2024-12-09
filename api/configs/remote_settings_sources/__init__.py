@@ -14,4 +14,4 @@ class RemoteSettingsSourceConfig(ApolloSettingsSourceInfo):
     )
 
 
-__all__ = ["RemoteSettingsSourceConfig", "RemoteSettingsSourceName", "RemoteSettingsSource"]
+__all__ = ["RemoteSettingsSource", "RemoteSettingsSourceConfig", "RemoteSettingsSourceName"]
