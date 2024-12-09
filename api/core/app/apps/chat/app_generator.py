@@ -36,7 +36,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        streaming: Literal[True] = True,
+        streaming: Literal[True],
     ) -> Generator[str, None, None]: ...
 
     @overload
@@ -46,7 +46,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        streaming: Literal[False] = False,
+        streaming: Literal[False],
     ) -> Mapping[str, Any]: ...
 
     @overload
