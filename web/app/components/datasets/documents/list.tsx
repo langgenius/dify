@@ -281,7 +281,6 @@ export const OperationAction: FC<{
         <Tooltip
           popupContent={t('datasetDocuments.list.action.settings')}
           popupClassName='text-text-secondary system-xs-medium'
-          needsDelay
         >
           <button
             className={cn('rounded-lg mr-2 cursor-pointer',

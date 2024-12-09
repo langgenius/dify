@@ -14,6 +14,8 @@ import { formatNumber } from '@/utils/format'
 import Confirm from '@/app/components/base/confirm'
 import cn from '@/utils/classnames'
 import Badge from '@/app/components/base/badge'
+import { isAfter } from '@/utils/time'
+import Tooltip from '@/app/components/base/tooltip'
 
 const Dot = React.memo(() => {
   return (
@@ -115,6 +117,8 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     answer,
     keywords,
     child_chunks = [],
+    created_at,
+    updated_at,
   } = detail as Required<ISegmentCardProps>['detail']
   const [showModal, setShowModal] = useState(false)
   const isCollapsed = useSegmentListContext(s => s.isCollapsed)
@@ -132,10 +136,11 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     return mode === 'hierarchical' && parentMode === 'full-doc'
   }, [mode, parentMode])
 
-  // todo: change to real logic
   const chunkEdited = useMemo(() => {
-    return mode !== 'hierarchical' || parentMode !== 'full-doc'
-  }, [mode, parentMode])
+    if (mode === 'hierarchical' && parentMode === 'full-doc')
+      return false
+    return isAfter(updated_at * 1000, created_at * 1000)
+  }, [mode, parentMode, updated_at, created_at])
 
   const textOpacity = useMemo(() => {
     return enabled ? '' : 'opacity-50 group-hover/card:opacity-100'
@@ -203,22 +208,32 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                         rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-[5px]">
                           {!archived && (
                             <>
-                              <div
-                                className='shrink-0 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-state-base-hover cursor-pointer'
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  onClickEdit?.()
-                                }}>
-                                <RiEditLine className='w-4 h-4 text-text-tertiary' />
-                              </div>
-                              <div className='shrink-0 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-state-destructive-hover cursor-pointer group/delete'
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setShowModal(true)
-                                }
-                                }>
-                                <RiDeleteBinLine className='w-4 h-4 text-text-tertiary group-hover/delete:text-text-destructive' />
-                              </div>
+                              <Tooltip
+                                popupContent='Edit'
+                                popupClassName='text-text-secondary system-xs-medium'
+                              >
+                                <div
+                                  className='shrink-0 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-state-base-hover cursor-pointer'
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    onClickEdit?.()
+                                  }}>
+                                  <RiEditLine className='w-4 h-4 text-text-tertiary' />
+                                </div>
+                              </Tooltip>
+                              <Tooltip
+                                popupContent='Delete'
+                                popupClassName='text-text-secondary system-xs-medium'
+                              >
+                                <div className='shrink-0 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-state-destructive-hover cursor-pointer group/delete'
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setShowModal(true)
+                                  }
+                                  }>
+                                  <RiDeleteBinLine className='w-4 h-4 text-text-tertiary group-hover/delete:text-text-destructive' />
+                                </div>
+                              </Tooltip>
                               <Divider type="vertical" className="h-3.5 bg-divider-regular" />
                             </>
                           )}

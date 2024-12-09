@@ -6,7 +6,6 @@ import { useParams } from 'next/navigation'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { useKeyPress } from 'ahooks'
 import { SegmentIndexTag, useSegmentListContext } from './completed'
-import Drawer from '@/app/components/base/drawer'
 import Button from '@/app/components/base/button'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea/common'
 import { ToastContext } from '@/app/components/base/toast'
@@ -19,14 +18,12 @@ import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/co
 import Divider from '@/app/components/base/divider'
 
 type NewSegmentModalProps = {
-  isShow: boolean
   onCancel: () => void
   docForm: string
   onSave: () => void
 }
 
 const NewSegmentModal: FC<NewSegmentModalProps> = ({
-  isShow,
   onCancel,
   docForm,
   onSave,
@@ -86,6 +83,8 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.s`, (e) => {
+    if (loading)
+      return
     e.preventDefault()
     handleSave()
   }
@@ -167,58 +166,47 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   }
 
   return (
-    <Drawer
-      isOpen={isShow}
-      onClose={() => {}}
-      panelClassname={`!p-0 ${fullScreen
-        ? '!max-w-full !w-full'
-        : 'mt-16 mr-2 mb-2 !max-w-[560px] !w-[560px] border-[0.5px] border-components-panel-border rounded-xl'}`}
-      mask={false}
-      unmount
-      footer={null}
-    >
-      <div className={'flex flex-col h-full'}>
-        <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
-          <div className='flex flex-col'>
-            <div className='text-text-primary system-xl-semibold'>{
-              docForm === 'qa_model'
-                ? t('datasetDocuments.segment.newQaSegment')
-                : t('datasetDocuments.segment.addChunk')
-            }</div>
-            <div className='flex items-center gap-x-2'>
-              <SegmentIndexTag label={'New Chunk'} />
-              <span className='text-text-quaternary system-xs-medium'>·</span>
-              <span className='text-text-tertiary system-xs-medium'>{formatNumber(question.length)} {t('datasetDocuments.segment.characters')}</span>
-            </div>
-          </div>
-          <div className='flex items-center'>
-            {fullScreen && (
-              <>
-                {renderActionButtons()}
-                <Divider type='vertical' className='h-3.5 bg-divider-regular ml-4 mr-2' />
-              </>
-            )}
-            <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer mr-1' onClick={toggleFullScreen}>
-              <RiExpandDiagonalLine className='w-4 h-4 text-text-tertiary' />
-            </div>
-            <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer' onClick={handleCancel}>
-              <RiCloseLine className='w-4 h-4 text-text-tertiary' />
-            </div>
+    <div className={'flex flex-col h-full'}>
+      <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
+        <div className='flex flex-col'>
+          <div className='text-text-primary system-xl-semibold'>{
+            docForm === 'qa_model'
+              ? t('datasetDocuments.segment.newQaSegment')
+              : t('datasetDocuments.segment.addChunk')
+          }</div>
+          <div className='flex items-center gap-x-2'>
+            <SegmentIndexTag label={'New Chunk'} />
+            <span className='text-text-quaternary system-xs-medium'>·</span>
+            <span className='text-text-tertiary system-xs-medium'>{formatNumber(question.length)} {t('datasetDocuments.segment.characters')}</span>
           </div>
         </div>
-        <div className={classNames('flex grow overflow-hidden', fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8' : 'flex-col gap-y-1 py-3 px-4')}>
-          <div className={classNames('break-all overflow-y-auto whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
-            {renderContent()}
+        <div className='flex items-center'>
+          {fullScreen && (
+            <>
+              {renderActionButtons()}
+              <Divider type='vertical' className='h-3.5 bg-divider-regular ml-4 mr-2' />
+            </>
+          )}
+          <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer mr-1' onClick={toggleFullScreen}>
+            <RiExpandDiagonalLine className='w-4 h-4 text-text-tertiary' />
           </div>
-          {renderKeywords()}
+          <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer' onClick={handleCancel}>
+            <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+          </div>
         </div>
-        {!fullScreen && (
-          <div className='flex items-center justify-end p-4 pt-3 border-t-[1px] border-t-divider-subtle'>
-            {renderActionButtons()}
-          </div>
-        )}
       </div>
-    </Drawer>
+      <div className={classNames('flex grow overflow-hidden', fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8' : 'flex-col gap-y-1 py-3 px-4')}>
+        <div className={classNames('break-all overflow-y-auto whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
+          {renderContent()}
+        </div>
+        {renderKeywords()}
+      </div>
+      {!fullScreen && (
+        <div className='flex items-center justify-end p-4 pt-3 border-t-[1px] border-t-divider-subtle'>
+          {renderActionButtons()}
+        </div>
+      )}
+    </div>
   )
 }
 

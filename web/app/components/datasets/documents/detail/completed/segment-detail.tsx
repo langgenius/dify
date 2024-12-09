@@ -63,6 +63,8 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.s`, (e) => {
+    if (loading)
+      return
     e.preventDefault()
     handleSave()
   }
@@ -164,7 +166,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
           <div className='flex items-center gap-x-2'>
             <SegmentIndexTag positionId={segInfo?.position || ''} />
             <span className='text-text-quaternary system-xs-medium'>·</span>
-            <span className='text-text-tertiary system-xs-medium'>{formatNumber(segInfo?.word_count as number)} {t('datasetDocuments.segment.characters')}</span>
+            <span className='text-text-tertiary system-xs-medium'>{formatNumber(isEditMode ? question.length : segInfo?.word_count as number)} {t('datasetDocuments.segment.characters')}</span>
           </div>
         </div>
         <div className='flex items-center'>
@@ -197,4 +199,4 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   )
 }
 
-export default SegmentDetail
+export default React.memo(SegmentDetail)

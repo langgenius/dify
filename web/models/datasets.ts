@@ -451,6 +451,7 @@ export type SegmentDetailModel = {
   stopped_at: number
   answer?: string
   child_chunks?: ChildChunkDetail[]
+  updated_at: number
 }
 
 export type SegmentsResponse = {

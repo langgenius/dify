@@ -11,12 +11,12 @@ import SegmentList from './segment-list'
 import DisplayToggle from './display-toggle'
 import BatchAction from './batch-action'
 import SegmentDetail from './segment-detail'
-import { mockChildSegments } from './mock-data'
 import SegmentCard from './segment-card'
 import ChildSegmentList from './child-segment-list'
+import FullScreenDrawer from './full-screen-drawer'
+import Pagination from '@/app/components/base/pagination'
 import cn from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
-import Drawer from '@/app/components/base/drawer'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import { ToastContext } from '@/app/components/base/toast'
@@ -24,11 +24,13 @@ import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
 import { updateSegment } from '@/service/datasets'
 import type { ChildChunkDetail, SegmentDetailModel, SegmentUpdater } from '@/models/datasets'
-import NewSegmentModal from '@/app/components/datasets/documents/detail/new-segment-modal'
+import NewSegment from '@/app/components/datasets/documents/detail/new-segment'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import Checkbox from '@/app/components/base/checkbox'
 import { useChildSegmentList, useDeleteSegment, useDisableSegment, useEnableSegment, useSegmentList } from '@/service/knowledge/use-segment'
 import { Chunk } from '@/app/components/base/icons/src/public/knowledge'
+
+const DEFAULT_LIMIT = 10
 
 type SegmentListContextValue = {
   isCollapsed: boolean
@@ -99,9 +101,8 @@ const Completed: FC<ICompletedProps> = ({
   const [selectedSegmentIds, setSelectedSegmentIds] = useState<string[]>([])
   const { eventEmitter } = useEventEmitterContextContext()
   const [isCollapsed, setIsCollapsed] = useState(true)
-  // todo: pagination
-  const [currentPage, setCurrentPage] = useState(1)
-  const [limit, setLimit] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1) // start from 1
+  const [limit, setLimit] = useState(DEFAULT_LIMIT)
   const [fullScreen, setFullScreen] = useState(false)
 
   const { run: handleSearch } = useDebounceFn(() => {
@@ -135,8 +136,6 @@ const Completed: FC<ICompletedProps> = ({
   )
 
   useEffect(() => {
-    // setSegments(mockSegments.data)
-    // todo: remove mock data
     if (segmentListData)
       setSegments(segmentListData.data || [])
   }, [segmentListData])
@@ -156,15 +155,14 @@ const Completed: FC<ICompletedProps> = ({
   )
 
   useEffect(() => {
-    setChildSegments(mockChildSegments.data)
-    // todo: remove mock data
-    // if (childChunkListData)
-    //   setChildSegments(childChunkListData.data || [])
+    if (childChunkListData)
+      setChildSegments(childChunkListData.data || [])
   }, [childChunkListData])
 
   const resetList = useCallback(() => {
     setSegments([])
     refreshSegmentList()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const onClickCard = (detail: SegmentDetailModel, isEditMode = false) => {
@@ -362,16 +360,18 @@ const Completed: FC<ICompletedProps> = ({
             archived={archived}
           />
       }
+      {/* Pagination */}
+      <Pagination
+        current={currentPage - 1}
+        onChange={cur => setCurrentPage(cur + 1)}
+        total={segmentListData?.total || 0}
+        limit={limit}
+        onLimitChange={limit => setLimit(limit)}
+      />
       {/* Edit or view segment detail */}
-      <Drawer
+      <FullScreenDrawer
         isOpen={currSegment.showModal}
-        onClose={() => {}}
-        panelClassname={`!p-0 ${fullScreen
-          ? '!max-w-full !w-full'
-          : 'mt-16 mr-2 mb-2 !max-w-[560px] !w-[560px] border-[0.5px] border-components-panel-border rounded-xl'}`}
-        mask={false}
-        unmount
-        footer={null}
+        fullScreen={fullScreen}
       >
         <SegmentDetail
           segInfo={currSegment.segInfo ?? { id: '' }}
@@ -379,14 +379,18 @@ const Completed: FC<ICompletedProps> = ({
           onUpdate={handleUpdateSegment}
           onCancel={onCloseDrawer}
         />
-      </Drawer>
+      </FullScreenDrawer>
       {/* Create New Segment */}
-      <NewSegmentModal
-        isShow={showNewSegmentModal}
-        docForm={docForm}
-        onCancel={() => onNewSegmentModalChange(false)}
-        onSave={resetList}
-      />
+      <FullScreenDrawer
+        isOpen={showNewSegmentModal}
+        fullScreen={fullScreen}
+      >
+        <NewSegment
+          docForm={docForm}
+          onCancel={() => onNewSegmentModalChange(false)}
+          onSave={resetList}
+        />
+      </FullScreenDrawer>
       {/* Batch Action Buttons */}
       {selectedSegmentIds.length > 0
       && <BatchAction
