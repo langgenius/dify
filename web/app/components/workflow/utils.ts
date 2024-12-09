@@ -766,7 +766,7 @@ export const getParallelInfo = (nodes: Node[], edges: Edge[], parentNodeId?: str
   }
 }
 
-export const hasErrorHandleNode = (nodeType: BlockEnum) => {
+export const hasErrorHandleNode = (nodeType?: BlockEnum) => {
   return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code
 }
 
@@ -788,4 +788,11 @@ export const getEdgeColor = (nodeRunningStatus?: NodeRunningStatus, isFailBranch
   }
 
   return 'var(--color-workflow-link-line-normal)'
+}
+
+export const isExceptionVariable = (variable: string, nodeType?: BlockEnum) => {
+  if ((variable === 'error_message' || variable === 'error_type') && hasErrorHandleNode(nodeType))
+    return true
+
+  return false
 }

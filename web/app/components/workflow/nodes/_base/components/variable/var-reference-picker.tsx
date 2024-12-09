@@ -36,6 +36,7 @@ import TypeSelector from '@/app/components/workflow/nodes/_base/components/selec
 import AddButton from '@/app/components/base/button/add-button'
 import Badge from '@/app/components/base/badge'
 import Tooltip from '@/app/components/base/tooltip'
+import { isExceptionVariable } from '@/app/components/workflow/utils'
 
 const TRIGGER_DEFAULT_WIDTH = 227
 
@@ -224,16 +225,18 @@ const VarReferencePicker: FC<Props> = ({
     isConstant: !!isConstant,
   })
 
-  const { isEnv, isChatVar, isValidVar } = useMemo(() => {
+  const { isEnv, isChatVar, isValidVar, isException } = useMemo(() => {
     const isEnv = isENV(value as ValueSelector)
     const isChatVar = isConversationVar(value as ValueSelector)
     const isValidVar = Boolean(outputVarNode) || isEnv || isChatVar
+    const isException = isExceptionVariable(varName, outputVarNode?.type)
     return {
       isEnv,
       isChatVar,
       isValidVar,
+      isException,
     }
-  }, [value, outputVarNode])
+  }, [value, outputVarNode, varName])
 
   // 8(left/right-padding) + 14(icon) + 4 + 14 + 2 = 42 + 17 buff
   const availableWidth = triggerWidth - 56
@@ -335,7 +338,7 @@ const VarReferencePicker: FC<Props> = ({
                                     {!hasValue && <Variable02 className='w-3.5 h-3.5' />}
                                     {isEnv && <Env className='w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
                                     {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
-                                    <div className={cn('ml-0.5 text-xs font-medium truncate', isEnv && '!text-text-secondary', isChatVar && 'text-util-colors-teal-teal-700')} title={varName} style={{
+                                    <div className={cn('ml-0.5 text-xs font-medium truncate', isEnv && '!text-text-secondary', isChatVar && 'text-util-colors-teal-teal-700', isException && 'text-text-warning')} title={varName} style={{
                                       maxWidth: maxVarNameWidth,
                                     }}>{varName}</div>
                                   </div>
