@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { createPortal } from 'react-dom'
 import { RiCloseLine } from '@remixicon/react'
 import React from 'react'
-import {useKeyboardShortcuts} from "@/hooks/use-keyboard-short"
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-short'
 
 type VideoPreviewProps = {
   url: string
@@ -15,7 +15,7 @@ const VideoPreview: FC<VideoPreviewProps> = ({
   onCancel,
 }) => {
   useKeyboardShortcuts({
-      esc: onCancel
+    esc: onCancel,
   })
 
   return createPortal(
@@ -40,8 +40,7 @@ const VideoPreview: FC<VideoPreviewProps> = ({
         <RiCloseLine className='w-4 h-4 text-gray-500'/>
       </div>
     </div>
-    ,
-    document.body,
+    , document.body,
   )
 }
 
