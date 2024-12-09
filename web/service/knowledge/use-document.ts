@@ -59,7 +59,7 @@ export const useDocumentUnArchive = () => {
 export const useDocumentDelete = () => {
   return useMutation({
     mutationFn: ({ datasetId, documentIds, documentId }: UpdateDocumentBatchParams) => {
-      return del<CommonResponse>(`/datasets/${datasetId}/documents/batch?${toBatchDocumentsIdParams(documentId || documentIds!)}`)
+      return del<CommonResponse>(`/datasets/${datasetId}/documents?${toBatchDocumentsIdParams(documentId || documentIds!)}`)
     },
   })
 }

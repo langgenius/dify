@@ -12,7 +12,7 @@ type IBatchActionProps = {
   selectedIds: string[]
   onBatchEnable: () => void
   onBatchDisable: () => void
-  onBatchDelete: () => void
+  onBatchDelete: () => Promise<void>
   onArchive?: () => void
   onCancel: () => void
 }
@@ -31,6 +31,15 @@ const BatchAction: FC<IBatchActionProps> = ({
     setTrue: showDeleteConfirm,
     setFalse: hideDeleteConfirm,
   }] = useBoolean(false)
+  const [isDeleting, {
+    setTrue: setIsDeleting,
+  }] = useBoolean(false)
+
+  const handleBatchDelete = async () => {
+    setIsDeleting()
+    await onBatchDelete()
+    hideDeleteConfirm()
+  }
   return (
     <div className={classNames('w-full flex justify-center gap-x-2', className)}>
       <div className='flex items-center gap-x-1 p-1 rounded-[10px] bg-components-actionbar-bg-accent border border-components-actionbar-border-accent shadow-xl shadow-shadow-shadow-5 backdrop-blur-[5px]'>
@@ -80,8 +89,10 @@ const BatchAction: FC<IBatchActionProps> = ({
             title={t('datasetDocuments.list.delete.title')}
             content={t('datasetDocuments.list.delete.content')}
             confirmText={t('common.operation.sure')}
-            onConfirm={onBatchDelete}
+            onConfirm={handleBatchDelete}
             onCancel={hideDeleteConfirm}
+            isLoading={isDeleting}
+            isDisabled={isDeleting}
           />
         )
       }
