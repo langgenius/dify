@@ -75,6 +75,10 @@
   cursor: pointer;
 }
 
+.disabled {
+  cursor: not-allowed;
+}
+
 .indexItem.disabled:hover {
   background-color: #fcfcfd;
   border-color: #f2f4f7;

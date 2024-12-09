@@ -164,6 +164,8 @@ const translation = {
     indexSettingTip: 'To change the index method & embedding model, please go to the ',
     retrievalSettingTip: 'To change the retrieval setting, please go to the ',
     datasetSettingLink: 'Knowledge settings.',
+    previewChunkTip: 'Click the \'Preview Chunk\' button on the left to load the preview',
+    previewChunkCount: '{{count}} Estimated chunks',
   },
   stepThree: {
     creationTitle: '🎉 Knowledge created',

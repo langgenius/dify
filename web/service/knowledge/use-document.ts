@@ -35,7 +35,7 @@ const toBatchDocumentsIdParams = (documentIds: string[] | string) => {
 export const useDocumentBatchAction = (action: DocumentActionType) => {
   return useMutation({
     mutationFn: ({ datasetId, documentIds, documentId }: UpdateDocumentBatchParams) => {
-      return patch<CommonResponse>(`/datasets/${datasetId}/documents/status/${action}?${toBatchDocumentsIdParams(documentId || documentIds!)}`)
+      return patch<CommonResponse>(`/datasets/${datasetId}/documents/status/${action}/batch?${toBatchDocumentsIdParams(documentId || documentIds!)}`)
     },
   })
 }
@@ -59,7 +59,7 @@ export const useDocumentUnArchive = () => {
 export const useDocumentDelete = () => {
   return useMutation({
     mutationFn: ({ datasetId, documentIds, documentId }: UpdateDocumentBatchParams) => {
-      return del<CommonResponse>(`/datasets/${datasetId}/documents?${toBatchDocumentsIdParams(documentId || documentIds!)}`)
+      return del<CommonResponse>(`/datasets/${datasetId}/documents/batch?${toBatchDocumentsIdParams(documentId || documentIds!)}`)
     },
   })
 }

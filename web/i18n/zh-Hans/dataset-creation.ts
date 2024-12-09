@@ -164,6 +164,8 @@ const translation = {
     indexSettingTip: '要更改索引方法和 embedding 模型，请转到',
     retrievalSettingTip: '要更改检索方法，请转到',
     datasetSettingLink: '知识库设置。',
+    previewChunkTip: '点击左侧的“预览块”按钮来加载预览',
+    previewChunkCount: '{{count}} 预估块',
   },
   stepThree: {
     creationTitle: '🎉 知识库已创建',

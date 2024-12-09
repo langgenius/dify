@@ -177,6 +177,8 @@ const StepTwo = ({
     setDocForm(value)
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     currentEstimateMutation.reset()
+    if (value === ChuckingMode.parentChild)
+      setIndexType(IndexingType.QUALIFIED)
   }
 
   const [docLanguage, setDocLanguage] = useState<string>(
@@ -503,6 +505,9 @@ const StepTwo = ({
   }
 
   const changeToEconomicalType = () => {
+    if (docForm === ChuckingMode.parentChild)
+      return
+
     if (!hasSetIndexType) {
       setIndexType(IndexingType.ECONOMICAL)
       if (docForm === ChuckingMode.qa)
@@ -555,8 +560,12 @@ const StepTwo = ({
                 icon={<Image src={SettingCog} alt={t('datasetCreation.stepTwo.general')} />}
                 activeHeaderClassName='bg-gradient-to-r from-[#EFF0F9] to-[#F9FAFB]'
                 description={t('datasetCreation.stepTwo.generalTip')}
-                isActive={docForm === ChuckingMode.qa || docForm === ChuckingMode.text}
-                onSelect={() => handleChangeDocform(ChuckingMode.text)}
+                isActive={
+                  [ChuckingMode.text, ChuckingMode.qa].includes(docForm)
+                }
+                onSwitched={() =>
+                  handleChangeDocform(ChuckingMode.text)
+                }
                 actions={
                   <>
                     <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
@@ -651,7 +660,7 @@ const StepTwo = ({
                 activeHeaderClassName='bg-gradient-to-r from-[#F9F1EE] to-[#F9FAFB]'
                 description={t('datasetCreation.stepTwo.parentChildTip')}
                 isActive={docForm === ChuckingMode.parentChild}
-                onSelected={() => handleChangeDocform(ChuckingMode.parentChild)}
+                onSwitched={() => handleChangeDocform(ChuckingMode.parentChild)}
                 actions={
                   <>
                     <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
@@ -815,6 +824,7 @@ const StepTwo = ({
                     !hasSetIndexType && indexType === IndexingType.ECONOMICAL && s.active,
                     hasSetIndexType && s.disabled,
                     hasSetIndexType && '!w-full !min-h-[96px]',
+                    docForm === ChuckingMode.parentChild && s.disabled,
                   )}
                   onClick={changeToEconomicalType}
                 >
@@ -919,7 +929,10 @@ const StepTwo = ({
           >
             <div className='flex items-center gap-2'>
               <DocumentPicker datasetId={datasetId || ''} value={{}} onChange={console.log} />
-              <Badge text='276 Estimated chunks' />
+              <Badge text={t(
+                'datasetCreation.stepTwo.previewChunkCount', {
+                  count: estimate?.preview.length || estimate?.qa_preview?.length || 0,
+                }) as string} />
             </div>
           </PreviewHeader>}
           className={cn(s.previewWrap, isMobile && s.isMobile, 'relative h-full overflow-y-scroll')}
@@ -971,7 +984,9 @@ const StepTwo = ({
             <div className='h-full w-full flex items-center justify-center'>
               <div className='flex flex-col items-center justify-center gap-3'>
                 <RiSearchEyeLine className='size-10 text-text-empty-state-icon' />
-                <p className='text-sm text-text-tertiary'>{'Click the \'Preview Chunk\' button on the left to load the preview'}</p>
+                <p className='text-sm text-text-tertiary'>
+                  {t('datasetCreation.stepTwo.previewChunkTip')}
+                </p>
               </div>
             </div>
           )}
