@@ -13,12 +13,6 @@ mermaidAPI = null
 if (typeof window !== 'undefined')
   mermaidAPI = mermaid.mermaidAPI
 
-const style = {
-  minWidth: '480px',
-  height: 'auto',
-  overflow: 'auto',
-}
-
 const svgToBase64 = (svgGraph: string) => {
   const svgBytes = new TextEncoder().encode(svgGraph)
   const blob = new Blob([svgBytes], { type: 'image/svg+xml;charset=utf-8' })
@@ -118,8 +112,8 @@ const Flowchart = React.forwardRef((props: {
       </div>
       {
         svgCode
-            && <div className="mermaid cursor-pointer" style={style} onClick={() => setImagePreviewUrl(svgCode)}>
-              {svgCode && <img src={svgCode} style={{ width: '100%', height: 'auto' }} alt="mermaid_chart" />}
+            && <div className="mermaid cursor-pointer h-auto w-full object-fit: cover" onClick={() => setImagePreviewUrl(svgCode)}>
+              {svgCode && <img src={svgCode} alt="mermaid_chart" />}
             </div>
       }
       {isLoading
