@@ -32,6 +32,7 @@ const translation = {
     restore: '復元',
     runApp: 'アプリを実行',
     batchRunApp: 'バッチでアプリを実行',
+    openInExplore: '"探索" で開く',
     accessAPIReference: 'APIリファレンスにアクセス',
     embedIntoSite: 'サイトに埋め込む',
     addTitle: 'タイトルを追加...',
