@@ -26,13 +26,13 @@ class Storage:
                 from extensions.storage.opendal_storage import OpenDALStorage
 
                 if dify_config.S3_USE_AWS_MANAGED_IAM:
+                    logger.debug("Using AWS managed IAM role for S3")
                     kwargs = {
                         "root": "/",
                         "bucket": dify_config.S3_BUCKET_NAME,
                         "server_side_encryption": "aws:kms",
                         "region": dify_config.S3_REGION,
                     }
-                    logger.debug("Using AWS managed IAM role for S3")
                 else:
                     kwargs = {
                         "root": "/",
@@ -45,9 +45,9 @@ class Storage:
 
                 # For R2
                 if "endpoint" in kwargs and "r2.cloudflarestorage.com" in kwargs["endpoint"]:
+                    logger.debug("Using R2 for S3")
                     kwargs["disable_stat_with_override"] = "true"
                     kwargs["region"] = kwargs["region"] or "auto"
-                    logger.debug("Using R2 for S3")
 
                 return lambda: OpenDALStorage(scheme=OpenDALScheme.S3, **kwargs)
             case StorageType.AZURE_BLOB:
