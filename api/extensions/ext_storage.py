@@ -10,6 +10,8 @@ from dify_app import DifyApp
 from extensions.storage.base_storage import BaseStorage
 from extensions.storage.storage_type import StorageType
 
+logger = logging.getLogger(__name__)
+
 
 class Storage:
     def init_app(self, app: Flask):
@@ -30,6 +32,7 @@ class Storage:
                         "server_side_encryption": "aws:kms",
                         "region": dify_config.S3_REGION,
                     }
+                    logger.debug("Using AWS managed IAM role for S3")
                 else:
                     kwargs = {
                         "root": "/",
@@ -44,6 +47,11 @@ class Storage:
                 if "endpoint" in kwargs and "r2.cloudflarestorage.com" in kwargs["endpoint"]:
                     kwargs["disable_stat_with_override"] = True
                     kwargs["region"] = kwargs["region"] or "auto"
+                    logger.debug("Using R2 for S3")
+
+                for k, v in kwargs.items():
+                    if v is None:
+                        logger.warning(f"S3 config {k} is not set")
 
                 return lambda: OpenDALStorage(scheme=OpenDALScheme.S3, **kwargs)
             case StorageType.AZURE_BLOB:
@@ -101,7 +109,7 @@ class Storage:
         try:
             self.storage_runner.save(filename, data)
         except Exception as e:
-            logging.exception(f"Failed to save file {filename}")
+            logger.exception(f"Failed to save file {filename}")
             raise e
 
     def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
@@ -111,42 +119,42 @@ class Storage:
             else:
                 return self.load_once(filename)
         except Exception as e:
-            logging.exception(f"Failed to load file {filename}")
+            logger.exception(f"Failed to load file {filename}")
             raise e
 
     def load_once(self, filename: str) -> bytes:
         try:
             return self.storage_runner.load_once(filename)
         except Exception as e:
-            logging.exception(f"Failed to load_once file {filename}")
+            logger.exception(f"Failed to load_once file {filename}")
             raise e
 
     def load_stream(self, filename: str) -> Generator:
         try:
             return self.storage_runner.load_stream(filename)
         except Exception as e:
-            logging.exception(f"Failed to load_stream file {filename}")
+            logger.exception(f"Failed to load_stream file {filename}")
             raise e
 
     def download(self, filename, target_filepath):
         try:
             self.storage_runner.download(filename, target_filepath)
         except Exception as e:
-            logging.exception(f"Failed to download file {filename}")
+            logger.exception(f"Failed to download file {filename}")
             raise e
 
     def exists(self, filename):
         try:
             return self.storage_runner.exists(filename)
         except Exception as e:
-            logging.exception(f"Failed to check file exists {filename}")
+            logger.exception(f"Failed to check file exists {filename}")
             raise e
 
     def delete(self, filename):
         try:
             return self.storage_runner.delete(filename)
         except Exception as e:
-            logging.exception(f"Failed to delete file {filename}")
+            logger.exception(f"Failed to delete file {filename}")
             raise e
 
 
