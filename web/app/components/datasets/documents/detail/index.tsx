@@ -26,6 +26,7 @@ import type { DocForm, DocumentItem, ParentMode, ProcessMode } from '@/models/da
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { LayoutRight2LineMod } from '@/app/components/base/icons/src/public/knowledge'
 
 type DocumentContextValue = {
   datasetId?: string
@@ -207,7 +208,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
             processMode={documentDetail?.dataset_process_rule?.mode}
           />
           <div className='flex items-center flex-wrap'>
-            {embeddingAvailable && documentDetail && !documentDetail.archived && (
+            {embeddingAvailable && documentDetail && !documentDetail.archived && !isFullDocMode && (
               <SegmentAdd
                 importStatus={importStatus}
                 clearProcessStatus={resetProcessStatus}
@@ -248,8 +249,11 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
               className={style.layoutRightIcon}
               onClick={() => setShowMetadata(!showMetadata)}
             >
-              {/* // todo: change icon */}
-              <RiLayoutRight2Line className={cn('w-4 h-4', showMetadata ? 'text-components-button-secondary-accent-text' : 'text-components-button-secondary-text')} />
+              {
+                showMetadata
+                  ? <LayoutRight2LineMod className='w-4 h-4 text-components-button-secondary-accent-text' />
+                  : <RiLayoutRight2Line className='w-4 h-4 text-components-button-secondary-text' />
+              }
             </button>
           </div>
         </div>
