@@ -539,7 +539,6 @@ const DocumentList: FC<IDocumentListProps> = ({
               }}>
               <td className='text-left align-middle text-text-tertiary text-xs'>
                 <div className='flex items-center' onClick={e => e.stopPropagation()}>
-
                   <Checkbox
                     className='shrink-0 mr-2'
                     checked={selectedIds.includes(doc.id)}
