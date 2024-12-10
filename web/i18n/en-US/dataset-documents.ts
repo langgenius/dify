@@ -349,6 +349,7 @@ const translation = {
     newTextSegment: 'New Text Segment',
     newQaSegment: 'New Q&A Segment',
     addChunk: 'Add Chunk',
+    addAnother: 'Add another',
     delete: 'Delete this chunk ?',
     chunkAdded: '1 chunk added',
     viewAddedChunk: 'View',

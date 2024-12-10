@@ -18,6 +18,7 @@ import classNames from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 import Divider from '@/app/components/base/divider'
+import Checkbox from '@/app/components/base/checkbox'
 
 type NewSegmentModalProps = {
   onCancel: () => void
@@ -39,6 +40,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   const { datasetId, documentId } = useParams<{ datasetId: string; documentId: string }>()
   const [keywords, setKeywords] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
+  const [addAnother, setAnother] = useState(true)
   const [fullScreen, toggleFullScreen] = useSegmentListContext(s => [s.fullScreen, s.toggleFullScreen])
   const { appSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
@@ -55,8 +57,9 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     </button>
   </>
 
-  const handleCancel = () => {
-    onCancel()
+  const handleCancel = (actionType: 'esc' | 'add' = 'esc') => {
+    if (actionType === 'esc' || !addAnother)
+      onCancel()
     setQuestion('')
     setAnswer('')
     setKeywords([])
@@ -91,13 +94,12 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
         message: t('datasetDocuments.segment.chunkAdded'),
         className: `!w-[296px] !bottom-0 ${appSidebarExpand === 'expand' ? '!left-[216px]' : '!left-14'}
           !top-auto !right-auto !mb-[52px] !ml-11`,
-        duration: 6000,
         customComponent: CustomButton,
       })
-      handleCancel()
+      handleCancel('add')
       refreshTimer.current = setTimeout(() => {
         onSave()
-      }, 6000)
+      }, 3000)
     }
     finally {
       setLoading(false)
@@ -157,26 +159,39 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     return (
       <div className='flex items-center gap-x-2'>
         <Button
-          onClick={handleCancel}
+          className='flex items-center gap-x-1'
+          onClick={handleCancel.bind(null, 'esc')}
         >
-          <div className='flex items-center gap-x-1'>
-            <span className='text-components-button-secondary-text system-sm-medium'>{t('common.operation.cancel')}</span>
-            <span className='px-[1px] bg-components-kbd-bg-gray rounded-[4px] text-text-tertiary system-kbd'>ESC</span>
-          </div>
+          <span className='text-components-button-secondary-text system-sm-medium'>{t('common.operation.cancel')}</span>
+          <span className='px-[1px] bg-components-kbd-bg-gray rounded-[4px] text-text-tertiary system-kbd'>ESC</span>
         </Button>
         <Button
+          className='flex items-center gap-x-1'
           variant='primary'
           onClick={handleSave}
           disabled={loading}
+          loading={loading}
         >
-          <div className='flex items-center gap-x-1'>
-            <span className='text-components-button-primary-text'>{t('common.operation.save')}</span>
-            <div className='flex items-center gap-x-0.5'>
-              <span className='w-4 h-4 bg-components-kbd-bg-white rounded-[4px] text-text-primary-on-surface system-kbd capitalize'>{getKeyboardKeyNameBySystem('ctrl')}</span>
-              <span className='w-4 h-4 bg-components-kbd-bg-white rounded-[4px] text-text-primary-on-surface system-kbd'>S</span>
-            </div>
+          <span className='text-components-button-primary-text'>{t('common.operation.save')}</span>
+          <div className='flex items-center gap-x-0.5'>
+            <span className='w-4 h-4 bg-components-kbd-bg-white rounded-[4px] text-text-primary-on-surface system-kbd capitalize'>{getKeyboardKeyNameBySystem('ctrl')}</span>
+            <span className='w-4 h-4 bg-components-kbd-bg-white rounded-[4px] text-text-primary-on-surface system-kbd'>S</span>
           </div>
         </Button>
+      </div>
+    )
+  }
+
+  const AddAnotherCheckBox = () => {
+    return (
+      <div className={classNames('flex items-center gap-x-1 pl-1', fullScreen ? 'mr-3' : '')}>
+        <Checkbox
+          key='add-another-checkbox'
+          className='shrink-0'
+          checked={addAnother}
+          onCheck={() => setAnother(!addAnother)}
+        />
+        <span className='text-text-tertiary system-xs-medium'>{t('datasetDocuments.segment.addAnother')}</span>
       </div>
     )
   }
@@ -210,6 +225,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
         <div className='flex items-center'>
           {fullScreen && (
             <>
+              {AddAnotherCheckBox()}
               {renderActionButtons()}
               <Divider type='vertical' className='h-3.5 bg-divider-regular ml-4 mr-2' />
             </>
@@ -217,7 +233,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
           <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer mr-1' onClick={toggleFullScreen}>
             <RiExpandDiagonalLine className='w-4 h-4 text-text-tertiary' />
           </div>
-          <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer' onClick={handleCancel}>
+          <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer' onClick={handleCancel.bind(null, 'esc')}>
             <RiCloseLine className='w-4 h-4 text-text-tertiary' />
           </div>
         </div>
@@ -229,7 +245,8 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
         {renderKeywords()}
       </div>
       {!fullScreen && (
-        <div className='flex items-center justify-end p-4 pt-3 border-t-[1px] border-t-divider-subtle'>
+        <div className='flex items-center justify-between p-4 pt-3 border-t-[1px] border-t-divider-subtle'>
+          {AddAnotherCheckBox()}
           {renderActionButtons()}
         </div>
       )}

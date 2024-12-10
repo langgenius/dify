@@ -124,6 +124,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
           variant='primary'
           onClick={handleSave}
           disabled={loading}
+          loading={loading}
         >
           <div className='flex items-center gap-x-1'>
             <span className='text-components-button-primary-text'>{t('common.operation.save')}</span>

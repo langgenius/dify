@@ -419,7 +419,10 @@ const Completed: FC<ICompletedProps> = ({
       >
         <NewSegment
           docForm={docForm}
-          onCancel={() => onNewSegmentModalChange(false)}
+          onCancel={() => {
+            onNewSegmentModalChange(false)
+            setFullScreen(false)
+          }}
           onSave={resetList}
           viewNewlyAddedChunk={viewNewlyAddedChunk}
         />
