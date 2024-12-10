@@ -34,7 +34,7 @@ const indexStateReducer = (state: IIndexState, action: IAction) => {
 const RetryButton: FC<Props> = ({ datasetId }) => {
   const { t } = useTranslation()
   const [indexState, dispatch] = useReducer(indexStateReducer, { value: 'success' })
-  const { data: errorDocs } = useSWR({ datasetId }, getErrorDocs)
+  const { data: errorDocs, isLoading } = useSWR({ datasetId }, getErrorDocs)
 
   const onRetryErrorDocs = async () => {
     dispatch({ type: 'retry' })
@@ -53,7 +53,7 @@ const RetryButton: FC<Props> = ({ datasetId }) => {
       dispatch({ type: 'error' })
   }, [errorDocs?.total])
 
-  if (indexState.value === 'success')
+  if (isLoading || indexState.value === 'success')
     return null
 
   return (
