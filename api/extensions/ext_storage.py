@@ -1,5 +1,6 @@
 import logging
-from collections.abc import Generator
+from collections.abc import Callable, Generator
+from pathlib import Path
 from typing import Union
 
 from flask import Flask
@@ -17,7 +18,7 @@ class Storage:
             self.storage_runner = storage_factory()
 
     @staticmethod
-    def get_storage_factory(storage_type: str) -> type[BaseStorage]:
+    def get_storage_factory(storage_type: str) -> Callable[[], BaseStorage]:
         match storage_type:
             case StorageType.S3:
                 from extensions.storage.aws_s3_storage import AwsS3Storage
@@ -62,11 +63,20 @@ class Storage:
             case StorageType.OPENDAL:
                 from extensions.storage.opendal_storage import OpenDALStorage
 
-                return OpenDALStorage
+                return lambda: OpenDALStorage(
+                    scheme=dify_config.STORAGE_OPENDAL_SCHEME,
+                    root_path=dify_config.STORAGE_OPENDAL_ROOT_PATH,
+                )
             case StorageType.LOCAL | _:
-                from extensions.storage.local_fs_storage import LocalFsStorage
+                from extensions.storage.opendal_storage import OpenDALStorage
 
-                return LocalFsStorage
+                path = Path(dify_config.STORAGE_LOCAL_PATH)
+                if not path.exists():
+                    path.mkdir(parents=True)
+                return lambda: OpenDALStorage(
+                    scheme="fs",
+                    root_path=path.as_posix(),
+                )
 
     def save(self, filename, data):
         try:

@@ -9,3 +9,7 @@ class OpenDALStorageConfig(BaseSettings):
         default="fs",
         description="OpenDAL scheme.",
     )
+    STORAGE_OPENDAL_ROOT_PATH: str = Field(
+        default="/",
+        description="OpenDAL root path.",
+    )
