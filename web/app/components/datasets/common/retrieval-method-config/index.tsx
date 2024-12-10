@@ -64,7 +64,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           isActive={
             value.search_method === RETRIEVE_METHOD.semantic
           }
-          onClick={() => onChange({
+          onSwitched={() => onChange({
             ...value,
             search_method: RETRIEVE_METHOD.semantic,
           })}
@@ -85,7 +85,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           isActive={
             value.search_method === RETRIEVE_METHOD.fullText
           }
-          onClick={() => onChange({
+          onSwitched={() => onChange({
             ...value,
             search_method: RETRIEVE_METHOD.fullText,
           })}
