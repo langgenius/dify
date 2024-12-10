@@ -10,7 +10,6 @@ const DisplayToggle: FC = () => {
     <Tooltip
       popupContent={isCollapsed ? 'Expand chunks' : 'Collapse chunks'}
       popupClassName='text-text-secondary system-xs-medium border-[0.5px] border-components-panel-border'
-      needsDelay
     >
       <button
         className='flex items-center justify-center p-2 rounded-lg bg-components-button-secondary-bg cursor-pointer

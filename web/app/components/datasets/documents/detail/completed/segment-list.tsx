@@ -1,5 +1,4 @@
-import type { FC } from 'react'
-import React from 'react'
+import React, { type ForwardedRef } from 'react'
 import SegmentCard from './segment-card'
 import type { SegmentDetailModel } from '@/models/datasets'
 import Checkbox from '@/app/components/base/checkbox'
@@ -19,7 +18,7 @@ type ISegmentListProps = {
   embeddingAvailable: boolean
 }
 
-const SegmentList: FC<ISegmentListProps> = ({
+const SegmentList = React.forwardRef(({
   isLoading,
   items,
   selectedSegmentIds,
@@ -29,11 +28,13 @@ const SegmentList: FC<ISegmentListProps> = ({
   onDelete,
   archived,
   embeddingAvailable,
-}) => {
+}: ISegmentListProps,
+ref: ForwardedRef<HTMLDivElement>,
+) => {
   if (isLoading)
     return <Loading type='app' />
   return (
-    <div className={classNames('flex flex-col h-full overflow-y-auto')}>
+    <div ref={ref} className={classNames('flex flex-col h-full overflow-y-auto')}>
       {
         items.map((segItem) => {
           const isLast = items[items.length - 1].id === segItem.id
@@ -67,6 +68,8 @@ const SegmentList: FC<ISegmentListProps> = ({
       }
     </div>
   )
-}
+})
+
+SegmentList.displayName = 'SegmentList'
 
 export default SegmentList

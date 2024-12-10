@@ -1,11 +1,13 @@
-import { memo, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useParams } from 'next/navigation'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { useKeyPress } from 'ahooks'
+import { useShallow } from 'zustand/react/shallow'
 import { SegmentIndexTag, useSegmentListContext } from './completed'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea/common'
 import { ToastContext } from '@/app/components/base/toast'
@@ -21,12 +23,14 @@ type NewSegmentModalProps = {
   onCancel: () => void
   docForm: string
   onSave: () => void
+  viewNewlyAddedChunk: () => void
 }
 
 const NewSegmentModal: FC<NewSegmentModalProps> = ({
   onCancel,
   docForm,
   onSave,
+  viewNewlyAddedChunk,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -36,6 +40,20 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   const [keywords, setKeywords] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [fullScreen, toggleFullScreen] = useSegmentListContext(s => [s.fullScreen, s.toggleFullScreen])
+  const { appSidebarExpand } = useAppStore(useShallow(state => ({
+    appSidebarExpand: state.appSidebarExpand,
+  })))
+  const refreshTimer = useRef<any>(null)
+
+  const CustomButton = <>
+    <Divider type='vertical' className='h-3 mx-1 bg-divider-regular' />
+    <button className='text-text-accent system-xs-semibold' onClick={() => {
+      clearTimeout(refreshTimer.current)
+      viewNewlyAddedChunk()
+    }}>
+      {t('datasetDocuments.segment.viewAddedChunk')}
+    </button>
+  </>
 
   const handleCancel = () => {
     onCancel()
@@ -68,9 +86,18 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     setLoading(true)
     try {
       await addSegment({ datasetId, documentId, body: params })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({
+        type: 'success',
+        message: t('datasetDocuments.segment.chunkAdded'),
+        className: `!w-[296px] !bottom-0 ${appSidebarExpand === 'expand' ? '!left-[216px]' : '!left-14'}
+          !top-auto !right-auto !mb-[52px] !ml-11`,
+        duration: 6000,
+        customComponent: CustomButton,
+      })
       handleCancel()
-      onSave()
+      refreshTimer.current = setTimeout(() => {
+        onSave()
+      }, 6000)
     }
     finally {
       setLoading(false)

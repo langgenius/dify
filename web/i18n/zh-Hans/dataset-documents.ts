@@ -348,6 +348,8 @@ const translation = {
     newQaSegment: '新问答分段',
     addChunk: '新增分段',
     delete: '删除这个分段？',
+    chunkAdded: '新增一个分段',
+    viewAddedChunk: '查看',
   },
 }
 

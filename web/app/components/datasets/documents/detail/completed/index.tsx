@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDebounceFn } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
@@ -27,8 +27,9 @@ import type { ChildChunkDetail, SegmentDetailModel, SegmentUpdater } from '@/mod
 import NewSegment from '@/app/components/datasets/documents/detail/new-segment'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import Checkbox from '@/app/components/base/checkbox'
-import { useChildSegmentList, useDeleteSegment, useDisableSegment, useEnableSegment, useSegmentList } from '@/service/knowledge/use-segment'
+import { useChildSegmentList, useDeleteSegment, useDisableSegment, useEnableSegment, useSegmentList, useSegmentListKey } from '@/service/knowledge/use-segment'
 import { Chunk } from '@/app/components/base/icons/src/public/knowledge'
+import { useInvalid } from '@/service/use-base'
 
 const DEFAULT_LIMIT = 10
 
@@ -104,6 +105,8 @@ const Completed: FC<ICompletedProps> = ({
   const [currentPage, setCurrentPage] = useState(1) // start from 1
   const [limit, setLimit] = useState(DEFAULT_LIMIT)
   const [fullScreen, setFullScreen] = useState(false)
+  const segmentListRef = useRef<HTMLDivElement>(null)
+  const needScrollToBottom = useRef(false)
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchValue(inputValue)
@@ -122,7 +125,7 @@ const Completed: FC<ICompletedProps> = ({
     return mode === 'hierarchical' && parentMode === 'full-doc'
   }, [mode, parentMode])
 
-  const { isLoading: isLoadingSegmentList, data: segmentListData, refetch: refreshSegmentList } = useSegmentList(
+  const { isFetching: isLoadingSegmentList, data: segmentListData } = useSegmentList(
     {
       datasetId,
       documentId,
@@ -134,11 +137,23 @@ const Completed: FC<ICompletedProps> = ({
       },
     },
   )
+  const invalidSegmentList = useInvalid(useSegmentListKey)
 
   useEffect(() => {
-    if (segmentListData)
+    if (segmentListData) {
       setSegments(segmentListData.data || [])
+      if (segmentListData.total_pages < currentPage)
+        setCurrentPage(segmentListData.total_pages)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segmentListData])
+
+  useEffect(() => {
+    if (segmentListRef.current && needScrollToBottom.current) {
+      segmentListRef.current.scrollTo({ top: segmentListRef.current.scrollHeight, behavior: 'smooth' })
+      needScrollToBottom.current = false
+    }
+  }, [segments])
 
   const { data: childChunkListData, refetch: refreshChildSegmentList } = useChildSegmentList(
     {
@@ -162,7 +177,7 @@ const Completed: FC<ICompletedProps> = ({
   const resetList = useCallback(() => {
     setSegments([])
     setSelectedSegmentIds([])
-    refreshSegmentList()
+    invalidSegmentList()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -189,7 +204,6 @@ const Completed: FC<ICompletedProps> = ({
             seg.enabled = enable
         }
         setSegments([...segments])
-        !segId && setSelectedSegmentIds([])
       },
       onError: () => {
         notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
@@ -205,6 +219,7 @@ const Completed: FC<ICompletedProps> = ({
       onSuccess: () => {
         notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
         resetList()
+        !segId && setSelectedSegmentIds([])
       },
       onError: () => {
         notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
@@ -298,6 +313,20 @@ const Completed: FC<ICompletedProps> = ({
     setFullScreen(!fullScreen)
   }, [fullScreen])
 
+  const viewNewlyAddedChunk = useCallback(async () => {
+    const totalPages = segmentListData?.total_pages || 0
+    const total = segmentListData?.total || 0
+    const newPage = Math.ceil((total + 1) / limit)
+    needScrollToBottom.current = true
+    if (newPage > totalPages)
+      setCurrentPage(totalPages + 1)
+    else if (currentPage === totalPages)
+      resetList()
+    else
+      setCurrentPage(totalPages)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [segmentListData, limit, currentPage])
+
   return (
     <SegmentListContext.Provider value={{
       isCollapsed,
@@ -351,6 +380,7 @@ const Completed: FC<ICompletedProps> = ({
             />
           </div>
           : <SegmentList
+            ref={segmentListRef}
             embeddingAvailable={embeddingAvailable}
             isLoading={isLoadingSegmentList}
             items={segments}
@@ -391,6 +421,7 @@ const Completed: FC<ICompletedProps> = ({
           docForm={docForm}
           onCancel={() => onNewSegmentModalChange(false)}
           onSave={resetList}
+          viewNewlyAddedChunk={viewNewlyAddedChunk}
         />
       </FullScreenDrawer>
       {/* Batch Action Buttons */}

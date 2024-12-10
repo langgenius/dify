@@ -5,7 +5,7 @@ import type { ChildSegmentResponse, SegmentsResponse } from '@/models/datasets'
 
 const NAME_SPACE = 'segment'
 
-const useSegmentListKey = [NAME_SPACE, 'chunkList']
+export const useSegmentListKey = [NAME_SPACE, 'chunkList']
 
 export const useSegmentList = (
   payload: {
