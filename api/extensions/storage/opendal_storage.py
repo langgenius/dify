@@ -3,15 +3,16 @@ from pathlib import Path
 
 import opendal
 
+from configs.middleware.storage.opendal_storage_config import OpenDALScheme
 from extensions.storage.base_storage import BaseStorage
 
 
 class OpenDALStorage(BaseStorage):
-    def __init__(self, scheme: str, root_path: str):
-        self.op = op = opendal.Operator(
-            scheme=scheme,
-            root=root_path,
-        )
+    def __init__(self, scheme: OpenDALScheme, **kwargs):
+        if scheme == OpenDALScheme.FS:
+            Path(kwargs["root"]).mkdir(parents=True, exist_ok=True)
+
+        self.op = opendal.Operator(scheme=scheme, **kwargs)
 
     def save(self, filename: str, data: bytes) -> None:
         self.op.write(path=filename, bs=data)

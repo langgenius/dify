@@ -1,11 +1,11 @@
 import logging
-from collections.abc import Callable, Generator
-from pathlib import Path
+from collections.abc import Callable, Generator, Mapping
 from typing import Union
 
 from flask import Flask
 
 from configs import dify_config
+from configs.middleware.storage.opendal_storage_config import OpenDALScheme
 from dify_app import DifyApp
 from extensions.storage.base_storage import BaseStorage
 from extensions.storage.storage_type import StorageType
@@ -63,20 +63,13 @@ class Storage:
             case StorageType.OPENDAL:
                 from extensions.storage.opendal_storage import OpenDALStorage
 
-                return lambda: OpenDALStorage(
-                    scheme=dify_config.STORAGE_OPENDAL_SCHEME,
-                    root_path=dify_config.STORAGE_OPENDAL_ROOT_PATH,
-                )
+                kwargs = _load_opendal_storage_kwargs_by_scheme(dify_config.STORAGE_OPENDAL_SCHEME)
+                return lambda: OpenDALStorage(scheme=dify_config.STORAGE_OPENDAL_SCHEME, **kwargs)
             case StorageType.LOCAL | _:
                 from extensions.storage.opendal_storage import OpenDALStorage
 
-                path = Path(dify_config.STORAGE_LOCAL_PATH)
-                if not path.exists():
-                    path.mkdir(parents=True)
-                return lambda: OpenDALStorage(
-                    scheme="fs",
-                    root_path=path.as_posix(),
-                )
+                kwargs = _load_opendal_storage_kwargs_by_scheme(OpenDALScheme.FS)
+                return lambda: OpenDALStorage(scheme=dify_config.STORAGE_OPENDAL_SCHEME, **kwargs)
 
     def save(self, filename, data):
         try:
@@ -129,6 +122,16 @@ class Storage:
         except Exception as e:
             logging.exception(f"Failed to delete file {filename}")
             raise e
+
+
+def _load_opendal_storage_kwargs_by_scheme(scheme: OpenDALScheme, /) -> Mapping[str, str]:
+    match scheme:
+        case OpenDALScheme.FS:
+            return {
+                "root": dify_config.OPENDAL_FS_ROOT,
+            }
+        case _:
+            raise ValueError(f"Unsupported OpenDAL scheme {scheme}")
 
 
 storage = Storage()
