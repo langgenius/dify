@@ -340,7 +340,27 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         for prompt_message in llm_result_chunk.delta.message.tool_calls:
             args = {}
             if prompt_message.function.arguments != "":
-                args = json.loads(prompt_message.function.arguments)
+                try_load_str = prompt_message.function.arguments
+                while True:
+                    if len(try_load_str) == 0:
+                        break
+                    try:
+                        args = json.loads(try_load_str)
+                        break
+                    except Exception as e:
+                        logging.error("error try_load_str: " + try_load_str)
+                        first_left_brace_index = try_load_str.find("{")
+                        if len(try_load_str) >= first_left_brace_index + 1:
+                            try_load_str = try_load_str[try_load_str.find("{") + 1 :]
+                            # find next left brace
+                            next_left_brace_index = try_load_str.find("{")
+                            if next_left_brace_index == -1:
+                                logging.error("error try_load_str not found next left brace: " + try_load_str)
+                                break
+                            try_load_str = try_load_str[next_left_brace_index:]
+                        else:
+                            logging.error("error try_load_str not found next left brace: " + try_load_str)
+                            break
 
             tool_calls.append(
                 (
