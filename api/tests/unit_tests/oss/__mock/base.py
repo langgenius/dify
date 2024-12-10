@@ -27,9 +27,9 @@ def get_example_filepath() -> str:
 
 class BaseStorageTest:
     @pytest.fixture(autouse=True)
-    def setup_method(self):
+    def setup_method(self, *args, **kwargs):
         """Should be implemented in child classes to setup specific storage."""
-        self.storage = BaseStorage()
+        self.storage: BaseStorage
 
     def test_save(self):
         """Test saving data."""
