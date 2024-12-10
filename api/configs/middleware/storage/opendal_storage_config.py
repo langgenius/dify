@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -43,4 +44,8 @@ class OpenDALStorageConfig(BaseSettings):
     OPENDAL_S3_REGION: str = Field(
         default="",
         description="S3 region.",
+    )
+    OPENDAL_S3_SERVER_SIDE_ENCRYPTION: Literal["aws:kms", ""] = Field(
+        default="",
+        description="S3 server-side encryption.",
     )

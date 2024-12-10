@@ -131,6 +131,13 @@ def _load_opendal_storage_kwargs_by_scheme(scheme: OpenDALScheme, /) -> Mapping[
                 "root": dify_config.OPENDAL_FS_ROOT,
             }
         case OpenDALScheme.S3:
+            if dify_config.OPENDAL_S3_SERVER_SIDE_ENCRYPTION == "aws:kms":
+                return {
+                    "root": dify_config.OPENDAL_S3_ROOT,
+                    "bucket": dify_config.OPENDAL_S3_BUCKET,
+                    "server_side_encryption": dify_config.OPENDAL_S3_SERVER_SIDE_ENCRYPTION,
+                    "region": dify_config.OPENDAL_S3_REGION,
+                }
             return {
                 "root": dify_config.OPENDAL_S3_ROOT,
                 "bucket": dify_config.OPENDAL_S3_BUCKET,
