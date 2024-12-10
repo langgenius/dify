@@ -25,8 +25,7 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import cn from '@/utils/classnames'
-import { useStore as usePluginDependencyStore } from '@/app/components/workflow/plugin-dependency/store'
-import PluginDependency from '@/app/components/workflow/plugin-dependency'
+import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 
 type CreateFromDSLModalProps = {
   show: boolean
@@ -52,6 +51,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [versions, setVersions] = useState<{ importedVersion: string; systemVersion: string }>()
   const [importId, setImportId] = useState<string>()
+  const { handleCheckPluginDependencies } = usePluginDependencies()
 
   const readFile = (file: File) => {
     const reader = new FileReader()
@@ -103,11 +103,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       if (!response)
         return
 
-      const { id, status, app_id, imported_dsl_version, current_dsl_version, leaked_dependencies } = response
-      if (leaked_dependencies?.length) {
-        const { setDependencies } = usePluginDependencyStore.getState()
-        setDependencies(leaked_dependencies)
-      }
+      const { id, status, app_id, imported_dsl_version, current_dsl_version } = response
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
         if (onSuccess)
           onSuccess()
@@ -120,6 +116,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('app.newApp.appCreateDSLWarning'),
         })
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+        if (app_id)
+          await handleCheckPluginDependencies(app_id)
         getRedirection(isCurrentWorkspaceEditor, { id: app_id }, push)
       }
       else if (status === DSLImportStatus.PENDING) {
@@ -138,6 +136,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
       }
     }
+    // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
@@ -164,6 +163,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           type: 'success',
           message: t('app.newApp.appCreated'),
         })
+        if (app_id)
+          await handleCheckPluginDependencies(app_id)
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
         getRedirection(isCurrentWorkspaceEditor, { id: app_id }, push)
       }
@@ -171,6 +172,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
       }
     }
+    // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
@@ -282,7 +284,6 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             <div>{t('app.newApp.appCreateDSLErrorPart4')}<span className='system-md-medium'>{versions?.systemVersion}</span></div>
           </div>
         </div>
-        <PluginDependency />
         <div className='flex pt-6 justify-end items-start gap-2 self-stretch'>
           <Button variant='secondary' onClick={() => setShowErrorModal(false)}>{t('app.newApp.Cancel')}</Button>
           <Button variant='primary' destructive onClick={onDSLConfirm}>{t('app.newApp.Confirm')}</Button>
