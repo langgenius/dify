@@ -101,7 +101,7 @@ class ImagePromptMessageContent(PromptMessageContent):
 
     type: PromptMessageContentType = PromptMessageContentType.IMAGE
     detail: DETAIL = DETAIL.LOW
-    format: str = Field("png", description="Image format")
+    format: str = Field("jpg", description="Image format")
 
 
 class DocumentPromptMessageContent(PromptMessageContent):
