@@ -45,13 +45,9 @@ class Storage:
 
                 # For R2
                 if "endpoint" in kwargs and "r2.cloudflarestorage.com" in kwargs["endpoint"]:
-                    kwargs["disable_stat_with_override"] = True
+                    kwargs["disable_stat_with_override"] = "true"
                     kwargs["region"] = kwargs["region"] or "auto"
                     logger.debug("Using R2 for S3")
-
-                for k, v in kwargs.items():
-                    if v is None:
-                        logger.warning(f"S3 config {k} is not set")
 
                 return lambda: OpenDALStorage(scheme=OpenDALScheme.S3, **kwargs)
             case StorageType.AZURE_BLOB:
