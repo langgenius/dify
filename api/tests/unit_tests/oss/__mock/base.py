@@ -22,7 +22,7 @@ def get_example_data() -> bytes:
 
 
 def get_example_filepath() -> str:
-    return "/test"
+    return "~/test"
 
 
 class BaseStorageTest:
