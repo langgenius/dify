@@ -29,6 +29,7 @@ import type {
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import './style.css'
+import { useContextSelector } from 'use-context-selector'
 import type {
   Edge,
   EnvironmentVariable,
@@ -95,6 +96,8 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import Confirm from '@/app/components/base/confirm'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { fetchFileUploadConfig } from '@/service/common'
+import AppContext from '@/context/app-context'
+import { Theme } from '@/types/app'
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -115,6 +118,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   edges: originalEdges,
   viewport,
 }) => {
+  const theme = useContextSelector(AppContext, v => v.theme)
   const workflowContainerRef = useRef<HTMLDivElement>(null)
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
@@ -179,7 +183,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     return () => {
       handleSyncWorkflowDraft(true, true)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const { handleRefreshWorkflowDraft } = useWorkflowUpdate()
@@ -280,7 +284,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     <div
       id='workflow-container'
       className={`
-        relative w-full min-w-[960px] h-full bg-[#F0F2F7]
+        relative w-full min-w-[960px] h-full 
         ${workflowReadOnly && 'workflow-panel-animation'}
         ${nodeAnimation && 'workflow-node-animation'}
       `}
@@ -371,7 +375,8 @@ const Workflow: FC<WorkflowProps> = memo(({
         <Background
           gap={[14, 14]}
           size={2}
-          color='#E4E5E7'
+          className="bg-workflow-canvas-workflow-bg"
+          color={theme === Theme.light ? 'rgba(133, 133, 173, 0.15)' : 'rgba(133, 133, 173, 0.11)'}
         />
       </ReactFlow>
     </div>
@@ -401,7 +406,7 @@ const WorkflowWrap = memo(() => {
 
   if (!data || isLoading) {
     return (
-      <div className='flex justify-center items-center relative w-full h-full bg-[#F0F2F7]'>
+      <div className='flex justify-center items-center relative w-full h-full'>
         <Loading />
       </div>
     )
