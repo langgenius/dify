@@ -2637,7 +2637,7 @@
     classcat "^5.0.3"
     zustand "^4.4.1"
 
-"@remixicon/react@^4.2.0":
+"@remixicon/react@^4.5.0":
   version "4.5.0"
   resolved "https://registry.yarnpkg.com/@remixicon/react/-/react-4.5.0.tgz#5600d122ee4995bff2c4442cb056eeb4f11ecb5a"
   integrity sha512-Xr20SxMpRNlgXZnoF5BCMyZuQEhXY3yJCyms8kxB/vJCCiV1nWdiO48XqRG5LBd1192iSHC4m658AIWi6rmBFg==
