@@ -14,7 +14,33 @@ class OpenDALStorageConfig(BaseSettings):
         default=OpenDALScheme.FS,
         description="OpenDAL scheme.",
     )
+    # FS
     OPENDAL_FS_ROOT: str = Field(
         default="storage",
         description="Root path for local storage.",
+    )
+    # S3
+    OPENDAL_S3_ROOT: str = Field(
+        default="/",
+        description="Root path for S3 storage.",
+    )
+    OPENDAL_S3_BUCKET: str = Field(
+        default="",
+        description="S3 bucket name.",
+    )
+    OPENDAL_S3_ENDPOINT: str = Field(
+        default="",
+        description="S3 endpoint URL.",
+    )
+    OPENDAL_S3_ACCESS_KEY_ID: str = Field(
+        default="",
+        description="S3 access key ID.",
+    )
+    OPENDAL_S3_SECRET_ACCESS_KEY: str = Field(
+        default="",
+        description="S3 secret access key.",
+    )
+    OPENDAL_S3_REGION: str = Field(
+        default="",
+        description="S3 region.",
     )

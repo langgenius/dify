@@ -69,7 +69,7 @@ class Storage:
                 from extensions.storage.opendal_storage import OpenDALStorage
 
                 kwargs = _load_opendal_storage_kwargs_by_scheme(OpenDALScheme.FS)
-                return lambda: OpenDALStorage(scheme=dify_config.STORAGE_OPENDAL_SCHEME, **kwargs)
+                return lambda: OpenDALStorage(scheme=OpenDALScheme.FS, **kwargs)
 
     def save(self, filename, data):
         try:
@@ -129,6 +129,15 @@ def _load_opendal_storage_kwargs_by_scheme(scheme: OpenDALScheme, /) -> Mapping[
         case OpenDALScheme.FS:
             return {
                 "root": dify_config.OPENDAL_FS_ROOT,
+            }
+        case OpenDALScheme.S3:
+            return {
+                "root": dify_config.OPENDAL_S3_ROOT,
+                "bucket": dify_config.OPENDAL_S3_BUCKET,
+                "endpoint": dify_config.OPENDAL_S3_ENDPOINT,
+                "access_key_id": dify_config.OPENDAL_S3_ACCESS_KEY_ID,
+                "secret_access_key": dify_config.OPENDAL_S3_SECRET_ACCESS_KEY,
+                "region": dify_config.OPENDAL_S3_REGION,
             }
         case _:
             raise ValueError(f"Unsupported OpenDAL scheme {scheme}")
