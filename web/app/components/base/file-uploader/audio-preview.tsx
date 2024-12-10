@@ -2,7 +2,8 @@ import type { FC } from 'react'
 import { createPortal } from 'react-dom'
 import { RiCloseLine } from '@remixicon/react'
 import React from 'react'
-import { useKeyboardShortcuts } from '@/hooks/use-keyboard-short'
+
+import { useHotkeys } from 'react-hotkeys-hook'
 
 type AudioPreviewProps = {
   url: string
@@ -14,9 +15,7 @@ const AudioPreview: FC<AudioPreviewProps> = ({
   title,
   onCancel,
 }) => {
-  useKeyboardShortcuts({
-    esc: onCancel,
-  })
+  useHotkeys('esc', onCancel)
 
   return createPortal(
     <div

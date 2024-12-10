@@ -5,9 +5,9 @@ import { PdfHighlighter, PdfLoader } from 'react-pdf-highlighter'
 import { t } from 'i18next'
 import { RiCloseLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
 import React, { useState } from 'react'
+import { useHotkeys } from 'react-hotkeys-hook'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { useKeyboardShortcuts } from '@/hooks/use-keyboard-short'
 import Tooltip from '@/app/components/base/tooltip'
 
 type PdfPreviewProps = {
@@ -41,11 +41,9 @@ const PdfPreview: FC<PdfPreviewProps> = ({
     })
   }
 
-  useKeyboardShortcuts({
-    esc: onCancel,
-    up: zoomIn,
-    down: zoomOut,
-  })
+  useHotkeys('esc', onCancel)
+  useHotkeys('up', zoomIn)
+  useHotkeys('down', zoomOut)
 
   return createPortal(
     <div

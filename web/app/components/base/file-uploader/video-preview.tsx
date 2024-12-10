@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { createPortal } from 'react-dom'
 import { RiCloseLine } from '@remixicon/react'
 import React from 'react'
-import { useKeyboardShortcuts } from '@/hooks/use-keyboard-short'
+import { useHotkeys } from 'react-hotkeys-hook'
 
 type VideoPreviewProps = {
   url: string
@@ -14,9 +14,7 @@ const VideoPreview: FC<VideoPreviewProps> = ({
   title,
   onCancel,
 }) => {
-  useKeyboardShortcuts({
-    esc: onCancel,
-  })
+  useHotkeys('esc', onCancel)
 
   return createPortal(
     <div

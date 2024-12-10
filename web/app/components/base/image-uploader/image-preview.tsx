@@ -3,9 +3,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { t } from 'i18next'
 import { createPortal } from 'react-dom'
 import { RiAddBoxLine, RiCloseLine, RiDownloadCloud2Line, RiFileCopyLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
+import { useHotkeys } from 'react-hotkeys-hook'
 import Tooltip from '@/app/components/base/tooltip'
 import Toast from '@/app/components/base/toast'
-import { useKeyboardShortcuts } from '@/hooks/use-keyboard-short'
 
 type ImagePreviewProps = {
   url: string
@@ -193,13 +193,11 @@ const ImagePreview: FC<ImagePreviewProps> = ({
     }
   }, [handleMouseUp])
 
-  useKeyboardShortcuts({
-    esc: onCancel,
-    up: zoomIn,
-    down: zoomOut,
-    left: onPrev || (() => {}),
-    right: onNext || (() => {}),
-  })
+  useHotkeys('esc', onCancel)
+  useHotkeys('up', zoomIn)
+  useHotkeys('down', zoomOut)
+  useHotkeys('left', onPrev || (() => {}))
+  useHotkeys('right', onNext || (() => {}))
 
   return createPortal(
     <div className='fixed inset-0 p-8 flex items-center justify-center bg-black/80 z-[1000] image-preview-container'
