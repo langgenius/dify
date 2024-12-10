@@ -37,6 +37,36 @@ export const getPluginLinkInMarketplace = (plugin: Plugin) => {
   return `${MARKETPLACE_URL_PREFIX}/plugins/${plugin.org}/${plugin.name}`
 }
 
+export const getMarketplacePluginsByCollectionId = async (collectionId: string, query?: CollectionsAndPluginsSearchParams) => {
+  let plugins = [] as Plugin[]
+
+  try {
+    const url = `${MARKETPLACE_API_PREFIX}/collections/${collectionId}/plugins`
+    const marketplaceCollectionPluginsData = await globalThis.fetch(
+      url,
+      {
+        cache: 'no-store',
+        method: 'POST',
+        body: JSON.stringify({
+          category: query?.category,
+          exclude: query?.exclude,
+          type: query?.type,
+        }),
+      },
+    )
+    const marketplaceCollectionPluginsDataJson = await marketplaceCollectionPluginsData.json()
+    plugins = marketplaceCollectionPluginsDataJson.data.plugins.map((plugin: Plugin) => {
+      return getFormattedPlugin(plugin)
+    })
+  }
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  catch (e) {
+    plugins = []
+  }
+
+  return plugins
+}
+
 export const getMarketplaceCollectionsAndPlugins = async (query?: CollectionsAndPluginsSearchParams) => {
   let marketplaceCollections = [] as MarketplaceCollection[]
   let marketplaceCollectionPluginsMap = {} as Record<string, Plugin[]>
@@ -50,23 +80,7 @@ export const getMarketplaceCollectionsAndPlugins = async (query?: CollectionsAnd
     const marketplaceCollectionsDataJson = await marketplaceCollectionsData.json()
     marketplaceCollections = marketplaceCollectionsDataJson.data.collections
     await Promise.all(marketplaceCollections.map(async (collection: MarketplaceCollection) => {
-      const url = `${MARKETPLACE_API_PREFIX}/collections/${collection.name}/plugins`
-      const marketplaceCollectionPluginsData = await globalThis.fetch(
-        url,
-        {
-          cache: 'no-store',
-          method: 'POST',
-          body: JSON.stringify({
-            category: query?.category,
-            exclude: query?.exclude,
-            type: query?.type,
-          }),
-        },
-      )
-      const marketplaceCollectionPluginsDataJson = await marketplaceCollectionPluginsData.json()
-      const plugins = marketplaceCollectionPluginsDataJson.data.plugins.map((plugin: Plugin) => {
-        return getFormattedPlugin(plugin)
-      })
+      const plugins = await getMarketplacePluginsByCollectionId(collection.name, query)
 
       marketplaceCollectionPluginsMap[collection.name] = plugins
     }))
