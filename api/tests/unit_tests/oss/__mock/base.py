@@ -6,7 +6,7 @@ from extensions.storage.base_storage import BaseStorage
 
 
 def get_example_folder() -> str:
-    return "/dify"
+    return "~/dify"
 
 
 def get_example_bucket() -> str:
