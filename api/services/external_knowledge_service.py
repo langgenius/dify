@@ -69,7 +69,10 @@ class ExternalDatasetService:
         endpoint = f"{settings['endpoint']}/retrieval"
         api_key = settings["api_key"]
         if not validators.url(endpoint, simple_host=True):
-            raise ValueError(f"invalid endpoint: {endpoint}")
+            if not endpoint.startswith("http://") and not endpoint.startswith("https://"):
+                raise ValueError(f"invalid endpoint: {endpoint} must start with http:// or https://")
+            else:
+                raise ValueError(f"invalid endpoint: {endpoint}")
         try:
             response = httpx.post(endpoint, headers={"Authorization": f"Bearer {api_key}"})
         except Exception as e:
