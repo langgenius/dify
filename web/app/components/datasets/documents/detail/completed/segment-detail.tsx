@@ -4,23 +4,23 @@ import {
   RiCloseLine,
   RiExpandDiagonalLine,
 } from '@remixicon/react'
-import { useKeyPress } from 'ahooks'
+import { useDocumentContext } from '../index'
+import ActionButtons from './common/action-buttons'
+import ChunkContent from './common/chunk-content'
+import Keywords from './common/keywords'
 import { SegmentIndexTag, useSegmentListContext } from './index'
 import type { SegmentDetailModel } from '@/models/datasets'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import AutoHeightTextarea from '@/app/components/base/auto-height-textarea/common'
-import Button from '@/app/components/base/button'
-import TagInput from '@/app/components/base/tag-input'
 import { formatNumber } from '@/utils/format'
-import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 import classNames from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 
 type ISegmentDetailProps = {
   segInfo?: Partial<SegmentDetailModel> & { id: string }
-  onUpdate: (segmentId: string, q: string, a: string, k: string[]) => void
+  onUpdate: (segmentId: string, q: string, a: string, k: string[], needRegenerate: boolean) => void
   onCancel: () => void
   isEditMode?: boolean
+  docForm: string
 }
 
 /**
@@ -31,6 +31,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   onUpdate,
   onCancel,
   isEditMode,
+  docForm,
 }) => {
   const { t } = useTranslation()
   const [question, setQuestion] = useState(segInfo?.content || '')
@@ -39,6 +40,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   const { eventEmitter } = useEventEmitterContextContext()
   const [loading, setLoading] = useState(false)
   const [fullScreen, toggleFullScreen] = useSegmentListContext(s => [s.fullScreen, s.toggleFullScreen])
+  const [mode] = useDocumentContext(s => s.mode)
 
   eventEmitter?.useSubscription((v) => {
     if (v === 'update-segment')
@@ -53,110 +55,9 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
     setAnswer(segInfo?.answer || '')
     setKeywords(segInfo?.keywords || [])
   }
-  const handleSave = () => {
-    onUpdate(segInfo?.id || '', question, answer, keywords)
-  }
 
-  useKeyPress(['esc'], (e) => {
-    e.preventDefault()
-    handleCancel()
-  })
-
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.s`, (e) => {
-    if (loading)
-      return
-    e.preventDefault()
-    handleSave()
-  }
-  , { exactMatch: true, useCapture: true })
-
-  const renderContent = () => {
-    if (segInfo?.answer) {
-      return (
-        <>
-          <div className='mb-1 text-xs font-medium text-gray-500'>QUESTION</div>
-          <AutoHeightTextarea
-            outerClassName='mb-4'
-            className='leading-6 text-md text-gray-800'
-            value={question}
-            placeholder={t('datasetDocuments.segment.questionPlaceholder') || ''}
-            onChange={e => setQuestion(e.target.value)}
-            disabled={!isEditMode}
-          />
-          <div className='mb-1 text-xs font-medium text-gray-500'>ANSWER</div>
-          <AutoHeightTextarea
-            outerClassName='mb-4'
-            className='leading-6 text-md text-gray-800'
-            value={answer}
-            placeholder={t('datasetDocuments.segment.answerPlaceholder') || ''}
-            onChange={e => setAnswer(e.target.value)}
-            disabled={!isEditMode}
-            autoFocus
-          />
-        </>
-      )
-    }
-
-    return (
-      <AutoHeightTextarea
-        className='body-md-regular text-text-secondary tracking-[-0.07px] caret-[#295EFF]'
-        value={question}
-        placeholder={t('datasetDocuments.segment.contentPlaceholder') || ''}
-        onChange={e => setQuestion(e.target.value)}
-        disabled={!isEditMode}
-        autoFocus
-      />
-    )
-  }
-
-  const renderActionButtons = () => {
-    return (
-      <div className='flex items-center gap-x-2'>
-        <Button
-          onClick={handleCancel}
-        >
-          <div className='flex items-center gap-x-1'>
-            <span className='text-components-button-secondary-text system-sm-medium'>{t('common.operation.cancel')}</span>
-            <span className='px-[1px] bg-components-kbd-bg-gray rounded-[4px] text-text-tertiary system-kbd'>ESC</span>
-          </div>
-        </Button>
-        <Button
-          variant='primary'
-          onClick={handleSave}
-          disabled={loading}
-          loading={loading}
-        >
-          <div className='flex items-center gap-x-1'>
-            <span className='text-components-button-primary-text'>{t('common.operation.save')}</span>
-            <div className='flex items-center gap-x-0.5'>
-              <span className='w-4 h-4 bg-components-kbd-bg-white rounded-[4px] text-text-primary-on-surface system-kbd capitalize'>{getKeyboardKeyNameBySystem('ctrl')}</span>
-              <span className='w-4 h-4 bg-components-kbd-bg-white rounded-[4px] text-text-primary-on-surface system-kbd'>S</span>
-            </div>
-          </div>
-        </Button>
-      </div>
-    )
-  }
-
-  const renderKeywords = () => {
-    return (
-      <div className={classNames('flex flex-col', fullScreen ? 'w-1/5' : '')}>
-        <div className='text-text-tertiary system-xs-medium-uppercase'>{t('datasetDocuments.segment.keywords')}</div>
-        <div className='text-text-tertiary w-full max-h-[200px] overflow-auto flex flex-wrap gap-1'>
-          {!segInfo?.keywords?.length
-            ? '-'
-            : (
-              <TagInput
-                items={keywords}
-                onChange={newKeywords => setKeywords(newKeywords)}
-                disableAdd={!isEditMode}
-                disableRemove={!isEditMode || (keywords.length === 1)}
-              />
-            )
-          }
-        </div>
-      </div>
-    )
+  const handleSave = (needRegenerate = false) => {
+    onUpdate(segInfo?.id || '', question, answer, keywords, needRegenerate)
   }
 
   return (
@@ -173,7 +74,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
         <div className='flex items-center'>
           {isEditMode && fullScreen && (
             <>
-              {renderActionButtons()}
+              <ActionButtons handleCancel={handleCancel} handleSave={handleSave} loading={loading} />
               <Divider type='vertical' className='h-3.5 bg-divider-regular ml-4 mr-2' />
             </>
           )}
@@ -187,13 +88,27 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
       </div>
       <div className={classNames('flex grow overflow-hidden', fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8 mx-auto' : 'flex-col gap-y-1 py-3 px-4')}>
         <div className={classNames('break-all overflow-y-auto whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
-          {renderContent()}
+          <ChunkContent
+            docForm={docForm}
+            question={question}
+            answer={answer}
+            onQuestionChange={question => setQuestion(question)}
+            onAnswerChange={answer => setAnswer(answer)}
+            isEditMode={isEditMode}
+          />
         </div>
-        {renderKeywords()}
+        {mode === 'custom' && <Keywords
+          className={fullScreen ? 'w-1/5' : ''}
+          actionType={isEditMode ? 'edit' : 'view'}
+          segInfo={segInfo}
+          keywords={keywords}
+          isEditMode={isEditMode}
+          onKeywordsChange={keywords => setKeywords(keywords)}
+        />}
       </div>
       {isEditMode && !fullScreen && (
         <div className='flex items-center justify-end p-4 pt-3 border-t-[1px] border-t-divider-subtle'>
-          {renderActionButtons()}
+          <ActionButtons handleCancel={handleCancel} handleSave={handleSave} loading={loading} />
         </div>
       )}
     </div>

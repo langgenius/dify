@@ -4,21 +4,20 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useParams } from 'next/navigation'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
-import { useKeyPress } from 'ahooks'
 import { useShallow } from 'zustand/react/shallow'
 import { SegmentIndexTag, useSegmentListContext } from './completed'
+import ActionButtons from './completed/common/action-buttons'
+import Keywords from './completed/common/keywords'
+import ChunkContent from './completed/common/chunk-content'
+import AddAnother from './completed/common/add-another'
+import { useDocumentContext } from './index'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Button from '@/app/components/base/button'
-import AutoHeightTextarea from '@/app/components/base/auto-height-textarea/common'
 import { ToastContext } from '@/app/components/base/toast'
 import type { SegmentUpdater } from '@/models/datasets'
 import { addSegment } from '@/service/datasets'
-import TagInput from '@/app/components/base/tag-input'
 import classNames from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
-import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 import Divider from '@/app/components/base/divider'
-import Checkbox from '@/app/components/base/checkbox'
 
 type NewSegmentModalProps = {
   onCancel: () => void
@@ -40,8 +39,9 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   const { datasetId, documentId } = useParams<{ datasetId: string; documentId: string }>()
   const [keywords, setKeywords] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
-  const [addAnother, setAnother] = useState(true)
+  const [addAnother, setAddAnother] = useState(true)
   const [fullScreen, toggleFullScreen] = useSegmentListContext(s => [s.fullScreen, s.toggleFullScreen])
+  const [mode] = useDocumentContext(s => s.mode)
   const { appSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
   })))
@@ -106,107 +106,6 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     }
   }
 
-  useKeyPress(['esc'], (e) => {
-    e.preventDefault()
-    handleCancel()
-  })
-
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.s`, (e) => {
-    if (loading)
-      return
-    e.preventDefault()
-    handleSave()
-  }
-  , { exactMatch: true, useCapture: true })
-
-  const renderContent = () => {
-    if (docForm === 'qa_model') {
-      return (
-        <>
-          <div className='mb-1 text-xs font-medium text-gray-500'>QUESTION</div>
-          <AutoHeightTextarea
-            outerClassName='mb-4'
-            className='leading-6 text-md text-gray-800'
-            value={question}
-            placeholder={t('datasetDocuments.segment.questionPlaceholder') || ''}
-            onChange={e => setQuestion(e.target.value)}
-            autoFocus
-          />
-          <div className='mb-1 text-xs font-medium text-gray-500'>ANSWER</div>
-          <AutoHeightTextarea
-            outerClassName='mb-4'
-            className='leading-6 text-md text-gray-800'
-            value={answer}
-            placeholder={t('datasetDocuments.segment.answerPlaceholder') || ''}
-            onChange={e => setAnswer(e.target.value)}
-          />
-        </>
-      )
-    }
-
-    return (
-      <AutoHeightTextarea
-        className='body-md-regular text-text-secondary tracking-[-0.07px] caret-[#295EFF]'
-        value={question}
-        placeholder={t('datasetDocuments.segment.contentPlaceholder') || ''}
-        onChange={e => setQuestion(e.target.value)}
-        autoFocus
-      />
-    )
-  }
-
-  const renderActionButtons = () => {
-    return (
-      <div className='flex items-center gap-x-2'>
-        <Button
-          className='flex items-center gap-x-1'
-          onClick={handleCancel.bind(null, 'esc')}
-        >
-          <span className='text-components-button-secondary-text system-sm-medium'>{t('common.operation.cancel')}</span>
-          <span className='px-[1px] bg-components-kbd-bg-gray rounded-[4px] text-text-tertiary system-kbd'>ESC</span>
-        </Button>
-        <Button
-          className='flex items-center gap-x-1'
-          variant='primary'
-          onClick={handleSave}
-          disabled={loading}
-          loading={loading}
-        >
-          <span className='text-components-button-primary-text'>{t('common.operation.save')}</span>
-          <div className='flex items-center gap-x-0.5'>
-            <span className='w-4 h-4 bg-components-kbd-bg-white rounded-[4px] text-text-primary-on-surface system-kbd capitalize'>{getKeyboardKeyNameBySystem('ctrl')}</span>
-            <span className='w-4 h-4 bg-components-kbd-bg-white rounded-[4px] text-text-primary-on-surface system-kbd'>S</span>
-          </div>
-        </Button>
-      </div>
-    )
-  }
-
-  const AddAnotherCheckBox = () => {
-    return (
-      <div className={classNames('flex items-center gap-x-1 pl-1', fullScreen ? 'mr-3' : '')}>
-        <Checkbox
-          key='add-another-checkbox'
-          className='shrink-0'
-          checked={addAnother}
-          onCheck={() => setAnother(!addAnother)}
-        />
-        <span className='text-text-tertiary system-xs-medium'>{t('datasetDocuments.segment.addAnother')}</span>
-      </div>
-    )
-  }
-
-  const renderKeywords = () => {
-    return (
-      <div className={classNames('flex flex-col', fullScreen ? 'w-1/5' : '')}>
-        <div className='text-text-tertiary system-xs-medium-uppercase'>{t('datasetDocuments.segment.keywords')}</div>
-        <div className='text-text-tertiary w-full max-h-[200px] overflow-auto flex flex-wrap gap-1'>
-          <TagInput items={keywords} onChange={newKeywords => setKeywords(newKeywords)} />
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className={'flex flex-col h-full'}>
       <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
@@ -225,8 +124,13 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
         <div className='flex items-center'>
           {fullScreen && (
             <>
-              {AddAnotherCheckBox()}
-              {renderActionButtons()}
+              <AddAnother className='mr-3' isChecked={addAnother} onCheck={() => setAddAnother(!addAnother)} />
+              <ActionButtons
+                handleCancel={handleCancel.bind(null, 'esc')}
+                handleSave={handleSave}
+                loading={loading}
+                actionType='add'
+              />
               <Divider type='vertical' className='h-3.5 bg-divider-regular ml-4 mr-2' />
             </>
           )}
@@ -240,14 +144,32 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
       </div>
       <div className={classNames('flex grow overflow-hidden', fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8' : 'flex-col gap-y-1 py-3 px-4')}>
         <div className={classNames('break-all overflow-y-auto whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
-          {renderContent()}
+          <ChunkContent
+            docForm={docForm}
+            question={question}
+            answer={answer}
+            onQuestionChange={question => setQuestion(question)}
+            onAnswerChange={answer => setAnswer(answer)}
+            isEditMode={true}
+          />
         </div>
-        {renderKeywords()}
+        {mode === 'custom' && <Keywords
+          className={fullScreen ? 'w-1/5' : ''}
+          actionType='add'
+          keywords={keywords}
+          isEditMode={true}
+          onKeywordsChange={keywords => setKeywords(keywords)}
+        />}
       </div>
       {!fullScreen && (
         <div className='flex items-center justify-between p-4 pt-3 border-t-[1px] border-t-divider-subtle'>
-          {AddAnotherCheckBox()}
-          {renderActionButtons()}
+          <AddAnother isChecked={addAnother} onCheck={() => setAddAnother(!addAnother)} />
+          <ActionButtons
+            handleCancel={handleCancel.bind(null, 'esc')}
+            handleSave={handleSave}
+            loading={loading}
+            actionType='add'
+          />
         </div>
       )}
     </div>

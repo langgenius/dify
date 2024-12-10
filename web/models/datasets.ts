@@ -561,6 +561,7 @@ export type SegmentUpdater = {
   content: string
   answer?: string
   keywords?: string[]
+  regenerate_child_chunks?: boolean
 }
 
 export enum DocForm {

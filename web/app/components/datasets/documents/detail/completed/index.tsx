@@ -51,7 +51,7 @@ export const useSegmentListContext = (selector: (value: SegmentListContextValue)
   return useContextSelector(SegmentListContext, selector)
 }
 
-export const SegmentIndexTag: FC<{ positionId?: string | number; label?: string; className?: string }> = ({ positionId, label, className }) => {
+export const SegmentIndexTag: FC<{ positionId?: string | number; label?: string; className?: string }> = React.memo(({ positionId, label, className }) => {
   const localPositionId = useMemo(() => {
     const positionIdStr = String(positionId)
     if (positionIdStr.length >= 3)
@@ -66,7 +66,9 @@ export const SegmentIndexTag: FC<{ positionId?: string | number; label?: string;
       </div>
     </div>
   )
-}
+})
+
+SegmentIndexTag.displayName = 'SegmentIndexTag'
 
 type ICompletedProps = {
   embeddingAvailable: boolean
@@ -240,7 +242,13 @@ const Completed: FC<ICompletedProps> = ({
     )
   }, [])
 
-  const handleUpdateSegment = async (segmentId: string, question: string, answer: string, keywords: string[]) => {
+  const handleUpdateSegment = async (
+    segmentId: string,
+    question: string,
+    answer: string,
+    keywords: string[],
+    needRegenerate: boolean,
+  ) => {
     const params: SegmentUpdater = { content: '' }
     if (docForm === 'qa_model') {
       if (!question.trim())
@@ -261,6 +269,9 @@ const Completed: FC<ICompletedProps> = ({
     if (keywords.length)
       params.keywords = keywords
 
+    if (needRegenerate)
+      params.regenerate_child_chunks = needRegenerate
+
     try {
       eventEmitter?.emit('update-segment')
       const res = await updateSegment({ datasetId, documentId, segmentId, body: params })
@@ -275,6 +286,7 @@ const Completed: FC<ICompletedProps> = ({
           seg.hit_count = res.data.hit_count
           seg.enabled = res.data.enabled
           seg.updated_at = res.data.updated_at
+          seg.child_chunks = res.data.child_chunks
         }
       }
       setSegments([...segments])
@@ -318,12 +330,13 @@ const Completed: FC<ICompletedProps> = ({
     const total = segmentListData?.total || 0
     const newPage = Math.ceil((total + 1) / limit)
     needScrollToBottom.current = true
-    if (newPage > totalPages)
+    if (newPage > totalPages) {
       setCurrentPage(totalPages + 1)
-    else if (currentPage === totalPages)
+    }
+    else {
       resetList()
-    else
-      setCurrentPage(totalPages)
+      currentPage !== totalPages && setCurrentPage(totalPages)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segmentListData, limit, currentPage])
 
@@ -407,6 +420,7 @@ const Completed: FC<ICompletedProps> = ({
       >
         <SegmentDetail
           segInfo={currSegment.segInfo ?? { id: '' }}
+          docForm={docForm}
           isEditMode={currSegment.isEditMode}
           onUpdate={handleUpdateSegment}
           onCancel={onCloseDrawer}

@@ -353,6 +353,7 @@ const translation = {
     delete: 'Delete this chunk ?',
     chunkAdded: '1 chunk added',
     viewAddedChunk: 'View',
+    saveAndRegenerate: 'Save & Regenerate Child Chunks',
   },
 }
 

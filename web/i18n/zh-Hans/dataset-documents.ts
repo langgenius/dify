@@ -351,6 +351,7 @@ const translation = {
     delete: '删除这个分段？',
     chunkAdded: '新增一个分段',
     viewAddedChunk: '查看',
+    saveAndRegenerate: '保存并重新生成子分段',
   },
 }
 
