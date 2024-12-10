@@ -21,9 +21,26 @@ class Storage:
     def get_storage_factory(storage_type: str) -> Callable[[], BaseStorage]:
         match storage_type:
             case StorageType.S3:
-                from extensions.storage.aws_s3_storage import AwsS3Storage
+                from extensions.storage.opendal_storage import OpenDALStorage
 
-                return AwsS3Storage
+                if dify_config.S3_USE_AWS_MANAGED_IAM:
+                    kwargs = {
+                        "root": "/",
+                        "bucket": dify_config.S3_BUCKET_NAME,
+                        "server_side_encryption": "aws:kms",
+                        "region": dify_config.S3_REGION,
+                    }
+                else:
+                    kwargs = {
+                        "root": "/",
+                        "bucket": dify_config.S3_BUCKET_NAME,
+                        "endpoint": dify_config.S3_ENDPOINT,
+                        "access_key_id": dify_config.S3_ACCESS_KEY,
+                        "secret_access_key": dify_config.S3_SECRET_KEY,
+                        "region": dify_config.S3_REGION,
+                    }
+
+                return lambda: OpenDALStorage(scheme=OpenDALScheme.S3, **kwargs)
             case StorageType.AZURE_BLOB:
                 from extensions.storage.azure_blob_storage import AzureBlobStorage
 
