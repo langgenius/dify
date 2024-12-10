@@ -256,7 +256,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           e.preventDefault()
           getRedirection(isCurrentWorkspaceEditor, app, push)
         }}
-        className='relative h-[160px] group col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm inline-flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
+        className='relative h-[160px] group col-span-1 bg-components-card-bg border-[1px] border-solid border-components-card-border rounded-xl shadow-sm inline-flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
       >
         <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
           <div className='relative shrink-0'>
@@ -270,10 +270,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             <AppTypeIcon type={app.mode} wrapperClassName='absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm' className='w-3 h-3' />
           </div>
           <div className='grow w-0 py-[1px]'>
-            <div className='flex items-center text-sm leading-5 font-semibold text-gray-800'>
+            <div className='flex items-center text-sm leading-5 font-semibold text-text-secondary'>
               <div className='truncate' title={app.name}>{app.name}</div>
             </div>
-            <div className='flex items-center text-[10px] leading-[18px] text-gray-500 font-medium'>
+            <div className='flex items-center text-[10px] leading-[18px] text-text-tertiary font-medium'>
               {app.mode === 'advanced-chat' && <div className='truncate'>{t('app.types.advanced').toUpperCase()}</div>}
               {app.mode === 'chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
               {app.mode === 'agent-chat' && <div className='truncate'>{t('app.types.agent').toUpperCase()}</div>}
@@ -282,7 +282,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             </div>
           </div>
         </div>
-        <div className='title-wrapper h-[90px] px-[14px] text-xs leading-normal text-gray-500'>
+        <div className='title-wrapper h-[90px] px-[14px] text-xs leading-normal text-text-tertiary'>
           <div
             className={cn(tags.length ? 'line-clamp-2' : 'line-clamp-4', 'group-hover:line-clamp-2')}
             title={app.description}
@@ -315,7 +315,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   />
                 </div>
               </div>
-              <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200' />
+              <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px]' />
               <div className='!hidden group-hover:!flex shrink-0'>
                 <CustomPopover
                   htmlContent={<Operations />}
@@ -325,7 +325,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                     <div
                       className='flex items-center justify-center w-8 h-8 cursor-pointer rounded-md'
                     >
-                      <RiMoreFill className='w-4 h-4 text-gray-700' />
+                      <RiMoreFill className='w-4 h-4 text-text-tertiary' />
                     </div>
                   }
                   btnClassName={open =>
