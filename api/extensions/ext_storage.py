@@ -41,7 +41,7 @@ class Storage:
                     }
 
                 # For R2
-                if "endpoint" in kwargs and "r2.cloudflare.com" in kwargs["endpoint"]:
+                if "endpoint" in kwargs and "r2.cloudflarestorage.com" in kwargs["endpoint"]:
                     kwargs["disable_stat_with_override"] = True
                     kwargs["region"] = kwargs["region"] or "auto"
 
