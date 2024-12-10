@@ -25,10 +25,12 @@ import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '../../default
 import ConditionWrap from '../condition-wrap'
 import ConditionOperator from './condition-operator'
 import ConditionInput from './condition-input'
-import VariableTag from '@/app/components/workflow/nodes/_base/components/variable-tag'
+
+import ConditionVarSelector from './condition-var-selector'
 import type {
   Node,
   NodeOutPutVar,
+  ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
@@ -82,6 +84,7 @@ const ConditionItem = ({
   const { t } = useTranslation()
 
   const [isHovered, setIsHovered] = useState(false)
+  const [open, setOpen] = useState(false)
 
   const doUpdateCondition = useCallback((newCondition: Condition) => {
     if (isSubVariableKey)
@@ -190,6 +193,17 @@ const ConditionItem = ({
       onRemoveCondition?.(caseId, condition.id)
   }, [caseId, condition, conditionId, isSubVariableKey, onRemoveCondition, onRemoveSubVariableCondition])
 
+  const handleVarChange = useCallback((valueSelector: ValueSelector, varItem: Var) => {
+    const newCondition = produce(condition, (draft) => {
+      draft.variable_selector = valueSelector
+      draft.varType = varItem.type
+      draft.value = ''
+      draft.comparison_operator = getOperators(varItem.type)[0]
+    })
+    doUpdateCondition(newCondition)
+    setOpen(false)
+  }, [condition, doUpdateCondition])
+
   return (
     <div className={cn('flex mb-1 last-of-type:mb-0', className)}>
       <div className={cn(
@@ -221,11 +235,14 @@ const ConditionItem = ({
                 />
               )
               : (
-                <VariableTag
+                <ConditionVarSelector
+                  open={open}
+                  onOpenChange={setOpen}
                   valueSelector={condition.variable_selector || []}
                   varType={condition.varType}
                   availableNodes={availableNodes}
-                  isShort
+                  nodesOutputVars={nodesOutputVars}
+                  onChange={handleVarChange}
                 />
               )}
 
