@@ -11,8 +11,8 @@ class OpenDALScheme(StrEnum):
 
 
 class OpenDALStorageConfig(BaseSettings):
-    STORAGE_OPENDAL_SCHEME: OpenDALScheme = Field(
-        default=OpenDALScheme.FS,
+    STORAGE_OPENDAL_SCHEME: str = Field(
+        default=OpenDALScheme.FS.value,
         description="OpenDAL scheme.",
     )
     # FS

@@ -80,8 +80,8 @@ class Storage:
             case StorageType.OPENDAL:
                 from extensions.storage.opendal_storage import OpenDALStorage
 
-                kwargs = _load_opendal_storage_kwargs_by_scheme(dify_config.STORAGE_OPENDAL_SCHEME)
-                return lambda: OpenDALStorage(scheme=dify_config.STORAGE_OPENDAL_SCHEME, **kwargs)
+                kwargs = _load_opendal_storage_kwargs_by_scheme(OpenDALScheme(dify_config.STORAGE_OPENDAL_SCHEME))
+                return lambda: OpenDALStorage(scheme=OpenDALScheme(dify_config.STORAGE_OPENDAL_SCHEME), **kwargs)
             case StorageType.LOCAL:
                 from extensions.storage.opendal_storage import OpenDALStorage
 
