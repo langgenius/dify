@@ -122,15 +122,14 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const [collapse, setCollapse] = useState(false)
   const locale = getLocaleOnClient()
   const {
-    plugins,
     marketplaceCollections,
     marketplaceCollectionPluginsMap,
     isLoading: isPluginsLoading,
-  } = useMarketplace(providers, searchText)
+  } = useMarketplace()
   const {
     plugins: allPlugins,
     isLoading: isAllPluginsLoading,
-  } = useMarketplaceAllPlugins()
+  } = useMarketplaceAllPlugins(providers, searchText)
 
   const cardRender = useCallback((plugin: Plugin) => {
     if (plugin.type === 'bundle')
@@ -220,7 +219,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
             <List
               marketplaceCollections={marketplaceCollections || []}
               marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
-              plugins={plugins}
+              plugins={undefined}
               showInstallButton
               locale={locale}
               cardContainerClassName='grid grid-cols-2 gap-2'

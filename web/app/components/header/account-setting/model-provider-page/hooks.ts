@@ -28,11 +28,12 @@ import {
 } from '@/service/common'
 import { useProviderContext } from '@/context/provider-context'
 import {
-  useMarketplaceCollectionsAndPlugins,
   useMarketplacePlugins,
 } from '@/app/components/plugins/marketplace/hooks'
+import type { Plugin } from '@/app/components/plugins/types'
 import { PluginType } from '@/app/components/plugins/types'
-import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
+// import { getMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/utils'
+import type { MarketplaceCollection } from '@/app/components/plugins/marketplace/types'
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
@@ -241,21 +242,40 @@ export const useUpdateModelProviders = () => {
   return updateModelProviders
 }
 
-export const useMarketplace = (providers: ModelProvider[], searchText: string) => {
-  const exclude = useMemo(() => {
-    return providers.map(provider => provider.provider.replace(/(.+)\/([^/]+)$/, '$1'))
-  }, [providers])
-  const {
+export const useMarketplace = () => {
+  const [marketplaceCollections] = useState<MarketplaceCollection[]>([])
+  const [marketplaceCollectionPluginsMap] = useState<Record<string, Plugin[]>>()
+  const [isLoading] = useState(false)
+
+  // const getCollectionPlugins = useCallback(async () => {
+  //   setIsLoading(true)
+  //   const collectionPlugins = await getMarketplacePluginsByCollectionId('')
+  //   setIsLoading(false)
+
+  //   setCollectionPlugins(collectionPlugins)
+  // }, [])
+
+  // useEffect(() => {
+  //   getCollectionPlugins()
+  // }, [getCollectionPlugins])
+
+  return {
     isLoading,
     marketplaceCollections,
     marketplaceCollectionPluginsMap,
-    queryMarketplaceCollectionsAndPlugins,
-  } = useMarketplaceCollectionsAndPlugins()
+  }
+}
+
+export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText: string) => {
+  const exclude = useMemo(() => {
+    return providers.map(provider => provider.provider.replace(/(.+)\/([^/]+)$/, '$1'))
+  }, [providers])
+
   const {
     plugins,
-    resetPlugins,
+    queryPlugins,
     queryPluginsWithDebounced,
-    isLoading: isPluginsLoading,
+    isLoading,
   } = useMarketplacePlugins()
 
   useEffect(() => {
@@ -268,39 +288,15 @@ export const useMarketplace = (providers: ModelProvider[], searchText: string) =
       })
     }
     else {
-      queryMarketplaceCollectionsAndPlugins({
+      queryPlugins({
+        query: '',
         category: PluginType.model,
-        condition: getMarketplaceListCondition(PluginType.model),
-        exclude,
         type: 'plugin',
+        pageSize: 1000,
+        exclude,
       })
-      resetPlugins()
     }
-  }, [searchText, queryMarketplaceCollectionsAndPlugins, queryPluginsWithDebounced, resetPlugins, exclude])
-
-  return {
-    isLoading: isLoading || isPluginsLoading,
-    marketplaceCollections,
-    marketplaceCollectionPluginsMap,
-    plugins: plugins?.filter(plugin => plugin.type !== 'bundle'),
-  }
-}
-
-export const useMarketplaceAllPlugins = () => {
-  const {
-    plugins,
-    queryPlugins,
-    isLoading,
-  } = useMarketplacePlugins()
-
-  useEffect(() => {
-    queryPlugins({
-      query: '',
-      category: PluginType.model,
-      type: 'plugin',
-      pageSize: 1000,
-    })
-  }, [queryPlugins])
+  }, [queryPlugins, queryPluginsWithDebounced, searchText, exclude])
 
   return {
     plugins: plugins?.filter(plugin => plugin.type !== 'bundle'),
