@@ -65,11 +65,15 @@ class Storage:
 
                 kwargs = _load_opendal_storage_kwargs_by_scheme(dify_config.STORAGE_OPENDAL_SCHEME)
                 return lambda: OpenDALStorage(scheme=dify_config.STORAGE_OPENDAL_SCHEME, **kwargs)
-            case StorageType.LOCAL | _:
+            case StorageType.LOCAL:
                 from extensions.storage.opendal_storage import OpenDALStorage
 
-                kwargs = _load_opendal_storage_kwargs_by_scheme(OpenDALScheme.FS)
+                kwargs = {
+                    "root": dify_config.STORAGE_LOCAL_PATH,
+                }
                 return lambda: OpenDALStorage(scheme=OpenDALScheme.FS, **kwargs)
+            case _:
+                raise ValueError(f"Unsupported storage type {storage_type}")
 
     def save(self, filename, data):
         try:
