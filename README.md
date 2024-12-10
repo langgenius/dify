@@ -1,8 +1,8 @@
 # Commerce AI
 
-This project is fork from [Dify](https://github.com/langgenius/dify).Dify is an open-source LLM app development platform. Dify's intuitive interface combines AI workflow, RAG pipeline, agent capabilities, model management, observability features and more, letting you quickly go from prototype to production.
+This project is a fork of [Dify](https://github.com/langgenius/dify), an open-source platform for developing LLM applications. Dify offers an intuitive interface that integrates AI workflows, RAG pipelines, agent capabilities, model management, observability features, and more, enabling you to rapidly transition from prototype to production.
 
-We are building a platform for AI-powered commerce.
+We are creating a platform for AI-powered commerce.
 
 # Backend API
 
