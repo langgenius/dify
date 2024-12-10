@@ -2,6 +2,7 @@ import csv
 import io
 import json
 import os
+import re
 import tempfile
 
 import docx
@@ -108,6 +109,8 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
             return _extract_text_from_json(file_content)
         case "application/x-yaml" | "text/yaml":
             return _extract_text_from_yaml(file_content)
+        case "text/vtt":
+            return _extract_text_from_vtt(file_content)
         case _:
             raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
 
@@ -115,7 +118,7 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
 def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str) -> str:
     """Extract text from a file based on its file extension."""
     match file_extension:
-        case ".txt" | ".markdown" | ".md" | ".html" | ".htm" | ".xml" | ".vtt":
+        case ".txt" | ".markdown" | ".md" | ".html" | ".htm" | ".xml":
             return _extract_text_from_plain_text(file_content)
         case ".json":
             return _extract_text_from_json(file_content)
@@ -139,6 +142,8 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
             return _extract_text_from_eml(file_content)
         case ".msg":
             return _extract_text_from_msg(file_content)
+        case ".vtt":
+            return _extract_text_from_vtt(file_content)
         case _:
             raise UnsupportedFileTypeError(f"Unsupported Extension Type: {file_extension}")
 
@@ -262,6 +267,75 @@ def _extract_text_from_ppt(file_content: bytes) -> str:
         return "\n".join([getattr(element, "text", "") for element in elements])
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from PPT: {str(e)}") from e
+
+
+def _extract_text_from_vtt(vtt_bytes: bytes):
+    text = _extract_text_from_plain_text(vtt_bytes)
+    lines = text.splitlines()
+    
+    raw_results = []
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        
+        # Skip "WEBVTT", empty lines, and cue identifiers
+        if line in ("WEBVTT", ""):
+            i += 1
+            continue
+        
+        # Check if it is a timestamp line
+        if '-->' in line:
+            # Collect the cue text from the next lines
+            i += 1
+            cue_lines = []
+            
+            # The text until the next empty line or timestamp line is considered as one cue
+            while i < len(lines) and lines[i].strip() != '' and '-->' not in lines[i]:
+                cue_lines.append(lines[i])
+                i += 1
+            
+            # Extract <v speaker> ... </v> within the cue
+            cue_text = "\n".join(cue_lines)
+            
+            # Regular expression to extract speaker name and content
+            pattern = r"<v\s+([^>]+)>(.*?)</v>"
+            match = re.search(pattern, cue_text, flags=re.DOTALL)
+            
+            if match:
+                speaker = match.group(1).strip()
+                content = match.group(2).strip()
+                # Convert line breaks to spaces
+                content = " ".join(line.strip() for line in content.splitlines() if line.strip())
+                
+                # Store in the list in chronological order
+                raw_results.append((speaker, content))
+        else:
+            i += 1
+
+    # Merge consecutive utterances by the same speaker
+    merged_results = []
+    if raw_results:
+        current_speaker, current_text = raw_results[0]
+        
+        for i in range(1, len(raw_results)):
+            spk, txt = raw_results[i]
+            if spk == current_speaker:
+                # If it is the same speaker, merge the utterances (joined by space)
+                current_text += " " + txt
+            else:
+                # If the speaker changes, register the utterance so far and move on
+                merged_results.append((current_speaker, current_text))
+                current_speaker, current_text = spk, txt
+        
+        # Add the last element
+        merged_results.append((current_speaker, current_text))
+    else:
+        merged_results = raw_results
+
+    # Return the result in the specified format: Speaker "text" style
+    formatted = [f"{spk} \"{txt}\"" for spk, txt in merged_results]
+    return "\n".join(formatted)
 
 
 def _extract_text_from_pptx(file_content: bytes) -> str:
