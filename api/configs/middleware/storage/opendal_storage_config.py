@@ -30,7 +30,7 @@ class OpenDALStorageConfig(BaseSettings):
         description="S3 bucket name.",
     )
     OPENDAL_S3_ENDPOINT: str = Field(
-        default="",
+        default="https://s3.amazonaws.com",
         description="S3 endpoint URL.",
     )
     OPENDAL_S3_ACCESS_KEY_ID: str = Field(

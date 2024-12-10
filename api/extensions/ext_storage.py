@@ -34,11 +34,12 @@ class Storage:
                     kwargs = {
                         "root": "/",
                         "bucket": dify_config.S3_BUCKET_NAME,
-                        "endpoint": dify_config.S3_ENDPOINT,
                         "access_key_id": dify_config.S3_ACCESS_KEY,
                         "secret_access_key": dify_config.S3_SECRET_KEY,
                         "region": dify_config.S3_REGION,
                     }
+                    if dify_config.S3_ENDPOINT:
+                        kwargs["endpoint"] = dify_config.S3_ENDPOINT
 
                 return lambda: OpenDALStorage(scheme=OpenDALScheme.S3, **kwargs)
             case StorageType.AZURE_BLOB:
