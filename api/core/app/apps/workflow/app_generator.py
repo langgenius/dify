@@ -3,7 +3,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional, Union
+from typing import Any, Literal, Optional, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -30,6 +30,35 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowAppGenerator(BaseAppGenerator):
+    @overload
+    def generate(
+        self,
+        *,
+        app_model: App,
+        workflow: Workflow,
+        user: Account | EndUser,
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: Literal[True],
+        call_depth: int = 0,
+        workflow_thread_pool_id: Optional[str] = None,
+    ) -> Generator[str, None, None]: ...
+
+    @overload
+    def generate(
+        self,
+        *,
+        app_model: App,
+        workflow: Workflow,
+        user: Account | EndUser,
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: Literal[False],
+        call_depth: int = 0,
+        workflow_thread_pool_id: Optional[str] = None,
+    ) -> Mapping[str, Any]: ...
+
+    @overload
     def generate(
         self,
         *,
@@ -41,7 +70,20 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
-    ) -> Mapping[str, Any] | Generator[str, None, None]:
+    ) -> Mapping[str, Any] | Generator[str, None, None]: ...
+
+    def generate(
+        self,
+        *,
+        app_model: App,
+        workflow: Workflow,
+        user: Account | EndUser,
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: bool = True,
+        call_depth: int = 0,
+        workflow_thread_pool_id: Optional[str] = None,
+    ):
         files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
         # parse files
