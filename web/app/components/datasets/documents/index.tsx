@@ -8,6 +8,7 @@ import { useDebounce, useDebounceFn } from 'ahooks'
 import { groupBy, omit } from 'lodash-es'
 import { PlusIcon } from '@heroicons/react/24/solid'
 import { RiExternalLinkLine } from '@remixicon/react'
+import AutoDisabledDocument from '../common/document-status-with-action/auto-disabled-document'
 import List from './list'
 import s from './style.module.css'
 import Loading from '@/app/components/base/loading'
@@ -231,6 +232,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             onClear={() => handleInputChange('')}
           />
           <div className='flex gap-2 justify-center items-center !h-8'>
+            <AutoDisabledDocument datasetId={datasetId} />
             <IndexFailed datasetId={datasetId} />
             {embeddingAvailable && (
               <Button variant='primary' onClick={routeToDocCreate} className='shrink-0'>

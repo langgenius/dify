@@ -119,8 +119,10 @@ const translation = {
     change: 'Change',
     changeRetrievalMethod: 'Change retrieval method',
   },
-  docsFailedNotice: 'documents failed to be indexed',
+  docsFailedNotice: 'documents indexed failed',
   retry: 'Retry',
+  documentsDisabled: '{{num}} documents disabled - inactive for over 30 days',
+  enable: 'Enable',
   indexingTechnique: {
     high_quality: 'HQ',
     economy: 'ECO',

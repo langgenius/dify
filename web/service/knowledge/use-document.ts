@@ -3,6 +3,7 @@ import {
   useQuery,
 } from '@tanstack/react-query'
 import { del, get, patch } from '../base'
+import { useInvalid } from '../use-base'
 import type { SimpleDocumentDetail, UpdateDocumentBatchParams } from '@/models/datasets'
 import { DocumentActionType } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
@@ -25,6 +26,18 @@ export const useDocumentList = (payload: {
       params: query,
     }),
   })
+}
+
+const useAutoDisabledDocumentKey = [NAME_SPACE, 'autoDisabledDocument']
+export const useAutoDisabledDocuments = (datasetId: string) => {
+  return useQuery({
+    queryKey: [...useAutoDisabledDocumentKey, datasetId],
+    queryFn: () => get<{ document_ids: string[] }>(`/datasets/${datasetId}/auto-disable-logs`),
+  })
+}
+
+export const useInvalidDisabledDocument = () => {
+  return useInvalid(useAutoDisabledDocumentKey)
 }
 
 const toBatchDocumentsIdParams = (documentIds: string[] | string) => {
