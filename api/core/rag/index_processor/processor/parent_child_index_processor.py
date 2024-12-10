@@ -31,6 +31,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
     def transform(self, documents: list[Document], **kwargs) -> list[Document]:
         process_rule = kwargs.get("process_rule")
         rules = Rule(**process_rule.get("rules"))
+        all_documents = []
         if rules.parent_mode == ParentMode.PARAGRAPH:
             # Split the text documents into nodes.
             splitter = self._get_splitter(
@@ -40,7 +41,6 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 separator=rules.segmentation.separator,
                 embedding_model_instance=kwargs.get("embedding_model_instance"),
             )
-            all_documents = []
             for document in documents:
                 # document clean
                 document_text = CleanProcessor.clean(document.page_content, process_rule)

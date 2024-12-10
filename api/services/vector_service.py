@@ -10,6 +10,7 @@ from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from services.entities.knowledge_entities.knowledge_entities import ParentMode
 
 
 class VectorService:
@@ -119,11 +120,13 @@ class VectorService:
                 "dataset_id": segment.dataset_id,
             },
         )
-
+        # use full doc mode to generate segment's child chunk
+        processing_rule_dict = processing_rule.to_dict()
+        processing_rule_dict["rules"]["parent_mode"] = ParentMode.FULL_DOC.value
         documents = index_processor.transform(
             [document],
             embedding_model_instance=embedding_model_instance,
-            process_rule=processing_rule.to_dict(),
+            process_rule=processing_rule_dict,
             tenant_id=dataset.tenant_id,
             doc_language=dataset_document.doc_language,
         )
