@@ -71,6 +71,7 @@ const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigati
             description={desc}
             isExternal={isExternal}
             expand={expand}
+            extraInfo={extraInfo && extraInfo(appSidebarExpand)}
           />
         )}
         {!['app', 'dataset'].includes(iconType) && (
@@ -99,7 +100,6 @@ const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigati
             <NavLink key={index} mode={appSidebarExpand} iconMap={{ selected: item.selectedIcon, normal: item.icon }} name={item.name} href={item.href} />
           )
         })}
-        {extraInfo && extraInfo(appSidebarExpand)}
       </nav>
       {
         !isMobile && (

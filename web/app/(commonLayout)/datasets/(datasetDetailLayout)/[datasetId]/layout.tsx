@@ -20,14 +20,12 @@ import {
   // CommandLineIcon as CommandLineSolidIcon,
   DocumentTextIcon as DocumentTextSolidIcon,
 } from '@heroicons/react/24/solid'
-import Link from 'next/link'
+import { RiInformation2Line } from '@remixicon/react'
 import s from './style.module.css'
 import classNames from '@/utils/classnames'
 import { fetchDatasetDetail, fetchDatasetRelatedApps } from '@/service/datasets'
-import type { RelatedApp, RelatedAppResponse } from '@/models/datasets'
+import type { RelatedAppResponse } from '@/models/datasets'
 import AppSideBar from '@/app/components/app-sidebar'
-import Divider from '@/app/components/base/divider'
-import AppIcon from '@/app/components/base/app-icon'
 import Loading from '@/app/components/base/loading'
 import FloatPopoverContainer from '@/app/components/base/float-popover-container'
 import DatasetDetailContext from '@/context/dataset-detail'
@@ -35,55 +33,14 @@ import { DataSourceType } from '@/models/datasets'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { LanguagesSupported } from '@/i18n/language'
 import { useStore } from '@/app/components/app/store'
-import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
-import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import { getLocaleOnClient } from '@/i18n'
 import { useAppContext } from '@/context/app-context'
+import Tooltip from '@/app/components/base/tooltip'
+import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
   params: { datasetId: string }
-}
-
-type ILikedItemProps = {
-  type?: 'plugin' | 'app'
-  appStatus?: boolean
-  detail: RelatedApp
-  isMobile: boolean
-}
-
-const LikedItem = ({
-  type = 'app',
-  detail,
-  isMobile,
-}: ILikedItemProps) => {
-  return (
-    <Link className={classNames(s.itemWrapper, 'px-2', isMobile && 'justify-center')} href={`/app/${detail?.id}/overview`}>
-      <div className={classNames(s.iconWrapper, 'mr-0')}>
-        <AppIcon size='tiny' iconType={detail.icon_type} icon={detail.icon} background={detail.icon_background} imageUrl={detail.icon_url} />
-        {type === 'app' && (
-          <span className='absolute bottom-[-2px] right-[-2px] w-3.5 h-3.5 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm'>
-            {detail.mode === 'advanced-chat' && (
-              <ChatBot className='w-2.5 h-2.5 text-[#1570EF]' />
-            )}
-            {detail.mode === 'agent-chat' && (
-              <CuteRobot className='w-2.5 h-2.5 text-indigo-600' />
-            )}
-            {detail.mode === 'chat' && (
-              <ChatBot className='w-2.5 h-2.5 text-[#1570EF]' />
-            )}
-            {detail.mode === 'completion' && (
-              <AiText className='w-2.5 h-2.5 text-[#0E9384]' />
-            )}
-            {detail.mode === 'workflow' && (
-              <Route className='w-2.5 h-2.5 text-[#f79009]' />
-            )}
-          </span>
-        )}
-      </div>
-      {!isMobile && <div className={classNames(s.appInfo, 'ml-2')}>{detail?.name || '--'}</div>}
-    </Link>
-  )
 }
 
 const TargetIcon = ({ className }: SVGProps<SVGElement>) => {
@@ -124,23 +81,43 @@ const ExtraInfo = ({ isMobile, relatedApps }: IExtraInfoProps) => {
   const [isShowTips, { toggle: toggleTips, set: setShowTips }] = useBoolean(!isMobile)
   const { t } = useTranslation()
 
+  const hasRelatedApps = relatedApps?.data && relatedApps?.data?.length > 0
+  const relatedAppsTotal = relatedApps?.data?.length || 0
+
   useEffect(() => {
     setShowTips(!isMobile)
   }, [isMobile, setShowTips])
 
-  return <div className='w-full flex flex-col items-center'>
-    <Divider className='mt-5' />
-    {(relatedApps?.data && relatedApps?.data?.length > 0) && (
+  return <div>
+    {hasRelatedApps && (
       <>
-        {!isMobile && <div className='w-full px-2 pb-1 pt-4 uppercase text-xs text-gray-500 font-medium'>{relatedApps?.total || '--'} {t('common.datasetMenus.relatedApp')}</div>}
+        {!isMobile && (
+          <Tooltip
+            position='right'
+            noDecoration
+            needsDelay
+            popupContent={
+              <LinkedAppsPanel
+                relatedApps={relatedApps.data}
+                isMobile={isMobile}
+              />
+            }
+          >
+            <div className='inline-flex items-center system-xs-medium-uppercase text-text-secondary space-x-1 cursor-pointer'>
+              <span>{relatedAppsTotal || '--'} {t('common.datasetMenus.relatedApp')}</span>
+              <RiInformation2Line className='w-4 h-4' />
+            </div>
+          </Tooltip>
+        )}
+
         {isMobile && <div className={classNames(s.subTitle, 'flex items-center justify-center !px-0 gap-1')}>
-          {relatedApps?.total || '--'}
+          {relatedAppsTotal || '--'}
           <PaperClipIcon className='h-4 w-4 text-gray-700' />
         </div>}
-        {relatedApps?.data?.map((item, index) => (<LikedItem key={index} isMobile={isMobile} detail={item} />))}
+
       </>
     )}
-    {!relatedApps?.data?.length && (
+    {!hasRelatedApps && (
       <FloatPopoverContainer
         placement='bottom-start'
         open={isShowTips}

@@ -13,6 +13,7 @@ type Props = {
   name: string
   description: string
   expand: boolean
+  extraInfo?: React.ReactNode
 }
 
 const DatasetInfo: FC<Props> = ({
@@ -20,6 +21,7 @@ const DatasetInfo: FC<Props> = ({
   description,
   isExternal,
   expand,
+  extraInfo,
 }) => {
   const { t } = useTranslation()
   return (
@@ -36,6 +38,7 @@ const DatasetInfo: FC<Props> = ({
           <div className='my-3  system-xs-regular text-text-tertiary'>{description}</div>
         </div>
       )}
+      {extraInfo}
     </div>
   )
 }
