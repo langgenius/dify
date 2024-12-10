@@ -49,15 +49,14 @@ class MockGoogleClass:
         return MockGoogleResponseClass()
 
     def generate_content(
-            self: GenerativeModel,
-            contents: content_types.ContentsType,
-            *,
-            generation_config: generation_config_types.GenerationConfigType | None = None,
-            safety_settings: safety_types.SafetySettingOptions | None = None,
-            stream: bool = False,
-            **kwargs,
+        self: GenerativeModel,
+        contents: content_types.ContentsType,
+        *,
+        generation_config: generation_config_types.GenerationConfigType | None = None,
+        safety_settings: safety_types.SafetySettingOptions | None = None,
+        stream: bool = False,
+        **kwargs,
     ) -> GenerateContentResponse:
-
         if stream:
             return MockGoogleClass.generate_content_stream()
 
@@ -115,4 +114,3 @@ def setup_mock_redis() -> None:
     ext_redis.redis_client.get = MagicMock(return_value=None)
     ext_redis.redis_client.setex = MagicMock(return_value=None)
     ext_redis.redis_client.exists = MagicMock(return_value=True)
-
