@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from unittest.mock import MagicMock
 
 import google.generativeai.types.generation_types as generation_config_types
 import pytest
@@ -8,7 +9,6 @@ from google.ai.generativelanguage_v1beta.types import content as gag_content
 from google.generativeai import GenerativeModel
 from google.generativeai.types import GenerateContentResponse, content_types, safety_types
 from google.generativeai.types.generation_types import BaseGenerateContentResponse
-from unittest.mock import MagicMock
 
 from extensions import ext_redis
 
@@ -71,13 +71,16 @@ class MockGoogleClass:
     def generative_response_candidates(self) -> list[MockGoogleResponseCandidateClass]:
         return [MockGoogleResponseCandidateClass()]
 
+
 def mock_configure(api_key: str):
     if len(api_key) < 16:
         raise Exception("Invalid API key")
 
+
 class MockFileState:
     def __init__(self):
         self.name = "FINISHED"
+
 
 class MockGoogleFile:
     def __init__(self, name: str = "mock_file_name"):
@@ -87,6 +90,7 @@ class MockGoogleFile:
 
 def mock_get_file(name: str) -> MockGoogleFile:
     return MockGoogleFile(name)
+
 
 def mock_upload_file(path: str, mime_type: str) -> MockGoogleFile:
     return MockGoogleFile()
@@ -104,6 +108,7 @@ def setup_google_mock(request, monkeypatch: MonkeyPatch):
     yield
 
     monkeypatch.undo()
+
 
 @pytest.fixture
 def setup_mock_redis() -> None:
