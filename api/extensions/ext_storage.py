@@ -40,6 +40,11 @@ class Storage:
                         "region": dify_config.S3_REGION,
                     }
 
+                # For R2
+                if "endpoint" in kwargs and "r2.cloudflare.com" in kwargs["endpoint"]:
+                    kwargs["disable_stat_with_override"] = True
+                    kwargs["region"] = kwargs["region"] or "auto"
+
                 return lambda: OpenDALStorage(scheme=OpenDALScheme.S3, **kwargs)
             case StorageType.AZURE_BLOB:
                 from extensions.storage.azure_blob_storage import AzureBlobStorage

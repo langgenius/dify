@@ -16,7 +16,7 @@ class S3StorageConfig(BaseSettings):
 
     S3_REGION: Optional[str] = Field(
         description="Region where the S3 bucket is located (e.g., 'us-east-1')",
-        default="us-east-1",
+        default=None,
     )
 
     S3_BUCKET_NAME: Optional[str] = Field(
