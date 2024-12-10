@@ -1,8 +1,10 @@
 'use client'
 import { useTranslation } from 'react-i18next'
+import { IndexingType } from '../../create/step-two'
 import s from './index.module.css'
 import classNames from '@/utils/classnames'
 import type { DataSet } from '@/models/datasets'
+import { ChuckingMode } from '@/models/datasets'
 
 const itemClass = `
   w-full sm:w-[234px] p-3 rounded-xl bg-gray-25 border border-gray-100 cursor-pointer
@@ -15,6 +17,7 @@ type IIndexMethodRadioProps = {
   onChange: (v?: DataSet['indexing_technique']) => void
   disable?: boolean
   itemClassName?: string
+  docForm?: ChuckingMode
 }
 
 const IndexMethodRadio = ({
@@ -22,6 +25,7 @@ const IndexMethodRadio = ({
   onChange,
   disable,
   itemClassName,
+  docForm,
 }: IIndexMethodRadioProps) => {
   const { t } = useTranslation()
   const options = [
@@ -42,29 +46,35 @@ const IndexMethodRadio = ({
   return (
     <div className={classNames(s.wrapper, 'flex justify-between w-full flex-wrap gap-y-2')}>
       {
-        options.map(option => (
-          <div
-            key={option.key}
-            className={classNames(
-              itemClass,
-              itemClassName,
-              s.item,
-              option.key === value && s['item-active'],
-              disable && s.disable,
-            )}
-            onClick={() => {
-              if (!disable)
-                onChange(option.key as DataSet['indexing_technique'])
-            }}
-          >
-            <div className='flex items-center mb-1'>
-              <div className={classNames(s.icon, s[`${option.icon}-icon`])} />
-              <div className='grow text-sm text-gray-900'>{option.text}</div>
-              <div className={classNames(radioClass, s.radio)} />
+        options.map((option) => {
+          const isParentChild = docForm === ChuckingMode.parentChild
+          return (
+            <div
+              key={option.key}
+              className={classNames(
+                itemClass,
+                itemClassName,
+                s.item,
+                option.key === value && s['item-active'],
+                disable && s.disable,
+                isParentChild && option.key === IndexingType.ECONOMICAL && s.disable,
+              )}
+              onClick={() => {
+                if (isParentChild && option.key === IndexingType.ECONOMICAL)
+                  return
+                if (!disable)
+                  onChange(option.key as DataSet['indexing_technique'])
+              }}
+            >
+              <div className='flex items-center mb-1'>
+                <div className={classNames(s.icon, s[`${option.icon}-icon`])} />
+                <div className='grow text-sm text-gray-900'>{option.text}</div>
+                <div className={classNames(radioClass, s.radio)} />
+              </div>
+              <div className='pl-9 text-xs text-gray-500 leading-[18px]'>{option.desc}</div>
             </div>
-            <div className='pl-9 text-xs text-gray-500 leading-[18px]'>{option.desc}</div>
-          </div>
-        ))
+          )
+        })
       }
     </div>
   )

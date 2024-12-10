@@ -104,7 +104,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           title={
             <div className='flex items-center space-x-1'>
               <div>{t('dataset.retrieval.hybrid_search.title')}</div>
-              <Badge text={t('dataset.retrieval.hybrid_search.recommend')} className='border-text-accent-secondary text-text-accent-secondary ml-2' uppercase />
+              <Badge text={t('dataset.retrieval.hybrid_search.recommend')!} className='border-text-accent-secondary text-text-accent-secondary ml-2' uppercase />
             </div>
           }
           description={t('dataset.retrieval.hybrid_search.description')} isActive={
