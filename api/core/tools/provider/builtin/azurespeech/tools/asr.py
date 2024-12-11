@@ -15,7 +15,11 @@ class AzureASRTool(BuiltinTool):
         if file.type != FileType.AUDIO:
             return [self.create_text_message("not a valid audio file")]
         audio_binary = download(file)
+        definition: str = tool_parameters.get("definition", "")
 
+        files: dict = {"audio": audio_binary}
+        if definition:
+            files["definition"] = definition
         resp = requests.post(
             "https://{}.api.cognitive.microsoft.com/speechtotext/transcriptions:transcribe?api-version={}".format(
                 self.runtime.credentials.get("azure_speech_region"),
@@ -24,7 +28,7 @@ class AzureASRTool(BuiltinTool):
             headers={
                 "Ocp-Apim-Subscription-Key": self.runtime.credentials.get("azure_speech_api_key"),
             },
-            files={"audio": audio_binary},
+            files=files,
         )
 
         data: dict = resp.json()
@@ -34,4 +38,7 @@ class AzureASRTool(BuiltinTool):
         if len(combinedPhrases) == 0:
             raise Exception("No text detected, error: {}".format(json.dumps(data)))
 
-        return [self.create_text_message(data.get("combinedPhrases", [])[0].get("text", ""))]
+        return [
+            self.create_text_message(data.get("combinedPhrases", [])[0].get("text", "")),
+            self.create_json_message(data),
+        ]

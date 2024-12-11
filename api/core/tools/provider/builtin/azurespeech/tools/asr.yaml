@@ -20,3 +20,14 @@ parameters:
       zh_Hans: 要转换的音频文件。
     llm_description: The audio file to be converted.
     form: llm
+  - name: definition
+    type: string
+    required: false
+    label:
+      en_US: Definition
+      zh_Hans: asr 详细配置
+    human_description:
+      en_US: Definition
+      zh_Hans: asr 详细配置
+    llm_description: Definition
+    form: form
