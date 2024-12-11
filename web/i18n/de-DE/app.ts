@@ -148,6 +148,11 @@ const translation = {
   importFromDSLFile: 'Aus DSL-Datei',
   export: 'DSL exportieren',
   duplicateTitle: 'App duplizieren',
+  mermaid: {
+    handDrawn: 'Handgezeichnet',
+    classic: 'Klassisch',
+  },
+  openInExplore: 'In Explore öffnen',
 }
 
 export default translation

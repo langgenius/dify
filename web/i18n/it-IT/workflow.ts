@@ -105,6 +105,9 @@ const translation = {
     ImageUploadLegacyTip: 'Ora è possibile creare variabili di tipo file nel modulo iniziale. In futuro non supporteremo più la funzione di caricamento delle immagini.',
     importWarning: 'Cautela',
     importWarningDetails: 'La differenza di versione DSL può influire su alcune funzionalità',
+    openInExplore: 'Apri in Esplora',
+    onFailure: 'In caso di guasto',
+    addFailureBranch: 'Aggiungi ramo non riuscito',
   },
   env: {
     envPanelTitle: 'Variabili d\'Ambiente',
@@ -308,6 +311,31 @@ const translation = {
         title: 'Memorie',
         tip: 'Memoria chat',
         builtIn: 'Integrato',
+      },
+      errorHandle: {
+        none: {
+          title: 'Nessuno',
+          desc: 'L\'esecuzione del nodo verrà interrotta se si verifica un\'eccezione e non viene gestita',
+        },
+        defaultValue: {
+          title: 'Valore predefinito',
+          desc: 'Quando si verifica un errore, specificare un contenuto di output statico.',
+          tip: 'In caso di errore, tornerà al di sotto del valore.',
+          inLog: 'Eccezione del nodo, output in base ai valori predefiniti.',
+          output: 'Valore predefinito di output',
+        },
+        failBranch: {
+          title: 'Ramo fallito',
+          desc: 'Quando si verifica un errore, eseguirà il ramo dell\'eccezione',
+          customize: 'Passare all\'area di disegno per personalizzare la logica del ramo di errore.',
+          customizeTip: 'Quando il ramo di errore è attivato, le eccezioni generate dai nodi non termineranno il processo. Al contrario, eseguirà automaticamente il ramo di errore predefinito, consentendo di fornire in modo flessibile messaggi di errore, report, correzioni o azioni di salto.',
+          inLog: 'Eccezione nodo, eseguirà automaticamente il ramo di errore. L\'output del nodo restituirà un tipo di errore e un messaggio di errore e li passerà al downstream.',
+        },
+        partialSucceeded: {
+          tip: 'Ci sono {{num}} nodi nel processo che funzionano in modo anomalo, si prega di andare su tracing per controllare i log.',
+        },
+        title: 'Gestione degli errori',
+        tip: 'Strategia di gestione delle eccezioni, attivata quando un nodo rileva un\'eccezione.',
       },
     },
     start: {
