@@ -38,6 +38,7 @@ class MarkdownExtractor(BaseExtractor):
         documents = []
         for header, value in tups:
             value = value.strip()
+            print(value)
             if header is None:
                 documents.append(Document(page_content=value))
             else:
