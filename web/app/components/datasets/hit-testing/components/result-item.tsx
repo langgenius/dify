@@ -27,7 +27,7 @@ const ResultItem: FC<Props> = ({
   const { segment, score, child_chunks } = payload
   const { position, word_count, content, keywords, document } = segment
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
-  const extension = document.name.split('.').slice(0, -1)[0] as FileAppearanceTypeEnum
+  const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
   const [isFold, {
     toggle: toggleFold,
   }] = useBoolean(false)
@@ -61,7 +61,7 @@ const ResultItem: FC<Props> = ({
           <div className='mt-1'>
             <div className='flex items-center space-x-0.5 text-text-secondary' onClick={toggleFold}>
               <Icon className={cn('w-4 h-4', isFold && 'opacity-50')} />
-              <div>{t(`${i18nPrefix}.dataset.hitChunks`, { num: child_chunks.length })}</div>
+              <div>{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
             </div>
             <div className='space-y-2'>
               {child_chunks.map(item => (
@@ -73,7 +73,7 @@ const ResultItem: FC<Props> = ({
           </div>
         )}
         {!isParentChildRetrieval && keywords && keywords.length > 0 && (
-          <div className='flex flex-wrap'>
+          <div className='mt-2 flex flex-wrap'>
             {keywords.map(keyword => (
               <Tag key={keyword} text={keyword} className='mr-2' />
             ))}
@@ -82,7 +82,7 @@ const ResultItem: FC<Props> = ({
       </div>
       {/* Foot */}
       <div className='mt-3 flex justify-between items-center h-10 pl-3 pr-2 border-t border-divider-subtle'>
-        <div className='flex items-center space-x-1'>
+        <div className='grow flex items-center space-x-1'>
           <FileIcon type={extension} size='sm' />
           <span className='grow w-0 truncate text-text-secondary text-[13px] font-normal'>{document.name}</span>
         </div>

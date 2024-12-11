@@ -28,8 +28,8 @@ const ChunkDetailModal: FC<Props> = ({
   const { segment, score, child_chunks } = payload
   const { position, content, keywords, document } = segment
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
-  const extension = document.name.split('.').slice(0, -1)[0] as FileAppearanceTypeEnum
-  const maxHeighClassName = 'max-h-[752px] overflow-y-auto'
+  const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
+  const maxHeighClassName = 'max-h-[min(752px,_80vh)] overflow-y-auto'
   return (
     <Modal
       title={t(`${i18nPrefix}.chunkDetail`)}
@@ -38,7 +38,7 @@ const ChunkDetailModal: FC<Props> = ({
       onClose={onHide}
       className={cn(isParentChildRetrieval ? '!min-w-[1200px]' : '!min-w-[720px]')}
     >
-      <div className='flex pb-6'>
+      <div className='mt-4 flex pb-6'>
         <div>
           {/* Meta info */}
           <div className='flex justify-between items-center'>
@@ -49,7 +49,7 @@ const ChunkDetailModal: FC<Props> = ({
                 className={cn('w-fit group-hover:opacity-100')}
               />
               <Dot />
-              <div className='flex items-center space-x-1'>
+              <div className='grow flex items-center space-x-1'>
                 <FileIcon type={extension} size='sm' />
                 <span className='grow w-0 truncate text-text-secondary text-[13px] font-normal'>{document.name}</span>
               </div>
@@ -62,7 +62,7 @@ const ChunkDetailModal: FC<Props> = ({
           {!isParentChildRetrieval && keywords && keywords.length > 0 && (
             <div className='mt-6'>
               <div className='font-medium text-xs text-text-tertiary uppercase'>{t(`${i18nPrefix}.keyword`)}</div>
-              <div className='flex flex-wrap'>
+              <div className='mt-1 flex flex-wrap'>
                 {keywords.map(keyword => (
                   <Tag key={keyword} text={keyword} className='mr-2' />
                 ))}

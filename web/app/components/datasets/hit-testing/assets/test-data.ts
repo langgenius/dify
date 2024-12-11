@@ -54,7 +54,7 @@ export const generalResultData: HitTesting[] = [
         content: 'It is quite natural for ',
       },
     ],
-    score: 0.8771945,
+    score: 0.99,
     tsne_position: null,
   },
   {
@@ -99,7 +99,7 @@ export const generalResultData: HitTesting[] = [
       },
     },
     child_chunks: null,
-    score: 0.8642928,
+    score: 1,
     tsne_position: null,
   },
   {
@@ -144,7 +144,7 @@ export const generalResultData: HitTesting[] = [
       },
     },
     child_chunks: null,
-    score: 0.80618876,
+    score: 0.2,
     tsne_position: null,
   },
 ]
