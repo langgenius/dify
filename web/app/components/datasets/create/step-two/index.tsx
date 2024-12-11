@@ -517,14 +517,11 @@ const StepTwo = ({
   }
 
   const changeToEconomicalType = () => {
-    if (docForm === ChuckingMode.parentChild)
+    if (docForm !== ChuckingMode.text)
       return
 
-    if (!hasSetIndexType) {
+    if (!hasSetIndexType)
       setIndexType(IndexingType.ECONOMICAL)
-      if (docForm === ChuckingMode.qa)
-        handleChangeDocform(ChuckingMode.text)
-    }
   }
 
   useEffect(() => {
@@ -842,19 +839,25 @@ const StepTwo = ({
                 >
                   <CustomDialog show={isQAConfirmDialogOpen} onClose={() => setIsQAConfirmDialogOpen(false)} className='w-[432px]'>
                     <header className='pt-6 mb-4'>
-                      <h2 className='text-lg font-semibold'>Q&A Format Requires High-quality Indexing Method </h2>
-                      <p className='font-normal text-sm mt-2'>Currently, only high-quality index method supports Q&A format chunking. Would you like to switch to high-quality mode?</p>
+                      <h2 className='text-lg font-semibold'>
+                        {t('datasetCreation.stepTwo.qaSwitchHighQualityTipTitle')}
+                      </h2>
+                      <p className='font-normal text-sm mt-2'>
+                        {t('datasetCreation.stepTwo.qaSwitchHighQualityTipContent')}
+                      </p>
                     </header>
                     <div className='flex gap-2 pb-6'>
                       <Button className='ml-auto' onClick={() => {
                         setIsQAConfirmDialogOpen(false)
-                      }}>Cancel</Button>
+                      }}>
+                        {t('datasetCreation.stepTwo.cancel')}
+                      </Button>
                       <Button variant={'primary'} onClick={() => {
                         setIsQAConfirmDialogOpen(false)
                         setIndexType(IndexingType.QUALIFIED)
                         setDocForm(ChuckingMode.qa)
                       }}>
-                        Switch
+                        {t('datasetCreation.stepTwo.switch')}
                       </Button>
                     </div>
                   </CustomDialog>
