@@ -36,7 +36,11 @@ class AzureASRTool(BuiltinTool):
         combinedPhrases = data.get("combinedPhrases", [])
 
         if len(combinedPhrases) == 0:
-            raise Exception("No text detected, error: {}".format(json.dumps(data)))
+            raise Exception(
+                """No text detected.
+                   Error: {}
+                   Request: {}""".format(json.dumps(data), json.dumps(files))
+            )
 
         return [
             self.create_text_message(data.get("combinedPhrases", [])[0].get("text", "")),
