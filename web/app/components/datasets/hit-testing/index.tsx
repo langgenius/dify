@@ -11,7 +11,6 @@ import Textarea from './textarea'
 import s from './style.module.css'
 import HitDetail from './hit-detail'
 import ModifyRetrievalModal from './modify-retrieval-modal'
-import { generalResultData } from './assets/test-data'
 import ResultItem from './components/result-item'
 import cn from '@/utils/classnames'
 import type { ExternalKnowledgeBaseHitTestingResponse, ExternalKnowledgeBaseHitTesting as ExternalKnowledgeBaseHitTestingType, HitTestingResponse, HitTesting as HitTestingType } from '@/models/datasets'
@@ -25,6 +24,8 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import type { RetrievalConfig } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
+import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
+
 const limit = 10
 
 type Props = {
@@ -88,14 +89,12 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
   )
 
   const renderEmptyState = () => (
-    // for test
-    <div></div>
-    // <div className='h-full flex flex-col justify-center items-center'>
-    //   <div className={cn(docStyle.commonIcon, docStyle.targetIcon, '!bg-gray-200 !h-14 !w-14')} />
-    //   <div className='text-gray-300 text-[13px] mt-3'>
-    //     {t('datasetHitTesting.hit.emptyTip')}
-    //   </div>
-    // </div>
+    <div className='h-full flex flex-col justify-center items-center py-3 px-4 rounded-t-2xl bg-background-body'>
+      <div className={cn(docStyle.commonIcon, docStyle.targetIcon, '!bg-text-quaternary !h-14 !w-14')} />
+      <div className='text-text-quaternary text-[13px] mt-3'>
+        {t('datasetHitTesting.hit.emptyTip')}
+      </div>
+    </div>
   )
 
   useEffect(() => {
@@ -174,20 +173,13 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
       </div>
       <FloatRightContainer panelClassname='!justify-start !overflow-y-auto' showClose isMobile={isMobile} isOpen={isShowRightPanel} onClose={hideRightPanel} footer={null}>
         <div className={cn(s.rightDiv, 'pt-3')}>
-          {renderHitResults(generalResultData)}
+          {/* {renderHitResults(generalResultData)} */}
           {submitLoading
-            ? <div className={s.cardWrapper}>
-              <SegmentCard
-                loading={true}
-                scene='hitTesting'
-                className='h-[216px]'
-              />
-              <SegmentCard
-                loading={true}
-                scene='hitTesting'
-                className='h-[216px]'
-              />
-            </div>
+            ? <SegmentCard
+              loading={true}
+              scene='hitTesting'
+              className='h-[216px]'
+            />
             : (
               (() => {
                 if (!hitResult?.records.length && !externalHitResult?.records.length)
