@@ -1,9 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { useTranslation } from 'react-i18next'
-import { SliceContent, SliceLabel } from '../../formatted-text/flavours/shared'
-import cn from '@/utils/classnames'
+import { SliceContent } from '../../formatted-text/flavours/shared'
+import Score from './score'
 import type { HitTestingChildChunk } from '@/models/datasets'
 
 type Props = {
@@ -15,16 +14,16 @@ const ChildChunks: FC<Props> = ({
   payload,
   isShowAll,
 }) => {
-  const { t } = useTranslation()
   const { id, score, content } = payload
   return (
-    <div className='flex items-center space-x-2'>
-      <SliceLabel>
-        {id} {score}
-      </SliceLabel>
-      <SliceContent className={cn(!isShowAll && 'line-clamp-2')}>
-        {content}
-      </SliceContent>
+    <div
+      className={!isShowAll ? 'line-clamp-2' : ''}
+    >
+      <div className='inline-flex'>
+        <div className='bg-state-accent-solid system-2xs-semibold-uppercase px-1'>C-{id}</div>
+        <Score value={score} />
+      </div>
+      <SliceContent className='bg-state-accent-hover group-hover:bg-state-accent-hover'>{content}</SliceContent>
     </div>
   )
 }

@@ -25,6 +25,10 @@ const translation = {
   noRecentTip: 'No recent query results here',
   viewChart: 'View VECTOR CHART',
   viewDetail: 'View Detail',
+  chunkDetail: 'Chunk Detail',
+  hitChunks: 'Hit {{num}} child chunks',
+  open: 'Open',
+  keyword: 'Keywords',
 }
 
 export default translation

@@ -13,6 +13,8 @@ import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader
 import cn from '@/utils/classnames'
 import Tag from '@/app/components/datasets/documents/detail/completed/common/tag'
 
+const i18nPrefix = 'datasetHitTesting'
+
 type Props = {
   payload: HitTesting
   onHide: () => void
@@ -24,19 +26,19 @@ const ChunkDetailModal: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { segment, score, child_chunks } = payload
-  const { position, word_count, content, keywords, document } = segment
+  const { position, content, keywords, document } = segment
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(0, -1)[0] as FileAppearanceTypeEnum
-
+  const maxHeighClassName = 'max-h-[752px] overflow-y-auto'
   return (
     <Modal
-      title={t('dataset.chunkDetail')}
+      title={t(`${i18nPrefix}.chunkDetail`)}
       isShow
       closable
       onClose={onHide}
       className={cn(isParentChildRetrieval ? '!min-w-[1200px]' : '!min-w-[720px]')}
     >
-      <div className='flex h-'>
+      <div className='flex pb-6'>
         <div>
           {/* Meta info */}
           <div className='flex justify-between items-center'>
@@ -54,12 +56,12 @@ const ChunkDetailModal: FC<Props> = ({
             </div>
             <Score value={score} />
           </div>
-          <div className=' max-h-[752px] overflow-y-auto'>
+          <div className={cn('mt-2 body-md-regular text-text-secondary', maxHeighClassName)}>
             {content}
           </div>
           {!isParentChildRetrieval && keywords && keywords.length > 0 && (
-            <div>
-              <div>{t('dataset.keywords')}</div>
+            <div className='mt-6'>
+              <div className='font-medium text-xs text-text-tertiary uppercase'>{t(`${i18nPrefix}.keyword`)}</div>
               <div className='flex flex-wrap'>
                 {keywords.map(keyword => (
                   <Tag key={keyword} text={keyword} className='mr-2' />
@@ -71,8 +73,8 @@ const ChunkDetailModal: FC<Props> = ({
 
         {isParentChildRetrieval && (
           <div className='shrink-0 w-[552px] px-6'>
-            <div>{t('dataset.hitChunks', { num: child_chunks.length })}</div>
-            <div className='space-y-2'>
+            <div className='system-xs-semibold-uppercase text-text-secondary'>{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
+            <div className={cn('mt-1 space-y-2', maxHeighClassName)}>
               {child_chunks.map(item => (
                 <ChildChunksItem key={item.id} payload={item} isShowAll />
               ))}

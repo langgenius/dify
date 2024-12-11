@@ -25,6 +25,10 @@ const translation = {
   noRecentTip: '最近无查询结果',
   viewChart: '查看向量图表',
   viewDetail: '查看详情',
+  chunkDetail: '段落详情',
+  hitChunks: '命中 {{num}} 个子段落',
+  open: '打开',
+  keyword: '关键词',
 }
 
 export default translation
