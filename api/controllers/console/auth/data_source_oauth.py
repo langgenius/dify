@@ -17,8 +17,8 @@ from ..wraps import account_initialization_required, setup_required
 def get_oauth_providers():
     with current_app.app_context():
         notion_oauth = NotionOAuth(
-            client_id=dify_config.NOTION_CLIENT_ID,
-            client_secret=dify_config.NOTION_CLIENT_SECRET,
+            client_id=dify_config.NOTION_CLIENT_ID or "",
+            client_secret=dify_config.NOTION_CLIENT_SECRET or "",
             redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/data-source/callback/notion",
         )
 

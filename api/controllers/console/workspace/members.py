@@ -122,10 +122,11 @@ class MemberUpdateRoleApi(Resource):
             return {"code": "invalid-role", "message": "Invalid role"}, 400
 
         member = db.session.get(Account, str(member_id))
-        if not member:
+        if member:
             abort(404)
 
         try:
+            assert member is not None, "Member not found"
             TenantService.update_member_role(current_user.current_tenant, member, new_role, current_user)
         except Exception as e:
             raise ValueError(str(e))

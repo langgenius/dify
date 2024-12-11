@@ -2,6 +2,7 @@ import json
 import logging
 import time
 from collections.abc import Generator, Mapping
+from threading import Thread
 from typing import Any, Optional, Union
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
@@ -80,6 +81,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
     _user: Union[Account, EndUser]
     _workflow_system_variables: dict[SystemVariableKey, Any]
     _wip_workflow_node_executions: dict[str, WorkflowNodeExecution]
+    _conversation_name_generate_thread: Optional[Thread] = None
 
     def __init__(
         self,
@@ -130,7 +132,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         self._conversation_name_generate_thread = None
         self._recorded_files: list[Mapping[str, Any]] = []
 
-    def process(self):
+    def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
         """
         Process generate task pipeline.
         :return:

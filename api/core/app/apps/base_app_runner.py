@@ -85,7 +85,7 @@ class AppRunner:
 
         prompt_tokens = model_instance.get_llm_num_tokens(prompt_messages)
 
-        rest_tokens = model_context_tokens - max_tokens - prompt_tokens
+        rest_tokens: int = model_context_tokens - max_tokens - prompt_tokens
         if rest_tokens < 0:
             raise InvokeBadRequestError(
                 "Query or prefix prompt is too long, you can reduce the prefix prompt, "

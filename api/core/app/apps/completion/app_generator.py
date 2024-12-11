@@ -97,7 +97,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
 
             # validate config
             override_model_config_dict = CompletionAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id, config=args.get("model_config")
+                tenant_id=app_model.tenant_id, config=args.get("model_config", {})
             )
 
         # parse files
@@ -233,7 +233,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         invoke_from: InvokeFrom,
         stream: bool = True,
-    ) -> Union[dict, Generator[str, None, None]]:
+    ) -> Union[Mapping[str, Any], Generator[str, None, None]]:
         """
         Generate App response.
 

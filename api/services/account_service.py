@@ -897,7 +897,9 @@ class RegisterService:
             redis_client.delete(cls._get_invitation_token_key(token))
 
     @classmethod
-    def get_invitation_if_token_valid(cls, workspace_id: str, email: str, token: str) -> Optional[dict[str, Any]]:
+    def get_invitation_if_token_valid(
+        cls, workspace_id: Optional[str], email: str, token: str
+    ) -> Optional[dict[str, Any]]:
         invitation_data = cls._get_invitation_by_token(token, workspace_id, email)
         if not invitation_data:
             return None

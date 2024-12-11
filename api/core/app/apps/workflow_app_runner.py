@@ -185,7 +185,9 @@ class WorkflowBasedAppRunner(AppRunner):
                 QueueWorkflowPartialSuccessEvent(outputs=event.outputs, exceptions_count=event.exceptions_count)
             )
         elif isinstance(event, GraphRunFailedEvent):
-            self._publish_event(QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count))
+            self._publish_event(
+                QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count or 0)
+            )
         elif isinstance(event, NodeRunStartedEvent):
             self._publish_event(
                 QueueNodeStartedEvent(

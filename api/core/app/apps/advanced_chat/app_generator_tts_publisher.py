@@ -77,7 +77,7 @@ class AppGeneratorTTSPublisher:
             self.logger.warning(e)
 
     def _runtime(self):
-        future_queue = queue.Queue()
+        future_queue: queue.Queue = queue.Queue()
         threading.Thread(target=_process_future, args=(future_queue, self._audio_queue)).start()
         while True:
             try:
@@ -119,7 +119,7 @@ class AppGeneratorTTSPublisher:
             if self._last_audio_event and self._last_audio_event.status == "finish":
                 if self.executor:
                     self.executor.shutdown(wait=False)
-                return self.last_message
+                return self._last_audio_event
             audio = self._audio_queue.get_nowait()
             if audio and audio.status == "finish":
                 self.executor.shutdown(wait=False)

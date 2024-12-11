@@ -92,7 +92,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         # get conversation
         conversation = None
         if args.get("conversation_id"):
-            conversation = self._get_conversation_by_user(app_model, args.get("conversation_id"), user)
+            conversation = self._get_conversation_by_user(app_model, args.get("conversation_id", ""), user)
 
         # get app model config
         app_model_config = self._get_app_model_config(app_model=app_model, conversation=conversation)
@@ -105,7 +105,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
 
             # validate config
             override_model_config_dict = ChatAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id, config=args.get("model_config")
+                tenant_id=app_model.tenant_id, config=args.get("model_config", {})
             )
 
             # always enable retriever resource in debugger mode

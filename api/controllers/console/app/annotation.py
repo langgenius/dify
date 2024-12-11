@@ -110,7 +110,7 @@ class AnnotationListApi(Resource):
 
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
-        keyword = request.args.get("keyword", default=None, type=str)
+        keyword = request.args.get("keyword", default="", type=str)
 
         app_id = str(app_id)
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(app_id, page, limit, keyword)
