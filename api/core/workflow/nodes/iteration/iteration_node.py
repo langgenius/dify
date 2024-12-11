@@ -182,7 +182,6 @@ class IterationNode(BaseNode[IterationNodeData]):
                     future.add_done_callback(thread_pool.task_done_callback)
                     futures.append(future)
                 succeeded_count = 0
-                empty_count = 0
                 while True:
                     try:
                         event = q.get(timeout=1)
@@ -202,6 +201,8 @@ class IterationNode(BaseNode[IterationNodeData]):
                         if isinstance(event, IterationRunFailedEvent):
                             q.put(None)
                             yield event
+                        if isinstance(event, int):
+                            graph_engine.graph_runtime_state.total_tokens += event
                     except Empty:
                         continue
 
@@ -593,3 +594,4 @@ class IterationNode(BaseNode[IterationNodeData]):
                 parallel_mode_run_id=parallel_mode_run_id,
             ):
                 q.put(event)
+            q.put(graph_engine_copy.graph_runtime_state.total_tokens)
