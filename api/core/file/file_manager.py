@@ -141,7 +141,7 @@ def _to_url(f: File, /):
     elif f.transfer_method == FileTransferMethod.LOCAL_FILE:
         if f.related_id is None:
             raise ValueError("Missing file related_id")
-        return helpers.get_signed_file_url(upload_file_id=f.related_id)
+        return f.remote_url or helpers.get_signed_file_url(upload_file_id=f.related_id)
     elif f.transfer_method == FileTransferMethod.TOOL_FILE:
         # add sign url
         if f.related_id is None or f.extension is None:
