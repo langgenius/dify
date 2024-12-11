@@ -19,6 +19,7 @@ from core.app.entities.queue_entities import (
     QueueIterationNextEvent,
     QueueIterationStartEvent,
     QueueMessageReplaceEvent,
+    QueueNodeExceptionEvent,
     QueueNodeFailedEvent,
     QueueNodeInIterationFailedEvent,
     QueueNodeStartedEvent,
@@ -31,6 +32,7 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
+    QueueWorkflowPartialSuccessEvent,
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
@@ -317,7 +319,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
                 if response:
                     yield response
-            elif isinstance(event, QueueNodeFailedEvent | QueueNodeInIterationFailedEvent):
+            elif isinstance(event, QueueNodeFailedEvent | QueueNodeInIterationFailedEvent | QueueNodeExceptionEvent):
                 workflow_node_execution = self._handle_workflow_node_execution_failed(event)
 
                 response = self._workflow_node_finish_to_stream_response(
@@ -385,6 +387,29 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 )
 
                 self._queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
+            elif isinstance(event, QueueWorkflowPartialSuccessEvent):
+                if not workflow_run:
+                    raise Exception("Workflow run not initialized.")
+
+                if not graph_runtime_state:
+                    raise Exception("Graph runtime state not initialized.")
+
+                workflow_run = self._handle_workflow_run_partial_success(
+                    workflow_run=workflow_run,
+                    start_at=graph_runtime_state.start_at,
+                    total_tokens=graph_runtime_state.total_tokens,
+                    total_steps=graph_runtime_state.node_run_steps,
+                    outputs=event.outputs,
+                    exceptions_count=event.exceptions_count,
+                    conversation_id=None,
+                    trace_manager=trace_manager,
+                )
+
+                yield self._workflow_finish_to_stream_response(
+                    task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
+                )
+
+                self._queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
             elif isinstance(event, QueueWorkflowFailedEvent):
                 if not workflow_run:
                     raise Exception("Workflow run not initialized.")
@@ -401,6 +426,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     error=event.error,
                     conversation_id=self._conversation.id,
                     trace_manager=trace_manager,
+                    exceptions_count=event.exceptions_count,
                 )
 
                 yield self._workflow_finish_to_stream_response(

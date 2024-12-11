@@ -59,7 +59,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const isFinished = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
+  const isFinished = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed || runningStatus === NodeRunningStatus.Exception
   const isRunning = runningStatus === NodeRunningStatus.Running
   const isFileLoaded = (() => {
     // system files

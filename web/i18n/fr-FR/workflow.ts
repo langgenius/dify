@@ -101,6 +101,9 @@ const translation = {
     featuresDescription: 'Améliorer l’expérience utilisateur de l’application web',
     importWarning: 'Prudence',
     importWarningDetails: 'La différence de version DSL peut affecter certaines fonctionnalités',
+    openInExplore: 'Ouvrir dans Explorer',
+    onFailure: 'Sur l’échec',
+    addFailureBranch: 'Ajouter une branche d’échec',
   },
   env: {
     envPanelTitle: 'Variables d\'Environnement',
@@ -293,6 +296,31 @@ const translation = {
         title: 'Mémoires',
         tip: 'Mémoire de conversation',
         builtIn: 'Intégré',
+      },
+      errorHandle: {
+        none: {
+          title: 'Aucun',
+          desc: 'Le nœud cessera de s’exécuter si une exception se produit et n’est pas gérée',
+        },
+        defaultValue: {
+          title: 'Valeur par défaut',
+          desc: 'Lorsqu’une erreur se produit, spécifiez un contenu de sortie statique.',
+          tip: 'En cas d’erreur, le retour est inférieur à la valeur.',
+          inLog: 'Exception de nœud, sortie en fonction des valeurs par défaut.',
+          output: 'Valeur par défaut de sortie',
+        },
+        failBranch: {
+          desc: 'Lorsqu’une erreur se produit, il exécute la branche d’exception',
+          customize: 'Accédez au canevas pour personnaliser la logique de branche d’échec.',
+          customizeTip: 'Lorsque la branche fail est activée, les exceptions levées par les nœuds ne mettent pas fin au processus. Au lieu de cela, il exécutera automatiquement la branche d’échec prédéfinie, ce qui vous permettra de fournir de manière flexible des messages d’erreur, des rapports, des correctifs ou des actions d’ignorance.',
+          inLog: 'Exception de nœud, exécutera automatiquement la branche d’échec. La sortie du nœud renverra un type d’erreur et un message d’erreur et les transmettra en aval.',
+          title: 'Branche d’échec',
+        },
+        partialSucceeded: {
+          tip: 'Il y a des nœuds {{num}} dans le processus qui fonctionnent anormalement, veuillez aller dans le traçage pour vérifier les journaux.',
+        },
+        title: 'Gestion des erreurs',
+        tip: 'Stratégie de gestion des exceptions, déclenchée lorsqu’un nœud rencontre une exception.',
       },
     },
     start: {

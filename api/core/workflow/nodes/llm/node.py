@@ -193,6 +193,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                     error=str(e),
                     inputs=node_inputs,
                     process_data=process_data,
+                    error_type=type(e).__name__,
                 )
             )
             return
