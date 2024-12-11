@@ -7,11 +7,11 @@ import { omit } from 'lodash-es'
 import { useBoolean } from 'ahooks'
 import { useContext } from 'use-context-selector'
 import SegmentCard from '../documents/detail/completed/SegmentCard'
-import docStyle from '../documents/detail/completed/style.module.css'
 import Textarea from './textarea'
 import s from './style.module.css'
 import HitDetail from './hit-detail'
 import ModifyRetrievalModal from './modify-retrieval-modal'
+import { generalResultData } from './assets/test-data'
 import cn from '@/utils/classnames'
 import type { ExternalKnowledgeBaseHitTestingResponse, ExternalKnowledgeBaseHitTesting as ExternalKnowledgeBaseHitTestingType, HitTestingResponse, HitTesting as HitTestingType } from '@/models/datasets'
 import Loading from '@/app/components/base/loading'
@@ -24,7 +24,6 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import type { RetrievalConfig } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
-
 const limit = 10
 
 type Props = {
@@ -49,6 +48,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
   const isMobile = media === MediaType.mobile
 
   const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>() // 初始化记录为空数组
+  // console.log(hitResult?.records)
   const [externalHitResult, setExternalHitResult] = useState<ExternalKnowledgeBaseHitTestingResponse | undefined>()
   const [submitLoading, setSubmitLoading] = useState(false)
   const [currParagraph, setCurrParagraph] = useState<{ paraInfo?: HitTestingType; showModal: boolean }>({ showModal: false })
@@ -77,7 +77,6 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
   const [isShowRightPanel, { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel }] = useBoolean(!isMobile)
-
   const renderHitResults = (results: any[], onClickCard: (record: any) => void) => (
     <>
       <div className='text-gray-600 font-semibold mb-4'>{t('datasetHitTesting.hit.title')}</div>
@@ -87,7 +86,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
             <SegmentCard
               key={idx}
               loading={false}
-              refSource= {{
+              refSource={{
                 title: record.title,
                 uri: record.metadata ? record.metadata['x-amz-bedrock-kb-source-uri'] : '',
               }}
@@ -106,12 +105,14 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
   )
 
   const renderEmptyState = () => (
-    <div className='h-full flex flex-col justify-center items-center'>
-      <div className={cn(docStyle.commonIcon, docStyle.targetIcon, '!bg-gray-200 !h-14 !w-14')} />
-      <div className='text-gray-300 text-[13px] mt-3'>
-        {t('datasetHitTesting.hit.emptyTip')}
-      </div>
-    </div>
+    // for test
+    <div></div>
+    // <div className='h-full flex flex-col justify-center items-center'>
+    //   <div className={cn(docStyle.commonIcon, docStyle.targetIcon, '!bg-gray-200 !h-14 !w-14')} />
+    //   <div className='text-gray-300 text-[13px] mt-3'>
+    //     {t('datasetHitTesting.hit.emptyTip')}
+    //   </div>
+    // </div>
   )
 
   useEffect(() => {
@@ -190,6 +191,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
       </div>
       <FloatRightContainer panelClassname='!justify-start !overflow-y-auto' showClose isMobile={isMobile} isOpen={isShowRightPanel} onClose={hideRightPanel} footer={null}>
         <div className={cn(s.rightDiv, 'p-0 sm:px-8 sm:pt-[42px] sm:pb-[26px]')}>
+          {renderHitResults(generalResultData, onClickCard)}
           {submitLoading
             ? <div className={s.cardWrapper}>
               <SegmentCard

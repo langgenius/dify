@@ -21,7 +21,7 @@ const translation = {
     },
     action: {
       uploadFile: 'Upload new file',
-      settings: 'Segment settings',
+      settings: 'Chunking Settings',
       addButton: 'Add chunk',
       add: 'Add a chunk',
       batchAdd: 'Batch add',
