@@ -186,6 +186,8 @@ const StepTwo = ({
       setIsQAConfirmDialogOpen(true)
       return
     }
+    if (value === ChuckingMode.parentChild && indexType === IndexingType.ECONOMICAL)
+      setIndexType(IndexingType.QUALIFIED)
     setDocForm(value)
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     currentEstimateMutation.reset()
