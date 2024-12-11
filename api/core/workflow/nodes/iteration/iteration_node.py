@@ -201,8 +201,6 @@ class IterationNode(BaseNode[IterationNodeData]):
                         if isinstance(event, IterationRunFailedEvent):
                             q.put(None)
                             yield event
-                        if isinstance(event, int):
-                            graph_engine.graph_runtime_state.total_tokens += event
                     except Empty:
                         continue
 
@@ -594,4 +592,4 @@ class IterationNode(BaseNode[IterationNodeData]):
                 parallel_mode_run_id=parallel_mode_run_id,
             ):
                 q.put(event)
-            q.put(graph_engine_copy.graph_runtime_state.total_tokens)
+            graph_engine.graph_runtime_state.total_tokens += graph_engine_copy.graph_runtime_state.total_tokens
