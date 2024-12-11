@@ -3,8 +3,7 @@ import logging
 import time
 from typing import Optional
 
-import boto3
-from botocore.config import Config
+from api.core.model_runtime.model_providers.bedrock.get_bedrock_client import get_bedrock_client
 from botocore.exceptions import (
     ClientError,
     EndpointConnectionError,
@@ -48,14 +47,7 @@ class BedrockTextEmbeddingModel(TextEmbeddingModel):
         :param input_type: input type
         :return: embeddings result
         """
-        client_config = Config(region_name=credentials["aws_region"])
-
-        bedrock_runtime = boto3.client(
-            service_name="bedrock-runtime",
-            config=client_config,
-            aws_access_key_id=credentials.get("aws_access_key_id"),
-            aws_secret_access_key=credentials.get("aws_secret_access_key"),
-        )
+        bedrock_runtime = get_bedrock_client("bedrock-runtime", credentials)
 
         embeddings = []
         token_usage = 0

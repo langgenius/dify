@@ -7,6 +7,7 @@ from typing import Optional, Union, cast
 
 # 3rd import
 import boto3
+from api.core.model_runtime.model_providers.bedrock.get_bedrock_client import get_bedrock_client
 from botocore.config import Config
 from botocore.exceptions import (
     ClientError,
@@ -173,13 +174,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         :param stream: is stream response
         :return: full response or stream response chunk generator result
         """
-        bedrock_client = boto3.client(
-            service_name="bedrock-runtime",
-            aws_access_key_id=credentials.get("aws_access_key_id"),
-            aws_secret_access_key=credentials.get("aws_secret_access_key"),
-            region_name=credentials["aws_region"],
-        )
-
+        bedrock_client = get_bedrock_client("bedrock-runtime", credentials)
         system, prompt_message_dicts = self._convert_converse_prompt_messages(prompt_messages)
         inference_config, additional_model_fields = self._convert_converse_api_model_parameters(model_parameters, stop)
 
