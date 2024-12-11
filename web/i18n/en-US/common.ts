@@ -42,6 +42,8 @@ const translation = {
     zoomOut: 'Zoom Out',
     zoomIn: 'Zoom In',
     openInNewTab: 'Open in new tab',
+    saveAndRegenerate: 'Save & Regenerate Child Chunks',
+    close: 'Close',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',

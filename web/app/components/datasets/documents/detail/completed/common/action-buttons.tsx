@@ -7,9 +7,10 @@ import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/co
 
 type IActionButtonsProps = {
   handleCancel: () => void
-  handleSave: (needRegenerate: boolean) => void
+  handleSave: () => void
   loading: boolean
   actionType?: 'edit' | 'add'
+  handleRegeneration?: () => void
 }
 
 const ActionButtons: FC<IActionButtonsProps> = ({
@@ -17,6 +18,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
   handleSave,
   loading,
   actionType = 'edit',
+  handleRegeneration,
 }) => {
   const { t } = useTranslation()
   const [mode, parentMode] = useDocumentContext(s => [s.mode, s.parentMode])
@@ -30,7 +32,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
     if (loading)
       return
     e.preventDefault()
-    handleSave(false)
+    handleSave()
   }
   , { exactMatch: true, useCapture: true })
 
@@ -50,18 +52,18 @@ const ActionButtons: FC<IActionButtonsProps> = ({
       </Button>
       {(isParentChildParagraphMode && actionType === 'edit')
         ? <Button
-          onClick={handleSave.bind(null, true)}
+          onClick={handleRegeneration}
           disabled={loading}
         >
           <span className='text-components-button-secondary-text system-sm-medium'>
-            {t('datasetDocuments.segment.saveAndRegenerate')}
+            {t('common.operation.saveAndRegenerate')}
           </span>
         </Button>
         : null
       }
       <Button
         variant='primary'
-        onClick={handleSave.bind(null, false)}
+        onClick={handleSave}
         disabled={loading}
       >
         <div className='flex items-center gap-x-1'>

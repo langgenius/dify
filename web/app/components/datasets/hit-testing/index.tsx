@@ -12,6 +12,7 @@ import s from './style.module.css'
 import HitDetail from './hit-detail'
 import ModifyRetrievalModal from './modify-retrieval-modal'
 import { generalResultData } from './assets/test-data'
+import ResultItem from './components/result-item'
 import cn from '@/utils/classnames'
 import type { ExternalKnowledgeBaseHitTestingResponse, ExternalKnowledgeBaseHitTesting as ExternalKnowledgeBaseHitTestingType, HitTestingResponse, HitTesting as HitTestingType } from '@/models/datasets'
 import Loading from '@/app/components/base/loading'
@@ -64,44 +65,26 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
 
   const total = recordsRes?.total || 0
 
-  const onClickCard = (detail: HitTestingType) => {
-    setCurrParagraph({ paraInfo: detail, showModal: true })
-  }
-
-  const onClickExternalCard = (detail: ExternalKnowledgeBaseHitTestingType) => {
-    setExternalCurrParagraph({ paraInfo: detail, showModal: true })
-  }
   const { dataset: currentDataset } = useContext(DatasetDetailContext)
   const isExternal = currentDataset?.provider === 'external'
 
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
   const [isShowRightPanel, { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel }] = useBoolean(!isMobile)
-  const renderHitResults = (results: any[], onClickCard: (record: any) => void) => (
-    <>
-      <div className='text-gray-600 font-semibold mb-4'>{t('datasetHitTesting.hit.title')}</div>
-      <div className='overflow-auto flex-1'>
-        <div className={s.cardWrapper}>
-          {results.map((record, idx) => (
-            <SegmentCard
-              key={idx}
-              loading={false}
-              refSource={{
-                title: record.title,
-                uri: record.metadata ? record.metadata['x-amz-bedrock-kb-source-uri'] : '',
-              }}
-              isExternal={isExternal}
-              detail={record.segment}
-              contentExternal={record.content}
-              score={record.score}
-              scene='hitTesting'
-              className='h-[216px] mb-4'
-              onClick={() => onClickCard(record)}
-            />
-          ))}
-        </div>
+  const renderHitResults = (results: any[]) => (
+    <div className='h-full flex flex-col py-3 px-4 rounded-t-2xl bg-background-body'>
+      <div className='shrink-0 pl-2 text-text-primary font-semibold leading-6 mb-2'>
+        {t('datasetHitTesting.hit.title', { num: results.length })}
       </div>
-    </>
+      <div className='grow overflow-y-auto space-y-2'>
+        {results.map((record, idx) => (
+          <ResultItem
+            key={idx}
+            payload={record}
+          />
+        ))}
+      </div>
+    </div>
   )
 
   const renderEmptyState = () => (
@@ -190,8 +173,8 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
             )}
       </div>
       <FloatRightContainer panelClassname='!justify-start !overflow-y-auto' showClose isMobile={isMobile} isOpen={isShowRightPanel} onClose={hideRightPanel} footer={null}>
-        <div className={cn(s.rightDiv, 'p-0 sm:px-8 sm:pt-[42px] sm:pb-[26px]')}>
-          {renderHitResults(generalResultData, onClickCard)}
+        <div className={cn(s.rightDiv, 'pt-3')}>
+          {renderHitResults(generalResultData)}
           {submitLoading
             ? <div className={s.cardWrapper}>
               <SegmentCard
@@ -211,9 +194,9 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
                   return renderEmptyState()
 
                 if (hitResult?.records.length)
-                  return renderHitResults(hitResult.records, onClickCard)
+                  return renderHitResults(hitResult.records)
 
-                return renderHitResults(externalHitResult?.records || [], onClickExternalCard)
+                return renderHitResults(externalHitResult?.records || [])
               })()
             )
           }

@@ -353,7 +353,12 @@ const translation = {
     delete: 'Delete this chunk ?',
     chunkAdded: '1 chunk added',
     viewAddedChunk: 'View',
-    saveAndRegenerate: 'Save & Regenerate Child Chunks',
+    regenerationConfirmTitle: 'Do you want to regenerate child chunks?',
+    regenerationConfirmMessage: 'Regenerating child chunks will overwrite the current child chunks, including edited chunks and newly added chunks. The regeneration cannot be undone.',
+    regeneratingTitle: 'Regenerating child chunks',
+    regeneratingMessage: 'This may take a moment, please wait...',
+    regenerationSuccessTitle: 'Regeneration completed',
+    regenerationSuccessMessage: 'You can close this window.',
   },
 }
 
