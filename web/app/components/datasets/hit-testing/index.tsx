@@ -12,6 +12,7 @@ import s from './style.module.css'
 import HitDetail from './hit-detail'
 import ModifyRetrievalModal from './modify-retrieval-modal'
 import { generalResultData } from './assets/test-data'
+import ResultItem from './components/result-item'
 import cn from '@/utils/classnames'
 import type { ExternalKnowledgeBaseHitTestingResponse, ExternalKnowledgeBaseHitTesting as ExternalKnowledgeBaseHitTestingType, HitTestingResponse, HitTesting as HitTestingType } from '@/models/datasets'
 import Loading from '@/app/components/base/loading'
@@ -83,20 +84,9 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
       <div className='overflow-auto flex-1'>
         <div className={s.cardWrapper}>
           {results.map((record, idx) => (
-            <SegmentCard
+            <ResultItem
               key={idx}
-              loading={false}
-              refSource={{
-                title: record.title,
-                uri: record.metadata ? record.metadata['x-amz-bedrock-kb-source-uri'] : '',
-              }}
-              isExternal={isExternal}
-              detail={record.segment}
-              contentExternal={record.content}
-              score={record.score}
-              scene='hitTesting'
-              className='h-[216px] mb-4'
-              onClick={() => onClickCard(record)}
+              payload={record}
             />
           ))}
         </div>
