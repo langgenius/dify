@@ -167,22 +167,21 @@ class IterationNode(BaseNode[IterationNodeData]):
                 for index, item in enumerate(iterator_list_value):
                     future: Future = thread_pool.submit(
                         self._run_single_iter_parallel,
-                        current_app._get_current_object(),  # type: ignore
-                        q,
-                        iterator_list_value,
-                        inputs,
-                        outputs,
-                        start_at,
-                        graph_engine,
-                        iteration_graph,
-                        index,
-                        item,
-                        iter_run_map,
+                        flask_app=current_app._get_current_object(),  # type: ignore
+                        q=q,
+                        iterator_list_value=iterator_list_value,
+                        inputs=inputs,
+                        outputs=outputs,
+                        start_at=start_at,
+                        graph_engine=graph_engine,
+                        iteration_graph=iteration_graph,
+                        index=index,
+                        item=item,
+                        iter_run_map=iter_run_map,
                     )
                     future.add_done_callback(thread_pool.task_done_callback)
                     futures.append(future)
                 succeeded_count = 0
-                empty_count = 0
                 while True:
                     try:
                         event = q.get(timeout=1)
@@ -242,7 +241,10 @@ class IterationNode(BaseNode[IterationNodeData]):
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     outputs={"output": outputs},
-                    metadata={NodeRunMetadataKey.ITERATION_DURATION_MAP: iter_run_map},
+                    metadata={
+                        NodeRunMetadataKey.ITERATION_DURATION_MAP: iter_run_map,
+                        NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
+                    },
                 )
             )
         except IterationNodeError as e:
@@ -367,9 +369,9 @@ class IterationNode(BaseNode[IterationNodeData]):
     def _run_single_iter(
         self,
         *,
-        iterator_list_value: list[str],
+        iterator_list_value: Sequence[str],
         variable_pool: VariablePool,
-        inputs: dict[str, list],
+        inputs: Mapping[str, list],
         outputs: list,
         start_at: datetime,
         graph_engine: "GraphEngine",
@@ -556,10 +558,11 @@ class IterationNode(BaseNode[IterationNodeData]):
 
     def _run_single_iter_parallel(
         self,
+        *,
         flask_app: Flask,
         q: Queue,
-        iterator_list_value: list[str],
-        inputs: dict[str, list],
+        iterator_list_value: Sequence[str],
+        inputs: Mapping[str, list],
         outputs: list,
         start_at: datetime,
         graph_engine: "GraphEngine",
@@ -589,3 +592,4 @@ class IterationNode(BaseNode[IterationNodeData]):
                 parallel_mode_run_id=parallel_mode_run_id,
             ):
                 q.put(event)
+            graph_engine.graph_runtime_state.total_tokens += graph_engine_copy.graph_runtime_state.total_tokens
