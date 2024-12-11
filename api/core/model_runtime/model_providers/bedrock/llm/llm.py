@@ -7,7 +7,6 @@ from typing import Optional, Union, cast
 
 # 3rd import
 import boto3
-from api.core.model_runtime.model_providers.bedrock.get_bedrock_client import get_bedrock_client
 from botocore.config import Config
 from botocore.exceptions import (
     ClientError,
@@ -16,7 +15,6 @@ from botocore.exceptions import (
     ServiceNotInRegionError,
     UnknownServiceError,
 )
-
 # local import
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
@@ -41,6 +39,7 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.bedrock.get_bedrock_client import get_bedrock_client
 
 logger = logging.getLogger(__name__)
 ANTHROPIC_BLOCK_MODE_PROMPT = """You should always follow the instructions and output a valid {{block}} object.

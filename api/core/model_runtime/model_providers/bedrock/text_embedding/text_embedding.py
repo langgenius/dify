@@ -3,7 +3,6 @@ import logging
 import time
 from typing import Optional
 
-from api.core.model_runtime.model_providers.bedrock.get_bedrock_client import get_bedrock_client
 from botocore.exceptions import (
     ClientError,
     EndpointConnectionError,
@@ -11,7 +10,6 @@ from botocore.exceptions import (
     ServiceNotInRegionError,
     UnknownServiceError,
 )
-
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
@@ -24,6 +22,7 @@ from core.model_runtime.errors.invoke import (
     InvokeServerUnavailableError,
 )
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from core.model_runtime.model_providers.bedrock.get_bedrock_client import get_bedrock_client
 
 logger = logging.getLogger(__name__)
 
