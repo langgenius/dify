@@ -2,13 +2,11 @@
 import base64
 import json
 import logging
-import mimetypes
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
 # 3rd import
 import boto3
-import requests
 from botocore.config import Config
 from botocore.exceptions import (
     ClientError,
@@ -72,6 +70,8 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         {"prefix": "cohere.command-r", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "amazon.titan", "support_system_prompts": False, "support_tool_use": False},
         {"prefix": "ai21.jamba-1-5", "support_system_prompts": True, "support_tool_use": False},
+        {"prefix": "amazon.nova", "support_system_prompts": True, "support_tool_use": False},
+        {"prefix": "us.amazon.nova", "support_system_prompts": True, "support_tool_use": False},
     ]
 
     @staticmethod
@@ -196,6 +196,13 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         if model_info["support_tool_use"] and tools:
             parameters["toolConfig"] = self._convert_converse_tool_config(tools=tools)
         try:
+            # for issue #10976
+            conversations_list = parameters["messages"]
+            # if two consecutive user messages found, combine them into one message
+            for i in range(len(conversations_list) - 2, -1, -1):
+                if conversations_list[i]["role"] == conversations_list[i + 1]["role"]:
+                    conversations_list[i]["content"].extend(conversations_list.pop(i + 1)["content"])
+
             if stream:
                 response = bedrock_client.converse_stream(**parameters)
                 return self._handle_converse_stream_response(
@@ -439,22 +446,10 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                         sub_messages.append(sub_message_dict)
                     elif message_content.type == PromptMessageContentType.IMAGE:
                         message_content = cast(ImagePromptMessageContent, message_content)
-                        if not message_content.data.startswith("data:"):
-                            # fetch image data from url
-                            try:
-                                url = message_content.data
-                                image_content = requests.get(url).content
-                                if "?" in url:
-                                    url = url.split("?")[0]
-                                mime_type, _ = mimetypes.guess_type(url)
-                                base64_data = base64.b64encode(image_content).decode("utf-8")
-                            except Exception as ex:
-                                raise ValueError(f"Failed to fetch image data from url {message_content.data}, {ex}")
-                        else:
-                            data_split = message_content.data.split(";base64,")
-                            mime_type = data_split[0].replace("data:", "")
-                            base64_data = data_split[1]
-                            image_content = base64.b64decode(base64_data)
+                        data_split = message_content.data.split(";base64,")
+                        mime_type = data_split[0].replace("data:", "")
+                        base64_data = data_split[1]
+                        image_content = base64.b64decode(base64_data)
 
                         if mime_type not in {"image/jpeg", "image/png", "image/gif", "image/webp"}:
                             raise ValueError(

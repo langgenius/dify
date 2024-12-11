@@ -99,6 +99,11 @@ const translation = {
     ImageUploadLegacyTip: 'Sie können jetzt Dateitypvariablen im Startformular erstellen. Wir werden die Funktion zum Hochladen von Bildern in Zukunft nicht mehr unterstützen.',
     fileUploadTip: 'Die Funktionen zum Hochladen von Bildern wurden auf das Hochladen von Dateien aktualisiert.',
     featuresDescription: 'Verbessern Sie die Benutzererfahrung von Web-Apps',
+    importWarning: 'Vorsicht',
+    importWarningDetails: 'Der Unterschied zwischen den DSL-Versionen kann sich auf bestimmte Funktionen auswirken',
+    openInExplore: 'In Explore öffnen',
+    onFailure: 'Bei Ausfall',
+    addFailureBranch: 'Fail-Branch hinzufügen',
   },
   env: {
     envPanelTitle: 'Umgebungsvariablen',
@@ -292,6 +297,31 @@ const translation = {
         tip: 'Chat-Speicher',
         builtIn: 'Eingebaut',
       },
+      errorHandle: {
+        none: {
+          title: 'Nichts',
+          desc: 'Der Knoten wird nicht mehr ausgeführt, wenn eine Ausnahme auftritt und nicht behandelt wird',
+        },
+        defaultValue: {
+          title: 'Standardwert',
+          desc: 'Wenn ein Fehler auftritt, geben Sie einen statischen Ausgabeinhalt an.',
+          tip: 'Bei einem Fehler wird der untere Wert zurückgegeben.',
+          inLog: 'Knotenausnahme, Ausgabe nach Vorschlagswerten.',
+          output: 'Standardwert für die Ausgabe',
+        },
+        failBranch: {
+          title: 'Fehlgeschlagener Zweig',
+          desc: 'Wenn ein Fehler auftritt, wird der Ausnahmezweig ausgeführt',
+          customize: 'Wechseln Sie zur Arbeitsfläche, um die Fehlerverzweigungslogik anzupassen.',
+          customizeTip: 'Wenn der Fail-Zweig aktiviert ist, wird der Prozess durch Ausnahmen, die von Knoten ausgelöst werden, nicht beendet. Stattdessen wird automatisch der vordefinierte Fehlerzweig ausgeführt, sodass Sie flexibel Fehlermeldungen, Berichte, Korrekturen oder Überspringen von Aktionen bereitstellen können.',
+          inLog: 'Knotenausnahme, führt den Fail-Zweig automatisch aus. Die Knotenausgabe gibt einen Fehlertyp und eine Fehlermeldung zurück und übergibt sie an den Downstream.',
+        },
+        partialSucceeded: {
+          tip: 'Es gibt {{num}} Knoten im Prozess, die nicht normal laufen, bitte gehen Sie zur Ablaufverfolgung, um die Protokolle zu überprüfen.',
+        },
+        title: 'Fehlerbehandlung',
+        tip: 'Ausnahmebehandlungsstrategie, die ausgelöst wird, wenn ein Knoten auf eine Ausnahme stößt.',
+      },
     },
     start: {
       required: 'erforderlich',
@@ -407,6 +437,11 @@ const translation = {
       },
       type: 'Art',
       binaryFileVariable: 'Variable der Binärdatei',
+      extractListPlaceholder: 'Geben Sie den Index des Listeneintrags ein, geben Sie \'/\' ein, fügen Sie die Variable ein',
+      curl: {
+        title: 'Importieren von cURL',
+        placeholder: 'Fügen Sie hier die cURL-Zeichenfolge ein',
+      },
     },
     code: {
       inputVars: 'Eingabevariablen',
@@ -493,6 +528,26 @@ const translation = {
       'clear': 'Löschen',
       'setVariable': 'Variable setzen',
       'variable': 'Variable',
+      'operations': {
+        'title': 'Operation',
+        'clear': 'Klar',
+        'over-write': 'Überschreiben',
+        'set': 'Garnitur',
+        '-=': '-=',
+        '+=': '+=',
+        '/=': '/=',
+        'append': 'Anfügen',
+        'extend': 'Ausdehnen',
+        '*=': '*=',
+        'overwrite': 'Überschreiben',
+      },
+      'setParameter': 'Parameter setzen...',
+      'noVarTip': 'Klicken Sie auf die Schaltfläche "+", um Variablen hinzuzufügen',
+      'variables': 'Variablen',
+      'noAssignedVars': 'Keine verfügbaren zugewiesenen Variablen',
+      'selectAssignedVariable': 'Zugewiesene Variable auswählen...',
+      'varNotSet': 'Variable NICHT gesetzt',
+      'assignedVarsDescription': 'Zugewiesene Variablen müssen beschreibbare Variablen sein, z. B. Konversationsvariablen.',
     },
     tool: {
       toAuthorize: 'Autorisieren',
@@ -618,10 +673,18 @@ const translation = {
       filterConditionKey: 'Bedingungsschlüssel filtern',
       filterCondition: 'Filter-Bedingung',
       selectVariableKeyPlaceholder: 'Untervariablenschlüssel auswählen',
+      extractsCondition: 'Extrahieren des N-Elements',
     },
   },
   tracing: {
     stopBy: 'Gestoppt von {{user}}',
+  },
+  variableReference: {
+    noAvailableVars: 'Keine verfügbaren Variablen',
+    conversationVars: 'Konversations-Variablen',
+    noAssignedVars: 'Keine verfügbaren zugewiesenen Variablen',
+    noVarsForOperation: 'Es stehen keine Variablen für die Zuweisung mit der ausgewählten Operation zur Verfügung.',
+    assignedVarsDescription: 'Zugewiesene Variablen müssen beschreibbare Variablen sein, z. B.',
   },
 }
 

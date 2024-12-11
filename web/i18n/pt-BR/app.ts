@@ -62,6 +62,14 @@ const translation = {
     appTypeRequired: 'Por favor, selecione um tipo de aplicativo',
     appCreated: 'Aplicativo criado',
     appCreateFailed: 'Falha ao criar aplicativo',
+    caution: 'Cuidado',
+    appCreateDSLErrorPart1: 'Uma diferença significativa nas versões DSL foi detectada. Forçar a importação pode causar mau funcionamento do aplicativo.',
+    appCreateDSLErrorPart4: 'Versão DSL suportada pelo sistema:',
+    Confirm: 'Confirmar',
+    appCreateDSLErrorTitle: 'Incompatibilidade de versão',
+    appCreateDSLWarning: 'Cuidado: a diferença de versão DSL pode afetar determinados recursos',
+    appCreateDSLErrorPart3: 'Versão DSL do aplicativo atual:',
+    appCreateDSLErrorPart2: 'Você quer continuar?',
   },
   editApp: 'Editar Informações',
   editAppTitle: 'Editar Informações do Aplicativo',
@@ -133,6 +141,11 @@ const translation = {
   importFromDSLUrl: 'Do URL',
   importFromDSLFile: 'Do arquivo DSL',
   importFromDSL: 'Importar de DSL',
+  mermaid: {
+    handDrawn: 'Mão desenhada',
+    classic: 'Clássico',
+  },
+  openInExplore: 'Abrir no Explore',
 }
 
 export default translation

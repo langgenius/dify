@@ -318,7 +318,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const targetTone = TONE_LIST.find((item: any) => {
     let res = true
     validatedParams.forEach((param) => {
-      res = item.config?.[param] === detail.model_config?.configs?.completion_params?.[param]
+      res = item.config?.[param] === detail?.model_config.model?.completion_params?.[param]
     })
     return res
   })?.name ?? 'custom'
@@ -676,6 +676,10 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   const [showDrawer, setShowDrawer] = useState<boolean>(false) // Whether to display the chat details drawer
   const [currentConversation, setCurrentConversation] = useState<ChatConversationGeneralDetail | CompletionConversationGeneralDetail | undefined>() // Currently selected conversation
   const isChatMode = appDetail.mode !== 'completion' // Whether the app is a chat app
+  const { setShowPromptLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
+    setShowPromptLogModal: state.setShowPromptLogModal,
+    setShowAgentLogModal: state.setShowAgentLogModal,
+  })))
 
   // Annotated data needs to be highlighted
   const renderTdValue = (value: string | number | null, isEmptyStyle: boolean, isHighlight = false, annotation?: LogAnnotation) => {
@@ -699,6 +703,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     onRefresh()
     setShowDrawer(false)
     setCurrentConversation(undefined)
+    setShowPromptLogModal(false)
+    setShowAgentLogModal(false)
   }
 
   if (!logs)

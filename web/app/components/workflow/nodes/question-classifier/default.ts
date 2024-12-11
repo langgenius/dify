@@ -26,6 +26,16 @@ const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
         name: '',
       },
     ],
+    _targetBranches: [
+      {
+        id: '1',
+        name: '',
+      },
+      {
+        id: '2',
+        name: '',
+      },
+    ],
     vision: {
       enabled: false,
     },

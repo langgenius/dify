@@ -1,11 +1,13 @@
 import csv
 import io
 import json
+import os
+import tempfile
 
 import docx
 import pandas as pd
-import pypdfium2
-import yaml
+import pypdfium2  # type: ignore
+import yaml  # type: ignore
 from unstructured.partition.api import partition_via_api
 from unstructured.partition.email import partition_email
 from unstructured.partition.epub import partition_epub
@@ -113,7 +115,7 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
 def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str) -> str:
     """Extract text from a file based on its file extension."""
     match file_extension:
-        case ".txt" | ".markdown" | ".md" | ".html" | ".htm" | ".xml":
+        case ".txt" | ".markdown" | ".md" | ".html" | ".htm" | ".xml" | ".vtt":
             return _extract_text_from_plain_text(file_content)
         case ".json":
             return _extract_text_from_json(file_content)
@@ -143,14 +145,14 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
 
 def _extract_text_from_plain_text(file_content: bytes) -> str:
     try:
-        return file_content.decode("utf-8")
+        return file_content.decode("utf-8", "ignore")
     except UnicodeDecodeError as e:
         raise TextExtractionError("Failed to decode plain text file") from e
 
 
 def _extract_text_from_json(file_content: bytes) -> str:
     try:
-        json_data = json.loads(file_content.decode("utf-8"))
+        json_data = json.loads(file_content.decode("utf-8", "ignore"))
         return json.dumps(json_data, indent=2, ensure_ascii=False)
     except (UnicodeDecodeError, json.JSONDecodeError) as e:
         raise TextExtractionError(f"Failed to decode or parse JSON file: {e}") from e
@@ -159,7 +161,7 @@ def _extract_text_from_json(file_content: bytes) -> str:
 def _extract_text_from_yaml(file_content: bytes) -> str:
     """Extract the content from yaml file"""
     try:
-        yaml_data = yaml.safe_load_all(file_content.decode("utf-8"))
+        yaml_data = yaml.safe_load_all(file_content.decode("utf-8", "ignore"))
         return yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False)
     except (UnicodeDecodeError, yaml.YAMLError) as e:
         raise TextExtractionError(f"Failed to decode or parse YAML file: {e}") from e
@@ -217,7 +219,7 @@ def _extract_text_from_file(file: File):
 
 def _extract_text_from_csv(file_content: bytes) -> str:
     try:
-        csv_file = io.StringIO(file_content.decode("utf-8"))
+        csv_file = io.StringIO(file_content.decode("utf-8", "ignore"))
         csv_reader = csv.reader(csv_file)
         rows = list(csv_reader)
 
@@ -237,15 +239,17 @@ def _extract_text_from_csv(file_content: bytes) -> str:
 
 def _extract_text_from_excel(file_content: bytes) -> str:
     """Extract text from an Excel file using pandas."""
-
     try:
-        df = pd.read_excel(io.BytesIO(file_content))
-
-        # Drop rows where all elements are NaN
-        df.dropna(how="all", inplace=True)
-
-        # Convert DataFrame to Markdown table
-        markdown_table = df.to_markdown(index=False)
+        excel_file = pd.ExcelFile(io.BytesIO(file_content))
+        markdown_table = ""
+        for sheet_name in excel_file.sheet_names:
+            try:
+                df = excel_file.parse(sheet_name=sheet_name)
+                df.dropna(how="all", inplace=True)
+                # Create Markdown table two times to separate tables with a newline
+                markdown_table += df.to_markdown(index=False) + "\n\n"
+            except Exception as e:
+                continue
         return markdown_table
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from Excel file: {str(e)}") from e
@@ -262,14 +266,20 @@ def _extract_text_from_ppt(file_content: bytes) -> str:
 
 def _extract_text_from_pptx(file_content: bytes) -> str:
     try:
-        with io.BytesIO(file_content) as file:
-            if dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY:
-                elements = partition_via_api(
-                    file=file,
-                    api_url=dify_config.UNSTRUCTURED_API_URL,
-                    api_key=dify_config.UNSTRUCTURED_API_KEY,
-                )
-            else:
+        if dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY:
+            with tempfile.NamedTemporaryFile(suffix=".pptx", delete=False) as temp_file:
+                temp_file.write(file_content)
+                temp_file.flush()
+                with open(temp_file.name, "rb") as file:
+                    elements = partition_via_api(
+                        file=file,
+                        metadata_filename=temp_file.name,
+                        api_url=dify_config.UNSTRUCTURED_API_URL,
+                        api_key=dify_config.UNSTRUCTURED_API_KEY,
+                    )
+                os.unlink(temp_file.name)
+        else:
+            with io.BytesIO(file_content) as file:
                 elements = partition_pptx(file=file)
         return "\n".join([getattr(element, "text", "") for element in elements])
     except Exception as e:

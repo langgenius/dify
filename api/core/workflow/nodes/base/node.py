@@ -4,7 +4,7 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
 
 from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.enums import CONTINUE_ON_ERROR_NODE_TYPE, NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from models.workflow import WorkflowNodeExecutionStatus
 
@@ -55,7 +55,9 @@ class BaseNode(Generic[GenericNodeData]):
             raise ValueError("Node ID is required.")
 
         self.node_id = node_id
-        self.node_data: GenericNodeData = cast(GenericNodeData, self._node_data_cls(**config.get("data", {})))
+
+        node_data = self._node_data_cls.model_validate(config.get("data", {}))
+        self.node_data = cast(GenericNodeData, node_data)
 
     @abstractmethod
     def _run(self) -> NodeRunResult | Generator[Union[NodeEvent, "InNodeEvent"], None, None]:
@@ -69,11 +71,8 @@ class BaseNode(Generic[GenericNodeData]):
         try:
             result = self._run()
         except Exception as e:
-            logger.exception(f"Node {self.node_id} failed to run: {e}")
-            result = NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED,
-                error=str(e),
-            )
+            logger.exception(f"Node {self.node_id} failed to run")
+            result = NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED, error=str(e), error_type="SystemError")
 
         if isinstance(result, NodeRunResult):
             yield RunCompletedEvent(run_result=result)
@@ -135,3 +134,12 @@ class BaseNode(Generic[GenericNodeData]):
         :return:
         """
         return self._node_type
+
+    @property
+    def should_continue_on_error(self) -> bool:
+        """judge if should continue on error
+
+        Returns:
+            bool: if should continue on error
+        """
+        return self.node_data.error_strategy is not None and self.node_type in CONTINUE_ON_ERROR_NODE_TYPE

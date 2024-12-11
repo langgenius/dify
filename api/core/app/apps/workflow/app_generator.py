@@ -33,12 +33,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
     @overload
     def generate(
         self,
+        *,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
-        args: dict,
+        user: Account | EndUser,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        stream: Literal[True] = True,
+        streaming: Literal[True],
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
     ) -> Generator[str, None, None]: ...
@@ -46,24 +47,40 @@ class WorkflowAppGenerator(BaseAppGenerator):
     @overload
     def generate(
         self,
+        *,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
-        args: dict,
+        user: Account | EndUser,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        stream: Literal[False] = False,
+        streaming: Literal[False],
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
-    ) -> dict: ...
+    ) -> Mapping[str, Any]: ...
+
+    @overload
+    def generate(
+        self,
+        *,
+        app_model: App,
+        workflow: Workflow,
+        user: Account | EndUser,
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: bool = True,
+        call_depth: int = 0,
+        workflow_thread_pool_id: Optional[str] = None,
+    ) -> Mapping[str, Any] | Generator[str, None, None]: ...
 
     def generate(
         self,
+        *,
         app_model: App,
         workflow: Workflow,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        stream: bool = True,
+        streaming: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
     ):
@@ -96,10 +113,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
             task_id=str(uuid.uuid4()),
             app_config=app_config,
             file_upload_config=file_extra_config,
-            inputs=self._prepare_user_inputs(user_inputs=inputs, app_config=app_config),
+            inputs=self._prepare_user_inputs(
+                user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
+            ),
             files=system_files,
             user_id=user.id,
-            stream=stream,
+            stream=streaming,
             invoke_from=invoke_from,
             call_depth=call_depth,
             trace_manager=trace_manager,
@@ -113,7 +132,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             application_generate_entity=application_generate_entity,
             invoke_from=invoke_from,
-            stream=stream,
+            streaming=streaming,
             workflow_thread_pool_id=workflow_thread_pool_id,
         )
 
@@ -125,20 +144,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
         user: Union[Account, EndUser],
         application_generate_entity: WorkflowAppGenerateEntity,
         invoke_from: InvokeFrom,
-        stream: bool = True,
+        streaming: bool = True,
         workflow_thread_pool_id: Optional[str] = None,
-    ) -> dict[str, Any] | Generator[str, None, None]:
-        """
-        Generate App response.
-
-        :param app_model: App
-        :param workflow: Workflow
-        :param user: account or end user
-        :param application_generate_entity: application generate entity
-        :param invoke_from: invoke from source
-        :param stream: is stream
-        :param workflow_thread_pool_id: workflow thread pool id
-        """
+    ) -> Mapping[str, Any] | Generator[str, None, None]:
         # init queue manager
         queue_manager = WorkflowAppQueueManager(
             task_id=application_generate_entity.task_id,
@@ -167,14 +175,20 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow=workflow,
             queue_manager=queue_manager,
             user=user,
-            stream=stream,
+            stream=streaming,
         )
 
         return WorkflowAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
 
     def single_iteration_generate(
-        self, app_model: App, workflow: Workflow, node_id: str, user: Account, args: dict, stream: bool = True
-    ) -> dict[str, Any] | Generator[str, Any, None]:
+        self,
+        app_model: App,
+        workflow: Workflow,
+        node_id: str,
+        user: Account,
+        args: Mapping[str, Any],
+        streaming: bool = True,
+    ) -> Mapping[str, Any] | Generator[str, None, None]:
         """
         Generate App response.
 
@@ -201,7 +215,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             inputs={},
             files=[],
             user_id=user.id,
-            stream=stream,
+            stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={"auto_generate_conversation_name": False},
             single_iteration_run=WorkflowAppGenerateEntity.SingleIterationRunEntity(
@@ -216,7 +230,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             invoke_from=InvokeFrom.DEBUGGER,
             application_generate_entity=application_generate_entity,
-            stream=stream,
+            streaming=streaming,
         )
 
     def _generate_worker(
@@ -298,5 +312,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             if e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedError()
             else:
-                logger.exception(e)
+                logger.exception(
+                    f"Fails to process generate task pipeline, task_id: {application_generate_entity.task_id}"
+                )
                 raise e

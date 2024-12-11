@@ -4,7 +4,7 @@ inputs:
   python-version:
     description: Python version to use and the Poetry installed with
     required: true
-    default: '3.10'
+    default: '3.11'
   poetry-version:
     description: Poetry version to set up
     required: true

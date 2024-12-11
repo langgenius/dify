@@ -99,6 +99,11 @@ const translation = {
     ImageUploadLegacyTip: 'Ahora puede crear variables de tipo de archivo en el formulario de inicio. Ya no admitiremos la función de carga de imágenes en el futuro.',
     featuresDescription: 'Mejorar la experiencia del usuario de la aplicación web',
     featuresDocLink: 'Aprende más',
+    importWarning: 'Cautela',
+    importWarningDetails: 'La diferencia de versión de DSL puede afectar a ciertas características',
+    openInExplore: 'Abrir en Explorar',
+    onFailure: 'Sobre el fracaso',
+    addFailureBranch: 'Agregar rama de error',
   },
   env: {
     envPanelTitle: 'Variables de Entorno',
@@ -292,6 +297,31 @@ const translation = {
         tip: 'Memoria de chat',
         builtIn: 'Incorporada',
       },
+      errorHandle: {
+        none: {
+          title: 'Ninguno',
+          desc: 'El nodo dejará de ejecutarse si se produce una excepción y no se controla',
+        },
+        defaultValue: {
+          title: 'Valor predeterminado',
+          desc: 'Cuando se produzca un error, especifique un contenido de salida estático.',
+          tip: 'En caso de error, devolverá un valor inferior.',
+          inLog: 'Excepción de nodo, salida según los valores predeterminados.',
+          output: 'Valor predeterminado de salida',
+        },
+        failBranch: {
+          title: 'Rama de error',
+          desc: 'Cuando se produce un error, ejecutará la rama de excepción',
+          customize: 'Vaya al lienzo para personalizar la lógica de la rama de error.',
+          customizeTip: 'Cuando se activa la rama fail, las excepciones lanzadas por los nodos no finalizarán el proceso. En su lugar, ejecutará automáticamente la rama de error predefinida, lo que le permitirá proporcionar de forma flexible mensajes de error, informes, correcciones u omitir acciones.',
+          inLog: 'Node, ejecutará automáticamente la rama de error. La salida del nodo devolverá un tipo de error y un mensaje de error y los pasará a la versión posterior.',
+        },
+        partialSucceeded: {
+          tip: 'Hay nodos {{num}} en el proceso que se ejecutan de manera anormal, vaya a rastreo para verificar los registros.',
+        },
+        title: 'Manejo de errores',
+        tip: 'Estrategia de control de excepciones, que se desencadena cuando un nodo encuentra una excepción.',
+      },
     },
     start: {
       required: 'requerido',
@@ -407,6 +437,11 @@ const translation = {
       },
       type: 'Tipo',
       binaryFileVariable: 'Variable de archivo binario',
+      extractListPlaceholder: 'Introduzca el índice de elementos de la lista, escriba \'/\' insertar variable',
+      curl: {
+        title: 'Importar desde cURL',
+        placeholder: 'Pegar la cadena cURL aquí',
+      },
     },
     code: {
       inputVars: 'Variables de entrada',
@@ -493,6 +528,26 @@ const translation = {
       'clear': 'Limpiar',
       'setVariable': 'Establecer Variable',
       'variable': 'Variable',
+      'operations': {
+        'clear': 'Claro',
+        '*=': '*=',
+        '-=': '-=',
+        'title': 'Operación',
+        'extend': 'Extender',
+        'append': 'Añadir',
+        '+=': '+=',
+        'over-write': 'Sobrescribir',
+        'overwrite': 'Sobrescribir',
+        '/=': '/=',
+        'set': 'Poner',
+      },
+      'variables': 'Variables',
+      'setParameter': 'Establecer parámetro...',
+      'noVarTip': 'Haga clic en el botón "+" para agregar variables',
+      'varNotSet': 'Variable NO establecida',
+      'noAssignedVars': 'No hay variables asignadas disponibles',
+      'selectAssignedVariable': 'Seleccione la variable asignada...',
+      'assignedVarsDescription': 'Las variables asignadas deben ser variables grabables, como las variables de conversación.',
     },
     tool: {
       toAuthorize: 'Para autorizar',
@@ -621,10 +676,18 @@ const translation = {
       filterConditionComparisonOperator: 'Operador de comparación de condiciones de filtro',
       asc: 'ASC',
       selectVariableKeyPlaceholder: 'Seleccione la clave de subvariable',
+      extractsCondition: 'Extraiga el elemento N',
     },
   },
   tracing: {
     stopBy: 'Pásate por {{usuario}}',
+  },
+  variableReference: {
+    noAvailableVars: 'No hay variables disponibles',
+    assignedVarsDescription: 'Las variables asignadas deben ser variables grabables, como',
+    noVarsForOperation: 'No hay variables disponibles para la asignación con la operación seleccionada.',
+    noAssignedVars: 'No hay variables asignadas disponibles',
+    conversationVars: 'Variables de conversación',
   },
 }
 

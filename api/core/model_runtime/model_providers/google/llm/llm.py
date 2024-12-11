@@ -1,7 +1,6 @@
 import base64
 import io
 import json
-import logging
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
@@ -17,6 +16,7 @@ from PIL import Image
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
+    DocumentPromptMessageContent,
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContentType,
@@ -36,16 +36,20 @@ from core.model_runtime.errors.invoke import (
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
-logger = logging.getLogger(__name__)
-
-GEMINI_BLOCK_MODE_PROMPT = """You should always follow the instructions and output a valid {{block}} object.
-The structure of the {{block}} object you can found in the instructions, use {"answer": "$your_answer"} as the default structure
-if you are not sure about the structure.
-
-<instructions>
-{{instructions}}
-</instructions>
-"""  # noqa: E501
+GOOGLE_AVAILABLE_MIMETYPE = [
+    "application/pdf",
+    "application/x-javascript",
+    "text/javascript",
+    "application/x-python",
+    "text/x-python",
+    "text/plain",
+    "text/html",
+    "text/css",
+    "text/md",
+    "text/csv",
+    "text/xml",
+    "text/rtf",
+]
 
 
 class GoogleLargeLanguageModel(LargeLanguageModel):
@@ -155,7 +159,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
 
         try:
             ping_message = SystemPromptMessage(content="ping")
-            self._generate(model, credentials, [ping_message], {"max_tokens_to_sample": 5})
+            self._generate(model, credentials, [ping_message], {"max_output_tokens": 5})
 
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
@@ -184,7 +188,15 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         config_kwargs = model_parameters.copy()
-        config_kwargs["max_output_tokens"] = config_kwargs.pop("max_tokens_to_sample", None)
+        if schema := config_kwargs.pop("json_schema", None):
+            try:
+                schema = json.loads(schema)
+            except:
+                raise exceptions.InvalidArgument("Invalid JSON Schema")
+            if tools:
+                raise exceptions.InvalidArgument("gemini not support use Tools and JSON Schema at same time")
+            config_kwargs["response_schema"] = schema
+            config_kwargs["response_mime_type"] = "application/json"
 
         if stop:
             config_kwargs["stop_sequences"] = stop
@@ -242,8 +254,12 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         assistant_prompt_message = AssistantPromptMessage(content=response.text)
 
         # calculate num tokens
-        prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
-        completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
+        if response.usage_metadata:
+            prompt_tokens = response.usage_metadata.prompt_token_count
+            completion_tokens = response.usage_metadata.candidates_token_count
+        else:
+            prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
+            completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
 
         # transform usage
         usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
@@ -373,6 +389,12 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                             except Exception as ex:
                                 raise ValueError(f"Failed to fetch image data from url {message_content.data}, {ex}")
                         blob = {"inline_data": {"mime_type": mime_type, "data": base64_data}}
+                        glm_content["parts"].append(blob)
+                    elif c.type == PromptMessageContentType.DOCUMENT:
+                        message_content = cast(DocumentPromptMessageContent, c)
+                        if message_content.mime_type not in GOOGLE_AVAILABLE_MIMETYPE:
+                            raise ValueError(f"Unsupported mime type {message_content.mime_type}")
+                        blob = {"inline_data": {"mime_type": message_content.mime_type, "data": message_content.data}}
                         glm_content["parts"].append(blob)
 
             return glm_content

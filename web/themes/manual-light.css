@@ -1,0 +1,5 @@
+html[data-theme="light"] {
+  --color-chatbot-bg: linear-gradient(180deg, rgba(249, 250, 251, 0.90) 0%, rgba(242, 244, 247, 0.90) 90.48%);
+  --color-chat-bubble-bg: linear-gradient(180deg, #FFF 0%, rgba(255, 255, 255, 0.60) 100%);
+  --color-workflow-process-bg: linear-gradient(90deg, rgba(200, 206, 218, 0.20) 0%, rgba(200, 206, 218, 0.04) 100%);
+}

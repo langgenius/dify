@@ -1,17 +1,35 @@
 import type { CSSProperties, FC } from 'react'
 import React from 'react'
-import s from './style.module.css'
+import { type VariantProps, cva } from 'class-variance-authority'
+import classNames from '@/utils/classnames'
 
-type Props = {
-  type?: 'horizontal' | 'vertical'
-  // orientation?: 'left' | 'right' | 'center'
+const dividerVariants = cva('',
+  {
+    variants: {
+      type: {
+        horizontal: 'w-full h-[0.5px] my-2 ',
+        vertical: 'w-[1px] h-full mx-2',
+      },
+      bgStyle: {
+        gradient: 'bg-gradient-to-r from-divider-regular to-background-gradient-mask-transparent',
+        solid: 'bg-divider-regular',
+      },
+    },
+    defaultVariants: {
+      type: 'horizontal',
+      bgStyle: 'solid',
+    },
+  },
+)
+
+type DividerProps = {
   className?: string
   style?: CSSProperties
-}
+} & VariantProps<typeof dividerVariants>
 
-const Divider: FC<Props> = ({ type = 'horizontal', className = '', style }) => {
+const Divider: FC<DividerProps> = ({ type, bgStyle, className = '', style }) => {
   return (
-    <div className={`${s.divider} ${s[type]} ${className}`} style={style}></div>
+    <div className={classNames(dividerVariants({ type, bgStyle }), className)} style={style}></div>
   )
 }
 

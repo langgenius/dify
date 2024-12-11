@@ -62,6 +62,14 @@ const translation = {
     appTypeRequired: 'Будь ласка, виберіть тип додатка',
     appCreated: 'Додаток створено',
     appCreateFailed: 'Не вдалося створити додаток',
+    caution: 'Обережність',
+    Confirm: 'Підтвердити',
+    appCreateDSLErrorPart3: 'Поточна версія DSL програми:',
+    appCreateDSLErrorPart4: 'Версія DSL з підтримкою системи:',
+    appCreateDSLErrorPart2: 'Хочете продовжити?',
+    appCreateDSLErrorTitle: 'Несумісність версій',
+    appCreateDSLErrorPart1: 'Виявлено суттєву різницю у версіях DSL. Примусовий імпорт може призвести до неправильної роботи програми.',
+    appCreateDSLWarning: 'Увага: різниця у версіях DSL може вплинути на певні функції',
   },
   editApp: 'Редагувати інформацію',
   editAppTitle: 'Редагувати інформацію про додаток',
@@ -133,6 +141,11 @@ const translation = {
   importFromDSL: 'Імпорт з DSL',
   importFromDSLUrlPlaceholder: 'Вставте посилання на DSL тут',
   importFromDSLFile: 'З DSL-файлу',
+  mermaid: {
+    handDrawn: 'Намальовані від руки',
+    classic: 'Класичний',
+  },
+  openInExplore: 'Відкрити в Огляді',
 }
 
 export default translation

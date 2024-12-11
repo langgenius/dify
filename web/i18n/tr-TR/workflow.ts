@@ -99,6 +99,11 @@ const translation = {
     fileUploadTip: 'Resim yükleme özellikleri, dosya yüklemeye yükseltildi.',
     ImageUploadLegacyTip: 'Artık başlangıç formunda dosya türü değişkenleri oluşturabilirsiniz. Gelecekte resim yükleme özelliğini artık desteklemeyeceğiz.',
     featuresDescription: 'Web uygulaması kullanıcı deneyimini geliştirin',
+    importWarningDetails: 'DSL sürüm farkı bazı özellikleri etkileyebilir',
+    importWarning: 'Dikkat',
+    openInExplore: 'Keşfet\'te Aç',
+    onFailure: 'Başarısızlık Üzerine',
+    addFailureBranch: 'Başarısız dal ekle',
   },
   env: {
     envPanelTitle: 'Çevre Değişkenleri',
@@ -292,6 +297,31 @@ const translation = {
         tip: 'Sohbet belleği',
         builtIn: 'Yerleşik',
       },
+      errorHandle: {
+        none: {
+          title: 'Hiç kimse',
+          desc: 'Bir özel durum oluşursa ve işlenmezse düğüm çalışmayı durdurur',
+        },
+        defaultValue: {
+          title: 'Varsayılan Değer',
+          desc: 'Bir hata oluştuğunda, statik bir çıkış içeriği belirtin.',
+          tip: 'Hata durumunda, değerin altına dönecektir.',
+          inLog: 'Düğüm istisnası, varsayılan değerlere göre çıktı.',
+          output: 'Çıktı Varsayılan Değeri',
+        },
+        failBranch: {
+          title: 'Başarısız Dal',
+          desc: 'Bir hata oluştuğunda, özel durum dalını yürütür',
+          customize: 'Başarısız dal mantığını özelleştirmek için tuvale gidin.',
+          inLog: 'Düğüm özel durumu, başarısız dalı otomatik olarak yürütür. Düğüm çıkışı bir hata türü ve hata mesajı döndürür ve bunları aşağı akışa iletir.',
+          customizeTip: 'Başarısız dal etkinleştirildiğinde, düğümler tarafından oluşturulan özel durumlar işlemi sonlandırmaz. Bunun yerine, önceden tanımlanmış hata dalını otomatik olarak yürüterek hata mesajları, raporlar, düzeltmeler veya atlama eylemleri sağlamanıza olanak tanır.',
+        },
+        partialSucceeded: {
+          tip: 'İşlemde anormal şekilde çalışan {{num}} düğümleri var, lütfen günlükleri kontrol etmek için izlemeye gidin.',
+        },
+        title: 'Hata İşleme',
+        tip: 'Bir düğüm bir özel durumla karşılaştığında tetiklenen özel durum işleme stratejisi.',
+      },
     },
     start: {
       required: 'gerekli',
@@ -408,6 +438,11 @@ const translation = {
       },
       type: 'Tür',
       binaryFileVariable: 'İkili Dosya Değişkeni',
+      extractListPlaceholder: 'Liste öğesi dizinini girin, \'/\' yazın değişken ekle',
+      curl: {
+        placeholder: 'cURL dizesini buraya yapıştırın',
+        title: 'cURL\'den içe aktar',
+      },
     },
     code: {
       inputVars: 'Giriş Değişkenleri',
@@ -494,6 +529,26 @@ const translation = {
       'clear': 'Temizle',
       'setVariable': 'Değişken Ayarla',
       'variable': 'Değişken',
+      'operations': {
+        'extend': 'Uzatmak',
+        'overwrite': 'Üzerine',
+        'over-write': 'Üzerine',
+        'title': 'İşlem',
+        '+=': '+=',
+        'clear': 'Berrak',
+        'append': 'Ekleme',
+        '/=': '/=',
+        '-=': '-=',
+        '*=': '*=',
+        'set': 'Ayarlamak',
+      },
+      'variables': 'Değişken',
+      'selectAssignedVariable': 'Atanan değişkeni seçin...',
+      'setParameter': 'Parametreyi ayarla...',
+      'varNotSet': 'Değişken NOT Set',
+      'assignedVarsDescription': 'Atanan değişkenler, konuşma değişkenleri gibi yazılabilir değişkenler olmalıdır.',
+      'noVarTip': 'Değişken eklemek için "+" düğmesini tıklayın',
+      'noAssignedVars': 'Kullanılabilir atanmış değişken yok',
     },
     tool: {
       toAuthorize: 'Yetkilendirmek için',
@@ -619,10 +674,18 @@ const translation = {
       filterConditionComparisonValue: 'Filtre Koşulu değeri',
       selectVariableKeyPlaceholder: 'Alt değişken anahtarını seçin',
       desc: 'DESC',
+      extractsCondition: 'N öğesini ayıklayın',
     },
   },
   tracing: {
     stopBy: '{{user}} tarafından durduruldu',
+  },
+  variableReference: {
+    assignedVarsDescription: 'Atanan değişkenler, örneğin yazılabilir değişkenler olmalıdır',
+    noAvailableVars: 'Kullanılabilir değişken yok',
+    conversationVars: 'Konuşma değişkenleri',
+    noVarsForOperation: 'Seçilen işlemle atanabilecek değişken yok.',
+    noAssignedVars: 'Kullanılabilir atanmış değişken yok',
   },
 }
 

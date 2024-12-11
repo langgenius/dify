@@ -62,6 +62,14 @@ const translation = {
     appTypeRequired: 'कृपया एक ऐप प्रकार चुनें',
     appCreated: 'ऐप बनाया गया',
     appCreateFailed: 'ऐप बनाने में विफल',
+    Confirm: 'सुदृढ़ करना',
+    appCreateDSLErrorPart4: 'सिस्टम-समर्थित DSL संस्करण:',
+    appCreateDSLErrorPart3: 'वर्तमान अनुप्रयोग डीएसएल संस्करण:',
+    caution: 'सावधानी',
+    appCreateDSLErrorTitle: 'संस्करण असंगति',
+    appCreateDSLErrorPart1: 'डीएसएल संस्करणों में एक महत्वपूर्ण अंतर पाया गया है। आयात को बाध्य करने से अनुप्रयोग में खराबी आ सकती है।',
+    appCreateDSLWarning: 'सावधानी: DSL संस्करण अंतर कुछ सुविधाओं को प्रभावित कर सकता है',
+    appCreateDSLErrorPart2: 'क्या आप जारी रखना चाहते हैं?',
   },
   editApp: 'जानकारी संपादित करें',
   editAppTitle: 'ऐप जानकारी संपादित करें',
@@ -133,6 +141,11 @@ const translation = {
   importFromDSLUrl: 'यूआरएल से',
   importFromDSL: 'DSL से आयात करें',
   importFromDSLUrlPlaceholder: 'डीएसएल लिंक यहां पेस्ट करें',
+  mermaid: {
+    handDrawn: 'हाथ खींचा',
+    classic: 'क्लासिक',
+  },
+  openInExplore: 'एक्सप्लोर में खोलें',
 }
 
 export default translation

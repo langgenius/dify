@@ -66,7 +66,7 @@ class FishAudioText2SpeechModel(TTSModel):
             voice=voice,
         )
 
-    def validate_credentials(self, credentials: dict, user: Optional[str] = None) -> None:
+    def validate_credentials(self, model: str, credentials: dict, user: Optional[str] = None) -> None:
         """
         Validate credentials for text2speech model
 
@@ -76,7 +76,7 @@ class FishAudioText2SpeechModel(TTSModel):
 
         try:
             self.get_tts_model_voices(
-                None,
+                "",
                 credentials={
                     "api_key": credentials["api_key"],
                     "api_base": credentials["api_base"],

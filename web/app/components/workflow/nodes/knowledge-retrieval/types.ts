@@ -1,6 +1,7 @@
 import type { CommonNodeType, ModelConfig, ValueSelector } from '@/app/components/workflow/types'
 import type { RETRIEVE_TYPE } from '@/types/app'
 import type {
+  DataSet,
   RerankingModeEnum,
 } from '@/models/datasets'
 
@@ -35,4 +36,5 @@ export type KnowledgeRetrievalNodeType = CommonNodeType & {
   retrieval_mode: RETRIEVE_TYPE
   multiple_retrieval_config?: MultipleRetrievalConfig
   single_retrieval_config?: SingleRetrievalConfig
+  _datasets?: DataSet[]
 }
