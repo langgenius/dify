@@ -1,7 +1,7 @@
-model: pixtral-12b-2409
+model: pixtral-large-latest
 label:
-  zh_Hans: pixtral-12b-2409
-  en_US: pixtral-12b-2409
+  zh_Hans: pixtral-large-latest
+  en_US: pixtral-large-latest
 model_type: llm
 features:
   - agent-thought
