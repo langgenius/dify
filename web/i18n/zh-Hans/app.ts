@@ -7,6 +7,7 @@ const translation = {
     workflow: '工作流',
     completion: '文本生成',
     advanced: 'Chatflow',
+    basic: '基础编排',
   },
   duplicate: '复制',
   mermaid: {

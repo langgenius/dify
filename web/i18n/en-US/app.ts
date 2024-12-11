@@ -7,6 +7,7 @@ const translation = {
     workflow: 'Workflow',
     completion: 'Completion',
     advanced: 'Chatflow',
+    basic: 'Basic',
   },
   duplicate: 'Duplicate',
   mermaid: {
