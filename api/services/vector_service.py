@@ -110,7 +110,6 @@ class VectorService:
             index_processor.clean(dataset, [segment.index_node_id], with_keywords=True, delete_child_chunks=True)
 
         # generate child chunks
-
         document = Document(
             page_content=segment.content,
             metadata={
