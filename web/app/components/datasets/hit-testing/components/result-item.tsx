@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine, RiArrowRightSLine, RiArrowRightUpLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { SegmentIndexTag } from '../../documents/detail/completed'
+import Dot from '../../documents/detail/completed/common/dot'
 import Score from './score'
 import ChildChunkItem from './child-chunks-item'
 import ChunkDetailModal from './chunk-detail-modal'
@@ -12,6 +13,7 @@ import type { HitTesting } from '@/models/datasets'
 import cn from '@/utils/classnames'
 import FileIcon from '@/app/components/base/file-uploader/file-type-icon'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
+import Tag from '@/app/components/datasets/documents/detail/completed/common/tag'
 
 type Props = {
   payload: HitTesting
@@ -45,7 +47,7 @@ const ResultItem: FC<Props> = ({
             positionId={position}
             className={cn('w-fit group-hover:opacity-100')}
           />
-          <div className='text-xs font-medium text-text-quaternary'>·</div>
+          <Dot />
           <div className='system-xs-medium text-text-tertiary'>{word_count} {t('datasetDocuments.segment.characters')}</div>
         </div>
         <Score value={score} />
@@ -66,9 +68,9 @@ const ResultItem: FC<Props> = ({
           </div>
         )}
         {!isParentChildRetrieval && keywords && keywords.length > 0 && (
-          <div>
+          <div className='flex flex-wrap'>
             {keywords.map(keyword => (
-              <div key={keyword} className='inline-block px-1 py-0.5 bg-components-tag-bg text-components-tag-text text-xs rounded-md mr-1'>{keyword}</div>
+              <Tag key={keyword} text={keyword} className='mr-2' />
             ))}
           </div>
         )}
