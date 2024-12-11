@@ -334,10 +334,14 @@ services:
       MEILI_ENV: ${MEILI_ENV:-production}
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-b3BlbnNlc2FtZQo=}
       MEILI_NO_ANALYTICS: ${MEILI_NO_ANALYTICS:-true}
+    ports:
+      - 7700:7700
     volumes:
       - ./volumes/meili:/meili_data
     networks:
       - default
+    extra_hosts:
+      - "172.17.0.1"
 
   # Frontend web application.
   web:
