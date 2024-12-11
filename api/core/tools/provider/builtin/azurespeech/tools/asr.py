@@ -19,7 +19,7 @@ class AzureASRTool(BuiltinTool):
 
         files: dict = {"audio": audio_binary}
         if definition:
-            files["definition"] = definition
+            files["definition"] = (None, definition, "application/json")
         resp = requests.post(
             "https://{}.api.cognitive.microsoft.com/speechtotext/transcriptions:transcribe?api-version={}".format(
                 self.runtime.credentials.get("azure_speech_region"),
@@ -39,7 +39,7 @@ class AzureASRTool(BuiltinTool):
             raise Exception(
                 """No text detected.
                    Error: {}
-                   Definition: {}""".format(json.dumps(data), files.get("definition", ""))
+                   Definition: {}""".format(json.dumps(data), definition)
             )
 
         return [
