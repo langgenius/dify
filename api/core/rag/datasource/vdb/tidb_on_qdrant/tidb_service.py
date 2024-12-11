@@ -161,7 +161,7 @@ class TidbService:
         """
         tidb_serverless_list_map = {item.cluster_id: item for item in tidb_serverless_list}
         cluster_ids = [item.cluster_id for item in tidb_serverless_list]
-        params = {"clusterIds": cluster_ids, "view": "FULL"}
+        params = {"clusterIds": cluster_ids, "view": "BASIC"}
         response = requests.get(
             f"{api_url}/clusters:batchGet", params=params, auth=HTTPDigestAuth(public_key, private_key)
         )

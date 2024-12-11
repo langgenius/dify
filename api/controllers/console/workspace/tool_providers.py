@@ -368,6 +368,7 @@ class ToolWorkflowProviderCreateApi(Resource):
             description=args["description"],
             parameters=args["parameters"],
             privacy_policy=args["privacy_policy"],
+            labels=args["labels"],
         )
 
 

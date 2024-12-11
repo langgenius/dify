@@ -196,6 +196,13 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         if model_info["support_tool_use"] and tools:
             parameters["toolConfig"] = self._convert_converse_tool_config(tools=tools)
         try:
+            # for issue #10976
+            conversations_list = parameters["messages"]
+            # if two consecutive user messages found, combine them into one message
+            for i in range(len(conversations_list) - 2, -1, -1):
+                if conversations_list[i]["role"] == conversations_list[i + 1]["role"]:
+                    conversations_list[i]["content"].extend(conversations_list.pop(i + 1)["content"])
+
             if stream:
                 response = bedrock_client.converse_stream(**parameters)
                 return self._handle_converse_stream_response(

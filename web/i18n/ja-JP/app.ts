@@ -93,6 +93,7 @@ const translation = {
   switchLabel: '作成されるアプリのコピー',
   removeOriginal: '元のアプリを削除する',
   switchStart: '切り替えを開始する',
+  openInExplore: '"探索" で開く',
   typeSelector: {
     all: 'すべてのタイプ',
     chatbot: 'チャットボット',
@@ -127,7 +128,7 @@ const translation = {
     inUse: '使用中',
     configProvider: {
       title: '配置 ',
-      placeholder: 'あなた様の{{key}}を入力しでください',
+      placeholder: 'あなた様の{{key}}を入力してください',
       project: 'プロジェクト',
       publicKey: '公開キー',
       secretKey: '秘密キー',
