@@ -1,18 +1,21 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
+import cn from '@/utils/classnames'
 
 type Props = {
   value: number
+  besideChunkName?: boolean
 }
 
 const Score: FC<Props> = ({
   value,
+  besideChunkName,
 }) => {
   return (
-    <div className='relative items-center px-[5px] rounded-md border border-components-progress-bar-border overflow-hidden'>
+    <div className={cn('relative items-center px-[5px] border border-components-progress-bar-border   overflow-hidden', besideChunkName ? 'border-l-0' : 'rounded-md')}>
       <div className='absolute top-0 left-0 h-full bg-util-colors-blue-brand-blue-brand-100 border-r-[1.5px] border-components-progress-brand-progress ' style={{ width: `${value * 100}%` }} />
-      <div className='relative flex items-center h-4 space-x-0.5 text-util-colors-blue-brand-blue-brand-700'>
+      <div className={cn('relative flex items-center h-5 space-x-0.5 text-util-colors-blue-brand-blue-brand-700')}>
         <div className='system-2xs-medium-uppercase'>score</div>
         <div className='system-xs-semibold'>{value.toFixed(2)}</div>
       </div>

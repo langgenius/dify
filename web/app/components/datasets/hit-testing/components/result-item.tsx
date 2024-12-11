@@ -15,6 +15,7 @@ import FileIcon from '@/app/components/base/file-uploader/file-type-icon'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import Tag from '@/app/components/datasets/documents/detail/completed/common/tag'
 
+const i18nPrefix = 'datasetHitTesting'
 type Props = {
   payload: HitTesting
 }
@@ -54,17 +55,21 @@ const ResultItem: FC<Props> = ({
       </div>
 
       {/* Main */}
-      <div className='px-3'>
-        <div className='line-clamp-2'>{content}</div>
+      <div className='mt-1 px-3'>
+        <div className='line-clamp-2 body-md-regular'>{content}</div>
         {isParentChildRetrieval && (
-          <div>
+          <div className='mt-1'>
             <div className='flex items-center space-x-0.5 text-text-secondary' onClick={toggleFold}>
               <Icon className={cn('w-4 h-4', isFold && 'opacity-50')} />
-              <div>{t('dataset.hitChunks', { num: child_chunks.length })}</div>
+              <div>{t(`${i18nPrefix}.dataset.hitChunks`, { num: child_chunks.length })}</div>
             </div>
-            {child_chunks.map(item => (
-              <ChildChunkItem key={item.id} payload={item} isShowAll={false} />
-            ))}
+            <div className='space-y-2'>
+              {child_chunks.map(item => (
+                <div key={item.id} className='ml-[7px] pl-[7px] border-l-[2px] border-text-accent-secondary'>
+                  <ChildChunkItem payload={item} isShowAll={false} />
+                </div>
+              ))}
+            </div>
           </div>
         )}
         {!isParentChildRetrieval && keywords && keywords.length > 0 && (
@@ -76,7 +81,7 @@ const ResultItem: FC<Props> = ({
         )}
       </div>
       {/* Foot */}
-      <div className='flex justify-between items-center h-10 pl-3 pr-2 border-t border-divider-subtle'>
+      <div className='mt-3 flex justify-between items-center h-10 pl-3 pr-2 border-t border-divider-subtle'>
         <div className='flex items-center space-x-1'>
           <FileIcon type={extension} size='sm' />
           <span className='grow w-0 truncate text-text-secondary text-[13px] font-normal'>{document.name}</span>
@@ -85,7 +90,7 @@ const ResultItem: FC<Props> = ({
           className='flex items-center space-x-1 cursor-pointer text-text-tertiary'
           onClick={showDetailModal}
         >
-          <div className='text-xs uppercase'>{t('dataset.open')}</div>
+          <div className='text-xs uppercase'>{t(`${i18nPrefix}.open`)}</div>
           <RiArrowRightUpLine className='size-3.5' />
         </div>
       </div>

@@ -48,6 +48,11 @@ export const generalResultData: HitTesting[] = [
         score: 0.8771945,
         content: 'It is quite natural for academics who are continuously told to “publish or perish” to want to always create something from scratch that is their own fresh creation.',
       },
+      {
+        id: '2',
+        score: 0.5,
+        content: 'It is quite natural for ',
+      },
     ],
     score: 0.8771945,
     tsne_position: null,
