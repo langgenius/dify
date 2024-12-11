@@ -44,3 +44,7 @@ def init_app(app: DifyApp):
 
         for handler in logging.root.handlers:
             handler.formatter.converter = time_converter
+
+    # to remove numexpr and transformers meaningless warnings
+    os.environ["TRANSFORMERS_VERBOSITY"] = "error"
+    logging.getLogger("numexpr").setLevel(logging.WARNING)
