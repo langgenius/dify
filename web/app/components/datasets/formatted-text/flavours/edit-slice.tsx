@@ -43,7 +43,7 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
       >
         <SliceLabel
           className={classNames(
-            isDestructive && '!bg-red-500 !text-text-primary-on-surface',
+            isDestructive && '!bg-state-destructive-solid !text-text-primary-on-surface',
           )}
         >
           {label}
