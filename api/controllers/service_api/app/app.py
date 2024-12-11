@@ -55,7 +55,7 @@ class AppInfoApi(Resource):
             "tags": tags,
             "icon_type": app_model.icon_type,
             "icon": app_model.icon,
-            "icon_background": app_model.icon_background
+            "icon_background": app_model.icon_background,
         }
 
 
