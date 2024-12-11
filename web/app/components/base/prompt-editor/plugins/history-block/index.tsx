@@ -5,7 +5,6 @@ import {
 import {
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
-  createCommand,
 } from 'lexical'
 import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -14,10 +13,7 @@ import {
   $createHistoryBlockNode,
   HistoryBlockNode,
 } from './node'
-
-export const INSERT_HISTORY_BLOCK_COMMAND = createCommand('INSERT_HISTORY_BLOCK_COMMAND')
-export const DELETE_HISTORY_BLOCK_COMMAND = createCommand('DELETE_HISTORY_BLOCK_COMMAND')
-
+import { DELETE_HISTORY_BLOCK_COMMAND, INSERT_HISTORY_BLOCK_COMMAND } from './commands'
 export type RoleName = {
   user: string
   assistant: string

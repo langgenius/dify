@@ -6,8 +6,9 @@ import {
 } from '@remixicon/react'
 import { useSelectOrDelete, useTrigger } from '../../hooks'
 import { UPDATE_HISTORY_EVENT_EMITTER } from '../../constants'
+import { DELETE_HISTORY_BLOCK_COMMAND } from './commands'
 import type { RoleName } from './index'
-import { DELETE_HISTORY_BLOCK_COMMAND } from './index'
+
 import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import {
   PortalToFollowElem,

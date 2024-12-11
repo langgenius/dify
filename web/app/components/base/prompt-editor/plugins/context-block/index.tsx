@@ -5,7 +5,6 @@ import {
 import {
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
-  createCommand,
 } from 'lexical'
 import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -15,8 +14,7 @@ import {
   ContextBlockNode,
 } from './node'
 
-export const INSERT_CONTEXT_BLOCK_COMMAND = createCommand('INSERT_CONTEXT_BLOCK_COMMAND')
-export const DELETE_CONTEXT_BLOCK_COMMAND = createCommand('DELETE_CONTEXT_BLOCK_COMMAND')
+import { DELETE_CONTEXT_BLOCK_COMMAND, INSERT_CONTEXT_BLOCK_COMMAND } from './commands'
 
 export type Dataset = {
   id: string

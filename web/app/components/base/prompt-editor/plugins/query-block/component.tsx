@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelectOrDelete } from '../../hooks'
-import { DELETE_QUERY_BLOCK_COMMAND } from './index'
+import { DELETE_QUERY_BLOCK_COMMAND } from './commands'
 import { UserEdit02 } from '@/app/components/base/icons/src/vender/solid/users'
 
 type QueryBlockComponentProps = {
