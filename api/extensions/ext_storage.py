@@ -25,31 +25,19 @@ class Storage:
             case StorageType.S3:
                 from extensions.storage.opendal_storage import OpenDALStorage
 
-                if dify_config.S3_USE_AWS_MANAGED_IAM:
-                    logger.debug("Using AWS managed IAM role for S3")
-                    kwargs = {
-                        "root": "/",
-                        "bucket": dify_config.S3_BUCKET_NAME,
-                        "server_side_encryption": "aws:kms",
-                        "region": dify_config.S3_REGION,
-                    }
-                else:
-                    kwargs = {
-                        "root": "/",
-                        "bucket": dify_config.S3_BUCKET_NAME,
-                        "endpoint": dify_config.S3_ENDPOINT,
-                        "access_key_id": dify_config.S3_ACCESS_KEY,
-                        "secret_access_key": dify_config.S3_SECRET_KEY,
-                        "region": dify_config.S3_REGION,
-                    }
-
-                # For R2
-                if "endpoint" in kwargs and "r2.cloudflarestorage.com" in kwargs["endpoint"]:
-                    logger.debug("Using R2 for S3")
-                    kwargs["disable_stat_with_override"] = "true"
-                    kwargs["region"] = kwargs["region"] or "auto"
-
+                kwargs = _load_s3_storage_kwargs()
                 return lambda: OpenDALStorage(scheme=OpenDALScheme.S3, **kwargs)
+            case StorageType.OPENDAL:
+                from extensions.storage.opendal_storage import OpenDALStorage
+
+                scheme = OpenDALScheme(dify_config.STORAGE_OPENDAL_SCHEME)
+                kwargs = _load_opendal_storage_kwargs(scheme)
+                return lambda: OpenDALStorage(scheme=scheme, **kwargs)
+            case StorageType.LOCAL:
+                from extensions.storage.opendal_storage import OpenDALStorage
+
+                kwargs = _load_local_storage_kwargs()
+                return lambda: OpenDALStorage(scheme=OpenDALScheme.FS, **kwargs)
             case StorageType.AZURE_BLOB:
                 from extensions.storage.azure_blob_storage import AzureBlobStorage
 
@@ -86,18 +74,6 @@ class Storage:
                 from extensions.storage.supabase_storage import SupabaseStorage
 
                 return SupabaseStorage
-            case StorageType.OPENDAL:
-                from extensions.storage.opendal_storage import OpenDALStorage
-
-                kwargs = _load_opendal_storage_kwargs_by_scheme(OpenDALScheme(dify_config.STORAGE_OPENDAL_SCHEME))
-                return lambda: OpenDALStorage(scheme=OpenDALScheme(dify_config.STORAGE_OPENDAL_SCHEME), **kwargs)
-            case StorageType.LOCAL:
-                from extensions.storage.opendal_storage import OpenDALStorage
-
-                kwargs = {
-                    "root": dify_config.STORAGE_LOCAL_PATH,
-                }
-                return lambda: OpenDALStorage(scheme=OpenDALScheme.FS, **kwargs)
             case _:
                 raise ValueError(f"Unsupported storage type {storage_type}")
 
@@ -154,21 +130,60 @@ class Storage:
             raise e
 
 
-def _load_opendal_storage_kwargs_by_scheme(scheme: OpenDALScheme, /) -> Mapping[str, str]:
+def _load_s3_storage_kwargs() -> Mapping[str, str]:
+    """
+    Load the kwargs for S3 storage based on dify_config.
+    Handles special cases like AWS managed IAM and R2.
+    """
+    kwargs = {
+        "root": "/",
+        "bucket": dify_config.S3_BUCKET_NAME,
+        "endpoint": dify_config.S3_ENDPOINT,
+        "access_key_id": dify_config.S3_ACCESS_KEY,
+        "secret_access_key": dify_config.S3_SECRET_KEY,
+        "region": dify_config.S3_REGION,
+    }
+    kwargs = {k: v for k, v in kwargs.items() if isinstance(v, str)}
+
+    # For AWS managed IAM
+    if dify_config.S3_USE_AWS_MANAGED_IAM:
+        from extensions.storage.opendal_storage import S3_SSE_WITH_AWS_MANAGED_IAM_KWARGS
+
+        logger.debug("Using AWS managed IAM role for S3")
+        kwargs = {**kwargs, **{k: v for k, v in S3_SSE_WITH_AWS_MANAGED_IAM_KWARGS.items() if k not in kwargs}}
+
+    # For Cloudflare R2
+    if kwargs.get("endpoint"):
+        from extensions.storage.opendal_storage import S3_R2_COMPATIBLE_KWARGS, is_r2_endpoint
+
+        if is_r2_endpoint(kwargs["endpoint"]):
+            logger.debug("Using R2 for OpenDAL S3")
+            kwargs = {**kwargs, **{k: v for k, v in S3_R2_COMPATIBLE_KWARGS.items() if k not in kwargs}}
+
+    return kwargs
+
+
+def _load_local_storage_kwargs() -> Mapping[str, str]:
+    """
+    Load the kwargs for local storage based on dify_config.
+    """
+    return {
+        "root": dify_config.STORAGE_LOCAL_PATH,
+    }
+
+
+def _load_opendal_storage_kwargs(scheme: OpenDALScheme) -> Mapping[str, str]:
+    """
+    Load the kwargs for OpenDAL storage based on the given scheme.
+    """
     match scheme:
         case OpenDALScheme.FS:
-            return {
+            kwargs = {
                 "root": dify_config.OPENDAL_FS_ROOT,
             }
         case OpenDALScheme.S3:
-            if dify_config.OPENDAL_S3_SERVER_SIDE_ENCRYPTION == "aws:kms":
-                return {
-                    "root": dify_config.OPENDAL_S3_ROOT,
-                    "bucket": dify_config.OPENDAL_S3_BUCKET,
-                    "server_side_encryption": dify_config.OPENDAL_S3_SERVER_SIDE_ENCRYPTION,
-                    "region": dify_config.OPENDAL_S3_REGION,
-                }
-            return {
+            # Load OpenDAL S3-related configs
+            kwargs = {
                 "root": dify_config.OPENDAL_S3_ROOT,
                 "bucket": dify_config.OPENDAL_S3_BUCKET,
                 "endpoint": dify_config.OPENDAL_S3_ENDPOINT,
@@ -176,8 +191,18 @@ def _load_opendal_storage_kwargs_by_scheme(scheme: OpenDALScheme, /) -> Mapping[
                 "secret_access_key": dify_config.OPENDAL_S3_SECRET_ACCESS_KEY,
                 "region": dify_config.OPENDAL_S3_REGION,
             }
+
+            # For Cloudflare R2
+            if kwargs.get("endpoint"):
+                from extensions.storage.opendal_storage import S3_R2_COMPATIBLE_KWARGS, is_r2_endpoint
+
+                if is_r2_endpoint(kwargs["endpoint"]):
+                    logger.debug("Using R2 for OpenDAL S3")
+                    kwargs = {**kwargs, **{k: v for k, v in S3_R2_COMPATIBLE_KWARGS.items() if k not in kwargs}}
         case _:
-            raise ValueError(f"Unsupported OpenDAL scheme {scheme}")
+            logger.warning(f"Unrecognized OpenDAL scheme: {scheme}, will fall back to default.")
+            kwargs = {}
+    return kwargs
 
 
 storage = Storage()

@@ -1,10 +1,29 @@
 from collections.abc import Generator
 from pathlib import Path
+from urllib.parse import urlparse
 
 import opendal
 
 from configs.middleware.storage.opendal_storage_config import OpenDALScheme
 from extensions.storage.base_storage import BaseStorage
+
+S3_R2_HOSTNAME = "r2.cloudflarestorage.com"
+S3_R2_COMPATIBLE_KWARGS = {
+    "delete_max_size": "700",
+    "disable_stat_with_override": "true",
+    "region": "auto",
+}
+S3_SSE_WITH_AWS_MANAGED_IAM_KWARGS = {
+    "server_side_encryption": "aws:kms",
+}
+
+
+def is_r2_endpoint(endpoint: str) -> bool:
+    if not endpoint:
+        return False
+
+    parsed_url = urlparse(endpoint)
+    return bool(parsed_url.hostname and parsed_url.hostname.endswith(S3_R2_HOSTNAME))
 
 
 class OpenDALStorage(BaseStorage):
