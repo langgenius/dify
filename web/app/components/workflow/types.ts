@@ -9,6 +9,10 @@ import type { VarType as VarKindType } from '@/app/components/workflow/nodes/too
 import type { FileResponse, NodeTracing } from '@/types/workflow'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import type {
+  DefaultValueForm,
+  ErrorHandleTypeEnum,
+} from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 
 export enum BlockEnum {
   Start = 'start',
@@ -52,6 +56,7 @@ export type CommonNodeType<T = {}> = {
   _targetBranches?: Branch[]
   _isSingleRun?: boolean
   _runningStatus?: NodeRunningStatus
+  _runningBranchId?: string
   _singleRunningStatus?: NodeRunningStatus
   _isCandidate?: boolean
   _isBundled?: boolean
@@ -62,6 +67,7 @@ export type CommonNodeType<T = {}> = {
   _iterationLength?: number
   _iterationIndex?: number
   _inParallelHovering?: boolean
+  _waitingRun?: boolean
   isInIteration?: boolean
   iteration_id?: string
   selected?: boolean
@@ -70,14 +76,18 @@ export type CommonNodeType<T = {}> = {
   type: BlockEnum
   width?: number
   height?: number
+  error_strategy?: ErrorHandleTypeEnum
+  default_value?: DefaultValueForm[]
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
 
 export type CommonEdgeType = {
   _hovering?: boolean
   _connectedNodeIsHovering?: boolean
   _connectedNodeIsSelected?: boolean
-  _run?: boolean
   _isBundled?: boolean
+  _sourceRunningStatus?: NodeRunningStatus
+  _targetRunningStatus?: NodeRunningStatus
+  _waitingRun?: boolean
   isInIteration?: boolean
   iteration_id?: string
   sourceType: BlockEnum
@@ -242,6 +252,7 @@ export type Var = {
   options?: string[]
   required?: boolean
   des?: string
+  isException?: boolean
 }
 
 export type NodeOutPutVar = {
@@ -281,6 +292,7 @@ export enum NodeRunningStatus {
   Running = 'running',
   Succeeded = 'succeeded',
   Failed = 'failed',
+  Exception = 'exception',
 }
 
 export type OnNodeAdd = (
@@ -331,6 +343,7 @@ export type WorkflowRunningData = {
     showSteps?: boolean
     total_steps?: number
     files?: FileResponse[]
+    exceptions_count?: number
   }
   tracing?: NodeTracing[]
 }
