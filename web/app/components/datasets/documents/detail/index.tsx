@@ -9,7 +9,6 @@ import { omit } from 'lodash-es'
 import { RiArrowLeftLine, RiLayoutRight2Line } from '@remixicon/react'
 import { OperationAction, StatusItem } from '../list'
 import DocumentPicker from '../../common/document-picker'
-import PreviewDocumentPicker from '../../common/document-picker/preview-document-picker'
 import Completed from './completed'
 import Embedding from './embedding'
 import Metadata from './metadata'
@@ -22,7 +21,7 @@ import Loading from '@/app/components/base/loading'
 import type { MetadataType } from '@/service/datasets'
 import { checkSegmentBatchImportProgress, fetchDocumentDetail, segmentBatchImport } from '@/service/datasets'
 import { ToastContext } from '@/app/components/base/toast'
-import type { DocForm, DocumentItem, ParentMode, ProcessMode } from '@/models/datasets'
+import type { DocForm, ParentMode, ProcessMode } from '@/models/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -54,21 +53,6 @@ type DocumentTitleProps = {
 }
 
 export const DocumentTitle: FC<DocumentTitleProps> = ({ datasetId, extension, name, processMode, parent_mode, wrapperCls }) => {
-  const testPreviewFiles = [
-    {
-      id: '1',
-      name: 'EOS R3',
-      extension: 'pdf',
-    },
-    {
-      id: '2',
-      name: 'EOS R5',
-      extension: 'pdf',
-    },
-  ]
-
-  const [previewFile, setPreviewFile] = useState<DocumentItem>(testPreviewFiles[0])
-
   return (
     <div className={cn('flex items-center justify-start flex-1 cursor-pointer', wrapperCls)}>
       {/* // todo: handle file change */}
@@ -81,12 +65,6 @@ export const DocumentTitle: FC<DocumentTitleProps> = ({ datasetId, extension, na
           parentMode: parent_mode,
         }}
         onChange={(doc) => { console.log(doc) }}
-      />
-      {/* todo: another document picker demo */}
-      <PreviewDocumentPicker
-        value={previewFile}
-        onChange={setPreviewFile}
-        files={testPreviewFiles}
       />
     </div>
   )
