@@ -3,12 +3,11 @@ import os
 import sys
 from logging.handlers import RotatingFileHandler
 
-from flask import Flask
-
 from configs import dify_config
+from dify_app import DifyApp
 
 
-def init_app(app: Flask):
+def init_app(app: DifyApp):
     log_handlers = []
     log_file = dify_config.LOG_FILE
     if log_file:

@@ -78,6 +78,7 @@ const translation = {
     requestBody: 'Telo zahteve',
     pathParams: 'Parametri poti',
     query: 'Poizvedba',
+    toc: 'Vsebino',
   },
 }
 

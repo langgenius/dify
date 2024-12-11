@@ -66,6 +66,14 @@ const translation = {
     appTypeRequired: 'Izberite vrsto aplikacije',
     appCreated: 'Aplikacija ustvarjena',
     appCreateFailed: 'Ustvarjanje aplikacije ni uspelo',
+    appCreateDSLErrorTitle: 'Nezdružljivost različice',
+    caution: 'Previdnost',
+    Confirm: 'Potrditi',
+    appCreateDSLErrorPart1: 'Odkrita je bila pomembna razlika v različicah DSL. Vsiljevanje uvoza lahko povzroči nepravilno delovanje aplikacije.',
+    appCreateDSLErrorPart3: 'Trenutna različica aplikacije DSL:',
+    appCreateDSLErrorPart4: 'Sistemsko podprta različica DSL:',
+    appCreateDSLWarning: 'Pozor: Razlika v različici DSL lahko vpliva na nekatere funkcije',
+    appCreateDSLErrorPart2: 'Želite nadaljevati?',
   },
   editApp: 'Uredi informacije',
   editAppTitle: 'Uredi informacije o aplikaciji',
@@ -133,6 +141,11 @@ const translation = {
       removeConfirmContent: 'Trenutna konfiguracija je v uporabi, odstranitev bo onemogočila funkcijo sledenja.',
     },
   },
+  mermaid: {
+    handDrawn: 'Ročno narisano',
+    classic: 'Klasičen',
+  },
+  openInExplore: 'Odpri v razišči',
 }
 
 export default translation

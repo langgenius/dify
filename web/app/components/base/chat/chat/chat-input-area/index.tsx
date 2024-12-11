@@ -102,21 +102,21 @@ const ChatInputArea = ({
       setCurrentIndex(historyRef.current.length)
       handleSend()
     }
-    else if (e.key === 'ArrowUp' && !e.shiftKey && !e.nativeEvent.isComposing) {
-      // When the up key is pressed, output the previous element
+    else if (e.key === 'ArrowUp' && !e.shiftKey && !e.nativeEvent.isComposing && e.metaKey) {
+      // When the cmd + up key is pressed, output the previous element
       if (currentIndex > 0) {
         setCurrentIndex(currentIndex - 1)
         setQuery(historyRef.current[currentIndex - 1])
       }
     }
-    else if (e.key === 'ArrowDown' && !e.shiftKey && !e.nativeEvent.isComposing) {
-      // When the down key is pressed, output the next element
+    else if (e.key === 'ArrowDown' && !e.shiftKey && !e.nativeEvent.isComposing && e.metaKey) {
+      // When the cmd + down key is pressed, output the next element
       if (currentIndex < historyRef.current.length - 1) {
         setCurrentIndex(currentIndex + 1)
         setQuery(historyRef.current[currentIndex + 1])
       }
       else if (currentIndex === historyRef.current.length - 1) {
-        // If it is the last element, clear the input box
+      // If it is the last element, clear the input box
         setCurrentIndex(historyRef.current.length)
         setQuery('')
       }

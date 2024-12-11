@@ -37,7 +37,11 @@ def test_dify_config_undefined_entry(example_env_file):
         assert config["LOG_LEVEL"] == "INFO"
 
 
+# NOTE: If there is a `.env` file in your Workspace, this test might not succeed as expected.
+# This is due to `pymilvus` loading all the variables from the `.env` file into `os.environ`.
 def test_dify_config(example_env_file):
+    # clear system environment variables
+    os.environ.clear()
     # load dotenv file with pydantic-settings
     config = DifyConfig(_env_file=example_env_file)
 
@@ -71,7 +75,6 @@ def test_flask_configs(example_env_file):
     assert config["EDITION"] == "SELF_HOSTED"
     assert config["API_COMPRESSION_ENABLED"] is False
     assert config["SENTRY_TRACES_SAMPLE_RATE"] == 1.0
-    assert config["TESTING"] == False
 
     # value from env file
     assert config["CONSOLE_API_URL"] == "https://example.com"

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ChatAppGenerateEntity
 from events.message_event import message_was_created
@@ -17,5 +17,5 @@ def handle(sender, **kwargs):
     db.session.query(Provider).filter(
         Provider.tenant_id == application_generate_entity.app_config.tenant_id,
         Provider.provider_name == application_generate_entity.model_conf.provider,
-    ).update({"last_used": datetime.now(timezone.utc).replace(tzinfo=None)})
+    ).update({"last_used": datetime.now(UTC).replace(tzinfo=None)})
     db.session.commit()

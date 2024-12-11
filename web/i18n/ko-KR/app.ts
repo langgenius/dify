@@ -58,6 +58,14 @@ const translation = {
     appTypeRequired: '앱 종류를 선택하세요',
     appCreated: '앱이 생성되었습니다',
     appCreateFailed: '앱 생성 실패',
+    caution: '주의',
+    Confirm: '확인하다',
+    appCreateDSLErrorPart4: '시스템 지원 DSL 버전:',
+    appCreateDSLErrorTitle: '버전 비호환성',
+    appCreateDSLErrorPart2: '계속하시겠습니까?',
+    appCreateDSLErrorPart3: '현재 응용 프로그램 DSL 버전:',
+    appCreateDSLWarning: '주의: DSL 버전 차이는 특정 기능에 영향을 미칠 수 있습니다.',
+    appCreateDSLErrorPart1: 'DSL 버전에서 상당한 차이가 감지되었습니다. 강제로 가져오면 응용 프로그램이 오작동할 수 있습니다.',
   },
   editApp: '정보 편집하기',
   editAppTitle: '앱 정보 편집하기',
@@ -129,6 +137,11 @@ const translation = {
   importFromDSLFile: 'DSL 파일에서',
   importFromDSLUrl: 'URL에서',
   importFromDSLUrlPlaceholder: '여기에 DSL 링크 붙여 넣기',
+  mermaid: {
+    handDrawn: '손으로 그린',
+    classic: '고전',
+  },
+  openInExplore: 'Explore에서 열기',
 }
 
 export default translation

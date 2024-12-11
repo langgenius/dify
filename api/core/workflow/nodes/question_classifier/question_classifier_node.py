@@ -86,12 +86,14 @@ class QuestionClassifierNode(LLMNode):
         )
         prompt_messages, stop = self._fetch_prompt_messages(
             prompt_template=prompt_template,
-            system_query=query,
+            user_query=query,
             memory=memory,
             model_config=model_config,
-            files=files,
+            user_files=files,
             vision_enabled=node_data.vision.enabled,
             vision_detail=node_data.vision.configs.detail,
+            variable_pool=variable_pool,
+            jinja2_variables=[],
         )
 
         # handle invoke result
@@ -137,7 +139,7 @@ class QuestionClassifierNode(LLMNode):
                 "usage": jsonable_encoder(usage),
                 "finish_reason": finish_reason,
             }
-            outputs = {"class_name": category_name}
+            outputs = {"class_name": category_name, "class_id": category_id}
 
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,

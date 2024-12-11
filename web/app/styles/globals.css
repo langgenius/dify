@@ -4,6 +4,8 @@
 
 @import '../../themes/light.css';
 @import '../../themes/dark.css';
+@import "../../themes/manual-light.css";
+@import "../../themes/manual-dark.css";
 
 html[data-changing-theme] * {
   transition: none !important;

@@ -24,6 +24,12 @@ BACKOFF_FACTOR = 0.5
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
 
 
+class MaxRetriesExceededError(Exception):
+    """Raised when the maximum number of retries is exceeded."""
+
+    pass
+
+
 def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     if "allow_redirects" in kwargs:
         allow_redirects = kwargs.pop("allow_redirects")
@@ -53,8 +59,6 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
                     response = client.request(method=method, url=url, **kwargs)
 
             if response.status_code not in STATUS_FORCELIST:
-                if stream:
-                    return response.iter_bytes()
                 return response
             else:
                 logging.warning(f"Received status code {response.status_code} for URL {url} which is in the force list")
@@ -66,7 +70,7 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
         if retries <= max_retries:
             time.sleep(BACKOFF_FACTOR * (2 ** (retries - 1)))
 
-    raise Exception(f"Reached maximum retries ({max_retries}) for URL {url}")
+    raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
 
 
 def get(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):

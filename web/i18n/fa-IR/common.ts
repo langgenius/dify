@@ -595,6 +595,9 @@ const translation = {
     expiring_plural: 'انقضا در {{count}} روز',
     expiring: 'انقضا در یک روز',
   },
+  pagination: {
+    perPage: 'موارد در هر صفحه',
+  },
 }
 
 export default translation
