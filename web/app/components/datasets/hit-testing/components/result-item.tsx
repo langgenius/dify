@@ -59,17 +59,19 @@ const ResultItem: FC<Props> = ({
         <div className='line-clamp-2 body-md-regular'>{content}</div>
         {isParentChildRetrieval && (
           <div className='mt-1'>
-            <div className='flex items-center space-x-0.5 text-text-secondary' onClick={toggleFold}>
+            <div className={cn('inline-flex items-center h-6 space-x-0.5 text-text-secondary select-none rounded-lg cursor-pointer', isFold && 'pl-1 bg-[linear-gradient(90deg,_rgba(200,_206,_218,_0.20)_0%,_rgba(200,_206,_218,_0.04)_100%)]')} onClick={toggleFold}>
               <Icon className={cn('w-4 h-4', isFold && 'opacity-50')} />
-              <div>{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
+              <div className='text-xs font-semibold uppercase'>{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
             </div>
-            <div className='space-y-2'>
-              {child_chunks.map(item => (
-                <div key={item.id} className='ml-[7px] pl-[7px] border-l-[2px] border-text-accent-secondary'>
-                  <ChildChunkItem payload={item} isShowAll={false} />
-                </div>
-              ))}
-            </div>
+            {!isFold && (
+              <div className='space-y-2'>
+                {child_chunks.map(item => (
+                  <div key={item.id} className='ml-[7px] pl-[7px] border-l-[2px] border-text-accent-secondary'>
+                    <ChildChunkItem payload={item} isShowAll={false} />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         {!isParentChildRetrieval && keywords && keywords.length > 0 && (
@@ -103,7 +105,7 @@ const ResultItem: FC<Props> = ({
           />
         )
       }
-    </div>
+    </div >
   )
 }
 export default React.memo(ResultItem)
