@@ -70,8 +70,9 @@ export const useWorkflow = () => {
   const { locale } = useContext(I18n)
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
+  const appId = useStore(s => s.appId)
   const nodesExtraData = useNodesExtraData()
-  const { data: workflowConfig } = useWorkflowConfig()
+  const { data: workflowConfig } = useWorkflowConfig(appId)
   const setPanelWidth = useCallback((width: number) => {
     localStorage.setItem('workflow-node-panel-width', `${width}`)
     workflowStore.setState({ panelWidth: width })

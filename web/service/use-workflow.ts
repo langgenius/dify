@@ -4,9 +4,9 @@ import type { WorkflowConfigResponse } from '@/types/workflow'
 
 const NAME_SPACE = 'workflow'
 
-export const useWorkflowConfig = () => {
+export const useWorkflowConfig = (appId: string) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'config'],
-    queryFn: () => get<WorkflowConfigResponse>('/apps/workflow-config'),
+    queryFn: () => get<WorkflowConfigResponse>(`/apps/${appId}/workflows/draft/config`),
   })
 }
