@@ -169,6 +169,8 @@ const translation = {
     switch: 'Switch',
     qaSwitchHighQualityTipTitle: 'Q&A Format Requires High-quality Indexing Method',
     qaSwitchHighQualityTipContent: 'Currently, only high-quality index method supports Q&A format chunking. Would you like to switch to high-quality mode?',
+    notAvailableForParentChild: 'Not available for Parent-child Index',
+    notAvailableForQA: 'Not available for Q&A Index',
   },
   stepThree: {
     creationTitle: '🎉 Knowledge created',

@@ -51,14 +51,15 @@ type OptionCardProps = {
   actions?: ReactNode
   effectImg?: string
   onSwitched?: () => void
+  noHighlight?: boolean
 } & Omit<ComponentProps<'div'>, 'title'>
 
 export const OptionCard: FC<OptionCardProps> = (props) => {
-  const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSwitched, onClick, ...rest } = props
+  const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSwitched, onClick, noHighlight, ...rest } = props
   return <div
     className={classNames(
       'rounded-xl',
-      isActive ? 'border-components-option-card-option-selected-border bg-components-panel-bg' : 'border-components-option-card-option-border bg-components-option-card-option-bg',
+      (isActive && !noHighlight) ? 'border-components-option-card-option-selected-border bg-components-panel-bg' : 'border-components-option-card-option-border bg-components-option-card-option-bg',
       className,
     )}
     style={{
@@ -75,7 +76,7 @@ export const OptionCard: FC<OptionCardProps> = (props) => {
       icon={icon}
       title={title}
       description={description}
-      isActive={isActive}
+      isActive={isActive && !noHighlight}
       activeClassName={activeHeaderClassName}
       effectImg={effectImg}
     />
