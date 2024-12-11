@@ -19,12 +19,16 @@ const translation = {
     testing: 'Testing',
   },
   hit: {
-    title: 'RETRIEVAL PARAGRAPHS',
+    title: '{{num}} Retrieved Chunks',
     emptyTip: 'Retrieval Testing results will show here',
   },
   noRecentTip: 'No recent query results here',
   viewChart: 'View VECTOR CHART',
   viewDetail: 'View Detail',
+  chunkDetail: 'Chunk Detail',
+  hitChunks: 'Hit {{num}} child chunks',
+  open: 'Open',
+  keyword: 'Keywords',
 }
 
 export default translation

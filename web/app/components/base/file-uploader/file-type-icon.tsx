@@ -82,8 +82,8 @@ const FileTypeIcon = ({
   size = 'sm',
   className,
 }: FileTypeIconProps) => {
-  const Icon = FILE_TYPE_ICON_MAP[type].component || FileAppearanceTypeEnum.custom
-  const color = FILE_TYPE_ICON_MAP[type].color
+  const Icon = FILE_TYPE_ICON_MAP[type]?.component || FileAppearanceTypeEnum.document
+  const color = FILE_TYPE_ICON_MAP[type]?.color || FILE_TYPE_ICON_MAP[FileAppearanceTypeEnum.document].color
 
   return <Icon className={cn('shrink-0', SizeMap[size], color, className)} />
 }

@@ -42,21 +42,22 @@ type SegmentListContextValue = {
 
 const SegmentListContext = createContext({
   isCollapsed: true,
-  toggleCollapsed: () => {},
+  toggleCollapsed: () => { },
   fullScreen: false,
-  toggleFullScreen: () => {},
+  toggleFullScreen: () => { },
 })
 
 export const useSegmentListContext = (selector: (value: SegmentListContextValue) => any) => {
   return useContextSelector(SegmentListContext, selector)
 }
 
-export const SegmentIndexTag: FC<{ positionId?: string | number; label?: string; className?: string }> = React.memo(({ positionId, label, className }) => {
+export const SegmentIndexTag: FC<{ positionId?: string | number; label?: string; className?: string; isParentChildRetrieval?: boolean }> = React.memo(({ positionId, label, className, isParentChildRetrieval }) => {
+  const prefix = `${isParentChildRetrieval ? 'Parent-' : ''}Chunk`
   const localPositionId = useMemo(() => {
     const positionIdStr = String(positionId)
     if (positionIdStr.length >= 3)
-      return `Chunk-${positionId}`
-    return `Chunk-${positionIdStr.padStart(2, '0')}`
+      return `${prefix}-${positionId}`
+    return `${prefix}-${positionIdStr.padStart(2, '0')}`
   }, [positionId])
   return (
     <div className={cn('flex items-center', className)}>
@@ -179,7 +180,7 @@ const Completed: FC<ICompletedProps> = ({
     setSegments([])
     setSelectedSegmentIds([])
     invalidSegmentList()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const onClickCard = (detail: SegmentDetailModel, isEditMode = false) => {
@@ -209,7 +210,7 @@ const Completed: FC<ICompletedProps> = ({
         notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       },
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetId, documentId, selectedSegmentIds, segments])
 
   const { mutateAsync: deleteSegment } = useDeleteSegment()
@@ -225,7 +226,7 @@ const Completed: FC<ICompletedProps> = ({
         notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       },
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetId, documentId, selectedSegmentIds])
 
   const handleUpdateSegment = async (
@@ -337,7 +338,7 @@ const Completed: FC<ICompletedProps> = ({
       resetList()
       currentPage !== totalPages && setCurrentPage(totalPages)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segmentListData, limit, currentPage])
 
   return (
@@ -388,7 +389,7 @@ const Completed: FC<ICompletedProps> = ({
             />
             <ChildSegmentList
               childChunks={childSegments}
-              handleInputChange={() => {}}
+              handleInputChange={() => { }}
               enabled={!archived}
             />
           </div>
@@ -443,14 +444,14 @@ const Completed: FC<ICompletedProps> = ({
       </FullScreenDrawer>
       {/* Batch Action Buttons */}
       {selectedSegmentIds.length > 0
-      && <BatchAction
-        className='absolute left-0 bottom-16 z-20'
-        selectedIds={selectedSegmentIds}
-        onBatchEnable={onChangeSwitch.bind(null, true, '')}
-        onBatchDisable={onChangeSwitch.bind(null, false, '')}
-        onBatchDelete={onDelete.bind(null, '')}
-        onCancel={onCancelBatchOperation}
-      />}
+        && <BatchAction
+          className='absolute left-0 bottom-16 z-20'
+          selectedIds={selectedSegmentIds}
+          onBatchEnable={onChangeSwitch.bind(null, true, '')}
+          onBatchDisable={onChangeSwitch.bind(null, false, '')}
+          onBatchDelete={onDelete.bind(null, '')}
+          onCancel={onCancelBatchOperation}
+        />}
     </SegmentListContext.Provider>
   )
 }

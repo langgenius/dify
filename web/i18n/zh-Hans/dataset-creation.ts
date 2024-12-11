@@ -166,6 +166,11 @@ const translation = {
     datasetSettingLink: '知识库设置。',
     previewChunkTip: '点击左侧的“预览块”按钮来加载预览',
     previewChunkCount: '{{count}} 预估块',
+    switch: '切换',
+    qaSwitchHighQualityTipTitle: 'Q&A 格式需要高质量的索引方法',
+    qaSwitchHighQualityTipContent: '目前，只有高质量的索引方法支持 Q&A 格式分块。您要切换到高质量模式吗？',
+    notAvailableForParentChild: '不支持父子索引',
+    notAvailableForQA: '不支持 Q&A 索引',
   },
   stepThree: {
     creationTitle: '🎉 知识库已创建',

@@ -1,4 +1,6 @@
-export const generalResultData = [
+import type { HitTesting } from '@/models/datasets'
+
+export const generalResultData: HitTesting[] = [
   {
     segment: {
       id: 'b621b153-f8a7-4e85-bd3d-07feaf61bd9e',
@@ -40,8 +42,19 @@ export const generalResultData = [
         doc_type: null,
       },
     },
-    child_chunks: null,
-    score: 0.8771945,
+    child_chunks: [
+      {
+        id: '1',
+        score: 0.8771945,
+        content: 'It is quite natural for academics who are continuously told to “publish or perish” to want to always create something from scratch that is their own fresh creation.',
+      },
+      {
+        id: '2',
+        score: 0.5,
+        content: 'It is quite natural for ',
+      },
+    ],
+    score: 0.99,
     tsne_position: null,
   },
   {
@@ -86,7 +99,7 @@ export const generalResultData = [
       },
     },
     child_chunks: null,
-    score: 0.8642928,
+    score: 1,
     tsne_position: null,
   },
   {
@@ -131,7 +144,7 @@ export const generalResultData = [
       },
     },
     child_chunks: null,
-    score: 0.80618876,
+    score: 0.2,
     tsne_position: null,
   },
 ]

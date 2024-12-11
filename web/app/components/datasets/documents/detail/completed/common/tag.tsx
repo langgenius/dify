@@ -1,8 +1,9 @@
 import React from 'react'
+import cn from '@/utils/classnames'
 
-const Tag = ({ text }: { text: string }) => {
+const Tag = ({ text, className }: { text: string; className?: string }) => {
   return (
-    <div className='inline-flex items-center gap-x-0.5'>
+    <div className={cn('inline-flex items-center gap-x-0.5', className)}>
       <span className='text-text-quaternary text-xs font-medium'>#</span>
       <span className='text-text-tertiary text-xs'>{text}</span>
     </div>

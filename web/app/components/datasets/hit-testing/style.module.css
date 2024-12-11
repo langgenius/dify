@@ -5,7 +5,7 @@
   @apply flex-1 h-full;
 }
 .leftDiv {
-  @apply border-r border-gray-100 px-6 py-3 flex flex-col;
+  @apply px-6 py-3 flex flex-col;
 }
 .rightDiv {
   @apply flex flex-col;
