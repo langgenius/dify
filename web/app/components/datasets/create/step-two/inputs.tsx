@@ -32,7 +32,7 @@ export const DelimiterInput: FC<InputProps> = (props) => {
     <Input
       type="text"
       className='h-9'
-      placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''}
+      placeholder={t('datasetCreation.stepTwo.separatorPlaceholder')!}
       {...props}
     />
   </FormField>
@@ -46,7 +46,7 @@ export const MaxLengthInput: FC<InputNumberProps> = (props) => {
     <InputNumber
       type="number"
       className='h-9'
-      placeholder={t('datasetCreation.stepTwo.maxLength') || ''}
+      placeholder={'≤ 4000'}
       max={4000}
       min={1}
       {...props}

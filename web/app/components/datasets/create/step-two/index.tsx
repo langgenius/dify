@@ -96,6 +96,8 @@ export enum IndexingType {
 }
 
 const DEFAULT_SEGMENT_IDENTIFIER = '\\n\\n'
+const DEFAULT_MAXMIMUM_CHUNK_LENGTH = 500
+const DEFAULT_OVERLAP = 50
 
 type ParentChildConfig = {
   chunkForContext: ParentMode
@@ -155,9 +157,9 @@ const StepTwo = ({
   const setSegmentIdentifier = useCallback((value: string) => {
     doSetSegmentIdentifier(value ? escape(value) : DEFAULT_SEGMENT_IDENTIFIER)
   }, [])
-  const [maxChunkLength, setMaxChunkLength] = useState(4000) // default chunk length
+  const [maxChunkLength, setMaxChunkLength] = useState(DEFAULT_MAXMIMUM_CHUNK_LENGTH) // default chunk length
   const [limitMaxChunkLength, setLimitMaxChunkLength] = useState(4000)
-  const [overlap, setOverlap] = useState(50)
+  const [overlap, setOverlap] = useState(DEFAULT_OVERLAP)
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
   const hasSetIndexType = !!indexingType
