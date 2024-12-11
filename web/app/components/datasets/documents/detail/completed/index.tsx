@@ -13,7 +13,7 @@ import BatchAction from './batch-action'
 import SegmentDetail from './segment-detail'
 import SegmentCard from './segment-card'
 import ChildSegmentList from './child-segment-list'
-import FullScreenDrawer from './full-screen-drawer'
+import FullScreenDrawer from './common/full-screen-drawer'
 import Pagination from '@/app/components/base/pagination'
 import cn from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
@@ -192,7 +192,6 @@ const Completed: FC<ICompletedProps> = ({
   }
 
   const { mutateAsync: enableSegment } = useEnableSegment()
-
   const { mutateAsync: disableSegment } = useDisableSegment()
 
   const onChangeSwitch = useCallback(async (enable: boolean, segId?: string) => {
@@ -229,18 +228,6 @@ const Completed: FC<ICompletedProps> = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetId, documentId, selectedSegmentIds])
 
-  const onCancelBatchOperation = useCallback(() => {
-    setSelectedSegmentIds([])
-  }, [])
-
-  const onSelected = useCallback((segId: string) => {
-    setSelectedSegmentIds(prev =>
-      prev.includes(segId)
-        ? prev.filter(id => id !== segId)
-        : [...prev, segId],
-    )
-  }, [])
-
   const handleUpdateSegment = async (
     segmentId: string,
     question: string,
@@ -275,7 +262,8 @@ const Completed: FC<ICompletedProps> = ({
       eventEmitter?.emit('update-segment')
       const res = await updateSegment({ datasetId, documentId, segmentId, body: params })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      onCloseDrawer()
+      if (!needRegenerate)
+        onCloseDrawer()
       for (const seg of segments) {
         if (seg.id === segmentId) {
           seg.answer = res.data.answer
@@ -300,6 +288,18 @@ const Completed: FC<ICompletedProps> = ({
     if (importStatus === ProcessStatus.COMPLETED)
       resetList()
   }, [importStatus, resetList])
+
+  const onCancelBatchOperation = useCallback(() => {
+    setSelectedSegmentIds([])
+  }, [])
+
+  const onSelected = useCallback((segId: string) => {
+    setSelectedSegmentIds(prev =>
+      prev.includes(segId)
+        ? prev.filter(id => id !== segId)
+        : [...prev, segId],
+    )
+  }, [])
 
   const isAllSelected = useMemo(() => {
     return segments.length > 0 && segments.every(seg => selectedSegmentIds.includes(seg.id))

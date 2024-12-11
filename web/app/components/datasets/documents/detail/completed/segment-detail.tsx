@@ -1,4 +1,4 @@
-import React, { type FC, useState } from 'react'
+import React, { type FC, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiCloseLine,
@@ -9,7 +9,8 @@ import ActionButtons from './common/action-buttons'
 import ChunkContent from './common/chunk-content'
 import Keywords from './common/keywords'
 import RegenerationModal from './common/regeneration-modal'
-import { SegmentIndexTag, useSegmentListContext } from './index'
+import { SegmentIndexTag } from './common/segment-index-tag'
+import { useSegmentListContext } from './index'
 import type { SegmentDetailModel } from '@/models/datasets'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { formatNumber } from '@/utils/format'
@@ -74,13 +75,17 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
     onUpdate(segInfo?.id || '', question, answer, keywords, true)
   }
 
+  const isParentChildMode = useMemo(() => {
+    return mode === 'hierarchical'
+  }, [mode])
+
   return (
     <div className={'flex flex-col h-full'}>
       <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
         <div className='flex flex-col'>
           <div className='text-text-primary system-xl-semibold'>{isEditMode ? 'Edit Chunk' : 'Chunk Detail'}</div>
           <div className='flex items-center gap-x-2'>
-            <SegmentIndexTag positionId={segInfo?.position || ''} />
+            <SegmentIndexTag positionId={segInfo?.position || ''} labelPrefix={isParentChildMode ? 'Parent-Chunk' : 'Chunk'} />
             <span className='text-text-quaternary system-xs-medium'>·</span>
             <span className='text-text-tertiary system-xs-medium'>{formatNumber(isEditMode ? question.length : segInfo?.word_count as number)} {t('datasetDocuments.segment.characters')}</span>
           </div>
@@ -135,11 +140,16 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
           />
         </div>
       )}
-      <RegenerationModal
-        isShow={showRegenerationModal}
-        onConfirm={onConfirmRegeneration}
-        onCancel={onCancelRegeneration}
-      />
+      {
+        showRegenerationModal && (
+          <RegenerationModal
+            isShow={showRegenerationModal}
+            onConfirm={onConfirmRegeneration}
+            onCancel={onCancelRegeneration}
+            onClose={onCancelRegeneration}
+          />
+        )
+      }
     </div>
   )
 }

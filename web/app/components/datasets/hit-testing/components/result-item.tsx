@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { SegmentIndexTag } from '../../documents/detail/completed'
+import { SegmentIndexTag } from '../../documents/detail/completed/common/segment-index-tag'
 import type { HitTesting } from '@/models/datasets'
 import cn from '@/utils/classnames'
 type Props = {

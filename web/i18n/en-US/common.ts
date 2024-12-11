@@ -44,6 +44,8 @@ const translation = {
     openInNewTab: 'Open in new tab',
     saveAndRegenerate: 'Save & Regenerate Child Chunks',
     close: 'Close',
+    viewMore: 'VIEW MORE',
+    regenerate: 'Regenerate',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',

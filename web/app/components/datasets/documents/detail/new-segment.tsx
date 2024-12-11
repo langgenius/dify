@@ -5,7 +5,8 @@ import { useContext } from 'use-context-selector'
 import { useParams } from 'next/navigation'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { useShallow } from 'zustand/react/shallow'
-import { SegmentIndexTag, useSegmentListContext } from './completed'
+import { useSegmentListContext } from './completed'
+import { SegmentIndexTag } from './completed/common/segment-index-tag'
 import ActionButtons from './completed/common/action-buttons'
 import Keywords from './completed/common/keywords'
 import ChunkContent from './completed/common/chunk-content'
@@ -41,7 +42,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   const [loading, setLoading] = useState(false)
   const [addAnother, setAddAnother] = useState(true)
   const [fullScreen, toggleFullScreen] = useSegmentListContext(s => [s.fullScreen, s.toggleFullScreen])
-  const [mode] = useDocumentContext(s => s.mode)
+  const mode = useDocumentContext(s => s.mode)
   const { appSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
   })))

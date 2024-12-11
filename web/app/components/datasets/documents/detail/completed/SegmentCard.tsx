@@ -8,7 +8,7 @@ import {
 import { StatusItem } from '../../list'
 import style from '../../style.module.css'
 import s from './style.module.css'
-import { SegmentIndexTag } from './index'
+import { SegmentIndexTag } from './common/segment-index-tag'
 import cn from '@/utils/classnames'
 import Confirm from '@/app/components/base/confirm'
 import Switch from '@/app/components/base/switch'

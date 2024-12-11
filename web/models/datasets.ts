@@ -624,7 +624,7 @@ export type ChildChunkDetail = {
   type: ChildChunkType
 }
 
-export type ChildSegmentResponse = {
+export type ChildSegmentsResponse = {
   data: ChildChunkDetail[]
   total: number
   total_pages: number

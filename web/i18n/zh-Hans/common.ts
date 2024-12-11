@@ -44,6 +44,8 @@ const translation = {
     openInNewTab: '在新标签页打开',
     saveAndRegenerate: '保存并重新生成子分段',
     close: '关闭',
+    viewMore: '查看更多',
+    regenerate: '重新生成',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',

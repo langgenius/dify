@@ -347,6 +347,7 @@ const translation = {
     newTextSegment: '新文本分段',
     newQaSegment: '新问答分段',
     addChunk: '新增分段',
+    addChildChunk: '新增子分段',
     addAnother: '连续新增',
     delete: '删除这个分段？',
     chunkAdded: '新增一个分段',

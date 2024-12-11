@@ -6,7 +6,8 @@ import { useDocumentContext } from '../index'
 import ChildSegmentList from './child-segment-list'
 import Tag from './common/tag'
 import Dot from './common/dot'
-import { SegmentIndexTag, useSegmentListContext } from '.'
+import { SegmentIndexTag } from './common/segment-index-tag'
+import { useSegmentListContext } from './index'
 import type { SegmentDetailModel } from '@/models/datasets'
 import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
@@ -108,7 +109,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       <div className='h-5 relative flex items-center justify-between'>
         <>
           <div className='flex items-center gap-x-2'>
-            <SegmentIndexTag positionId={position} className={textOpacity} />
+            <SegmentIndexTag positionId={position} className={textOpacity} labelPrefix={isGeneralMode ? 'Chunk' : 'Parent-Chunk'} />
             <Dot />
             <div className={cn('text-text-tertiary system-xs-medium', textOpacity)}>{`${formatNumber(word_count)} Characters`}</div>
             <Dot />
@@ -205,7 +206,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
             </div>}
             {
               isFullDocMode
-                ? <button className='mt-0.5 mb-2 text-text-accent system-xs-semibold-uppercase' onClick={() => onClick?.()}>VIEW MORE</button>
+                ? <button className='mt-0.5 mb-2 text-text-accent system-xs-semibold-uppercase' onClick={() => onClick?.()}>{t('common.operation.viewMore')}</button>
                 : null
             }
             {

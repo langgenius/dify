@@ -25,8 +25,6 @@ import type {
   RelatedAppResponse,
   SegmentDetailModel,
   SegmentUpdater,
-  SegmentsQuery,
-  SegmentsResponse,
   createDocumentResponse,
 } from '@/models/datasets'
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
@@ -180,19 +178,6 @@ export const modifyDocMetadata: Fetcher<CommonResponse, CommonDocReq & { body: {
 }
 
 // apis for segments in a document
-
-export const fetchSegments: Fetcher<SegmentsResponse, CommonDocReq & { params: SegmentsQuery }> = ({ datasetId, documentId, params }) => {
-  return get<SegmentsResponse>(`/datasets/${datasetId}/documents/${documentId}/segments`, { params })
-}
-
-export const enableSegment: Fetcher<CommonResponse, { datasetId: string; segmentId: string }> = ({ datasetId, segmentId }) => {
-  return patch<CommonResponse>(`/datasets/${datasetId}/segments/${segmentId}/enable`)
-}
-
-export const disableSegment: Fetcher<CommonResponse, { datasetId: string; segmentId: string }> = ({ datasetId, segmentId }) => {
-  return patch<CommonResponse>(`/datasets/${datasetId}/segments/${segmentId}/disable`)
-}
-
 export const updateSegment: Fetcher<{ data: SegmentDetailModel; doc_form: string }, { datasetId: string; documentId: string; segmentId: string; body: SegmentUpdater }> = ({ datasetId, documentId, segmentId, body }) => {
   return patch<{ data: SegmentDetailModel; doc_form: string }>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`, { body })
 }

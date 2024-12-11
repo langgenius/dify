@@ -70,7 +70,8 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
             onMouseLeave={() => setDelBtnHover(false)}
           >
             <ActionButton
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation()
                 onDelete()
                 setDelBtnShow(false)
               }}
