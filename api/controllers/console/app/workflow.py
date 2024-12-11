@@ -433,14 +433,15 @@ class WorkflowConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        """Get workflow configuration limits."""
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def get(self, app_model: App):
         return {
             "parallel_depth_limit": dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
         }
 
 
 api.add_resource(DraftWorkflowApi, "/apps/<uuid:app_id>/workflows/draft")
+api.add_resource(WorkflowConfigApi, "/apps/<uuid:app_id>/workflows/draft/config")
 api.add_resource(AdvancedChatDraftWorkflowRunApi, "/apps/<uuid:app_id>/advanced-chat/workflows/draft/run")
 api.add_resource(DraftWorkflowRunApi, "/apps/<uuid:app_id>/workflows/draft/run")
 api.add_resource(WorkflowTaskStopApi, "/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop")
@@ -458,4 +459,3 @@ api.add_resource(
     DefaultBlockConfigApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>"
 )
 api.add_resource(ConvertToWorkflowApi, "/apps/<uuid:app_id>/convert-to-workflow")
-api.add_resource(WorkflowConfigApi, "/apps/workflow-config", endpoint="workflow_config")
