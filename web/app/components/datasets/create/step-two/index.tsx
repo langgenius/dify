@@ -993,7 +993,7 @@ const StepTwo = ({
           >
             <div className='flex items-center gap-2'>
               <PreviewDocumentPicker
-                files={files.map(file => ({ name: file.name!, id: file.id!, extension: 'pdf' }))}
+                files={files as Array<Required<CustomFile>>}
                 onChange={(selected) => {
                   currentEstimateMutation.reset()
                   setPreviewFile(selected)
