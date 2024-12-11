@@ -15,7 +15,7 @@ import cn from '@/utils/classnames'
 import ExploreContext from '@/context/explore-context'
 import type { App } from '@/models/explore'
 import { fetchAppDetail, fetchAppList } from '@/service/explore'
-import { importApp } from '@/service/apps'
+import { importDSL } from '@/service/apps'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import AppTypeSelector from '@/app/components/app/type-selector'
@@ -26,6 +26,7 @@ import { useAppContext } from '@/context/app-context'
 import { getRedirection } from '@/utils/app-redirection'
 import Input from '@/app/components/base/input'
 import type { AppMode } from '@/types/app'
+import { DSLImportMode } from '@/models/app'
 
 type AppsProps = {
   onSuccess?: () => void
@@ -129,8 +130,9 @@ const Apps = ({
       currApp?.app.id as string,
     )
     try {
-      const app = await importApp({
-        data: export_data,
+      const app = await importDSL({
+        mode: DSLImportMode.YAML_CONTENT,
+        yaml_content: export_data,
         name,
         icon_type,
         icon,
