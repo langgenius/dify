@@ -26,6 +26,7 @@ import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import Tooltip from '@/app/components/base/tooltip'
+import { isExceptionVariable } from '@/app/components/workflow/utils'
 
 type WorkflowVariableBlockComponentProps = {
   nodeKey: string
@@ -53,6 +54,7 @@ const WorkflowVariableBlockComponent = ({
   const node = localWorkflowNodesMap![variables[0]]
   const isEnv = isENV(variables)
   const isChatVar = isConversationVar(variables)
+  const isException = isExceptionVariable(varName, node?.type)
 
   useEffect(() => {
     if (!editor.hasNodes([WorkflowVariableBlockNode]))
@@ -98,10 +100,10 @@ const WorkflowVariableBlockComponent = ({
         </div>
       )}
       <div className='flex items-center text-primary-600'>
-        {!isEnv && !isChatVar && <Variable02 className='shrink-0 w-3.5 h-3.5' />}
+        {!isEnv && !isChatVar && <Variable02 className={cn('shrink-0 w-3.5 h-3.5', isException && 'text-text-warning')} />}
         {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
         {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
-        <div className={cn('shrink-0 ml-0.5 text-xs font-medium truncate', (isEnv || isChatVar) && 'text-gray-900')} title={varName}>{varName}</div>
+        <div className={cn('shrink-0 ml-0.5 text-xs font-medium truncate', (isEnv || isChatVar) && 'text-gray-900', isException && 'text-text-warning')} title={varName}>{varName}</div>
         {
           !node && !isEnv && !isChatVar && (
             <RiErrorWarningFill className='ml-0.5 w-3 h-3 text-[#D92D20]' />
