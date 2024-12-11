@@ -85,7 +85,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
         <div className='flex flex-col'>
           <div className='text-text-primary system-xl-semibold'>{isEditMode ? 'Edit Chunk' : 'Chunk Detail'}</div>
           <div className='flex items-center gap-x-2'>
-            <SegmentIndexTag positionId={segInfo?.position || ''} labelPrefix={isParentChildMode ? 'Parent-Chunk' : 'Chunk'} />
+            <SegmentIndexTag positionId={segInfo?.position || ''} labelPrefix={`${isParentChildMode ? 'Parent-' : ''}Chunk`} />
             <span className='text-text-quaternary system-xs-medium'>·</span>
             <span className='text-text-tertiary system-xs-medium'>{formatNumber(isEditMode ? question.length : segInfo?.word_count as number)} {t('datasetDocuments.segment.characters')}</span>
           </div>

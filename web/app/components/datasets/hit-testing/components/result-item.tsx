@@ -44,7 +44,7 @@ const ResultItem: FC<Props> = ({
       <div className='flex justify-between items-center px-3'>
         <div className='flex items-center space-x-2'>
           <SegmentIndexTag
-            isParentChildRetrieval={isParentChildRetrieval}
+            labelPrefix={`${isParentChildRetrieval ? 'Parent-' : ''}Chunk`}
             positionId={position}
             className={cn('w-fit group-hover:opacity-100')}
           />

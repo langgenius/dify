@@ -28,7 +28,6 @@ import NewSegment from '@/app/components/datasets/documents/detail/new-segment'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import Checkbox from '@/app/components/base/checkbox'
 import { useChildSegmentList, useDeleteSegment, useDisableSegment, useEnableSegment, useSegmentList, useSegmentListKey } from '@/service/knowledge/use-segment'
-import { Chunk } from '@/app/components/base/icons/src/public/knowledge'
 import { useInvalid } from '@/service/use-base'
 
 const DEFAULT_LIMIT = 10
@@ -50,26 +49,6 @@ const SegmentListContext = createContext({
 export const useSegmentListContext = (selector: (value: SegmentListContextValue) => any) => {
   return useContextSelector(SegmentListContext, selector)
 }
-
-export const SegmentIndexTag: FC<{ positionId?: string | number; label?: string; className?: string; isParentChildRetrieval?: boolean }> = React.memo(({ positionId, label, className, isParentChildRetrieval }) => {
-  const prefix = `${isParentChildRetrieval ? 'Parent-' : ''}Chunk`
-  const localPositionId = useMemo(() => {
-    const positionIdStr = String(positionId)
-    if (positionIdStr.length >= 3)
-      return `${prefix}-${positionId}`
-    return `${prefix}-${positionIdStr.padStart(2, '0')}`
-  }, [positionId])
-  return (
-    <div className={cn('flex items-center', className)}>
-      <Chunk className='w-3 h-3 p-[1px] text-text-tertiary mr-0.5' />
-      <div className='text-text-tertiary system-xs-medium'>
-        {label || localPositionId}
-      </div>
-    </div>
-  )
-})
-
-SegmentIndexTag.displayName = 'SegmentIndexTag'
 
 type ICompletedProps = {
   embeddingAvailable: boolean

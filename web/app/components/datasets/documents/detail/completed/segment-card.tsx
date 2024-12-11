@@ -64,6 +64,10 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     return mode === 'custom'
   }, [mode])
 
+  const isParentChildMode = useMemo(() => {
+    return mode === 'hierarchical'
+  }, [mode])
+
   const isFullDocMode = useMemo(() => {
     return mode === 'hierarchical' && parentMode === 'full-doc'
   }, [mode, parentMode])
@@ -109,7 +113,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       <div className='h-5 relative flex items-center justify-between'>
         <>
           <div className='flex items-center gap-x-2'>
-            <SegmentIndexTag positionId={position} className={textOpacity} labelPrefix={isGeneralMode ? 'Chunk' : 'Parent-Chunk'} />
+            <SegmentIndexTag positionId={position} className={textOpacity} labelPrefix={`${isParentChildMode ? 'Parent-' : ''}Chunk`} />
             <Dot />
             <div className={cn('text-text-tertiary system-xs-medium', textOpacity)}>{`${formatNumber(word_count)} Characters`}</div>
             <Dot />

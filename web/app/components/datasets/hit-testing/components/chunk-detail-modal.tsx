@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { SegmentIndexTag } from '../../documents/detail/completed'
+import { SegmentIndexTag } from '../../documents/detail/completed/common/segment-index-tag'
 import Dot from '../../documents/detail/completed/common/dot'
 import Score from './score'
 import ChildChunksItem from './child-chunks-item'
@@ -44,7 +44,7 @@ const ChunkDetailModal: FC<Props> = ({
           <div className='flex justify-between items-center'>
             <div className='grow flex items-center space-x-2'>
               <SegmentIndexTag
-                isParentChildRetrieval={isParentChildRetrieval}
+                labelPrefix={`${isParentChildRetrieval ? 'Parent-' : ''}Chunk`}
                 positionId={position}
                 className={cn('w-fit group-hover:opacity-100')}
               />
