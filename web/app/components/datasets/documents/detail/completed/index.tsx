@@ -76,7 +76,6 @@ type ICompletedProps = {
   onNewSegmentModalChange: (state: boolean) => void
   importStatus: ProcessStatus | string | undefined
   archived?: boolean
-  // data: Array<{}> // all/part segments
 }
 /**
  * Embedding done, show list of all segments
@@ -247,7 +246,7 @@ const Completed: FC<ICompletedProps> = ({
     question: string,
     answer: string,
     keywords: string[],
-    needRegenerate: boolean,
+    needRegenerate = false,
   ) => {
     const params: SegmentUpdater = { content: '' }
     if (docForm === 'qa_model') {
@@ -290,9 +289,10 @@ const Completed: FC<ICompletedProps> = ({
         }
       }
       setSegments([...segments])
+      eventEmitter?.emit('update-segment-success')
     }
     finally {
-      eventEmitter?.emit('')
+      eventEmitter?.emit('update-segment-done')
     }
   }
 

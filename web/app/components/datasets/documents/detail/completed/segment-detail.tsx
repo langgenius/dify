@@ -8,6 +8,7 @@ import { useDocumentContext } from '../index'
 import ActionButtons from './common/action-buttons'
 import ChunkContent from './common/chunk-content'
 import Keywords from './common/keywords'
+import RegenerationModal from './common/regeneration-modal'
 import { SegmentIndexTag, useSegmentListContext } from './index'
 import type { SegmentDetailModel } from '@/models/datasets'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -17,7 +18,7 @@ import Divider from '@/app/components/base/divider'
 
 type ISegmentDetailProps = {
   segInfo?: Partial<SegmentDetailModel> & { id: string }
-  onUpdate: (segmentId: string, q: string, a: string, k: string[], needRegenerate: boolean) => void
+  onUpdate: (segmentId: string, q: string, a: string, k: string[], needRegenerate?: boolean) => void
   onCancel: () => void
   isEditMode?: boolean
   docForm: string
@@ -39,13 +40,14 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   const [keywords, setKeywords] = useState<string[]>(segInfo?.keywords || [])
   const { eventEmitter } = useEventEmitterContextContext()
   const [loading, setLoading] = useState(false)
+  const [showRegenerationModal, setShowRegenerationModal] = useState(false)
   const [fullScreen, toggleFullScreen] = useSegmentListContext(s => [s.fullScreen, s.toggleFullScreen])
-  const [mode] = useDocumentContext(s => s.mode)
+  const mode = useDocumentContext(s => s.mode)
 
   eventEmitter?.useSubscription((v) => {
     if (v === 'update-segment')
       setLoading(true)
-    else
+    if (v === 'update-segment-done')
       setLoading(false)
   })
 
@@ -56,8 +58,20 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
     setKeywords(segInfo?.keywords || [])
   }
 
-  const handleSave = (needRegenerate = false) => {
-    onUpdate(segInfo?.id || '', question, answer, keywords, needRegenerate)
+  const handleSave = () => {
+    onUpdate(segInfo?.id || '', question, answer, keywords)
+  }
+
+  const handleRegeneration = () => {
+    setShowRegenerationModal(true)
+  }
+
+  const onCancelRegeneration = () => {
+    setShowRegenerationModal(false)
+  }
+
+  const onConfirmRegeneration = () => {
+    onUpdate(segInfo?.id || '', question, answer, keywords, true)
   }
 
   return (
@@ -74,7 +88,12 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
         <div className='flex items-center'>
           {isEditMode && fullScreen && (
             <>
-              <ActionButtons handleCancel={handleCancel} handleSave={handleSave} loading={loading} />
+              <ActionButtons
+                handleCancel={handleCancel}
+                handleRegeneration={handleRegeneration}
+                handleSave={handleSave}
+                loading={loading}
+              />
               <Divider type='vertical' className='h-3.5 bg-divider-regular ml-4 mr-2' />
             </>
           )}
@@ -108,9 +127,19 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
       </div>
       {isEditMode && !fullScreen && (
         <div className='flex items-center justify-end p-4 pt-3 border-t-[1px] border-t-divider-subtle'>
-          <ActionButtons handleCancel={handleCancel} handleSave={handleSave} loading={loading} />
+          <ActionButtons
+            handleCancel={handleCancel}
+            handleRegeneration={handleRegeneration}
+            handleSave={handleSave}
+            loading={loading}
+          />
         </div>
       )}
+      <RegenerationModal
+        isShow={showRegenerationModal}
+        onConfirm={onConfirmRegeneration}
+        onCancel={onCancelRegeneration}
+      />
     </div>
   )
 }

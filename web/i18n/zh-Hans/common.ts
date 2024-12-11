@@ -42,6 +42,8 @@ const translation = {
     zoomOut: '缩小',
     zoomIn: '放大',
     openInNewTab: '在新标签页打开',
+    saveAndRegenerate: '保存并重新生成子分段',
+    close: '关闭',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',
