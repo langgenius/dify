@@ -15,6 +15,7 @@ type ListProps = {
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => JSX.Element | null
   onMoreClick?: () => void
+  emptyClassName?: string
 }
 const List = ({
   marketplaceCollections,
@@ -25,6 +26,7 @@ const List = ({
   cardContainerClassName,
   cardRender,
   onMoreClick,
+  emptyClassName,
 }: ListProps) => {
   return (
     <>
@@ -67,7 +69,7 @@ const List = ({
       }
       {
         plugins && !plugins.length && (
-          <Empty />
+          <Empty className={emptyClassName} />
         )
       }
     </>

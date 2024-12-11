@@ -237,6 +237,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
               locale={locale}
               cardContainerClassName='grid grid-cols-2 gap-2'
               cardRender={cardRender}
+              emptyClassName='h-auto'
             />
           )
         }
