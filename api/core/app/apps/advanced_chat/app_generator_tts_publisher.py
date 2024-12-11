@@ -115,7 +115,7 @@ class AppGeneratorTTSPublisher:
             if self._last_audio_event and self._last_audio_event.status == "finish":
                 if self.executor:
                     self.executor.shutdown(wait=False)
-                return self.last_message
+                return self._last_audio_event
             audio = self._audio_queue.get_nowait()
             if audio and audio.status == "finish":
                 self.executor.shutdown(wait=False)
