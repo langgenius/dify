@@ -58,6 +58,7 @@ import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocumen
 import Badge from '@/app/components/base/badge'
 import { SkeletonContanier, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Tooltip from '@/app/components/base/tooltip'
+import CustomDialog from '@/app/components/base/dialog'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='text-text-secondary text-xs font-semibold leading-none'>{props.children}</label>
@@ -175,16 +176,19 @@ const StepTwo = ({
   )
 
   // QA Related
-  const [isLanguageSelectDisabled, setIsLanguageSelectDisabled] = useState(false)
+  const [isLanguageSelectDisabled, _setIsLanguageSelectDisabled] = useState(false)
+  const [isQAConfirmDialogOpen, setIsQAConfirmDialogOpen] = useState(false)
   const [docForm, setDocForm] = useState<ChuckingMode>(
     (datasetId && documentDetail) ? documentDetail.doc_form as ChuckingMode : ChuckingMode.text,
   )
   const handleChangeDocform = (value: ChuckingMode) => {
+    if (value === ChuckingMode.qa && indexType === IndexingType.ECONOMICAL) {
+      setIsQAConfirmDialogOpen(true)
+      return
+    }
     setDocForm(value)
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     currentEstimateMutation.reset()
-    if (value === ChuckingMode.parentChild)
-      setIndexType(IndexingType.QUALIFIED)
   }
 
   const [docLanguage, setDocLanguage] = useState<string>(
@@ -832,10 +836,28 @@ const StepTwo = ({
                     !hasSetIndexType && indexType === IndexingType.ECONOMICAL && s.active,
                     hasSetIndexType && s.disabled,
                     hasSetIndexType && '!w-full !min-h-[96px]',
-                    docForm === ChuckingMode.parentChild && s.disabled,
+                    docForm !== ChuckingMode.text && s.disabled,
                   )}
                   onClick={changeToEconomicalType}
                 >
+                  <CustomDialog show={isQAConfirmDialogOpen} onClose={() => setIsQAConfirmDialogOpen(false)} className='w-[432px]'>
+                    <header className='pt-6 mb-4'>
+                      <h2 className='text-lg font-semibold'>Q&A Format Requires High-quality Indexing Method </h2>
+                      <p className='font-normal text-sm mt-2'>Currently, only high-quality index method supports Q&A format chunking. Would you like to switch to high-quality mode?</p>
+                    </header>
+                    <div className='flex gap-2 pb-6'>
+                      <Button className='ml-auto' onClick={() => {
+                        setIsQAConfirmDialogOpen(false)
+                      }}>Cancel</Button>
+                      <Button variant={'primary'} onClick={() => {
+                        setIsQAConfirmDialogOpen(false)
+                        setIndexType(IndexingType.QUALIFIED)
+                        setDocForm(ChuckingMode.qa)
+                      }}>
+                        Switch
+                      </Button>
+                    </div>
+                  </CustomDialog>
                   <div className='h-8 p-1.5 bg-white rounded-lg border border-components-panel-border-subtle justify-center items-center inline-flex absolute left-5 top-[18px]'>
                     <Image src={indexMethodIcon.economical} alt='Economical Icon' width={20} height={20} />
                   </div>
