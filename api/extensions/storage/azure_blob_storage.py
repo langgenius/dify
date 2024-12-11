@@ -19,7 +19,7 @@ class AzureBlobStorage(BaseStorage):
         self.account_name = dify_config.AZURE_BLOB_ACCOUNT_NAME
         self.account_key = dify_config.AZURE_BLOB_ACCOUNT_KEY
 
-        if not self.account_key:
+        if self.account_key == "managedidentity":
             self.credential = DefaultAzureCredential()
         else:
             self.credential = None
@@ -63,7 +63,7 @@ class AzureBlobStorage(BaseStorage):
         blob_container.delete_blob(filename)
 
     def _sync_client(self):
-        if not self.account_key and self.credential:
+        if self.account_key == "managedidentity":
             return BlobServiceClient(account_url=self.account_url, credential=self.credential)
         
         cache_key = "azure_blob_sas_token_{}_{}".format(self.account_name, self.account_key)
