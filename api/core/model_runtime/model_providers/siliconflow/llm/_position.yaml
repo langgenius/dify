@@ -1,4 +1,5 @@
 - Tencent/Hunyuan-A52B-Instruct
+- Qwen/QwQ-32B-Preview
 - Qwen/Qwen2.5-72B-Instruct
 - Qwen/Qwen2.5-32B-Instruct
 - Qwen/Qwen2.5-14B-Instruct
@@ -19,9 +20,9 @@
 - 01-ai/Yi-1.5-6B-Chat
 - internlm/internlm2_5-20b-chat
 - internlm/internlm2_5-7b-chat
+- meta-llama/Llama-3.3-70B-Instruct
 - meta-llama/Meta-Llama-3.1-405B-Instruct
 - meta-llama/Meta-Llama-3.1-70B-Instruct
 - meta-llama/Meta-Llama-3.1-8B-Instruct
 - google/gemma-2-27b-it
 - google/gemma-2-9b-it
-- deepseek-ai/DeepSeek-V2-Chat

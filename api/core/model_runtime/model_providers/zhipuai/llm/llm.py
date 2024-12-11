@@ -22,18 +22,6 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.model_runtime.model_providers.zhipuai._common import _CommonZhipuaiAI
 from core.model_runtime.utils import helper
 
-GLM_JSON_MODE_PROMPT = """You should always follow the instructions and output a valid JSON object.
-The structure of the JSON object you can found in the instructions, use {"answer": "$your_answer"} as the default structure
-if you are not sure about the structure.
-
-And you should always end the block with a "```" to indicate the end of the JSON object.
-
-<instructions>
-{{instructions}}
-</instructions>
-
-```JSON"""  # noqa: E501
-
 
 class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
     def _invoke(
@@ -64,41 +52,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         credentials_kwargs = self._to_credential_kwargs(credentials)
 
         # invoke model
-        # stop = stop or []
-        # self._transform_json_prompts(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
         return self._generate(model, credentials_kwargs, prompt_messages, model_parameters, tools, stop, stream, user)
-
-    # def _transform_json_prompts(self, model: str, credentials: dict,
-    #                             prompt_messages: list[PromptMessage], model_parameters: dict,
-    #                             tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None,
-    #                             stream: bool = True, user: str | None = None) \
-    #                         -> None:
-    #     """
-    #     Transform json prompts to model prompts
-    #     """
-    #     if "}\n\n" not in stop:
-    #         stop.append("}\n\n")
-
-    #     # check if there is a system message
-    #     if len(prompt_messages) > 0 and isinstance(prompt_messages[0], SystemPromptMessage):
-    #         # override the system message
-    #         prompt_messages[0] = SystemPromptMessage(
-    #             content=GLM_JSON_MODE_PROMPT.replace("{{instructions}}", prompt_messages[0].content)
-    #         )
-    #     else:
-    #         # insert the system message
-    #         prompt_messages.insert(0, SystemPromptMessage(
-    #             content=GLM_JSON_MODE_PROMPT.replace("{{instructions}}", "Please output a valid JSON object.")
-    #         ))
-    #     # check if the last message is a user message
-    #     if len(prompt_messages) > 0 and isinstance(prompt_messages[-1], UserPromptMessage):
-    #         # add ```JSON\n to the last message
-    #         prompt_messages[-1].content += "\n```JSON\n"
-    #     else:
-    #         # append a user message
-    #         prompt_messages.append(UserPromptMessage(
-    #             content="```JSON\n"
-    #         ))
 
     def get_num_tokens(
         self,
@@ -170,7 +124,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         extra_model_kwargs = {}
-        # request to glm-4v-plus with stop words will always response "finish_reason":"network_error"
+        # request to glm-4v-plus with stop words will always respond "finish_reason":"network_error"
         if stop and model != "glm-4v-plus":
             extra_model_kwargs["stop"] = stop
 
@@ -186,11 +140,11 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         # resolve zhipuai model not support system message and user message, assistant message must be in sequence
         new_prompt_messages: list[PromptMessage] = []
         for prompt_message in prompt_messages:
-            copy_prompt_message = prompt_message.copy()
+            copy_prompt_message = prompt_message.model_copy()
             if copy_prompt_message.role in {PromptMessageRole.USER, PromptMessageRole.SYSTEM, PromptMessageRole.TOOL}:
                 if isinstance(copy_prompt_message.content, list):
                     # check if model is 'glm-4v'
-                    if model not in {"glm-4v", "glm-4v-plus"}:
+                    if not model.startswith("glm-4v"):
                         # not support list message
                         continue
                     # get image and
@@ -234,63 +188,42 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
             else:
                 model_parameters["tools"] = [web_search_params]
 
-        if model in {"glm-4v", "glm-4v-plus"}:
+        if model.startswith("glm-4v"):
             params = self._construct_glm_4v_parameter(model, new_prompt_messages, model_parameters)
         else:
             params = {"model": model, "messages": [], **model_parameters}
-            # glm model
-            if not model.startswith("chatglm"):
-                for prompt_message in new_prompt_messages:
-                    if prompt_message.role == PromptMessageRole.TOOL:
+            for prompt_message in new_prompt_messages:
+                if prompt_message.role == PromptMessageRole.TOOL:
+                    params["messages"].append(
+                        {
+                            "role": "tool",
+                            "content": prompt_message.content,
+                            "tool_call_id": prompt_message.tool_call_id,
+                        }
+                    )
+                elif isinstance(prompt_message, AssistantPromptMessage):
+                    if prompt_message.tool_calls:
                         params["messages"].append(
                             {
-                                "role": "tool",
+                                "role": "assistant",
                                 "content": prompt_message.content,
-                                "tool_call_id": prompt_message.tool_call_id,
+                                "tool_calls": [
+                                    {
+                                        "id": tool_call.id,
+                                        "type": tool_call.type,
+                                        "function": {
+                                            "name": tool_call.function.name,
+                                            "arguments": tool_call.function.arguments,
+                                        },
+                                    }
+                                    for tool_call in prompt_message.tool_calls
+                                ],
                             }
                         )
-                    elif isinstance(prompt_message, AssistantPromptMessage):
-                        if prompt_message.tool_calls:
-                            params["messages"].append(
-                                {
-                                    "role": "assistant",
-                                    "content": prompt_message.content,
-                                    "tool_calls": [
-                                        {
-                                            "id": tool_call.id,
-                                            "type": tool_call.type,
-                                            "function": {
-                                                "name": tool_call.function.name,
-                                                "arguments": tool_call.function.arguments,
-                                            },
-                                        }
-                                        for tool_call in prompt_message.tool_calls
-                                    ],
-                                }
-                            )
-                        else:
-                            params["messages"].append({"role": "assistant", "content": prompt_message.content})
                     else:
-                        params["messages"].append(
-                            {"role": prompt_message.role.value, "content": prompt_message.content}
-                        )
-            else:
-                # chatglm model
-                for prompt_message in new_prompt_messages:
-                    # merge system message to user message
-                    if prompt_message.role in {
-                        PromptMessageRole.SYSTEM,
-                        PromptMessageRole.TOOL,
-                        PromptMessageRole.USER,
-                    }:
-                        if len(params["messages"]) > 0 and params["messages"][-1]["role"] == "user":
-                            params["messages"][-1]["content"] += "\n\n" + prompt_message.content
-                        else:
-                            params["messages"].append({"role": "user", "content": prompt_message.content})
-                    else:
-                        params["messages"].append(
-                            {"role": prompt_message.role.value, "content": prompt_message.content}
-                        )
+                        params["messages"].append({"role": "assistant", "content": prompt_message.content})
+                else:
+                    params["messages"].append({"role": prompt_message.role.value, "content": prompt_message.content})
 
         if tools and len(tools) > 0:
             params["tools"] = [{"type": "function", "function": helper.dump_model(tool)} for tool in tools]
@@ -406,7 +339,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         Handle llm stream response
 
         :param model: model name
-        :param response: response
+        :param responses: response
         :param prompt_messages: prompt messages
         :return: llm response chunk generator result
         """
@@ -479,6 +412,8 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         human_prompt = "\n\nHuman:"
         ai_prompt = "\n\nAssistant:"
         content = message.content
+        if isinstance(content, list):
+            content = "".join(c.data for c in content if c.type == PromptMessageContentType.TEXT)
 
         if isinstance(message, UserPromptMessage):
             message_text = f"{human_prompt} {content}"
@@ -505,7 +440,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         if tools and len(tools) > 0:
             text += "\n\nTools:"
             for tool in tools:
-                text += f"\n{tool.json()}"
+                text += f"\n{tool.model_dump_json()}"
 
         # trim off the trailing ' ' that might come from the "Assistant: "
         return text.rstrip()

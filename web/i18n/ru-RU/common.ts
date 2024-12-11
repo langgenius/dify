@@ -595,6 +595,9 @@ const translation = {
     expiring: 'Срок действия истекает за один день',
     expiring_plural: 'Срок действия истекает через {{count}} дней',
   },
+  pagination: {
+    perPage: 'Элементов на странице',
+  },
 }
 
 export default translation

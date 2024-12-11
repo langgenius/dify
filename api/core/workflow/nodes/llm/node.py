@@ -20,6 +20,7 @@ from core.model_runtime.entities import (
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
+    PromptMessageContent,
     PromptMessageRole,
     SystemPromptMessage,
     UserPromptMessage,
@@ -66,7 +67,6 @@ from .entities import (
     ModelConfig,
 )
 from .exc import (
-    FileTypeNotSupportError,
     InvalidContextStructureError,
     InvalidVariableTypeError,
     LLMModeRequiredError,
@@ -137,12 +137,12 @@ class LLMNode(BaseNode[LLMNodeData]):
             query = None
             if self.node_data.memory:
                 query = self.node_data.memory.query_prompt_template
-            if query is None and (
-                query_variable := self.graph_runtime_state.variable_pool.get(
-                    (SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.QUERY)
-                )
-            ):
-                query = query_variable.text
+                if not query and (
+                    query_variable := self.graph_runtime_state.variable_pool.get(
+                        (SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.QUERY)
+                    )
+                ):
+                    query = query_variable.text
 
             prompt_messages, stop = self._fetch_prompt_messages(
                 user_query=query,
@@ -193,11 +193,11 @@ class LLMNode(BaseNode[LLMNodeData]):
                     error=str(e),
                     inputs=node_inputs,
                     process_data=process_data,
+                    error_type=type(e).__name__,
                 )
             )
             return
         except Exception as e:
-            logger.exception(f"Node {self.node_id} failed to run")
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
@@ -616,16 +616,35 @@ class LLMNode(BaseNode[LLMNodeData]):
             )
             # Insert histories into the prompt
             prompt_content = prompt_messages[0].content
-            if "#histories#" in prompt_content:
-                prompt_content = prompt_content.replace("#histories#", memory_text)
+            # For issue #11247 - Check if prompt content is a string or a list
+            prompt_content_type = type(prompt_content)
+            if prompt_content_type == str:
+                if "#histories#" in prompt_content:
+                    prompt_content = prompt_content.replace("#histories#", memory_text)
+                else:
+                    prompt_content = memory_text + "\n" + prompt_content
+                prompt_messages[0].content = prompt_content
+            elif prompt_content_type == list:
+                for content_item in prompt_content:
+                    if content_item.type == PromptMessageContentType.TEXT:
+                        if "#histories#" in content_item.data:
+                            content_item.data = content_item.data.replace("#histories#", memory_text)
+                        else:
+                            content_item.data = memory_text + "\n" + content_item.data
             else:
-                prompt_content = memory_text + "\n" + prompt_content
-            prompt_messages[0].content = prompt_content
+                raise ValueError("Invalid prompt content type")
 
             # Add current query to the prompt message
             if user_query:
-                prompt_content = prompt_messages[0].content.replace("#sys.query#", user_query)
-                prompt_messages[0].content = prompt_content
+                if prompt_content_type == str:
+                    prompt_content = prompt_messages[0].content.replace("#sys.query#", user_query)
+                    prompt_messages[0].content = prompt_content
+                elif prompt_content_type == list:
+                    for content_item in prompt_content:
+                        if content_item.type == PromptMessageContentType.TEXT:
+                            content_item.data = user_query + "\n" + content_item.data
+                else:
+                    raise ValueError("Invalid prompt content type")
         else:
             raise TemplateTypeNotSupportError(type_name=str(type(prompt_template)))
 
@@ -675,7 +694,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                             and ModelFeature.AUDIO not in model_config.model_schema.features
                         )
                     ):
-                        raise FileTypeNotSupportError(type_name=content_item.type)
+                        continue
                     prompt_message_content.append(content_item)
                 if len(prompt_message_content) == 1 and prompt_message_content[0].type == PromptMessageContentType.TEXT:
                     prompt_message.content = prompt_message_content[0].data
@@ -816,7 +835,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                     "completion_model": {
                         "conversation_histories_role": {"user_prefix": "Human", "assistant_prefix": "Assistant"},
                         "prompt": {
-                            "text": "Here is the chat histories between human and assistant, inside "
+                            "text": "Here are the chat histories between human and assistant, inside "
                             "<histories></histories> XML tags.\n\n<histories>\n{{"
                             "#histories#}}\n</histories>\n\n\nHuman: {{#sys.query#}}\n\nAssistant:",
                             "edition_type": "basic",
@@ -828,14 +847,14 @@ class LLMNode(BaseNode[LLMNodeData]):
         }
 
 
-def _combine_text_message_with_role(*, text: str, role: PromptMessageRole):
+def _combine_message_content_with_role(*, contents: Sequence[PromptMessageContent], role: PromptMessageRole):
     match role:
         case PromptMessageRole.USER:
-            return UserPromptMessage(content=[TextPromptMessageContent(data=text)])
+            return UserPromptMessage(content=contents)
         case PromptMessageRole.ASSISTANT:
-            return AssistantPromptMessage(content=[TextPromptMessageContent(data=text)])
+            return AssistantPromptMessage(content=contents)
         case PromptMessageRole.SYSTEM:
-            return SystemPromptMessage(content=[TextPromptMessageContent(data=text)])
+            return SystemPromptMessage(content=contents)
     raise NotImplementedError(f"Role {role} is not supported")
 
 
@@ -877,7 +896,9 @@ def _handle_list_messages(
                 jinjia2_variables=jinja2_variables,
                 variable_pool=variable_pool,
             )
-            prompt_message = _combine_text_message_with_role(text=result_text, role=message.role)
+            prompt_message = _combine_message_content_with_role(
+                contents=[TextPromptMessageContent(data=result_text)], role=message.role
+            )
             prompt_messages.append(prompt_message)
         else:
             # Get segment group from basic message
@@ -908,12 +929,14 @@ def _handle_list_messages(
             # Create message with text from all segments
             plain_text = segment_group.text
             if plain_text:
-                prompt_message = _combine_text_message_with_role(text=plain_text, role=message.role)
+                prompt_message = _combine_message_content_with_role(
+                    contents=[TextPromptMessageContent(data=plain_text)], role=message.role
+                )
                 prompt_messages.append(prompt_message)
 
             if file_contents:
                 # Create message with image contents
-                prompt_message = UserPromptMessage(content=file_contents)
+                prompt_message = _combine_message_content_with_role(contents=file_contents, role=message.role)
                 prompt_messages.append(prompt_message)
 
     return prompt_messages
@@ -1018,6 +1041,8 @@ def _handle_completion_template(
         else:
             template_text = template.text
         result_text = variable_pool.convert_template(template_text).text
-    prompt_message = _combine_text_message_with_role(text=result_text, role=PromptMessageRole.USER)
+    prompt_message = _combine_message_content_with_role(
+        contents=[TextPromptMessageContent(data=result_text)], role=PromptMessageRole.USER
+    )
     prompt_messages.append(prompt_message)
     return prompt_messages

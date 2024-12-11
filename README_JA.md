@@ -212,6 +212,13 @@ docker compose up -d
 ##### Google Cloud
 - [@sotazumによるGoogle Cloud Terraform](https://github.com/DeNA/dify-google-cloud-terraform)
 
+#### AWS CDK を使用したデプロイ
+
+[CDK](https://aws.amazon.com/cdk/) を使用して、DifyをAWSにデプロイします
+
+##### AWS 
+- [@KevinZhaoによるAWS CDK](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+
 ## 貢献
 
 コードに貢献したい方は、[Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)を参照してください。

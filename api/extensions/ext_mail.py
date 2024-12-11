@@ -1,10 +1,10 @@
 import logging
 from typing import Optional
 
-import resend
 from flask import Flask
 
 from configs import dify_config
+from dify_app import DifyApp
 
 
 class Mail:
@@ -26,6 +26,8 @@ class Mail:
 
         match mail_type:
             case "resend":
+                import resend
+
                 api_key = dify_config.RESEND_API_KEY
                 if not api_key:
                     raise ValueError("RESEND_API_KEY is not set")
@@ -84,7 +86,11 @@ class Mail:
         )
 
 
-def init_app(app: Flask):
+def is_enabled() -> bool:
+    return dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
+
+
+def init_app(app: DifyApp):
     mail.init_app(app)
 
 

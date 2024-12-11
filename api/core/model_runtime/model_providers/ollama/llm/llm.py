@@ -181,9 +181,11 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
         # prepare the payload for a simple ping to the model
         data = {"model": model, "stream": stream}
 
-        if "format" in model_parameters:
-            data["format"] = model_parameters["format"]
-            del model_parameters["format"]
+        if format_schema := model_parameters.pop("format", None):
+            try:
+                data["format"] = format_schema if format_schema == "json" else json.loads(format_schema)
+            except json.JSONDecodeError as e:
+                raise InvokeBadRequestError(f"Invalid format schema: {str(e)}")
 
         if "keep_alive" in model_parameters:
             data["keep_alive"] = model_parameters["keep_alive"]
@@ -733,12 +735,12 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 ParameterRule(
                     name="format",
                     label=I18nObject(en_US="Format", zh_Hans="返回格式"),
-                    type=ParameterType.STRING,
+                    type=ParameterType.TEXT,
+                    default="json",
                     help=I18nObject(
-                        en_US="the format to return a response in. Currently the only accepted value is json.",
-                        zh_Hans="返回响应的格式。目前唯一接受的值是json。",
+                        en_US="the format to return a response in. Format can be `json` or a JSON schema.",
+                        zh_Hans="返回响应的格式。目前接受的值是字符串`json`或JSON schema.",
                     ),
-                    options=["json"],
                 ),
             ],
             pricing=PriceConfig(

@@ -4,6 +4,7 @@ label:
 model_type: llm
 model_properties:
   mode: chat
+  context_size: 8192
 features:
   - vision
   - video
