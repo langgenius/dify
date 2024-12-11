@@ -141,6 +141,11 @@ const translation = {
       removeConfirmContent: 'Trenutna konfiguracija je v uporabi, odstranitev bo onemogočila funkcijo sledenja.',
     },
   },
+  mermaid: {
+    handDrawn: 'Ročno narisano',
+    classic: 'Klasičen',
+  },
+  openInExplore: 'Odpri v razišči',
 }
 
 export default translation

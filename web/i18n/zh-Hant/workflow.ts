@@ -101,6 +101,9 @@ const translation = {
     featuresDescription: '增強 Web 應用程式用戶體驗',
     importWarning: '謹慎',
     importWarningDetails: 'DSL 版本差異可能會影響某些功能',
+    openInExplore: '在“探索”中打開',
+    onFailure: '失敗時',
+    addFailureBranch: '添加 Fail Branch',
   },
   env: {
     envPanelTitle: '環境變數',
@@ -293,6 +296,31 @@ const translation = {
         title: '記憶',
         tip: '聊天記憶',
         builtIn: '內置',
+      },
+      errorHandle: {
+        none: {
+          title: '沒有',
+          desc: '如果發生異常且未得到處理，節點將停止運行',
+        },
+        defaultValue: {
+          title: '預設值',
+          desc: '發生錯誤時，請指定靜態輸出內容。',
+          tip: '出錯時，將返回以下值。',
+          inLog: 'Node 異常，按照預設值輸出。',
+          output: '輸出預設值',
+        },
+        failBranch: {
+          title: '失敗分支',
+          desc: '當發生錯誤時，它會執行 exception 分支',
+          customize: '轉到畫布以自定義fail分支邏輯。',
+          inLog: 'Node 異常，將自動執行fail分支。節點輸出將返回錯誤類型和錯誤消息，並將其傳遞給下游。',
+          customizeTip: '啟動fail分支後，節點引發的異常不會終止進程。相反，它將自動執行預定義的fail分支，允許您靈活地提供錯誤消息、報告、修復或跳過操作。',
+        },
+        partialSucceeded: {
+          tip: '進程中有 {{num}} 個節點運行異常，請前往 tracing 查看日誌。',
+        },
+        title: '錯誤處理',
+        tip: '異常處理策略，當節點遇到異常時觸發。',
       },
     },
     start: {
