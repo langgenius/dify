@@ -19,7 +19,7 @@ const translation = {
     testing: 'Testing',
   },
   hit: {
-    title: 'RETRIEVAL PARAGRAPHS',
+    title: '{{num}} Retrieved Chunks',
     emptyTip: 'Retrieval Testing results will show here',
   },
   noRecentTip: 'No recent query results here',

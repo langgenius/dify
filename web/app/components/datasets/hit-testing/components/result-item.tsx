@@ -38,9 +38,9 @@ const ResultItem: FC<Props> = ({
   }] = useBoolean(false)
 
   return (
-    <div>
+    <div className='pt-3 bg-chat-bubble-bg rounded-xl hover:shadow-lg'>
       {/* Meta info */}
-      <div className='flex justify-between items-center'>
+      <div className='flex justify-between items-center px-3'>
         <div className='flex items-center space-x-2'>
           <SegmentIndexTag
             isParentChildRetrieval={isParentChildRetrieval}
@@ -54,7 +54,7 @@ const ResultItem: FC<Props> = ({
       </div>
 
       {/* Main */}
-      <div>
+      <div className='px-3'>
         <div className='line-clamp-2'>{content}</div>
         {isParentChildRetrieval && (
           <div>

@@ -19,7 +19,7 @@ const translation = {
     testing: '测试',
   },
   hit: {
-    title: '召回段落',
+    title: '{{num}} 个召回段落',
     emptyTip: '召回测试结果将展示在这里',
   },
   noRecentTip: '最近无查询结果',
