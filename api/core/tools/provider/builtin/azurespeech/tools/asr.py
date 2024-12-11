@@ -39,7 +39,7 @@ class AzureASRTool(BuiltinTool):
             raise Exception(
                 """No text detected.
                    Error: {}
-                   Definition: {}""".format(json.dumps(data), definition)
+                   Definition: {}""".format(json.dumps(data), files.get("definition", ""))
             )
 
         return [
