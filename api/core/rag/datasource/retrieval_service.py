@@ -276,6 +276,7 @@ class RetrievalService:
                         child_chunk_detail = {
                             "id": child_chunk.id,
                             "content": child_chunk.content,
+                            "position": child_chunk.position,
                             "score": document.metadata.get("score", 0.0),
                         }
                         map_detail = {
@@ -291,6 +292,7 @@ class RetrievalService:
                         child_chunk_detail = {
                             "id": child_chunk.id,
                             "content": child_chunk.content,
+                            "position": child_chunk.position,
                             "score": document.metadata.get("score", 0.0),
                         }
                         segment_child_map[segment.id]["child_chunks"].append(child_chunk_detail)

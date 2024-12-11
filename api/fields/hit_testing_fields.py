@@ -37,6 +37,7 @@ segment_fields = {
 child_chunk_fields = {
     "id": fields.String,
     "content": fields.String,
+    "position": fields.Integer,
     "score": fields.Float,
 }
 
