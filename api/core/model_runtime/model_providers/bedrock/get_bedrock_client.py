@@ -4,7 +4,7 @@ from botocore.config import Config
 
 def get_bedrock_client(service_name, credentials=None):
     client_config = Config(region_name=credentials["aws_region"])
-    aws_access_key_id = (credentials["aws_access_key_id"],)
+    aws_access_key_id = credentials["aws_access_key_id"]
     aws_secret_access_key = credentials["aws_secret_access_key"]
     if aws_access_key_id and aws_secret_access_key:
         # 使用 AKSK 方式
