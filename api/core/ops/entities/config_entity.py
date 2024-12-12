@@ -69,9 +69,21 @@ class OpikConfig(BaseTracingConfig):
 
     @field_validator("project")
     @classmethod
-    def set_value(cls, v, info: ValidationInfo):
+    def project_validator(cls, v, info: ValidationInfo):
         if v is None or v == "":
             v = "Default Project"
+
+        return v
+
+    @field_validator("url")
+    @classmethod
+    def url_validator(cls, v, info: ValidationInfo):
+        if v is None or v == "":
+            v = "https://www.comet.com/opik/api/"
+        if not v.startswith(("https://", "http://")):
+            raise ValueError("url must start with https:// or http://")
+        if not v.endswith("/api/"):
+            raise ValueError("url should ends with /api/")
 
         return v
 
