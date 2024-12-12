@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict
 
@@ -22,7 +22,7 @@ class LimitationModel(BaseModel):
     limit: int = 0
 
 
-class LicenseStatus(str, Enum):
+class LicenseStatus(StrEnum):
     NONE = "none"
     INACTIVE = "inactive"
     ACTIVE = "active"
@@ -171,8 +171,10 @@ class FeatureService:
             features.is_allow_create_workspace = enterprise_info["is_allow_create_workspace"]
 
         if "license" in enterprise_info:
-            if "status" in enterprise_info["license"]:
-                features.license.status = enterprise_info["license"]["status"]
+            license_info = enterprise_info["license"]
 
-            if "expired_at" in enterprise_info["license"]:
-                features.license.expired_at = enterprise_info["license"]["expired_at"]
+            if "status" in license_info:
+                features.license.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
+
+            if "expired_at" in license_info:
+                features.license.expired_at = license_info["expired_at"]

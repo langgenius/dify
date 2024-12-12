@@ -1,7 +1,7 @@
 import json
 from collections.abc import Mapping, Sequence
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import Enum, StrEnum
 from typing import Any, Optional, Union
 
 import sqlalchemy as sa
@@ -108,7 +108,7 @@ class Workflow(db.Model):
     )
     updated_by: Mapped[Optional[str]] = mapped_column(StringUUID)
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, default=datetime.now(tz=timezone.utc), server_onupdate=func.current_timestamp()
+        sa.DateTime, nullable=False, default=datetime.now(tz=UTC), server_onupdate=func.current_timestamp()
     )
     _environment_variables: Mapped[str] = mapped_column(
         "environment_variables", db.Text, nullable=False, server_default="{}"
@@ -169,9 +169,9 @@ class Workflow(db.Model):
             )
             features["file_upload"]["enabled"] = image_enabled
             features["file_upload"]["number_limits"] = image_number_limits
-            features["file_upload"]["allowed_upload_methods"] = image_transfer_methods
+            features["file_upload"]["allowed_file_upload_methods"] = image_transfer_methods
             features["file_upload"]["allowed_file_types"] = ["image"]
-            features["file_upload"]["allowed_extensions"] = []
+            features["file_upload"]["allowed_file_extensions"] = []
             del features["file_upload"]["image"]
             self._features = json.dumps(features)
         return self._features
@@ -238,7 +238,9 @@ class Workflow(db.Model):
         tenant_id = contexts.tenant_id.get()
 
         environment_variables_dict: dict[str, Any] = json.loads(self._environment_variables)
-        results = [variable_factory.build_variable_from_mapping(v) for v in environment_variables_dict.values()]
+        results = [
+            variable_factory.build_environment_variable_from_mapping(v) for v in environment_variables_dict.values()
+        ]
 
         # decrypt secret variables value
         decrypt_func = (
@@ -303,7 +305,7 @@ class Workflow(db.Model):
             self._conversation_variables = "{}"
 
         variables_dict: dict[str, Any] = json.loads(self._conversation_variables)
-        results = [variable_factory.build_variable_from_mapping(v) for v in variables_dict.values()]
+        results = [variable_factory.build_conversation_variable_from_mapping(v) for v in variables_dict.values()]
         return results
 
     @conversation_variables.setter
@@ -314,7 +316,7 @@ class Workflow(db.Model):
         )
 
 
-class WorkflowRunStatus(Enum):
+class WorkflowRunStatus(StrEnum):
     """
     Workflow Run Status Enum
     """
@@ -323,6 +325,7 @@ class WorkflowRunStatus(Enum):
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     STOPPED = "stopped"
+    PARTIAL_SUCCESSED = "partial-succeeded"
 
     @classmethod
     def value_of(cls, value: str) -> "WorkflowRunStatus":
@@ -393,16 +396,17 @@ class WorkflowRun(db.Model):
     version = db.Column(db.String(255), nullable=False)
     graph = db.Column(db.Text)
     inputs = db.Column(db.Text)
-    status = db.Column(db.String(255), nullable=False)
-    outputs: Mapped[str] = db.Column(db.Text)
+    status = db.Column(db.String(255), nullable=False)  # running, succeeded, failed, stopped, partial-succeeded
+    outputs: Mapped[str] = mapped_column(sa.Text, default="{}")
     error = db.Column(db.Text)
     elapsed_time = db.Column(db.Float, nullable=False, server_default=db.text("0"))
     total_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     total_steps = db.Column(db.Integer, server_default=db.text("0"))
-    created_by_role = db.Column(db.String(255), nullable=False)
+    created_by_role = db.Column(db.String(255), nullable=False)  # account, end_user
     created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     finished_at = db.Column(db.DateTime)
+    exceptions_count = db.Column(db.Integer, server_default=db.text("0"))
 
     @property
     def created_by_account(self):
@@ -462,6 +466,7 @@ class WorkflowRun(db.Model):
             "created_by": self.created_by,
             "created_at": self.created_at,
             "finished_at": self.finished_at,
+            "exceptions_count": self.exceptions_count,
         }
 
     @classmethod
@@ -487,6 +492,7 @@ class WorkflowRun(db.Model):
             created_by=data.get("created_by"),
             created_at=data.get("created_at"),
             finished_at=data.get("finished_at"),
+            exceptions_count=data.get("exceptions_count"),
         )
 
 
@@ -520,6 +526,7 @@ class WorkflowNodeExecutionStatus(Enum):
     RUNNING = "running"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
+    EXCEPTION = "exception"
 
     @classmethod
     def value_of(cls, value: str) -> "WorkflowNodeExecutionStatus":
@@ -793,4 +800,4 @@ class ConversationVariable(db.Model):
 
     def to_variable(self) -> Variable:
         mapping = json.loads(self.data)
-        return variable_factory.build_variable_from_mapping(mapping)
+        return variable_factory.build_conversation_variable_from_mapping(mapping)

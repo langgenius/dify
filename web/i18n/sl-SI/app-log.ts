@@ -52,6 +52,7 @@ const translation = {
     },
     variables: 'Spremenljivke',
     uploadImages: 'Naložene slike',
+    modelParams: 'Parametri modela',
   },
   filter: {
     period: {
@@ -79,6 +80,8 @@ const translation = {
   runDetail: {
     title: 'Dnevnik pogovora',
     workflowTitle: 'Podrobnosti dnevnika',
+    fileListDetail: 'Podrobnosti',
+    fileListLabel: 'Podrobnosti o datoteki',
   },
   promptLog: 'Dnevnik PROMPT-ov',
   agentLog: 'Dnevnik pomočnika',

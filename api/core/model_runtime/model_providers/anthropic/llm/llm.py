@@ -1,7 +1,7 @@
 import base64
 import io
 import json
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from typing import Optional, Union, cast
 
 import anthropic
@@ -21,9 +21,9 @@ from httpx import Timeout
 from PIL import Image
 
 from core.model_runtime.callbacks.base_callback import Callback
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import (
+from core.model_runtime.entities import (
     AssistantPromptMessage,
+    DocumentPromptMessageContent,
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContentType,
@@ -33,6 +33,7 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
@@ -86,10 +87,10 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         self,
         model: str,
         credentials: dict,
-        prompt_messages: list[PromptMessage],
+        prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
     ) -> Union[LLMResult, Generator]:
@@ -130,8 +131,16 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         # Add the new header for claude-3-5-sonnet-20240620 model
         extra_headers = {}
         if model == "claude-3-5-sonnet-20240620":
-            if model_parameters.get("max_tokens") > 4096:
+            if model_parameters.get("max_tokens", 0) > 4096:
                 extra_headers["anthropic-beta"] = "max-tokens-3-5-sonnet-2024-07-15"
+
+        if any(
+            isinstance(content, DocumentPromptMessageContent)
+            for prompt_message in prompt_messages
+            if isinstance(prompt_message.content, list)
+            for content in prompt_message.content
+        ):
+            extra_headers["anthropic-beta"] = "pdfs-2024-09-25"
 
         if tools:
             extra_model_kwargs["tools"] = [self._transform_tool_prompt(tool) for tool in tools]
@@ -325,14 +334,13 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                 assistant_prompt_message.tool_calls.append(tool_call)
 
         # calculate num tokens
-        if response.usage:
-            # transform usage
-            prompt_tokens = response.usage.input_tokens
-            completion_tokens = response.usage.output_tokens
-        else:
-            # calculate num tokens
-            prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
-            completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
+        prompt_tokens = (response.usage and response.usage.input_tokens) or self.get_num_tokens(
+            model, credentials, prompt_messages
+        )
+
+        completion_tokens = (response.usage and response.usage.output_tokens) or self.get_num_tokens(
+            model, credentials, [assistant_prompt_message]
+        )
 
         # transform usage
         usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
@@ -445,7 +453,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
 
         return credentials_kwargs
 
-    def _convert_prompt_messages(self, prompt_messages: list[PromptMessage]) -> tuple[str, list[dict]]:
+    def _convert_prompt_messages(self, prompt_messages: Sequence[PromptMessage]) -> tuple[str, list[dict]]:
         """
         Convert prompt messages to dict list and system
         """
@@ -453,7 +461,15 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         first_loop = True
         for message in prompt_messages:
             if isinstance(message, SystemPromptMessage):
-                message.content = message.content.strip()
+                if isinstance(message.content, str):
+                    message.content = message.content.strip()
+                elif isinstance(message.content, list):
+                    # System prompt only support text
+                    message.content = "".join(
+                        c.data.strip() for c in message.content if isinstance(c, TextPromptMessageContent)
+                    )
+                else:
+                    raise ValueError(f"Unknown system prompt message content type {type(message.content)}")
                 if first_loop:
                     system = message.content
                     first_loop = False
@@ -467,6 +483,10 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                 if isinstance(message, UserPromptMessage):
                     message = cast(UserPromptMessage, message)
                     if isinstance(message.content, str):
+                        # handle empty user prompt see #10013 #10520
+                        # responses, ignore user prompts containing only whitespace, the Claude API can't handle it.
+                        if not message.content.strip():
+                            continue
                         message_dict = {"role": "user", "content": message.content}
                         prompt_message_dicts.append(message_dict)
                     else:
@@ -503,6 +523,21 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                                 sub_message_dict = {
                                     "type": "image",
                                     "source": {"type": "base64", "media_type": mime_type, "data": base64_data},
+                                }
+                                sub_messages.append(sub_message_dict)
+                            elif isinstance(message_content, DocumentPromptMessageContent):
+                                if message_content.mime_type != "application/pdf":
+                                    raise ValueError(
+                                        f"Unsupported document type {message_content.mime_type}, "
+                                        "only support application/pdf"
+                                    )
+                                sub_message_dict = {
+                                    "type": "document",
+                                    "source": {
+                                        "type": message_content.encode_format,
+                                        "media_type": message_content.mime_type,
+                                        "data": message_content.data,
+                                    },
                                 }
                                 sub_messages.append(sub_message_dict)
                         prompt_message_dicts.append({"role": "user", "content": sub_messages})

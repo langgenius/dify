@@ -67,6 +67,14 @@ const translation = {
     appTypeRequired: 'アプリの種類を選択してください',
     appCreated: 'アプリが作成されました',
     appCreateFailed: 'アプリの作成に失敗しました',
+    Confirm: '確認する',
+    caution: '注意',
+    appCreateDSLErrorPart2: '続行しますか?',
+    appCreateDSLErrorPart4: 'システムがサポートするDSLバージョン:',
+    appCreateDSLErrorPart3: '現在のアプリケーションの DSL バージョン:',
+    appCreateDSLErrorTitle: 'バージョンの非互換性',
+    appCreateDSLWarning: '注意:DSLのバージョンの違いは、特定の機能に影響を与える可能性があります',
+    appCreateDSLErrorPart1: 'DSL バージョンに大きな違いが検出されました。インポートを強制すると、アプリケーションが誤動作する可能性があります。',
   },
   editApp: '情報を編集する',
   editAppTitle: 'アプリ情報を編集する',
@@ -85,6 +93,7 @@ const translation = {
   switchLabel: '作成されるアプリのコピー',
   removeOriginal: '元のアプリを削除する',
   switchStart: '切り替えを開始する',
+  openInExplore: '"探索" で開く',
   typeSelector: {
     all: 'すべてのタイプ',
     chatbot: 'チャットボット',
@@ -119,7 +128,7 @@ const translation = {
     inUse: '使用中',
     configProvider: {
       title: '配置 ',
-      placeholder: 'あなた様の{{key}}を入力しでください',
+      placeholder: 'あなた様の{{key}}を入力してください',
       project: 'プロジェクト',
       publicKey: '公開キー',
       secretKey: '秘密キー',
@@ -133,6 +142,10 @@ const translation = {
     title: 'Webアプリアイコンを使用して🤖を置き換える',
     description: '共有アプリケーションの中で Webアプリアイコンを使用して🤖を置き換えるかどうか',
     descriptionInExplore: 'ExploreでWebアプリアイコンを使用して🤖を置き換えるかどうか',
+  },
+  mermaid: {
+    handDrawn: '手描き',
+    classic: 'クラシック',
   },
 }
 

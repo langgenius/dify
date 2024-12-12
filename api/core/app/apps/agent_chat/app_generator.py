@@ -1,7 +1,7 @@
 import logging
 import threading
 import uuid
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from typing import Any, Literal, Union, overload
 
 from flask import Flask, current_app
@@ -31,31 +31,45 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
     @overload
     def generate(
         self,
+        *,
         app_model: App,
         user: Union[Account, EndUser],
-        args: dict,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        stream: Literal[True] = True,
-    ) -> Generator[dict, None, None]: ...
+        streaming: Literal[True],
+    ) -> Generator[str, None, None]: ...
 
     @overload
     def generate(
         self,
+        *,
         app_model: App,
         user: Union[Account, EndUser],
-        args: dict,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        stream: Literal[False] = False,
-    ) -> dict: ...
+        streaming: Literal[False],
+    ) -> Mapping[str, Any]: ...
+
+    @overload
+    def generate(
+        self,
+        *,
+        app_model: App,
+        user: Union[Account, EndUser],
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: bool,
+    ) -> Mapping[str, Any] | Generator[str, None, None]: ...
 
     def generate(
         self,
+        *,
         app_model: App,
         user: Union[Account, EndUser],
-        args: Any,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        stream: bool = True,
-    ) -> Union[dict, Generator[dict, None, None]]:
+        streaming: bool = True,
+    ):
         """
         Generate App response.
 
@@ -65,7 +79,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         :param invoke_from: invoke from source
         :param stream: is stream
         """
-        if not stream:
+        if not streaming:
             raise ValueError("Agent Chat App does not support blocking mode")
 
         if not args.get("query"):
@@ -96,7 +110,8 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
 
             # validate config
             override_model_config_dict = AgentChatAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id, config=args.get("model_config")
+                tenant_id=app_model.tenant_id,
+                config=args["model_config"],
             )
 
             # always enable retriever resource in debugger mode
@@ -134,12 +149,14 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             conversation_id=conversation.id if conversation else None,
             inputs=conversation.inputs
             if conversation
-            else self._prepare_user_inputs(user_inputs=inputs, app_config=app_config),
+            else self._prepare_user_inputs(
+                user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
+            ),
             query=query,
             files=file_objs,
             parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
             user_id=user.id,
-            stream=stream,
+            stream=streaming,
             invoke_from=invoke_from,
             extras=extras,
             call_depth=0,
@@ -180,7 +197,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
             message=message,
             user=user,
-            stream=stream,
+            stream=streaming,
         )
 
         return AgentChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)

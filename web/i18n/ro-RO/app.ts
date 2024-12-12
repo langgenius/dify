@@ -62,6 +62,14 @@ const translation = {
     appTypeRequired: 'Vă rugăm să selectați un tip de aplicație',
     appCreated: 'Aplicația a fost creată',
     appCreateFailed: 'Crearea aplicației a eșuat',
+    caution: 'Prudență',
+    appCreateDSLErrorPart2: 'Vrei să continui?',
+    Confirm: 'Confirma',
+    appCreateDSLErrorTitle: 'Incompatibilitate versiune',
+    appCreateDSLWarning: 'Atenție: diferența de versiune DSL poate afecta anumite caracteristici',
+    appCreateDSLErrorPart3: 'Versiunea DSL a aplicației curente:',
+    appCreateDSLErrorPart1: 'A fost detectată o diferență semnificativă în versiunile DSL. Forțarea importului poate cauza funcționarea defectuoasă a aplicației.',
+    appCreateDSLErrorPart4: 'Versiune DSL suportată de sistem:',
   },
   editApp: 'Editează Info',
   editAppTitle: 'Editează Info Aplicație',
@@ -133,6 +141,11 @@ const translation = {
   importFromDSLUrl: 'De la URL',
   importFromDSLUrlPlaceholder: 'Lipiți linkul DSL aici',
   importFromDSLFile: 'Din fișierul DSL',
+  mermaid: {
+    handDrawn: 'Desenat de mână',
+    classic: 'Clasic',
+  },
+  openInExplore: 'Deschide în Explorează',
 }
 
 export default translation

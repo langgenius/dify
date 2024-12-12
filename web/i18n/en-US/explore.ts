@@ -30,11 +30,13 @@ const translation = {
     nameRequired: 'App name is required',
   },
   category: {
+    Agent: 'Agent',
     Assistant: 'Assistant',
     Writing: 'Writing',
     Translate: 'Translate',
     Programming: 'Programming',
     HR: 'HR',
+    Workflow: 'Workflow',
   },
 }
 
