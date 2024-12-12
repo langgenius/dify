@@ -42,6 +42,12 @@ export const useCategories = (translateFromOut?: TFunction) => {
   const t = translateFromOut || translation
 
   const categories = categoryKeys.map((category) => {
+    if (category === 'agent') {
+      return {
+        name: 'agent-strategy',
+        label: t(`plugin.category.${category}s`),
+      }
+    }
     return {
       name: category,
       label: t(`plugin.category.${category}s`),

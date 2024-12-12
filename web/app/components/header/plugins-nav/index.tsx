@@ -25,8 +25,8 @@ const PluginsNav = ({
         rounded-xl system-sm-medium-uppercase ${activated
       ? 'border border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active shadow-md text-components-main-nav-nav-button-text'
       : 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'}`}>
-        <div className='flex w-4 h-4 justify-center items-center'>
-          <Group />
+        <div className='flex mr-0.5 w-5 h-5 justify-center items-center'>
+          <Group className='w-4 h-4' />
         </div>
         <span className='px-0.5'>{t('common.menus.plugins')}</span>
       </div>

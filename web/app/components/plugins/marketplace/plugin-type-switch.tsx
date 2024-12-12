@@ -4,6 +4,7 @@ import {
   RiBrain2Line,
   RiHammerLine,
   RiPuzzle2Line,
+  RiUmbrellaLine,
 } from '@remixicon/react'
 import { PluginType } from '../types'
 import { useMarketplaceContext } from './context'
@@ -14,6 +15,7 @@ export const PLUGIN_TYPE_SEARCH_MAP = {
   all: 'all',
   model: PluginType.model,
   tool: PluginType.tool,
+  agent: PluginType.agent,
   extension: PluginType.extension,
   bundle: 'bundle',
 }
@@ -44,6 +46,11 @@ const PluginTypeSwitch = ({
       value: PLUGIN_TYPE_SEARCH_MAP.tool,
       text: t('plugin.category.tools'),
       icon: <RiHammerLine className='mr-1.5 w-4 h-4' />,
+    },
+    {
+      value: PLUGIN_TYPE_SEARCH_MAP.agent,
+      text: t('plugin.category.agents'),
+      icon: <RiUmbrellaLine className='mr-1.5 w-4 h-4' />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.extension,

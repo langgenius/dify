@@ -28,6 +28,10 @@ const Description = async ({
           <span className='relative z-[2] lowercase'>{t('category.tools')}</span>
         </span>
         ,
+        <span className="relative ml-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected z-[1]">
+          <span className='relative z-[2] lowercase'>{t('category.agents')}</span>
+        </span>
+        ,
         <span className="relative ml-1 mr-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected z-[1]">
           <span className='relative z-[2] lowercase'>{t('category.extensions')}</span>
         </span>
