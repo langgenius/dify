@@ -584,14 +584,16 @@ const StepTwo = ({
           <div className={s.label}>{t('datasetCreation.stepTwo.segmentation')}</div>
           <div className='max-w-[640px]'>
             <div className='space-y-4'>
-              {(!datasetId || [ChuckingMode.text, ChuckingMode.qa].includes(docForm))
+              {(!datasetId || [ChuckingMode.text, ChuckingMode.qa].includes(currentDataset!.doc_form))
                 && <OptionCard
                   title={t('datasetCreation.stepTwo.general')}
                   icon={<Image src={SettingCog} alt={t('datasetCreation.stepTwo.general')} />}
                   activeHeaderClassName='bg-gradient-to-r from-[#EFF0F9] to-[#F9FAFB]'
                   description={t('datasetCreation.stepTwo.generalTip')}
                   isActive={
-                    [ChuckingMode.text, ChuckingMode.qa].includes(docForm)
+                    [ChuckingMode.text, ChuckingMode.qa].includes(
+                      datasetId ? currentDataset!.doc_form : docForm,
+                    )
                   }
                   onSwitched={() =>
                     handleChangeDocform(ChuckingMode.text)
@@ -685,14 +687,16 @@ const StepTwo = ({
                   </div>
                 </OptionCard>}
               {
-                (!datasetId || docForm === ChuckingMode.parentChild)
+                (!datasetId || currentDataset!.doc_form === ChuckingMode.parentChild)
                 && <OptionCard
                   title={t('datasetCreation.stepTwo.parentChild')}
                   icon={<Image src={FamilyMod} alt={t('datasetCreation.stepTwo.parentChild')} />}
                   effectImg={OrangeEffect.src}
                   activeHeaderClassName='bg-gradient-to-r from-[#F9F1EE] to-[#F9FAFB]'
                   description={t('datasetCreation.stepTwo.parentChildTip')}
-                  isActive={docForm === ChuckingMode.parentChild}
+                  isActive={
+                    datasetId ? currentDataset!.doc_form === ChuckingMode.parentChild : docForm === ChuckingMode.parentChild
+                  }
                   onSwitched={() => handleChangeDocform(ChuckingMode.parentChild)}
                   actions={
                     <>
