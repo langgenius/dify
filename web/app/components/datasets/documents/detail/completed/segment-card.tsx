@@ -8,7 +8,7 @@ import Tag from './common/tag'
 import Dot from './common/dot'
 import { SegmentIndexTag } from './common/segment-index-tag'
 import { useSegmentListContext } from './index'
-import type { SegmentDetailModel } from '@/models/datasets'
+import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
@@ -25,6 +25,9 @@ type ISegmentCardProps = {
   onClick?: () => void
   onChangeSwitch?: (enabled: boolean, segId?: string) => Promise<void>
   onDelete?: (segId: string) => Promise<void>
+  onDeleteChildChunk?: (segId: string, childChunkId: string) => Promise<void>
+  handleAddNewChildChunk?: (parentChunkId: string) => void
+  onClickSlice?: (childChunk: ChildChunkDetail) => void
   onClickEdit?: () => void
   className?: string
   archived?: boolean
@@ -36,6 +39,9 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   onClick,
   onChangeSwitch,
   onDelete,
+  onDeleteChildChunk,
+  handleAddNewChildChunk,
+  onClickSlice,
   onClickEdit,
   loading = true,
   className = '',
@@ -216,9 +222,12 @@ const SegmentCard: FC<ISegmentCardProps> = ({
             {
               child_chunks.length > 0
               && <ChildSegmentList
+                parentChunkId={id}
                 childChunks={child_chunks}
-                handleInputChange={() => {}}
                 enabled={enabled}
+                onDelete={onDeleteChildChunk!}
+                handleAddNewChildChunk={handleAddNewChildChunk}
+                onClickSlice={onClickSlice}
               />
             }
           </>

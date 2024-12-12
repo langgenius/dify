@@ -13,6 +13,7 @@ import BatchAction from './batch-action'
 import SegmentDetail from './segment-detail'
 import SegmentCard from './segment-card'
 import ChildSegmentList from './child-segment-list'
+import NewChildSegment from './new-child-segment'
 import FullScreenDrawer from './common/full-screen-drawer'
 import Pagination from '@/app/components/base/pagination'
 import cn from '@/utils/classnames'
@@ -27,24 +28,27 @@ import type { ChildChunkDetail, SegmentDetailModel, SegmentUpdater } from '@/mod
 import NewSegment from '@/app/components/datasets/documents/detail/new-segment'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import Checkbox from '@/app/components/base/checkbox'
-import { useChildSegmentList, useDeleteSegment, useDisableSegment, useEnableSegment, useSegmentList, useSegmentListKey } from '@/service/knowledge/use-segment'
+import {
+  useChildSegmentList,
+  useChildSegmentListKey,
+  useDeleteChildSegment,
+  useDeleteSegment,
+  useDisableSegment,
+  useEnableSegment,
+  useSegmentList,
+  useSegmentListKey,
+} from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
 
 const DEFAULT_LIMIT = 10
 
 type SegmentListContextValue = {
   isCollapsed: boolean
-  toggleCollapsed: () => void
   fullScreen: boolean
-  toggleFullScreen: () => void
+  toggleFullScreen: (fullscreen?: boolean) => void
 }
 
-const SegmentListContext = createContext({
-  isCollapsed: true,
-  toggleCollapsed: () => { },
-  fullScreen: false,
-  toggleFullScreen: () => { },
-})
+const SegmentListContext = createContext<SegmentListContextValue>({} as SegmentListContextValue)
 
 export const useSegmentListContext = (selector: (value: SegmentListContextValue) => any) => {
   return useContextSelector(SegmentListContext, selector)
@@ -73,6 +77,8 @@ const Completed: FC<ICompletedProps> = ({
   const [datasetId = '', documentId = '', docForm, mode, parentMode] = useDocumentContext(s => [s.datasetId, s.documentId, s.docForm, s.mode, s.parentMode])
   // the current segment id and whether to show the modal
   const [currSegment, setCurrSegment] = useState<{ segInfo?: SegmentDetailModel; showModal: boolean; isEditMode?: boolean }>({ showModal: false })
+  const [currChildChunk, setCurrChildChunk] = useState<{ childChunkInfo?: ChildChunkDetail; showModal: boolean }>({ showModal: false })
+  const [currChunkId, setCurrChunkId] = useState('')
 
   const [inputValue, setInputValue] = useState<string>('') // the input value
   const [searchValue, setSearchValue] = useState<string>('') // the search value
@@ -86,6 +92,8 @@ const Completed: FC<ICompletedProps> = ({
   const [currentPage, setCurrentPage] = useState(1) // start from 1
   const [limit, setLimit] = useState(DEFAULT_LIMIT)
   const [fullScreen, setFullScreen] = useState(false)
+  const [showNewChildSegmentModal, setShowNewChildSegmentModal] = useState(false)
+
   const segmentListRef = useRef<HTMLDivElement>(null)
   const needScrollToBottom = useRef(false)
 
@@ -136,7 +144,7 @@ const Completed: FC<ICompletedProps> = ({
     }
   }, [segments])
 
-  const { data: childChunkListData, refetch: refreshChildSegmentList } = useChildSegmentList(
+  const { data: childChunkListData } = useChildSegmentList(
     {
       datasetId,
       documentId,
@@ -149,6 +157,7 @@ const Completed: FC<ICompletedProps> = ({
     },
     !isFullDocMode || segments.length === 0,
   )
+  const invalidChildSegmentList = useInvalid(useChildSegmentListKey)
 
   useEffect(() => {
     if (childChunkListData)
@@ -159,6 +168,12 @@ const Completed: FC<ICompletedProps> = ({
     setSegments([])
     setSelectedSegmentIds([])
     invalidSegmentList()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const resetChildList = useCallback(() => {
+    setChildSegments([])
+    invalidChildSegmentList()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -320,10 +335,54 @@ const Completed: FC<ICompletedProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segmentListData, limit, currentPage])
 
+  const { mutateAsync: deleteChildSegment } = useDeleteChildSegment()
+
+  const onDeleteChildChunk = useCallback(async (segmentId: string, childChunkId: string) => {
+    await deleteChildSegment(
+      { datasetId, documentId, segmentId, childChunkId },
+      {
+        onSuccess: () => {
+          notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+          if (parentMode === 'paragraph')
+            resetList()
+          else
+            resetChildList()
+        },
+        onError: () => {
+          notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+        },
+      },
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datasetId, documentId])
+
+  const handleAddNewChildChunk = useCallback((parentChunkId: string) => {
+    setShowNewChildSegmentModal(true)
+    setCurrChunkId(parentChunkId)
+  }, [])
+
+  const viewNewlyAddedChildChunk = useCallback(() => {
+    const totalPages = childChunkListData?.total_pages || 0
+    const total = childChunkListData?.total || 0
+    const newPage = Math.ceil((total + 1) / limit)
+    needScrollToBottom.current = true
+    if (newPage > totalPages) {
+      setCurrentPage(totalPages + 1)
+    }
+    else {
+      resetChildList()
+      currentPage !== totalPages && setCurrentPage(totalPages)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childChunkListData, limit, currentPage])
+
+  const onClickSlice = useCallback((detail: ChildChunkDetail) => {
+    setCurrChildChunk({ childChunkInfo: detail, showModal: true })
+  }, [])
+
   return (
     <SegmentListContext.Provider value={{
       isCollapsed,
-      toggleCollapsed: () => setIsCollapsed(!isCollapsed),
       fullScreen,
       toggleFullScreen,
     }}>
@@ -355,7 +414,7 @@ const Completed: FC<ICompletedProps> = ({
           onClear={() => handleInputChange('')}
         />
         <Divider type='vertical' className='h-3.5 mx-3' />
-        <DisplayToggle />
+        <DisplayToggle isCollapsed={isCollapsed} toggleCollapsed={() => setIsCollapsed(!isCollapsed)} />
       </div>}
       {/* Segment list */}
       {
@@ -367,8 +426,12 @@ const Completed: FC<ICompletedProps> = ({
               loading={false}
             />
             <ChildSegmentList
+              parentChunkId={segments[0]?.id}
+              onDelete={onDeleteChildChunk}
               childChunks={childSegments}
-              handleInputChange={() => { }}
+              handleInputChange={handleInputChange}
+              handleAddNewChildChunk={handleAddNewChildChunk}
+              onClickSlice={onClickSlice}
               enabled={!archived}
             />
           </div>
@@ -383,6 +446,9 @@ const Completed: FC<ICompletedProps> = ({
             onDelete={onDelete}
             onClick={onClickCard}
             archived={archived}
+            onDeleteChildChunk={onDeleteChildChunk}
+            handleAddNewChildChunk={handleAddNewChildChunk}
+            onClickSlice={onClickSlice}
           />
       }
       {/* Pagination */}
@@ -419,6 +485,26 @@ const Completed: FC<ICompletedProps> = ({
           }}
           onSave={resetList}
           viewNewlyAddedChunk={viewNewlyAddedChunk}
+        />
+      </FullScreenDrawer>
+      {/* Create New Child Segment */}
+      <FullScreenDrawer
+        isOpen={showNewChildSegmentModal}
+        fullScreen={fullScreen}
+      >
+        <NewChildSegment
+          chunkId={currChunkId}
+          onCancel={() => {
+            setShowNewChildSegmentModal(false)
+            setFullScreen(false)
+          }}
+          onSave={() => {
+            if (parentMode === 'paragraph')
+              resetList()
+            else
+              resetChildList()
+          }}
+          viewNewlyAddedChildChunk={viewNewlyAddedChildChunk}
         />
       </FullScreenDrawer>
       {/* Batch Action Buttons */}
