@@ -14,6 +14,7 @@ class CommonParameterType(Enum):
     APP_SELECTOR = "app-selector"
     TOOL_SELECTOR = "tool-selector"
     MODEL_SELECTOR = "model-selector"
+    TOOLS_SELECTOR = "array[tools]"
 
 
 class AppSelectorScope(Enum):

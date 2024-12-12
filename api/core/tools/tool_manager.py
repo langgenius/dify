@@ -548,7 +548,7 @@ class ToolManager:
                         cls._builtin_tools_labels[tool.entity.identity.name] = tool.entity.identity.label
                     yield provider
 
-                except Exception as e:
+                except Exception:
                     logger.exception(f"load builtin provider {provider}")
                     continue
         # set builtin providers loaded
@@ -670,7 +670,7 @@ class ToolManager:
                     workflow_provider_controllers.append(
                         ToolTransformService.workflow_provider_to_controller(db_provider=provider)
                     )
-                except Exception as e:
+                except Exception:
                     # app has been deleted
                     pass
 
