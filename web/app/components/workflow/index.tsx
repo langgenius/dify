@@ -97,7 +97,6 @@ import Confirm from '@/app/components/base/confirm'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { fetchFileUploadConfig } from '@/service/common'
 import AppContext from '@/context/app-context'
-import { Theme } from '@/types/app'
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -376,7 +375,7 @@ const Workflow: FC<WorkflowProps> = memo(({
           gap={[14, 14]}
           size={2}
           className="bg-workflow-canvas-workflow-bg"
-          color={theme === Theme.light ? 'rgba(133, 133, 173, 0.15)' : 'rgba(133, 133, 173, 0.11)'}
+          color='var(--color-workflow-canvas-workflow-dot-color)'
         />
       </ReactFlow>
     </div>

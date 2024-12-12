@@ -545,6 +545,7 @@ export const isMac = () => {
 const specialKeysNameMap: Record<string, string | undefined> = {
   ctrl: '⌘',
   alt: '⌥',
+  shift: '⇧',
 }
 
 export const getKeyboardKeyNameBySystem = (key: string) => {
