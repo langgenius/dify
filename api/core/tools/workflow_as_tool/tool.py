@@ -202,7 +202,7 @@ class WorkflowTool(Tool):
                                 file_dict["url"] = file.generate_url()
 
                             files.append(file_dict)
-                    except Exception as e:
+                    except Exception:
                         logger.exception(f"Failed to transform file {file}")
             else:
                 parameters_result[parameter.name] = tool_parameters.get(parameter.name)

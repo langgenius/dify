@@ -197,7 +197,7 @@ class ToolTransformService:
                 raise ValueError("user not found")
 
             username = user.name
-        except Exception as e:
+        except Exception:
             logger.exception(f"failed to get user name for api provider {db_provider.id}")
         # add provider into providers
         credentials = db_provider.credentials

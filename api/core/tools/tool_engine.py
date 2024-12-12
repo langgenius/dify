@@ -14,7 +14,12 @@ from core.file import FileType
 from core.file.models import FileTransferMethod
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.tools.__base.tool import Tool
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessageBinary, ToolInvokeMeta, ToolParameter
+from core.tools.entities.tool_entities import (
+    ToolInvokeMessage,
+    ToolInvokeMessageBinary,
+    ToolInvokeMeta,
+    ToolParameter,
+)
 from core.tools.errors import (
     ToolEngineInvokeError,
     ToolInvokeError,
@@ -66,7 +71,7 @@ class ToolEngine:
             else:
                 try:
                     tool_parameters = json.loads(tool_parameters)
-                except Exception as e:
+                except Exception:
                     pass
                 if not isinstance(tool_parameters, dict):
                     raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
