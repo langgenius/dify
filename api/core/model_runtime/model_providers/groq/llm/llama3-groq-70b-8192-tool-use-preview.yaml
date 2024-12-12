@@ -1,14 +1,13 @@
-model: llama-3.1-70b-versatile
-deprecated: true
+model: llama3-groq-70b-8192-tool-use-preview
 label:
-  zh_Hans: Llama-3.1-70b-versatile (DEPRECATED)
-  en_US: Llama-3.1-70b-versatile (DEPRECATED)
+  zh_Hans: Llama3-groq-70b-8192-tool-use (PREVIEW)
+  en_US: Llama3-groq-70b-8192-tool-use (PREVIEW)
 model_type: llm
 features:
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 131072
+  context_size: 8192
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -21,6 +20,6 @@ parameter_rules:
     max: 8192
 pricing:
   input: '0.05'
-  output: '0.1'
+  output: '0.08'
   unit: '0.000001'
   currency: USD

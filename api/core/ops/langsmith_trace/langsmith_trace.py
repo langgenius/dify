@@ -62,15 +62,17 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        trace_id = trace_info.message_id or trace_info.workflow_app_log_id or trace_info.workflow_run_id
+        trace_id = trace_info.message_id or trace_info.workflow_run_id
         message_dotted_order = (
             generate_dotted_order(trace_info.message_id, trace_info.start_time) if trace_info.message_id else None
         )
         workflow_dotted_order = generate_dotted_order(
-            trace_info.workflow_app_log_id or trace_info.workflow_run_id,
+            trace_info.workflow_run_id,
             trace_info.workflow_data.created_at,
             message_dotted_order,
         )
+        metadata = trace_info.metadata
+        metadata["workflow_app_log_id"] = trace_info.workflow_app_log_id
 
         if trace_info.message_id:
             message_run = LangSmithRunModel(
@@ -82,7 +84,7 @@ class LangSmithDataTrace(BaseTraceInstance):
                 start_time=trace_info.start_time,
                 end_time=trace_info.end_time,
                 extra={
-                    "metadata": trace_info.metadata,
+                    "metadata": metadata,
                 },
                 tags=["message", "workflow"],
                 error=trace_info.error,
@@ -94,7 +96,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         langsmith_run = LangSmithRunModel(
             file_list=trace_info.file_list,
             total_tokens=trace_info.total_tokens,
-            id=trace_info.workflow_app_log_id or trace_info.workflow_run_id,
+            id=trace_info.workflow_run_id,
             name=TraceTaskName.WORKFLOW_TRACE.value,
             inputs=trace_info.workflow_run_inputs,
             run_type=LangSmithRunType.tool,
@@ -102,7 +104,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             end_time=trace_info.workflow_data.finished_at,
             outputs=trace_info.workflow_run_outputs,
             extra={
-                "metadata": trace_info.metadata,
+                "metadata": metadata,
             },
             error=trace_info.error,
             tags=["workflow"],
@@ -204,7 +206,7 @@ class LangSmithDataTrace(BaseTraceInstance):
                 extra={
                     "metadata": metadata,
                 },
-                parent_run_id=trace_info.workflow_app_log_id or trace_info.workflow_run_id,
+                parent_run_id=trace_info.workflow_run_id,
                 tags=["node_execution"],
                 id=node_execution_id,
                 trace_id=trace_id,
