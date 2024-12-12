@@ -1,10 +1,11 @@
-import { memo, useRef, useState } from 'react'
+import { memo, useMemo, useRef, useState } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useParams } from 'next/navigation'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { useShallow } from 'zustand/react/shallow'
+import { useDocumentContext } from '../index'
 import { SegmentIndexTag } from './common/segment-index-tag'
 import ActionButtons from './common/action-buttons'
 import ChunkContent from './common/chunk-content'
@@ -13,7 +14,7 @@ import Dot from './common/dot'
 import { useSegmentListContext } from './index'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
-import type { SegmentUpdater } from '@/models/datasets'
+import type { ChildChunkDetail, SegmentUpdater } from '@/models/datasets'
 import classNames from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import Divider from '@/app/components/base/divider'
@@ -22,7 +23,7 @@ import { useAddChildSegment } from '@/service/knowledge/use-segment'
 type NewChildSegmentModalProps = {
   chunkId: string
   onCancel: () => void
-  onSave: () => void
+  onSave: (ChildChunk?: ChildChunkDetail) => void
   viewNewlyAddedChildChunk?: () => void
 }
 
@@ -42,7 +43,13 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
   const { appSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
   })))
+  const parentMode = useDocumentContext(s => s.parentMode)
+
   const refreshTimer = useRef<any>(null)
+
+  const isFullDocMode = useMemo(() => {
+    return parentMode === 'full-doc'
+  }, [parentMode])
 
   const CustomButton = <>
     <Divider type='vertical' className='h-3 mx-1 bg-divider-regular' />
@@ -50,7 +57,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
       clearTimeout(refreshTimer.current)
       viewNewlyAddedChildChunk?.()
     }}>
-      {t('datasetDocuments.segment.viewAddedChunk')}
+      {t('common.operation.view')}
     </button>
   </>
 
@@ -72,18 +79,23 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
 
     setLoading(true)
     try {
-      await addChildSegment({ datasetId, documentId, segmentId: chunkId, body: params })
+      const res = await addChildSegment({ datasetId, documentId, segmentId: chunkId, body: params })
       notify({
         type: 'success',
-        message: t('datasetDocuments.segment.chunkAdded'),
+        message: t('datasetDocuments.segment.childChunkAdded'),
         className: `!w-[296px] !bottom-0 ${appSidebarExpand === 'expand' ? '!left-[216px]' : '!left-14'}
           !top-auto !right-auto !mb-[52px] !ml-11`,
-        customComponent: CustomButton,
+        customComponent: isFullDocMode && CustomButton,
       })
       handleCancel('add')
-      refreshTimer.current = setTimeout(() => {
-        onSave()
-      }, 3000)
+      if (isFullDocMode) {
+        refreshTimer.current = setTimeout(() => {
+          onSave()
+        }, 3000)
+      }
+      else {
+        onSave(res.data)
+      }
     }
     finally {
       setLoading(false)

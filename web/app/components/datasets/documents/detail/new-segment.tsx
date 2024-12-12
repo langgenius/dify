@@ -55,7 +55,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
       clearTimeout(refreshTimer.current)
       viewNewlyAddedChunk()
     }}>
-      {t('datasetDocuments.segment.viewAddedChunk')}
+      {t('common.operation.view')}
     </button>
   </>
 

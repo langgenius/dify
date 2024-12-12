@@ -229,7 +229,7 @@ const Completed: FC<ICompletedProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetId, documentId, selectedSegmentIds])
 
-  const handleUpdateSegment = async (
+  const handleUpdateSegment = useCallback(async (
     segmentId: string,
     question: string,
     answer: string,
@@ -283,7 +283,8 @@ const Completed: FC<ICompletedProps> = ({
     finally {
       eventEmitter?.emit('update-segment-done')
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [segments, datasetId, documentId])
 
   useEffect(() => {
     if (importStatus === ProcessStatus.COMPLETED)
@@ -360,12 +361,26 @@ const Completed: FC<ICompletedProps> = ({
       },
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [datasetId, documentId])
+  }, [datasetId, documentId, parentMode])
 
   const handleAddNewChildChunk = useCallback((parentChunkId: string) => {
     setShowNewChildSegmentModal(true)
     setCurrChunkId(parentChunkId)
   }, [])
+
+  const onSaveNewChildChunk = useCallback((newChildChunk?: ChildChunkDetail) => {
+    if (parentMode === 'paragraph') {
+      for (const seg of segments) {
+        if (seg.id === currChunkId)
+          seg.child_chunks?.push(newChildChunk!)
+      }
+      setSegments([...segments])
+    }
+    else {
+      resetChildList()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parentMode, currChunkId, segments])
 
   const viewNewlyAddedChildChunk = useCallback(() => {
     const totalPages = childChunkListData?.total_pages || 0
@@ -394,7 +409,7 @@ const Completed: FC<ICompletedProps> = ({
 
   const { mutateAsync: updateChildSegment } = useUpdateChildSegment()
 
-  const handleUpdateChildChunk = async (
+  const handleUpdateChildChunk = useCallback(async (
     segmentId: string,
     childChunkId: string,
     content: string,
@@ -418,6 +433,7 @@ const Completed: FC<ICompletedProps> = ({
                 childSeg.content = res.data.content
                 childSeg.type = res.data.type
                 childSeg.word_count = res.data.word_count
+                childSeg.updated_at = res.data.updated_at
               }
             }
           }
@@ -430,6 +446,7 @@ const Completed: FC<ICompletedProps> = ({
             childSeg.content = res.data.content
             childSeg.type = res.data.type
             childSeg.word_count = res.data.word_count
+            childSeg.updated_at = res.data.updated_at
           }
         }
         setChildSegments([...childSegments])
@@ -438,7 +455,8 @@ const Completed: FC<ICompletedProps> = ({
     finally {
       eventEmitter?.emit('update-child-segment-done')
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [segments, childSegments, datasetId, documentId, parentMode])
 
   return (
     <SegmentListContext.Provider value={{
@@ -571,12 +589,7 @@ const Completed: FC<ICompletedProps> = ({
             setShowNewChildSegmentModal(false)
             setFullScreen(false)
           }}
-          onSave={() => {
-            if (parentMode === 'paragraph')
-              resetList()
-            else
-              resetChildList()
-          }}
+          onSave={onSaveNewChildChunk}
           viewNewlyAddedChildChunk={viewNewlyAddedChildChunk}
         />
       </FullScreenDrawer>

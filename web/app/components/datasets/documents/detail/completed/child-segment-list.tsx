@@ -91,7 +91,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
           {isParagraphMode && <Divider type='vertical' className='h-auto w-[2px] mx-[7px] bg-text-accent-secondary' />}
           <div className={classNames('w-full !leading-5 flex flex-col', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
             {childChunks.map((childChunk) => {
-              const edited = childChunk.type === 'customized'
+              const edited = childChunk.updated_at !== childChunk.created_at
               return <EditSlice
                 key={childChunk.id}
                 label={`C-${childChunk.position}${edited ? '·EDITED' : ''}`}

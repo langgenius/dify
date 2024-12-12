@@ -44,6 +44,7 @@ const translation = {
     openInNewTab: 'Open in new tab',
     saveAndRegenerate: 'Save & Regenerate Child Chunks',
     close: 'Close',
+    view: 'View',
     viewMore: 'VIEW MORE',
     regenerate: 'Regenerate',
   },
