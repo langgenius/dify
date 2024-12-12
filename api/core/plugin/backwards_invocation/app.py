@@ -26,7 +26,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         stream: bool,
         inputs: Mapping,
         files: list[dict],
-    ) -> Generator[dict | str, None, None] | dict:
+    ) -> Generator[Mapping | str, None, None] | Mapping:
         """
         invoke app
         """
@@ -60,7 +60,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         stream: bool,
         inputs: Mapping,
         files: list[dict],
-    ) -> Generator[dict | str, None, None] | dict:
+    ) -> Generator[Mapping | str, None, None] | Mapping:
         """
         invoke chat app
         """
@@ -80,7 +80,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     "conversation_id": conversation_id,
                 },
                 invoke_from=InvokeFrom.SERVICE_API,
-                stream=stream,
+                streaming=stream,
             )
         elif app.mode == AppMode.AGENT_CHAT.value:
             return AgentChatAppGenerator().generate(
@@ -93,7 +93,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     "conversation_id": conversation_id,
                 },
                 invoke_from=InvokeFrom.SERVICE_API,
-                stream=stream,
+                streaming=stream,
             )
         elif app.mode == AppMode.CHAT.value:
             return ChatAppGenerator().generate(
@@ -106,7 +106,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     "conversation_id": conversation_id,
                 },
                 invoke_from=InvokeFrom.SERVICE_API,
-                stream=stream,
+                streaming=stream,
             )
         else:
             raise ValueError("unexpected app type")
@@ -133,7 +133,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             user=user,
             args={"inputs": inputs, "files": files},
             invoke_from=InvokeFrom.SERVICE_API,
-            stream=stream,
+            streaming=stream,
             call_depth=1,
         )
 
@@ -154,7 +154,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             user=user,
             args={"inputs": inputs, "files": files},
             invoke_from=InvokeFrom.SERVICE_API,
-            stream=stream,
+            streaming=stream,
         )
 
     @classmethod
