@@ -207,7 +207,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
           <>
             <div className={cn('text-text-secondary body-md-regular -tracking-[0.07px] mt-0.5',
               textOpacity,
-              isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
+              isFullDocMode ? 'line-clamp-3' : isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
             )}>
               {renderContent()}
             </div>

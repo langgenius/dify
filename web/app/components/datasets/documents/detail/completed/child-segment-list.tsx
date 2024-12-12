@@ -15,6 +15,8 @@ type IChildSegmentCardProps = {
   enabled: boolean
   onDelete?: (segId: string, childChunkId: string) => Promise<void>
   onClickSlice?: (childChunk: ChildChunkDetail) => void
+  total?: number
+  inputValue?: string
 }
 
 const ChildSegmentList: FC<IChildSegmentCardProps> = ({
@@ -25,6 +27,8 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   enabled,
   onDelete,
   onClickSlice,
+  total,
+  inputValue,
 }) => {
   const parentMode = useDocumentContext(s => s.parentMode)
 
@@ -63,7 +67,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
                 : (<RiArrowDownSLine className='w-4 h-4 text-text-secondary mr-0.5' />)
               : null
           }
-          <span className='text-text-secondary system-sm-semibold-uppercase'>{`${childChunks.length} CHILD CHUNKS`}</span>
+          <span className='text-text-secondary system-sm-semibold-uppercase'>{`${total} CHILD CHUNKS`}</span>
           <span className={classNames('text-text-quaternary text-xs font-medium pl-1.5', isParagraphMode ? 'hidden group-hover/card:inline-block' : '')}>·</span>
           <button
             className={classNames('px-1.5 py-1 text-components-button-secondary-accent-text system-xs-semibold', isParagraphMode ? 'hidden group-hover/card:inline-block' : '')}
@@ -80,7 +84,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
             showLeftIcon
             showClearIcon
             wrapperClassName='!w-52'
-            value={''}
+            value={inputValue}
             onChange={e => handleInputChange?.(e.target.value)}
             onClear={() => handleInputChange?.('')}
           />
@@ -94,10 +98,14 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
               const edited = childChunk.updated_at !== childChunk.created_at
               return <EditSlice
                 key={childChunk.id}
-                label={`C-${childChunk.position}${edited ? '·EDITED' : ''}`}
+                label={`C-${childChunk.position}${edited ? ' · EDITED' : ''}`}
                 text={childChunk.content}
                 onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
-                onClick={() => onClickSlice?.(childChunk)}
+                className='line-clamp-3'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClickSlice?.(childChunk)
+                }}
               />
             })}
           </div>

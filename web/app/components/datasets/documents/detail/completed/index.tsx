@@ -125,8 +125,8 @@ const Completed: FC<ICompletedProps> = ({
       datasetId,
       documentId,
       params: {
-        page: currentPage,
-        limit,
+        page: isFullDocMode ? 1 : currentPage,
+        limit: isFullDocMode ? 10 : limit,
         keyword: isFullDocMode ? '' : searchValue,
         enabled: selectedStatus === 'all' ? 'all' : !!selectedStatus,
       },
@@ -497,7 +497,7 @@ const Completed: FC<ICompletedProps> = ({
       {/* Segment list */}
       {
         isFullDocMode
-          ? <div className='h-full flex flex-col'>
+          ? <>
             <SegmentCard
               detail={segments[0]}
               onClick={() => onClickCard(segments[0])}
@@ -511,8 +511,10 @@ const Completed: FC<ICompletedProps> = ({
               handleAddNewChildChunk={handleAddNewChildChunk}
               onClickSlice={onClickSlice}
               enabled={!archived}
+              total={childChunkListData?.total || 0}
+              inputValue={inputValue}
             />
-          </div>
+          </>
           : <SegmentList
             ref={segmentListRef}
             embeddingAvailable={embeddingAvailable}
@@ -533,9 +535,10 @@ const Completed: FC<ICompletedProps> = ({
       <Pagination
         current={currentPage - 1}
         onChange={cur => setCurrentPage(cur + 1)}
-        total={segmentListData?.total || 0}
+        total={(isFullDocMode ? childChunkListData?.total : segmentListData?.total) || 0}
         limit={limit}
         onLimitChange={limit => setLimit(limit)}
+        className={isFullDocMode ? 'px-3' : ''}
       />
       {/* Edit or view segment detail */}
       <FullScreenDrawer

@@ -10,11 +10,10 @@ import ActionButton, { ActionButtonState } from '@/app/components/base/action-bu
 type EditSliceProps = SliceProps<{
   label: ReactNode
   onDelete: () => void
-  onClick?: () => void
 }>
 
 export const EditSlice: FC<EditSliceProps> = (props) => {
-  const { label, className, text, onDelete, onClick, ...rest } = props
+  const { label, className, text, onDelete, ...rest } = props
   const [delBtnShow, setDelBtnShow] = useState(false)
   const [isDelBtnHover, setDelBtnHover] = useState(false)
 
@@ -36,10 +35,7 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
   const isDestructive = delBtnShow && isDelBtnHover
 
   return (
-    <div onClick={(e) => {
-      e.stopPropagation()
-      onClick?.()
-    }}>
+    <div>
       <SliceContainer {...rest}
         className={className}
         ref={refs.setReference}
