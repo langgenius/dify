@@ -1,0 +1,78 @@
+identity:
+  name: query_data
+  author: Tiny Fish
+  label:
+    en_US: AgentQL Query Data
+description:
+  human:
+    en_US: Extract structured data from a given URL.
+  llm: A tool for extracting structured data matching a given AgentQL query from a given URL. # Introduction passed to LLM, in order to make LLM better understand this tool, we suggest to write as detailed information about this tool as possible here, so that LLM can understand and use this tool
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: URL
+    human_description:
+      en_US: The public URL of the webpage to extract data from.
+    form: form
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: AgentQL Query
+    human_description:
+      en_US: The AgentQL query to execute. Read more at https://docs.agentql.com/agentql-query.
+    form: form
+############## Advanced Options #######################
+  - name: timeout
+    type: number
+    min: 0
+    default: 900
+    label:
+      en_US: Timeout
+    human_description:
+      en_US: Timeout in seconds for the request. Increase if data extraction takes too long.
+    form: form
+  - name: mode
+    type: select
+    required: true
+    options:
+      - value: fast
+        label:
+          en_US: Fast
+      - value: standard
+        label:
+          en_US: Standard
+    default: fast
+    label:
+      en_US: Request Mode
+    human_description:
+      en_US: Specifies the extraction mode — 'standard' for complex or high-volume data, or 'fast' for typical use cases. You can read more about the mode options in Guide.
+    form: form
+  - name: wait_for
+    type: number
+    min: 0
+    max: 10
+    default: 0
+    label:
+      en_US: Wait For
+    human_description:
+      en_US: Wait time in seconds for the page to load before data extraction.
+    form: form
+  - name: is_scroll_to_bottom_enabled
+    type: boolean
+    default: false
+    label:
+      en_US: Is Scroll To Bottom
+    human_description:
+      en_US: Toggle scrolling to bottom of the page before data extraction.
+    form: form
+  - name: is_screenshot_enabled
+    type: boolean
+    default: false
+    label:
+      en_US: Is Screenshot Enabled
+    human_description:
+      en_US: Toggle screenshot capture.
+    form: form
