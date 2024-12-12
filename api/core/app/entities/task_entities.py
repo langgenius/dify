@@ -213,6 +213,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
         created_by: Optional[dict] = None
         created_at: int
         finished_at: int
+        exceptions_count: Optional[int] = 0
         files: Optional[Sequence[Mapping[str, Any]]] = []
 
     event: StreamEvent = StreamEvent.WORKFLOW_FINISHED

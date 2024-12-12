@@ -5,6 +5,7 @@ import StatusPanel from './status'
 import MetaData from './meta'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 
 type ResultPanelProps = {
   inputs?: string
@@ -19,6 +20,8 @@ type ResultPanelProps = {
   finished_at?: number
   steps?: number
   showSteps?: boolean
+  exceptionCounts?: number
+  execution_metadata?: any
 }
 
 const ResultPanel: FC<ResultPanelProps> = ({
@@ -33,6 +36,8 @@ const ResultPanel: FC<ResultPanelProps> = ({
   created_by,
   steps,
   showSteps,
+  exceptionCounts,
+  execution_metadata,
 }) => {
   const { t } = useTranslation()
   return (
@@ -43,6 +48,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           time={elapsed_time}
           tokens={total_tokens}
           error={error}
+          exceptionCounts={exceptionCounts}
         />
       </div>
       <div className='px-4 py-2 flex flex-col gap-2'>
@@ -69,6 +75,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
             language={CodeLanguage.json}
             value={outputs}
             isJSONStringifyBeauty
+            tip={<ErrorHandleTip type={execution_metadata?.error_strategy} />}
           />
         )}
       </div>

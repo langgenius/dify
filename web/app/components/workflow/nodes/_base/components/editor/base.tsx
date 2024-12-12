@@ -33,6 +33,7 @@ type Props = {
   }[]
   showFileList?: boolean
   showCodeGenerator?: boolean
+  tip?: JSX.Element
 }
 
 const Base: FC<Props> = ({
@@ -49,6 +50,7 @@ const Base: FC<Props> = ({
   fileList = [],
   showFileList,
   showCodeGenerator = false,
+  tip,
 }) => {
   const ref = useRef<HTMLDivElement>(null)
   const {
@@ -100,6 +102,7 @@ const Base: FC<Props> = ({
             </div>
           </div>
         </div>
+        {tip && <div className='px-1 py-0.5'>{tip}</div>}
         <PromptEditorHeightResizeWrap
           height={isExpand ? editorExpandHeight : editorContentHeight}
           minHeight={editorContentMinHeight}

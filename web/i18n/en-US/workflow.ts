@@ -102,6 +102,8 @@ const translation = {
     addParallelNode: 'Add Parallel Node',
     parallel: 'PARALLEL',
     branch: 'BRANCH',
+    onFailure: 'On Failure',
+    addFailureBranch: 'Add Fail Branch',
   },
   env: {
     envPanelTitle: 'Environment Variables',
@@ -301,6 +303,31 @@ const translation = {
         title: 'Memories',
         tip: 'Chat memory',
         builtIn: 'Built-in',
+      },
+      errorHandle: {
+        title: 'Error Handling',
+        tip: 'Exception handling strategy, triggered when a node encounters an exception.',
+        none: {
+          title: 'None',
+          desc: 'The node will stop running if an exception occurs and is not handled',
+        },
+        defaultValue: {
+          title: 'Default Value',
+          desc: 'When an error occurs, specify a static output content.',
+          tip: 'On error, will return below value.',
+          inLog: 'Node exception, outputting according to default values.',
+          output: 'Output Default Value',
+        },
+        failBranch: {
+          title: 'Fail Branch',
+          desc: 'When an error occurs, it will execute the exception branch',
+          customize: 'Go to the canvas to customize the fail branch logic.',
+          customizeTip: 'When the fail branch is activated, exceptions thrown by nodes will not terminate the process. Instead, it will automatically execute the predefined fail branch, allowing you to flexibly provide error messages, reports, fixes, or skip actions.',
+          inLog: 'Node exception, will automatically execute the fail branch. The node output will return an error type and error message and pass them to downstream.',
+        },
+        partialSucceeded: {
+          tip: 'There are {{num}} nodes in the process running abnormally, please go to tracing to check the logs.',
+        },
       },
     },
     start: {

@@ -101,6 +101,9 @@ const translation = {
     featuresDescription: 'Web uygulaması kullanıcı deneyimini geliştirin',
     importWarningDetails: 'DSL sürüm farkı bazı özellikleri etkileyebilir',
     importWarning: 'Dikkat',
+    openInExplore: 'Keşfet\'te Aç',
+    onFailure: 'Başarısızlık Üzerine',
+    addFailureBranch: 'Başarısız dal ekle',
   },
   env: {
     envPanelTitle: 'Çevre Değişkenleri',
@@ -293,6 +296,31 @@ const translation = {
         title: 'Bellekler',
         tip: 'Sohbet belleği',
         builtIn: 'Yerleşik',
+      },
+      errorHandle: {
+        none: {
+          title: 'Hiç kimse',
+          desc: 'Bir özel durum oluşursa ve işlenmezse düğüm çalışmayı durdurur',
+        },
+        defaultValue: {
+          title: 'Varsayılan Değer',
+          desc: 'Bir hata oluştuğunda, statik bir çıkış içeriği belirtin.',
+          tip: 'Hata durumunda, değerin altına dönecektir.',
+          inLog: 'Düğüm istisnası, varsayılan değerlere göre çıktı.',
+          output: 'Çıktı Varsayılan Değeri',
+        },
+        failBranch: {
+          title: 'Başarısız Dal',
+          desc: 'Bir hata oluştuğunda, özel durum dalını yürütür',
+          customize: 'Başarısız dal mantığını özelleştirmek için tuvale gidin.',
+          inLog: 'Düğüm özel durumu, başarısız dalı otomatik olarak yürütür. Düğüm çıkışı bir hata türü ve hata mesajı döndürür ve bunları aşağı akışa iletir.',
+          customizeTip: 'Başarısız dal etkinleştirildiğinde, düğümler tarafından oluşturulan özel durumlar işlemi sonlandırmaz. Bunun yerine, önceden tanımlanmış hata dalını otomatik olarak yürüterek hata mesajları, raporlar, düzeltmeler veya atlama eylemleri sağlamanıza olanak tanır.',
+        },
+        partialSucceeded: {
+          tip: 'İşlemde anormal şekilde çalışan {{num}} düğümleri var, lütfen günlükleri kontrol etmek için izlemeye gidin.',
+        },
+        title: 'Hata İşleme',
+        tip: 'Bir düğüm bir özel durumla karşılaştığında tetiklenen özel durum işleme stratejisi.',
       },
     },
     start: {

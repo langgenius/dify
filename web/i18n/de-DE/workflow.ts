@@ -101,6 +101,9 @@ const translation = {
     featuresDescription: 'Verbessern Sie die Benutzererfahrung von Web-Apps',
     importWarning: 'Vorsicht',
     importWarningDetails: 'Der Unterschied zwischen den DSL-Versionen kann sich auf bestimmte Funktionen auswirken',
+    openInExplore: 'In Explore öffnen',
+    onFailure: 'Bei Ausfall',
+    addFailureBranch: 'Fail-Branch hinzufügen',
   },
   env: {
     envPanelTitle: 'Umgebungsvariablen',
@@ -293,6 +296,31 @@ const translation = {
         title: 'Erinnerungen',
         tip: 'Chat-Speicher',
         builtIn: 'Eingebaut',
+      },
+      errorHandle: {
+        none: {
+          title: 'Nichts',
+          desc: 'Der Knoten wird nicht mehr ausgeführt, wenn eine Ausnahme auftritt und nicht behandelt wird',
+        },
+        defaultValue: {
+          title: 'Standardwert',
+          desc: 'Wenn ein Fehler auftritt, geben Sie einen statischen Ausgabeinhalt an.',
+          tip: 'Bei einem Fehler wird der untere Wert zurückgegeben.',
+          inLog: 'Knotenausnahme, Ausgabe nach Vorschlagswerten.',
+          output: 'Standardwert für die Ausgabe',
+        },
+        failBranch: {
+          title: 'Fehlgeschlagener Zweig',
+          desc: 'Wenn ein Fehler auftritt, wird der Ausnahmezweig ausgeführt',
+          customize: 'Wechseln Sie zur Arbeitsfläche, um die Fehlerverzweigungslogik anzupassen.',
+          customizeTip: 'Wenn der Fail-Zweig aktiviert ist, wird der Prozess durch Ausnahmen, die von Knoten ausgelöst werden, nicht beendet. Stattdessen wird automatisch der vordefinierte Fehlerzweig ausgeführt, sodass Sie flexibel Fehlermeldungen, Berichte, Korrekturen oder Überspringen von Aktionen bereitstellen können.',
+          inLog: 'Knotenausnahme, führt den Fail-Zweig automatisch aus. Die Knotenausgabe gibt einen Fehlertyp und eine Fehlermeldung zurück und übergibt sie an den Downstream.',
+        },
+        partialSucceeded: {
+          tip: 'Es gibt {{num}} Knoten im Prozess, die nicht normal laufen, bitte gehen Sie zur Ablaufverfolgung, um die Protokolle zu überprüfen.',
+        },
+        title: 'Fehlerbehandlung',
+        tip: 'Ausnahmebehandlungsstrategie, die ausgelöst wird, wenn ein Knoten auf eine Ausnahme stößt.',
       },
     },
     start: {
