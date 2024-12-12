@@ -591,7 +591,9 @@ const StepTwo = ({
                   activeHeaderClassName='bg-gradient-to-r from-[#EFF0F9] to-[#F9FAFB]'
                   description={t('datasetCreation.stepTwo.generalTip')}
                   isActive={
-                    [ChuckingMode.text, ChuckingMode.qa].includes(docForm)
+                    [ChuckingMode.text, ChuckingMode.qa].includes(
+                      datasetId ? currentDataset!.doc_form : docForm,
+                    )
                   }
                   onSwitched={() =>
                     handleChangeDocform(ChuckingMode.text)
@@ -692,7 +694,9 @@ const StepTwo = ({
                   effectImg={OrangeEffect.src}
                   activeHeaderClassName='bg-gradient-to-r from-[#F9F1EE] to-[#F9FAFB]'
                   description={t('datasetCreation.stepTwo.parentChildTip')}
-                  isActive={docForm === ChuckingMode.parentChild}
+                  isActive={
+                    datasetId ? currentDataset!.doc_form === ChuckingMode.parentChild : docForm === ChuckingMode.parentChild
+                  }
                   onSwitched={() => handleChangeDocform(ChuckingMode.parentChild)}
                   actions={
                     <>
