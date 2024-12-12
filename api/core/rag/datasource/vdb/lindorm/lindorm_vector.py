@@ -42,9 +42,7 @@ class LindormVectorStoreConfig(BaseModel):
         return values
 
     def to_opensearch_params(self) -> dict[str, Any]:
-        params = {
-            "hosts": self.hosts
-        }
+        params = {"hosts": self.hosts}
         if self.username and self.password:
             params["http_auth"] = (self.username, self.password)
         return params
@@ -109,11 +107,7 @@ class LindormVectorStore(BaseVector):
     def get_ids_by_metadata_field(self, key: str, value: str):
         query = {"query": {"bool": {"must": [{"term": {f"{Field.METADATA_KEY.value}.{key}.keyword": value}}]}}}
         if self._using_ugc:
-            query["query"]["bool"]["must"].append(
-                {
-                    "term": {f"{self._routing_field}.keyword": self._routing}
-                }
-            )
+            query["query"]["bool"]["must"].append({"term": {f"{self._routing_field}.keyword": self._routing}})
         response = self._client.search(index=self._collection_name, body=query)
         if response["hits"]["hits"]:
             return [hit["_id"] for hit in response["hits"]["hits"]]
@@ -142,11 +136,7 @@ class LindormVectorStore(BaseVector):
     def delete(self) -> None:
         if self._using_ugc:
             routing_filter_query = {
-                "query": {"bool": {
-                    "must": [{
-                        "term": {f"{self._routing_field}.keyword": self._routing
-                                 }}]
-                }}
+                "query": {"bool": {"must": [{"term": {f"{self._routing_field}.keyword": self._routing}}]}}
             }
             self._client.delete_by_query(self._collection_name, body=routing_filter_query)
             self.refresh()
@@ -364,24 +354,21 @@ def default_text_mapping(dimension: int, method_name: str, **kwargs: Any) -> dic
 
 
 def default_text_search_query(
-        query_text: str,
-        k: int = 4,
-        text_field: str = Field.CONTENT_KEY.value,
-        must: Optional[list[dict]] = None,
-        must_not: Optional[list[dict]] = None,
-        should: Optional[list[dict]] = None,
-        minimum_should_match: int = 0,
-        filters: Optional[list[dict]] = None,
-        routing: Optional[str] = None,
-        routing_field: Optional[str] = None,
-        **kwargs,
+    query_text: str,
+    k: int = 4,
+    text_field: str = Field.CONTENT_KEY.value,
+    must: Optional[list[dict]] = None,
+    must_not: Optional[list[dict]] = None,
+    should: Optional[list[dict]] = None,
+    minimum_should_match: int = 0,
+    filters: Optional[list[dict]] = None,
+    routing: Optional[str] = None,
+    routing_field: Optional[str] = None,
+    **kwargs,
 ) -> dict:
     if routing is not None:
         query_clause = {
-            "bool": {
-                "must": [{"match": {text_field: query_text}},
-                         {"term": {f"{routing_field}.keyword": routing}}]
-            }
+            "bool": {"must": [{"match": {text_field: query_text}}, {"term": {f"{routing_field}.keyword": routing}}]}
         }
     else:
         query_clause = {"match": {text_field: query_text}}
@@ -423,17 +410,17 @@ def default_text_search_query(
 
 
 def default_vector_search_query(
-        query_vector: list[float],
-        k: int = 4,
-        min_score: str = "0.0",
-        ef_search: Optional[str] = None,  # only for hnsw
-        nprobe: Optional[str] = None,  # "2000"
-        reorder_factor: Optional[str] = None,  # "20"
-        client_refactor: Optional[str] = None,  # "true"
-        vector_field: str = Field.VECTOR.value,
-        filters: Optional[list[dict]] = None,
-        filter_type: Optional[str] = None,
-        **kwargs,
+    query_vector: list[float],
+    k: int = 4,
+    min_score: str = "0.0",
+    ef_search: Optional[str] = None,  # only for hnsw
+    nprobe: Optional[str] = None,  # "2000"
+    reorder_factor: Optional[str] = None,  # "20"
+    client_refactor: Optional[str] = None,  # "true"
+    vector_field: str = Field.VECTOR.value,
+    filters: Optional[list[dict]] = None,
+    filter_type: Optional[str] = None,
+    **kwargs,
 ) -> dict:
     if filters is not None:
         filter_type = "post_filter" if filter_type is None else filter_type
