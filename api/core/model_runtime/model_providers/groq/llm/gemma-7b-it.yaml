@@ -1,13 +1,13 @@
-model: llama-3.2-11b-text-preview
+model: gemma-7b-it
 label:
-  zh_Hans: Llama 3.2 11B Text (Preview)
-  en_US: Llama 3.2 11B Text (Preview)
+  zh_Hans: Gemma 7B Instruction Tuned
+  en_US: Gemma 7B Instruction Tuned
 model_type: llm
 features:
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 131072
+  context_size: 8192
 parameter_rules:
   - name: temperature
     use_template: temperature
