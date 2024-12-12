@@ -16,7 +16,7 @@ from google.generativeai.types.content_types import to_part
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
-    DocumentPromptMessageContent,
+    PromptMessageContent,
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContentType,
@@ -334,9 +334,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
 
         return message_text
 
-    def _upload_file_content_to_google(
-        self, message_content: ImagePromptMessageContent | VideoPromptMessageContent | DocumentPromptMessageContent
-    ) -> File:
+    def _upload_file_content_to_google(self, message_content: PromptMessageContent) -> File:
         key = f"{message_content.type.value}:{hash(message_content.data)}"
         if redis_client.exists(key):
             try:
