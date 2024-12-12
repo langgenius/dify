@@ -77,6 +77,7 @@ const Form: FC<FormProps> = ({
       provider: model.provider,
       model: model.modelId,
       mode: model.mode,
+      type: FormTypeEnum.modelSelector,
     }
     onChange({ ...value, [key]: newValue })
   }, [onChange, value])
@@ -286,7 +287,6 @@ const Form: FC<FormProps> = ({
         label,
         required,
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
-
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
@@ -303,7 +303,7 @@ const Form: FC<FormProps> = ({
             isAdvancedMode
             isInWorkflow
             provider={value[variable]?.provider}
-            modelId={value[variable]?.name}
+            modelId={value[variable]?.model}
             mode={value[variable]?.mode}
             completionParams={value[variable]?.completion_params}
             setModel={model => handleModelChanged(variable, model)}
@@ -368,7 +368,7 @@ const Form: FC<FormProps> = ({
           <AppSelector
             disabled={readonly}
             value={value[variable]}
-            onSelect={item => handleFormChange(variable, item as any)}
+            onSelect={item => handleFormChange(variable, { ...item, type: FormTypeEnum.appSelector } as any)}
           />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
