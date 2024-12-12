@@ -1,7 +1,7 @@
 from typing import Any, Generator, Optional, Sequence
 
 from core.agent.entities import AgentInvokeMessage
-from core.agent.plugin_entities import AgentStrategyParameter, AgentStrategyEntity
+from core.agent.plugin_entities import AgentStrategyEntity, AgentStrategyParameter
 from core.agent.strategy.base import BaseAgentStrategy
 from core.plugin.manager.agent import PluginAgentManager
 from core.tools.plugin_tool.tool import PluginTool
