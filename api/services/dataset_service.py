@@ -1926,7 +1926,7 @@ class SegmentService:
             dataset_id=dataset_id,
             document_id=document_id,
             segment_id=segment_id,
-        )
+        ).order_by(ChildChunk.position.asc())
         if keyword:
             query = query.where(ChildChunk.content.ilike(f"%{keyword}%"))
         return query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
