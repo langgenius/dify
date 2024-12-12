@@ -29,7 +29,6 @@ import type {
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import './style.css'
-import { useContextSelector } from 'use-context-selector'
 import type {
   Edge,
   EnvironmentVariable,
@@ -96,7 +95,6 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import Confirm from '@/app/components/base/confirm'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { fetchFileUploadConfig } from '@/service/common'
-import AppContext from '@/context/app-context'
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -117,7 +115,6 @@ const Workflow: FC<WorkflowProps> = memo(({
   edges: originalEdges,
   viewport,
 }) => {
-  const theme = useContextSelector(AppContext, v => v.theme)
   const workflowContainerRef = useRef<HTMLDivElement>(null)
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
