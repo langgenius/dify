@@ -141,6 +141,11 @@ const translation = {
   importFromDSLUrl: 'यूआरएल से',
   importFromDSL: 'DSL से आयात करें',
   importFromDSLUrlPlaceholder: 'डीएसएल लिंक यहां पेस्ट करें',
+  mermaid: {
+    handDrawn: 'हाथ खींचा',
+    classic: 'क्लासिक',
+  },
+  openInExplore: 'एक्सप्लोर में खोलें',
 }
 
 export default translation

@@ -140,6 +140,11 @@ const translation = {
   importFromDSL: '從 DSL 導入',
   importFromDSLFile: '從 DSL 檔',
   importFromDSLUrlPlaceholder: '在此處粘貼 DSL 連結',
+  mermaid: {
+    handDrawn: '手繪',
+    classic: '經典',
+  },
+  openInExplore: '在“探索”中打開',
 }
 
 export default translation

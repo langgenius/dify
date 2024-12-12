@@ -141,6 +141,11 @@ const translation = {
   importFromDSL: 'Nhập từ DSL',
   importFromDSLUrlPlaceholder: 'Dán liên kết DSL vào đây',
   importFromDSLUrl: 'Từ URL',
+  mermaid: {
+    handDrawn: 'Vẽ tay',
+    classic: 'Cổ điển',
+  },
+  openInExplore: 'Mở trong Khám phá',
 }
 
 export default translation
