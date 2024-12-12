@@ -43,6 +43,6 @@ class AzureASRTool(BuiltinTool):
             )
 
         return [
-            self.create_text_message(data.get("combinedPhrases", [])[0].get("text", "")),
+            self.create_text_message(combinedPhrases[0].get("text", "")),
             self.create_json_message(data),
         ]
