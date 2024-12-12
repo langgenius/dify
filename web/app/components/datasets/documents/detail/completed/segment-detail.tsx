@@ -10,6 +10,7 @@ import ChunkContent from './common/chunk-content'
 import Keywords from './common/keywords'
 import RegenerationModal from './common/regeneration-modal'
 import { SegmentIndexTag } from './common/segment-index-tag'
+import Dot from './common/dot'
 import { useSegmentListContext } from './index'
 import type { SegmentDetailModel } from '@/models/datasets'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -86,7 +87,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
           <div className='text-text-primary system-xl-semibold'>{isEditMode ? 'Edit Chunk' : 'Chunk Detail'}</div>
           <div className='flex items-center gap-x-2'>
             <SegmentIndexTag positionId={segInfo?.position || ''} labelPrefix={`${isParentChildMode ? 'Parent-' : ''}Chunk`} />
-            <span className='text-text-quaternary system-xs-medium'>·</span>
+            <Dot />
             <span className='text-text-tertiary system-xs-medium'>{formatNumber(isEditMode ? question.length : segInfo?.word_count as number)} {t('datasetDocuments.segment.characters')}</span>
           </div>
         </div>

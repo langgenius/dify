@@ -11,6 +11,7 @@ import ActionButtons from './completed/common/action-buttons'
 import Keywords from './completed/common/keywords'
 import ChunkContent from './completed/common/chunk-content'
 import AddAnother from './completed/common/add-another'
+import Dot from './completed/common/dot'
 import { useDocumentContext } from './index'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
@@ -118,7 +119,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
           }</div>
           <div className='flex items-center gap-x-2'>
             <SegmentIndexTag label={'New Chunk'} />
-            <span className='text-text-quaternary system-xs-medium'>·</span>
+            <Dot />
             <span className='text-text-tertiary system-xs-medium'>{formatNumber(question.length)} {t('datasetDocuments.segment.characters')}</span>
           </div>
         </div>

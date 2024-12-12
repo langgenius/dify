@@ -15,6 +15,7 @@ import SegmentCard from './segment-card'
 import ChildSegmentList from './child-segment-list'
 import NewChildSegment from './new-child-segment'
 import FullScreenDrawer from './common/full-screen-drawer'
+import ChildSegmentDetail from './child-segment-detail'
 import Pagination from '@/app/components/base/pagination'
 import cn from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
@@ -37,6 +38,7 @@ import {
   useEnableSegment,
   useSegmentList,
   useSegmentListKey,
+  useUpdateChildSegment,
 } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
 
@@ -48,7 +50,11 @@ type SegmentListContextValue = {
   toggleFullScreen: (fullscreen?: boolean) => void
 }
 
-const SegmentListContext = createContext<SegmentListContextValue>({} as SegmentListContextValue)
+const SegmentListContext = createContext<SegmentListContextValue>({
+  isCollapsed: true,
+  fullScreen: false,
+  toggleFullScreen: () => {},
+})
 
 export const useSegmentListContext = (selector: (value: SegmentListContextValue) => any) => {
   return useContextSelector(SegmentListContext, selector)
@@ -181,10 +187,10 @@ const Completed: FC<ICompletedProps> = ({
     setCurrSegment({ segInfo: detail, showModal: true, isEditMode })
   }
 
-  const onCloseDrawer = () => {
+  const onCloseSegmentDetail = useCallback(() => {
     setCurrSegment({ ...currSegment, showModal: false })
     setFullScreen(false)
-  }
+  }, [currSegment])
 
   const { mutateAsync: enableSegment } = useEnableSegment()
   const { mutateAsync: disableSegment } = useDisableSegment()
@@ -258,7 +264,7 @@ const Completed: FC<ICompletedProps> = ({
       const res = await updateSegment({ datasetId, documentId, segmentId, body: params })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       if (!needRegenerate)
-        onCloseDrawer()
+        onCloseSegmentDetail()
       for (const seg of segments) {
         if (seg.id === segmentId) {
           seg.answer = res.data.answer
@@ -378,7 +384,61 @@ const Completed: FC<ICompletedProps> = ({
 
   const onClickSlice = useCallback((detail: ChildChunkDetail) => {
     setCurrChildChunk({ childChunkInfo: detail, showModal: true })
+    setCurrChunkId(detail.segment_id)
   }, [])
+
+  const onCloseChildSegmentDetail = useCallback(() => {
+    setCurrChildChunk({ ...currChildChunk, showModal: false })
+    setFullScreen(false)
+  }, [currChildChunk])
+
+  const { mutateAsync: updateChildSegment } = useUpdateChildSegment()
+
+  const handleUpdateChildChunk = async (
+    segmentId: string,
+    childChunkId: string,
+    content: string,
+  ) => {
+    const params: SegmentUpdater = { content: '' }
+    if (!content.trim())
+      return notify({ type: 'error', message: t('datasetDocuments.segment.contentEmpty') })
+
+    params.content = content
+
+    try {
+      eventEmitter?.emit('update-child-segment')
+      const res = await updateChildSegment({ datasetId, documentId, segmentId, childChunkId, body: params })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      onCloseChildSegmentDetail()
+      if (parentMode === 'paragraph') {
+        for (const seg of segments) {
+          if (seg.id === segmentId) {
+            for (const childSeg of seg.child_chunks!) {
+              if (childSeg.id === childChunkId) {
+                childSeg.content = res.data.content
+                childSeg.type = res.data.type
+                childSeg.word_count = res.data.word_count
+              }
+            }
+          }
+        }
+        setSegments([...segments])
+      }
+      else {
+        for (const childSeg of childSegments) {
+          if (childSeg.id === childChunkId) {
+            childSeg.content = res.data.content
+            childSeg.type = res.data.type
+            childSeg.word_count = res.data.word_count
+          }
+        }
+        setChildSegments([...childSegments])
+      }
+    }
+    finally {
+      eventEmitter?.emit('update-child-segment-done')
+    }
+  }
 
   return (
     <SegmentListContext.Provider value={{
@@ -469,7 +529,7 @@ const Completed: FC<ICompletedProps> = ({
           docForm={docForm}
           isEditMode={currSegment.isEditMode}
           onUpdate={handleUpdateSegment}
-          onCancel={onCloseDrawer}
+          onCancel={onCloseSegmentDetail}
         />
       </FullScreenDrawer>
       {/* Create New Segment */}
@@ -485,6 +545,19 @@ const Completed: FC<ICompletedProps> = ({
           }}
           onSave={resetList}
           viewNewlyAddedChunk={viewNewlyAddedChunk}
+        />
+      </FullScreenDrawer>
+      {/* Edit or view child segment detail */}
+      <FullScreenDrawer
+        isOpen={currChildChunk.showModal}
+        fullScreen={fullScreen}
+      >
+        <ChildSegmentDetail
+          chunkId={currChunkId}
+          childChunkInfo={currChildChunk.childChunkInfo ?? { id: '' }}
+          docForm={docForm}
+          onUpdate={handleUpdateChildChunk}
+          onCancel={onCloseChildSegmentDetail}
         />
       </FullScreenDrawer>
       {/* Create New Child Segment */}

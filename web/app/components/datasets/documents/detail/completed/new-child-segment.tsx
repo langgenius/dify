@@ -9,6 +9,7 @@ import { SegmentIndexTag } from './common/segment-index-tag'
 import ActionButtons from './common/action-buttons'
 import ChunkContent from './common/chunk-content'
 import AddAnother from './common/add-another'
+import Dot from './common/dot'
 import { useSegmentListContext } from './index'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
@@ -98,7 +99,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
           }</div>
           <div className='flex items-center gap-x-2'>
             <SegmentIndexTag label={'New Child Chunk'} />
-            <span className='text-text-quaternary system-xs-medium'>·</span>
+            <Dot />
             <span className='text-text-tertiary system-xs-medium'>{formatNumber(content.length)} {t('datasetDocuments.segment.characters')}</span>
           </div>
         </div>
@@ -111,6 +112,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
                 handleSave={handleSave}
                 loading={loading}
                 actionType='add'
+                isChildChunk={true}
               />
               <Divider type='vertical' className='h-3.5 bg-divider-regular ml-4 mr-2' />
             </>
@@ -141,6 +143,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
             handleSave={handleSave}
             loading={loading}
             actionType='add'
+            isChildChunk={true}
           />
         </div>
       )}

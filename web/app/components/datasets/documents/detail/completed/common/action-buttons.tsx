@@ -11,6 +11,7 @@ type IActionButtonsProps = {
   loading: boolean
   actionType?: 'edit' | 'add'
   handleRegeneration?: () => void
+  isChildChunk?: boolean
 }
 
 const ActionButtons: FC<IActionButtonsProps> = ({
@@ -19,6 +20,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
   loading,
   actionType = 'edit',
   handleRegeneration,
+  isChildChunk = false,
 }) => {
   const { t } = useTranslation()
   const [mode, parentMode] = useDocumentContext(s => [s.mode, s.parentMode])
@@ -50,7 +52,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
           <span className='px-[1px] bg-components-kbd-bg-gray rounded-[4px] text-text-tertiary system-kbd'>ESC</span>
         </div>
       </Button>
-      {(isParentChildParagraphMode && actionType === 'edit')
+      {(isParentChildParagraphMode && actionType === 'edit' && !isChildChunk)
         ? <Button
           onClick={handleRegeneration}
           disabled={loading}
