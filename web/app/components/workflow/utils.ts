@@ -796,3 +796,7 @@ export const isExceptionVariable = (variable: string, nodeType?: BlockEnum) => {
 
   return false
 }
+
+export const hasRetryNode = (nodeType?: BlockEnum) => {
+  return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest
+}
