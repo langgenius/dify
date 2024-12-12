@@ -1,8 +1,7 @@
-model: llama-3.1-70b-versatile
-deprecated: true
+model: llama-3.3-70b-specdec
 label:
-  zh_Hans: Llama-3.1-70b-versatile (DEPRECATED)
-  en_US: Llama-3.1-70b-versatile (DEPRECATED)
+  zh_Hans: Llama 3.3 70b Speculative Decoding  (PREVIEW)
+  en_US: Llama 3.3 70b Speculative Decoding (PREVIEW)
 model_type: llm
 features:
   - agent-thought
