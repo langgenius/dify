@@ -52,6 +52,7 @@ const translation = {
     },
     variables: 'Spremenljivke',
     uploadImages: 'Naložene slike',
+    modelParams: 'Parametri modela',
   },
   filter: {
     period: {
