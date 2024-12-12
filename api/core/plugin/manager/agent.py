@@ -10,7 +10,7 @@ from core.plugin.manager.base import BasePluginManager
 
 
 class PluginAgentManager(BasePluginManager):
-    def fetch_agent_providers(self, tenant_id: str) -> list[PluginAgentProviderEntity]:
+    def fetch_agent_strategy_providers(self, tenant_id: str) -> list[PluginAgentProviderEntity]:
         """
         Fetch agent providers for the given tenant.
         """
@@ -26,7 +26,7 @@ class PluginAgentManager(BasePluginManager):
 
         response = self._request_with_plugin_daemon_response(
             "GET",
-            f"plugin/{tenant_id}/management/agents",
+            f"plugin/{tenant_id}/management/agent_strategies",
             list[PluginAgentProviderEntity],
             params={"page": 1, "page_size": 256},
             transformer=transformer,
@@ -41,7 +41,7 @@ class PluginAgentManager(BasePluginManager):
 
         return response
 
-    def fetch_agent_provider(self, tenant_id: str, provider: str) -> PluginAgentProviderEntity:
+    def fetch_agent_strategy_provider(self, tenant_id: str, provider: str) -> PluginAgentProviderEntity:
         """
         Fetch tool provider for the given tenant and plugin.
         """
@@ -55,7 +55,7 @@ class PluginAgentManager(BasePluginManager):
 
         response = self._request_with_plugin_daemon_response(
             "GET",
-            f"plugin/{tenant_id}/management/agent",
+            f"plugin/{tenant_id}/management/agent_strategy",
             PluginAgentProviderEntity,
             params={"provider": agent_provider_id.provider_name, "plugin_id": agent_provider_id.plugin_id},
             transformer=transformer,
@@ -96,9 +96,9 @@ class PluginAgentManager(BasePluginManager):
                 "app_id": app_id,
                 "message_id": message_id,
                 "data": {
-                    "provider": agent_provider_id.provider_name,
-                    "strategy": agent_strategy,
-                    "agent_params": agent_params,
+                    "agent_strategy_provider": agent_provider_id.provider_name,
+                    "agent_strategy": agent_strategy,
+                    "agent_strategy_params": agent_params,
                 },
             },
             headers={

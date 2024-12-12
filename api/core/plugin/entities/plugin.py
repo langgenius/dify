@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
+from core.agent.plugin_entities import AgentStrategyProviderEntity
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.base import BasePluginEntity
 from core.plugin.entities.endpoint import EndpointProviderDeclaration
@@ -59,6 +60,7 @@ class PluginCategory(enum.StrEnum):
     Tool = "tool"
     Model = "model"
     Extension = "extension"
+    AgentStrategy = "agent_strategy"
 
 
 class PluginDeclaration(BaseModel):
@@ -82,6 +84,7 @@ class PluginDeclaration(BaseModel):
     tool: Optional[ToolProviderEntity] = None
     model: Optional[ProviderEntity] = None
     endpoint: Optional[EndpointProviderDeclaration] = None
+    agent_strategy: Optional[AgentStrategyProviderEntity] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -91,6 +94,8 @@ class PluginDeclaration(BaseModel):
             values["category"] = PluginCategory.Tool
         elif values.get("model"):
             values["category"] = PluginCategory.Model
+        elif values.get("agent_strategy"):
+            values["category"] = PluginCategory.AgentStrategy
         else:
             values["category"] = PluginCategory.Extension
         return values

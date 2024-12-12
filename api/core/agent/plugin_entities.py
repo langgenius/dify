@@ -6,26 +6,26 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolIdentity, ToolParameter, ToolProviderIdentity
 
 
-class AgentProviderIdentity(ToolProviderIdentity):
+class AgentStrategyProviderIdentity(ToolProviderIdentity):
     pass
 
 
-class AgentParameter(ToolParameter):
+class AgentStrategyParameter(ToolParameter):
     pass
 
 
-class AgentProviderEntity(BaseModel):
-    identity: AgentProviderIdentity
+class AgentStrategyProviderEntity(BaseModel):
+    identity: AgentStrategyProviderIdentity
     plugin_id: Optional[str] = Field(None, description="The id of the plugin")
 
 
-class AgentIdentity(ToolIdentity):
+class AgentStrategyIdentity(ToolIdentity):
     pass
 
 
 class AgentStrategyEntity(BaseModel):
-    identity: AgentIdentity
-    parameters: list[AgentParameter] = Field(default_factory=list)
+    identity: AgentStrategyIdentity
+    parameters: list[AgentStrategyParameter] = Field(default_factory=list)
     description: I18nObject = Field(..., description="The description of the agent strategy")
     output_schema: Optional[dict] = None
 
@@ -34,9 +34,9 @@ class AgentStrategyEntity(BaseModel):
 
     @field_validator("parameters", mode="before")
     @classmethod
-    def set_parameters(cls, v, validation_info: ValidationInfo) -> list[AgentParameter]:
+    def set_parameters(cls, v, validation_info: ValidationInfo) -> list[AgentStrategyParameter]:
         return v or []
 
 
-class AgentProviderEntityWithPlugin(AgentProviderEntity):
+class AgentProviderEntityWithPlugin(AgentStrategyProviderEntity):
     strategies: list[AgentStrategyEntity] = Field(default_factory=list)

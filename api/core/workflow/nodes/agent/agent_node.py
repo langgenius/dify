@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from typing import Any, Sequence, cast
 
-from core.agent.plugin_entities import AgentParameter
+from core.agent.plugin_entities import AgentStrategyParameter
 from core.plugin.manager.exc import PluginDaemonClientSideError
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
@@ -90,7 +90,7 @@ class AgentNode(ToolNode):
     def _generate_parameters(
         self,
         *,
-        agent_parameters: Sequence[AgentParameter],
+        agent_parameters: Sequence[AgentStrategyParameter],
         variable_pool: VariablePool,
         node_data: AgentNodeData,
         for_log: bool = False,

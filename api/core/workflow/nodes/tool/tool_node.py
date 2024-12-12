@@ -246,7 +246,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                 )
             elif message.type == ToolInvokeMessage.MessageType.TEXT:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-                text += message.message.text + "\n"
+                text += message.message.text
                 yield RunStreamChunkEvent(
                     chunk_content=message.message.text, from_variable_selector=[self.node_id, "text"]
                 )

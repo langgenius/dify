@@ -43,7 +43,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         # invoke model
         response = model_instance.invoke_llm(
             prompt_messages=payload.prompt_messages,
-            model_parameters=payload.model_parameters,
+            model_parameters=payload.completion_params,
             tools=payload.tools,
             stop=payload.stop,
             stream=payload.stream or True,

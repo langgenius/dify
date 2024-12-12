@@ -160,7 +160,7 @@ class AgentService:
         List agent providers
         """
         manager = PluginAgentManager()
-        return manager.fetch_agent_providers(tenant_id)
+        return manager.fetch_agent_strategy_providers(tenant_id)
 
     @classmethod
     def get_agent_provider(cls, user_id: str, tenant_id: str, provider_name: str):
@@ -168,4 +168,4 @@ class AgentService:
         Get agent provider
         """
         manager = PluginAgentManager()
-        return manager.fetch_agent_provider(tenant_id, provider_name)
+        return manager.fetch_agent_strategy_provider(tenant_id, provider_name)

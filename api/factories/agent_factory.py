@@ -7,7 +7,7 @@ def get_plugin_agent_strategy(
 ) -> PluginAgentStrategy:
     # TODO: use contexts to cache the agent provider
     manager = PluginAgentManager()
-    agent_provider = manager.fetch_agent_provider(tenant_id, agent_strategy_provider_name)
+    agent_provider = manager.fetch_agent_strategy_provider(tenant_id, agent_strategy_provider_name)
     for agent_strategy in agent_provider.declaration.strategies:
         if agent_strategy.identity.name == agent_strategy_name:
             return PluginAgentStrategy(tenant_id, plugin_unique_identifier, agent_strategy)
