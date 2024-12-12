@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Generator, Optional, Sequence
 
 from core.agent.entities import AgentInvokeMessage
-from core.agent.plugin_entities import AgentParameter
+from core.agent.plugin_entities import AgentStrategyParameter
 
 
 class BaseAgentStrategy(ABC):
@@ -23,7 +23,7 @@ class BaseAgentStrategy(ABC):
         """
         yield from self._invoke(params, user_id, conversation_id, app_id, message_id)
 
-    def get_parameters(self) -> Sequence[AgentParameter]:
+    def get_parameters(self) -> Sequence[AgentStrategyParameter]:
         """
         Get the parameters for the agent strategy.
         """

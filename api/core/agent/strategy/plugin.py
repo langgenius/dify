@@ -1,7 +1,7 @@
 from typing import Any, Generator, Optional, Sequence
 
 from core.agent.entities import AgentInvokeMessage
-from core.agent.plugin_entities import AgentParameter, AgentStrategyEntity
+from core.agent.plugin_entities import AgentStrategyEntity, AgentStrategyParameter
 from core.agent.strategy.base import BaseAgentStrategy
 from core.plugin.manager.agent import PluginAgentManager
 from core.tools.plugin_tool.tool import PluginTool
@@ -21,7 +21,7 @@ class PluginAgentStrategy(BaseAgentStrategy):
         self.plugin_unique_identifier = plugin_unique_identifier
         self.declaration = declaration
 
-    def get_parameters(self) -> Sequence[AgentParameter]:
+    def get_parameters(self) -> Sequence[AgentStrategyParameter]:
         return self.declaration.parameters
 
     def _invoke(
