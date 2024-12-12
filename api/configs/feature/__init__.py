@@ -23,7 +23,8 @@ class SecurityConfig(BaseSettings):
     SECRET_KEY: str = Field(
         description="Secret key for secure session cookie signing."
         "Make sure you are changing this key for your deployment with a strong key."
-        "Generate a strong key using `openssl rand -base64 42` or set via the `SECRET_KEY` environment variable.",
+        "Generate a strong key using `openssl rand -base64 42` "
+        "or set via the `SECRET_KEY` environment variable.",
         default="",
     )
 
@@ -767,6 +768,18 @@ class LoginConfig(BaseSettings):
     )
 
 
+class PrometheusConfig(BaseSettings):
+    HISTOGRAM_BUCKETS_1MIN: list[float] = Field(
+        description="The buckets of Prometheus histogram under 1 minute",
+        default=[0.1, 0.2, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 25, 30, 40, 50, 60],
+    )
+
+    HISTOGRAM_BUCKETS_5MIN: list[float] = Field(
+        description="The buckets of Prometheus histogram under 5 minute",
+        default=[0.1, 0.2, 0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 25, 30, 40, 50, 60, 120, 180, 300],
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -794,6 +807,7 @@ class FeatureConfig(
     WorkflowNodeExecutionConfig,
     WorkspaceConfig,
     LoginConfig,
+    PrometheusConfig,
     # hosted services config
     HostedServiceConfig,
     CeleryBeatConfig,

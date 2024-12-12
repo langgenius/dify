@@ -26,6 +26,7 @@ if [[ "${MODE}" == "worker" ]]; then
 elif [[ "${MODE}" == "beat" ]]; then
   exec celery -A app.celery beat --loglevel ${LOG_LEVEL}
 else
+  mkdir "${PROMETHEUS_MULTIPROC_DIR}"
   if [[ "${DEBUG}" == "true" ]]; then
     exec flask run --host=${DIFY_BIND_ADDRESS:-0.0.0.0} --port=${DIFY_PORT:-5001} --debug
   else

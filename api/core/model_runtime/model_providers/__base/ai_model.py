@@ -31,6 +31,7 @@ class AIModel(ABC):
     model_type: ModelType
     model_schemas: Optional[list[AIModelEntity]] = None
     started_at: float = 0
+    last_chunked_at: float = 0
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())

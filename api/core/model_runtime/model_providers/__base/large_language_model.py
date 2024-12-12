@@ -10,6 +10,7 @@ from pydantic import ConfigDict
 from configs import dify_config
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.callbacks.logging_callback import LoggingCallback
+from core.model_runtime.callbacks.metrics_callback import MetricsCallback
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -74,8 +75,10 @@ class LargeLanguageModel(AIModel):
         model_parameters = self._validate_and_filter_model_parameters(model, model_parameters, credentials)
 
         self.started_at = time.perf_counter()
+        self.last_chunked_at = self.started_at
 
         callbacks = callbacks or []
+        callbacks.append(MetricsCallback())
 
         if dify_config.DEBUG:
             callbacks.append(LoggingCallback())
@@ -429,6 +432,14 @@ if you are not sure about the structure.
             for chunk in result:
                 yield chunk
 
+                if chunk.delta.usage:
+                    usage = chunk.delta.usage
+                else:
+                    chunk.delta.usage = LLMUsage.empty_usage()
+                    now = time.perf_counter()
+                    chunk.delta.usage.latency = now - self.last_chunked_at
+                    self.last_chunked_at = now
+
                 self._trigger_new_chunk_callbacks(
                     chunk=chunk,
                     model=model,
@@ -444,8 +455,6 @@ if you are not sure about the structure.
 
                 prompt_message.content += chunk.delta.message.content
                 real_model = chunk.model
-                if chunk.delta.usage:
-                    usage = chunk.delta.usage
 
                 if chunk.system_fingerprint:
                     system_fingerprint = chunk.system_fingerprint

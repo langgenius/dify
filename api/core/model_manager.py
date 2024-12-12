@@ -2,6 +2,8 @@ import logging
 from collections.abc import Callable, Generator, Iterable, Sequence
 from typing import IO, Any, Optional, Union, cast
 
+from prometheus_client import Counter, Histogram
+
 from configs import dify_config
 from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
@@ -25,6 +27,25 @@ from extensions.ext_redis import redis_client
 from models.provider import ProviderType
 
 logger = logging.getLogger(__name__)
+
+model_request_total_counter = Counter(
+    name="model_request_total_counter",
+    documentation="The total count of model requests",
+    labelnames=["model_type", "provider", "model", "method"],
+)
+model_request_failed_counter = Counter(
+    name="model_request_failed_counter",
+    documentation="The failed count of model requests",
+    labelnames=["model_type", "provider", "model", "method"],
+)
+model_request_latency = Histogram(
+    name="model_request_latency",
+    documentation="The latency of model requests. For the LLM model, it just indicate "
+    "the TTFT (a.k.a. Time To First Token).",
+    unit="seconds",
+    labelnames=["model_type", "provider", "model", "method"],
+    buckets=dify_config.HISTOGRAM_BUCKETS_1MIN,
+)
 
 
 class ModelInstance:
@@ -298,6 +319,30 @@ class ModelInstance:
             voice=voice,
         )
 
+    def _invoke_with_timeit(self, function: Callable[..., Any], *args, **kwargs):
+        with model_request_latency.labels(
+            model_type=self.model_type_instance.model_type.value,
+            provider=self.provider,
+            model=self.model,
+            method=function.__name__ if hasattr(function, "__name__") else "unknown",
+        ).time():
+            model_request_total_counter.labels(
+                model_type=self.model_type_instance.model_type.value,
+                provider=self.provider,
+                model=self.model,
+                method=function.__name__ if hasattr(function, "__name__") else "unknown",
+            ).inc()
+            try:
+                return function(*args, **kwargs)
+            except Exception as e:
+                model_request_failed_counter.labels(
+                    model_type=self.model_type_instance.model_type.value,
+                    provider=self.provider,
+                    model=self.model,
+                    method=function.__name__ if hasattr(function, "__name__") else "unknown",
+                ).inc()
+                raise e
+
     def _round_robin_invoke(self, function: Callable[..., Any], *args, **kwargs):
         """
         Round-robin invoke
@@ -307,7 +352,7 @@ class ModelInstance:
         :return:
         """
         if not self.load_balancing_manager:
-            return function(*args, **kwargs)
+            return self._invoke_with_timeit(function, *args, **kwargs)
 
         last_exception = None
         while True:
@@ -321,7 +366,7 @@ class ModelInstance:
             try:
                 if "credentials" in kwargs:
                     del kwargs["credentials"]
-                return function(*args, **kwargs, credentials=lb_config.credentials)
+                return self._invoke_with_timeit(function, *args, **kwargs, credentials=lb_config.credentials)
             except InvokeRateLimitError as e:
                 # expire in 60 seconds
                 self.load_balancing_manager.cooldown(lb_config, expire=60)

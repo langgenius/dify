@@ -39,6 +39,14 @@ from core.app.entities.task_entities import (
     MessageEndStreamResponse,
     StreamResponse,
 )
+from core.app.task_pipeline import (
+    app_input_tokens,
+    app_output_tokens,
+    app_request,
+    app_request_failed,
+    app_request_latency,
+    app_total_tokens,
+)
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
 from core.model_manager import ModelInstance
@@ -251,6 +259,47 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
         if publisher:
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
 
+    def _chat_time_it(self, is_success: bool) -> None:
+        """
+        Record chat / completion / agent run metrics.
+        """
+        app_id = self._app_config.app_id
+        tenant_id = self._app_config.tenant_id
+        username = self._conversation.from_account_name
+        app_request.labels(
+            app_id=app_id,
+            tenant_id=tenant_id,
+            username=username,
+        ).inc()
+
+        if not is_success:
+            app_request_failed.labels(
+                app_id=app_id,
+                tenant_id=tenant_id,
+                username=username,
+            ).inc()
+            return
+        app_request_latency.labels(
+            app_id=app_id,
+            tenant_id=tenant_id,
+            username=username,
+        ).observe(self._message.provider_response_latency)
+        app_input_tokens.labels(
+            app_id=app_id,
+            tenant_id=tenant_id,
+            username=username,
+        ).inc(self._message.message_tokens)
+        app_output_tokens.labels(
+            app_id=app_id,
+            tenant_id=tenant_id,
+            username=username,
+        ).inc(self._message.answer_tokens)
+        app_total_tokens.labels(
+            app_id=app_id,
+            tenant_id=tenant_id,
+            username=username,
+        ).inc(self._message.message_tokens + self._message.answer_tokens)
+
     def _process_stream_response(
         self, publisher: AppGeneratorTTSPublisher, trace_manager: Optional[TraceQueueManager] = None
     ) -> Generator[StreamResponse, None, None]:
@@ -265,6 +314,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
 
             if isinstance(event, QueueErrorEvent):
                 err = self._handle_error(event, self._message)
+                self._chat_time_it(is_success=False)
                 yield self._error_to_stream_response(err)
                 break
             elif isinstance(event, QueueStopEvent | QueueMessageEndEvent):
@@ -283,6 +333,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
 
                 # Save message
                 self._save_message(trace_manager)
+                self._chat_time_it(is_success=True)
 
                 yield self._message_end_to_stream_response()
             elif isinstance(event, QueueRetrieverResourcesEvent):

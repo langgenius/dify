@@ -35,6 +35,14 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
     WorkflowTaskState,
 )
+from core.app.task_pipeline import (
+    app_input_tokens,
+    app_output_tokens,
+    app_request,
+    app_request_failed,
+    app_request_latency,
+    app_total_tokens,
+)
 from core.file import FILE_MODEL_IDENTITY, File
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.entities.trace_entity import TraceTaskName
@@ -42,6 +50,7 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.tools.tool_manager import ToolManager
 from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.enums import SystemVariableKey
+from core.workflow.graph_engine import GraphRuntimeState
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.workflow_entry import WorkflowEntry
@@ -118,6 +127,33 @@ class WorkflowCycleManage:
             session.commit()
 
         return workflow_run
+
+    def _workflow_time_it(
+        self, is_success: bool, graph_runtime_state: GraphRuntimeState, workflow_run: WorkflowRun
+    ) -> None:
+        """
+        Record advanced-chat / workflow run metrics.
+        """
+        app_id = workflow_run.app_id
+        tenant_id = workflow_run.tenant_id
+        username = self._user.name
+        app_request.labels(app_id=app_id, tenant_id=tenant_id, username=username).inc()
+
+        if not is_success:
+            app_request_failed.labels(app_id=app_id, tenant_id=tenant_id, username=username).inc()
+            return
+        app_request_latency.labels(app_id=app_id, tenant_id=tenant_id, username=username).observe(
+            workflow_run.elapsed_time
+        )
+        app_input_tokens.labels(app_id=app_id, tenant_id=tenant_id, username=username).inc(
+            graph_runtime_state.llm_usage.prompt_tokens
+        )
+        app_output_tokens.labels(app_id=app_id, tenant_id=tenant_id, username=username).inc(
+            graph_runtime_state.llm_usage.completion_tokens
+        )
+        app_total_tokens.labels(app_id=app_id, tenant_id=tenant_id, username=username).inc(
+            graph_runtime_state.llm_usage.total_tokens
+        )
 
     def _handle_workflow_run_success(
         self,

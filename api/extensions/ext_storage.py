@@ -1,8 +1,10 @@
 import logging
 from collections.abc import Callable, Generator
+from functools import wraps
 from typing import Union
 
 from flask import Flask
+from prometheus_client import Counter, Histogram
 
 from configs import dify_config
 from dify_app import DifyApp
@@ -10,6 +12,39 @@ from extensions.storage.base_storage import BaseStorage
 from extensions.storage.storage_type import StorageType
 
 logger = logging.getLogger(__name__)
+
+storage_request_latency = Histogram(
+    name="storage_request_latency",
+    documentation="The latency of storage requests",
+    unit="seconds",
+    labelnames=["method", "provider"],
+)
+
+storage_request_total_counter = Counter(
+    name="storage_request_total_counter",
+    documentation="The total count of storage requests",
+    labelnames=["method", "provider"],
+)
+
+storage_request_failed_counter = Counter(
+    name="storage_request_failed_counter",
+    documentation="The failed count of storage requests",
+    labelnames=["method", "provider"],
+)
+
+
+def timeit(func):
+    @wraps(func)
+    def decorator(*args, **kwargs):
+        with storage_request_latency.labels(method=func.__name__, provider=dify_config.STORAGE_TYPE).time():
+            storage_request_total_counter.labels(method=func.__name__, provider=dify_config.STORAGE_TYPE).inc()
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                storage_request_failed_counter.labels(method=func.__name__, provider=dify_config.STORAGE_TYPE).inc()
+                raise e
+
+    return decorator
 
 
 class Storage:
@@ -72,6 +107,7 @@ class Storage:
             case _:
                 raise ValueError(f"unsupported storage type {storage_type}")
 
+    @timeit
     def save(self, filename, data):
         try:
             self.storage_runner.save(filename, data)
@@ -79,6 +115,7 @@ class Storage:
             logger.exception(f"Failed to save file {filename}")
             raise e
 
+    @timeit
     def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
         try:
             if stream:
@@ -89,6 +126,7 @@ class Storage:
             logger.exception(f"Failed to load file {filename}")
             raise e
 
+    @timeit
     def load_once(self, filename: str) -> bytes:
         try:
             return self.storage_runner.load_once(filename)
@@ -96,6 +134,7 @@ class Storage:
             logger.exception(f"Failed to load_once file {filename}")
             raise e
 
+    @timeit
     def load_stream(self, filename: str) -> Generator:
         try:
             return self.storage_runner.load_stream(filename)
@@ -103,6 +142,7 @@ class Storage:
             logger.exception(f"Failed to load_stream file {filename}")
             raise e
 
+    @timeit
     def download(self, filename, target_filepath):
         try:
             self.storage_runner.download(filename, target_filepath)
@@ -110,6 +150,7 @@ class Storage:
             logger.exception(f"Failed to download file {filename}")
             raise e
 
+    @timeit
     def exists(self, filename):
         try:
             return self.storage_runner.exists(filename)
@@ -117,6 +158,7 @@ class Storage:
             logger.exception(f"Failed to check file exists {filename}")
             raise e
 
+    @timeit
     def delete(self, filename):
         try:
             return self.storage_runner.delete(filename)

@@ -4,9 +4,11 @@ from copy import deepcopy
 from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Optional, Union
 
+from prometheus_client import Counter, Histogram
 from pydantic import BaseModel, ConfigDict, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
+from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.entities.tool_entities import (
     ToolDescription,
@@ -23,6 +25,22 @@ from core.tools.tool_file_manager import ToolFileManager
 
 if TYPE_CHECKING:
     from core.file.models import File
+
+tool_request_total_counter = Counter(
+    name="tool_request_total_counter", documentation="The total count of tool requests", labelnames=["provider", "tool"]
+)
+tool_request_failed_counter = Counter(
+    name="tool_request_failed_counter",
+    documentation="The failed count of tool requests",
+    labelnames=["provider", "tool"],
+)
+tool_request_latency = Histogram(
+    name="tool_request_latency",
+    documentation="The latency of tool requests",
+    unit="seconds",
+    labelnames=["provider", "tool"],
+    buckets=dify_config.HISTOGRAM_BUCKETS_5MIN,
+)
 
 
 class Tool(BaseModel, ABC):
@@ -206,10 +224,17 @@ class Tool(BaseModel, ABC):
         # try parse tool parameters into the correct type
         tool_parameters = self._transform_tool_parameters_type(tool_parameters)
 
-        result = self._invoke(
-            user_id=user_id,
-            tool_parameters=tool_parameters,
-        )
+        result = []
+        with tool_request_latency.labels(provider=self.identity.provider, tool=self.identity.name).time():
+            tool_request_total_counter.labels(provider=self.identity.provider, tool=self.identity.name).inc()
+            try:
+                result = self._invoke(
+                    user_id=user_id,
+                    tool_parameters=tool_parameters,
+                )
+            except Exception as e:
+                tool_request_failed_counter.labels(provider=self.identity.provider, tool=self.identity.name).inc()
+                raise e
 
         if not isinstance(result, list):
             result = [result]
