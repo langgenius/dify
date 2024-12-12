@@ -2,12 +2,12 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiDeleteBinLine } from '@remixicon/react'
-import { Edit02 } from '../../base/icons/src/vender/line/general'
+import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import type { AnnotationItem } from './type'
 import RemoveAnnotationConfirmModal from './remove-annotation-confirm-modal'
-import cn from '@/utils/classnames'
+import ActionButton from '@/app/components/base/action-button'
 import useTimestamp from '@/hooks/use-timestamp'
+import cn from '@/utils/classnames'
 
 type Props = {
   list: AnnotationItem[]
@@ -59,26 +59,18 @@ const List: FC<Props> = ({
               <td className='p-3 pr-2'>{item.hit_count}</td>
               <td className='w-[96px] p-3 pr-2' onClick={e => e.stopPropagation()}>
                 {/* Actions */}
-                <div className='flex space-x-2 text-gray-500'>
-                  <div
-                    className='p-1 cursor-pointer rounded-md hover:bg-black/5'
-                    onClick={
-                      () => {
-                        onView(item)
-                      }
-                    }
-                  >
-                    <Edit02 className='w-4 h-4' />
-                  </div>
-                  <div
-                    className='p-1 cursor-pointer rounded-md hover:bg-black/5'
+                <div className='flex space-x-1 text-text-tertiary'>
+                  <ActionButton onClick={() => onView(item)}>
+                    <RiEditLine className='w-4 h-4' />
+                  </ActionButton>
+                  <ActionButton
                     onClick={() => {
                       setCurrId(item.id)
                       setShowConfirmDelete(true)
                     }}
                   >
                     <RiDeleteBinLine className='w-4 h-4' />
-                  </div>
+                  </ActionButton>
                 </div>
               </td>
             </tr>

@@ -128,7 +128,7 @@ const translation = {
     inUse: '使用中',
     configProvider: {
       title: '配置 ',
-      placeholder: 'あなた様の{{key}}を入力しでください',
+      placeholder: 'あなた様の{{key}}を入力してください',
       project: 'プロジェクト',
       publicKey: '公開キー',
       secretKey: '秘密キー',
@@ -142,6 +142,10 @@ const translation = {
     title: 'Webアプリアイコンを使用して🤖を置き換える',
     description: '共有アプリケーションの中で Webアプリアイコンを使用して🤖を置き換えるかどうか',
     descriptionInExplore: 'ExploreでWebアプリアイコンを使用して🤖を置き換えるかどうか',
+  },
+  mermaid: {
+    handDrawn: '手描き',
+    classic: 'クラシック',
   },
 }
 

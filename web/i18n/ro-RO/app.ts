@@ -141,6 +141,11 @@ const translation = {
   importFromDSLUrl: 'De la URL',
   importFromDSLUrlPlaceholder: 'Lipiți linkul DSL aici',
   importFromDSLFile: 'Din fișierul DSL',
+  mermaid: {
+    handDrawn: 'Desenat de mână',
+    classic: 'Clasic',
+  },
+  openInExplore: 'Deschide în Explorează',
 }
 
 export default translation

@@ -27,7 +27,7 @@ const translation = {
     type: 'タイプ',
     category: 'カテゴリー',
     add: '追加',
-    added: '追加されだ',
+    added: '追加された',
     manageInTools: 'ツールリストに移動して管理する',
     emptyTitle: '利用可能なワークフローツールはありません',
     emptyTip: '追加するには、「ワークフロー -> ツールとして公開 」に移動する',
