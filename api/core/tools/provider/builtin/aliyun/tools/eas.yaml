@@ -7,7 +7,7 @@ identity:
 description:
   human:
     en_US: Aliyun PAI EAS
-    zh_Hans: Aliyun PAI EAS工具
+    zh_Hans: 阿里云PAI EAS工具
   llm: A tool for request an elastic algorithm service(EAS). Input contains endpoint url, token and query.
 parameters:
   - name: eas_endpoint_url
@@ -41,5 +41,5 @@ parameters:
     human_description:
       en_US: eas query used for calling
       zh_Hans: 用于服务调用的请求数据
-    llm_description: query for request, the input data format depends on the api defination.
+    llm_description: query for request, the input data format depends on the api definition.
     form: llm
