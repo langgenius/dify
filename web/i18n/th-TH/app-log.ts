@@ -52,6 +52,7 @@ const translation = {
     variables: 'ตัว แปร',
     uploadImages: 'รูปภาพที่อัปโหลด',
     timeConsuming: '',
+    modelParams: 'พารามิเตอร์แบบจําลอง',
   },
   filter: {
     period: {

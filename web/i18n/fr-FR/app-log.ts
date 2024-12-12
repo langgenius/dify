@@ -52,6 +52,7 @@ const translation = {
     },
     variables: 'Variables',
     uploadImages: 'Images téléchargées',
+    modelParams: 'Paramètres du modèle',
   },
   filter: {
     period: {
