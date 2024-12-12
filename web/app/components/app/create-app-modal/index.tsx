@@ -240,7 +240,11 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
           <AppPreview mode={appMode} />
           <div className='absolute left-0 right-0 border-b border-b-divider-subtle'></div>
           <div className='w-[664px] h-[448px] flex items-center justify-center' style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(16,24,40,0.04) 4px,transparent 3px, transparent 6px)' }}>
-            <AppScreenShot mode={appMode} />
+            <AppScreenShot show={appMode === 'chat'} mode='chat' />
+            <AppScreenShot show={appMode === 'advanced-chat'} mode='advanced-chat' />
+            <AppScreenShot show={appMode === 'agent-chat'} mode='agent-chat' />
+            <AppScreenShot show={appMode === 'completion'} mode='completion' />
+            <AppScreenShot show={appMode === 'workflow'} mode='workflow' />
           </div>
           <div className='absolute left-0 right-0 border-b border-b-divider-subtle'></div>
         </div>
@@ -341,7 +345,7 @@ function AppPreview({ mode }: { mode: AppMode }) {
   </div>
 }
 
-function AppScreenShot({ mode }: { mode: AppMode }) {
+function AppScreenShot({ mode, show }: { mode: AppMode; show: boolean }) {
   const theme = useContextSelector(AppsContext, state => state.theme)
   const modeToImageMap = {
     'chat': 'Chatbot',
@@ -354,7 +358,7 @@ function AppScreenShot({ mode }: { mode: AppMode }) {
     <source media="(resolution: 1x)" srcSet={`/screenshots/${theme}/${modeToImageMap[mode]}.png`} />
     <source media="(resolution: 2x)" srcSet={`/screenshots/${theme}/${modeToImageMap[mode]}@2x.png`} />
     <source media="(resolution: 3x)" srcSet={`/screenshots/${theme}/${modeToImageMap[mode]}@3x.png`} />
-    <Image
+    <Image className={show ? '' : 'hidden'}
       src={`/screenshots/${theme}/${modeToImageMap[mode]}.png`}
       alt='App Screen Shot'
       width={664} height={448} />
