@@ -1,12 +1,12 @@
 from collections.abc import Generator
-from typing import Generic, Optional, TypeVar
+from typing import Generic, Mapping, Optional, TypeVar
 
 from pydantic import BaseModel
 
 
 class BaseBackwardsInvocation:
     @classmethod
-    def convert_to_event_stream(cls, response: Generator[BaseModel | dict | str, None, None] | BaseModel | dict):
+    def convert_to_event_stream(cls, response: Generator[BaseModel | Mapping | str, None, None] | BaseModel | Mapping):
         if isinstance(response, Generator):
             try:
                 for chunk in response:
@@ -21,7 +21,7 @@ class BaseBackwardsInvocation:
             yield BaseBackwardsInvocationResponse(data=response).model_dump_json().encode() + b"\n\n"
 
 
-T = TypeVar("T", bound=dict | str | bool | int | BaseModel)
+T = TypeVar("T", bound=dict | Mapping | str | bool | int | BaseModel)
 
 
 class BaseBackwardsInvocationResponse(BaseModel, Generic[T]):
