@@ -141,7 +141,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   if (!appDetail) {
     return (
-      <div className='flex h-full items-center justify-center bg-white'>
+      <div className='flex h-full items-center justify-center bg-background-body'>
         <Loading />
       </div>
     )
@@ -152,7 +152,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       {appDetail && (
         <AppSideBar title={appDetail.name} icon={appDetail.icon} icon_background={appDetail.icon_background} desc={appDetail.mode} navigation={navigation} />
       )}
-      <div className="bg-white grow overflow-hidden">
+      <div className="bg-components-panel-bg grow overflow-hidden">
         {children}
       </div>
     </div>
