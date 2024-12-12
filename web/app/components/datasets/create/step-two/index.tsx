@@ -174,7 +174,20 @@ const StepTwo = ({
   )
 
   const [previewFile, setPreviewFile] = useState<DocumentItem>(
-    (datasetId && documentDetail) ? documentDetail.file : files[0],
+    (datasetId && documentDetail)
+      ? documentDetail.file
+      : files[0],
+  )
+  const [previewNotionPage, setPreviewNotionPage] = useState<NotionPage>(
+    (datasetId && documentDetail)
+      ? documentDetail.notion_page
+      : notionPages[0],
+  )
+
+  const [previewWebsitePage, setPreviewWebsitePage] = useState<CrawlResultItem>(
+    (datasetId && documentDetail)
+      ? documentDetail.website_page
+      : websitePages[0],
   )
 
   // QA Related
@@ -252,7 +265,7 @@ const StepTwo = ({
     docForm,
     docLanguage,
     dataSourceType: DataSourceType.NOTION,
-    notionPages,
+    notionPages: [previewNotionPage],
     indexingTechnique: getIndexing_technique() as any,
     processRule: getProcessRule(),
     dataset_id: datasetId || '',
@@ -262,7 +275,7 @@ const StepTwo = ({
     docForm,
     docLanguage,
     dataSourceType: DataSourceType.WEB,
-    websitePages,
+    websitePages: [previewWebsitePage],
     crawlOptions,
     websiteCrawlProvider,
     websiteCrawlJobId,
@@ -992,21 +1005,67 @@ const StepTwo = ({
             title='Preview'
           >
             <div className='flex items-center gap-2'>
-              {files.length && <>
-                <PreviewDocumentPicker
+              {dataSourceType === DataSourceType.FILE
+                && <PreviewDocumentPicker
                   files={files as Array<Required<CustomFile>>}
                   onChange={(selected) => {
                     currentEstimateMutation.reset()
                     setPreviewFile(selected)
                     currentEstimateMutation.mutate()
                   }}
-                  value={previewFile!}
+                  value={previewFile}
                 />
-                <Badge text={t(
-                  'datasetCreation.stepTwo.previewChunkCount', {
-                    count: estimate?.preview.length || estimate?.qa_preview?.length || 0,
-                  }) as string} />
-              </>}
+              }
+              {dataSourceType === DataSourceType.NOTION
+                && <PreviewDocumentPicker
+                  files={
+                    notionPages.map(page => ({
+                      id: page.page_id,
+                      name: page.page_name,
+                      extension: 'md',
+                    }))
+                  }
+                  onChange={(selected) => {
+                    currentEstimateMutation.reset()
+                    const selectedPage = notionPages.find(page => page.page_id === selected.id)
+                    setPreviewNotionPage(selectedPage!)
+                    currentEstimateMutation.mutate()
+                  }}
+                  value={{
+                    id: previewNotionPage?.page_id || '',
+                    name: previewNotionPage?.page_name || '',
+                    extension: 'md',
+                  }}
+                />
+              }
+              {dataSourceType === DataSourceType.WEB
+                && <PreviewDocumentPicker
+                  files={
+                    websitePages.map(page => ({
+                      id: page.source_url,
+                      name: page.title,
+                      extension: 'md',
+                    }))
+                  }
+                  onChange={(selected) => {
+                    currentEstimateMutation.reset()
+                    const selectedPage = websitePages.find(page => page.source_url === selected.id)
+                    setPreviewWebsitePage(selectedPage!)
+                    currentEstimateMutation.mutate()
+                  }}
+                  value={
+                    {
+                      id: previewWebsitePage?.source_url || '',
+                      name: previewWebsitePage?.title || '',
+                      extension: 'md',
+                    }
+                  }
+                />
+              }
+              <Badge text={t(
+                'datasetCreation.stepTwo.previewChunkCount', {
+                  count: estimate?.preview.length || estimate?.qa_preview?.length || 0,
+                }) as string} />
             </div>
           </PreviewHeader>}
           className={cn(s.previewWrap, isMobile && s.isMobile, 'relative h-full overflow-y-scroll')}
