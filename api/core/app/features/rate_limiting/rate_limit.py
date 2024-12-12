@@ -110,7 +110,7 @@ class RateLimitGenerator:
             raise StopIteration
         try:
             return next(self.generator)
-        except StopIteration:
+        except Exception:
             self.close()
             raise
 

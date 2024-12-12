@@ -137,6 +137,11 @@ const translation = {
       removeConfirmContent: 'การกําหนดค่าปัจจุบันกําลังใช้งาน การลบออกจะเป็นการปิดคุณสมบัติการติดตาม',
     },
   },
+  mermaid: {
+    handDrawn: 'วาดด้วยมือ',
+    classic: 'คลาสสิก',
+  },
+  openInExplore: 'เปิดใน Explore',
 }
 
 export default translation

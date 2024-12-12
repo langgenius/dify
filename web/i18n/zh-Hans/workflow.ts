@@ -103,6 +103,7 @@ const translation = {
     branch: '分支',
     onFailure: '异常时',
     addFailureBranch: '添加异常分支',
+    openInExplore: '在“探索”中打开',
   },
   env: {
     envPanelTitle: '环境变量',

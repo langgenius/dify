@@ -58,8 +58,14 @@ class OpenDALStorage(BaseStorage):
         with Path(target_filepath).open("wb") as f:
             f.write(self.op.read(path=filename))
 
-    def exists(self, filename: str):
-        return self.op.stat(path=filename).mode.is_file()
+    def exists(self, filename: str) -> bool:
+        # FIXME this is a workaround for opendal python-binding do not have a exists method and no better
+        # error handler here when opendal python-binding has a exists method, we should use it
+        # more https://github.com/apache/opendal/blob/main/bindings/python/src/operator.rs
+        try:
+            return self.op.stat(path=filename).mode.is_file()
+        except Exception as e:
+            return False
 
     def delete(self, filename: str):
         if self.exists(filename):
