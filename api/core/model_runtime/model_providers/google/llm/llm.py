@@ -16,9 +16,9 @@ from google.generativeai.types.content_types import to_part
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
-    PromptMessageContent,
     ImagePromptMessageContent,
     PromptMessage,
+    PromptMessageContent,
     PromptMessageContentType,
     PromptMessageTool,
     SystemPromptMessage,
