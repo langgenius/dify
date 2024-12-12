@@ -170,4 +170,22 @@ class IterationRunFailedEvent(BaseIterationEvent):
     error: str = Field(..., description="failed reason")
 
 
-InNodeEvent = BaseNodeEvent | BaseParallelBranchEvent | BaseIterationEvent
+###########################################
+# Agent Events
+###########################################
+
+
+class BaseAgentEvent(GraphEngineEvent):
+    pass
+
+
+class AgentLogEvent(BaseAgentEvent):
+    id: str = Field(..., description="id")
+    node_execution_id: str = Field(..., description="node execution id")
+    parent_id: str | None = Field(..., description="parent id")
+    error: str | None = Field(..., description="error")
+    status: str = Field(..., description="status")
+    data: Mapping[str, Any] = Field(..., description="data")
+
+
+InNodeEvent = BaseNodeEvent | BaseParallelBranchEvent | BaseIterationEvent | BaseAgentEvent

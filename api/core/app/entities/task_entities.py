@@ -59,6 +59,7 @@ class StreamEvent(Enum):
     ITERATION_COMPLETED = "iteration_completed"
     TEXT_CHUNK = "text_chunk"
     TEXT_REPLACE = "text_replace"
+    AGENT_LOG = "agent_log"
 
 
 class StreamResponse(BaseModel):
@@ -624,4 +625,25 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
         finished_at: int
 
     workflow_run_id: str
+    data: Data
+
+
+class AgentLogStreamResponse(StreamResponse):
+    """
+    AgentLogStreamResponse entity
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        node_execution_id: str
+        id: str
+        parent_id: str | None
+        error: str | None
+        status: str
+        data: Mapping[str, Any]
+
+    event: StreamEvent = StreamEvent.AGENT_LOG
     data: Data
