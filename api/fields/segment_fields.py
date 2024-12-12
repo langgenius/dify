@@ -10,6 +10,7 @@ child_chunk_fields = {
     "word_count": fields.Integer,
     "type": fields.String,
     "created_at": TimestampField,
+    "updated_at": TimestampField,
 }
 
 segment_fields = {
