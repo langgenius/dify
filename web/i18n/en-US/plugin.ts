@@ -3,6 +3,7 @@ const translation = {
     all: 'All',
     models: 'Models',
     tools: 'Tools',
+    agents: 'Agent Strategy',
     extensions: 'Extensions',
     bundles: 'Bundles',
   },
