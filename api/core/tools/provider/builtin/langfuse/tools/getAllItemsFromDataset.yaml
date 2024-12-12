@@ -108,4 +108,3 @@ parameters:
       en_US: The limit of items in each page.
       zh_Hans: 每页的item个数。
     form: form
-    

@@ -64,4 +64,3 @@ parameters:
       en_US: The version of the prompt to be retrieved.
       zh_Hans: 要查询的提示词的版本号。
     form: llm
-    
