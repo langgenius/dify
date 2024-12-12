@@ -56,17 +56,6 @@ class ToolNode(BaseNode[ToolNodeData]):
             "plugin_unique_identifier": node_data.plugin_unique_identifier,
         }
 
-        yield AgentLogEvent(
-            id=self.node_id,
-            node_execution_id=self.id,
-            parent_id=None,
-            error=None,
-            status="running",
-            data={
-                "tool_info": tool_info,
-            },
-        )
-
         # get tool runtime
         try:
             tool_runtime = ToolManager.get_workflow_tool_runtime(
@@ -289,6 +278,16 @@ class ToolNode(BaseNode[ToolNodeData]):
             elif message.type == ToolInvokeMessage.MessageType.FILE:
                 assert message.meta is not None
                 files.append(message.meta["file"])
+            elif message.type == ToolInvokeMessage.MessageType.LOG:
+                assert isinstance(message.message, ToolInvokeMessage.LogMessage)
+                yield AgentLogEvent(
+                    id=message.message.id,
+                    node_execution_id=self.id,
+                    parent_id=message.message.parent_id,
+                    error=message.message.error,
+                    status=message.message.status.value,
+                    data=message.message.data,
+                )
 
         yield RunCompletedEvent(
             run_result=NodeRunResult(

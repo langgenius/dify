@@ -287,12 +287,12 @@ class WorkflowCycleManage:
         process_data = WorkflowEntry.handle_special_values(event.process_data)
         outputs = WorkflowEntry.handle_special_values(event.outputs)
         execution_metadata_dict = event.execution_metadata
-        if self._wip_workflow_agent_logs.get(event.node_execution_id):
+        if self._wip_workflow_agent_logs.get(workflow_node_execution.id):
             if not execution_metadata_dict:
                 execution_metadata_dict = {}
 
             execution_metadata_dict[NodeRunMetadataKey.AGENT_LOG] = self._wip_workflow_agent_logs.get(
-                event.node_execution_id, []
+                workflow_node_execution.id, []
             )
 
         execution_metadata = json.dumps(jsonable_encoder(execution_metadata_dict)) if execution_metadata_dict else None
@@ -343,12 +343,12 @@ class WorkflowCycleManage:
         finished_at = datetime.now(UTC).replace(tzinfo=None)
         elapsed_time = (finished_at - event.start_at).total_seconds()
         execution_metadata_dict = event.execution_metadata
-        if self._wip_workflow_agent_logs.get(event.node_execution_id):
+        if self._wip_workflow_agent_logs.get(workflow_node_execution.id):
             if not execution_metadata_dict:
                 execution_metadata_dict = {}
 
             execution_metadata_dict[NodeRunMetadataKey.AGENT_LOG] = self._wip_workflow_agent_logs.get(
-                event.node_execution_id, []
+                workflow_node_execution.id, []
             )
 
         execution_metadata = json.dumps(jsonable_encoder(execution_metadata_dict)) if execution_metadata_dict else None
