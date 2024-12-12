@@ -16,6 +16,7 @@ from core.variables.variables import ArrayAnyVariable
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
+from core.workflow.graph_engine.entities.event import AgentLogEvent
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import RunCompletedEvent, RunStreamChunkEvent
@@ -54,6 +55,17 @@ class ToolNode(BaseNode[ToolNodeData]):
             "provider_id": node_data.provider_id,
             "plugin_unique_identifier": node_data.plugin_unique_identifier,
         }
+
+        yield AgentLogEvent(
+            id=self.node_id,
+            node_execution_id=self.id,
+            parent_id=None,
+            error=None,
+            status="running",
+            data={
+                "tool_info": tool_info,
+            },
+        )
 
         # get tool runtime
         try:

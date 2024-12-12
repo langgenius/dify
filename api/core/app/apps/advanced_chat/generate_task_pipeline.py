@@ -13,6 +13,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.queue_entities import (
     QueueAdvancedChatMessageEndEvent,
+    QueueAgentLogEvent,
     QueueAnnotationReplyEvent,
     QueueErrorEvent,
     QueueIterationCompletedEvent,
@@ -124,6 +125,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
         self._task_state = WorkflowTaskState()
         self._wip_workflow_node_executions = {}
+        self._wip_workflow_agent_logs = {}
 
         self._conversation_name_generate_thread = None
         self._recorded_files: list[Mapping[str, Any]] = []
@@ -244,7 +246,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 else:
                     start_listener_time = time.time()
                     yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
-            except Exception as e:
+            except Exception:
                 logger.exception(f"Failed to listen audio message, task_id: {task_id}")
                 break
         if tts_publisher:
@@ -493,6 +495,8 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 self._save_message(graph_runtime_state=graph_runtime_state)
 
                 yield self._message_end_to_stream_response()
+            elif isinstance(event, QueueAgentLogEvent):
+                yield self._handle_agent_log(task_id=self._application_generate_entity.task_id, event=event)
             else:
                 continue
 

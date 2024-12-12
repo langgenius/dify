@@ -1,7 +1,7 @@
 import base64
 import enum
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any, Mapping, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator
 
@@ -150,6 +150,18 @@ class ToolInvokeMessage(BaseModel):
                 raise ValueError(f"The variable name '{value}' is reserved.")
             return value
 
+    class LogMessage(BaseModel):
+        class LogStatus(Enum):
+            START = "start"
+            ERROR = "error"
+            SUCCESS = "success"
+
+        id: str
+        parent_id: Optional[str] = Field(default=None, description="Leave empty for root log")
+        error: Optional[str] = Field(default=None, description="The error message")
+        status: LogStatus = Field(..., description="The status of the log")
+        data: Mapping[str, Any] = Field(..., description="Detailed log data")
+
     class MessageType(Enum):
         TEXT = "text"
         IMAGE = "image"
@@ -160,12 +172,13 @@ class ToolInvokeMessage(BaseModel):
         BINARY_LINK = "binary_link"
         VARIABLE = "variable"
         FILE = "file"
+        LOG = "log"
 
     type: MessageType = MessageType.TEXT
     """
         plain text, image url or link url
     """
-    message: JsonMessage | TextMessage | BlobMessage | VariableMessage | FileMessage | None
+    message: JsonMessage | TextMessage | BlobMessage | VariableMessage | FileMessage | LogMessage | None
     meta: dict[str, Any] | None = None
 
     @field_validator("message", mode="before")

@@ -152,7 +152,7 @@ class GraphEngine:
                     elif isinstance(item, NodeRunSucceededEvent):
                         if item.node_type == NodeType.END:
                             self.graph_runtime_state.outputs = (
-                                item.route_node_state.node_run_result.outputs
+                                dict(item.route_node_state.node_run_result.outputs)
                                 if item.route_node_state.node_run_result
                                 and item.route_node_state.node_run_result.outputs
                                 else {}

@@ -11,6 +11,7 @@ from core.app.entities.app_invoke_entities import (
     WorkflowAppGenerateEntity,
 )
 from core.app.entities.queue_entities import (
+    QueueAgentLogEvent,
     QueueErrorEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
@@ -106,6 +107,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
         self._task_state = WorkflowTaskState()
         self._wip_workflow_node_executions = {}
+        self._wip_workflow_agent_logs = {}
         self.total_tokens: int = 0
 
     def process(self) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
@@ -216,7 +218,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                     break
                 else:
                     yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
-            except Exception as e:
+            except Exception:
                 logger.exception(f"Fails to get audio trunk, task_id: {task_id}")
                 break
         if tts_publisher:
@@ -387,6 +389,8 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 yield self._text_chunk_to_stream_response(
                     delta_text, from_variable_selector=event.from_variable_selector
                 )
+            elif isinstance(event, QueueAgentLogEvent):
+                yield self._handle_agent_log(task_id=self._application_generate_entity.task_id, event=event)
             else:
                 continue
 
