@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import useSWR from 'swr'
+import classNames from 'classnames'
 import s from './index.module.css'
 import cn from '@/utils/classnames'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
@@ -249,18 +250,18 @@ const FileUploader = ({
         />
       )}
 
-      <div className={cn(s.title, titleClassName)}>{t('datasetCreation.stepOne.uploader.title')}</div>
+      <div className={cn(s.title, titleClassName, 'text-text-secondary')}>{t('datasetCreation.stepOne.uploader.title')}</div>
       {!hideUpload && (
 
-        <div ref={dropRef} className={cn(s.uploader, dragging && s.dragging)}>
+        <div ref={dropRef} className={cn(s.uploader, dragging && '', 'bg-components-dropzone-bg border border-components-dropzone-border')}>
           <div className='flex justify-center items-center min-h-6 mb-2'>
-            <span className={s.uploadIcon} />
-            <span>
+            <span className={classNames(s.uploadIcon, 'text-text-tertiary')} />
+            <span className='text-text-secondary'>
               {t('datasetCreation.stepOne.uploader.button')}
               <label className={s.browse} onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
             </span>
           </div>
-          <div className={s.tip}>{t('datasetCreation.stepOne.uploader.tip', {
+          <div className={classNames(s.tip, 'text-text-tertiary')}>{t('datasetCreation.stepOne.uploader.tip', {
             size: fileUploadConfig.file_size_limit,
             supportTypes: supportTypesShowNames,
           })}</div>

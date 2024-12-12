@@ -6,13 +6,11 @@
   font-weight: 600;
   font-size: 18px;
   line-height: 28px;
-  color: #101828;
 }
 
 .form {
   position: relative;
   padding: 12px 64px;
-  background-color: #fff;
 }
 
 .dataSourceItem {

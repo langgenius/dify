@@ -7,14 +7,12 @@
   font-weight: 500;
   font-size: 16px;
   line-height: 24px;
-  color: #344054;
 }
 
 .fileUploader .tip {
   font-weight: 400;
   font-size: 12px;
   line-height: 18px;
-  color: #667085;
 }
 
 .uploader {
@@ -22,18 +20,10 @@
   flex-direction: column;
   max-width: 640px;
   min-height: 80px;
-  background: #F9FAFB;
-  border: 1px dashed #EAECF0;
   border-radius: 12px;
   font-weight: 400;
   font-size: 14px;
   line-height: 20px;
-  color: #667085;
-}
-
-.uploader.dragging {
-  background: #F5F8FF;
-  border: 1px dashed #B2CCFF;
 }
 
 .uploader .draggingCover {
