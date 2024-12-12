@@ -992,19 +992,21 @@ const StepTwo = ({
             title='Preview'
           >
             <div className='flex items-center gap-2'>
-              <PreviewDocumentPicker
-                files={files as Array<Required<CustomFile>>}
-                onChange={(selected) => {
-                  currentEstimateMutation.reset()
-                  setPreviewFile(selected)
-                  currentEstimateMutation.mutate()
-                }}
-                value={previewFile!}
-              />
-              <Badge text={t(
-                'datasetCreation.stepTwo.previewChunkCount', {
-                  count: estimate?.preview.length || estimate?.qa_preview?.length || 0,
-                }) as string} />
+              {files.length && <>
+                <PreviewDocumentPicker
+                  files={files as Array<Required<CustomFile>>}
+                  onChange={(selected) => {
+                    currentEstimateMutation.reset()
+                    setPreviewFile(selected)
+                    currentEstimateMutation.mutate()
+                  }}
+                  value={previewFile!}
+                />
+                <Badge text={t(
+                  'datasetCreation.stepTwo.previewChunkCount', {
+                    count: estimate?.preview.length || estimate?.qa_preview?.length || 0,
+                  }) as string} />
+              </>}
             </div>
           </PreviewHeader>}
           className={cn(s.previewWrap, isMobile && s.isMobile, 'relative h-full overflow-y-scroll')}

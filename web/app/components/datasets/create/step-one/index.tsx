@@ -17,6 +17,7 @@ import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
+import classNames from '@/utils/classnames'
 
 type IStepOneProps = {
   datasetId?: string
@@ -128,10 +129,10 @@ const StepOne = ({
       <div className='grow overflow-y-auto relative'>
         {
           shouldShowDataSourceTypeList && (
-            <div className={s.stepHeader}>{t('datasetCreation.steps.one')}</div>
+            <div className={classNames(s.stepHeader, 'text-text-secondary')}>{t('datasetCreation.steps.one')}</div>
           )
         }
-        <div className={s.form}>
+        <div className={classNames(s.form)}>
           {
             shouldShowDataSourceTypeList && (
               <div className='flex items-center mb-8 flex-wrap gap-y-4'>
