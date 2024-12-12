@@ -351,7 +351,7 @@ const translation = {
     addAnother: '连续新增',
     delete: '删除这个分段？',
     chunkAdded: '新增一个分段',
-    viewAddedChunk: '查看',
+    childChunkAdded: '新增一个子分段',
     regenerationConfirmTitle: '是否需要重新生成子分段？',
     regenerationConfirmMessage: '重新生成的子分段将会覆盖当前的子分段，包括编辑过的分段和新添加的分段。重新生成操作无法撤销。',
     regeneratingTitle: '正在生成子分段',

@@ -353,7 +353,7 @@ const translation = {
     addAnother: 'Add another',
     delete: 'Delete this chunk ?',
     chunkAdded: '1 chunk added',
-    viewAddedChunk: 'View',
+    childChunkAdded: '1 child chunk added',
     regenerationConfirmTitle: 'Do you want to regenerate child chunks?',
     regenerationConfirmMessage: 'Regenerating child chunks will overwrite the current child chunks, including edited chunks and newly added chunks. The regeneration cannot be undone.',
     regeneratingTitle: 'Regenerating child chunks',

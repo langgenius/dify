@@ -1,6 +1,5 @@
 import { type FC, useMemo, useState } from 'react'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
-import { FormattedText } from '../../../formatted-text/formatted'
 import { EditSlice } from '../../../formatted-text/flavours/edit-slice'
 import { useDocumentContext } from '../index'
 import type { ChildChunkDetail } from '@/models/datasets'
@@ -10,14 +9,22 @@ import Divider from '@/app/components/base/divider'
 
 type IChildSegmentCardProps = {
   childChunks: ChildChunkDetail[]
-  handleInputChange: (value: string) => void
+  parentChunkId: string
+  handleInputChange?: (value: string) => void
+  handleAddNewChildChunk?: (parentChunkId: string) => void
   enabled: boolean
+  onDelete?: (segId: string, childChunkId: string) => Promise<void>
+  onClickSlice?: (childChunk: ChildChunkDetail) => void
 }
 
 const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   childChunks,
+  parentChunkId,
   handleInputChange,
+  handleAddNewChildChunk,
   enabled,
+  onDelete,
+  onClickSlice,
 }) => {
   const parentMode = useDocumentContext(s => s.parentMode)
 
@@ -62,6 +69,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
             className={classNames('px-1.5 py-1 text-components-button-secondary-accent-text system-xs-semibold', isParagraphMode ? 'hidden group-hover/card:inline-block' : '')}
             onClick={(event) => {
               event.stopPropagation()
+              handleAddNewChildChunk?.(parentChunkId)
             }}
           >
             ADD
@@ -73,25 +81,26 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
             showClearIcon
             wrapperClassName='!w-52'
             value={''}
-            onChange={e => handleInputChange(e.target.value)}
-            onClear={() => handleInputChange('')}
+            onChange={e => handleInputChange?.(e.target.value)}
+            onClear={() => handleInputChange?.('')}
           />
           : null}
       </div>
       {(isFullDocMode || !collapsed)
         ? <div className={classNames('flex gap-x-0.5', isFullDocMode ? 'grow overflow-y-auto' : '')}>
           {isParagraphMode && <Divider type='vertical' className='h-auto w-[2px] mx-[7px] bg-text-accent-secondary' />}
-          <FormattedText className={classNames('w-full !leading-5 flex flex-col', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
+          <div className={classNames('w-full !leading-5 flex flex-col', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
             {childChunks.map((childChunk) => {
+              const edited = childChunk.updated_at !== childChunk.created_at
               return <EditSlice
-                key={childChunk.segment_id}
-                label={`C-${childChunk.position}`}
+                key={childChunk.id}
+                label={`C-${childChunk.position}${edited ? '·EDITED' : ''}`}
                 text={childChunk.content}
-                onDelete={() => {}}
-                className=''
+                onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
+                onClick={() => onClickSlice?.(childChunk)}
               />
             })}
-          </FormattedText>
+          </div>
         </div>
         : null}
     </div>

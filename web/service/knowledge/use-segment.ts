@@ -85,7 +85,7 @@ export const useChildSegmentList = (
   return useQuery({
     queryKey: [...useChildSegmentListKey, datasetId, documentId, segmentId, page, limit, keyword],
     queryFn: () => {
-      return get<ChildSegmentsResponse>(`/datasets/${datasetId}/documents/${documentId}/segment/${segmentId}/child_chunks`, { params })
+      return get<ChildSegmentsResponse>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}/child_chunks`, { params })
     },
     enabled: !disable,
     initialData: disable ? { data: [], total: 0, page: 1, total_pages: 0, limit: 10 } : undefined,
@@ -97,7 +97,7 @@ export const useDeleteChildSegment = () => {
     mutationKey: [NAME_SPACE, 'childChunk', 'delete'],
     mutationFn: (payload: { datasetId: string; documentId: string; segmentId: string; childChunkId: string }) => {
       const { datasetId, documentId, segmentId, childChunkId } = payload
-      return del<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/segment/${segmentId}/child_chunks/${childChunkId}`)
+      return del<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}/child_chunks/${childChunkId}`)
     },
   })
 }
@@ -107,7 +107,17 @@ export const useAddChildSegment = () => {
     mutationKey: [NAME_SPACE, 'childChunk', 'add'],
     mutationFn: (payload: { datasetId: string; documentId: string; segmentId: string; body: { content: string } }) => {
       const { datasetId, documentId, segmentId, body } = payload
-      return post<{ data: ChildChunkDetail }>(`/datasets/${datasetId}/documents/${documentId}/segment/${segmentId}/child_chunks`, { body })
+      return post<{ data: ChildChunkDetail }>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}/child_chunks`, { body })
+    },
+  })
+}
+
+export const useUpdateChildSegment = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'childChunk', 'update'],
+    mutationFn: (payload: { datasetId: string; documentId: string; segmentId: string; childChunkId: string; body: { content: string } }) => {
+      const { datasetId, documentId, segmentId, childChunkId, body } = payload
+      return patch<{ data: ChildChunkDetail }>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}/child_chunks/${childChunkId}`, { body })
     },
   })
 }

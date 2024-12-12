@@ -4,9 +4,9 @@ import AutoHeightTextarea from '@/app/components/base/auto-height-textarea/commo
 
 type IChunkContentProps = {
   question: string
-  answer: string
+  answer?: string
   onQuestionChange: (question: string) => void
-  onAnswerChange: (answer: string) => void
+  onAnswerChange?: (answer: string) => void
   isEditMode?: boolean
   docForm: string
 }
@@ -39,7 +39,7 @@ const ChunkContent: FC<IChunkContentProps> = ({
           className='leading-6 text-md text-gray-800'
           value={answer}
           placeholder={t('datasetDocuments.segment.answerPlaceholder') || ''}
-          onChange={e => onAnswerChange(e.target.value)}
+          onChange={e => onAnswerChange?.(e.target.value)}
           disabled={!isEditMode}
           autoFocus
         />

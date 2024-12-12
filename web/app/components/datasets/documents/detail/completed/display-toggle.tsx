@@ -1,11 +1,17 @@
 import React, { type FC } from 'react'
 import { RiLineHeight } from '@remixicon/react'
-import { useSegmentListContext } from '.'
 import Tooltip from '@/app/components/base/tooltip'
 import { Collapse } from '@/app/components/base/icons/src/public/knowledge'
 
-const DisplayToggle: FC = () => {
-  const [isCollapsed, toggleCollapsed] = useSegmentListContext(s => [s.isCollapsed, s.toggleCollapsed])
+type DisplayToggleProps = {
+  isCollapsed: boolean
+  toggleCollapsed: () => void
+}
+
+const DisplayToggle: FC<DisplayToggleProps> = ({
+  isCollapsed,
+  toggleCollapsed,
+}) => {
   return (
     <Tooltip
       popupContent={isCollapsed ? 'Expand chunks' : 'Collapse chunks'}

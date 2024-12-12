@@ -1,6 +1,6 @@
 import React, { type ForwardedRef } from 'react'
 import SegmentCard from './segment-card'
-import type { SegmentDetailModel } from '@/models/datasets'
+import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import Checkbox from '@/app/components/base/checkbox'
 import Loading from '@/app/components/base/loading'
 import Divider from '@/app/components/base/divider'
@@ -14,6 +14,9 @@ type ISegmentListProps = {
   onClick: (detail: SegmentDetailModel, isEditMode?: boolean) => void
   onChangeSwitch: (enabled: boolean, segId?: string,) => Promise<void>
   onDelete: (segId: string) => Promise<void>
+  onDeleteChildChunk: (sgId: string, childChunkId: string) => Promise<void>
+  handleAddNewChildChunk: (parentChunkId: string) => void
+  onClickSlice: (childChunk: ChildChunkDetail) => void
   archived?: boolean
   embeddingAvailable: boolean
 }
@@ -26,6 +29,9 @@ const SegmentList = React.forwardRef(({
   onClick: onClickCard,
   onChangeSwitch,
   onDelete,
+  onDeleteChildChunk,
+  handleAddNewChildChunk,
+  onClickSlice,
   archived,
   embeddingAvailable,
 }: ISegmentListProps,
@@ -54,6 +60,9 @@ ref: ForwardedRef<HTMLDivElement>,
                   onChangeSwitch={onChangeSwitch}
                   onClickEdit={() => onClickCard(segItem, true)}
                   onDelete={onDelete}
+                  onDeleteChildChunk={onDeleteChildChunk}
+                  handleAddNewChildChunk={handleAddNewChildChunk}
+                  onClickSlice={onClickSlice}
                   loading={false}
                   archived={archived}
                   embeddingAvailable={embeddingAvailable}
