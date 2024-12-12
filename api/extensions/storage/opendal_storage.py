@@ -3,7 +3,6 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import opendal
-
 from configs.middleware.storage.opendal_storage_config import OpenDALScheme
 from extensions.storage.base_storage import BaseStorage
 
