@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AnnotationItemBasic } from '../type'
 import EditItem, { EditItemType } from './edit-item'
+import Checkbox from '@/app/components/base/checkbox'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
@@ -96,11 +97,11 @@ const AddAnnotationModal: FC<Props> = ({
                   <AnnotationFull />
                 </div>
               )}
-              <div className='px-6 flex h-16 items-center justify-between border-t border-black/5 bg-gray-50 rounded-bl-xl rounded-br-xl leading-[18px] text-[13px] font-medium text-gray-500'>
+              <div className='px-4 flex h-16 items-center justify-between border-t border-divider-subtle bg-background-section-burn rounded-bl-xl rounded-br-xl system-sm-medium text-text-tertiary'>
                 <div
                   className='flex items-center space-x-2'
                 >
-                  <input type="checkbox" checked={isCreateNext} onChange={() => setIsCreateNext(!isCreateNext)} className="w-4 h-4 rounded border-gray-300 text-blue-700 focus:ring-blue-700" />
+                  <Checkbox checked={isCreateNext} onCheck={() => setIsCreateNext(!isCreateNext)} />
                   <div>{t('appAnnotation.addModal.createNext')}</div>
                 </div>
                 <div className='mt-2 flex space-x-2'>

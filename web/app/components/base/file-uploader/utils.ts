@@ -84,7 +84,7 @@ export const getFileAppearanceType = (fileName: string, fileMimetype: string) =>
   if (extension === 'pdf')
     return FileAppearanceTypeEnum.pdf
 
-  if (extension === 'md' || extension === 'markdown')
+  if (extension === 'md' || extension === 'markdown' || extension === 'mdx')
     return FileAppearanceTypeEnum.markdown
 
   if (extension === 'xlsx' || extension === 'xls')
