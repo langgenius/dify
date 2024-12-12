@@ -100,7 +100,7 @@ type AppTypeSelectorItemProps = {
 }
 function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProps) {
   return <li className='flex items-center space-x-2 pl-2 py-1 pr-1 rounded-lg cursor-pointer hover:bg-state-base-hover' onClick={onClick}>
-    <Checkbox checked={checked} className='bg-components-checkbox-bg-unchecked' />
+    <Checkbox checked={checked} />
     <AppTypeIcon type={type} />
     <div className='grow p-1 pl-0'>
       <AppTypeLabel type={type} className="system-sm-medium text-components-menu-item-text" />
