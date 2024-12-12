@@ -25,6 +25,8 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
     start_at = time.perf_counter()
 
     dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+    if dataset is None:
+        raise ValueError("Dataset not found")
 
     sync_indexing_cache_key = "document_{}_is_sync".format(document_id)
     # check document limit
@@ -76,11 +78,12 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
             indexing_runner.run([document])
             redis_client.delete(sync_indexing_cache_key)
     except Exception as ex:
-        document.indexing_status = "error"
-        document.error = str(ex)
-        document.stopped_at = datetime.datetime.utcnow()
-        db.session.add(document)
-        db.session.commit()
+        if document:
+            document.indexing_status = "error"
+            document.error = str(ex)
+            document.stopped_at = datetime.datetime.utcnow()
+            db.session.add(document)
+            db.session.commit()
         logging.info(click.style(str(ex), fg="yellow"))
         redis_client.delete(sync_indexing_cache_key)
         pass

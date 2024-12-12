@@ -23,7 +23,7 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
         :param blocking_response: blocking response
         :return:
         """
-        return blocking_response.to_dict()
+        return dict(blocking_response.to_dict())
 
     @classmethod
     def convert_blocking_simple_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict:  # type: ignore[override]

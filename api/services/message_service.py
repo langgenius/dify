@@ -158,7 +158,7 @@ class MessageService:
 
         message = cls.get_message(app_model=app_model, user=user, message_id=message_id)
 
-        feedback = message.user_feedback if isinstance(user, EndUser) else message.admin_feedback
+        feedback: MessageFeedback = message.user_feedback if isinstance(user, EndUser) else message.admin_feedback
 
         if not rating and feedback:
             db.session.delete(feedback)
@@ -280,7 +280,7 @@ class MessageService:
         )
 
         with measure_time() as timer:
-            questions = LLMGenerator.generate_suggested_questions_after_answer(
+            questions: list[Message] = LLMGenerator.generate_suggested_questions_after_answer(
                 tenant_id=app_model.tenant_id, histories=histories
             )
 

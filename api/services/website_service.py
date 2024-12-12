@@ -165,7 +165,7 @@ class WebsiteService:
         return crawl_status_data
 
     @classmethod
-    def get_crawl_url_data(cls, job_id: str, provider: str, url: str, tenant_id: str) -> dict | None:
+    def get_crawl_url_data(cls, job_id: str, provider: str, url: str, tenant_id: str) -> dict[Any, Any] | None:
         credentials = ApiKeyAuthService.get_auth_credentials(tenant_id, "website", provider)
         # decrypt api_key
         api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=credentials.get("config").get("api_key"))
@@ -186,7 +186,7 @@ class WebsiteService:
             if data:
                 for item in data:
                     if item.get("source_url") == url:
-                        return item
+                        return dict(item)
             return None
         elif provider == "jinareader":
             if not job_id:
@@ -196,7 +196,7 @@ class WebsiteService:
                 )
                 if response.json().get("code") != 200:
                     raise ValueError("Failed to crawl")
-                return response.json().get("data")
+                return dict(response.json().get("data", {}))
             else:
                 api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=credentials.get("config").get("api_key"))
                 response = requests.post(
@@ -216,7 +216,7 @@ class WebsiteService:
                 data = response.json().get("data", {})
                 for item in data.get("processed", {}).values():
                     if item.get("data", {}).get("url") == url:
-                        return item.get("data", {})
+                        return dict(item.get("data", {}))
             return None
         else:
             raise ValueError("Invalid provider")

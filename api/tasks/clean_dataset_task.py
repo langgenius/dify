@@ -71,6 +71,8 @@ def clean_dataset_task(
                 image_upload_file_ids = get_image_upload_file_ids(segment.content)
                 for upload_file_id in image_upload_file_ids:
                     image_file = db.session.query(UploadFile).filter(UploadFile.id == upload_file_id).first()
+                    if image_file is None:
+                        continue
                     try:
                         storage.delete(image_file.key)
                     except Exception:

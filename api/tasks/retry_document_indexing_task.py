@@ -22,10 +22,13 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
 
     Usage: retry_document_indexing_task.delay(dataset_id, document_id)
     """
-    documents = []
+    documents: list[Document] = []
     start_at = time.perf_counter()
 
     dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+    if not dataset:
+        raise ValueError("Dataset not found")
+
     for document_id in document_ids:
         retry_indexing_cache_key = "document_{}_is_retried".format(document_id)
         # check document limit
@@ -79,11 +82,12 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
                 indexing_runner.run([document])
                 redis_client.delete(retry_indexing_cache_key)
         except Exception as ex:
-            document.indexing_status = "error"
-            document.error = str(ex)
-            document.stopped_at = datetime.datetime.utcnow()
-            db.session.add(document)
-            db.session.commit()
+            if document:
+                document.indexing_status = "error"
+                document.error = str(ex)
+                document.stopped_at = datetime.datetime.utcnow()
+                db.session.add(document)
+                db.session.commit()
             logging.info(click.style(str(ex), fg="yellow"))
             redis_client.delete(retry_indexing_cache_key)
             pass

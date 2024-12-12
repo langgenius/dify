@@ -69,7 +69,7 @@ class StreamResponse(BaseModel):
     event: StreamEvent
     task_id: str
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return jsonable_encoder(self)
 
 
@@ -558,7 +558,7 @@ class AppBlockingResponse(BaseModel):
 
     task_id: str
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return jsonable_encoder(self)
 
 

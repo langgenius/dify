@@ -347,6 +347,8 @@ class AccountService:
         language: Optional[str] = "en-US",
     ):
         account_email = account.email if account else email
+        if account_email is None:
+            raise ValueError("Email must be provided.")
 
         if cls.reset_password_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import PasswordResetRateLimitExceededError

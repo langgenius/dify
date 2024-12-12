@@ -122,8 +122,8 @@ class ForgotPasswordResetApi(Resource):
         else:
             try:
                 account = AccountService.create_account_and_tenant(
-                    email=reset_data.get("email"),
-                    name=reset_data.get("email"),
+                    email=reset_data.get("email", ""),
+                    name=reset_data.get("email", ""),
                     password=password_confirm,
                     interface_language=languages[0],
                 )

@@ -1,3 +1,5 @@
+from typing import cast
+
 import requests
 
 from configs import dify_config
@@ -51,4 +53,4 @@ class APIBasedExtensionRequestor:
                 "request error, status_code: {}, content: {}".format(response.status_code, response.text[:100])
             )
 
-        return response.json()
+        return cast(dict, response.json())

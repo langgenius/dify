@@ -159,8 +159,7 @@ def migrate_annotation_vector_database():
         try:
             # get apps info
             apps = (
-                db.session.query(App)
-                .filter(App.status == "normal")
+                App.query.filter(App.status == "normal")
                 .order_by(App.created_at.desc())
                 .paginate(page=page, per_page=50)
             )
@@ -449,7 +448,8 @@ def convert_to_agent_apps():
                 if app_id not in proceeded_app_ids:
                     proceeded_app_ids.append(app_id)
                     app = db.session.query(App).filter(App.id == app_id).first()
-                    apps.append(app)
+                    if app is not None:
+                        apps.append(app)
 
             if len(apps) == 0:
                 break
@@ -620,6 +620,10 @@ where sites.id is null limit 1000"""
 
                 try:
                     app = db.session.query(App).filter(App.id == app_id).first()
+                    if not app:
+                        print(f"App {app_id} not found")
+                        continue
+
                     tenant = app.tenant
                     if tenant:
                         accounts = tenant.get_accounts()

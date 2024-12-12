@@ -1,5 +1,6 @@
 import json
 import logging
+from collections.abc import Generator
 
 from celery import shared_task  # type: ignore
 from flask import current_app
@@ -26,7 +27,10 @@ def process_trace_tasks(file_info):
     app_id = file_info.get("app_id")
     file_id = file_info.get("file_id")
     file_path = f"{OPS_FILE_PATH}{app_id}/{file_id}.json"
-    file_data = json.loads(storage.load(file_path))
+    loaded_data = storage.load(file_path)
+    if isinstance(loaded_data, Generator):
+        loaded_data = b"".join(loaded_data)
+    file_data = json.loads(loaded_data)
     trace_info = file_data.get("trace_info")
     trace_info_type = file_data.get("trace_info_type")
     trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)

@@ -68,11 +68,9 @@ def external_document_indexing_task(
         settings = ExternalDatasetService.get_external_knowledge_api_settings(
             json.loads(external_knowledge_api.settings)
         )
-        # assemble headers
-        headers = ExternalDatasetService.assembling_headers(settings.authorization, settings.headers)
 
         # do http request
-        response = ExternalDatasetService.process_external_api(settings, headers, process_parameter, files)
+        response = ExternalDatasetService.process_external_api(settings, files)
         job_id = response.json().get("job_id")
         if job_id:
             # save job_id to dataset

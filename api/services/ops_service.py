@@ -1,3 +1,5 @@
+from typing import Optional
+
 from core.ops.ops_trace_manager import OpsTraceManager, provider_config_map
 from extensions.ext_database import db
 from models.model import App, TraceAppConfig
@@ -12,7 +14,7 @@ class OpsService:
         :param tracing_provider: tracing provider
         :return:
         """
-        trace_config_data: TraceAppConfig = (
+        trace_config_data: Optional[TraceAppConfig] = (
             db.session.query(TraceAppConfig)
             .filter(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()
@@ -22,7 +24,10 @@ class OpsService:
             return None
 
         # decrypt_token and obfuscated_token
-        tenant_id = db.session.query(App).filter(App.id == app_id).first().tenant_id
+        tenant = db.session.query(App).filter(App.id == app_id).first()
+        if not tenant:
+            return None
+        tenant_id = tenant.tenant_id
         decrypt_tracing_config = OpsTraceManager.decrypt_tracing_config(
             tenant_id, tracing_provider, trace_config_data.tracing_config
         )
@@ -73,8 +78,9 @@ class OpsService:
             provider_config_map[tracing_provider]["config_class"],
             provider_config_map[tracing_provider]["other_keys"],
         )
-        default_config_instance = config_class(**tracing_config)
-        for key in other_keys:
+        # FIXME: ignore type error
+        default_config_instance = config_class(**tracing_config)  # type: ignore
+        for key in other_keys:  # type: ignore
             if key in tracing_config and tracing_config[key] == "":
                 tracing_config[key] = getattr(default_config_instance, key, None)
 
@@ -92,7 +98,7 @@ class OpsService:
             project_url = None
 
         # check if trace config already exists
-        trace_config_data: TraceAppConfig = (
+        trace_config_data: Optional[TraceAppConfig] = (
             db.session.query(TraceAppConfig)
             .filter(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()
@@ -102,7 +108,10 @@ class OpsService:
             return None
 
         # get tenant id
-        tenant_id = db.session.query(App).filter(App.id == app_id).first().tenant_id
+        tenant = db.session.query(App).filter(App.id == app_id).first()
+        if not tenant:
+            return None
+        tenant_id = tenant.tenant_id
         tracing_config = OpsTraceManager.encrypt_tracing_config(tenant_id, tracing_provider, tracing_config)
         if project_url:
             tracing_config["project_url"] = project_url
@@ -139,7 +148,10 @@ class OpsService:
             return None
 
         # get tenant id
-        tenant_id = db.session.query(App).filter(App.id == app_id).first().tenant_id
+        tenant = db.session.query(App).filter(App.id == app_id).first()
+        if not tenant:
+            return None
+        tenant_id = tenant.tenant_id
         tracing_config = OpsTraceManager.encrypt_tracing_config(
             tenant_id, tracing_provider, tracing_config, current_trace_config.tracing_config
         )

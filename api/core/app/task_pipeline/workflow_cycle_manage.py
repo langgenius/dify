@@ -188,7 +188,7 @@ class WorkflowCycleManage:
         """
         workflow_run = self._refetch_workflow_run(workflow_run.id)
 
-        outputs = WorkflowEntry.handle_special_values(outputs)
+        outputs = WorkflowEntry.handle_special_values(dict(outputs) if outputs else None)
 
         workflow_run.status = WorkflowRunStatus.PARTIAL_SUCCESSED.value
         workflow_run.outputs = json.dumps(outputs or {})
@@ -490,7 +490,7 @@ class WorkflowCycleManage:
                 created_by=created_by,
                 created_at=int(workflow_run.created_at.timestamp()),
                 finished_at=int(workflow_run.finished_at.timestamp()),
-                files=self._fetch_files_from_node_outputs(workflow_run.outputs_dict),
+                files=self._fetch_files_from_node_outputs(dict(workflow_run.outputs_dict)),
                 exceptions_count=workflow_run.exceptions_count,
             ),
         )
