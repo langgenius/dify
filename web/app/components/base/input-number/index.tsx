@@ -39,7 +39,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
       }}
     />
     {unit && <div className='flex items-center bg-components-input-bg-normal text-[13px] text-text-placeholder pr-2'>{unit}</div>}
-    <div className='flex flex-col bg-components-input-bg-normal rounded-r-md border-l text-text-tertiary focus:shadow-xs'>
+    <div className='flex flex-col bg-components-input-bg-normal rounded-r-md border-l border-divider-subtle text-text-tertiary focus:shadow-xs'>
       <button onClick={inc} className={classNames(
         size === 'sm' ? 'pt-1' : 'pt-1.5',
         'px-1.5 hover:bg-components-input-bg-hover',
