@@ -16,7 +16,6 @@ const withMDX = require('@next/mdx')({
 const nextConfig = {
   webpack: (config, { dev, isServer }) => {
     config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
-    config.externals.push({ canvas: 'commonjs canvas' })
     return config
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
