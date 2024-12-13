@@ -53,9 +53,9 @@ type DocumentTitleProps = {
 }
 
 export const DocumentTitle: FC<DocumentTitleProps> = ({ datasetId, extension, name, processMode, parent_mode, wrapperCls }) => {
+  const router = useRouter()
   return (
     <div className={cn('flex items-center justify-start flex-1 cursor-pointer', wrapperCls)}>
-      {/* // todo: handle file change */}
       <DocumentPicker
         datasetId={datasetId}
         value={{
@@ -64,7 +64,9 @@ export const DocumentTitle: FC<DocumentTitleProps> = ({ datasetId, extension, na
           processMode,
           parentMode: parent_mode,
         }}
-        onChange={(doc) => { console.log(doc) }}
+        onChange={(doc) => {
+          router.push(`/datasets/${datasetId}/documents/${doc.id}`)
+        }}
       />
     </div>
   )
