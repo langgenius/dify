@@ -37,6 +37,7 @@ const translation = {
     notionSyncTitle: 'Notion 未繫結',
     notionSyncTip: '同步 Notion 內容前，須先繫結 Notion 空間',
     connect: '去繫結',
+    cancel: '取消',
     button: '下一步',
     emptyDatasetCreation: '建立一個空知識庫',
     modal: {

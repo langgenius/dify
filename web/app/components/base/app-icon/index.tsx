@@ -33,7 +33,7 @@ const AppIcon: FC<AppIconProps> = ({
   onClick,
 }) => {
   const wrapperClassName = classNames(
-    style.appIcon,
+    'flex items-center justify-center relative w-9 h-9 text-lg rounded-lg grow-0 shrink-0',
     size !== 'medium' && style[size],
     rounded && style.rounded,
     className ?? '',

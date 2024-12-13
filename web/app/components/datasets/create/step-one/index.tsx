@@ -1,6 +1,7 @@
 'use client'
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiArrowRightLine, RiFolder6Line } from '@remixicon/react'
 import FilePreview from '../file-preview'
 import FileUploader from '../file-uploader'
 import NotionPagePreview from '../notion-page-preview'
@@ -200,7 +201,15 @@ const StepOne = ({
                   <VectorSpaceFull />
                 </div>
               )}
-              <Button disabled={nextDisabled} className={s.submitButton} variant='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
+              <div className="flex justify-end gap-2 max-w-[640px]">
+                {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
+                <Button disabled={!nextDisabled} variant='primary' onClick={onStepChange}>
+                  <span className="flex gap-0.5 px-[10px]">
+                    <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
+                    <RiArrowRightLine className="size-4" />
+                  </span>
+                </Button>
+              </div>
             </>
           )}
           {dataSourceType === DataSourceType.NOTION && (
@@ -249,7 +258,10 @@ const StepOne = ({
           {!datasetId && (
             <>
               <div className={s.dividerLine} />
-              <div onClick={modalShowHandle} className={s.OtherCreationOption}>{t('datasetCreation.stepOne.emptyDatasetCreation')}</div>
+              <span className="inline-flex items-center cursor-pointer text-[13px] leading-4 text-text-accent" onClick={modalShowHandle}>
+                <RiFolder6Line className="size-4 mr-1" />
+                {t('datasetCreation.stepOne.emptyDatasetCreation')}
+              </span>
             </>
           )}
         </div>
