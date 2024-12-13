@@ -25,6 +25,7 @@ from libs import helper
 from libs.helper import uuid_value
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
+from services.errors.conversation import InvalidConversationIDError
 from services.errors.llm import InvokeRateLimitError
 
 
@@ -54,6 +55,8 @@ class CompletionApi(WebApiResource):
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.InvalidConversationIDError:
+            raise InvalidConversationIDError()
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -112,6 +115,8 @@ class ChatApi(WebApiResource):
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.InvalidConversationIDError:
+            raise InvalidConversationIDError()
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:

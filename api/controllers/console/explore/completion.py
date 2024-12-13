@@ -29,6 +29,9 @@ from services.app_generate_service import AppGenerateService
 
 
 # define completion api for user
+from services.errors.conversation import InvalidConversationIDError
+
+
 class CompletionApi(InstalledAppResource):
     def post(self, installed_app):
         app_model = installed_app.app
@@ -57,6 +60,8 @@ class CompletionApi(InstalledAppResource):
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.InvalidConversationIDError:
+            raise InvalidConversationIDError()
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -117,6 +122,8 @@ class ChatApi(InstalledAppResource):
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.InvalidConversationIDError:
+            raise InvalidConversationIDError()
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
