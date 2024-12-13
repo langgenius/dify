@@ -62,14 +62,14 @@ export default function FullScreenModal({
                 className,
               )}>
                 {closable
-                  && <div className='absolute z-50 top-3 right-3 w-9 h-9 flex items-center justify-center rounded-[10px]
-                  bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover cursor-pointer'>
-                    <RiCloseLargeLine className='w-3.5 h-3.5 text-components-button-tertiary-text' onClick={
-                      (e) => {
-                        e.stopPropagation()
-                        onClose()
-                      }
-                    } />
+                  && <div
+                    className='absolute z-50 top-3 right-3 w-9 h-9 flex items-center justify-center rounded-[10px]
+                  bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover cursor-pointer'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onClose()
+                    }}>
+                    <RiCloseLargeLine className='w-3.5 h-3.5 text-components-button-tertiary-text' />
                   </div>}
                 {children}
               </Dialog.Panel>
