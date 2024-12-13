@@ -209,11 +209,11 @@ const ConfigPopup: FC<PopupProps> = ({
           : (
             <>
               <div className='leading-4 text-xs font-medium text-gray-500 uppercase'>{t(`${I18N_PREFIX}.configProviderTitle.configured`)}</div>
-              <div className='mt-2'>
+              <div className='mt-2 space-y-2'>
                 {configuredProviderPanel()}
               </div>
               <div className='mt-3 leading-4 text-xs font-medium text-gray-500 uppercase'>{t(`${I18N_PREFIX}.configProviderTitle.moreProvider`)}</div>
-              <div className='mt-2'>
+              <div className='mt-2 space-y-2'>
                 {moreProviderPanel()}
               </div>
             </>
