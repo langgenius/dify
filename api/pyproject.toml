@@ -88,6 +88,7 @@ unstructured = { version = "~0.16.1", extras = ["docx", "epub", "md", "msg", "pp
 validators = "0.21.0"
 volcengine-python-sdk = {extras = ["ark"], version = "~1.0.98"}
 websocket-client = "~1.7.0"
+webvtt-py = "~0.5.1"
 xinference-client = "0.15.2"
 yarl = "~1.9.4"
 youtube-transcript-api = "~0.6.2"
