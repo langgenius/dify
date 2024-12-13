@@ -1,5 +1,6 @@
-/** @type {import('tailwindcss').Config} */
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define'
+
+/** @type {import('tailwindcss').Config} */
 const config = {
   content: [
     './app/**/*.{js,ts,jsx,tsx}',
