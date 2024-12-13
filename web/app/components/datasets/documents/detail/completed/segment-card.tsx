@@ -111,6 +111,17 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     return content
   }
 
+  const wordCountText = useMemo(() => {
+    const total = formatNumber(word_count)
+    return `${total} ${t('datasetDocuments.segment.characters', { count: word_count })}`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [word_count])
+
+  const labelPrefix = useMemo(() => {
+    return isParentChildMode ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isParentChildMode])
+
   return (
     <div
       className={cn('w-full px-3 rounded-xl group/card', isFullDocMode ? '' : 'pt-2.5 pb-2 hover:bg-dataset-chunk-detail-card-hover-bg', className)}
@@ -119,15 +130,15 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       <div className='h-5 relative flex items-center justify-between'>
         <>
           <div className='flex items-center gap-x-2'>
-            <SegmentIndexTag positionId={position} className={textOpacity} labelPrefix={`${isParentChildMode ? 'Parent-' : ''}Chunk`} />
+            <SegmentIndexTag positionId={position} className={textOpacity} labelPrefix={labelPrefix} />
             <Dot />
-            <div className={cn('text-text-tertiary system-xs-medium', textOpacity)}>{`${formatNumber(word_count)} Characters`}</div>
+            <div className={cn('text-text-tertiary system-xs-medium', textOpacity)}>{wordCountText}</div>
             <Dot />
-            <div className={cn('text-text-tertiary system-xs-medium', textOpacity)}>{`${formatNumber(hit_count)} Retrieval Count`}</div>
+            <div className={cn('text-text-tertiary system-xs-medium', textOpacity)}>{`${formatNumber(hit_count)} ${t('datasetDocuments.segment.hitCount')}`}</div>
             {chunkEdited && (
               <>
                 <Dot />
-                <Badge text='edited' uppercase className={textOpacity} />
+                <Badge text={t('datasetDocuments.segment.edited') as string} uppercase className={textOpacity} />
               </>
             )}
           </div>

@@ -1,4 +1,4 @@
-import { memo, useRef, useState } from 'react'
+import { memo, useMemo, useRef, useState } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -108,6 +108,12 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     }
   }
 
+  const wordCountText = useMemo(() => {
+    const count = question.length
+    return `${formatNumber(count)} ${t('datasetDocuments.segment.characters', { count })}`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [question.length])
+
   return (
     <div className={'flex flex-col h-full'}>
       <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
@@ -120,7 +126,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
           <div className='flex items-center gap-x-2'>
             <SegmentIndexTag label={'New Chunk'} />
             <Dot />
-            <span className='text-text-tertiary system-xs-medium'>{formatNumber(question.length)} {t('datasetDocuments.segment.characters')}</span>
+            <span className='text-text-tertiary system-xs-medium'>{wordCountText}</span>
           </div>
         </div>
         <div className='flex items-center'>

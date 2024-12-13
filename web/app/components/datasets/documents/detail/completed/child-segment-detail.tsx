@@ -1,4 +1,4 @@
-import React, { type FC, useState } from 'react'
+import React, { type FC, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiCloseLine,
@@ -56,18 +56,33 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
     onUpdate(chunkId, childChunkInfo?.id || '', content)
   }
 
+  const wordCountText = useMemo(() => {
+    const count = content.length
+    return `${formatNumber(count)} ${t('datasetDocuments.segment.characters', { count })}`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content.length])
+
+  const EditTimeText = useMemo(() => {
+    const timeText = formatTime({
+      date: (childChunkInfo?.updated_at ?? 0) * 1000,
+      dateFormat: 'MM/DD/YYYY h:mm:ss',
+    })
+    return `${t('datasetDocuments.segment.editedAt')} ${timeText}`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childChunkInfo?.updated_at])
+
   return (
     <div className={'flex flex-col h-full'}>
       <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
         <div className='flex flex-col'>
-          <div className='text-text-primary system-xl-semibold'>{'Edit Child Chunk'}</div>
+          <div className='text-text-primary system-xl-semibold'>{t('datasetDocuments.segment.editChildChunk')}</div>
           <div className='flex items-center gap-x-2'>
-            <SegmentIndexTag positionId={childChunkInfo?.position || ''} labelPrefix='Child-Chunk' />
+            <SegmentIndexTag positionId={childChunkInfo?.position || ''} labelPrefix={t('datasetDocuments.segment.childChunk') as string} />
             <Dot />
-            <span className='text-text-tertiary system-xs-medium'>{formatNumber(content.length)} {t('datasetDocuments.segment.characters')}</span>
+            <span className='text-text-tertiary system-xs-medium'>{wordCountText}</span>
             <Dot />
             <span className='text-text-tertiary system-xs-medium'>
-              {`Edited at ${formatTime({ date: (childChunkInfo?.created_at ?? 0) * 1000, dateFormat: 'MM/DD/YYYY h:mm:ss' })}`}
+              {EditTimeText}
             </span>
           </div>
         </div>

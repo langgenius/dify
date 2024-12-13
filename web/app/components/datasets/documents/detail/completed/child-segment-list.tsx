@@ -1,11 +1,13 @@
 import { type FC, useMemo, useState } from 'react'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import { EditSlice } from '../../../formatted-text/flavours/edit-slice'
 import { useDocumentContext } from '../index'
 import type { ChildChunkDetail } from '@/models/datasets'
 import Input from '@/app/components/base/input'
 import classNames from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
+import { formatNumber } from '@/utils/format'
 
 type IChildSegmentCardProps = {
   childChunks: ChildChunkDetail[]
@@ -30,6 +32,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   total,
   inputValue,
 }) => {
+  const { t } = useTranslation()
   const parentMode = useDocumentContext(s => s.parentMode)
 
   const [collapsed, setCollapsed] = useState(true)
@@ -50,6 +53,21 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
     return enabled ? '' : 'opacity-50 group-hover/card:opacity-100'
   }, [enabled])
 
+  const totalText = useMemo(() => {
+    const text = isFullDocMode
+      ? !total
+        ? '--'
+        : formatNumber(total)
+      : formatNumber(childChunks.length)
+    const count = isFullDocMode
+      ? text === '--'
+        ? 0
+        : total
+      : childChunks.length
+    return `${isFullDocMode ? count : childChunks.length} ${t('datasetDocuments.segment.childChunks', { count })}`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFullDocMode, total, childChunks.length])
+
   return (
     <div className={classNames('flex flex-col', contentOpacity, isParagraphMode ? 'p-1 pb-2' : 'px-3 grow overflow-y-hidden')}>
       {isFullDocMode ? <Divider type='horizontal' className='h-[1px] bg-divider-subtle my-1' /> : null}
@@ -67,16 +85,16 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
                 : (<RiArrowDownSLine className='w-4 h-4 text-text-secondary mr-0.5' />)
               : null
           }
-          <span className='text-text-secondary system-sm-semibold-uppercase'>{`${total} CHILD CHUNKS`}</span>
+          <span className='text-text-secondary system-sm-semibold-uppercase'>{totalText}</span>
           <span className={classNames('text-text-quaternary text-xs font-medium pl-1.5', isParagraphMode ? 'hidden group-hover/card:inline-block' : '')}>·</span>
           <button
-            className={classNames('px-1.5 py-1 text-components-button-secondary-accent-text system-xs-semibold', isParagraphMode ? 'hidden group-hover/card:inline-block' : '')}
+            className={classNames('px-1.5 py-1 text-components-button-secondary-accent-text system-xs-semibold-uppercase', isParagraphMode ? 'hidden group-hover/card:inline-block' : '')}
             onClick={(event) => {
               event.stopPropagation()
               handleAddNewChildChunk?.(parentChunkId)
             }}
           >
-            ADD
+            {t('common.operation.add')}
           </button>
         </div>
         {isFullDocMode
@@ -98,7 +116,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
               const edited = childChunk.updated_at !== childChunk.created_at
               return <EditSlice
                 key={childChunk.id}
-                label={`C-${childChunk.position}${edited ? ' · EDITED' : ''}`}
+                label={`C-${childChunk.position}${edited ? ` · ${t('datasetDocuments.segment.edited')}` : ''}`}
                 text={childChunk.content}
                 onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
                 className='line-clamp-3'

@@ -328,8 +328,14 @@ const Completed: FC<ICompletedProps> = ({
   }, [segments, isAllSelected, selectedSegmentIds])
 
   const totalText = useMemo(() => {
-    return segmentListData?.total ? formatNumber(segmentListData.total) : '--'
-  }, [segmentListData?.total])
+    const total = segmentListData?.total ? formatNumber(segmentListData.total) : '--'
+    const count = total === '--' ? 0 : segmentListData!.total
+    const translationKey = (mode === 'hierarchical' && parentMode === 'paragraph')
+      ? 'datasetDocuments.segment.parentChunks'
+      : 'datasetDocuments.segment.chunks'
+    return `${total} ${t(translationKey, { count })}`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [segmentListData?.total, mode, parentMode])
 
   const toggleFullScreen = useCallback(() => {
     setFullScreen(!fullScreen)
@@ -480,7 +486,7 @@ const Completed: FC<ICompletedProps> = ({
           mixed={!isAllSelected && isSomeSelected}
           onCheck={onSelectedAll}
         />
-        <div className={cn('system-sm-semibold-uppercase pl-5', s.totalText)}>{totalText} {t('datasetDocuments.segment.chunks')}</div>
+        <div className={cn('system-sm-semibold-uppercase pl-5', s.totalText)}>{totalText}</div>
         <SimpleSelect
           onSelect={onChangeStatus}
           items={[
