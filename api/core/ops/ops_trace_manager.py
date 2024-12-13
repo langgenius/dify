@@ -37,7 +37,7 @@ from models.model import App, AppModelConfig, Conversation, Message, MessageFile
 from models.workflow import WorkflowAppLog, WorkflowRun
 from tasks.ops_trace_task import process_trace_tasks
 
-provider_config_map = {
+provider_config_map: dict[str, dict[str, Any]] = {
     TracingProviderEnum.LANGFUSE.value: {
         "config_class": LangfuseConfig,
         "secret_keys": ["public_key", "secret_key"],

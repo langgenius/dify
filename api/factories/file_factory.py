@@ -64,7 +64,7 @@ def build_from_mapping(
     if not build_func:
         raise ValueError(f"Invalid file transfer method: {transfer_method}")
 
-    file = build_func(
+    file: File = build_func(
         mapping=mapping,
         tenant_id=tenant_id,
         transfer_method=transfer_method,
@@ -72,7 +72,7 @@ def build_from_mapping(
 
     if config and not _is_file_valid_with_config(
         input_file_type=mapping.get("type", FileType.CUSTOM),
-        file_extension=file.extension,
+        file_extension=file.extension or "",
         file_transfer_method=file.transfer_method,
         config=config,
     ):

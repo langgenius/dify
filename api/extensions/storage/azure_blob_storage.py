@@ -27,7 +27,7 @@ class AzureBlobStorage(BaseStorage):
         client = self._sync_client()
         blob = client.get_container_client(container=self.bucket_name)
         blob = blob.get_blob_client(blob=filename)
-        data = blob.download_blob().readall()
+        data: bytes = blob.download_blob().readall()
         return data
 
     def load_stream(self, filename: str) -> Generator:
@@ -63,11 +63,11 @@ class AzureBlobStorage(BaseStorage):
             sas_token = cache_result.decode("utf-8")
         else:
             sas_token = generate_account_sas(
-                account_name=self.account_name,
-                account_key=self.account_key,
+                account_name=self.account_name or "",
+                account_key=self.account_key or "",
                 resource_types=ResourceTypes(service=True, container=True, object=True),
                 permission=AccountSasPermissions(read=True, write=True, delete=True, list=True, add=True, create=True),
                 expiry=datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=1),
             )
             redis_client.set(cache_key, sas_token, ex=3000)
-        return BlobServiceClient(account_url=self.account_url, credential=sas_token)
+        return BlobServiceClient(account_url=self.account_url or "", credential=sas_token)

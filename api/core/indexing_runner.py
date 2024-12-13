@@ -6,7 +6,7 @@ import re
 import threading
 import time
 import uuid
-from typing import Optional, cast
+from typing import Any, Optional, cast
 
 from flask import Flask, current_app
 from flask_login import current_user  # type: ignore
@@ -406,6 +406,7 @@ class IndexingRunner:
         """
         Get the NodeParser object according to the processing rule.
         """
+        character_splitter: TextSplitter
         if processing_rule.mode == "custom":
             # The user-defined segmentation rule
             rules = json.loads(processing_rule.rules)
@@ -432,9 +433,10 @@ class IndexingRunner:
             )
         else:
             # Automatic segmentation
+            automatic_rules: dict[str, Any] = dict(DatasetProcessRule.AUTOMATIC_RULES["segmentation"])
             character_splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
-                chunk_size=DatasetProcessRule.AUTOMATIC_RULES["segmentation"]["max_tokens"],
-                chunk_overlap=DatasetProcessRule.AUTOMATIC_RULES["segmentation"]["chunk_overlap"],
+                chunk_size=automatic_rules["max_tokens"],
+                chunk_overlap=automatic_rules["chunk_overlap"],
                 separators=["\n\n", "。", ". ", " ", ""],
                 embedding_model_instance=embedding_model_instance,
             )
@@ -503,8 +505,8 @@ class IndexingRunner:
         """
         Split the text documents into nodes.
         """
-        all_documents = []
-        all_qa_documents = []
+        all_documents: list[Document] = []
+        all_qa_documents: list[Document] = []
         for text_doc in text_docs:
             # document clean
             document_text = self._document_clean(text_doc.page_content, processing_rule)
@@ -515,10 +517,11 @@ class IndexingRunner:
             split_documents = []
             for document_node in documents:
                 if document_node.page_content.strip():
-                    doc_id = str(uuid.uuid4())
-                    hash = helper.generate_text_hash(document_node.page_content)
-                    document_node.metadata["doc_id"] = doc_id
-                    document_node.metadata["doc_hash"] = hash
+                    if document_node.metadata is not None:
+                        doc_id = str(uuid.uuid4())
+                        hash = helper.generate_text_hash(document_node.page_content)
+                        document_node.metadata["doc_id"] = doc_id
+                        document_node.metadata["doc_hash"] = hash
                     # delete Splitter character
                     page_content = document_node.page_content
                     document_node.page_content = remove_leading_symbols(page_content)
@@ -563,11 +566,12 @@ class IndexingRunner:
                     qa_document = Document(
                         page_content=result["question"], metadata=document_node.metadata.model_copy()
                     )
-                    doc_id = str(uuid.uuid4())
-                    hash = helper.generate_text_hash(result["question"])
-                    qa_document.metadata["answer"] = result["answer"]
-                    qa_document.metadata["doc_id"] = doc_id
-                    qa_document.metadata["doc_hash"] = hash
+                    if qa_document.metadata is not None:
+                        doc_id = str(uuid.uuid4())
+                        hash = helper.generate_text_hash(result["question"])
+                        qa_document.metadata["answer"] = result["answer"]
+                        qa_document.metadata["doc_id"] = doc_id
+                        qa_document.metadata["doc_hash"] = hash
                     qa_documents.append(qa_document)
                 format_documents.extend(qa_documents)
             except Exception as e:
@@ -581,7 +585,7 @@ class IndexingRunner:
         """
         Split the text documents into nodes.
         """
-        all_documents = []
+        all_documents: list[Document] = []
         for text_doc in text_docs:
             # document clean
             document_text = self._document_clean(text_doc.page_content, processing_rule)
@@ -594,11 +598,11 @@ class IndexingRunner:
             for document in documents:
                 if document.page_content is None or not document.page_content.strip():
                     continue
-                doc_id = str(uuid.uuid4())
-                hash = helper.generate_text_hash(document.page_content)
-
-                document.metadata["doc_id"] = doc_id
-                document.metadata["doc_hash"] = hash
+                if document.metadata is not None:
+                    doc_id = str(uuid.uuid4())
+                    hash = helper.generate_text_hash(document.page_content)
+                    document.metadata["doc_id"] = doc_id
+                    document.metadata["doc_hash"] = hash
 
                 split_documents.append(document)
 

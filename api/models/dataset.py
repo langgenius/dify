@@ -9,6 +9,7 @@ import pickle
 import re
 import time
 from json import JSONDecodeError
+from typing import Any, cast
 
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -216,7 +217,7 @@ class DatasetProcessRule(db.Model):  # type: ignore[name-defined]
 
     MODES = ["automatic", "custom"]
     PRE_PROCESSING_RULES = ["remove_stopwords", "remove_extra_spaces", "remove_urls_emails"]
-    AUTOMATIC_RULES = {
+    AUTOMATIC_RULES: dict[str, Any] = {
         "pre_processing_rules": [
             {"id": "remove_extra_spaces", "enabled": True},
             {"id": "remove_urls_emails", "enabled": False},
@@ -704,7 +705,7 @@ class Embedding(db.Model):  # type: ignore[name-defined]
         self.embedding = pickle.dumps(embedding_data, protocol=pickle.HIGHEST_PROTOCOL)
 
     def get_embedding(self) -> list[float]:
-        return pickle.loads(self.embedding)
+        return cast(list[float], pickle.loads(self.embedding))
 
 
 class DatasetCollectionBinding(db.Model):  # type: ignore[name-defined]

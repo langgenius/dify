@@ -89,19 +89,19 @@ class MemberCancelInviteApi(Resource):
     @account_initialization_required
     def delete(self, member_id):
         member = db.session.query(Account).filter(Account.id == str(member_id)).first()
-        if not member:
+        if member is None:
             abort(404)
-
-        try:
-            TenantService.remove_member_from_tenant(current_user.current_tenant, member, current_user)
-        except services.errors.account.CannotOperateSelfError as e:
-            return {"code": "cannot-operate-self", "message": str(e)}, 400
-        except services.errors.account.NoPermissionError as e:
-            return {"code": "forbidden", "message": str(e)}, 403
-        except services.errors.account.MemberNotInTenantError as e:
-            return {"code": "member-not-found", "message": str(e)}, 404
-        except Exception as e:
-            raise ValueError(str(e))
+        else:
+            try:
+                TenantService.remove_member_from_tenant(current_user.current_tenant, member, current_user)
+            except services.errors.account.CannotOperateSelfError as e:
+                return {"code": "cannot-operate-self", "message": str(e)}, 400
+            except services.errors.account.NoPermissionError as e:
+                return {"code": "forbidden", "message": str(e)}, 403
+            except services.errors.account.MemberNotInTenantError as e:
+                return {"code": "member-not-found", "message": str(e)}, 404
+            except Exception as e:
+                raise ValueError(str(e))
 
         return {"result": "success"}, 204
 

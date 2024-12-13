@@ -1,8 +1,9 @@
 from collections.abc import Generator
 from pathlib import Path
+from typing import Optional, cast
 from urllib.parse import urlparse
 
-import opendal
+import opendal  # type: ignore
 
 from configs.middleware.storage.opendal_storage_config import OpenDALScheme
 from extensions.storage.base_storage import BaseStorage
@@ -18,7 +19,7 @@ S3_SSE_WITH_AWS_MANAGED_IAM_KWARGS = {
 }
 
 
-def is_r2_endpoint(endpoint: str) -> bool:
+def is_r2_endpoint(endpoint: Optional[str]) -> bool:
     if not endpoint:
         return False
 
@@ -40,7 +41,7 @@ class OpenDALStorage(BaseStorage):
         if not self.exists(filename):
             raise FileNotFoundError("File not found")
 
-        return self.op.read(path=filename)
+        return cast(bytes, self.op.read(path=filename))
 
     def load_stream(self, filename: str) -> Generator:
         if not self.exists(filename):
@@ -63,7 +64,7 @@ class OpenDALStorage(BaseStorage):
         # error handler here when opendal python-binding has a exists method, we should use it
         # more https://github.com/apache/opendal/blob/main/bindings/python/src/operator.rs
         try:
-            return self.op.stat(path=filename).mode.is_file()
+            return cast(bool, self.op.stat(path=filename).mode.is_file())
         except Exception as e:
             return False
 

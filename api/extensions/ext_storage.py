@@ -31,12 +31,12 @@ class Storage:
                 from extensions.storage.opendal_storage import OpenDALStorage
 
                 scheme = OpenDALScheme(dify_config.STORAGE_OPENDAL_SCHEME)
-                kwargs = _load_opendal_storage_kwargs(scheme)
+                kwargs = dict(_load_opendal_storage_kwargs(scheme))
                 return lambda: OpenDALStorage(scheme=scheme, **kwargs)
             case StorageType.LOCAL:
                 from extensions.storage.opendal_storage import OpenDALStorage
 
-                kwargs = _load_local_storage_kwargs()
+                kwargs = dict(_load_local_storage_kwargs())
                 return lambda: OpenDALStorage(scheme=OpenDALScheme.FS, **kwargs)
             case StorageType.AZURE_BLOB:
                 from extensions.storage.azure_blob_storage import AzureBlobStorage
@@ -130,7 +130,7 @@ class Storage:
             raise e
 
 
-def _load_s3_storage_kwargs() -> Mapping[str, str]:
+def _load_s3_storage_kwargs() -> dict[str, str | None]:
     """
     Load the kwargs for S3 storage based on dify_config.
     Handles special cases like AWS managed IAM and R2.
