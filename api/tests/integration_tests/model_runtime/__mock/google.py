@@ -1,79 +1,53 @@
-from collections.abc import Generator
 from unittest.mock import MagicMock
 
-import google.generativeai.types.generation_types as generation_config_types
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from google.ai import generativelanguage as glm
-from google.ai.generativelanguage_v1beta.types import content as gag_content
-from google.generativeai import GenerativeModel
-from google.generativeai.types import GenerateContentResponse, content_types, safety_types
-from google.generativeai.types.generation_types import BaseGenerateContentResponse
+from google.genai import errors, types
 
 from extensions import ext_redis
 
 
-class MockGoogleResponseClass:
-    _done = False
-
-    def __iter__(self):
+class MockGoogleStreamResponse:
+    def __iter__(self) -> types.GenerateContentResponse:
         full_response_text = "it's google!"
 
         for i in range(0, len(full_response_text) + 1, 1):
             if i == len(full_response_text):
-                self._done = True
-                yield GenerateContentResponse(
-                    done=True, iterator=None, result=glm.GenerateContentResponse({}), chunks=[]
+                yield types.GenerateContentResponse(
+                    candidates=[types.Candidate(content=types.Content(parts=None))],
+                    usage_metadata=types.GenerateContentResponseUsageMetadata(prompt_token_count=0),
                 )
             else:
-                yield GenerateContentResponse(
-                    done=False, iterator=None, result=glm.GenerateContentResponse({}), chunks=[]
+                yield types.GenerateContentResponse(
+                    candidates=[types.Candidate(content=types.Content(parts=[types.Part(text=str(i))]))]
                 )
 
 
-class MockGoogleResponseCandidateClass:
-    finish_reason = "stop"
+class MockGoogleSyncResponse:
+    def __init__(self):
+        self._text = "it's google!"
+        self.usage_metadata = None
 
     @property
-    def content(self) -> gag_content.Content:
-        return gag_content.Content(parts=[gag_content.Part(text="it's google!")])
+    def text(self) -> str:
+        return self._text
 
 
-class MockGoogleClass:
-    @staticmethod
-    def generate_content_sync() -> GenerateContentResponse:
-        return GenerateContentResponse(done=True, iterator=None, result=glm.GenerateContentResponse({}), chunks=[])
+class MockGoogleClient:
+    def __init__(self, api_key=None):
+        if len(api_key) < 16:
+            raise errors.ClientError("Invalid API key")
+        self.models = self.MockModels()
+        self.files = MagicMock()
+        self.files.get = mock_get_file
+        self.files.upload = mock_upload_file
 
-    @staticmethod
-    def generate_content_stream() -> Generator[GenerateContentResponse, None, None]:
-        return MockGoogleResponseClass()
+    class MockModels:
+        def generate_content(self, *args, **kwargs) -> types.GenerateContentResponse:
+            return MockGoogleSyncResponse()
 
-    def generate_content(
-        self: GenerativeModel,
-        contents: content_types.ContentsType,
-        *,
-        generation_config: generation_config_types.GenerationConfigType | None = None,
-        safety_settings: safety_types.SafetySettingOptions | None = None,
-        stream: bool = False,
-        **kwargs,
-    ) -> GenerateContentResponse:
-        if stream:
-            return MockGoogleClass.generate_content_stream()
-
-        return MockGoogleClass.generate_content_sync()
-
-    @property
-    def generative_response_text(self) -> str:
-        return "it's google!"
-
-    @property
-    def generative_response_candidates(self) -> list[MockGoogleResponseCandidateClass]:
-        return [MockGoogleResponseCandidateClass()]
-
-
-def mock_configure(api_key: str):
-    if len(api_key) < 16:
-        raise Exception("Invalid API key")
+        def generate_content_stream(self, *args, **kwargs) -> types.GenerateContentResponse:
+            return MockGoogleStreamResponse()
 
 
 class MockFileState:
@@ -85,24 +59,21 @@ class MockGoogleFile:
     def __init__(self, name: str = "mock_file_name"):
         self.name = name
         self.state = MockFileState()
+        self.uri = "http://example.com"
+        self.mime_type = "image/png"
 
 
 def mock_get_file(name: str) -> MockGoogleFile:
     return MockGoogleFile(name)
 
 
-def mock_upload_file(path: str, mime_type: str) -> MockGoogleFile:
+def mock_upload_file(path: str, config: dict) -> MockGoogleFile:
     return MockGoogleFile()
 
 
 @pytest.fixture
 def setup_google_mock(request, monkeypatch: MonkeyPatch):
-    monkeypatch.setattr(BaseGenerateContentResponse, "text", MockGoogleClass.generative_response_text)
-    monkeypatch.setattr(BaseGenerateContentResponse, "candidates", MockGoogleClass.generative_response_candidates)
-    monkeypatch.setattr(GenerativeModel, "generate_content", MockGoogleClass.generate_content)
-    monkeypatch.setattr("google.generativeai.configure", mock_configure)
-    monkeypatch.setattr("google.generativeai.get_file", mock_get_file)
-    monkeypatch.setattr("google.generativeai.upload_file", mock_upload_file)
+    monkeypatch.setattr("google.genai.Client", MockGoogleClient)
 
     yield
 
