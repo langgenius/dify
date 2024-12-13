@@ -37,8 +37,9 @@ logger = logging.getLogger(__name__)
 
 
 class MessageBasedAppGenerator(BaseAppGenerator):
-    allow_customized_conversation_id: bool = True if getenv("ALLOW_CUSTOMIZED_CONVERSATION_ID",
-                                                            "false") == "true" else False
+    allow_customized_conversation_id: bool = (
+        True if getenv("ALLOW_CUSTOMIZED_CONVERSATION_ID", "false") == "true" else False
+    )
 
     def _handle_response(
         self,
@@ -141,7 +142,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             AdvancedChatAppGenerateEntity,
         ],
         conversation: Optional[Conversation] = None,
-        customized_conversation_id: Optional[str] = None
+        customized_conversation_id: Optional[str] = None,
     ) -> tuple[Conversation, Message]:
         """
         Initialize generate records
@@ -200,8 +201,11 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 from_end_user_id=end_user_id,
                 from_account_id=account_id,
             )
-            if (self.allow_customized_conversation_id and customized_conversation_id
-                    and len(customized_conversation_id) > 0):
+            if (
+                self.allow_customized_conversation_id
+                and customized_conversation_id
+                and len(customized_conversation_id) > 0
+            ):
                 conversation.id = customized_conversation_id
             db.session.add(conversation)
             db.session.commit()
