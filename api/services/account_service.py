@@ -33,6 +33,7 @@ from models.account import (
     TenantStatus,
 )
 from models.model import DifySetup
+from models.staging import StagingAccountWhitelist
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
@@ -296,6 +297,9 @@ class AccountService:
 
     @staticmethod
     def login(account: Account, *, ip_address: Optional[str] = None) -> TokenPair:
+        if not AccountService.verify_account_whitelist(account.email):
+            raise ValueError("Account is not whitelisted")
+
         if ip_address:
             AccountService.update_login_info(account=account, ip_address=ip_address)
 
@@ -318,6 +322,9 @@ class AccountService:
 
     @staticmethod
     def refresh_token(refresh_token: str) -> TokenPair:
+        if not AccountService.verify_account_whitelist(refresh_token):
+            raise ValueError("Account is not whitelisted")
+
         # Verify the refresh token
         account_id = redis_client.get(AccountService._get_refresh_token_key(refresh_token))
         if not account_id:
@@ -335,6 +342,11 @@ class AccountService:
         AccountService._store_refresh_token(new_refresh_token, account.id)
 
         return TokenPair(access_token=new_access_token, refresh_token=new_refresh_token)
+
+    @staticmethod
+    def verify_account_whitelist(email: str) -> bool:
+        with Session(db.engine) as session:
+            return session.query(StagingAccountWhitelist).filter_by(email=email, disabled=False).first() is not None
 
     @staticmethod
     def load_logged_in_account(*, account_id: str):
