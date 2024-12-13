@@ -2,11 +2,10 @@ from collections.abc import Generator
 from typing import Any, Optional
 
 from core.plugin.manager.tool import PluginToolManager
+from core.plugin.utils.converter import convert_parameters_to_plugin_format
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
-from core.tools.entities.file_entities import PluginFileEntity
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolParameter, ToolProviderType
-from models.model import File
 
 
 class PluginTool(Tool):
@@ -27,40 +26,6 @@ class PluginTool(Tool):
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.PLUGIN
 
-    @classmethod
-    def _transform_image_parameters(cls, parameters: dict[str, Any]) -> dict[str, Any]:
-        for parameter_name, parameter in parameters.items():
-            if isinstance(parameter, File):
-                url = parameter.generate_url()
-                if url is None:
-                    raise ValueError(f"File {parameter.id} does not have a valid URL")
-                parameters[parameter_name] = PluginFileEntity(
-                    url=url,
-                    mime_type=parameter.mime_type,
-                    type=parameter.type,
-                    filename=parameter.filename,
-                    extension=parameter.extension,
-                    size=parameter.size,
-                ).model_dump()
-            elif isinstance(parameter, list) and all(isinstance(p, File) for p in parameter):
-                parameters[parameter_name] = []
-                for p in parameter:
-                    assert isinstance(p, File)
-                    url = p.generate_url()
-                    if url is None:
-                        raise ValueError(f"File {p.id} does not have a valid URL")
-                    parameters[parameter_name].append(
-                        PluginFileEntity(
-                            url=url,
-                            mime_type=p.mime_type,
-                            type=p.type,
-                            filename=p.filename,
-                            extension=p.extension,
-                            size=p.size,
-                        ).model_dump()
-                    )
-        return parameters
-
     def _invoke(
         self,
         user_id: str,
@@ -71,8 +36,7 @@ class PluginTool(Tool):
     ) -> Generator[ToolInvokeMessage, None, None]:
         manager = PluginToolManager()
 
-        # convert tool parameters with File type to PluginFileEntity
-        tool_parameters = self._transform_image_parameters(tool_parameters)
+        tool_parameters = convert_parameters_to_plugin_format(tool_parameters)
 
         yield from manager.invoke(
             tenant_id=self.tenant_id,

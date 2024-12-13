@@ -4,9 +4,10 @@ from typing import Any
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from core.plugin.entities.parameters import PluginParameterOption
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolParameterOption
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from services.model_provider_service import ModelProviderService
 
 
@@ -54,7 +55,7 @@ class TTSTool(BuiltinTool):
 
         options = []
         for provider, model, voices in self.get_available_models():
-            option = ToolParameterOption(value=f"{provider}#{model}", label=I18nObject(en_US=f"{model}({provider})"))
+            option = PluginParameterOption(value=f"{provider}#{model}", label=I18nObject(en_US=f"{model}({provider})"))
             options.append(option)
             parameters.append(
                 ToolParameter(
@@ -63,7 +64,7 @@ class TTSTool(BuiltinTool):
                     type=ToolParameter.ToolParameterType.SELECT,
                     form=ToolParameter.ToolParameterForm.FORM,
                     options=[
-                        ToolParameterOption(value=voice.get("mode"), label=I18nObject(en_US=voice.get("name")))
+                        PluginParameterOption(value=voice.get("mode"), label=I18nObject(en_US=voice.get("name")))
                         for voice in voices
                     ],
                 )

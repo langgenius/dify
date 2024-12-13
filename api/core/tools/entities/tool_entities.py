@@ -5,14 +5,17 @@ from typing import Any, Mapping, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator
 
-from core.entities.parameter_entities import (
-    AppSelectorScope,
-    CommonParameterType,
-    ModelSelectorScope,
-    ToolSelectorScope,
-)
 from core.entities.provider_entities import ProviderConfig
+from core.plugin.entities.parameters import (
+    PluginParameter,
+    PluginParameterOption,
+    PluginParameterType,
+    as_normal_type,
+    cast_parameter_value,
+    init_frontend_parameter,
+)
 from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.constants import TOOL_SELECTOR_MODEL_IDENTITY
 
 
 class ToolLabelEnum(Enum):
@@ -204,139 +207,51 @@ class ToolInvokeMessageBinary(BaseModel):
     file_var: Optional[dict[str, Any]] = None
 
 
-class ToolParameterOption(BaseModel):
-    value: str = Field(..., description="The value of the option")
-    label: I18nObject = Field(..., description="The label of the option")
+class ToolParameter(PluginParameter):
+    """
+    Overrides type
+    """
 
-    @field_validator("value", mode="before")
-    @classmethod
-    def transform_id_to_str(cls, value) -> str:
-        if not isinstance(value, str):
-            return str(value)
-        else:
-            return value
-
-
-class ToolParameter(BaseModel):
     class ToolParameterType(enum.StrEnum):
-        STRING = CommonParameterType.STRING.value
-        NUMBER = CommonParameterType.NUMBER.value
-        BOOLEAN = CommonParameterType.BOOLEAN.value
-        SELECT = CommonParameterType.SELECT.value
-        SECRET_INPUT = CommonParameterType.SECRET_INPUT.value
-        FILE = CommonParameterType.FILE.value
-        FILES = CommonParameterType.FILES.value
-        APP_SELECTOR = CommonParameterType.APP_SELECTOR.value
-        TOOL_SELECTOR = CommonParameterType.TOOL_SELECTOR.value
-        MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR.value
+        """
+        removes TOOLS_SELECTOR from PluginParameterType
+        """
+
+        STRING = PluginParameterType.STRING.value
+        NUMBER = PluginParameterType.NUMBER.value
+        BOOLEAN = PluginParameterType.BOOLEAN.value
+        SELECT = PluginParameterType.SELECT.value
+        SECRET_INPUT = PluginParameterType.SECRET_INPUT.value
+        FILE = PluginParameterType.FILE.value
+        FILES = PluginParameterType.FILES.value
+        APP_SELECTOR = PluginParameterType.APP_SELECTOR.value
+        MODEL_SELECTOR = PluginParameterType.MODEL_SELECTOR.value
 
         # deprecated, should not use.
-        SYSTEM_FILES = CommonParameterType.SYSTEM_FILES.value
+        SYSTEM_FILES = PluginParameterType.SYSTEM_FILES.value
 
         def as_normal_type(self):
-            if self in {
-                ToolParameter.ToolParameterType.SECRET_INPUT,
-                ToolParameter.ToolParameterType.SELECT,
-            }:
-                return "string"
-            return self.value
+            return as_normal_type(self)
 
-        def cast_value(self, value: Any, /):
-            try:
-                match self:
-                    case (
-                        ToolParameter.ToolParameterType.STRING
-                        | ToolParameter.ToolParameterType.SECRET_INPUT
-                        | ToolParameter.ToolParameterType.SELECT
-                    ):
-                        if value is None:
-                            return ""
-                        else:
-                            return value if isinstance(value, str) else str(value)
-
-                    case ToolParameter.ToolParameterType.BOOLEAN:
-                        if value is None:
-                            return False
-                        elif isinstance(value, str):
-                            # Allowed YAML boolean value strings: https://yaml.org/type/bool.html
-                            # and also '0' for False and '1' for True
-                            match value.lower():
-                                case "true" | "yes" | "y" | "1":
-                                    return True
-                                case "false" | "no" | "n" | "0":
-                                    return False
-                                case _:
-                                    return bool(value)
-                        else:
-                            return value if isinstance(value, bool) else bool(value)
-
-                    case ToolParameter.ToolParameterType.NUMBER:
-                        if isinstance(value, int | float):
-                            return value
-                        elif isinstance(value, str) and value:
-                            if "." in value:
-                                return float(value)
-                            else:
-                                return int(value)
-                    case ToolParameter.ToolParameterType.SYSTEM_FILES | ToolParameter.ToolParameterType.FILES:
-                        if not isinstance(value, list):
-                            return [value]
-                        return value
-                    case ToolParameter.ToolParameterType.FILE:
-                        if isinstance(value, list):
-                            if len(value) != 1:
-                                raise ValueError(
-                                    "This parameter only accepts one file but got multiple files while invoking."
-                                )
-                            else:
-                                return value[0]
-                        return value
-                    case (
-                        ToolParameter.ToolParameterType.TOOL_SELECTOR
-                        | ToolParameter.ToolParameterType.MODEL_SELECTOR
-                        | ToolParameter.ToolParameterType.APP_SELECTOR
-                    ):
-                        if not isinstance(value, dict):
-                            raise ValueError("The selector must be a dictionary.")
-                        return value
-                    case _:
-                        return str(value)
-
-            except Exception:
-                raise ValueError(f"The tool parameter value {value} is not in correct type of {self.as_normal_type()}.")
+        def cast_value(self, value: Any):
+            return cast_parameter_value(self, value)
 
     class ToolParameterForm(Enum):
         SCHEMA = "schema"  # should be set while adding tool
         FORM = "form"  # should be set before invoking tool
         LLM = "llm"  # will be set by LLM
 
-    name: str = Field(..., description="The name of the parameter")
-    label: I18nObject = Field(..., description="The label presented to the user")
-    human_description: Optional[I18nObject] = Field(default=None, description="The description presented to the user")
-    placeholder: Optional[I18nObject] = Field(default=None, description="The placeholder presented to the user")
     type: ToolParameterType = Field(..., description="The type of the parameter")
-    scope: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | None = None
+    human_description: Optional[I18nObject] = Field(default=None, description="The description presented to the user")
     form: ToolParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
     llm_description: Optional[str] = None
-    required: Optional[bool] = False
-    default: Optional[Union[float, int, str]] = None
-    min: Optional[Union[float, int]] = None
-    max: Optional[Union[float, int]] = None
-    options: list[ToolParameterOption] = Field(default_factory=list)
-
-    @field_validator("options", mode="before")
-    @classmethod
-    def transform_options(cls, v):
-        if not isinstance(v, list):
-            return []
-        return v
 
     @classmethod
     def get_simple_instance(
         cls,
         name: str,
         llm_description: str,
-        type: ToolParameterType,
+        typ: ToolParameterType,
         required: bool,
         options: Optional[list[str]] = None,
     ) -> "ToolParameter":
@@ -352,21 +267,26 @@ class ToolParameter(BaseModel):
         # convert options to ToolParameterOption
         if options:
             option_objs = [
-                ToolParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option)) for option in options
+                PluginParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option))
+                for option in options
             ]
         else:
             option_objs = []
+
         return cls(
             name=name,
             label=I18nObject(en_US="", zh_Hans=""),
             placeholder=None,
             human_description=I18nObject(en_US="", zh_Hans=""),
-            type=type,
+            type=typ,
             form=cls.ToolParameterForm.LLM,
             llm_description=llm_description,
             required=required,
             options=option_objs,
         )
+
+    def init_frontend_parameter(self, value: Any):
+        return init_frontend_parameter(self, self.type, value)
 
 
 class ToolProviderIdentity(BaseModel):
@@ -412,7 +332,7 @@ class ToolEntity(BaseModel):
 
 class ToolProviderEntity(BaseModel):
     identity: ToolProviderIdentity
-    plugin_id: Optional[str] = Field(None, description="The id of the plugin")
+    plugin_id: Optional[str] = None
     credentials_schema: list[ProviderConfig] = Field(default_factory=list)
 
 
@@ -479,3 +399,24 @@ class ToolInvokeFrom(Enum):
     WORKFLOW = "workflow"
     AGENT = "agent"
     PLUGIN = "plugin"
+
+
+class ToolSelector(BaseModel):
+    dify_model_identity: str = TOOL_SELECTOR_MODEL_IDENTITY
+
+    class Parameter(BaseModel):
+        name: str = Field(..., description="The name of the parameter")
+        type: ToolParameter.ToolParameterType = Field(..., description="The type of the parameter")
+        required: bool = Field(..., description="Whether the parameter is required")
+        description: str = Field(..., description="The description of the parameter")
+        default: Optional[Union[int, float, str]] = None
+        options: Optional[list[PluginParameterOption]] = None
+
+    provider_id: str = Field(..., description="The id of the provider")
+    tool_name: str = Field(..., description="The name of the tool")
+    tool_description: str = Field(..., description="The description of the tool")
+    tool_configuration: Mapping[str, Any] = Field(..., description="Configuration, type form")
+    tool_parameters: Mapping[str, Parameter] = Field(..., description="Parameters, type llm")
+
+    def to_plugin_parameter(self) -> dict[str, Any]:
+        return self.model_dump()
