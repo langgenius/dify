@@ -494,12 +494,12 @@ services:
   # The TiDB vector store.
   # For production use, please refer to https://github.com/pingcap/tidb-docker-compose
   tidb:
-    image: pingcap/tidb:latest
+    image: pingcap/tidb:v8.4.0
     ports:
       - "4000:4000"
     command:
       - --store=unistore
-    restart: on-failure
+    restart: always
 
   # The Weaviate vector store.
   weaviate:
