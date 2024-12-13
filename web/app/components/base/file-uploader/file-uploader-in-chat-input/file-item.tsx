@@ -17,7 +17,7 @@ import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
-import PdfPreview from '@/app/components/base/file-uploader/pdf-preview'
+import PdfPreview from '@/app/components/base/file-uploader/dynamic-pdf-preview'
 import AudioPreview from '@/app/components/base/file-uploader/audio-preview'
 import VideoPreview from '@/app/components/base/file-uploader/video-preview'
 

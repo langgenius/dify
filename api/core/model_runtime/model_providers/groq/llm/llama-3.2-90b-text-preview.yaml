@@ -1,4 +1,5 @@
 model: llama-3.2-90b-text-preview
+depraceted: true
 label:
   zh_Hans: Llama 3.2 90B Text (Preview)
   en_US: Llama 3.2 90B Text (Preview)
