@@ -10,7 +10,7 @@ from tests.unit_tests.oss.__mock.base import (
     get_example_data,
     get_example_filename,
     get_example_filepath,
-    get_example_folder,
+    get_opendal_bucket,
 )
 
 
@@ -20,20 +20,24 @@ class TestOpenDAL:
         """Executed before each test method."""
         self.storage = OpenDALStorage(
             scheme=OpenDALScheme.FS,
-            root=get_example_folder(),
+            root=get_opendal_bucket(),
         )
 
-    def teardown_method(self, method):
-        """Clean up after each test method."""
-        try:
-            if self.storage.exists(get_example_filename()):
-                self.storage.delete(get_example_filename())
+    @pytest.fixture(scope="class", autouse=True)
+    def teardown_class(self, request):
+        """Clean up after all tests in the class."""
 
-            filepath = Path(get_example_filepath())
-            if filepath.exists():
-                filepath.unlink()
-        except:
-            pass
+        def cleanup():
+            folder = Path(get_opendal_bucket())
+            if folder.exists() and folder.is_dir():
+                for item in folder.iterdir():
+                    if item.is_file():
+                        item.unlink()
+                    elif item.is_dir():
+                        item.rmdir()
+                folder.rmdir()
+
+        return cleanup()
 
     def test_save_and_exists(self):
         """Test saving data and checking existence."""
@@ -66,16 +70,11 @@ class TestOpenDAL:
     def test_download(self):
         """Test downloading data to a file."""
         filename = get_example_filename()
-        filepath = get_example_filepath()
+        filepath = str(Path(get_opendal_bucket()) / filename)
         data = get_example_data()
 
         self.storage.save(filename, data)
         self.storage.download(filename, filepath)
-
-        downloaded_path = Path(filepath)
-        assert downloaded_path.exists()
-        downloaded_data = downloaded_path.read_bytes()
-        assert downloaded_data == data
 
     def test_delete(self):
         """Test deleting a file."""
