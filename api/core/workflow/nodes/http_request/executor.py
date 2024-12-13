@@ -21,6 +21,7 @@ from .entities import (
 from .exc import (
     AuthorizationConfigError,
     FileFetchError,
+    HttpRequestNodeError,
     InvalidHttpMethodError,
     ResponseSizeError,
 )
@@ -108,7 +109,7 @@ class Executor:
                     self.content = self.variable_pool.convert_template(data[0].value).text
                 case "json":
                     json_string = self.variable_pool.convert_template(data[0].value).text
-                    json_object = json.loads(json_string)
+                    json_object = json.loads(json_string, strict=False)
                     self.json = json_object
                     # self.json = self._parse_object_contains_variables(json_object)
                 case "binary":
@@ -208,8 +209,10 @@ class Executor:
             "follow_redirects": True,
         }
         # request_args = {k: v for k, v in request_args.items() if v is not None}
-
-        response = getattr(ssrf_proxy, self.method)(**request_args)
+        try:
+            response = getattr(ssrf_proxy, self.method)(**request_args)
+        except ssrf_proxy.MaxRetriesExceededError as e:
+            raise HttpRequestNodeError(str(e))
         return response
 
     def invoke(self) -> Response:

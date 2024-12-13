@@ -77,6 +77,7 @@ const translation = {
     requestBody: 'Corpul cererii',
     pathParams: 'Parametrii căii',
     query: 'Interogare',
+    toc: 'Conținut',
   },
   regenerate: 'Regenera',
 }

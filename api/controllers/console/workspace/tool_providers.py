@@ -7,7 +7,7 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.console import api
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import alphanumeric, uuid_value
 from libs.login import login_required
@@ -368,6 +368,7 @@ class ToolWorkflowProviderCreateApi(Resource):
             description=args["description"],
             parameters=args["parameters"],
             privacy_policy=args["privacy_policy"],
+            labels=args["labels"],
         )
 
 
@@ -549,6 +550,7 @@ class ToolLabelsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @enterprise_license_required
     def get(self):
         return jsonable_encoder(ToolLabelsService.list_tool_labels())
 

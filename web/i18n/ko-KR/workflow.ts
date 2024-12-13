@@ -99,6 +99,11 @@ const translation = {
     fileUploadTip: '이미지 업로드 기능이 파일 업로드로 업그레이드되었습니다.',
     featuresDescription: '웹앱 사용자 경험 향상',
     ImageUploadLegacyTip: '이제 시작 양식에서 파일 형식 변수를 만들 수 있습니다. 앞으로 이미지 업로드 기능은 더 이상 지원되지 않습니다.',
+    importWarning: '주의',
+    importWarningDetails: 'DSL 버전 차이는 특정 기능에 영향을 미칠 수 있습니다.',
+    openInExplore: 'Explore에서 열기',
+    onFailure: '실패 시',
+    addFailureBranch: '실패 분기 추가',
   },
   env: {
     envPanelTitle: '환경 변수',
@@ -292,6 +297,31 @@ const translation = {
         tip: '대화 메모리',
         builtIn: '내장',
       },
+      errorHandle: {
+        none: {
+          title: '없음',
+          desc: '예외가 발생하고 처리되지 않으면 노드 실행이 중지됩니다',
+        },
+        defaultValue: {
+          title: '기본값',
+          desc: '오류가 발생하면 정적 출력 콘텐츠를 지정합니다.',
+          tip: '오류가 발생하면 아래 값을 반환합니다.',
+          inLog: '노드 예외, 기본값에 따라 출력합니다.',
+          output: '출력 기본값',
+        },
+        failBranch: {
+          title: '실패 분기',
+          desc: '오류가 발생하면 예외 분기를 실행합니다',
+          customize: '캔버스로 이동하여 fail branch logic를 사용자 지정합니다.',
+          inLog: '노드 예외는 실패 분기를 자동으로 실행합니다. 노드 출력은 오류 유형 및 오류 메시지를 반환하고 다운스트림으로 전달합니다.',
+          customizeTip: 'fail 분기가 활성화되면 노드에서 throw된 예외가 프로세스를 종료하지 않습니다. 대신 미리 정의된 실패 분기를 자동으로 실행하여 오류 메시지, 보고서, 수정 사항을 유연하게 제공하거나 작업을 건너뛸 수 있습니다.',
+        },
+        partialSucceeded: {
+          tip: '프로세스에 {{num}} 노드가 비정상적으로 실행 중입니다. 추적으로 이동하여 로그를 확인하십시오.',
+        },
+        title: '오류 처리',
+        tip: '노드에 예외가 발생할 때 트리거되는 예외 처리 전략입니다.',
+      },
     },
     start: {
       required: '필수',
@@ -407,6 +437,11 @@ const translation = {
       },
       type: '형',
       binaryFileVariable: '바이너리 파일 변수',
+      extractListPlaceholder: '목록 항목 인덱스 입력, \'/\' 변수 삽입',
+      curl: {
+        title: 'cURL에서 가져오기',
+        placeholder: '여기에 cURL 문자열 붙여 넣기',
+      },
     },
     code: {
       inputVars: '입력 변수',
@@ -493,6 +528,26 @@ const translation = {
       'clear': '지우기',
       'setVariable': '변수 설정',
       'variable': '변수',
+      'operations': {
+        '*=': '*=',
+        'overwrite': '덮어쓸',
+        '-=': '-=',
+        'append': '덧붙이다',
+        'over-write': '덮어쓸',
+        '+=': '+=',
+        'title': '수술',
+        'extend': '뻗치다',
+        'clear': '맑다',
+        '/=': '/=',
+        'set': '집합',
+      },
+      'variables': '변수',
+      'noAssignedVars': '사용 가능한 할당된 변수가 없습니다.',
+      'noVarTip': '"+" 버튼을 클릭하여 변수를 추가합니다.',
+      'setParameter': '매개 변수 설정...',
+      'assignedVarsDescription': '할당된 변수는 대화 변수와 같은 쓰기 가능한 변수여야 합니다.',
+      'selectAssignedVariable': '할당된 변수 선택...',
+      'varNotSet': '변수가 설정되지 않음',
     },
     tool: {
       toAuthorize: '승인하기',
@@ -618,10 +673,18 @@ const translation = {
       orderBy: '정렬 기준',
       selectVariableKeyPlaceholder: '하위 변수 키 선택',
       filterConditionComparisonOperator: '필터 조건 비교 연산자',
+      extractsCondition: 'N 항목을 추출합니다.',
     },
   },
   tracing: {
     stopBy: '{{user}}에 의해 중지됨',
+  },
+  variableReference: {
+    noAvailableVars: '사용 가능한 변수 없음',
+    conversationVars: '대화 변수',
+    noVarsForOperation: '선택한 작업에 할당할 수 있는 변수가 없습니다.',
+    noAssignedVars: '사용 가능한 할당된 변수가 없습니다.',
+    assignedVarsDescription: '할당된 변수는 다음과 같이 쓰기 가능한 변수여야 합니다.',
   },
 }
 

@@ -55,6 +55,9 @@ x-shared-env: &shared-api-worker-env
   REDIS_SENTINEL_USERNAME: ${REDIS_SENTINEL_USERNAME:-}
   REDIS_SENTINEL_PASSWORD: ${REDIS_SENTINEL_PASSWORD:-}
   REDIS_SENTINEL_SOCKET_TIMEOUT: ${REDIS_SENTINEL_SOCKET_TIMEOUT:-0.1}
+  REDIS_CLUSTERS: ${REDIS_CLUSTERS:-}
+  REDIS_USE_CLUSTERS: ${REDIS_USE_CLUSTERS:-false}
+  REDIS_CLUSTERS_PASSWORD: ${REDIS_CLUSTERS_PASSWORD:-}
   ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
   CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://:difyai123456@redis:6379/1}
   BROKER_USE_SSL: ${BROKER_USE_SSL:-false}
@@ -174,7 +177,7 @@ x-shared-env: &shared-api-worker-env
   ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
   LINDORM_URL: ${LINDORM_URL:-http://lindorm:30070}
   LINDORM_USERNAME: ${LINDORM_USERNAME:-lindorm}
-  LINDORM_PASSWORD: ${LINDORM_USERNAME:-lindorm }
+  LINDORM_PASSWORD: ${LINDORM_PASSWORD:-lindorm }
   KIBANA_PORT: ${KIBANA_PORT:-5601}
   # AnalyticDB configuration
   ANALYTICDB_KEY_ID: ${ANALYTICDB_KEY_ID:-}
@@ -185,6 +188,10 @@ x-shared-env: &shared-api-worker-env
   ANALYTICDB_PASSWORD: ${ANALYTICDB_PASSWORD:-}
   ANALYTICDB_NAMESPACE: ${ANALYTICDB_NAMESPACE:-dify}
   ANALYTICDB_NAMESPACE_PASSWORD: ${ANALYTICDB_NAMESPACE_PASSWORD:-}
+  ANALYTICDB_HOST: ${ANALYTICDB_HOST:-}
+  ANALYTICDB_PORT: ${ANALYTICDB_PORT:-5432}
+  ANALYTICDB_MIN_CONNECTION: ${ANALYTICDB_MIN_CONNECTION:-1}
+  ANALYTICDB_MAX_CONNECTION: ${ANALYTICDB_MAX_CONNECTION:-5}
   OPENSEARCH_HOST: ${OPENSEARCH_HOST:-opensearch}
   OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
   OPENSEARCH_USER: ${OPENSEARCH_USER:-admin}
@@ -215,6 +222,7 @@ x-shared-env: &shared-api-worker-env
   UPLOAD_FILE_BATCH_LIMIT: ${UPLOAD_FILE_BATCH_LIMIT:-5}
   ETL_TYPE: ${ETL_TYPE:-dify}
   UNSTRUCTURED_API_URL: ${UNSTRUCTURED_API_URL:-}
+  UNSTRUCTURED_API_KEY: ${UNSTRUCTURED_API_KEY:-}
   PROMPT_GENERATION_MAX_TOKENS: ${PROMPT_GENERATION_MAX_TOKENS:-512}
   CODE_GENERATION_MAX_TOKENS: ${CODE_GENERATION_MAX_TOKENS:-1024}
   MULTIMODAL_SEND_IMAGE_FORMAT: ${MULTIMODAL_SEND_IMAGE_FORMAT:-base64}
@@ -239,11 +247,14 @@ x-shared-env: &shared-api-worker-env
   SMTP_OPPORTUNISTIC_TLS: ${SMTP_OPPORTUNISTIC_TLS:-false}
   RESEND_API_KEY: ${RESEND_API_KEY:-your-resend-api-key}
   RESEND_API_URL: ${RESEND_API_URL:-https://api.resend.com}
-  INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-1000}
+  INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-4000}
   INVITE_EXPIRY_HOURS: ${INVITE_EXPIRY_HOURS:-72}
   RESET_PASSWORD_TOKEN_EXPIRY_MINUTES: ${RESET_PASSWORD_TOKEN_EXPIRY_MINUTES:-5}
   CODE_EXECUTION_ENDPOINT: ${CODE_EXECUTION_ENDPOINT:-http://sandbox:8194}
   CODE_EXECUTION_API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
+  CODE_EXECUTION_CONNECT_TIMEOUT: ${CODE_EXECUTION_CONNECT_TIMEOUT:-10}
+  CODE_EXECUTION_READ_TIMEOUT: ${CODE_EXECUTION_READ_TIMEOUT:-60}
+  CODE_EXECUTION_WRITE_TIMEOUT: ${CODE_EXECUTION_WRITE_TIMEOUT:-10}
   CODE_MAX_NUMBER: ${CODE_MAX_NUMBER:-9223372036854775807}
   CODE_MIN_NUMBER: ${CODE_MIN_NUMBER:--9223372036854775808}
   CODE_MAX_DEPTH: ${CODE_MAX_DEPTH:-5}
@@ -276,11 +287,12 @@ x-shared-env: &shared-api-worker-env
   OCEANBASE_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
   OCEANBASE_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
   CREATE_TIDB_SERVICE_JOB_ENABLED: ${CREATE_TIDB_SERVICE_JOB_ENABLED:-false}
+  RETRIEVAL_TOP_N: ${RETRIEVAL_TOP_N:-0}
 
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.11.1
+    image: langgenius/dify-api:0.13.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -300,7 +312,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.11.1
+    image: langgenius/dify-api:0.13.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -319,7 +331,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.11.1
+    image: langgenius/dify-web:0.13.2
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -356,6 +368,8 @@ services:
   redis:
     image: redis:6-alpine
     restart: always
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:-difyai123456}
     volumes:
       # Mount the redis data directory to the container.
       - ./volumes/redis/data:/data
@@ -592,7 +606,7 @@ services:
 
   # Chroma vector database
   chroma:
-    image: ghcr.io/chroma-core/chroma:0.5.1
+    image: ghcr.io/chroma-core/chroma:0.5.20
     profiles:
       - chroma
     restart: always

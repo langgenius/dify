@@ -462,7 +462,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                 # ignore sse comments
                 if chunk.startswith(":"):
                     continue
-                decoded_chunk = chunk.strip().lstrip("data: ").lstrip()
+                decoded_chunk = chunk.strip().removeprefix("data: ")
                 if decoded_chunk == "[DONE]":  # Some provider returns "data: [DONE]"
                     continue
 

@@ -16,9 +16,7 @@ class FileUploadConfigManager:
         file_upload_dict = config.get("file_upload")
         if file_upload_dict:
             if file_upload_dict.get("enabled"):
-                transform_methods = file_upload_dict.get("allowed_file_upload_methods") or file_upload_dict.get(
-                    "allowed_upload_methods", []
-                )
+                transform_methods = file_upload_dict.get("allowed_file_upload_methods", [])
                 data = {
                     "image_config": {
                         "number_limits": file_upload_dict["number_limits"],

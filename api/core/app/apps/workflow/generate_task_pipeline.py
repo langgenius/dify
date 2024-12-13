@@ -15,6 +15,7 @@ from core.app.entities.queue_entities import (
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
+    QueueNodeExceptionEvent,
     QueueNodeFailedEvent,
     QueueNodeInIterationFailedEvent,
     QueueNodeStartedEvent,
@@ -26,6 +27,7 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
+    QueueWorkflowPartialSuccessEvent,
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
@@ -216,7 +218,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 else:
                     yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
             except Exception as e:
-                logger.exception(e)
+                logger.exception(f"Fails to get audio trunk, task_id: {task_id}")
                 break
         if tts_publisher:
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
@@ -276,7 +278,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
                 if response:
                     yield response
-            elif isinstance(event, QueueNodeFailedEvent | QueueNodeInIterationFailedEvent):
+            elif isinstance(event, QueueNodeFailedEvent | QueueNodeInIterationFailedEvent | QueueNodeExceptionEvent):
                 workflow_node_execution = self._handle_workflow_node_execution_failed(event)
 
                 response = self._workflow_node_finish_to_stream_response(
@@ -345,25 +347,77 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 yield self._workflow_finish_to_stream_response(
                     task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
                 )
-            elif isinstance(event, QueueWorkflowFailedEvent | QueueStopEvent):
+            elif isinstance(event, QueueWorkflowPartialSuccessEvent):
                 if not workflow_run:
                     raise Exception("Workflow run not initialized.")
 
                 if not graph_runtime_state:
                     raise Exception("Graph runtime state not initialized.")
 
-                workflow_run = self._handle_workflow_run_failed(
+                workflow_run = self._handle_workflow_run_partial_success(
                     workflow_run=workflow_run,
                     start_at=graph_runtime_state.start_at,
                     total_tokens=graph_runtime_state.total_tokens,
                     total_steps=graph_runtime_state.node_run_steps,
-                    status=WorkflowRunStatus.FAILED
-                    if isinstance(event, QueueWorkflowFailedEvent)
-                    else WorkflowRunStatus.STOPPED,
-                    error=event.error if isinstance(event, QueueWorkflowFailedEvent) else event.get_stop_reason(),
+                    outputs=event.outputs,
+                    exceptions_count=event.exceptions_count,
                     conversation_id=None,
                     trace_manager=trace_manager,
                 )
+
+                # save workflow app log
+                self._save_workflow_app_log(workflow_run)
+
+                yield self._workflow_finish_to_stream_response(
+                    task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
+                )
+            elif isinstance(event, QueueWorkflowFailedEvent | QueueStopEvent):
+                if not workflow_run:
+                    raise Exception("Workflow run not initialized.")
+
+                if not graph_runtime_state:
+                    raise Exception("Graph runtime state not initialized.")
+                handle_args = {
+                    "workflow_run": workflow_run,
+                    "start_at": graph_runtime_state.start_at,
+                    "total_tokens": graph_runtime_state.total_tokens,
+                    "total_steps": graph_runtime_state.node_run_steps,
+                    "status": WorkflowRunStatus.FAILED
+                    if isinstance(event, QueueWorkflowFailedEvent)
+                    else WorkflowRunStatus.STOPPED,
+                    "error": event.error if isinstance(event, QueueWorkflowFailedEvent) else event.get_stop_reason(),
+                    "conversation_id": None,
+                    "trace_manager": trace_manager,
+                    "exceptions_count": event.exceptions_count if isinstance(event, QueueWorkflowFailedEvent) else 0,
+                }
+                workflow_run = self._handle_workflow_run_failed(**handle_args)
+
+                # save workflow app log
+                self._save_workflow_app_log(workflow_run)
+
+                yield self._workflow_finish_to_stream_response(
+                    task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
+                )
+            elif isinstance(event, QueueWorkflowPartialSuccessEvent):
+                if not workflow_run:
+                    raise Exception("Workflow run not initialized.")
+
+                if not graph_runtime_state:
+                    raise Exception("Graph runtime state not initialized.")
+                handle_args = {
+                    "workflow_run": workflow_run,
+                    "start_at": graph_runtime_state.start_at,
+                    "total_tokens": graph_runtime_state.total_tokens,
+                    "total_steps": graph_runtime_state.node_run_steps,
+                    "status": WorkflowRunStatus.FAILED
+                    if isinstance(event, QueueWorkflowFailedEvent)
+                    else WorkflowRunStatus.STOPPED,
+                    "error": event.error if isinstance(event, QueueWorkflowFailedEvent) else event.get_stop_reason(),
+                    "conversation_id": None,
+                    "trace_manager": trace_manager,
+                    "exceptions_count": event.exceptions_count,
+                }
+                workflow_run = self._handle_workflow_run_partial_success(**handle_args)
 
                 # save workflow app log
                 self._save_workflow_app_log(workflow_run)

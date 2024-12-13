@@ -32,6 +32,7 @@ const translation = {
     restore: '復元',
     runApp: 'アプリを実行',
     batchRunApp: 'バッチでアプリを実行',
+    openInExplore: '"探索" で開く',
     accessAPIReference: 'APIリファレンスにアクセス',
     embedIntoSite: 'サイトに埋め込む',
     addTitle: 'タイトルを追加...',
@@ -99,6 +100,10 @@ const translation = {
     addParallelNode: '並列ノードを追加',
     parallel: '並列',
     branch: 'ブランチ',
+    importWarning: '注意',
+    importWarningDetails: 'DSL のバージョンの違いが特定の機能に影響を与える場合があります',
+    onFailure: '失敗時',
+    addFailureBranch: '失敗ブランチを追加',
   },
   env: {
     envPanelTitle: '環境変数',
@@ -292,6 +297,31 @@ const translation = {
         tip: 'チャットメモリ',
         builtIn: '組み込み',
       },
+      errorHandle: {
+        none: {
+          title: '何一つ',
+          desc: '例外が発生して処理されない場合、ノードは実行を停止します',
+        },
+        defaultValue: {
+          title: '既定値',
+          desc: 'エラーが発生した場合は、静的な出力コンテンツを指定します。',
+          tip: 'エラーの場合は、以下の値を返します。',
+          inLog: 'ノード例外、デフォルト値に従って出力します。',
+          output: '出力デフォルト値',
+        },
+        failBranch: {
+          title: '失敗ブランチ',
+          customize: 'キャンバスに移動して、失敗ブランチのロジックをカスタマイズします。',
+          inLog: 'ノード例外は、失敗したブランチを自動的に実行します。ノード出力は、エラータイプとエラーメッセージを返し、それらをダウンストリームに渡します。',
+          desc: 'エラーが発生した場合は、例外ブランチを実行します',
+          customizeTip: 'fail ブランチがアクティブになっても、ノードによってスローされた例外はプロセスを終了させません。代わりに、事前定義された fail ブランチが自動的に実行されるため、エラー メッセージ、レポート、修正、またはスキップ アクションを柔軟に提供できます。',
+        },
+        partialSucceeded: {
+          tip: 'プロセスに{{num}}ノードが異常に動作していますので、トレースに移動してログを確認してください。',
+        },
+        title: 'エラー処理',
+        tip: 'ノードが例外を検出したときにトリガーされる例外処理戦略。',
+      },
     },
     start: {
       required: '必須',
@@ -407,6 +437,11 @@ const translation = {
       },
       type: 'タイプ',
       binaryFileVariable: 'バイナリファイル変数',
+      extractListPlaceholder: 'リスト項目のインデックスを入力し、変数を挿入 \'/\' と入力します',
+      curl: {
+        title: 'cURLからのインポート',
+        placeholder: 'ここにcURL文字列を貼り付けます',
+      },
     },
     code: {
       inputVars: '入力変数',
@@ -494,6 +529,26 @@ const translation = {
       'clear': 'クリア',
       'setVariable': '変数を設定する',
       'variable': '変数',
+      'operations': {
+        'title': '操作',
+        'set': 'セット',
+        'clear': 'クリア',
+        'overwrite': '上書き',
+        'append': '追加',
+        '-=': '-=',
+        '/=': '/=',
+        '+=': '+=',
+        'over-write': '上書き',
+        'extend': '延ばす',
+        '*=': '*=',
+      },
+      'setParameter': 'パラメータを設定...',
+      'selectAssignedVariable': '代入変数を選択...',
+      'varNotSet': '変数が設定されていません',
+      'variables': '変数',
+      'noVarTip': '「+」ボタンをクリックして変数を追加します',
+      'noAssignedVars': '使用可能な代入変数がありません',
+      'assignedVarsDescription': '代入される変数は、会話変数などの書き込み可能な変数である必要があります。',
     },
     tool: {
       toAuthorize: '承認するには',
@@ -619,10 +674,18 @@ const translation = {
       filterConditionComparisonOperator: 'フィルター条件を比較オペレーター',
       inputVar: '入力変数',
       desc: 'DESC',
+      extractsCondition: 'N個のアイテムを抽出します',
     },
   },
   tracing: {
     stopBy: '{{user}}によって停止',
+  },
+  variableReference: {
+    noVarsForOperation: '選択した操作で代入できる変数はありません。',
+    noAvailableVars: '使用可能な変数がありません',
+    noAssignedVars: '使用可能な代入変数がありません',
+    assignedVarsDescription: '代入変数は、次のような書き込み可能な変数である必要があります。',
+    conversationVars: '会話変数',
   },
 }
 

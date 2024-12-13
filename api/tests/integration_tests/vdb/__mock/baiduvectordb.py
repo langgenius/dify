@@ -1,4 +1,5 @@
 import os
+from collections import UserDict
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,7 +12,7 @@ from pymochow.model.table import Table
 from requests.adapters import HTTPAdapter
 
 
-class AttrDict(dict):
+class AttrDict(UserDict):
     def __getattr__(self, item):
         return self.get(item)
 

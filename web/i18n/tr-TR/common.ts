@@ -591,6 +591,13 @@ const translation = {
     pasteFileLinkInvalid: 'Geçersiz dosya bağlantısı',
     fileExtensionNotSupport: 'Dosya uzantısı desteklenmiyor',
   },
+  license: {
+    expiring_plural: '{{count}} gün içinde sona eriyor',
+    expiring: 'Bir günde sona eriyor',
+  },
+  pagination: {
+    perPage: 'Sayfa başına öğe sayısı',
+  },
 }
 
 export default translation

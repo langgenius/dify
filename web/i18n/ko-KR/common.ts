@@ -587,6 +587,13 @@ const translation = {
     uploadFromComputerLimit: '업로드 파일은 {{size}}를 초과할 수 없습니다.',
     uploadFromComputerUploadError: '파일 업로드에 실패했습니다. 다시 업로드하십시오.',
   },
+  license: {
+    expiring_plural: '{{count}}일 후에 만료',
+    expiring: '하루 후에 만료',
+  },
+  pagination: {
+    perPage: '페이지당 항목 수',
+  },
 }
 
 export default translation

@@ -1,5 +1,4 @@
 import mime from 'mime'
-import { flatten } from 'lodash-es'
 import { FileAppearanceTypeEnum } from './types'
 import type { FileEntity } from './types'
 import { upload } from '@/service/base'
@@ -44,21 +43,24 @@ export const fileUpload: FileUpload = ({
 }
 
 export const getFileExtension = (fileName: string, fileMimetype: string, isRemote?: boolean) => {
+  let extension = ''
   if (fileMimetype)
-    return mime.getExtension(fileMimetype) || ''
+    extension = mime.getExtension(fileMimetype) || ''
 
-  if (isRemote)
-    return ''
-
-  if (fileName) {
+  if (fileName && !extension) {
     const fileNamePair = fileName.split('.')
     const fileNamePairLength = fileNamePair.length
 
     if (fileNamePairLength > 1)
-      return fileNamePair[fileNamePairLength - 1]
+      extension = fileNamePair[fileNamePairLength - 1]
+    else
+      extension = ''
   }
 
-  return ''
+  if (isRemote)
+    extension = ''
+
+  return extension
 }
 
 export const getFileAppearanceType = (fileName: string, fileMimetype: string) => {
@@ -82,7 +84,7 @@ export const getFileAppearanceType = (fileName: string, fileMimetype: string) =>
   if (extension === 'pdf')
     return FileAppearanceTypeEnum.pdf
 
-  if (extension === 'md' || extension === 'markdown')
+  if (extension === 'md' || extension === 'markdown' || extension === 'mdx')
     return FileAppearanceTypeEnum.markdown
 
   if (extension === 'xlsx' || extension === 'xls')
@@ -145,7 +147,7 @@ export const getFileNameFromUrl = (url: string) => {
 
 export const getSupportFileExtensionList = (allowFileTypes: string[], allowFileExtensions: string[]) => {
   if (allowFileTypes.includes(SupportUploadFileTypes.custom))
-    return allowFileExtensions.map(item => item.toUpperCase())
+    return allowFileExtensions.map(item => item.slice(1).toUpperCase())
 
   return allowFileTypes.map(type => FILE_EXTS[type]).flat()
 }
@@ -155,12 +157,22 @@ export const isAllowedFileExtension = (fileName: string, fileMimetype: string, a
 }
 
 export const getFilesInLogs = (rawData: any) => {
-  const originalFiles = flatten(Object.keys(rawData || {}).map((key) => {
-    if (typeof rawData[key] === 'object' || Array.isArray(rawData[key]))
-      return rawData[key]
+  const result = Object.keys(rawData || {}).map((key) => {
+    if (typeof rawData[key] === 'object' && rawData[key]?.dify_model_identity === '__dify__file__') {
+      return {
+        varName: key,
+        list: getProcessedFilesFromResponse([rawData[key]]),
+      }
+    }
+    if (Array.isArray(rawData[key]) && rawData[key].some(item => item?.dify_model_identity === '__dify__file__')) {
+      return {
+        varName: key,
+        list: getProcessedFilesFromResponse(rawData[key]),
+      }
+    }
     return undefined
-  }).filter(Boolean)).filter(item => item?.model_identity === '__dify__file__')
-  return getProcessedFilesFromResponse(originalFiles)
+  }).filter(Boolean)
+  return result
 }
 
 export const fileIsUploaded = (file: FileEntity) => {

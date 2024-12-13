@@ -99,6 +99,11 @@ const translation = {
     featuresDescription: 'Melhore a experiência do usuário do aplicativo Web',
     ImageUploadLegacyTip: 'Agora você pode criar variáveis de tipo de arquivo no formulário inicial. Não daremos mais suporte ao recurso de upload de imagens no futuro.',
     fileUploadTip: 'Os recursos de upload de imagens foram atualizados para upload de arquivos.',
+    importWarning: 'Cuidado',
+    importWarningDetails: 'A diferença de versão DSL pode afetar determinados recursos',
+    openInExplore: 'Abrir no Explore',
+    onFailure: 'Em caso de falha',
+    addFailureBranch: 'Adicionar ramificação com falha',
   },
   env: {
     envPanelTitle: 'Variáveis de Ambiente',
@@ -292,6 +297,31 @@ const translation = {
         tip: 'Memória de conversa',
         builtIn: 'Integrado',
       },
+      errorHandle: {
+        none: {
+          title: 'Nenhum',
+          desc: 'O nó deixará de ser executado se ocorrer uma exceção e não for tratada',
+        },
+        defaultValue: {
+          title: 'Valor padrão',
+          desc: 'Quando ocorrer um erro, especifique um conteúdo de saída estático.',
+          tip: 'Em caso de erro, retornará o valor abaixo.',
+          inLog: 'Exceção de nó, saída de acordo com os valores padrão.',
+          output: 'Valor padrão de saída',
+        },
+        failBranch: {
+          title: 'Ramificação com falha',
+          desc: 'Quando ocorrer um erro, ele executará a ramificação de exceção',
+          customize: 'Vá para a tela para personalizar a lógica do branch de falha.',
+          customizeTip: 'Quando a ramificação de falha é ativada, as exceções geradas pelos nós não encerram o processo. Em vez disso, ele executará automaticamente a ramificação de falha predefinida, permitindo que você forneça mensagens de erro, relatórios, correções ou ações de salto com flexibilidade.',
+          inLog: 'Node exception, executará automaticamente a ramificação de falha. A saída do nó retornará um tipo de erro e uma mensagem de erro e os passará para o downstream.',
+        },
+        partialSucceeded: {
+          tip: 'Existem {{num}} nós no processo em execução anormal, vá para rastreamento para verificar os logs.',
+        },
+        title: 'Tratamento de erros',
+        tip: 'Estratégia de tratamento de exceções, disparada quando um nó encontra uma exceção.',
+      },
     },
     start: {
       required: 'requerido',
@@ -407,6 +437,11 @@ const translation = {
       },
       type: 'Tipo',
       binaryFileVariable: 'Variável de arquivo binário',
+      extractListPlaceholder: 'Insira o índice do item da lista, digite \'/\' inserir variável',
+      curl: {
+        placeholder: 'Cole a string cURL aqui',
+        title: 'Importar do cURL',
+      },
     },
     code: {
       inputVars: 'Variáveis de entrada',
@@ -493,6 +528,26 @@ const translation = {
       'clear': 'Limpar',
       'setVariable': 'Definir Variável',
       'variable': 'Variável',
+      'operations': {
+        'clear': 'Claro',
+        'title': 'Operação',
+        'over-write': 'Sobrescrever',
+        '-=': '-=',
+        '/=': '/=',
+        '*=': '*=',
+        'extend': 'Estender',
+        'append': 'Acrescentar',
+        '+=': '+=',
+        'set': 'Pôr',
+        'overwrite': 'Sobrescrever',
+      },
+      'selectAssignedVariable': 'Selecione a variável atribuída...',
+      'setParameter': 'Definir parâmetro...',
+      'noVarTip': 'Clique no botão "+" para adicionar variáveis',
+      'assignedVarsDescription': 'As variáveis atribuídas devem ser variáveis graváveis, como variáveis de conversação.',
+      'varNotSet': 'Variável NÃO definida',
+      'noAssignedVars': 'Nenhuma variável atribuída disponível',
+      'variables': 'Variáveis',
     },
     tool: {
       toAuthorize: 'Autorizar',
@@ -618,10 +673,18 @@ const translation = {
       filterConditionKey: 'Chave de condição do filtro',
       filterConditionComparisonOperator: 'Operador de comparação de condição de filtro',
       filterConditionComparisonValue: 'Valor da condição do filtro',
+      extractsCondition: 'Extraia o item N',
     },
   },
   tracing: {
     stopBy: 'Parado por {{user}}',
+  },
+  variableReference: {
+    noAssignedVars: 'Nenhuma variável atribuída disponível',
+    noVarsForOperation: 'Não há variáveis disponíveis para atribuição com a operação selecionada.',
+    conversationVars: 'variáveis de conversação',
+    assignedVarsDescription: 'As variáveis atribuídas devem ser variáveis graváveis, como',
+    noAvailableVars: 'Nenhuma variável disponível',
   },
 }
 

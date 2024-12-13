@@ -62,6 +62,14 @@ const translation = {
     appTypeRequired: 'Lütfen bir uygulama türü seçin',
     appCreated: 'Uygulama oluşturuldu',
     appCreateFailed: 'Uygulama oluşturulamadı',
+    appCreateDSLErrorPart4: 'Sistem tarafından desteklenen DSL sürümü:',
+    appCreateDSLErrorPart2: 'Devam etmek istiyor musunuz?',
+    appCreateDSLWarning: 'Dikkat: DSL sürüm farkı bazı özellikleri etkileyebilir',
+    appCreateDSLErrorPart1: 'DSL sürümlerinde önemli bir fark tespit edildi. İçe aktarmayı zorlamak, uygulamanın hatalı çalışmasına neden olabilir.',
+    caution: 'Dikkat',
+    appCreateDSLErrorPart3: 'Geçerli uygulama DSL sürümü:',
+    appCreateDSLErrorTitle: 'Sürüm Uyumsuzluğu',
+    Confirm: 'Onaylamak',
   },
   editApp: 'Bilgileri Düzenle',
   editAppTitle: 'Uygulama Bilgilerini Düzenle',
@@ -129,6 +137,11 @@ const translation = {
     title: 'Değiştirmek 🤖 için WebApp simgesini kullanın',
     description: 'Paylaşılan uygulamada değiştirmek 🤖 için WebApp simgesinin kullanılıp kullanılmayacağı',
   },
+  mermaid: {
+    handDrawn: 'Elle çizilmiş',
+    classic: 'Klasik',
+  },
+  openInExplore: 'Keşfet\'te Aç',
 }
 
 export default translation

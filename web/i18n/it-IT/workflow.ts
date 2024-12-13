@@ -103,6 +103,11 @@ const translation = {
     featuresDescription: 'Migliora l\'esperienza utente dell\'app Web',
     fileUploadTip: 'Le funzioni di caricamento delle immagini sono state aggiornate al caricamento dei file.',
     ImageUploadLegacyTip: 'Ora è possibile creare variabili di tipo file nel modulo iniziale. In futuro non supporteremo più la funzione di caricamento delle immagini.',
+    importWarning: 'Cautela',
+    importWarningDetails: 'La differenza di versione DSL può influire su alcune funzionalità',
+    openInExplore: 'Apri in Esplora',
+    onFailure: 'In caso di guasto',
+    addFailureBranch: 'Aggiungi ramo non riuscito',
   },
   env: {
     envPanelTitle: 'Variabili d\'Ambiente',
@@ -307,6 +312,31 @@ const translation = {
         tip: 'Memoria chat',
         builtIn: 'Integrato',
       },
+      errorHandle: {
+        none: {
+          title: 'Nessuno',
+          desc: 'L\'esecuzione del nodo verrà interrotta se si verifica un\'eccezione e non viene gestita',
+        },
+        defaultValue: {
+          title: 'Valore predefinito',
+          desc: 'Quando si verifica un errore, specificare un contenuto di output statico.',
+          tip: 'In caso di errore, tornerà al di sotto del valore.',
+          inLog: 'Eccezione del nodo, output in base ai valori predefiniti.',
+          output: 'Valore predefinito di output',
+        },
+        failBranch: {
+          title: 'Ramo fallito',
+          desc: 'Quando si verifica un errore, eseguirà il ramo dell\'eccezione',
+          customize: 'Passare all\'area di disegno per personalizzare la logica del ramo di errore.',
+          customizeTip: 'Quando il ramo di errore è attivato, le eccezioni generate dai nodi non termineranno il processo. Al contrario, eseguirà automaticamente il ramo di errore predefinito, consentendo di fornire in modo flessibile messaggi di errore, report, correzioni o azioni di salto.',
+          inLog: 'Eccezione nodo, eseguirà automaticamente il ramo di errore. L\'output del nodo restituirà un tipo di errore e un messaggio di errore e li passerà al downstream.',
+        },
+        partialSucceeded: {
+          tip: 'Ci sono {{num}} nodi nel processo che funzionano in modo anomalo, si prega di andare su tracing per controllare i log.',
+        },
+        title: 'Gestione degli errori',
+        tip: 'Strategia di gestione delle eccezioni, attivata quando un nodo rileva un\'eccezione.',
+      },
     },
     start: {
       required: 'richiesto',
@@ -424,6 +454,11 @@ const translation = {
       },
       binaryFileVariable: 'Variabile file binario',
       type: 'Digitare',
+      extractListPlaceholder: 'Inserisci l\'indice delle voci dell\'elenco, digita \'/\' inserisci la variabile',
+      curl: {
+        placeholder: 'Incolla qui la stringa cURL',
+        title: 'Importazione da cURL',
+      },
     },
     code: {
       inputVars: 'Variabili di Input',
@@ -513,6 +548,26 @@ const translation = {
       'clear': 'Cancellare',
       'setVariable': 'Imposta Variabile',
       'variable': 'Variabile',
+      'operations': {
+        '-=': '-=',
+        'overwrite': 'Sovrascrivere',
+        '+=': '+=',
+        '*=': '*=',
+        'append': 'Aggiungere',
+        'set': 'Mettere',
+        'title': 'Operazione',
+        '/=': '/=',
+        'over-write': 'Sovrascrivere',
+        'extend': 'Estendere',
+        'clear': 'Chiaro',
+      },
+      'setParameter': 'Imposta parametro...',
+      'variables': 'Variabili',
+      'noAssignedVars': 'Nessuna variabile assegnata disponibile',
+      'assignedVarsDescription': 'Le variabili assegnate devono essere variabili scrivibili, ad esempio variabili di conversazione.',
+      'varNotSet': 'Variabile NON impostata',
+      'selectAssignedVariable': 'Seleziona variabile assegnata...',
+      'noVarTip': 'Fare clic sul pulsante "+" per aggiungere variabili',
     },
     tool: {
       toAuthorize: 'Per autorizzare',
@@ -645,10 +700,18 @@ const translation = {
       desc: 'DESC',
       filterConditionComparisonValue: 'Valore della condizione di filtro',
       orderBy: 'Ordina per',
+      extractsCondition: 'Estrai l\'elemento N',
     },
   },
   tracing: {
     stopBy: 'Interrotto da {{user}}',
+  },
+  variableReference: {
+    noAvailableVars: 'Nessuna variabile disponibile',
+    noAssignedVars: 'Nessuna variabile assegnata disponibile',
+    noVarsForOperation: 'Non ci sono variabili disponibili per l\'assegnazione con l\'operazione selezionata.',
+    assignedVarsDescription: 'Le variabili assegnate devono essere variabili scrivibili, ad esempio',
+    conversationVars: 'Variabili di conversazione',
   },
 }
 
