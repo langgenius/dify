@@ -144,6 +144,7 @@ const translation = {
       removeConfirmContent: '当前配置正在使用中，删除它将关闭追踪功能。',
     },
   },
+  openInExplore: '在“探索”中打开',
 }
 
 export default translation

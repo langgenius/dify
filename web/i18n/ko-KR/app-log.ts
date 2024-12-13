@@ -53,6 +53,7 @@ const translation = {
     },
     variables: '변수',
     uploadImages: '업로드된 이미지',
+    modelParams: '모델 매개 변수',
   },
   filter: {
     period: {

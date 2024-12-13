@@ -141,6 +141,11 @@ const translation = {
   importFromDSL: 'Імпорт з DSL',
   importFromDSLUrlPlaceholder: 'Вставте посилання на DSL тут',
   importFromDSLFile: 'З DSL-файлу',
+  mermaid: {
+    handDrawn: 'Намальовані від руки',
+    classic: 'Класичний',
+  },
+  openInExplore: 'Відкрити в Огляді',
 }
 
 export default translation
