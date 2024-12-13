@@ -32,7 +32,7 @@ const CardWrapper = ({
   if (showInstallButton) {
     return (
       <div
-        className='group relative rounded-xl cursor-pointer'
+        className='group relative rounded-xl cursor-pointer  hover:bg-components-panel-on-panel-item-bg-hover'
       >
         <Card
           key={plugin.name}
@@ -47,7 +47,7 @@ const CardWrapper = ({
         />
         {
           showInstallButton && (
-            <div className='hidden absolute bottom-0 group-hover:flex items-center space-x-2 px-4 pt-8 pb-4 w-full bg-gradient-to-tr from-[#f9fafb] to-[rgba(249,250,251,0)] rounded-b-xl'>
+            <div className='hidden absolute bottom-0 group-hover:flex items-center space-x-2 px-4 pt-8 pb-4 w-full bg-gradient-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent rounded-b-xl'>
               <Button
                 variant='primary'
                 className='w-[calc(50%-4px)]'

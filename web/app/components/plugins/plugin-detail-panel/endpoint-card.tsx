@@ -1,17 +1,19 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import { RiDeleteBinLine, RiEditLine, RiLoginCircleLine } from '@remixicon/react'
+import copy from 'copy-to-clipboard'
+import { RiClipboardLine, RiDeleteBinLine, RiEditLine, RiLoginCircleLine } from '@remixicon/react'
 import type { EndpointListItem } from '../types'
 import EndpointModal from './endpoint-modal'
 import { NAME_FIELD } from './utils'
 import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
 import ActionButton from '@/app/components/base/action-button'
-import CopyBtn from '@/app/components/base/copy-btn'
 import Confirm from '@/app/components/base/confirm'
 import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
 import {
   useDeleteEndpoint,
   useDisableEndpoint,
@@ -111,6 +113,25 @@ const EndpointCard = ({
     state,
   })
 
+  const [isCopied, setIsCopied] = useState(false)
+  const handleCopy = (value: string) => {
+    copy(value)
+    setIsCopied(true)
+  }
+
+  useEffect(() => {
+    if (isCopied) {
+      const timer = setTimeout(() => {
+        setIsCopied(false)
+      }, 2000)
+      return () => {
+        clearTimeout(timer)
+      }
+    }
+  }, [isCopied])
+
+  const CopyIcon = isCopied ? ClipboardCheck : RiClipboardLine
+
   return (
     <div className='p-0.5 bg-background-section-burn rounded-xl'>
       <div className='group p-2.5 pl-3 bg-components-panel-on-panel-item-bg rounded-[10px] border-[0.5px] border-components-panel-border'>
@@ -133,11 +154,11 @@ const EndpointCard = ({
             <div className='shrink-0 w-12 text-text-tertiary system-xs-regular'>{endpoint.method}</div>
             <div className='group/item grow flex items-center text-text-secondary system-xs-regular truncate'>
               <div title={`${data.url}${endpoint.path}`} className='truncate'>{`${data.url}${endpoint.path}`}</div>
-              <CopyBtn
-                className='hidden shrink-0 ml-2 group-hover/item:block'
-                value={`${data.url}${endpoint.path}`}
-                isPlain
-              />
+              <Tooltip popupContent={t(`common.operation.${isCopied ? 'copied' : 'copy'}`)} position='top'>
+                <ActionButton className='hidden shrink-0 ml-2 group-hover/item:flex' onClick={() => handleCopy(`${data.url}${endpoint.path}`)}>
+                  <CopyIcon className='w-3.5 h-3.5 text-text-tertiary' />
+                </ActionButton>
+              </Tooltip>
             </div>
           </div>
         ))}
