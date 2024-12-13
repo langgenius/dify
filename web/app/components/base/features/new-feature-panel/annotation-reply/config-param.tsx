@@ -10,11 +10,11 @@ export const Item: FC<{ title: string; tooltip: string; children: JSX.Element }>
 }) => {
   return (
     <div>
-      <div className='flex items-center space-x-1'>
-        <div>{title}</div>
+      <div className='flex items-center space-x-1 mb-1'>
+        <div className='py-1 system-sm-semibold text-text-secondary'>{title}</div>
         <Tooltip
           popupContent={
-            <div className='max-w-[200px] leading-[18px] text-[13px] font-medium text-gray-800'>{tooltip}</div>
+            <div className='max-w-[200px] system-sm-regular text-text-secondary'>{tooltip}</div>
           }
         />
       </div>

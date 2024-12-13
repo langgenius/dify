@@ -137,6 +137,11 @@ const translation = {
   importFromDSLFile: 'DSL 파일에서',
   importFromDSLUrl: 'URL에서',
   importFromDSLUrlPlaceholder: '여기에 DSL 링크 붙여 넣기',
+  mermaid: {
+    handDrawn: '손으로 그린',
+    classic: '고전',
+  },
+  openInExplore: 'Explore에서 열기',
 }
 
 export default translation

@@ -91,29 +91,29 @@ const CSVUploader: FC<Props> = ({
       />
       <div ref={dropRef}>
         {!file && (
-          <div className={cn('flex items-center h-20 rounded-xl bg-gray-50 border border-dashed border-gray-200 text-sm font-normal', dragging && 'bg-[#F5F8FF] border border-[#B2CCFF]')}>
+          <div className={cn('flex items-center h-20 rounded-xl bg-components-dropzone-bg border border-dashed border-components-dropzone-border system-sm-regular', dragging && 'bg-components-dropzone-bg-accent border border-components-dropzone-border-accent')}>
             <div className='w-full flex items-center justify-center space-x-2'>
               <CSVIcon className="shrink-0" />
-              <div className='text-gray-500'>
+              <div className='text-text-tertiary'>
                 {t('appAnnotation.batchModal.csvUploadTitle')}
-                <span className='text-primary-400 cursor-pointer' onClick={selectHandle}>{t('appAnnotation.batchModal.browse')}</span>
+                <span className='text-text-accent cursor-pointer' onClick={selectHandle}>{t('appAnnotation.batchModal.browse')}</span>
               </div>
             </div>
             {dragging && <div ref={dragRef} className='absolute w-full h-full top-0 left-0' />}
           </div>
         )}
         {file && (
-          <div className={cn('flex items-center h-20 px-6 rounded-xl bg-gray-50 border border-gray-200 text-sm font-normal group', 'hover:bg-[#F5F8FF] hover:border-[#B2CCFF]')}>
+          <div className={cn('flex items-center h-20 px-6 rounded-xl bg-components-panel-bg border border-components-panel-border text-sm font-normal group', 'hover:bg-components-panel-bg-blur hover:border-components-panel-bg-blur')}>
             <CSVIcon className="shrink-0" />
             <div className='flex ml-2 w-0 grow'>
-              <span className='max-w-[calc(100%_-_30px)] text-ellipsis whitespace-nowrap overflow-hidden text-gray-800'>{file.name.replace(/.csv$/, '')}</span>
-              <span className='shrink-0 text-gray-500'>.csv</span>
+              <span className='max-w-[calc(100%_-_30px)] text-ellipsis whitespace-nowrap overflow-hidden text-text-primary'>{file.name.replace(/.csv$/, '')}</span>
+              <span className='shrink-0 text-text-tertiary'>.csv</span>
             </div>
             <div className='hidden group-hover:flex items-center'>
-              <Button className='!h-8 !px-3 !py-[6px] bg-white !text-[13px] !leading-[18px] text-gray-700' onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.change')}</Button>
-              <div className='mx-2 w-px h-4 bg-gray-200' />
+              <Button variant='secondary' onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.change')}</Button>
+              <div className='mx-2 w-px h-4 bg-divider-regular' />
               <div className='p-2 cursor-pointer' onClick={removeFile}>
-                <RiDeleteBinLine className='w-4 h-4 text-gray-500' />
+                <RiDeleteBinLine className='w-4 h-4 text-text-tertiary' />
               </div>
             </div>
           </div>
