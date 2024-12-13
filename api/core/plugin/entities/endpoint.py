@@ -15,6 +15,7 @@ class EndpointDeclaration(BaseModel):
 
     path: str
     method: str
+    hidden: bool = Field(default=False)
 
 
 class EndpointProviderDeclaration(BaseModel):
