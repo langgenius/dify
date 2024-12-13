@@ -187,14 +187,16 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           />
           <div className='flex items-center flex-wrap'>
             {embeddingAvailable && documentDetail && !documentDetail.archived && !isFullDocMode && (
-              <SegmentAdd
-                importStatus={importStatus}
-                clearProcessStatus={resetProcessStatus}
-                showNewSegmentModal={showNewSegmentModal}
-                showBatchModal={showBatchModal}
-              />
+              <>
+                <SegmentAdd
+                  importStatus={importStatus}
+                  clearProcessStatus={resetProcessStatus}
+                  showNewSegmentModal={showNewSegmentModal}
+                  showBatchModal={showBatchModal}
+                />
+                <Divider type='vertical' className='!bg-divider-regular !h-[14px] !mx-3' />
+              </>
             )}
-            <Divider type='vertical' className='!bg-divider-regular !h-[14px] !mx-3' />
             <StatusItem
               status={documentDetail?.display_status || 'available'}
               scene='detail'

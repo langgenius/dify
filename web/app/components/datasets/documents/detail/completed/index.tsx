@@ -9,7 +9,7 @@ import { ProcessStatus } from '../segment-add'
 import s from './style.module.css'
 import SegmentList from './segment-list'
 import DisplayToggle from './display-toggle'
-import BatchAction from './batch-action'
+import BatchAction from './common/batch-action'
 import SegmentDetail from './segment-detail'
 import SegmentCard from './segment-card'
 import ChildSegmentList from './child-segment-list'
@@ -101,6 +101,7 @@ const Completed: FC<ICompletedProps> = ({
   const [showNewChildSegmentModal, setShowNewChildSegmentModal] = useState(false)
 
   const segmentListRef = useRef<HTMLDivElement>(null)
+  const childSegmentListRef = useRef<HTMLDivElement>(null)
   const needScrollToBottom = useRef(false)
 
   const { run: handleSearch } = useDebounceFn(() => {
@@ -164,6 +165,13 @@ const Completed: FC<ICompletedProps> = ({
     !isFullDocMode || segments.length === 0,
   )
   const invalidChildSegmentList = useInvalid(useChildSegmentListKey)
+
+  useEffect(() => {
+    if (childSegmentListRef.current && needScrollToBottom.current) {
+      childSegmentListRef.current.scrollTo({ top: childSegmentListRef.current.scrollHeight, behavior: 'smooth' })
+      needScrollToBottom.current = false
+    }
+  }, [childSegments])
 
   useEffect(() => {
     if (childChunkListData)
