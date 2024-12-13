@@ -1,6 +1,5 @@
 import { type ComponentProps, type FC, type ReactNode, forwardRef } from 'react'
 import Image from 'next/image'
-import Effect from '../assets/option-card-effect-blue.svg'
 import classNames from '@/utils/classnames'
 
 const TriangleArrow: FC<ComponentProps<'svg'>> = props => (
@@ -25,7 +24,7 @@ export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
     isActive && activeClassName,
   )}>
     <div className='size-14 flex items-center justify-center relative overflow-hidden'>
-      {isActive && <Image src={effectImg || Effect.src} className='absolute top-0 left-0 w-full h-full' alt='' width={56} height={56} />}
+      {isActive && effectImg && <Image src={effectImg} className='absolute top-0 left-0 w-full h-full' alt='' width={56} height={56} />}
       <div className='size-8 rounded-lg border p-1.5 shadow border-components-panel-border-subtle justify-center flex bg-background-default-dodge'>
         {icon}
       </div>
@@ -58,10 +57,10 @@ export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
   const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSwitched, onClick, noHighlight, disabled, ...rest } = props
   return <div
     className={classNames(
-      'rounded-xl border',
+      'rounded-xl border bg-components-option-card-option-bg',
       (isActive && !noHighlight)
-        ? 'border-components-option-card-option-selected-border bg-components-panel-bg'
-        : 'border-components-option-card-option-border bg-components-option-card-option-bg',
+        ? 'border-components-option-card-option-selected-border'
+        : 'border-components-option-card-option-border',
       disabled && 'opacity-50',
       className,
     )}

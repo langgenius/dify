@@ -102,6 +102,9 @@ const config = {
         'dataset-chunk-process-error-bg': 'var(--color-dataset-chunk-process-error-bg)',
         'dataset-chunk-detail-card-hover-bg': 'var(--color-dataset-chunk-detail-card-hover-bg)',
         'dataset-child-chunk-expand-btn-bg': 'var(--color-dataset-child-chunk-expand-btn-bg)',
+        'dataset-option-card-blue-gradient': 'var(--color-dataset-option-card-blue-gradient)',
+        'dataset-option-card-purple-gradient': 'var(--color-dataset-option-card-purple-gradient)',
+        'dataset-option-card-orange-gradient': 'var(--color-dataset-option-card-orange-gradient)',
       },
       lineClamp: {
         20: '20',

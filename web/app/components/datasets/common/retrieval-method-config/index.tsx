@@ -69,7 +69,7 @@ const RetrievalMethodConfig: FC<Props> = ({
             search_method: RETRIEVE_METHOD.semantic,
           })}
           effectImg={Effect.src}
-          activeHeaderClassName='dataset-option-card-purple-gradient'
+          activeHeaderClassName='bg-dataset-option-card-purple-gradient'
         >
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.semantic}
@@ -90,7 +90,7 @@ const RetrievalMethodConfig: FC<Props> = ({
             search_method: RETRIEVE_METHOD.fullText,
           })}
           effectImg={Effect.src}
-          activeHeaderClassName='dataset-option-card-purple-gradient'
+          activeHeaderClassName='bg-dataset-option-card-purple-gradient'
         >
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.fullText}
