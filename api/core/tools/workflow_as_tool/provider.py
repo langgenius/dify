@@ -5,6 +5,7 @@ from pydantic import Field
 
 from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
+from core.plugin.entities.parameters import PluginParameterOption
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -13,7 +14,6 @@ from core.tools.entities.tool_entities import (
     ToolEntity,
     ToolIdentity,
     ToolParameter,
-    ToolParameterOption,
     ToolProviderEntity,
     ToolProviderIdentity,
     ToolProviderType,
@@ -116,7 +116,7 @@ class WorkflowToolProviderController(ToolProviderController):
 
                 if variable.type == VariableEntityType.SELECT and variable.options:
                     options = [
-                        ToolParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option))
+                        PluginParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option))
                         for option in variable.options
                     ]
 

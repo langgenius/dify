@@ -117,7 +117,7 @@ class AgentNode(ToolNode):
                 continue
             agent_input = node_data.agent_parameters[parameter_name]
             if agent_input.type == "variable":
-                variable = variable_pool.get(agent_input.value)
+                variable = variable_pool.get(agent_input.value)  # type: ignore
                 if variable is None:
                     raise ValueError(f"Variable {agent_input.value} does not exist")
                 parameter_value = variable.value

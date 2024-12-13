@@ -4,7 +4,7 @@ from core.agent.entities import AgentInvokeMessage
 from core.agent.plugin_entities import AgentStrategyEntity, AgentStrategyParameter
 from core.agent.strategy.base import BaseAgentStrategy
 from core.plugin.manager.agent import PluginAgentManager
-from core.tools.plugin_tool.tool import PluginTool
+from core.plugin.utils.converter import convert_parameters_to_plugin_format
 
 
 class PluginAgentStrategy(BaseAgentStrategy):
@@ -24,6 +24,14 @@ class PluginAgentStrategy(BaseAgentStrategy):
     def get_parameters(self) -> Sequence[AgentStrategyParameter]:
         return self.declaration.parameters
 
+    def initialize_parameters(self, params: dict[str, Any]) -> dict[str, Any]:
+        """
+        Initialize the parameters for the agent strategy.
+        """
+        for parameter in self.declaration.parameters:
+            params[parameter.name] = parameter.init_frontend_parameter(params.get(parameter.name))
+        return params
+
     def _invoke(
         self,
         params: dict[str, Any],
@@ -37,8 +45,8 @@ class PluginAgentStrategy(BaseAgentStrategy):
         """
         manager = PluginAgentManager()
 
-        # convert agent parameters with File type to PluginFileEntity
-        params = PluginTool._transform_image_parameters(params)
+        initialized_params = self.initialize_parameters(params)
+        params = convert_parameters_to_plugin_format(initialized_params)
 
         yield from manager.invoke(
             tenant_id=self.tenant_id,

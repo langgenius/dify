@@ -146,7 +146,6 @@ class BasicProviderConfig(BaseModel):
         BOOLEAN = CommonParameterType.BOOLEAN.value
         APP_SELECTOR = CommonParameterType.APP_SELECTOR.value
         MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR.value
-        TOOL_SELECTOR = CommonParameterType.TOOL_SELECTOR.value
 
         @classmethod
         def value_of(cls, value: str) -> "ProviderConfig.Type":

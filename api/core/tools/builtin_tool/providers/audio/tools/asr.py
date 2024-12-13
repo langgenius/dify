@@ -6,9 +6,10 @@ from core.file.enums import FileType
 from core.file.file_manager import download
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
+from core.plugin.entities.parameters import PluginParameterOption
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolParameterOption
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from services.model_provider_service import ModelProviderService
 
 
@@ -51,7 +52,7 @@ class ASRTool(BuiltinTool):
 
         options = []
         for provider, model in self.get_available_models():
-            option = ToolParameterOption(value=f"{provider}#{model}", label=I18nObject(en_US=f"{model}({provider})"))
+            option = PluginParameterOption(value=f"{provider}#{model}", label=I18nObject(en_US=f"{model}({provider})"))
             options.append(option)
 
         parameters.append(
