@@ -2,6 +2,7 @@ import json
 import logging
 from collections.abc import Generator
 from datetime import UTC, datetime
+from os import getenv
 from typing import Optional, Union
 
 from sqlalchemy import and_
@@ -31,7 +32,6 @@ from models.enums import CreatedByRole
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
-from os import getenv
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 class MessageBasedAppGenerator(BaseAppGenerator):
     allow_customized_conversation_id: bool = True if getenv("ALLOW_CUSTOMIZED_CONVERSATION_ID",
                                                             "false") == "true" else False
+
     def _handle_response(
         self,
         application_generate_entity: Union[
