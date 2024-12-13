@@ -25,7 +25,7 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
       <OptionCard icon={<Image className='w-4 h-4' src={retrievalIcon.vector} alt='' />}
         title={t('dataset.retrieval.invertedIndex.title')}
         description={t('dataset.retrieval.invertedIndex.description')} isActive
-        activeHeaderClassName='dataset-option-card-purple-gradient'
+        activeHeaderClassName='bg-dataset-option-card-purple-gradient'
       >
         <RetrievalParamConfig
           type={RETRIEVE_METHOD.invertedIndex}

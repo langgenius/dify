@@ -54,7 +54,7 @@ const PreviewDocumentPicker: FC<Props> = ({
           <FileIcon name={name} extension={extension} size='md' />
           <div className='flex flex-col items-start ml-1'>
             <div className='flex items-center space-x-0.5'>
-              <span className={cn('system-md-semibold max-w-[200px] overflow-clip text-text-primary')}> {name || '--'}</span>
+              <span className={cn('system-md-semibold max-w-[200px] truncate text-text-primary')}> {name || '--'}</span>
               <ArrowIcon className={'h-[18px] w-[18px] text-text-primary'} />
             </div>
           </div>
