@@ -47,6 +47,7 @@ const translation = {
     notionSyncTitle: 'Notion 未绑定',
     notionSyncTip: '同步 Notion 内容前，须先绑定 Notion 空间',
     connect: '去绑定',
+    cancel: '取消',
     button: '下一步',
     emptyDatasetCreation: '创建一个空知识库',
     modal: {

@@ -24,7 +24,6 @@ import type { DocType, FullDocumentDetail } from '@/models/datasets'
 import { CUSTOMIZABLE_DOC_TYPES } from '@/models/datasets'
 import type { inputType, metadataType } from '@/hooks/use-metadata'
 import { useBookCategories, useBusinessDocCategories, useLanguages, useMetadataMap, usePersonalDocCategories } from '@/hooks/use-metadata'
-import classNames from '@/utils/classnames'
 
 const map2Options = (map: { [key: string]: string }) => {
   return Object.keys(map).map(key => ({ value: key, name: map[key] }))
@@ -59,9 +58,9 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
   const readAlignTop = !showEdit && textNeedWrap
 
   return (
-    <div className={cn(s.fieldInfo, editAlignTop && '!items-start', readAlignTop && '!items-start pt-1')}>
-      <div className={cn(s.label, editAlignTop && 'pt-1')}>{label}</div>
-      <div className={classNames(s.value, 'flex items-center gap-1')}>
+    <div className={cn('flex items-center gap-1 py-0.5 min-h-5 text-xs', editAlignTop && '!items-start', readAlignTop && '!items-start pt-1')}>
+      <div className={cn('w-[200px] text-text-tertiary font-medium overflow-hidden text-ellipsis whitespace-nowrap', editAlignTop && 'pt-1')}>{label}</div>
+      <div className="grow flex items-center gap-1 text-text-secondary">
         {valueIcon}
         {!showEdit
           ? displayedValue

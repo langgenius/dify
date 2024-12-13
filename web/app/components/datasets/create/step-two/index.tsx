@@ -588,7 +588,7 @@ const StepTwo = ({
                 && <OptionCard
                   title={t('datasetCreation.stepTwo.general')}
                   icon={<Image src={SettingCog} alt={t('datasetCreation.stepTwo.general')} />}
-                  activeHeaderClassName='bg-gradient-to-r from-[#EFF0F9] to-[#F9FAFB]'
+                  activeHeaderClassName='bg-dataset-option-card-blue-gradient'
                   description={t('datasetCreation.stepTwo.generalTip')}
                   isActive={
                     [ChuckingMode.text, ChuckingMode.qa].includes(
@@ -638,7 +638,7 @@ const StepTwo = ({
                               <Checkbox
                                 checked={rule.enabled}
                               />
-                              <label className="ml-2 text-sm font-normal cursor-pointer text-gray-800">{getRuleName(rule.id)}</label>
+                              <label className="ml-2 text-sm font-normal cursor-pointer text-text-secondary">{getRuleName(rule.id)}</label>
                             </div>
                           ))}
                         </div>
@@ -692,7 +692,7 @@ const StepTwo = ({
                   title={t('datasetCreation.stepTwo.parentChild')}
                   icon={<Image src={FamilyMod} alt={t('datasetCreation.stepTwo.parentChild')} />}
                   effectImg={OrangeEffect.src}
-                  activeHeaderClassName='bg-gradient-to-r from-[#F9F1EE] to-[#F9FAFB]'
+                  activeHeaderClassName='bg-dataset-option-card-orange-gradient'
                   description={t('datasetCreation.stepTwo.parentChildTip')}
                   isActive={
                     datasetId ? currentDataset!.doc_form === ChuckingMode.parentChild : docForm === ChuckingMode.parentChild
@@ -805,7 +805,7 @@ const StepTwo = ({
                               <Checkbox
                                 checked={rule.enabled}
                               />
-                              <label className="ml-2 text-sm font-normal cursor-pointer text-gray-800">{getRuleName(rule.id)}</label>
+                              <label className="ml-2 text-sm font-normal cursor-pointer text-text-secondary">{getRuleName(rule.id)}</label>
                             </div>
                           ))}
                         </div>
@@ -820,105 +820,82 @@ const StepTwo = ({
           <div className='max-w-[640px]'>
             <div className='flex items-center gap-3 flex-wrap sm:flex-nowrap'>
               {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.QUALIFIED)) && (
-                <div
-                  className={cn(
-                    s.radioItem,
-                    s.indexItem,
-                    !isAPIKeySet && s.disabled,
-                    !hasSetIndexType && indexType === IndexingType.QUALIFIED && s.active,
-                    hasSetIndexType && s.disabled,
-                    hasSetIndexType && '!w-full !min-h-[96px]',
-                  )}
-                  onClick={() => {
+                <OptionCard
+                  title={<p className='flex items-center'>
+                    {t('datasetCreation.stepTwo.qualified')}
+                    {!hasSetIndexType && <Badge className='ml-1' uppercase>{t('datasetCreation.stepTwo.recommend')}</Badge>}
+                    <span className='ml-auto'>
+                      {!hasSetIndexType && <span className={cn(s.radio)} />}
+                    </span>
+                  </p>}
+                  description={t('datasetCreation.stepTwo.qualifiedTip')}
+                  icon={<Image src={indexMethodIcon.high_quality} alt='' />}
+                  isActive={!hasSetIndexType && indexType === IndexingType.QUALIFIED}
+                  disabled={!isAPIKeySet || hasSetIndexType}
+                  onSwitched={() => {
                     if (isAPIKeySet)
                       setIndexType(IndexingType.QUALIFIED)
                   }}
-                >
-                  <div className='h-8 p-1.5 bg-white rounded-lg border border-components-panel-border-subtle justify-center items-center inline-flex absolute left-5 top-[18px]'>
-                    <Image src={indexMethodIcon.high_quality} alt='Gold Icon' width={20} height={20} />
-                  </div>
-                  {!hasSetIndexType && <span className={cn(s.radio)} />}
-                  <div className={s.typeHeader}>
-                    <div className={s.title}>
-                      {t('datasetCreation.stepTwo.qualified')}
-                      {!hasSetIndexType && <span className={s.recommendTag}>{t('datasetCreation.stepTwo.recommend')}</span>}
-                    </div>
-                    <div className={s.tip}>{t('datasetCreation.stepTwo.qualifiedTip')}</div>
-                  </div>
-                  {!isAPIKeySet && (
-                    <div className={s.warningTip}>
-                      <span>{t('datasetCreation.stepTwo.warning')}&nbsp;</span>
-                      <span className={s.click} onClick={onSetting}>{t('datasetCreation.stepTwo.click')}</span>
-                    </div>
-                  )}
-                </div>
+                />
               )}
 
               {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.ECONOMICAL)) && (
-                <PortalToFollowElem
-                  open={
-                    isHoveringEconomy && docForm !== ChuckingMode.text
-                  }
-                  placement={'top'}
-                >
-                  <PortalToFollowElemTrigger>
-                    <div
-                      className={cn(
-                        s.radioItem,
-                        s.indexItem,
-                        !hasSetIndexType && indexType === IndexingType.ECONOMICAL && s.active,
-                        hasSetIndexType && s.disabled,
-                        hasSetIndexType && '!w-full !min-h-[96px]',
-                        docForm !== ChuckingMode.text && s.disabled,
-                      )}
-                      onClick={changeToEconomicalType}
-                      ref={economyDomRef}
-                    >
-                      <CustomDialog show={isQAConfirmDialogOpen} onClose={() => setIsQAConfirmDialogOpen(false)} className='w-[432px]'>
-                        <header className='pt-6 mb-4'>
-                          <h2 className='text-lg font-semibold'>
-                            {t('datasetCreation.stepTwo.qaSwitchHighQualityTipTitle')}
-                          </h2>
-                          <p className='font-normal text-sm mt-2'>
-                            {t('datasetCreation.stepTwo.qaSwitchHighQualityTipContent')}
-                          </p>
-                        </header>
-                        <div className='flex gap-2 pb-6'>
-                          <Button className='ml-auto' onClick={() => {
-                            setIsQAConfirmDialogOpen(false)
-                          }}>
-                            {t('datasetCreation.stepTwo.cancel')}
-                          </Button>
-                          <Button variant={'primary'} onClick={() => {
-                            setIsQAConfirmDialogOpen(false)
-                            setIndexType(IndexingType.QUALIFIED)
-                            setDocForm(ChuckingMode.qa)
-                          }}>
-                            {t('datasetCreation.stepTwo.switch')}
-                          </Button>
-                        </div>
-                      </CustomDialog>
-                      <div className='h-8 p-1.5 bg-white rounded-lg border border-components-panel-border-subtle justify-center items-center inline-flex absolute left-5 top-[18px]'>
-                        <Image src={indexMethodIcon.economical} alt='Economical Icon' width={20} height={20} />
-                      </div>
-                      {!hasSetIndexType && <span className={cn(s.radio)} />}
-                      <div className={s.typeHeader}>
-                        <div className={s.title}>{t('datasetCreation.stepTwo.economical')}</div>
-                        <div className={s.tip}>{t('datasetCreation.stepTwo.economicalTip')}</div>
-                      </div>
+                <>
+                  <CustomDialog show={isQAConfirmDialogOpen} onClose={() => setIsQAConfirmDialogOpen(false)} className='w-[432px]'>
+                    <header className='pt-6 mb-4'>
+                      <h2 className='text-lg font-semibold'>
+                        {t('datasetCreation.stepTwo.qaSwitchHighQualityTipTitle')}
+                      </h2>
+                      <p className='font-normal text-sm mt-2'>
+                        {t('datasetCreation.stepTwo.qaSwitchHighQualityTipContent')}
+                      </p>
+                    </header>
+                    <div className='flex gap-2 pb-6'>
+                      <Button className='ml-auto' onClick={() => {
+                        setIsQAConfirmDialogOpen(false)
+                      }}>
+                        {t('datasetCreation.stepTwo.cancel')}
+                      </Button>
+                      <Button variant={'primary'} onClick={() => {
+                        setIsQAConfirmDialogOpen(false)
+                        setIndexType(IndexingType.QUALIFIED)
+                        setDocForm(ChuckingMode.qa)
+                      }}>
+                        {t('datasetCreation.stepTwo.switch')}
+                      </Button>
                     </div>
-                  </PortalToFollowElemTrigger>
-                  <PortalToFollowElemContent>
-                    <div className='p-3 bg-white text-xs font-medium text-text-secondary rounded-lg shadow-lg'>
-                      {
-                        docForm === ChuckingMode.qa
-                          ? t('datasetCreation.stepTwo.notAvailableForQA')
-                          : t('datasetCreation.stepTwo.notAvailableForParentChild')
-                      }
-                    </div>
-                  </PortalToFollowElemContent>
-                </PortalToFollowElem>
-              )}
+                  </CustomDialog>
+                  <PortalToFollowElem
+                    open={
+                      isHoveringEconomy && docForm !== ChuckingMode.text
+                    }
+                    placement={'top'}
+                  >
+                    <PortalToFollowElemTrigger>
+                      <OptionCard
+                        title={t('datasetCreation.stepTwo.economical')}
+                        description={t('datasetCreation.stepTwo.economicalTip')}
+                        icon={<Image src={indexMethodIcon.economical} alt='' />}
+                        isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
+                        disabled={!isAPIKeySet || hasSetIndexType || docForm !== ChuckingMode.text}
+                        ref={economyDomRef}
+                        onSwitched={() => {
+                          if (isAPIKeySet && docForm === ChuckingMode.text)
+                            setIndexType(IndexingType.ECONOMICAL)
+                        }}
+                      />
+                    </PortalToFollowElemTrigger>
+                    <PortalToFollowElemContent>
+                      <div className='p-3 bg-components-tooltip-bg border-components-panel-border text-xs font-medium text-text-secondary rounded-lg shadow-lg'>
+                        {
+                          docForm === ChuckingMode.qa
+                            ? t('datasetCreation.stepTwo.notAvailableForQA')
+                            : t('datasetCreation.stepTwo.notAvailableForParentChild')
+                        }
+                      </div>
+                    </PortalToFollowElemContent>
+                  </PortalToFollowElem>
+                </>)}
             </div>
             {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
               <div className='mt-2 text-xs text-gray-500 font-medium'>

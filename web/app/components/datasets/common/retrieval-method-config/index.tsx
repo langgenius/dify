@@ -69,7 +69,7 @@ const RetrievalMethodConfig: FC<Props> = ({
             search_method: RETRIEVE_METHOD.semantic,
           })}
           effectImg={Effect.src}
-          activeHeaderClassName='bg-gradient-to-r from-[#F0EEFA] to-[#F9FAFB]'
+          activeHeaderClassName='dataset-option-card-purple-gradient'
         >
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.semantic}
@@ -90,7 +90,7 @@ const RetrievalMethodConfig: FC<Props> = ({
             search_method: RETRIEVE_METHOD.fullText,
           })}
           effectImg={Effect.src}
-          activeHeaderClassName='bg-gradient-to-r from-[#F0EEFA] to-[#F9FAFB]'
+          activeHeaderClassName='dataset-option-card-purple-gradient'
         >
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.fullText}
@@ -116,7 +116,7 @@ const RetrievalMethodConfig: FC<Props> = ({
             reranking_enable: true,
           })}
           effectImg={Effect.src}
-          activeHeaderClassName='bg-gradient-to-r from-[#F0EEFA] to-[#F9FAFB]'
+          activeHeaderClassName='bg-dataset-option-card-purple-gradient'
         >
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.hybrid}

@@ -6,4 +6,7 @@ html[data-theme="light"] {
   --color-dataset-chunk-process-error-bg: linear-gradient(92deg, rgba(240, 68, 56, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%);
   --color-dataset-chunk-detail-card-hover-bg: linear-gradient(180deg, #F2F4F7 0%, #F9FAFB 100%);
   --color-dataset-child-chunk-expand-btn-bg: linear-gradient(90deg, rgba(200, 206, 218, 0.20) 0%, rgba(200, 206, 218, 0.04) 100%);
+  --color-dataset-option-card-blue-gradient: linear-gradient(180deg, #F2F4F7 0%, #F9FAFB 100%);
+  --color-dataset-option-card-purple-gradient: linear-gradient(180deg, #F0EEFA 0%, #F9FAFB 100%);
+  --color-dataset-option-card-orange-gradient: linear-gradient(180deg, #F8F2EE 0%, #F9FAFB 100%);
 }

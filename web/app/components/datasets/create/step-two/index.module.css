@@ -18,11 +18,10 @@
 }
 
 .form .label {
-  @apply pb-2 flex items-center;
+  @apply pb-2 flex items-center text-text-secondary;
   font-weight: 500;
   font-size: 16px;
   line-height: 24px;
-  color: #344054;
 }
 
 .segmentationItem {
@@ -91,8 +90,7 @@
 }
 
 .radioItem {
-  @apply relative mb-2 rounded-xl border border-gray-100 cursor-pointer;
-  background-color: #fcfcfd;
+  @apply relative mb-2 rounded-xl border border-components-option-card-option-border cursor-pointer bg-components-option-card-option-bg;
 }
 
 .radioItem.segmentationItem.custom {

@@ -6,13 +6,15 @@ import { useTranslation } from 'react-i18next'
 import { omit } from 'lodash-es'
 import { ArrowRightIcon } from '@heroicons/react/24/solid'
 import {
+  RiCheckboxCircleFill,
   RiErrorWarningFill,
   RiLoader2Fill,
   RiTerminalBoxLine,
 } from '@remixicon/react'
 import Image from 'next/image'
 import { indexMethodIcon, retrievalIcon } from '../icons'
-import s from './index.module.css'
+import { IndexingType } from '../step-two'
+import DocumentFileIcon from '../../common/document-file-icon'
 import cn from '@/utils/classnames'
 import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
 import Button from '@/app/components/base/button'
@@ -25,7 +27,6 @@ import { Plan } from '@/app/components/billing/type'
 import { ZapFast } from '@/app/components/base/icons/src/vender/solid/general'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useProviderContext } from '@/context/provider-context'
-import Tooltip from '@/app/components/base/tooltip'
 import { sleep } from '@/utils'
 import { RETRIEVE_METHOD } from '@/types/app'
 
@@ -83,7 +84,7 @@ const RuleDetail: FC<{
     return value
   }, [sourceData])
 
-  return <div className='flex flex-col pt-8 pb-10 first:mt-0'>
+  return <div className='flex flex-col gap-1'>
     {Object.keys(segmentationRuleMap).map((field) => {
       return <FieldInfo
         key={field}
@@ -93,11 +94,12 @@ const RuleDetail: FC<{
     })}
     <FieldInfo
       label={t('datasetCreation.stepTwo.indexMode')}
-      displayedValue={t(`datasetCreation.stepTwo.${indexingType}`) as string}
+      displayedValue={t(`datasetCreation.stepTwo.${indexingType === IndexingType.ECONOMICAL ? 'economical' : 'qualified'}`) as string}
       valueIcon={
         <Image
+          className='size-4'
           src={
-            indexingType === 'economy'
+            indexingType === IndexingType.ECONOMICAL
               ? indexMethodIcon.economical
               : indexMethodIcon.high_quality
           }
@@ -107,15 +109,17 @@ const RuleDetail: FC<{
     />
     <FieldInfo
       label={t('datasetSettings.form.retrievalSetting.title')}
-      displayedValue={t(`datasetSettings.form.retrievalSetting.${retrievalMethod}`) as string}
+      // displayedValue={t(`datasetSettings.form.retrievalSetting.${retrievalMethod}`) as string}
+      displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'invertedIndex' : retrievalMethod}.title`) as string}
       valueIcon={
         <Image
+          className='size-4'
           src={
             retrievalMethod === RETRIEVE_METHOD.fullText
               ? retrievalIcon.fullText
-              : RETRIEVE_METHOD.semantic
-                ? retrievalIcon.vector
-                : retrievalIcon.hybrid
+              : retrievalMethod === RETRIEVE_METHOD.hybrid
+                ? retrievalIcon.hybrid
+                : retrievalIcon.vector
           }
           alt=''
         />
@@ -167,6 +171,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
   }
 
   useEffect(() => {
+    setIsStopQuery(false)
     startQueryStatus()
     return () => {
       stopQueryStatus()
@@ -225,8 +230,8 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
 
   return (
     <>
-      <div className='h-5 flex items-center mb-5'>
-        <div className={s.embeddingStatus}>
+      <div className="h-5 flex items-center mb-3">
+        <div className="flex items-center justify-between text-gray-900 font-medium text-sm mr-2">
           {isEmbedding && <div className='flex items-center'>
             <RiLoader2Fill className='size-4 mr-1 animate-spin' />
             {t('datasetDocuments.embedding.processing')}
@@ -247,68 +252,68 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
           </div>
         )
       }
-      <div className={s.progressContainer}>
+      <div className="flex flex-col gap-0.5 pb-2">
         {indexingStatusBatchDetail.map(indexingStatusDetail => (
           <div key={indexingStatusDetail.id} className={cn(
-            s.sourceItem,
-            indexingStatusDetail.indexing_status === 'error' && s.error,
-            indexingStatusDetail.indexing_status === 'completed' && s.success,
+            'relative h-[26px] bg-components-progress-bar-bg rounded-md overflow-hidden',
+            indexingStatusDetail.indexing_status === 'error' && 'bg-state-destructive-hover-alt',
+            // indexingStatusDetail.indexing_status === 'completed' && 's.success',
           )}>
             {isSourceEmbedding(indexingStatusDetail) && (
-              <div className={s.progressbar} style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }} />
+              <div className="absolute top-0 left-0 h-full min-w-0.5 bg-components-progress-bar-progress border-r-[2px] border-r-components-progress-bar-progress-highlight" style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }} />
             )}
-            <div className={`${s.info} grow`}>
+            <div className="flex gap-1 pl-[6px] pr-2 h-full items-center z-[1]">
               {getSourceType(indexingStatusDetail.id) === DataSourceType.FILE && (
-                <div className={cn(s.fileIcon, s[getFileType(getSourceName(indexingStatusDetail.id))])} />
+                // <div className={cn(
+                //   'shrink-0 marker:size-4 bg-center bg-no-repeat bg-contain',
+                //   s[getFileType(getSourceName(indexingStatusDetail.id))] || s.unknownFileIcon,
+                // )} />
+                <DocumentFileIcon
+                  className="shrink-0 size-4"
+                  name={getSourceName(indexingStatusDetail.id)}
+                  extension={getFileType(getSourceName(indexingStatusDetail.id))}
+                />
               )}
               {getSourceType(indexingStatusDetail.id) === DataSourceType.NOTION && (
                 <NotionIcon
-                  className='shrink-0 mr-1'
+                  className='shrink-0'
                   type='page'
                   src={getIcon(indexingStatusDetail.id)}
                 />
               )}
-              <div className={`${s.name} truncate`} title={getSourceName(indexingStatusDetail.id)}>{getSourceName(indexingStatusDetail.id)}</div>
-              {
-                enableBilling && (
-                  <PriorityLabel />
-                )
-              }
-            </div>
-            <div className='shrink-0'>
-              {isSourceEmbedding(indexingStatusDetail) && (
-                <div className={s.percent}>{`${getSourcePercent(indexingStatusDetail)}%`}</div>
-              )}
-              {indexingStatusDetail.indexing_status === 'error' && indexingStatusDetail.error && (
-                <Tooltip
-                  popupContent={(
-                    <div className='max-w-[400px]'>
-                      {indexingStatusDetail.error}
-                    </div>
-                  )}
-                >
-                  <div className={cn(s.percent, s.error, 'flex items-center')}>
-                    Error
-                    <RiErrorWarningFill className='ml-1 w-4 h-4' />
-                  </div>
-                </Tooltip>
-              )}
-              {indexingStatusDetail.indexing_status === 'error' && !indexingStatusDetail.error && (
-                <div className={cn(s.percent, s.error, 'flex items-center')}>
-                  Error
+              <div className="grow flex items-center gap-1" title={getSourceName(indexingStatusDetail.id)}>
+                <div className="text-xs truncate">
+                  {getSourceName(indexingStatusDetail.id)}
                 </div>
+                {
+                  enableBilling && (
+                    <PriorityLabel />
+                  )
+                }
+              </div>
+              {isSourceEmbedding(indexingStatusDetail) && (
+                <div className="shrink-0 text-xs">{`${getSourcePercent(indexingStatusDetail)}%`}</div>
+              )}
+              {indexingStatusDetail.indexing_status === 'error' && (
+                <>
+                  <span className="flex items-center max-w-[200px] text-xs text-text-destructive truncate" title={indexingStatusDetail.error || ''}>
+                    {indexingStatusDetail.error || 'Error'}
+                  </span>
+                  <RiErrorWarningFill className='shrink-0 size-4 text-text-destructive' />
+                </>
               )}
               {indexingStatusDetail.indexing_status === 'completed' && (
-                <div className={cn(s.percent, s.success)}>100%</div>
+                <RiCheckboxCircleFill className='shrink-0 size-4' />
               )}
             </div>
           </div>
         ))}
       </div>
-      <RuleDetail sourceData={ruleDetail} indexingType={
-        indexingType
-      }
-      retrievalMethod={retrievalMethod}
+      <hr className="my-3 h-[1px] bg-divider-subtle border-0" />
+      <RuleDetail
+        sourceData={ruleDetail}
+        indexingType={indexingType}
+        retrievalMethod={retrievalMethod}
       />
       <div className='flex items-center gap-2 my-10'>
         <Button className='w-fit' onClick={navToApiDocs}>

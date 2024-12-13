@@ -1,6 +1,7 @@
-/** @type {import('tailwindcss').Config} */
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define'
-module.exports = {
+
+/** @type {import('tailwindcss').Config} */
+const config = {
   content: [
     './app/**/*.{js,ts,jsx,tsx}',
     './components/**/*.{js,ts,jsx,tsx}',
@@ -115,3 +116,5 @@ module.exports = {
     preflight: false,
   },
 }
+
+export default config
