@@ -69,9 +69,9 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   }, [isFullDocMode, total, childChunks.length])
 
   return (
-    <div className={classNames('flex flex-col', contentOpacity, isParagraphMode ? 'p-1 pb-2' : 'px-3 grow overflow-y-hidden')}>
+    <div className={classNames('flex flex-col', contentOpacity, isParagraphMode ? 'p-1 pb-2' : 'px-3 grow')}>
       {isFullDocMode ? <Divider type='horizontal' className='h-[1px] bg-divider-subtle my-1' /> : null}
-      <div className={classNames('flex items-center justify-between', isFullDocMode ? 'pt-2 pb-3' : '')}>
+      <div className={classNames('flex items-center justify-between', isFullDocMode ? 'pt-2 pb-3 sticky top-0 left-0 bg-components-panel-bg' : '')}>
         <div className={classNames('h-7 flex items-center pl-1 pr-3 rounded-lg', (isParagraphMode && collapsed) ? 'bg-dataset-child-chunk-expand-btn-bg' : '')} onClick={(event) => {
           event.stopPropagation()
           toggleCollapse()
@@ -109,7 +109,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
           : null}
       </div>
       {(isFullDocMode || !collapsed)
-        ? <div className={classNames('flex gap-x-0.5', isFullDocMode ? 'grow overflow-y-auto' : '')}>
+        ? <div className={classNames('flex gap-x-0.5', isFullDocMode ? 'grow' : '')}>
           {isParagraphMode && <Divider type='vertical' className='h-auto w-[2px] mx-[7px] bg-text-accent-secondary' />}
           <div className={classNames('w-full !leading-5 flex flex-col', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
             {childChunks.map((childChunk) => {

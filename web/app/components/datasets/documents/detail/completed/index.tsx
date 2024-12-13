@@ -511,7 +511,7 @@ const Completed: FC<ICompletedProps> = ({
       {/* Segment list */}
       {
         isFullDocMode
-          ? <>
+          ? <div className='grow relative overflow-x-hidden overflow-y-auto'>
             <SegmentCard
               detail={segments[0]}
               onClick={() => onClickCard(segments[0])}
@@ -528,7 +528,7 @@ const Completed: FC<ICompletedProps> = ({
               total={childChunkListData?.total || 0}
               inputValue={inputValue}
             />
-          </>
+          </div>
           : <SegmentList
             ref={segmentListRef}
             embeddingAvailable={embeddingAvailable}
