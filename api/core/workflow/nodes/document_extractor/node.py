@@ -2,7 +2,6 @@ import csv
 import io
 import json
 import os
-import re
 import tempfile
 
 import docx
@@ -272,10 +271,10 @@ def _extract_text_from_ppt(file_content: bytes) -> str:
 
 def _extract_text_from_vtt(vtt_bytes: bytes):
     text = _extract_text_from_plain_text(vtt_bytes)
-    
-    # remove bom 
+
+    # remove bom
     text = text.lstrip("\ufeff")
-    
+
     raw_results = []
     for caption in webvtt.from_string(text):
         raw_results.append((caption.voice, caption.text))
@@ -288,7 +287,8 @@ def _extract_text_from_vtt(vtt_bytes: bytes):
         for i in range(1, len(raw_results)):
             spk, txt = raw_results[i]
             if spk == None:
-                merged_results.append(("Unknown", current_text))
+                merged_results.append((None, current_text))
+                continue
 
             if spk == current_speaker:
                 # If it is the same speaker, merge the utterances (joined by space)
@@ -304,7 +304,7 @@ def _extract_text_from_vtt(vtt_bytes: bytes):
         merged_results = raw_results
 
     # Return the result in the specified format: Speaker "text" style
-    formatted = [f'{spk} "{txt}"' for spk, txt in merged_results]
+    formatted = [f'{spk or ""} "{txt}"' for spk, txt in merged_results]
     return "\n".join(formatted)
 
 
