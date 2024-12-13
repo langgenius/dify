@@ -8,6 +8,7 @@ import tempfile
 import docx
 import pandas as pd
 import pypdfium2  # type: ignore
+import webvtt
 import yaml  # type: ignore
 from unstructured.partition.api import partition_via_api
 from unstructured.partition.email import partition_email
@@ -271,47 +272,13 @@ def _extract_text_from_ppt(file_content: bytes) -> str:
 
 def _extract_text_from_vtt(vtt_bytes: bytes):
     text = _extract_text_from_plain_text(vtt_bytes)
-    lines = text.splitlines()
-
+    
+    # remove bom 
+    text = text.lstrip("\ufeff")
+    
     raw_results = []
-
-    i = 0
-    while i < len(lines):
-        line = lines[i].strip()
-
-        # Skip "WEBVTT", empty lines, and cue identifiers
-        if line in ("WEBVTT", ""):
-            i += 1
-            continue
-
-        # Check if it is a timestamp line
-        if "-->" in line:
-            # Collect the cue text from the next lines
-            i += 1
-            cue_lines = []
-
-            # The text until the next empty line or timestamp line is considered as one cue
-            while i < len(lines) and lines[i].strip() != "" and "-->" not in lines[i]:
-                cue_lines.append(lines[i])
-                i += 1
-
-            # Extract <v speaker> ... </v> within the cue
-            cue_text = "\n".join(cue_lines)
-
-            # Regular expression to extract speaker name and content
-            pattern = r"<v\s+([^>]+)>(.*?)</v>"
-            match = re.search(pattern, cue_text, flags=re.DOTALL)
-
-            if match:
-                speaker = match.group(1).strip()
-                content = match.group(2).strip()
-                # Convert line breaks to spaces
-                content = " ".join(line.strip() for line in content.splitlines() if line.strip())
-
-                # Store in the list in chronological order
-                raw_results.append((speaker, content))
-        else:
-            i += 1
+    for caption in webvtt.from_string(text):
+        raw_results.append((caption.voice, caption.text))
 
     # Merge consecutive utterances by the same speaker
     merged_results = []
@@ -320,6 +287,9 @@ def _extract_text_from_vtt(vtt_bytes: bytes):
 
         for i in range(1, len(raw_results)):
             spk, txt = raw_results[i]
+            if spk == None:
+                merged_results.append(("Unknown", current_text))
+
             if spk == current_speaker:
                 # If it is the same speaker, merge the utterances (joined by space)
                 current_text += " " + txt
