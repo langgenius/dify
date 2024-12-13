@@ -303,7 +303,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
                 </>
               )}
               {indexingStatusDetail.indexing_status === 'completed' && (
-                <RiCheckboxCircleFill className='shrink-0 size-4' />
+                <RiCheckboxCircleFill className='shrink-0 size-4 text-text-success' />
               )}
             </div>
           </div>

@@ -122,9 +122,9 @@ const StepOne = ({
       return true
     if (isShowVectorSpaceFull)
       return true
-
     return false
-  }, [files])
+  }, [files, isShowVectorSpaceFull])
+
   return (
     <div className='flex w-full h-full'>
       <div className='grow overflow-y-auto relative'>
@@ -229,7 +229,15 @@ const StepOne = ({
                       <VectorSpaceFull />
                     </div>
                   )}
-                  <Button disabled={isShowVectorSpaceFull || !notionPages.length} className={s.submitButton} variant='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
+                  <div className="flex justify-end gap-2 max-w-[640px]">
+                    {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
+                    <Button disabled={isShowVectorSpaceFull || !notionPages.length} variant='primary' onClick={onStepChange}>
+                      <span className="flex gap-0.5 px-[10px]">
+                        <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
+                        <RiArrowRightLine className="size-4" />
+                      </span>
+                    </Button>
+                  </div>
                 </>
               )}
             </>
@@ -252,7 +260,15 @@ const StepOne = ({
                   <VectorSpaceFull />
                 </div>
               )}
-              <Button disabled={isShowVectorSpaceFull || !websitePages.length} className={s.submitButton} variant='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
+              <div className="flex justify-end gap-2 max-w-[640px]">
+                {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
+                <Button disabled={isShowVectorSpaceFull || !websitePages.length} variant='primary' onClick={onStepChange}>
+                  <span className="flex gap-0.5 px-[10px]">
+                    <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
+                    <RiArrowRightLine className="size-4" />
+                  </span>
+                </Button>
+              </div>
             </>
           )}
           {!datasetId && (
