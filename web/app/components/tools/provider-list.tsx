@@ -63,13 +63,13 @@ const ProviderList = () => {
 
   return (
     <>
-      <div className='relative flex overflow-hidden bg-gray-100 shrink-0 h-0 grow'>
+      <div className='relative flex overflow-hidden shrink-0 h-0 grow'>
         <div
           ref={containerRef}
-          className='relative flex flex-col overflow-y-auto bg-gray-100 grow'
+          className='relative flex flex-col overflow-y-auto bg-background-body grow'
         >
           <div className={cn(
-            'sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-20 flex-wrap gap-y-2',
+            'sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] z-20 flex-wrap gap-y-2',
             currentProvider && 'pr-6',
           )}>
             <TabSliderNew
@@ -96,6 +96,7 @@ const ProviderList = () => {
           {(filteredCollectionList.length > 0 || activeTab !== 'builtin') && (
             <div className={cn(
               'relative grid content-start grid-cols-1 gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 shrink-0',
+              !filteredCollectionList.length && activeTab === 'workflow' && 'grow',
             )}>
               {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
               {filteredCollectionList.map(collection => (

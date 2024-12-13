@@ -260,14 +260,14 @@ const ProviderDetail = ({
         {!!collection.description[language] && (
           <Description text={collection.description[language]} descriptionLineRows={2}></Description>
         )}
-        <div className='flex gap-1 border-b-[0.5px] border-black/5'>
+        <div className='flex gap-1 border-b-[0.5px] border-divider-subtle'>
           {collection.type === CollectionType.custom && !isDetailLoading && (
             <Button
               className={cn('shrink-0 my-3 w-full')}
               onClick={() => setIsShowEditCustomCollectionModal(true)}
             >
-              <Settings01 className='mr-1 w-4 h-4 text-gray-500' />
-              <div className='leading-5 text-sm font-medium text-gray-700'>{t('tools.createTool.editAction')}</div>
+              <Settings01 className='mr-1 w-4 h-4 text-text-tertiary' />
+              <div className='system-sm-medium text-text-secondary'>{t('tools.createTool.editAction')}</div>
             </Button>
           )}
           {collection.type === CollectionType.workflow && !isDetailLoading && customCollection && (
@@ -276,8 +276,8 @@ const ProviderDetail = ({
                 variant='primary'
                 className={cn('shrink-0 my-3 w-[183px]')}
               >
-                <a className='flex items-center text-white' href={`/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
-                  <div className='leading-5 text-sm font-medium'>{t('tools.openInStudio')}</div>
+                <a className='flex items-center text-text-primary' href={`/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
+                  <div className='system-sm-medium'>{t('tools.openInStudio')}</div>
                   <LinkExternal02 className='ml-1 w-4 h-4' />
                 </a>
               </Button>
@@ -286,7 +286,7 @@ const ProviderDetail = ({
                 onClick={() => setIsShowEditWorkflowToolModal(true)}
                 disabled={!isCurrentWorkspaceManager}
               >
-                <div className='leading-5 text-sm font-medium text-gray-700'>{t('tools.createTool.editAction')}</div>
+                <div className='system-sm-medium text-text-secondary'>{t('tools.createTool.editAction')}</div>
               </Button>
             </>
           )}
@@ -319,7 +319,7 @@ const ProviderDetail = ({
               <div className='text-text-secondary system-sm-semibold-uppercase'>
                 <span className=''>{t('tools.includeToolNum', { num: toolList.length }).toLocaleUpperCase()}</span>
                 <span className='px-1'>·</span>
-                <span className='text-[#DC6803]'>{t('tools.auth.setup').toLocaleUpperCase()}</span>
+                <span className='text-util-colors-orange-orange-600'>{t('tools.auth.setup').toLocaleUpperCase()}</span>
               </div>
               <Button
                 variant='primary'

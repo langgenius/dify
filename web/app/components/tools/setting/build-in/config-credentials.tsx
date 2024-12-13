@@ -71,11 +71,11 @@ const ConfigCredential: FC<Props> = ({
       onHide={onCancel}
       title={t('tools.auth.setupModalTitle') as string}
       titleDescription={t('tools.auth.setupModalTitleDescription') as string}
-      panelClassName='mt-[64px] mb-2 !w-[420px]'
+      panelClassName='mt-[64px] mb-2 !w-[420px] border-components-panel-border'
       maxWidthClassName='!max-w-[420px]'
       height='calc(100vh - 64px)'
-      contentClassName='!bg-gray-100'
-      headerClassName='!border-b-black/5'
+      contentClassName='!bg-components-panel-bg'
+      headerClassName='!border-b-divider-subtle'
       body={
 
         <div className='px-6 py-3 h-full'>
@@ -92,12 +92,12 @@ const ConfigCredential: FC<Props> = ({
                   isEditMode={true}
                   showOnVariableMap={{}}
                   validating={false}
-                  inputClassName='!bg-gray-50'
+                  inputClassName='!bg-components-input-bg-normal'
                   fieldMoreInfo={item => item.url
                     ? (<a
                       href={item.url}
                       target='_blank' rel='noopener noreferrer'
-                      className='inline-flex items-center text-xs text-primary-600'
+                      className='inline-flex items-center text-xs text-text-accent'
                     >
                       {t('tools.howToGet')}
                       <LinkExternal02 className='ml-1 w-3 h-3' />
