@@ -36,14 +36,16 @@ def clean_messages():
                 db.session.query(Message)
                 .filter(Message.created_at < plan_sandbox_clean_message_day)
                 .order_by(Message.created_at.desc())
-                .paginate(page=page, per_page=100)
+                .limit(100)
+                .all()
             )
 
         except NotFound:
             break
-        if messages.items is None or len(messages.items) == 0:
+        if not messages:
             break
-        for message in messages.items:
+        for message in messages:
+            plan_sandbox_clean_message_day = message.created_at
             app = App.query.filter_by(id=message.app_id).first()
             features_cache_key = f"features:{app.tenant_id}"
             plan_cache = redis_client.get(features_cache_key)

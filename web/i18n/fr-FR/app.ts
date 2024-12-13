@@ -141,6 +141,11 @@ const translation = {
   importFromDSL: 'Importation à partir d’une DSL',
   importFromDSLUrl: 'À partir de l’URL',
   importFromDSLFile: 'À partir d’un fichier DSL',
+  mermaid: {
+    handDrawn: 'Dessiné à la main',
+    classic: 'Classique',
+  },
+  openInExplore: 'Ouvrir dans Explorer',
 }
 
 export default translation

@@ -1,13 +1,30 @@
 import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
 
 export enum WriteMode {
-  Overwrite = 'over-write',
-  Append = 'append',
-  Clear = 'clear',
+  overwrite = 'over-write',
+  clear = 'clear',
+  append = 'append',
+  extend = 'extend',
+  set = 'set',
+  increment = '+=',
+  decrement = '-=',
+  multiply = '*=',
+  divide = '/=',
+}
+
+export enum AssignerNodeInputType {
+  variable = 'variable',
+  constant = 'constant',
+}
+
+export type AssignerNodeOperation = {
+  variable_selector: ValueSelector
+  input_type: AssignerNodeInputType
+  operation: WriteMode
+  value: any
 }
 
 export type AssignerNodeType = CommonNodeType & {
-  assigned_variable_selector: ValueSelector
-  write_mode: WriteMode
-  input_variable_selector: ValueSelector
+  version?: '1' | '2'
+  items: AssignerNodeOperation[]
 }

@@ -220,7 +220,7 @@ const translation = {
         paragraphs: '문단',
         hitCount: '검색 횟수',
         embeddingTime: '임베딩 시간',
-        embeddedSpend: '임베딩 시간',
+        embeddedSpend: '임베딩 소모',
       },
     },
     languageMap: {

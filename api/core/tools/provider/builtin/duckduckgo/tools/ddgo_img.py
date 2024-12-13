@@ -18,6 +18,12 @@ class DuckDuckGoImageSearchTool(BuiltinTool):
             "size": tool_parameters.get("size"),
             "max_results": tool_parameters.get("max_results"),
         }
+
+        # Add query_prefix handling
+        query_prefix = tool_parameters.get("query_prefix", "").strip()
+        final_query = f"{query_prefix} {query_dict['keywords']}".strip()
+        query_dict["keywords"] = final_query
+
         response = DDGS().images(**query_dict)
         markdown_result = "\n\n"
         json_result = []

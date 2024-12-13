@@ -18,7 +18,6 @@ import Switch from '@/app/components/base/switch'
 import Select from '@/app/components/base/select'
 import Slider from '@/app/components/base/slider'
 import Input from '@/app/components/base/input'
-import Divider from '@/app/components/base/divider'
 
 const i18nPrefix = 'workflow.nodes.iteration'
 
@@ -72,7 +71,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
   } = useConfig(id, data)
 
   return (
-    <div className='mt-2'>
+    <div className='pt-2 pb-2'>
       <div className='px-4 pb-4 space-y-4'>
         <Field
           title={t(`${i18nPrefix}.input`)}
@@ -131,9 +130,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           </Field>
         </div>)
       }
-      <div className='px-4 py-2'>
-        <Divider className='h-[1px]'/>
-      </div>
+      <Split />
 
       <div className='px-4 py-2'>
         <Field title={t(`${i18nPrefix}.errorResponseMethod`)} >

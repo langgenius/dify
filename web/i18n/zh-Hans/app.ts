@@ -8,6 +8,10 @@ const translation = {
     completion: '文本生成',
   },
   duplicate: '复制',
+  mermaid: {
+    handDrawn: '手绘',
+    classic: '经典',
+  },
   duplicateTitle: '复制应用',
   export: '导出 DSL',
   exportFailed: '导出 DSL 失败',
@@ -140,6 +144,7 @@ const translation = {
       removeConfirmContent: '当前配置正在使用中，删除它将关闭追踪功能。',
     },
   },
+  openInExplore: '在“探索”中打开',
 }
 
 export default translation

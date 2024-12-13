@@ -68,7 +68,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
   }, [onSelect, selectedEmoji, selectedBackground])
 
   return <div className={cn(className)}>
-    <div className='flex flex-col items-center w-full px-3'>
+    <div className='flex flex-col items-center w-full px-3 pb-2'>
       <div className="relative w-full">
         <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
           <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" aria-hidden="true" />

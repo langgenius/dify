@@ -56,10 +56,10 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
   }
 
   return (
-    <div className='mt-2'>
+    <div className='pt-2'>
       {!readOnly && isShowAuthBtn && (
         <>
-          <div className='px-4 pb-3'>
+          <div className='px-4'>
             <Button
               variant='primary'
               className='w-full'
@@ -71,7 +71,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
         </>
       )}
       {!isShowAuthBtn && <>
-        <div className='px-4 pb-4 space-y-4'>
+        <div className='px-4 space-y-4'>
           {toolInputVarSchema.length > 0 && (
             <Field
               title={t(`${i18nPrefix}.inputVars`)}
@@ -118,7 +118,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
         />
       )}
 
-      <div className='px-4 pt-4 pb-2'>
+      <div>
         <OutputVars>
           <>
             <VarItem
