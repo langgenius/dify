@@ -1,5 +1,6 @@
 import enum
 from typing import Any, Optional, Union
+
 from pydantic import BaseModel, Field, field_validator
 
 from core.entities.parameter_entities import CommonParameterType

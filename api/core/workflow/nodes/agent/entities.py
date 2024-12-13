@@ -62,9 +62,9 @@ class AgentNodeData(BaseNodeData, AgentEntity):
             elif typ == "constant":
                 if isinstance(value, list):
                     # convert dict to ToolSelector
-                    if all(isinstance(val, dict) for val in value):
-                        return value
-                    elif all(isinstance(val, ToolSelector) for val in value):
+                    if all(isinstance(val, dict) for val in value) or all(
+                        isinstance(val, ToolSelector) for val in value
+                    ):
                         return value
                     else:
                         raise ValueError("value must be a list of ToolSelector")
