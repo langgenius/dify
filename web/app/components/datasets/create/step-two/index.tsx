@@ -880,13 +880,13 @@ const StepTwo = ({
                         disabled={!isAPIKeySet || hasSetIndexType || docForm !== ChuckingMode.text}
                         ref={economyDomRef}
                         onSwitched={() => {
-                          if (isAPIKeySet)
+                          if (isAPIKeySet && docForm === ChuckingMode.text)
                             setIndexType(IndexingType.ECONOMICAL)
                         }}
                       />
                     </PortalToFollowElemTrigger>
                     <PortalToFollowElemContent>
-                      <div className='p-3 bg-white text-xs font-medium text-text-secondary rounded-lg shadow-lg'>
+                      <div className='p-3 bg-components-tooltip-bg border-components-panel-border text-xs font-medium text-text-secondary rounded-lg shadow-lg'>
                         {
                           docForm === ChuckingMode.qa
                             ? t('datasetCreation.stepTwo.notAvailableForQA')
