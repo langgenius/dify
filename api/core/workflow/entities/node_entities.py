@@ -25,6 +25,7 @@ class NodeRunMetadataKey(StrEnum):
     PARENT_PARALLEL_START_NODE_ID = "parent_parallel_start_node_id"
     PARALLEL_MODE_RUN_ID = "parallel_mode_run_id"
     ITERATION_DURATION_MAP = "iteration_duration_map"  # single iteration duration if iteration node runs
+    ERROR_STRATEGY = "error_strategy"  # node in continue on error mode return the field
 
 
 class NodeRunResult(BaseModel):
@@ -43,3 +44,4 @@ class NodeRunResult(BaseModel):
     edge_source_handle: Optional[str] = None  # source handle id of node with multiple branches
 
     error: Optional[str] = None  # error message if status is failed
+    error_type: Optional[str] = None  # error type if status is failed

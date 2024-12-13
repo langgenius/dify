@@ -56,6 +56,7 @@ const translation = {
     },
     variables: 'Zmienne',
     uploadImages: 'Przesłane obrazy',
+    modelParams: 'Parametry modelu',
   },
   filter: {
     period: {

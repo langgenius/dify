@@ -101,6 +101,9 @@ const translation = {
     addParallelNode: '添加并行节点',
     parallel: '并行',
     branch: '分支',
+    onFailure: '异常时',
+    addFailureBranch: '添加异常分支',
+    openInExplore: '在“探索”中打开',
   },
   env: {
     envPanelTitle: '环境变量',
@@ -300,6 +303,31 @@ const translation = {
         title: '记忆',
         tip: '聊天记忆',
         builtIn: '内置',
+      },
+      errorHandle: {
+        title: '异常处理',
+        tip: '配置异常处理策略，当节点发生异常时触发。',
+        none: {
+          title: '无',
+          desc: '当发生异常且未处理时，节点将停止运行',
+        },
+        defaultValue: {
+          title: '默认值',
+          desc: '当发生异常时，指定默认输出内容。',
+          tip: '当发生异常时，将返回以下值。',
+          inLog: '节点异常，根据默认值输出。',
+          output: '输出默认值',
+        },
+        failBranch: {
+          title: '异常分支',
+          desc: '当发生异常时，将执行异常分支',
+          customize: '在画布自定义失败分支逻辑。',
+          customizeTip: '当节点发生异常时，将自动执行失败分支。失败分支允许您灵活地提供错误消息、报告、修复或跳过操作。',
+          inLog: '节点异常，将自动执行失败分支。节点输出将返回错误类型和错误信息，并传递给下游。',
+        },
+        partialSucceeded: {
+          tip: '流程中有 {{num}} 个节点运行异常，请前往追踪查看日志。',
+        },
       },
     },
     start: {

@@ -108,6 +108,9 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
         except RateLimitError as e:
             raise InvokeRateLimitError(str(e))
+        except Exception:
+            rate_limit.exit(request_id)
+            raise
         finally:
             if not streaming:
                 rate_limit.exit(request_id)
