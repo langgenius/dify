@@ -1784,12 +1784,22 @@ class SegmentService:
                 )
                 .count()
             )
+            max_position = (
+                db.session.query(func.max(ChildChunk.position))
+                .filter(
+                    ChildChunk.tenant_id == current_user.current_tenant_id,
+                    ChildChunk.dataset_id == dataset.id,
+                    ChildChunk.document_id == document.id,
+                    ChildChunk.segment_id == segment.id,
+                )
+                .scalar()
+            )
             child_chunk = ChildChunk(
                 tenant_id=current_user.current_tenant_id,
                 dataset_id=dataset.id,
                 document_id=document.id,
                 segment_id=segment.id,
-                position=child_chunk_count + 1,
+                position=max_position + 1,
                 index_node_id=index_node_id,
                 index_node_hash=index_node_hash,
                 content=content,
