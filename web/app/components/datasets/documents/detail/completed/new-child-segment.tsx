@@ -102,17 +102,21 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
     }
   }
 
+  const wordCountText = useMemo(() => {
+    const count = content.length
+    return `${formatNumber(count)} ${t('datasetDocuments.segment.characters', { count })}`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content.length])
+
   return (
     <div className={'flex flex-col h-full'}>
       <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
         <div className='flex flex-col'>
-          <div className='text-text-primary system-xl-semibold'>{
-            t('datasetDocuments.segment.addChildChunk')
-          }</div>
+          <div className='text-text-primary system-xl-semibold'>{t('datasetDocuments.segment.addChildChunk')}</div>
           <div className='flex items-center gap-x-2'>
-            <SegmentIndexTag label={'New Child Chunk'} />
+            <SegmentIndexTag label={t('datasetDocuments.segment.newChildChunk') as string} />
             <Dot />
-            <span className='text-text-tertiary system-xs-medium'>{formatNumber(content.length)} {t('datasetDocuments.segment.characters')}</span>
+            <span className='text-text-tertiary system-xs-medium'>{wordCountText}</span>
           </div>
         </div>
         <div className='flex items-center'>

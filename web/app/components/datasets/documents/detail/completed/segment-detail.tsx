@@ -80,15 +80,32 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
     return mode === 'hierarchical'
   }, [mode])
 
+  const titleText = useMemo(() => {
+    return isEditMode ? t('datasetDocuments.segment.editChunk') : t('datasetDocuments.segment.chunkDetail')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode])
+
+  const wordCountText = useMemo(() => {
+    const total = formatNumber(isEditMode ? question.length : segInfo!.word_count as number)
+    const count = isEditMode ? question.length : segInfo!.word_count as number
+    return `${total} ${t('datasetDocuments.segment.characters', { count })}`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode, question.length, segInfo?.word_count])
+
+  const labelPrefix = useMemo(() => {
+    return isParentChildMode ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isParentChildMode])
+
   return (
     <div className={'flex flex-col h-full'}>
       <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
         <div className='flex flex-col'>
-          <div className='text-text-primary system-xl-semibold'>{isEditMode ? 'Edit Chunk' : 'Chunk Detail'}</div>
+          <div className='text-text-primary system-xl-semibold'>{titleText}</div>
           <div className='flex items-center gap-x-2'>
-            <SegmentIndexTag positionId={segInfo?.position || ''} labelPrefix={`${isParentChildMode ? 'Parent-' : ''}Chunk`} />
+            <SegmentIndexTag positionId={segInfo?.position || ''} labelPrefix={labelPrefix} />
             <Dot />
-            <span className='text-text-tertiary system-xs-medium'>{formatNumber(isEditMode ? question.length : segInfo?.word_count as number)} {t('datasetDocuments.segment.characters')}</span>
+            <span className='text-text-tertiary system-xs-medium'>{wordCountText}</span>
           </div>
         </div>
         <div className='flex items-center'>

@@ -42,7 +42,7 @@ const HitDetail: FC<IHitDetailProps> = ({ segInfo }) => {
           />
           <div className={cn(s.commonIcon, s.typeSquareIcon)} />
           <span className={cn('mr-6', s.numberInfo)}>
-            {segInfo?.word_count} {t('datasetDocuments.segment.characters')}
+            {segInfo?.word_count} {t('datasetDocuments.segment.characters', { count: segInfo?.word_count || 0 })}
           </span>
           <div className={cn(s.commonIcon, s.targetIcon)} />
           <span className={s.numberInfo}>

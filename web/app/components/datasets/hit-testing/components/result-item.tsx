@@ -49,7 +49,7 @@ const ResultItem: FC<Props> = ({
             className={cn('w-fit group-hover:opacity-100')}
           />
           <Dot />
-          <div className='system-xs-medium text-text-tertiary'>{word_count} {t('datasetDocuments.segment.characters')}</div>
+          <div className='system-xs-medium text-text-tertiary'>{word_count} {t('datasetDocuments.segment.characters', { count: word_count })}</div>
         </div>
         <Score value={score} />
       </div>
