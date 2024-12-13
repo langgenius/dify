@@ -107,10 +107,10 @@ class BaichuanLanguageModel(LargeLanguageModel):
                 message_dict = {"role": "user", "content": message.content}
             else:
                 for message_content in message.content:
-                        if message_content.type == PromptMessageContentType.TEXT:
-                            message_dict = {"role": "user", "content": message_content.data}
-                        elif message_content.type == PromptMessageContentType.IMAGE:
-                            raise ValueError("Content object type not support image_url")
+                    if message_content.type == PromptMessageContentType.TEXT:
+                        message_dict = {"role": "user", "content": message_content.data}
+                    elif message_content.type == PromptMessageContentType.IMAGE:
+                        raise ValueError("Content object type not support image_url")
         elif isinstance(message, AssistantPromptMessage):
             message = cast(AssistantPromptMessage, message)
             message_dict = {"role": "assistant", "content": message.content}
