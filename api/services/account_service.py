@@ -397,7 +397,7 @@ class AccountService:
             if not AccountService.verify_account_whitelist(account.email):
                 raise ValueError("Account is not whitelisted")
 
-        if cls.email_code_login_rate_limiter.is_rate_limited(account_email):
+        if cls.email_code_login_rate_limiter.is_rate_limited(email):
             from controllers.console.auth.error import EmailCodeLoginRateLimitExceededError
 
             raise EmailCodeLoginRateLimitExceededError()
