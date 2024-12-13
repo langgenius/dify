@@ -203,7 +203,7 @@ const StepOne = ({
               )}
               <div className="flex justify-end gap-2 max-w-[640px]">
                 {/* <Button>{t('datasetCreation.stepOne.cancel')}</Button> */}
-                <Button disabled={!nextDisabled} variant='primary' onClick={onStepChange}>
+                <Button disabled={nextDisabled} variant='primary' onClick={onStepChange}>
                   <span className="flex gap-0.5 px-[10px]">
                     <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
                     <RiArrowRightLine className="size-4" />
