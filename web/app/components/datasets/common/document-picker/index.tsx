@@ -74,7 +74,7 @@ const DocumentPicker: FC<Props> = ({
       placement='bottom-start'
     >
       <PortalToFollowElemTrigger onClick={togglePopup}>
-        <div className={cn('flex items-center ml-1 px-2 py-0.5 rounded-lg hover:bg-state-base-hover select-none', open && 'bg-state-base-hover')}>
+        <div className={cn('flex items-center ml-1 px-2 py-0.5 rounded-lg hover:bg-state-base-hover select-none cursor-pointer', open && 'bg-state-base-hover')}>
           <FileIcon name={name} extension={extension} size='lg' />
           <div className='flex flex-col items-start ml-1 mr-0.5'>
             <div className='flex items-center space-x-0.5'>

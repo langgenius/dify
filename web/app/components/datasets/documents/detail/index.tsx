@@ -55,7 +55,7 @@ type DocumentTitleProps = {
 export const DocumentTitle: FC<DocumentTitleProps> = ({ datasetId, extension, name, processMode, parent_mode, wrapperCls }) => {
   const router = useRouter()
   return (
-    <div className={cn('flex items-center justify-start flex-1 cursor-pointer', wrapperCls)}>
+    <div className={cn('flex items-center justify-start flex-1', wrapperCls)}>
       <DocumentPicker
         datasetId={datasetId}
         value={{

@@ -1,5 +1,6 @@
 import React, { type ForwardedRef } from 'react'
 import SegmentCard from './segment-card'
+import Empty from './common/empty'
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import Checkbox from '@/app/components/base/checkbox'
 import Loading from '@/app/components/base/loading'
@@ -19,6 +20,7 @@ type ISegmentListProps = {
   onClickSlice: (childChunk: ChildChunkDetail) => void
   archived?: boolean
   embeddingAvailable: boolean
+  onClearFilter: () => void
 }
 
 const SegmentList = React.forwardRef(({
@@ -34,11 +36,19 @@ const SegmentList = React.forwardRef(({
   onClickSlice,
   archived,
   embeddingAvailable,
+  onClearFilter,
 }: ISegmentListProps,
 ref: ForwardedRef<HTMLDivElement>,
 ) => {
   if (isLoading)
     return <Loading type='app' />
+  if (items.length === 0) {
+    return (
+      <div className='h-full pl-6'>
+        <Empty onClearFilter={onClearFilter} />
+      </div>
+    )
+  }
   return (
     <div ref={ref} className={classNames('flex flex-col h-full overflow-y-auto')}>
       {

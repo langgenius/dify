@@ -106,6 +106,7 @@ const Completed: FC<ICompletedProps> = ({
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchValue(inputValue)
+    setCurrentPage(1)
   }, { wait: 500 })
 
   const handleInputChange = (value: string) => {
@@ -115,6 +116,7 @@ const Completed: FC<ICompletedProps> = ({
 
   const onChangeStatus = ({ value }: Item) => {
     setSelectedStatus(value === 'all' ? 'all' : !!value)
+    setCurrentPage(1)
   }
 
   const isFullDocMode = useMemo(() => {
@@ -132,6 +134,7 @@ const Completed: FC<ICompletedProps> = ({
         enabled: selectedStatus === 'all' ? 'all' : !!selectedStatus,
       },
     },
+    currentPage === 0,
   )
   const invalidSegmentList = useInvalid(useSegmentListKey)
 
@@ -162,7 +165,7 @@ const Completed: FC<ICompletedProps> = ({
         keyword: searchValue,
       },
     },
-    !isFullDocMode || segments.length === 0,
+    !isFullDocMode || segments.length === 0 || currentPage === 0,
   )
   const invalidChildSegmentList = useInvalid(useChildSegmentListKey)
 
@@ -174,8 +177,12 @@ const Completed: FC<ICompletedProps> = ({
   }, [childSegments])
 
   useEffect(() => {
-    if (childChunkListData)
+    if (childChunkListData) {
       setChildSegments(childChunkListData.data || [])
+      if (childChunkListData.total_pages < currentPage)
+        setCurrentPage(childChunkListData.total_pages)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childChunkListData])
 
   const resetList = useCallback(() => {
@@ -328,12 +335,20 @@ const Completed: FC<ICompletedProps> = ({
   }, [segments, isAllSelected, selectedSegmentIds])
 
   const totalText = useMemo(() => {
-    const total = segmentListData?.total ? formatNumber(segmentListData.total) : '--'
-    const count = total === '--' ? 0 : segmentListData!.total
-    const translationKey = (mode === 'hierarchical' && parentMode === 'paragraph')
-      ? 'datasetDocuments.segment.parentChunks'
-      : 'datasetDocuments.segment.chunks'
-    return `${total} ${t(translationKey, { count })}`
+    const isSearch = searchValue !== '' || selectedStatus !== 'all'
+    if (!isSearch) {
+      const total = segmentListData?.total ? formatNumber(segmentListData.total) : '--'
+      const count = total === '--' ? 0 : segmentListData!.total
+      const translationKey = (mode === 'hierarchical' && parentMode === 'paragraph')
+        ? 'datasetDocuments.segment.parentChunks'
+        : 'datasetDocuments.segment.chunks'
+      return `${total} ${t(translationKey, { count })}`
+    }
+    else {
+      const total = typeof segmentListData?.total === 'number' ? formatNumber(segmentListData.total) : 0
+      const count = segmentListData?.total || 0
+      return `${total} ${t('datasetDocuments.segment.searchResults', { count })}`
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segmentListData?.total, mode, parentMode])
 
@@ -472,6 +487,13 @@ const Completed: FC<ICompletedProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segments, childSegments, datasetId, documentId, parentMode])
 
+  const onClearFilter = useCallback(() => {
+    setInputValue('')
+    setSearchValue('')
+    setSelectedStatus('all')
+    setCurrentPage(1)
+  }, [])
+
   return (
     <SegmentListContext.Provider value={{
       isCollapsed,
@@ -543,6 +565,7 @@ const Completed: FC<ICompletedProps> = ({
             onDeleteChildChunk={onDeleteChildChunk}
             handleAddNewChildChunk={handleAddNewChildChunk}
             onClickSlice={onClickSlice}
+            onClearFilter={onClearFilter}
           />
       }
       {/* Pagination */}

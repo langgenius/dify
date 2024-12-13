@@ -28,7 +28,6 @@ export const useSegmentList = (
       return get<SegmentsResponse>(`/datasets/${datasetId}/documents/${documentId}/segments`, { params })
     },
     enabled: !disable,
-    initialData: disable ? { data: [], has_more: false, page: 1, total: 0, total_pages: 0, limit: 10 } : undefined,
   })
 }
 
@@ -88,7 +87,6 @@ export const useChildSegmentList = (
       return get<ChildSegmentsResponse>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}/child_chunks`, { params })
     },
     enabled: !disable,
-    initialData: disable ? { data: [], total: 0, page: 1, total_pages: 0, limit: 10 } : undefined,
   })
 }
 
