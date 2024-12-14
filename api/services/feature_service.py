@@ -63,6 +63,7 @@ class SystemFeatureModel(BaseModel):
     enable_social_oauth_login: bool = False
     is_allow_register: bool = False
     is_allow_create_workspace: bool = False
+    is_email_setup: bool = False
     license: LicenseModel = LicenseModel()
 
 
@@ -88,6 +89,9 @@ class FeatureService:
             system_features.enable_web_sso_switch_component = True
 
             cls._fulfill_params_from_enterprise(system_features)
+
+        if dify_config.MAIL_TYPE:
+            system_features.is_email_setup = True;
 
         return system_features
 
