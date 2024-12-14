@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Optional
+from typing import Optional, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import file_manager
@@ -90,7 +90,7 @@ class AdvancedPromptTransform(PromptTransform):
         """
         raw_prompt = prompt_template.text
 
-        prompt_messages = []
+        prompt_messages: list[PromptMessage] = []
 
         if prompt_template.edition_type == "basic" or not prompt_template.edition_type:
             parser = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
@@ -98,7 +98,7 @@ class AdvancedPromptTransform(PromptTransform):
 
             prompt_inputs = self._set_context_variable(context, parser, prompt_inputs)
 
-            if memory and memory_config:
+            if memory and memory_config and memory_config.role_prefix:
                 role_prefix = memory_config.role_prefix
                 prompt_inputs = self._set_histories_variable(
                     memory=memory,
@@ -146,7 +146,7 @@ class AdvancedPromptTransform(PromptTransform):
         """
         Get chat model prompt messages.
         """
-        prompt_messages = []
+        prompt_messages: list[PromptMessage] = []
         for prompt_item in prompt_template:
             raw_prompt = prompt_item.text
 
@@ -207,7 +207,7 @@ class AdvancedPromptTransform(PromptTransform):
                 last_message = prompt_messages[-1] if prompt_messages else None
                 if last_message and last_message.role == PromptMessageRole.USER:
                     # get last user message content and add files
-                    prompt_message_contents = [TextPromptMessageContent(data=last_message.content)]
+                    prompt_message_contents = [TextPromptMessageContent(data=cast(str, last_message.content))]
                     for file in files:
                         prompt_message_contents.append(file_manager.to_prompt_message_content(file))
 
