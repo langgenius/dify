@@ -9,6 +9,7 @@ from controllers.service_api.app.error import (
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
+    InvalidConversationIDError,
     NotChatAppError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
@@ -28,7 +29,6 @@ from libs import helper
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
-from services.errors.conversation import InvalidConversationIDError
 
 
 class CompletionApi(Resource):

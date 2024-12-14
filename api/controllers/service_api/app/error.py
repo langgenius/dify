@@ -31,6 +31,12 @@ class ConversationCompletedError(BaseHTTPException):
     code = 400
 
 
+class InvalidConversationIDError(BaseHTTPException):
+    error_code = "invalid_conversation_id"
+    description = "The conversation is invalid. Please check validity of conversation id."
+    code = 400
+
+
 class ProviderNotInitializeError(BaseHTTPException):
     error_code = "provider_not_initialize"
     description = (

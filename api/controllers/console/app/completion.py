@@ -10,6 +10,7 @@ from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
+    InvalidConversationIDError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
@@ -31,7 +32,6 @@ from libs.helper import uuid_value
 from libs.login import login_required
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
-from services.errors.conversation import InvalidConversationIDError
 from services.errors.llm import InvokeRateLimitError
 
 

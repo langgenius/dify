@@ -9,6 +9,7 @@ from controllers.web.error import (
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
+    InvalidConversationIDError,
     NotChatAppError,
     NotCompletionAppError,
     ProviderModelCurrentlyNotSupportError,
@@ -25,7 +26,6 @@ from libs import helper
 from libs.helper import uuid_value
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
-from services.errors.conversation import InvalidConversationIDError
 from services.errors.llm import InvokeRateLimitError
 
 

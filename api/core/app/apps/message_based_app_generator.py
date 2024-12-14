@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from os import getenv
 from typing import Optional, Union
 
-from sqlalchemy import and_
+from sqlalchemy import and_, exc
 
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
@@ -32,8 +32,11 @@ from models import Account
 from models.enums import CreatedByRole
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from services.errors.app_model_config import AppModelConfigBrokenError
-from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError, \
-    InvalidConversationIDError
+from services.errors.conversation import (
+    ConversationCompletedError,
+    ConversationNotExistsError,
+    InvalidConversationIDError,
+)
 
 logger = logging.getLogger(__name__)
 CONVERSATION_UUID_VERSION = 4
@@ -45,18 +48,18 @@ class MessageBasedAppGenerator(BaseAppGenerator):
     )
 
     def _handle_response(
-            self,
-            application_generate_entity: Union[
-                ChatAppGenerateEntity,
-                CompletionAppGenerateEntity,
-                AgentChatAppGenerateEntity,
-                AdvancedChatAppGenerateEntity,
-            ],
-            queue_manager: AppQueueManager,
-            conversation: Conversation,
-            message: Message,
-            user: Union[Account, EndUser],
-            stream: bool = False,
+        self,
+        application_generate_entity: Union[
+            ChatAppGenerateEntity,
+            CompletionAppGenerateEntity,
+            AgentChatAppGenerateEntity,
+            AdvancedChatAppGenerateEntity,
+        ],
+        queue_manager: AppQueueManager,
+        conversation: Conversation,
+        message: Message,
+        user: Union[Account, EndUser],
+        stream: bool = False,
     ) -> Union[
         ChatbotAppBlockingResponse,
         CompletionAppBlockingResponse,
@@ -92,7 +95,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 raise e
 
     def _get_conversation_by_user(
-            self, app_model: App, conversation_id: str, user: Union[Account, EndUser]
+        self, app_model: App, conversation_id: str, user: Union[Account, EndUser]
     ) -> Conversation:
         conversation_filter = [
             Conversation.id == conversation_id,
@@ -119,9 +122,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         if conversation:
             app_model_config = (
                 db.session.query(AppModelConfig)
-                    .filter(AppModelConfig.id == conversation.app_model_config_id,
-                            AppModelConfig.app_id == app_model.id)
-                    .first()
+                .filter(AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id)
+                .first()
             )
 
             if not app_model_config:
@@ -138,15 +140,15 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         return app_model_config
 
     def _init_generate_records(
-            self,
-            application_generate_entity: Union[
-                ChatAppGenerateEntity,
-                CompletionAppGenerateEntity,
-                AgentChatAppGenerateEntity,
-                AdvancedChatAppGenerateEntity,
-            ],
-            conversation: Optional[Conversation] = None,
-            customized_conversation_id: Optional[str] = None,
+        self,
+        application_generate_entity: Union[
+            ChatAppGenerateEntity,
+            CompletionAppGenerateEntity,
+            AgentChatAppGenerateEntity,
+            AdvancedChatAppGenerateEntity,
+        ],
+        conversation: Optional[Conversation] = None,
+        customized_conversation_id: Optional[str] = None,
     ) -> tuple[Conversation, Message]:
         """
         Initialize generate records
@@ -206,18 +208,20 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 from_account_id=account_id,
             )
             if (
-                    self.allow_customized_conversation_id
-                    and customized_conversation_id
-                    and len(customized_conversation_id) > 0
+                self.allow_customized_conversation_id
+                and customized_conversation_id
+                and len(customized_conversation_id) > 0
             ):
                 try:
-                    uuid.UUID(customized_conversation_id,
-                              version=CONVERSATION_UUID_VERSION)
+                    uuid.UUID(customized_conversation_id, version=CONVERSATION_UUID_VERSION)
                 except ValueError:
                     raise InvalidConversationIDError()
                 conversation.id = customized_conversation_id
-            db.session.add(conversation)
-            db.session.commit()
+            try:
+                db.session.add(conversation)
+                db.session.commit()
+            except exc.IntegrityError as e:
+                raise InvalidConversationIDError()
             db.session.refresh(conversation)
         else:
             conversation.updated_at = datetime.now(UTC).replace(tzinfo=None)

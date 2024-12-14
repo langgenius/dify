@@ -37,6 +37,12 @@ class ConversationCompletedError(BaseHTTPException):
     code = 400
 
 
+class InvalidConversationIDError(BaseHTTPException):
+    error_code = "invalid_conversation_id"
+    description = "The conversation is invalid. Please check validity of conversation id."
+    code = 400
+
+
 class AppUnavailableError(BaseHTTPException):
     error_code = "app_unavailable"
     description = "App unavailable, please check your app configurations."

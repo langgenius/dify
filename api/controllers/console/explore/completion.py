@@ -11,6 +11,7 @@ from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
+    InvalidConversationIDError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
@@ -29,9 +30,6 @@ from services.app_generate_service import AppGenerateService
 
 
 # define completion api for user
-from services.errors.conversation import InvalidConversationIDError
-
-
 class CompletionApi(InstalledAppResource):
     def post(self, installed_app):
         app_model = installed_app.app
