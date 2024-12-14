@@ -1,6 +1,5 @@
 import json
 import logging
-import uuid
 from collections.abc import Generator
 from datetime import UTC, datetime
 from os import getenv
@@ -212,10 +211,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 and customized_conversation_id
                 and len(customized_conversation_id) > 0
             ):
-                try:
-                    uuid.UUID(customized_conversation_id, version=CONVERSATION_UUID_VERSION)
-                except ValueError:
-                    raise InvalidConversationIDError()
                 conversation.id = customized_conversation_id
             try:
                 db.session.add(conversation)
