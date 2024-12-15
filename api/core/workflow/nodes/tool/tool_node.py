@@ -287,6 +287,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                     error=message.message.error,
                     status=message.message.status.value,
                     data=message.message.data,
+                    label=message.message.label,
                 )
 
         yield RunCompletedEvent(
