@@ -37,7 +37,7 @@ BODY_TYPE_TO_CONTENT_TYPE = {
 class Executor:
     method: Literal["get", "head", "post", "put", "delete", "patch"]
     url: str
-    params: Mapping[str, str] | None
+    params: list[tuple[str, str]] | None
     content: str | bytes | None
     data: Mapping[str, Any] | None
     files: Mapping[str, tuple[str | None, bytes, str]] | None
@@ -67,7 +67,7 @@ class Executor:
         self.method = node_data.method
         self.auth = node_data.authorization
         self.timeout = timeout
-        self.params = {}
+        self.params = []
         self.headers = {}
         self.content = None
         self.files = None
@@ -89,14 +89,39 @@ class Executor:
         self.url = self.variable_pool.convert_template(self.node_data.url).text
 
     def _init_params(self):
-        params = _plain_text_to_dict(self.node_data.params)
-        for key in params:
-            params[key] = self.variable_pool.convert_template(params[key]).text
-        self.params = params
+        """
+        Same as _init_headers(), but response as a list tuple.
+        Because params allow same key, like 'aa=1&aa=2'
+        """
+        params = self.variable_pool.convert_template(self.node_data.params).text
+        self.params = [
+            (key.strip(), value[0].strip() if value else "")
+            for line in params.splitlines()
+            if line.strip()
+            for key, *value in [line.split(":", 1)]
+        ]
 
     def _init_headers(self):
+        """
+        Convert the header string of frontend to a dictionary.
+
+        Each line in the header string represents a key-value pair.
+        Keys and values are separated by ':'.
+        Empty values are allowed.
+
+        Examples:
+            'aa:bb\n cc:dd'  -> {'aa': 'bb', 'cc': 'dd'}
+            'aa:\n cc:dd\n'  -> {'aa': '', 'cc': 'dd'}
+            'aa\n cc : dd'   -> {'aa': '', 'cc': 'dd'}
+
+        """
         headers = self.variable_pool.convert_template(self.node_data.headers).text
-        self.headers = _plain_text_to_dict(headers)
+        self.headers = {
+            key.strip(): (value[0].strip() if value else "")
+            for line in headers.splitlines()
+            if line.strip()
+            for key, *value in [line.split(":", 1)]
+        }
 
     def _init_body(self):
         body = self.node_data.body
@@ -286,33 +311,6 @@ class Executor:
         raw += body
 
         return raw
-
-
-def _plain_text_to_dict(text: str, /) -> dict[str, str]:
-    """
-    Convert a string of key-value pairs to a dictionary.
-
-    Each line in the input string represents a key-value pair.
-    Keys and values are separated by ':'.
-    Empty values are allowed.
-
-    Examples:
-        'aa:bb\n cc:dd'  -> {'aa': 'bb', 'cc': 'dd'}
-        'aa:\n cc:dd\n'  -> {'aa': '', 'cc': 'dd'}
-        'aa\n cc : dd'   -> {'aa': '', 'cc': 'dd'}
-
-    Args:
-        convert_text (str): The input string to convert.
-
-    Returns:
-        dict[str, str]: A dictionary of key-value pairs.
-    """
-    return {
-        key.strip(): (value[0].strip() if value else "")
-        for line in text.splitlines()
-        if line.strip()
-        for key, *value in [line.split(":", 1)]
-    }
 
 
 def _generate_random_string(n: int) -> str:
