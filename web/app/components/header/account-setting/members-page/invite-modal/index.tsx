@@ -17,11 +17,13 @@ import I18n from '@/context/i18n'
 
 import 'react-multi-email/dist/style.css'
 type IInviteModalProps = {
+  isEmailSetup: boolean
   onCancel: () => void
   onSend: (invitationResults: InvitationResult[]) => void
 }
 
 const InviteModal = ({
+  isEmailSetup,
   onCancel,
   onSend,
 }: IInviteModalProps) => {
@@ -60,6 +62,9 @@ const InviteModal = ({
           <XMarkIcon className='w-4 h-4 cursor-pointer' onClick={onCancel} />
         </div>
         <div className='mb-7 text-[13px] text-gray-500'>{t('common.members.inviteTeamMemberTip')}</div>
+        {!isEmailSetup && (
+          <div className='mb-7 text-[13px] text-[#DC6803]'>メールサーバーがセットアップされていないので、招待メールを送信することはできません。代わりに招待後に発行される招待リンクをユーザーに通知してください。</div>
+        )}
         <div>
           <div className='mb-2 text-sm font-medium text-gray-900'>{t('common.members.email')}</div>
           <div className='mb-8 h-36 flex items-stretch'>
