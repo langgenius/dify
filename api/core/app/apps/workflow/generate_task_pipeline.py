@@ -397,28 +397,6 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 yield self._workflow_finish_to_stream_response(
                     task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
                 )
-            elif isinstance(event, QueueWorkflowPartialSuccessEvent):
-                if not workflow_run:
-                    raise Exception("Workflow run not initialized.")
-
-                if not graph_runtime_state:
-                    raise Exception("Graph runtime state not initialized.")
-                workflow_run = self._handle_workflow_run_partial_success(
-                    workflow_run=workflow_run,
-                    start_at=graph_runtime_state.start_at,
-                    total_tokens=graph_runtime_state.total_tokens,
-                    total_steps=graph_runtime_state.node_run_steps,
-                    outputs=event.outputs,
-                    exceptions_count=event.exceptions_count,
-                    conversation_id=None,
-                    trace_manager=trace_manager,
-                )
-                # save workflow app log
-                self._save_workflow_app_log(workflow_run)
-
-                yield self._workflow_finish_to_stream_response(
-                    task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
-                )
             elif isinstance(event, QueueTextChunkEvent):
                 delta_text = event.text
                 if delta_text is None:
