@@ -91,7 +91,7 @@ class FeatureService:
             cls._fulfill_params_from_enterprise(system_features)
 
         if dify_config.MAIL_TYPE:
-            system_features.is_email_setup = True;
+            system_features.is_email_setup = True
 
         return system_features
 
