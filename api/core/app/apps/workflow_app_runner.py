@@ -301,6 +301,7 @@ class WorkflowBasedAppRunner(AppRunner):
             self._publish_event(
                 QueueAgentLogEvent(
                     id=event.id,
+                    label=event.label,
                     node_execution_id=event.node_execution_id,
                     parent_id=event.parent_id,
                     error=event.error,

@@ -796,6 +796,7 @@ class WorkflowCycleManage:
                     error=event.error,
                     status=event.status,
                     data=event.data,
+                    label=event.label,
                 )
             )
 
@@ -807,6 +808,7 @@ class WorkflowCycleManage:
                 node_execution_id=node_execution_id,
                 id=event.id,
                 parent_id=event.parent_id,
+                label=event.label,
                 error=event.error,
                 status=event.status,
                 data=event.data,

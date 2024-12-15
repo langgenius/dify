@@ -308,6 +308,7 @@ class QueueAgentLogEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.AGENT_LOG
     id: str
+    label: str
     node_execution_id: str
     parent_id: str | None
     error: str | None

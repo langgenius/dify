@@ -181,6 +181,7 @@ class BaseAgentEvent(GraphEngineEvent):
 
 class AgentLogEvent(BaseAgentEvent):
     id: str = Field(..., description="id")
+    label: str = Field(..., description="label")
     node_execution_id: str = Field(..., description="node execution id")
     parent_id: str | None = Field(..., description="parent id")
     error: str | None = Field(..., description="error")
