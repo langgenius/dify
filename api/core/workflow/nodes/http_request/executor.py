@@ -90,16 +90,25 @@ class Executor:
 
     def _init_params(self):
         """
-        Same as _init_headers(), but response as a list tuple.
-        Because params allow same key, like 'aa=1&aa=2'
+        Almost same as _init_headers(), difference:
+        1. response a list tuple to support same key, like 'aa=1&aa=2'
+        2. param value may have '\n', we need to splitlines then extract the variable value.
         """
-        params = self.variable_pool.convert_template(self.node_data.params).text
-        self.params = [
-            (key.strip(), value[0].strip() if value else "")
-            for line in params.splitlines()
-            if line.strip()
-            for key, *value in [line.split(":", 1)]
-        ]
+        result = []
+        for line in self.node_data.params.splitlines():
+            if not (line := line.strip()):
+                continue
+
+            key, *value = line.split(":", 1)
+            if not (key := key.strip()):
+                continue
+
+            value = value[0].strip() if value else ""
+            result.append(
+                (self.variable_pool.convert_template(key).text, self.variable_pool.convert_template(value).text)
+            )
+
+        self.params = result
 
     def _init_headers(self):
         """

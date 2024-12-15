@@ -48,7 +48,7 @@ def test_executor_with_json_body_and_number_variable():
     assert executor.method == "post"
     assert executor.url == "https://api.example.com/data"
     assert executor.headers == {"Content-Type": "application/json"}
-    assert executor.params == {}
+    assert executor.params == []
     assert executor.json == {"number": 42}
     assert executor.data is None
     assert executor.files is None
@@ -101,7 +101,7 @@ def test_executor_with_json_body_and_object_variable():
     assert executor.method == "post"
     assert executor.url == "https://api.example.com/data"
     assert executor.headers == {"Content-Type": "application/json"}
-    assert executor.params == {}
+    assert executor.params == []
     assert executor.json == {"name": "John Doe", "age": 30, "email": "john@example.com"}
     assert executor.data is None
     assert executor.files is None
@@ -156,7 +156,7 @@ def test_executor_with_json_body_and_nested_object_variable():
     assert executor.method == "post"
     assert executor.url == "https://api.example.com/data"
     assert executor.headers == {"Content-Type": "application/json"}
-    assert executor.params == {}
+    assert executor.params == []
     assert executor.json == {"object": {"name": "John Doe", "age": 30, "email": "john@example.com"}}
     assert executor.data is None
     assert executor.files is None
@@ -195,7 +195,7 @@ def test_extract_selectors_from_template_with_newline():
         variable_pool=variable_pool,
     )
 
-    assert executor.params == {"test": "line1\nline2"}
+    assert executor.params == [('test', 'line1\nline2')]
 
 
 def test_executor_with_form_data():
@@ -244,7 +244,7 @@ def test_executor_with_form_data():
     assert executor.url == "https://api.example.com/upload"
     assert "Content-Type" in executor.headers
     assert "multipart/form-data" in executor.headers["Content-Type"]
-    assert executor.params == {}
+    assert executor.params == []
     assert executor.json is None
     assert executor.files is None
     assert executor.content is None
