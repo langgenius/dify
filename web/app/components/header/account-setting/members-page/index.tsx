@@ -86,9 +86,9 @@ const MembersPage = () => {
         </div>
         <div className='overflow-visible lg:overflow-visible'>
           <div className='flex items-center py-[7px] border-b border-gray-200 min-w-[480px]'>
-            <div className='grow px-3 text-xs font-medium text-gray-500'>{t('common.members.name')}</div>
-            <div className='shrink-0 w-[104px] text-xs font-medium text-gray-500'>{t('common.members.lastActive')}</div>
-            <div className='shrink-0 w-[96px] px-3 text-xs font-medium text-gray-500'>{t('common.members.role')}</div>
+            <div className='grow px-3 system-xs-medium-uppercase text-text-tertiary'>{t('common.members.name')}</div>
+            <div className='shrink-0 w-[104px] system-xs-medium-uppercase text-text-tertiary'>{t('common.members.lastActive')}</div>
+            <div className='shrink-0 w-[96px] px-3 system-xs-medium-uppercase text-text-tertiary'>{t('common.members.role')}</div>
           </div>
           <div className='min-w-[480px] relative'>
             {
