@@ -1,7 +1,7 @@
 import enum
 import json
 import os
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from core.app.app_config.entities import PromptTemplateEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -41,7 +41,7 @@ class ModelMode(enum.StrEnum):
         raise ValueError(f"invalid mode value {value}")
 
 
-prompt_file_contents = {}
+prompt_file_contents: dict[str, Any] = {}
 
 
 class SimplePromptTransform(PromptTransform):
@@ -66,7 +66,7 @@ class SimplePromptTransform(PromptTransform):
         if model_mode == ModelMode.CHAT:
             prompt_messages, stops = self._get_chat_model_prompt_messages(
                 app_mode=app_mode,
-                pre_prompt=prompt_template_entity.simple_prompt_template,
+                pre_prompt=prompt_template_entity.simple_prompt_template or "",
                 inputs=inputs,
                 query=query,
                 files=files,
@@ -77,7 +77,7 @@ class SimplePromptTransform(PromptTransform):
         else:
             prompt_messages, stops = self._get_completion_model_prompt_messages(
                 app_mode=app_mode,
-                pre_prompt=prompt_template_entity.simple_prompt_template,
+                pre_prompt=prompt_template_entity.simple_prompt_template or "",
                 inputs=inputs,
                 query=query,
                 files=files,
@@ -175,7 +175,7 @@ class SimplePromptTransform(PromptTransform):
         memory: Optional[TokenBufferMemory],
         model_config: ModelConfigWithCredentialsEntity,
     ) -> tuple[list[PromptMessage], Optional[list[str]]]:
-        prompt_messages = []
+        prompt_messages: list[PromptMessage] = []
 
         # get prompt
         prompt, _ = self.get_prompt_str_and_rules(
@@ -288,7 +288,7 @@ class SimplePromptTransform(PromptTransform):
 
         # Check if the prompt file is already loaded
         if prompt_file_name in prompt_file_contents:
-            return prompt_file_contents[prompt_file_name]
+            return cast(dict, prompt_file_contents[prompt_file_name])
 
         # Get the absolute path of the subdirectory
         prompt_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "prompt_templates")
@@ -301,7 +301,7 @@ class SimplePromptTransform(PromptTransform):
             # Store the content of the prompt file
             prompt_file_contents[prompt_file_name] = content
 
-            return content
+            return cast(dict, content)
 
     def _prompt_file_name(self, app_mode: AppMode, provider: str, model: str) -> str:
         # baichuan

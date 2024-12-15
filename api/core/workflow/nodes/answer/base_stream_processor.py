@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator
 
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.graph_engine.entities.event import GraphEngineEvent, NodeRunSucceededEvent
+from core.workflow.graph_engine.entities.event import GraphEngineEvent, NodeRunExceptionEvent, NodeRunSucceededEvent
 from core.workflow.graph_engine.entities.graph import Graph
 
 
@@ -16,7 +16,7 @@ class StreamProcessor(ABC):
     def process(self, generator: Generator[GraphEngineEvent, None, None]) -> Generator[GraphEngineEvent, None, None]:
         raise NotImplementedError
 
-    def _remove_unreachable_nodes(self, event: NodeRunSucceededEvent) -> None:
+    def _remove_unreachable_nodes(self, event: NodeRunSucceededEvent | NodeRunExceptionEvent) -> None:
         finished_node_id = event.route_node_state.node_id
         if finished_node_id not in self.rest_node_ids:
             return

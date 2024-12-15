@@ -193,7 +193,7 @@ class TencentVectorFactory(AbstractVectorFactory):
         return TencentVector(
             collection_name=collection_name,
             config=TencentConfig(
-                url=dify_config.TENCENT_VECTOR_DB_URL,
+                url=dify_config.TENCENT_VECTOR_DB_URL or "",
                 api_key=dify_config.TENCENT_VECTOR_DB_API_KEY,
                 timeout=dify_config.TENCENT_VECTOR_DB_TIMEOUT,
                 username=dify_config.TENCENT_VECTOR_DB_USERNAME,

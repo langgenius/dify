@@ -3,6 +3,7 @@ import io
 import json
 import os
 import tempfile
+from typing import cast
 
 import docx
 import pandas as pd
@@ -162,7 +163,7 @@ def _extract_text_from_yaml(file_content: bytes) -> str:
     """Extract the content from yaml file"""
     try:
         yaml_data = yaml.safe_load_all(file_content.decode("utf-8", "ignore"))
-        return yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False)
+        return cast(str, yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False))
     except (UnicodeDecodeError, yaml.YAMLError) as e:
         raise TextExtractionError(f"Failed to decode or parse YAML file: {e}") from e
 
@@ -199,9 +200,9 @@ def _download_file_content(file: File) -> bytes:
                 raise FileDownloadError("Missing URL for remote file")
             response = ssrf_proxy.get(file.remote_url)
             response.raise_for_status()
-            return response.content
+            return cast(bytes, response.content)
         else:
-            return file_manager.download(file)
+            return cast(bytes, file_manager.download(file))
     except Exception as e:
         raise FileDownloadError(f"Error downloading file: {str(e)}") from e
 

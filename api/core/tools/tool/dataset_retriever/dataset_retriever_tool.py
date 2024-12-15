@@ -69,25 +69,27 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                     metadata=external_document.get("metadata"),
                     provider="external",
                 )
-                document.metadata["score"] = external_document.get("score")
-                document.metadata["title"] = external_document.get("title")
-                document.metadata["dataset_id"] = dataset.id
-                document.metadata["dataset_name"] = dataset.name
-                results.append(document)
+                if document.metadata is not None:
+                    document.metadata["score"] = external_document.get("score")
+                    document.metadata["title"] = external_document.get("title")
+                    document.metadata["dataset_id"] = dataset.id
+                    document.metadata["dataset_name"] = dataset.name
+                    results.append(document)
             # deal with external documents
             context_list = []
             for position, item in enumerate(results, start=1):
-                source = {
-                    "position": position,
-                    "dataset_id": item.metadata.get("dataset_id"),
-                    "dataset_name": item.metadata.get("dataset_name"),
-                    "document_name": item.metadata.get("title"),
-                    "data_source_type": "external",
-                    "retriever_from": self.retriever_from,
-                    "score": item.metadata.get("score"),
-                    "title": item.metadata.get("title"),
-                    "content": item.page_content,
-                }
+                if item.metadata is not None:
+                    source = {
+                        "position": position,
+                        "dataset_id": item.metadata.get("dataset_id"),
+                        "dataset_name": item.metadata.get("dataset_name"),
+                        "document_name": item.metadata.get("title"),
+                        "data_source_type": "external",
+                        "retriever_from": self.retriever_from,
+                        "score": item.metadata.get("score"),
+                        "title": item.metadata.get("title"),
+                        "content": item.page_content,
+                    }
                 context_list.append(source)
             for hit_callback in self.hit_callbacks:
                 hit_callback.return_retriever_resource_info(context_list)

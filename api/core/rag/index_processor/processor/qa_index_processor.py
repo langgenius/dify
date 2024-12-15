@@ -148,11 +148,12 @@ class QAIndexProcessor(BaseIndexProcessor):
                 qa_documents = []
                 for result in document_qa_list:
                     qa_document = Document(page_content=result["question"], metadata=document_node.metadata.copy())
-                    doc_id = str(uuid.uuid4())
-                    hash = helper.generate_text_hash(result["question"])
-                    qa_document.metadata["answer"] = result["answer"]
-                    qa_document.metadata["doc_id"] = doc_id
-                    qa_document.metadata["doc_hash"] = hash
+                    if qa_document.metadata is not None:
+                        doc_id = str(uuid.uuid4())
+                        hash = helper.generate_text_hash(result["question"])
+                        qa_document.metadata["answer"] = result["answer"]
+                        qa_document.metadata["doc_id"] = doc_id
+                        qa_document.metadata["doc_hash"] = hash
                     qa_documents.append(qa_document)
                 format_documents.extend(qa_documents)
             except Exception as e:

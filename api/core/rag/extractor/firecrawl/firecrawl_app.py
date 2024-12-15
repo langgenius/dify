@@ -1,5 +1,6 @@
 import json
 import time
+from typing import cast
 
 import requests
 
@@ -46,7 +47,7 @@ class FirecrawlApp:
         response = self._post_request(f"{self.base_url}/v0/crawl", json_data, headers)
         if response.status_code == 200:
             job_id = response.json().get("jobId")
-            return job_id
+            return cast(str, job_id)
         else:
             self._handle_error(response, "start crawl job")
             # FIXME: unreachable code for mypy

@@ -54,7 +54,10 @@ class TidbOnQdrantConfig(BaseModel):
         if self.endpoint and self.endpoint.startswith("path:"):
             path = self.endpoint.replace("path:", "")
             if not os.path.isabs(path):
-                path = os.path.join(self.root_path, path)
+                if self.root_path:
+                    path = os.path.join(self.root_path, path)
+                else:
+                    raise ValueError("root_path is required")
 
             return {"path": path}
         else:
@@ -427,12 +430,12 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
 
                     else:
                         new_cluster = TidbService.create_tidb_serverless_cluster(
-                            dify_config.TIDB_PROJECT_ID,
-                            dify_config.TIDB_API_URL,
-                            dify_config.TIDB_IAM_API_URL,
-                            dify_config.TIDB_PUBLIC_KEY,
-                            dify_config.TIDB_PRIVATE_KEY,
-                            dify_config.TIDB_REGION,
+                            dify_config.TIDB_PROJECT_ID or "",
+                            dify_config.TIDB_API_URL or "",
+                            dify_config.TIDB_IAM_API_URL or "",
+                            dify_config.TIDB_PUBLIC_KEY or "",
+                            dify_config.TIDB_PRIVATE_KEY or "",
+                            dify_config.TIDB_REGION or "",
                         )
                         new_tidb_auth_binding = TidbAuthBinding(
                             cluster_id=new_cluster["cluster_id"],
@@ -464,7 +467,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
             collection_name=collection_name,
             group_id=dataset.id,
             config=TidbOnQdrantConfig(
-                endpoint=dify_config.TIDB_ON_QDRANT_URL,
+                endpoint=dify_config.TIDB_ON_QDRANT_URL or "",
                 api_key=TIDB_ON_QDRANT_API_KEY,
                 root_path=config.root_path,
                 timeout=dify_config.TIDB_ON_QDRANT_CLIENT_TIMEOUT,

@@ -133,7 +133,7 @@ class ChromaVectorFactory(AbstractVectorFactory):
         return ChromaVector(
             collection_name=collection_name,
             config=ChromaConfig(
-                host=dify_config.CHROMA_HOST,
+                host=dify_config.CHROMA_HOST or "",
                 port=dify_config.CHROMA_PORT,
                 tenant=dify_config.CHROMA_TENANT or chromadb.DEFAULT_TENANT,
                 database=dify_config.CHROMA_DATABASE or chromadb.DEFAULT_DATABASE,

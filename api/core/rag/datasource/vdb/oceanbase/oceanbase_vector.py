@@ -131,7 +131,7 @@ class OceanBaseVector(BaseVector):
 
     def text_exists(self, id: str) -> bool:
         cur = self._client.get(table_name=self._collection_name, id=id)
-        return cur.rowcount != 0
+        return bool(cur.rowcount != 0)
 
     def delete_by_ids(self, ids: list[str]) -> None:
         self._client.delete(table_name=self._collection_name, ids=ids)

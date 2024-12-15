@@ -80,12 +80,12 @@ def login_required(func):
                                 # Login admin
                                 if account:
                                     account.current_tenant = tenant
-                                    current_app.login_manager._update_request_context_with_user(account)
-                                    user_logged_in.send(current_app._get_current_object(), user=_get_user())
+                                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
+                                    user_logged_in.send(current_app._get_current_object(), user=_get_user())  # type: ignore
         if request.method in EXEMPT_METHODS or dify_config.LOGIN_DISABLED:
             pass
         elif not current_user.is_authenticated:
-            return current_app.login_manager.unauthorized()
+            return current_app.login_manager.unauthorized()  # type: ignore
 
         # flask 1.x compatibility
         # current_app.ensure_sync is only available in Flask >= 2.0
@@ -99,7 +99,7 @@ def login_required(func):
 def _get_user():
     if has_request_context():
         if "_login_user" not in g:
-            current_app.login_manager._load_user()
+            current_app.login_manager._load_user()  # type: ignore
 
         return g._login_user
 

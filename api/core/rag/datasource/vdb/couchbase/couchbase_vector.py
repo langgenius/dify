@@ -231,7 +231,7 @@ class CouchbaseVector(BaseVector):
         # Pass the id as a parameter to the query
         result = self._cluster.query(query, named_parameters={"doc_id": id}).execute()
         for row in result:
-            return row["count"] > 0
+            return bool(row["count"] > 0)
         return False  # Return False if no rows are returned
 
     def delete_by_ids(self, ids: list[str]) -> None:
@@ -369,10 +369,10 @@ class CouchbaseVectorFactory(AbstractVectorFactory):
         return CouchbaseVector(
             collection_name=collection_name,
             config=CouchbaseConfig(
-                connection_string=config.get("COUCHBASE_CONNECTION_STRING"),
-                user=config.get("COUCHBASE_USER"),
-                password=config.get("COUCHBASE_PASSWORD"),
-                bucket_name=config.get("COUCHBASE_BUCKET_NAME"),
-                scope_name=config.get("COUCHBASE_SCOPE_NAME"),
+                connection_string=config.get("COUCHBASE_CONNECTION_STRING", ""),
+                user=config.get("COUCHBASE_USER", ""),
+                password=config.get("COUCHBASE_PASSWORD", ""),
+                bucket_name=config.get("COUCHBASE_BUCKET_NAME", ""),
+                scope_name=config.get("COUCHBASE_SCOPE_NAME", ""),
             ),
         )

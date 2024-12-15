@@ -54,7 +54,7 @@ class MilvusVector(BaseVector):
         self._client_config = config
         self._client = self._init_client(config)
         self._consistency_level = "Session"
-        self._fields = []
+        self._fields: list[str] = []
 
     def get_type(self) -> str:
         return VectorType.MILVUS
@@ -217,10 +217,10 @@ class MilvusVectorFactory(AbstractVectorFactory):
         return MilvusVector(
             collection_name=collection_name,
             config=MilvusConfig(
-                uri=dify_config.MILVUS_URI,
-                token=dify_config.MILVUS_TOKEN,
-                user=dify_config.MILVUS_USER,
-                password=dify_config.MILVUS_PASSWORD,
-                database=dify_config.MILVUS_DATABASE,
+                uri=dify_config.MILVUS_URI or "",
+                token=dify_config.MILVUS_TOKEN or "",
+                user=dify_config.MILVUS_USER or "",
+                password=dify_config.MILVUS_PASSWORD or "",
+                database=dify_config.MILVUS_DATABASE or "",
             ),
         )

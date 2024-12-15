@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import requests
 
@@ -336,7 +336,7 @@ class NotionExtractor(BaseExtractor):
         )
 
         data = res.json()
-        return data["last_edited_time"]
+        return cast(str, data["last_edited_time"])
 
     @classmethod
     def _get_access_token(cls, tenant_id: str, notion_workspace_id: str) -> str:
@@ -355,4 +355,4 @@ class NotionExtractor(BaseExtractor):
                 f"and notion workspace {notion_workspace_id}"
             )
 
-        return data_source_binding.access_token
+        return cast(str, data_source_binding.access_token)

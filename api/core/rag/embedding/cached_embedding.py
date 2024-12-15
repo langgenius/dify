@@ -64,7 +64,8 @@ class CacheEmbedding(Embeddings):
 
                     for vector in embedding_result.embeddings:
                         try:
-                            normalized_embedding = (vector / np.linalg.norm(vector)).tolist()
+                            vector_array = np.array(vector)
+                            normalized_embedding = (vector_array / np.linalg.norm(vector_array)).tolist()
                             embedding_queue_embeddings.append(normalized_embedding)
                         except IntegrityError:
                             db.session.rollback()

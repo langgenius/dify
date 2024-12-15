@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from typing import cast
 from uuid import uuid4
 
 from pydantic import Field
@@ -73,7 +74,7 @@ class SecretVariable(StringVariable):
 
     @property
     def log(self) -> str:
-        return encrypter.obfuscated_token(self.value)
+        return cast(str, encrypter.obfuscated_token(self.value))
 
 
 class NoneVariable(NoneSegment, Variable):
