@@ -438,6 +438,7 @@ class WorkflowConfig(BaseSettings):
         default=200 * 1024,
     )
 
+
 class WorkflowNodeExecutionConfig(BaseSettings):
     """
     Configuration for workflow node execution
