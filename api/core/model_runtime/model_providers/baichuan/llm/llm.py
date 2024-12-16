@@ -10,11 +10,11 @@ from core.model_runtime.entities.llm_entities import (
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
+    PromptMessageContentType,
     PromptMessageTool,
     SystemPromptMessage,
     ToolPromptMessage,
     UserPromptMessage,
-    PromptMessageContentType
 )
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
