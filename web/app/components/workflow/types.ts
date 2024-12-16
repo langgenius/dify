@@ -13,6 +13,7 @@ import type {
   DefaultValueForm,
   ErrorHandleTypeEnum,
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
 
 export enum BlockEnum {
   Start = 'start',
@@ -77,6 +78,7 @@ export type CommonNodeType<T = {}> = {
   width?: number
   height?: number
   error_strategy?: ErrorHandleTypeEnum
+  retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
 
