@@ -9,13 +9,12 @@ import { useContext } from 'use-context-selector'
 import SegmentCard from '../documents/detail/completed/SegmentCard'
 import Textarea from './textarea'
 import s from './style.module.css'
-import HitDetail from './hit-detail'
+// import HitDetail from './hit-detail'
 import ModifyRetrievalModal from './modify-retrieval-modal'
 import ResultItem from './components/result-item'
 import cn from '@/utils/classnames'
 import type { ExternalKnowledgeBaseHitTestingResponse, ExternalKnowledgeBaseHitTesting as ExternalKnowledgeBaseHitTestingType, HitTestingResponse, HitTesting as HitTestingType } from '@/models/datasets'
 import Loading from '@/app/components/base/loading'
-import Modal from '@/app/components/base/modal'
 import Drawer from '@/app/components/base/drawer'
 import Pagination from '@/app/components/base/pagination'
 import FloatRightContainer from '@/app/components/base/float-right-container'
@@ -82,6 +81,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
           <ResultItem
             key={idx}
             payload={record}
+            isExternal={isExternal}
           />
         ))}
       </div>
@@ -194,7 +194,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
           }
         </div>
       </FloatRightContainer>
-      <Modal
+      {/* <Modal
         className={isExternal ? 'py-10 px-8' : 'w-full'}
         closable
         onClose={() => {
@@ -216,7 +216,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
             }}
           />
         )}
-      </Modal>
+      </Modal> */}
       <Drawer isOpen={isShowModifyRetrievalModal} onClose={() => setIsShowModifyRetrievalModal(false)} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
         <ModifyRetrievalModal
           indexMethod={currentDataset?.indexing_technique || ''}
