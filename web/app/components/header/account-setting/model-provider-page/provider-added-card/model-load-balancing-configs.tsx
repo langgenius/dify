@@ -145,19 +145,19 @@ const ModelLoadBalancingConfigs = ({
     <>
       <div
         className={classNames(
-          'min-h-16 bg-gray-50 border rounded-xl transition-colors',
-          (withSwitch || !draftConfig.enabled) ? 'border-gray-200' : 'border-primary-400',
+          'min-h-16 bg-components-panel-bg border rounded-xl transition-colors',
+          (withSwitch || !draftConfig.enabled) ? 'border-components-panel-border' : 'border-util-colors-blue-blue-600',
           (withSwitch || draftConfig.enabled) ? 'cursor-default' : 'cursor-pointer',
           className,
         )}
         onClick={(!withSwitch && !draftConfig.enabled) ? () => toggleModalBalancing(true) : undefined}
       >
         <div className='flex items-center px-[15px] py-3 gap-2 select-none'>
-          <div className='grow-0 shrink-0 flex items-center justify-center w-8 h-8 text-primary-600 bg-indigo-50 border border-indigo-100 rounded-lg'>
+          <div className='grow-0 shrink-0 flex items-center justify-center w-8 h-8 text-util-colors-blue-blue-600 bg-util-colors-indigo-indigo-50 border border-util-colors-indigo-indigo-100 rounded-lg'>
             <Balance className='w-4 h-4' />
           </div>
           <div className='grow'>
-            <div className='flex items-center gap-1 text-sm'>
+            <div className='flex items-center gap-1 text-sm text-text-primary'>
               {t('common.modelProvider.loadBalancing')}
               <Tooltip
                 popupContent={t('common.modelProvider.loadBalancingInfo')}
@@ -165,7 +165,7 @@ const ModelLoadBalancingConfigs = ({
                 triggerClassName='w-3 h-3'
               />
             </div>
-            <div className='text-xs text-gray-500'>{t('common.modelProvider.loadBalancingDescription')}</div>
+            <div className='text-xs text-text-tertiary'>{t('common.modelProvider.loadBalancingDescription')}</div>
           </div>
           {
             withSwitch && (
@@ -184,7 +184,7 @@ const ModelLoadBalancingConfigs = ({
             {draftConfig.configs.map((config, index) => {
               const isProviderManaged = config.name === '__inherit__'
               return (
-                <div key={config.id || index} className='group flex items-center px-3 h-10 bg-white border border-gray-200 rounded-lg shadow-xs'>
+                <div key={config.id || index} className='group flex items-center px-3 h-10 bg-components-panel-on-panel-item-bg border border-components-panel-border rounded-lg shadow-xs'>
                   <div className='grow flex items-center'>
                     <div className='flex items-center justify-center mr-2 w-3 h-3'>
                       {(config.in_cooldown && Boolean(config.ttl))
@@ -201,7 +201,7 @@ const ModelLoadBalancingConfigs = ({
                       {isProviderManaged ? t('common.modelProvider.defaultConfig') : config.name}
                     </div>
                     {isProviderManaged && (
-                      <span className='px-1 text-2xs uppercase text-gray-500 border border-black/8 rounded-[5px]'>{t('common.modelProvider.providerManaged')}</span>
+                      <span className='px-1 text-2xs uppercase text-text-tertiary border border-divider-regular rounded-[5px]'>{t('common.modelProvider.providerManaged')}</span>
                     )}
                   </div>
                   <div className='flex items-center gap-1'>
@@ -209,18 +209,18 @@ const ModelLoadBalancingConfigs = ({
                       <>
                         <div className='flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
                           <span
-                            className='flex items-center justify-center w-8 h-8 text-gray-500 bg-white rounded-lg transition-colors cursor-pointer hover:bg-black/5'
+                            className='flex items-center justify-center w-8 h-8 text-text-tertiary bg-components-button-secondary-bg rounded-lg transition-colors cursor-pointer hover:bg-components-button-secondary-bg-hover'
                             onClick={() => toggleEntryModal(index, config)}
                           >
                             <Edit02 className='w-4 h-4' />
                           </span>
                           <span
-                            className='flex items-center justify-center w-8 h-8 text-gray-500 bg-white rounded-lg transition-colors cursor-pointer hover:bg-black/5'
+                            className='flex items-center justify-center w-8 h-8 text-text-tertiary bg-components-button-secondary-bg rounded-lg transition-colors cursor-pointer hover:bg-components-button-secondary-bg-hover'
                             onClick={() => updateConfigEntry(index, () => undefined)}
                           >
                             <RiDeleteBinLine className='w-4 h-4' />
                           </span>
-                          <span className='mr-2 h-3 border-r border-r-gray-100' />
+                          <span className='mr-2 h-3 border-r border-r-divider-subtle' />
                         </div>
                       </>
                     )}
@@ -247,7 +247,7 @@ const ModelLoadBalancingConfigs = ({
         )}
         {
           draftConfig.enabled && draftConfig.configs.length < 2 && (
-            <div className='flex items-center px-6 h-[34px] text-xs text-gray-700 bg-black/2 border-t border-t-black/5'>
+            <div className='flex items-center px-6 h-[34px] text-xs text-text-secondary bg-components-panel-bg border-t border-t-divider-subtle'>
               <AlertTriangle className='mr-1 w-3 h-3 text-[#f79009]' />
               {t('common.modelProvider.loadBalancingLeastKeyWarning')}
             </div>
@@ -257,7 +257,7 @@ const ModelLoadBalancingConfigs = ({
 
       {!modelLoadBalancingEnabled && !IS_CE_EDITION && (
         <GridMask canvasClassName='!rounded-xl'>
-          <div className='flex items-center justify-between mt-2 px-4 h-14 border-[0.5px] border-gray-200 rounded-xl shadow-md'>
+          <div className='flex items-center justify-between mt-2 px-4 h-14 border-[0.5px] border-components-panel-border rounded-xl shadow-md'>
             <div
               className={classNames('text-sm font-semibold leading-tight text-gradient', s.textGradient)}
             >

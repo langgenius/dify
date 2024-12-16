@@ -119,7 +119,7 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose, onSav
                 modelName={model!.model}
               />
               <ModelName
-                className='grow text-sm font-normal text-gray-900'
+                className='grow system-md-regular text-text-secondary'
                 modelItem={model!}
                 showModelType
                 showMode
@@ -137,20 +137,20 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose, onSav
             <div className='py-2'>
               <div
                 className={classNames(
-                  'min-h-16 bg-gray-50 border rounded-xl transition-colors',
-                  draftConfig.enabled ? 'border-gray-200 cursor-pointer' : 'border-primary-400 cursor-default',
+                  'min-h-16 bg-components-panel-bg border rounded-xl transition-colors',
+                  draftConfig.enabled ? 'border-components-panel-border cursor-pointer' : 'border-util-colors-blue-blue-600 cursor-default',
                 )}
                 onClick={draftConfig.enabled ? () => toggleModalBalancing(false) : undefined}
               >
                 <div className='flex items-center px-[15px] py-3 gap-2 select-none'>
-                  <div className='grow-0 shrink-0 flex items-center justify-center w-8 h-8 bg-white border rounded-lg'>
+                  <div className='grow-0 shrink-0 flex items-center justify-center w-8 h-8 bg-components-card-bg border border-components-card-border rounded-lg'>
                     {Boolean(model) && (
                       <ModelIcon className='shrink-0' provider={provider} modelName={model!.model} />
                     )}
                   </div>
                   <div className='grow'>
-                    <div className='text-sm'>{t('common.modelProvider.providerManaged')}</div>
-                    <div className='text-xs text-gray-500'>{t('common.modelProvider.providerManagedDescription')}</div>
+                    <div className='text-sm text-text-secondary'>{t('common.modelProvider.providerManaged')}</div>
+                    <div className='text-xs text-text-tertiary'>{t('common.modelProvider.providerManagedDescription')}</div>
                   </div>
                 </div>
               </div>
