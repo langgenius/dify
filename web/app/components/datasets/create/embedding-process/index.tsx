@@ -287,7 +287,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
                 </div>
                 {
                   enableBilling && (
-                    <PriorityLabel />
+                    <PriorityLabel className='ml-0' />
                   )
                 }
               </div>
