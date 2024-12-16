@@ -39,6 +39,7 @@ const ConstantField: FC<Props> = ({
           wrapperClassName='w-full !h-8'
           className='flex items-center'
           disabled={readonly}
+          defaultValue={value}
           items={(schema as CredentialFormSchemaSelect).options.map(option => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
           onSelect={item => handleSelectChange(item.value)}
           placeholder={placeholder?.[language] || placeholder?.en_US}
