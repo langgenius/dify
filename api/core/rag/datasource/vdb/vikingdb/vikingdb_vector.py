@@ -179,7 +179,7 @@ class VikingDBVector(BaseVector):
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         return self._get_search_res(results, score_threshold)
 
-    def _get_search_res(self, results, score_threshold):
+    def _get_search_res(self, results, score_threshold) -> list[Document]:
         if len(results) == 0:
             return []
 
@@ -192,7 +192,7 @@ class VikingDBVector(BaseVector):
                 metadata["score"] = result.score
                 doc = Document(page_content=result.fields.get(vdb_Field.CONTENT_KEY.value), metadata=metadata)
                 docs.append(doc)
-        docs = sorted(docs, key=lambda x: x.metadata["score"], reverse=True)
+        docs = sorted(docs, key=lambda x: x.metadata.get("score", 0) if x.metadata else 0, reverse=True)
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:

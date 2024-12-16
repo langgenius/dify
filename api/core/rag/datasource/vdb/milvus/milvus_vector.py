@@ -61,7 +61,7 @@ class MilvusVector(BaseVector):
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         index_params = {"metric_type": "IP", "index_type": "HNSW", "params": {"M": 8, "efConstruction": 64}}
-        metadatas = [d.metadata for d in texts]
+        metadatas = [d.metadata if d.metadata is not None else {} for d in texts]
         self.create_collection(embeddings, metadatas, index_params)
         self.add_texts(texts, embeddings)
 

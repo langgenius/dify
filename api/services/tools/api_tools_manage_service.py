@@ -33,7 +33,7 @@ class ApiToolManageService:
         parse api schema to tool bundle
         """
         try:
-            warnings = {}
+            warnings: dict[str, str] = {}
             try:
                 tool_bundles, schema_type = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(schema, warning=warnings)
             except Exception as e:

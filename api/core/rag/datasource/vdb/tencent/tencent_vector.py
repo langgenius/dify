@@ -123,12 +123,12 @@ class TencentVector(BaseVector):
         for i in range(0, total_count):
             if metadatas is None:
                 continue
-            metadata = json.dumps(metadatas[i])
+            metadata = metadatas[i] or {}
             doc = document.Document(
-                id=metadatas[i]["doc_id"],
+                id=metadata.get("doc_id"),
                 vector=embeddings[i],
                 text=texts[i],
-                metadata=metadata,
+                metadata=json.dumps(metadata),
             )
             docs.append(doc)
         self._db.collection(self._collection_name).upsert(docs, self._client_config.timeout)
@@ -159,8 +159,8 @@ class TencentVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return []
 
-    def _get_search_res(self, res, score_threshold):
-        docs = []
+    def _get_search_res(self, res: list | None, score_threshold: float) -> list[Document]:
+        docs: list[Document] = []
         if res is None or len(res) == 0:
             return docs
 

@@ -4,7 +4,7 @@ import mimetypes
 from collections.abc import Generator
 from os import listdir, path
 from threading import Lock, Thread
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 from configs import dify_config
 from core.agent.entities import AgentToolEntity
@@ -33,9 +33,9 @@ logger = logging.getLogger(__name__)
 
 class ToolManager:
     _builtin_provider_lock = Lock()
-    _builtin_providers = {}
+    _builtin_providers: dict[str, BuiltinToolProviderController] = {}
     _builtin_providers_loaded = False
-    _builtin_tools_labels = {}
+    _builtin_tools_labels: dict[str, list[str]] = {}
 
     @classmethod
     def get_builtin_provider(cls, provider: str) -> BuiltinToolProviderController:
@@ -55,7 +55,7 @@ class ToolManager:
         return cls._builtin_providers[provider]
 
     @classmethod
-    def get_builtin_tool(cls, provider: str, tool_name: str) -> BuiltinTool:
+    def get_builtin_tool(cls, provider: str, tool_name: str) -> Union[BuiltinTool, Tool]:
         """
         get the builtin tool
 
@@ -72,7 +72,7 @@ class ToolManager:
     @classmethod
     def get_tool(
         cls, provider_type: str, provider_id: str, tool_name: str, tenant_id: Optional[str] = None
-    ) -> Union[BuiltinTool, ApiTool]:
+    ) -> Union[BuiltinTool, ApiTool, Tool]:
         """
         get the tool
 
@@ -103,7 +103,7 @@ class ToolManager:
         tenant_id: str,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
-    ) -> Union[BuiltinTool, ApiTool]:
+    ) -> Union[BuiltinTool, ApiTool, Tool]:
         """
         get the tool runtime
 
@@ -129,7 +129,7 @@ class ToolManager:
                 )
 
             # get credentials
-            builtin_provider: BuiltinToolProvider = (
+            builtin_provider: Optional[BuiltinToolProvider] = (
                 db.session.query(BuiltinToolProvider)
                 .filter(
                     BuiltinToolProvider.tenant_id == tenant_id,
@@ -591,18 +591,21 @@ class ToolManager:
         # add tool labels
         labels = ToolLabelManager.get_tool_labels(controller)
 
-        return jsonable_encoder(
-            {
-                "schema_type": provider.schema_type,
-                "schema": provider.schema,
-                "tools": provider.tools,
-                "icon": icon,
-                "description": provider.description,
-                "credentials": masked_credentials,
-                "privacy_policy": provider.privacy_policy,
-                "custom_disclaimer": provider.custom_disclaimer,
-                "labels": labels,
-            }
+        return cast(
+            dict,
+            jsonable_encoder(
+                {
+                    "schema_type": provider.schema_type,
+                    "schema": provider.schema,
+                    "tools": provider.tools,
+                    "icon": icon,
+                    "description": provider.description,
+                    "credentials": masked_credentials,
+                    "privacy_policy": provider.privacy_policy,
+                    "custom_disclaimer": provider.custom_disclaimer,
+                    "labels": labels,
+                }
+            ),
         )
 
     @classmethod
@@ -617,6 +620,7 @@ class ToolManager:
         """
         provider_type = provider_type
         provider_id = provider_id
+        provider: Optional[Union[BuiltinToolProvider, ApiToolProvider, WorkflowToolProvider]] = None
         if provider_type == "builtin":
             return (
                 dify_config.CONSOLE_API_URL
@@ -626,16 +630,21 @@ class ToolManager:
             )
         elif provider_type == "api":
             try:
-                provider: ApiToolProvider = (
+                provider = (
                     db.session.query(ApiToolProvider)
                     .filter(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.id == provider_id)
                     .first()
                 )
-                return json.loads(provider.icon)
+                if provider is None:
+                    raise ToolProviderNotFoundError(f"api provider {provider_id} not found")
+                icon = json.loads(provider.icon)
+                if isinstance(icon, (str, dict)):
+                    return icon
+                return {"background": "#252525", "content": "\ud83d\ude01"}
             except:
                 return {"background": "#252525", "content": "\ud83d\ude01"}
         elif provider_type == "workflow":
-            provider: WorkflowToolProvider = (
+            provider = (
                 db.session.query(WorkflowToolProvider)
                 .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
                 .first()
@@ -643,7 +652,13 @@ class ToolManager:
             if provider is None:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
-            return json.loads(provider.icon)
+            try:
+                icon = json.loads(provider.icon)
+                if isinstance(icon, (str, dict)):
+                    return icon
+                return {"background": "#252525", "content": "\ud83d\ude01"}
+            except:
+                return {"background": "#252525", "content": "\ud83d\ude01"}
         else:
             raise ValueError(f"provider type {provider_type} not found")
 

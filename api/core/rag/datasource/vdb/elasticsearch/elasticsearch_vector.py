@@ -157,12 +157,15 @@ class ElasticSearchVector(BaseVector):
         return docs
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
-        metadatas = [d.metadata for d in texts]
+        metadatas = [d.metadata if d.metadata is not None else {} for d in texts]
         self.create_collection(embeddings, metadatas)
         self.add_texts(texts, embeddings, **kwargs)
 
     def create_collection(
-        self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None
+        self,
+        embeddings: list[list[float]],
+        metadatas: Optional[list[dict[Any, Any]]] = None,
+        index_params: Optional[dict] = None,
     ):
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):

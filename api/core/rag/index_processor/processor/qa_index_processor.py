@@ -64,7 +64,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                 document_format_thread = threading.Thread(
                     target=self._format_qa_document,
                     kwargs={
-                        "flask_app": current_app._get_current_object(),
+                        "flask_app": current_app._get_current_object(),  # type: ignore
                         "tenant_id": kwargs.get("tenant_id"),
                         "document_node": doc,
                         "all_qa_documents": all_qa_documents,

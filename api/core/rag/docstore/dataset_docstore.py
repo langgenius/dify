@@ -182,8 +182,8 @@ class DatasetDocumentStore:
 
         if document_segment is None:
             return None
-
-        return document_segment.index_node_hash
+        data: Optional[str] = document_segment.index_node_hash
+        return data
 
     def get_document_segment(self, doc_id: str) -> Optional[DocumentSegment]:
         document_segment = (
