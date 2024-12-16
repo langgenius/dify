@@ -322,9 +322,6 @@ class AccountService:
 
     @staticmethod
     def refresh_token(refresh_token: str) -> TokenPair:
-        if not AccountService.verify_account_whitelist(refresh_token):
-            raise ValueError("Account is not whitelisted")
-
         # Verify the refresh token
         account_id = redis_client.get(AccountService._get_refresh_token_key(refresh_token))
         if not account_id:
@@ -333,6 +330,9 @@ class AccountService:
         account = AccountService.load_user(account_id.decode("utf-8"))
         if not account:
             raise ValueError("Invalid account")
+
+        if not AccountService.verify_account_whitelist(account.email):
+            raise ValueError("Account is not whitelisted")
 
         # Generate new access token and refresh token
         new_access_token = AccountService.get_account_jwt_token(account)
