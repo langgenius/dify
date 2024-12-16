@@ -350,7 +350,7 @@ const Completed: FC<ICompletedProps> = ({
       return `${total} ${t('datasetDocuments.segment.searchResults', { count })}`
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segmentListData?.total, mode, parentMode])
+  }, [segmentListData?.total, mode, parentMode, searchValue, selectedStatus])
 
   const toggleFullScreen = useCallback(() => {
     setFullScreen(!fullScreen)

@@ -79,9 +79,8 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
       const count = text === '--' ? 0 : total
       return `${count} ${t('datasetDocuments.segment.searchResults', { count })}`
     }
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFullDocMode, total, childChunks.length])
+  }, [isFullDocMode, total, childChunks.length, inputValue])
 
   return (
     <div className={classNames('flex flex-col', contentOpacity, isParagraphMode ? 'p-1 pb-2' : 'px-3 grow')}>
