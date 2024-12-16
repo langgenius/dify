@@ -507,6 +507,7 @@ const Completed: FC<ICompletedProps> = ({
           checked={isAllSelected}
           mixed={!isAllSelected && isSomeSelected}
           onCheck={onSelectedAll}
+          disabled={isLoadingSegmentList}
         />
         <div className={cn('system-sm-semibold-uppercase pl-5', s.totalText)}>{totalText}</div>
         <SimpleSelect
@@ -533,11 +534,14 @@ const Completed: FC<ICompletedProps> = ({
       {/* Segment list */}
       {
         isFullDocMode
-          ? <div className='flex flex-col grow relative overflow-x-hidden overflow-y-auto'>
+          ? <div className={cn(
+            'flex flex-col grow relative overflow-x-hidden',
+            (isLoadingSegmentList || isLoadingChildSegmentList) ? 'overflow-y-hidden' : 'overflow-y-auto',
+          )}>
             <SegmentCard
               detail={segments[0]}
               onClick={() => onClickCard(segments[0])}
-              loading={false}
+              loading={isLoadingSegmentList}
             />
             <ChildSegmentList
               parentChunkId={segments[0]?.id}
@@ -550,7 +554,7 @@ const Completed: FC<ICompletedProps> = ({
               total={childChunkListData?.total || 0}
               inputValue={inputValue}
               onClearFilter={onClearFilter}
-              isLoading={isLoadingChildSegmentList}
+              isLoading={isLoadingSegmentList || isLoadingChildSegmentList}
             />
           </div>
           : <SegmentList

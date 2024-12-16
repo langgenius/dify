@@ -69,7 +69,7 @@ const Empty: FC<IEmptyProps> = ({
           ))
         }
       </div>
-      <div className='h-full w-full absolute top-0 left-0 bg-dataset-chunk-list-empty-bg -z-10' />
+      <div className='h-full w-full absolute top-0 left-0 bg-dataset-chunk-list-mask-bg -z-10' />
     </div>
   )
 }

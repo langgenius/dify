@@ -243,7 +243,10 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
         <div className='flex flex-row flex-1' style={{ height: 'calc(100% - 4rem)' }}>
           {isDetailLoading
             ? <Loading type='app' />
-            : <div className={`h-full w-full flex flex-col ${embedding ? 'px-6 py-3 sm:py-12 sm:px-16' : `relative pt-3 ${isFullDocMode ? 'pl-11' : 'pl-5'} pr-11`}`}>
+            : <div className={cn('h-full w-full flex flex-col',
+              embedding ? 'px-6 py-3 sm:py-12 sm:px-16' : 'relative pt-3 pr-11',
+              isFullDocMode ? 'pl-11 pt-4' : 'pl-5',
+            )}>
               {embedding
                 ? <Embedding detail={documentDetail} detailUpdate={detailMutate} />
                 : <Completed

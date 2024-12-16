@@ -7,6 +7,7 @@ import ChildSegmentList from './child-segment-list'
 import Tag from './common/tag'
 import Dot from './common/dot'
 import { SegmentIndexTag } from './common/segment-index-tag'
+import ParentChunkCardSkeleton from './skeleton/parent-chunk-card-skeleton'
 import { useSegmentListContext } from './index'
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import Indicator from '@/app/components/header/indicator'
@@ -122,6 +123,9 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isParentChildMode])
 
+  if (loading)
+    return <ParentChunkCardSkeleton />
+
   return (
     <div
       className={cn('w-full px-3 rounded-xl group/card', isFullDocMode ? '' : 'pt-2.5 pb-2 hover:bg-dataset-chunk-detail-card-hover-bg', className)}
@@ -208,30 +212,25 @@ const SegmentCard: FC<ISegmentCardProps> = ({
             : null}
         </>
       </div>
-      {loading
-        ? (
-          <div className=''>
-            <div className='' />
-          </div>
-        )
-        : (
-          <>
-            <div className={cn('text-text-secondary body-md-regular -tracking-[0.07px] mt-0.5',
-              textOpacity,
-              isFullDocMode ? 'line-clamp-3' : isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
-            )}>
-              {renderContent()}
-            </div>
-            {isGeneralMode && <div className={cn('flex items-center gap-x-2 py-1.5', textOpacity)}>
-              {keywords?.map(keyword => <Tag key={keyword} text={keyword} />)}
-            </div>}
-            {
-              isFullDocMode
-                ? <button className='mt-0.5 mb-2 text-text-accent system-xs-semibold-uppercase' onClick={() => onClick?.()}>{t('common.operation.viewMore')}</button>
-                : null
-            }
-            {
-              child_chunks.length > 0
+      <div className={cn('text-text-secondary body-md-regular -tracking-[0.07px] mt-0.5',
+        textOpacity,
+        isFullDocMode ? 'line-clamp-3' : isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
+      )}>
+        {renderContent()}
+      </div>
+      {isGeneralMode && <div className={cn('flex items-center gap-x-2 py-1.5', textOpacity)}>
+        {keywords?.map(keyword => <Tag key={keyword} text={keyword} />)}
+      </div>}
+      {
+        isFullDocMode
+          ? <button
+            className='mt-0.5 mb-2 text-text-accent system-xs-semibold-uppercase'
+            onClick={() => onClick?.()}
+          >{t('common.operation.viewMore')}</button>
+          : null
+      }
+      {
+        child_chunks.length > 0
               && <ChildSegmentList
                 parentChunkId={id}
                 childChunks={child_chunks}
@@ -240,9 +239,6 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                 handleAddNewChildChunk={handleAddNewChildChunk}
                 onClickSlice={onClickSlice}
               />
-            }
-          </>
-        )
       }
       {showModal
         && <Confirm

@@ -1,11 +1,12 @@
-import React, { type ForwardedRef } from 'react'
+import React, { type ForwardedRef, useMemo } from 'react'
+import { useDocumentContext } from '../index'
 import SegmentCard from './segment-card'
 import Empty from './common/empty'
+import GeneralListSkeleton from './skeleton/general-list-skeleton'
+import ParagraphListSkeleton from './skeleton/paragraph-list-skeleton'
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import Checkbox from '@/app/components/base/checkbox'
-import Loading from '@/app/components/base/loading'
 import Divider from '@/app/components/base/divider'
-import classNames from '@/utils/classnames'
 
 type ISegmentListProps = {
   isLoading: boolean
@@ -40,8 +41,16 @@ const SegmentList = React.forwardRef(({
 }: ISegmentListProps,
 ref: ForwardedRef<HTMLDivElement>,
 ) => {
+  const [mode, parentMode] = useDocumentContext(s => [s.mode, s.parentMode])
+
+  const Skeleton = useMemo(() => {
+    return (mode === 'hierarchical' && parentMode === 'paragraph') ? ParagraphListSkeleton : GeneralListSkeleton
+  }, [mode, parentMode])
+
+  // Loading skeleton
   if (isLoading)
-    return <Loading type='app' />
+    return <Skeleton />
+  // Search result is empty
   if (items.length === 0) {
     return (
       <div className='h-full pl-6'>
@@ -50,7 +59,7 @@ ref: ForwardedRef<HTMLDivElement>,
     )
   }
   return (
-    <div ref={ref} className={classNames('flex flex-col h-full overflow-y-auto')}>
+    <div ref={ref} className={'flex flex-col grow overflow-y-auto'}>
       {
         items.map((segItem) => {
           const isLast = items[items.length - 1].id === segItem.id
