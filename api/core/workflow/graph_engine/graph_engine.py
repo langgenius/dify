@@ -53,12 +53,12 @@ logger = logging.getLogger(__name__)
 
 class GraphEngineThreadPool(ThreadPoolExecutor):
     def __init__(
-        self, 
-        max_workers=None, 
+        self,
+        max_workers=None,
         thread_name_prefix="",
-        initializer=None, 
-        initargs=(), 
-        max_submit_count=dify_config.MAX_SUBMIT_COUNT
+        initializer=None,
+        initargs=(),
+        max_submit_count=dify_config.MAX_SUBMIT_COUNT,
     ) -> None:
         super().__init__(max_workers, thread_name_prefix, initializer, initargs)
         self.max_submit_count = max_submit_count

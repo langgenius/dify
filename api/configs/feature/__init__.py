@@ -443,6 +443,7 @@ class WorkflowNodeExecutionConfig(BaseSettings):
     """
     Configuration for workflow node execution
     """
+
     MAX_SUBMIT_COUNT: PositiveInt = Field(
         description="Maximum number of submitted thread count in a ThreadPool for parallel node execution",
         default=100,
