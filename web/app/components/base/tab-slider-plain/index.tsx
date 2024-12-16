@@ -28,7 +28,7 @@ const Item: FC<ItemProps> = ({
     >
       <div className={cn(isActive && 'text-text-primary')}>{option.text}</div>
       {isActive && (
-        <div className='absolute bottom-0 left-0 right-0 h-0.5 bg-[#155EEF]'></div>
+        <div className='absolute bottom-0 left-0 right-0 h-0.5 bg-util-colors-blue-blue-500'></div>
       )}
     </div>
   )

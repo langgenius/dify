@@ -1,6 +1,5 @@
-import enum
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Generic, Optional, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -31,7 +30,7 @@ class InstallPluginMessage(BaseModel):
     Message for installing a plugin.
     """
 
-    class Event(Enum):
+    class Event(StrEnum):
         Info = "info"
         Done = "done"
         Error = "error"
@@ -127,7 +126,7 @@ class PluginDaemonInnerError(Exception):
         self.message = message
 
 
-class PluginInstallTaskStatus(enum.StrEnum):
+class PluginInstallTaskStatus(StrEnum):
     Pending = "pending"
     Running = "running"
     Success = "success"

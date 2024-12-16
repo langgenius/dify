@@ -101,6 +101,9 @@ const translation = {
     fileUploadTip: 'Os recursos de upload de imagens foram atualizados para upload de arquivos.',
     importWarning: 'Cuidado',
     importWarningDetails: 'A diferença de versão DSL pode afetar determinados recursos',
+    openInExplore: 'Abrir no Explore',
+    onFailure: 'Em caso de falha',
+    addFailureBranch: 'Adicionar ramificação com falha',
   },
   env: {
     envPanelTitle: 'Variáveis de Ambiente',
@@ -293,6 +296,31 @@ const translation = {
         title: 'Memórias',
         tip: 'Memória de conversa',
         builtIn: 'Integrado',
+      },
+      errorHandle: {
+        none: {
+          title: 'Nenhum',
+          desc: 'O nó deixará de ser executado se ocorrer uma exceção e não for tratada',
+        },
+        defaultValue: {
+          title: 'Valor padrão',
+          desc: 'Quando ocorrer um erro, especifique um conteúdo de saída estático.',
+          tip: 'Em caso de erro, retornará o valor abaixo.',
+          inLog: 'Exceção de nó, saída de acordo com os valores padrão.',
+          output: 'Valor padrão de saída',
+        },
+        failBranch: {
+          title: 'Ramificação com falha',
+          desc: 'Quando ocorrer um erro, ele executará a ramificação de exceção',
+          customize: 'Vá para a tela para personalizar a lógica do branch de falha.',
+          customizeTip: 'Quando a ramificação de falha é ativada, as exceções geradas pelos nós não encerram o processo. Em vez disso, ele executará automaticamente a ramificação de falha predefinida, permitindo que você forneça mensagens de erro, relatórios, correções ou ações de salto com flexibilidade.',
+          inLog: 'Node exception, executará automaticamente a ramificação de falha. A saída do nó retornará um tipo de erro e uma mensagem de erro e os passará para o downstream.',
+        },
+        partialSucceeded: {
+          tip: 'Existem {{num}} nós no processo em execução anormal, vá para rastreamento para verificar os logs.',
+        },
+        title: 'Tratamento de erros',
+        tip: 'Estratégia de tratamento de exceções, disparada quando um nó encontra uma exceção.',
       },
     },
     start: {

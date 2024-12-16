@@ -13,6 +13,7 @@ from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import BaseNode
+from core.workflow.nodes.enums import ErrorStrategy
 from core.workflow.nodes.event import RunCompletedEvent
 from core.workflow.nodes.event.types import NodeEvent
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
@@ -295,8 +296,35 @@ class WorkflowService:
 
             if not node_run_result:
                 raise ValueError("Node run failed with no run result")
-
-            run_succeeded = True if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED else False
+            # single step debug mode error handling return
+            if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node_instance.should_continue_on_error:
+                node_error_args = {
+                    "status": WorkflowNodeExecutionStatus.EXCEPTION,
+                    "error": node_run_result.error,
+                    "inputs": node_run_result.inputs,
+                    "metadata": {"error_strategy": node_instance.node_data.error_strategy},
+                }
+                if node_instance.node_data.error_strategy is ErrorStrategy.DEFAULT_VALUE:
+                    node_run_result = NodeRunResult(
+                        **node_error_args,
+                        outputs={
+                            **node_instance.node_data.default_value_dict,
+                            "error_message": node_run_result.error,
+                            "error_type": node_run_result.error_type,
+                        },
+                    )
+                else:
+                    node_run_result = NodeRunResult(
+                        **node_error_args,
+                        outputs={
+                            "error_message": node_run_result.error,
+                            "error_type": node_run_result.error_type,
+                        },
+                    )
+            run_succeeded = node_run_result.status in (
+                WorkflowNodeExecutionStatus.SUCCEEDED,
+                WorkflowNodeExecutionStatus.EXCEPTION,
+            )
             error = node_run_result.error if not run_succeeded else None
         except WorkflowNodeRunFailedError as e:
             node_instance = e.node_instance
@@ -315,7 +343,6 @@ class WorkflowService:
         workflow_node_execution.created_by_role = CreatedByRole.ACCOUNT.value
         workflow_node_execution.created_at = datetime.now(UTC).replace(tzinfo=None)
         workflow_node_execution.finished_at = datetime.now(UTC).replace(tzinfo=None)
-
         if run_succeeded and node_run_result:
             # create workflow node execution
             inputs = WorkflowEntry.handle_special_values(node_run_result.inputs) if node_run_result.inputs else None
@@ -332,7 +359,11 @@ class WorkflowService:
             workflow_node_execution.execution_metadata = (
                 json.dumps(jsonable_encoder(node_run_result.metadata)) if node_run_result.metadata else None
             )
-            workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
+            if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
+                workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
+            elif node_run_result.status == WorkflowNodeExecutionStatus.EXCEPTION:
+                workflow_node_execution.status = WorkflowNodeExecutionStatus.EXCEPTION.value
+                workflow_node_execution.error = node_run_result.error
         else:
             # create workflow node execution
             workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value

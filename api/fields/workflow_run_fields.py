@@ -14,6 +14,7 @@ workflow_run_for_log_fields = {
     "total_steps": fields.Integer,
     "created_at": TimestampField,
     "finished_at": TimestampField,
+    "exceptions_count": fields.Integer,
 }
 
 workflow_run_for_list_fields = {
@@ -27,6 +28,7 @@ workflow_run_for_list_fields = {
     "created_by_account": fields.Nested(simple_account_fields, attribute="created_by_account", allow_null=True),
     "created_at": TimestampField,
     "finished_at": TimestampField,
+    "exceptions_count": fields.Integer,
 }
 
 advanced_chat_workflow_run_for_list_fields = {
@@ -42,6 +44,7 @@ advanced_chat_workflow_run_for_list_fields = {
     "created_by_account": fields.Nested(simple_account_fields, attribute="created_by_account", allow_null=True),
     "created_at": TimestampField,
     "finished_at": TimestampField,
+    "exceptions_count": fields.Integer,
 }
 
 advanced_chat_workflow_run_pagination_fields = {
@@ -73,6 +76,7 @@ workflow_run_detail_fields = {
     "created_by_end_user": fields.Nested(simple_end_user_fields, attribute="created_by_end_user", allow_null=True),
     "created_at": TimestampField,
     "finished_at": TimestampField,
+    "exceptions_count": fields.Integer,
 }
 
 workflow_run_node_execution_fields = {

@@ -42,8 +42,8 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
   } = useConfig(id, data)
 
   return (
-    <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+    <div className='pt-2'>
+      <div className='px-4 space-y-4'>
         <Field
           title={t(`${i18nPrefix}.inputVar`)}
         >
@@ -157,7 +157,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
         </Field>
         <Split />
       </div>
-      <div className='px-4 pt-4 pb-2'>
+      <div>
         <OutputVars>
           <>
             <VarItem

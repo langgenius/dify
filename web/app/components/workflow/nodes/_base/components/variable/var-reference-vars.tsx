@@ -37,6 +37,7 @@ type ItemProps = {
   onHovering?: (value: boolean) => void
   itemWidth?: number
   isSupportFileVar?: boolean
+  isException?: boolean
 }
 
 const Item: FC<ItemProps> = ({
@@ -48,6 +49,7 @@ const Item: FC<ItemProps> = ({
   onHovering,
   itemWidth,
   isSupportFileVar,
+  isException,
 }) => {
   const isFile = itemData.type === VarType.file
   const isObj = ([VarType.object, VarType.file].includes(itemData.type) && itemData.children && itemData.children.length > 0)
@@ -109,7 +111,7 @@ const Item: FC<ItemProps> = ({
           onClick={handleChosen}
         >
           <div className='flex items-center w-0 grow'>
-            {!isEnv && !isChatVar && <Variable02 className='shrink-0 w-3.5 h-3.5 text-text-accent' />}
+            {!isEnv && !isChatVar && <Variable02 className={cn('shrink-0 w-3.5 h-3.5 text-text-accent', isException && 'text-text-warning')} />}
             {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
             {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
             {!isEnv && !isChatVar && (
@@ -216,6 +218,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
             onChange={onChange}
             onHovering={setIsChildrenHovering}
             isSupportFileVar={isSupportFileVar}
+            isException={v.isException}
           />
         ))
       }
@@ -312,6 +315,7 @@ const VarReferenceVars: FC<Props> = ({
                     onChange={onChange}
                     itemWidth={itemWidth}
                     isSupportFileVar={isSupportFileVar}
+                    isException={v.isException}
                   />
                 ))}
               </div>))

@@ -37,31 +37,39 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        streaming: Literal[True] = True,
+        streaming: Literal[False],
+    ) -> Mapping[str, Any]: ...
+
+    @overload
+    def generate(
+        self,
+        *,
+        app_model: App,
+        user: Union[Account, EndUser],
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: Literal[True],
     ) -> Generator[Mapping | str, None, None]: ...
 
     @overload
     def generate(
         self,
+        *,
         app_model: App,
         user: Union[Account, EndUser],
-        args: Mapping,
-        invoke_from: InvokeFrom,
-        streaming: Literal[False] = False,
-    ) -> Mapping: ...
-
-    @overload
-    def generate(
-        self,
-        app_model: App,
-        user: Union[Account, EndUser],
-        args: Mapping,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool,
     ) -> Union[Mapping, Generator[Mapping | str, None, None]]: ...
 
     def generate(
-        self, app_model: App, user: Union[Account, EndUser], args: Any, invoke_from: InvokeFrom, streaming: bool = True
+        self,
+        *,
+        app_model: App,
+        user: Union[Account, EndUser],
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: bool = True,
     ) -> Union[Mapping, Generator[Mapping | str, None, None]]:
         """
         Generate App response.
@@ -90,7 +98,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         # get conversation
         conversation = None
         if args.get("conversation_id"):
-            conversation = self._get_conversation_by_user(app_model, args.get("conversation_id"), user)
+            conversation = self._get_conversation_by_user(app_model, args.get("conversation_id", ""), user)
 
         # get app model config
         app_model_config = self._get_app_model_config(app_model=app_model, conversation=conversation)

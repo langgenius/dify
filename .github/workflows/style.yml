@@ -37,6 +37,7 @@ jobs:
       - name: Ruff check
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
+          poetry run -C api ruff --version
           poetry run -C api ruff check ./api
           poetry run -C api ruff format --check ./api
 

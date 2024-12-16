@@ -142,7 +142,7 @@ class QuestionClassifierNode(LLMNode):
                 "usage": jsonable_encoder(usage),
                 "finish_reason": finish_reason,
             }
-            outputs = {"class_name": category_name}
+            outputs = {"class_name": category_name, "class_id": category_id}
 
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,

@@ -23,3 +23,16 @@ class NodeType(StrEnum):
     DOCUMENT_EXTRACTOR = "document-extractor"
     LIST_OPERATOR = "list-operator"
     AGENT = "agent"
+
+
+class ErrorStrategy(StrEnum):
+    FAIL_BRANCH = "fail-branch"
+    DEFAULT_VALUE = "default-value"
+
+
+class FailBranchSourceHandle(StrEnum):
+    FAILED = "fail-branch"
+    SUCCESS = "success-branch"
+
+
+CONTINUE_ON_ERROR_NODE_TYPE = [NodeType.LLM, NodeType.CODE, NodeType.TOOL, NodeType.HTTP_REQUEST]

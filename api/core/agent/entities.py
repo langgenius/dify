@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel
@@ -69,7 +69,7 @@ class AgentEntity(BaseModel):
     Agent Entity.
     """
 
-    class Strategy(Enum):
+    class Strategy(StrEnum):
         """
         Agent Strategy.
         """

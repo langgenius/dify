@@ -1,8 +1,8 @@
 import logging
 import threading
 import uuid
-from collections.abc import Generator
-from typing import Any, Literal, Mapping, Union, overload
+from collections.abc import Generator, Mapping
+from typing import Any, Literal, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -34,9 +34,9 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         self,
         app_model: App,
         user: Union[Account, EndUser],
-        args: Mapping,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        streaming: Literal[True] = True,
+        streaming: Literal[True],
     ) -> Generator[str, None, None]: ...
 
     @overload
@@ -44,24 +44,29 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         self,
         app_model: App,
         user: Union[Account, EndUser],
-        args: Mapping,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        streaming: Literal[False] = False,
-    ) -> Mapping: ...
+        streaming: Literal[False],
+    ) -> Mapping[str, Any]: ...
 
     @overload
     def generate(
         self,
         app_model: App,
         user: Union[Account, EndUser],
-        args: Mapping,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = False,
-    ) -> Mapping | Generator[str, None, None]: ...
+    ) -> Union[Mapping[str, Any], Generator[str, None, None]]: ...
 
     def generate(
-        self, app_model: App, user: Union[Account, EndUser], args: Any, invoke_from: InvokeFrom, streaming: bool = True
-    ) -> Union[Mapping, Generator[str, None, None]]:
+        self,
+        app_model: App,
+        user: Union[Account, EndUser],
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: bool = True,
+    ) -> Union[Mapping[str, Any], Generator[str, None, None]]:
         """
         Generate App response.
 

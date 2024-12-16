@@ -37,11 +37,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
-        args: Mapping,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        streaming: Literal[True] = True,
-        call_depth: int = 0,
-        workflow_thread_pool_id: Optional[str] = None,
+        streaming: Literal[True],
+        call_depth: int,
+        workflow_thread_pool_id: Optional[str],
     ) -> Generator[Mapping | str, None, None]: ...
 
     @overload
@@ -50,12 +50,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
-        args: Mapping,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        streaming: Literal[False] = False,
-        call_depth: int = 0,
-        workflow_thread_pool_id: Optional[str] = None,
-    ) -> Mapping: ...
+        streaming: Literal[False],
+        call_depth: int,
+        workflow_thread_pool_id: Optional[str],
+    ) -> Mapping[str, Any]: ...
 
     @overload
     def generate(
@@ -63,12 +63,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
-        args: Mapping,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool,
-        call_depth: int = 0,
-        workflow_thread_pool_id: Optional[str] = None,
-    ) -> Mapping | Generator[Mapping | str, None, None]: ...
+        call_depth: int,
+        workflow_thread_pool_id: Optional[str],
+    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]: ...
 
     def generate(
         self,
@@ -80,7 +80,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
-    ) -> Mapping | Generator[Mapping | str, None, None]:
+    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]:
         files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
         # parse files
