@@ -161,6 +161,7 @@ const translation = {
       newlyReleased: 'Newly Released',
       firstReleased: 'First Released',
     },
+    viewMore: 'View more',
   },
   task: {
     installing: 'Installing {{installingLength}} plugins, 0 done.',

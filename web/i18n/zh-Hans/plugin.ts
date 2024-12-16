@@ -161,6 +161,7 @@ const translation = {
       newlyReleased: '最新发布',
       firstReleased: '首次发布',
     },
+    viewMore: '查看更多',
   },
   task: {
     installing: '{{installingLength}} 个插件安装中，0 已完成',
