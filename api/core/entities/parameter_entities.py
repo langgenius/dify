@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class CommonParameterType(Enum):
+class CommonParameterType(StrEnum):
     SECRET_INPUT = "secret-input"
     TEXT_INPUT = "text-input"
     SELECT = "select"
@@ -12,19 +12,20 @@ class CommonParameterType(Enum):
     SYSTEM_FILES = "system-files"
     BOOLEAN = "boolean"
     APP_SELECTOR = "app-selector"
-    # TOOL_SELECTOR = "tool-selector"
     MODEL_SELECTOR = "model-selector"
     TOOLS_SELECTOR = "array[tools]"
 
+    # TOOL_SELECTOR = "tool-selector"
 
-class AppSelectorScope(Enum):
+
+class AppSelectorScope(StrEnum):
     ALL = "all"
     CHAT = "chat"
     WORKFLOW = "workflow"
     COMPLETION = "completion"
 
 
-class ModelSelectorScope(Enum):
+class ModelSelectorScope(StrEnum):
     LLM = "llm"
     TEXT_EMBEDDING = "text-embedding"
     RERANK = "rerank"
@@ -34,7 +35,7 @@ class ModelSelectorScope(Enum):
     VISION = "vision"
 
 
-class ToolSelectorScope(Enum):
+class ToolSelectorScope(StrEnum):
     ALL = "all"
     CUSTOM = "custom"
     BUILTIN = "builtin"

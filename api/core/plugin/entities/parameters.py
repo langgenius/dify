@@ -59,7 +59,7 @@ class PluginParameter(BaseModel):
         return v
 
 
-def as_normal_type(typ: enum.Enum):
+def as_normal_type(typ: enum.StrEnum):
     if typ.value in {
         PluginParameterType.SECRET_INPUT,
         PluginParameterType.SELECT,
@@ -68,7 +68,7 @@ def as_normal_type(typ: enum.Enum):
     return typ.value
 
 
-def cast_parameter_value(typ: enum.Enum, value: Any, /):
+def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
     try:
         match typ.value:
             case PluginParameterType.STRING | PluginParameterType.SECRET_INPUT | PluginParameterType.SELECT:
@@ -127,7 +127,7 @@ def cast_parameter_value(typ: enum.Enum, value: Any, /):
         raise ValueError(f"The tool parameter value {value} is not in correct type of {as_normal_type(typ)}.")
 
 
-def init_frontend_parameter(rule: PluginParameter, type: enum.Enum, value: Any):
+def init_frontend_parameter(rule: PluginParameter, type: enum.StrEnum, value: Any):
     """
     init frontend parameter by rule
     """
