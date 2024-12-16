@@ -19,7 +19,7 @@ export const Stepper: FC<StepperProps> = (props) => {
             activeIndex={activeIndex}
             index={index}
           />
-          {!isLast && <div className="w-4 h-px bg-text-quaternary" />}
+          {!isLast && <div className='w-4 h-px bg-divider-deep' />}
         </Fragment>
       )
     })}

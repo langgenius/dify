@@ -21,27 +21,26 @@ export const StepperStep: FC<StepperStepProps> = (props) => {
       isActive
         ? 'bg-state-accent-solid'
         : !isDisabled
-          ? 'border border-text-tertiary'
+          ? 'border border-text-quaternary'
           : 'border border-divider-deep',
     )}>
       <div className={classNames(
-        'text-center text-[10px] font-semibold uppercase leading-3',
+        'text-center system-2xs-semibold-uppercase',
         isActive
           ? 'text-text-primary-on-surface'
           : !isDisabled
             ? 'text-text-tertiary'
-            : 'text-text-tertiary opacity-30',
+            : 'text-text-quaternary',
       )}>
         {label}
       </div>
     </div>
-    <div className={classNames(
-      ' text-xs font-medium uppercase leading-none',
+    <div className={classNames('system-xs-medium-uppercase',
       isActive
-        ? 'text-text-accent'
+        ? 'text-text-accent system-xs-semibold-uppercase'
         : !isDisabled
           ? 'text-text-tertiary'
-          : 'text-text-tertiary opacity-30',
+          : 'text-text-quaternary',
     )}>{name}</div>
   </div>
 }

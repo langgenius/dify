@@ -4,9 +4,9 @@ const translation = {
       creation: 'Create Knowledge',
       update: 'Add data',
     },
-    one: 'Choose data source',
-    two: 'Text Preprocessing and Cleaning',
-    three: 'Execute and finish',
+    one: 'Data Source',
+    two: 'Document Processing',
+    three: 'Execute & Finish',
   },
   error: {
     unavailable: 'This Knowledge is not available',
@@ -189,6 +189,11 @@ const translation = {
     modelContent: 'If you need to resume processing later, you will continue from where you left off.',
     modelButtonConfirm: 'Confirm',
     modelButtonCancel: 'Cancel',
+  },
+  otherDataSource: {
+    title: 'Connect to other data sources?',
+    description: 'Currently, Dify\'s knowledge base only has limited data sources. Contributing a data source to the Dify knowledge base is a fantastic way to help enhance the platform\'s flexibility and power for all users. Our contribution guide makes it easy to get started. Please click on the link below to learn more.',
+    learnMore: 'Learn more',
   },
 }
 

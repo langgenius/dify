@@ -98,7 +98,7 @@ const translation = {
   removeOriginal: 'Delete the original app',
   switchStart: 'Start switch',
   typeSelector: {
-    all: 'ALL Types',
+    all: 'All Types',
     chatbot: 'Chatbot',
     agent: 'Agent',
     workflow: 'Workflow',
