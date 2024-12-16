@@ -103,7 +103,7 @@ class ExtractProcessor:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
                         extractor = PdfExtractor(file_path)
-                    elif file_extension in {".md", ".markdown"}:
+                    elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = (
                             UnstructuredMarkdownExtractor(file_path, unstructured_api_url, unstructured_api_key)
                             if is_automatic
@@ -141,7 +141,7 @@ class ExtractProcessor:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
                         extractor = PdfExtractor(file_path)
-                    elif file_extension in {".md", ".markdown"}:
+                    elif file_extension in {".md", ".markdown", ".mdx"}:
                         extractor = MarkdownExtractor(file_path, autodetect_encoding=True)
                     elif file_extension in {".htm", ".html"}:
                         extractor = HtmlExtractor(file_path)

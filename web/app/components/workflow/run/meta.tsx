@@ -38,6 +38,12 @@ const MetaData: FC<Props> = ({
             {status === 'succeeded' && (
               <span>SUCCESS</span>
             )}
+            {status === 'partial-succeeded' && (
+              <span>PARTIAL SUCCESS</span>
+            )}
+            {status === 'exception' && (
+              <span>EXCEPTION</span>
+            )}
             {status === 'failed' && (
               <span>FAIL</span>
             )}

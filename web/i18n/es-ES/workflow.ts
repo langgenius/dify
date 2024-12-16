@@ -101,6 +101,9 @@ const translation = {
     featuresDocLink: 'Aprende más',
     importWarning: 'Cautela',
     importWarningDetails: 'La diferencia de versión de DSL puede afectar a ciertas características',
+    openInExplore: 'Abrir en Explorar',
+    onFailure: 'Sobre el fracaso',
+    addFailureBranch: 'Agregar rama de error',
   },
   env: {
     envPanelTitle: 'Variables de Entorno',
@@ -293,6 +296,31 @@ const translation = {
         title: 'Memorias',
         tip: 'Memoria de chat',
         builtIn: 'Incorporada',
+      },
+      errorHandle: {
+        none: {
+          title: 'Ninguno',
+          desc: 'El nodo dejará de ejecutarse si se produce una excepción y no se controla',
+        },
+        defaultValue: {
+          title: 'Valor predeterminado',
+          desc: 'Cuando se produzca un error, especifique un contenido de salida estático.',
+          tip: 'En caso de error, devolverá un valor inferior.',
+          inLog: 'Excepción de nodo, salida según los valores predeterminados.',
+          output: 'Valor predeterminado de salida',
+        },
+        failBranch: {
+          title: 'Rama de error',
+          desc: 'Cuando se produce un error, ejecutará la rama de excepción',
+          customize: 'Vaya al lienzo para personalizar la lógica de la rama de error.',
+          customizeTip: 'Cuando se activa la rama fail, las excepciones lanzadas por los nodos no finalizarán el proceso. En su lugar, ejecutará automáticamente la rama de error predefinida, lo que le permitirá proporcionar de forma flexible mensajes de error, informes, correcciones u omitir acciones.',
+          inLog: 'Node, ejecutará automáticamente la rama de error. La salida del nodo devolverá un tipo de error y un mensaje de error y los pasará a la versión posterior.',
+        },
+        partialSucceeded: {
+          tip: 'Hay nodos {{num}} en el proceso que se ejecutan de manera anormal, vaya a rastreo para verificar los registros.',
+        },
+        title: 'Manejo de errores',
+        tip: 'Estrategia de control de excepciones, que se desencadena cuando un nodo encuentra una excepción.',
       },
     },
     start: {

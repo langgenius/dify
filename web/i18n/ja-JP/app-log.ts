@@ -52,6 +52,7 @@ const translation = {
     },
     variables: '変数',
     uploadImages: 'アップロードされた画像',
+    modelParams: 'モデルパラメータ',
   },
   filter: {
     period: {
@@ -80,7 +81,7 @@ const translation = {
     title: '会話ログ',
     workflowTitle: 'ログの詳細',
     fileListLabel: 'ファイルの詳細',
-    fileListDetail: 'ディテール',
+    fileListDetail: '詳細',
   },
   promptLog: 'プロンプトログ',
   agentLog: 'エージェントログ',

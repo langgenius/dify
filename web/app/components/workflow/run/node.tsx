@@ -19,6 +19,7 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import Button from '@/app/components/base/button'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
+import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 
 type Props = {
   className?: string
@@ -128,6 +129,9 @@ const NodePanel: FC<Props> = ({
           {nodeInfo.status === 'stopped' && (
             <RiAlertFill className={cn('shrink-0 ml-2 w-4 h-4 text-text-warning-secondary', inMessage && 'w-3.5 h-3.5')} />
           )}
+          {nodeInfo.status === 'exception' && (
+            <RiAlertFill className={cn('shrink-0 ml-2 w-4 h-4 text-text-warning-secondary', inMessage && 'w-3.5 h-3.5')} />
+          )}
           {nodeInfo.status === 'running' && (
             <div className='shrink-0 flex items-center text-text-accent text-[13px] leading-[16px] font-medium'>
               <span className='mr-2 text-xs font-normal'>Running</span>
@@ -165,10 +169,22 @@ const NodePanel: FC<Props> = ({
                 <Split className='mt-2' />
               </div>
             )}
-            <div className={cn('px-[10px]', hideInfo && '!px-2 !py-0.5')}>
-              {nodeInfo.status === 'stopped' && (
+            <div className={cn('mb-1', hideInfo && '!px-2 !py-0.5')}>
+              {(nodeInfo.status === 'stopped') && (
                 <StatusContainer status='stopped'>
                   {t('workflow.tracing.stopBy', { user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}
+                </StatusContainer>
+              )}
+              {(nodeInfo.status === 'exception') && (
+                <StatusContainer status='stopped'>
+                  {nodeInfo.error}
+                  <a
+                    href='https://docs.dify.ai/guides/workflow/error-handling/error-type'
+                    target='_blank'
+                    className='text-text-accent'
+                  >
+                    {t('workflow.common.learnMore')}
+                  </a>
                 </StatusContainer>
               )}
               {nodeInfo.status === 'failed' && (
@@ -207,6 +223,7 @@ const NodePanel: FC<Props> = ({
                   language={CodeLanguage.json}
                   value={nodeInfo.outputs}
                   isJSONStringifyBeauty
+                  tip={<ErrorHandleTip type={nodeInfo.execution_metadata?.error_strategy} />}
                 />
               </div>
             )}

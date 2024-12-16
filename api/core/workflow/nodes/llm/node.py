@@ -193,6 +193,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                     error=str(e),
                     inputs=node_inputs,
                     process_data=process_data,
+                    error_type=type(e).__name__,
                 )
             )
             return
@@ -615,16 +616,35 @@ class LLMNode(BaseNode[LLMNodeData]):
             )
             # Insert histories into the prompt
             prompt_content = prompt_messages[0].content
-            if "#histories#" in prompt_content:
-                prompt_content = prompt_content.replace("#histories#", memory_text)
+            # For issue #11247 - Check if prompt content is a string or a list
+            prompt_content_type = type(prompt_content)
+            if prompt_content_type == str:
+                if "#histories#" in prompt_content:
+                    prompt_content = prompt_content.replace("#histories#", memory_text)
+                else:
+                    prompt_content = memory_text + "\n" + prompt_content
+                prompt_messages[0].content = prompt_content
+            elif prompt_content_type == list:
+                for content_item in prompt_content:
+                    if content_item.type == PromptMessageContentType.TEXT:
+                        if "#histories#" in content_item.data:
+                            content_item.data = content_item.data.replace("#histories#", memory_text)
+                        else:
+                            content_item.data = memory_text + "\n" + content_item.data
             else:
-                prompt_content = memory_text + "\n" + prompt_content
-            prompt_messages[0].content = prompt_content
+                raise ValueError("Invalid prompt content type")
 
             # Add current query to the prompt message
             if user_query:
-                prompt_content = prompt_messages[0].content.replace("#sys.query#", user_query)
-                prompt_messages[0].content = prompt_content
+                if prompt_content_type == str:
+                    prompt_content = prompt_messages[0].content.replace("#sys.query#", user_query)
+                    prompt_messages[0].content = prompt_content
+                elif prompt_content_type == list:
+                    for content_item in prompt_content:
+                        if content_item.type == PromptMessageContentType.TEXT:
+                            content_item.data = user_query + "\n" + content_item.data
+                else:
+                    raise ValueError("Invalid prompt content type")
         else:
             raise TemplateTypeNotSupportError(type_name=str(type(prompt_template)))
 

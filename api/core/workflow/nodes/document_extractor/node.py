@@ -1,6 +1,8 @@
 import csv
 import io
 import json
+import os
+import tempfile
 
 import docx
 import pandas as pd
@@ -264,14 +266,20 @@ def _extract_text_from_ppt(file_content: bytes) -> str:
 
 def _extract_text_from_pptx(file_content: bytes) -> str:
     try:
-        with io.BytesIO(file_content) as file:
-            if dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY:
-                elements = partition_via_api(
-                    file=file,
-                    api_url=dify_config.UNSTRUCTURED_API_URL,
-                    api_key=dify_config.UNSTRUCTURED_API_KEY,
-                )
-            else:
+        if dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY:
+            with tempfile.NamedTemporaryFile(suffix=".pptx", delete=False) as temp_file:
+                temp_file.write(file_content)
+                temp_file.flush()
+                with open(temp_file.name, "rb") as file:
+                    elements = partition_via_api(
+                        file=file,
+                        metadata_filename=temp_file.name,
+                        api_url=dify_config.UNSTRUCTURED_API_URL,
+                        api_key=dify_config.UNSTRUCTURED_API_KEY,
+                    )
+                os.unlink(temp_file.name)
+        else:
+            with io.BytesIO(file_content) as file:
                 elements = partition_pptx(file=file)
         return "\n".join([getattr(element, "text", "") for element in elements])
     except Exception as e:
