@@ -439,6 +439,17 @@ class WorkflowConfig(BaseSettings):
     )
 
 
+class WorkflowNodeExecutionConfig(BaseSettings):
+    """
+    Configuration for workflow node execution
+    """
+
+    MAX_SUBMIT_COUNT: PositiveInt = Field(
+        description="Maximum number of submitted thread count in a ThreadPool for parallel node execution",
+        default=100,
+    )
+
+
 class AuthConfig(BaseSettings):
     """
     Configuration for authentication and OAuth
@@ -775,6 +786,7 @@ class FeatureConfig(
     ToolConfig,
     UpdateConfig,
     WorkflowConfig,
+    WorkflowNodeExecutionConfig,
     WorkspaceConfig,
     LoginConfig,
     # hosted services config
