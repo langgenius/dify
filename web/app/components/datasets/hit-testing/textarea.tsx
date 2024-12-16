@@ -5,7 +5,6 @@ import {
 } from '@remixicon/react'
 import Image from 'next/image'
 import Button from '../../base/button'
-import Tag from '../../base/tag'
 import { getIcon } from '../common/retrieval-method-info'
 import ModifyExternalRetrievalModal from './modify-external-retrieval-modal'
 import Tooltip from '@/app/components/base/tooltip'
@@ -145,11 +144,11 @@ const TextAreaWithButton = ({
               />
             )
           }
-          <div className='h-2 rounded-tl-xl rounded-tr-xl bg-white'></div>
+          <div className='h-2 rounded-tl-xl rounded-tr-xl bg-background-default'></div>
         </div>
-        <div className='px-4 pb-11'>
+        <div className='px-4 pb-11 bg-background-default rounded-b-xl'>
           <textarea
-            className='h-[220px] border-none resize-none font-normal caret-primary-600 text-gray-700 text-sm w-full focus-visible:outline-none placeholder:text-gray-300 placeholder:text-sm placeholder:font-normal'
+            className='h-[220px] border-none resize-none font-normal caret-primary-600 text-text-secondary text-sm w-full focus-visible:outline-none  placeholder:text-gray-300 placeholder:text-sm placeholder:font-normal'
             value={text}
             onChange={handleTextChange}
             placeholder={t('datasetHitTesting.input.placeholder') as string}
@@ -160,24 +159,23 @@ const TextAreaWithButton = ({
                 <Tooltip
                   popupContent={t('datasetHitTesting.input.countWarning')}
                 >
-                  <div>
-                    <Tag color="red" className="!text-red-600">
-                      {text?.length}
-                      <span className="text-red-300 mx-0.5">/</span>
-                      200
-                    </Tag>
+                  <div
+                    className={cn('flex items-center h-5 px-1 rounded-md bg-background-section-burn text-red-600 text-xs font-medium', !text?.length && 'opacity-50')}
+                  >
+                    {text?.length}
+                    <span className="text-red-300 mx-0.5">/</span>
+                    200
                   </div>
                 </Tooltip>
               )
               : (
-                <Tag
-                  color="gray"
-                  className={cn('!text-gray-500', text?.length ? '' : 'opacity-50')}
+                <div
+                  className={cn('flex items-center h-5 px-1 rounded-md bg-background-section-burn text-text-tertiary text-xs font-medium', !text?.length && 'opacity-50')}
                 >
                   {text?.length}
-                  <span className="text-gray-300 mx-0.5">/</span>
+                  <span className="text-divider-deep mx-0.5">/</span>
                   200
-                </Tag>
+                </div>
               )}
 
             <div>
@@ -186,6 +184,7 @@ const TextAreaWithButton = ({
                 variant="primary"
                 loading={loading}
                 disabled={(!text?.length || text?.length > 200)}
+                className='w-[88px]'
               >
                 {t('datasetHitTesting.input.testing')}
               </Button>
