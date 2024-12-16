@@ -1,5 +1,6 @@
 import React, { type FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ChuckingMode } from '@/models/datasets'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea/common'
 
 type IChunkContentProps = {
@@ -8,7 +9,7 @@ type IChunkContentProps = {
   onQuestionChange: (question: string) => void
   onAnswerChange?: (answer: string) => void
   isEditMode?: boolean
-  docForm: string
+  docForm: ChuckingMode
 }
 
 const ChunkContent: FC<IChunkContentProps> = ({
@@ -21,22 +22,22 @@ const ChunkContent: FC<IChunkContentProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  if (docForm === 'qa_model') {
+  if (docForm === ChuckingMode.qa) {
     return (
       <>
-        <div className='mb-1 text-xs font-medium text-gray-500'>QUESTION</div>
+        <div className='text-text-tertiary text-xs font-medium'>QUESTION</div>
         <AutoHeightTextarea
-          outerClassName='mb-4'
-          className='leading-6 text-md text-gray-800'
+          outerClassName='mb-6 mt-1'
+          className='text-text-secondary text-sm tracking-[-0.07px] caret-[#295EFF]'
           value={question}
           placeholder={t('datasetDocuments.segment.questionPlaceholder') || ''}
           onChange={e => onQuestionChange(e.target.value)}
           disabled={!isEditMode}
         />
-        <div className='mb-1 text-xs font-medium text-gray-500'>ANSWER</div>
+        <div className='text-text-tertiary text-xs font-medium'>ANSWER</div>
         <AutoHeightTextarea
-          outerClassName='mb-4'
-          className='leading-6 text-md text-gray-800'
+          outerClassName='mb-6 mt-1'
+          className='text-text-secondary text-sm tracking-[-0.07px] caret-[#295EFF]'
           value={answer}
           placeholder={t('datasetDocuments.segment.answerPlaceholder') || ''}
           onChange={e => onAnswerChange?.(e.target.value)}

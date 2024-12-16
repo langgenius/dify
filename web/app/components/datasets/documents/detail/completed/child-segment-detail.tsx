@@ -9,7 +9,7 @@ import ChunkContent from './common/chunk-content'
 import Dot from './common/dot'
 import { SegmentIndexTag } from './common/segment-index-tag'
 import { useSegmentListContext } from './index'
-import type { ChildChunkDetail } from '@/models/datasets'
+import type { ChildChunkDetail, ChuckingMode } from '@/models/datasets'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { formatNumber } from '@/utils/format'
 import classNames from '@/utils/classnames'
@@ -21,7 +21,7 @@ type IChildSegmentDetailProps = {
   childChunkInfo?: Partial<ChildChunkDetail> & { id: string }
   onUpdate: (segmentId: string, childChunkId: string, content: string) => void
   onCancel: () => void
-  docForm: string
+  docForm: ChuckingMode
 }
 
 /**
