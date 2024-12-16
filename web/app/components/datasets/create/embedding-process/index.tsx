@@ -29,6 +29,7 @@ import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useProviderContext } from '@/context/provider-context'
 import { sleep } from '@/utils'
 import { RETRIEVE_METHOD } from '@/types/app'
+import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   datasetId: string
@@ -287,7 +288,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
                 </div>
                 {
                   enableBilling && (
-                    <PriorityLabel />
+                    <PriorityLabel className='ml-0' />
                   )
                 }
               </div>
@@ -295,12 +296,15 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
                 <div className="shrink-0 text-xs">{`${getSourcePercent(indexingStatusDetail)}%`}</div>
               )}
               {indexingStatusDetail.indexing_status === 'error' && (
-                <>
-                  <span className="flex items-center max-w-[200px] text-xs text-text-destructive truncate" title={indexingStatusDetail.error || ''}>
-                    {indexingStatusDetail.error || 'Error'}
+                <Tooltip
+                  popupClassName='px-4 py-[14px] max-w-60 text-sm leading-4 text-text-secondary border-[0.5px] border-components-panel-border rounded-xl'
+                  offset={4}
+                  popupContent={indexingStatusDetail.error}
+                >
+                  <span>
+                    <RiErrorWarningFill className='shrink-0 size-4 text-text-destructive' />
                   </span>
-                  <RiErrorWarningFill className='shrink-0 size-4 text-text-destructive' />
-                </>
+                </Tooltip>
               )}
               {indexingStatusDetail.indexing_status === 'completed' && (
                 <RiCheckboxCircleFill className='shrink-0 size-4 text-text-success' />

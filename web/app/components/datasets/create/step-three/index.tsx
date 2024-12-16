@@ -1,10 +1,9 @@
 'use client'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiBookOpenLine } from '@remixicon/react'
 import EmbeddingProcess from '../embedding-process'
 
-import s from './index.module.css'
-import cn from '@/utils/classnames'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import type { FullDocumentDetail, createDocumentResponse } from '@/models/datasets'
 import AppIcon from '@/app/components/base/app-icon'
@@ -58,13 +57,17 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
           />
         </div>
       </div>
-      {!isMobile && <div className={cn(s.sideTip)}>
-        <div className={s.tipCard}>
-          <span className={s.icon} />
-          <div className={s.title}>{t('datasetCreation.stepThree.sideTipTitle')}</div>
-          <div className={s.content}>{t('datasetCreation.stepThree.sideTipContent')}</div>
+      {!isMobile && (
+        <div className="shrink-0 pt-[88px] pr-8 text-xs">
+          <div className="flex flex-col gap-3 w-[328px] p-6 text-text-tertiary bg-background-section rounded-xl">
+            <div className="flex justify-center items-center size-10 bg-components-card-bg rounded-[10px] shadow-lg">
+              <RiBookOpenLine className="size-5 text-text-accent" />
+            </div>
+            <div className="text-base text-text-secondary">{t('datasetCreation.stepThree.sideTipTitle')}</div>
+            <div className="text-text-tertiary">{t('datasetCreation.stepThree.sideTipContent')}</div>
+          </div>
         </div>
-      </div>}
+      )}
     </div>
   )
 }

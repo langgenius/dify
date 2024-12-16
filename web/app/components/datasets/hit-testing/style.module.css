@@ -29,10 +29,6 @@
   background-image: url(./assets/plugin.svg);
 }
 
-.wrapper {
-  @apply relative border border-primary-600 rounded-xl;
-}
-
 .cardWrapper {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(284px, auto));
