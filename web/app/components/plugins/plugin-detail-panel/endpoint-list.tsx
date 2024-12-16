@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import { useBoolean } from 'ahooks'
 import {
   RiAddLine,
@@ -19,6 +20,8 @@ import {
   useInvalidateEndpointList,
 } from '@/service/use-endpoints'
 import type { PluginDetail } from '@/app/components/plugins/types'
+import { LanguagesSupported } from '@/i18n/language'
+import I18n from '@/context/i18n'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -26,6 +29,7 @@ type Props = {
 }
 const EndpointList = ({ detail }: Props) => {
   const { t } = useTranslation()
+  const { locale } = useContext(I18n)
   const pluginUniqueID = detail.plugin_unique_identifier
   const declaration = detail.declaration.endpoint
   const showTopBorder = detail.declaration.tool
@@ -74,9 +78,8 @@ const EndpointList = ({ detail }: Props) => {
                   <RiApps2AddLine className='w-4 h-4 text-text-tertiary' />
                 </div>
                 <div className='text-text-tertiary system-xs-regular'>{t('plugin.detailPanel.endpointsTip')}</div>
-                {/* TODO  endpoints doc link */}
                 <a
-                  href=''
+                  href={`https://docs.dify.ai/${locale === LanguagesSupported[1] ? 'v/zh-hans/' : ''}guides/api-documentation/endpoint`}
                   target='_blank'
                   rel='noopener noreferrer'
                 >
