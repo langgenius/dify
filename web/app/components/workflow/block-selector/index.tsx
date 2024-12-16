@@ -115,7 +115,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
               <div
                 className={`
                   flex items-center justify-center 
-                  w-4 h-4 rounded-full text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary cursor-pointer z-10
+                  w-4 h-4 rounded-full bg-components-button-primary-bg text-text-primary-on-surface hover:bg-components-button-primary-bg-hover cursor-pointer z-10
                   ${triggerClassName?.(open)}
                 `}
                 style={triggerStyle}
