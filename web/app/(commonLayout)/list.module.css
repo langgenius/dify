@@ -201,14 +201,6 @@
   @apply block w-6 h-6 bg-center bg-contain;
 }
 
-.githubIcon {
-  background-image: url("./apps/assets/github.svg");
-}
-
-.discordIcon {
-  background-image: url("./apps/assets/discord.svg");
-}
-
 /* #region new app dialog */
 .newItemCaption {
   @apply inline-flex items-center mb-2 text-sm font-medium;

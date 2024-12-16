@@ -424,7 +424,7 @@ def default_vector_search_query(
 ) -> dict:
     if filters is not None:
         filter_type = "post_filter" if filter_type is None else filter_type
-        if not isinstance(filter, list):
+        if not isinstance(filters, list):
             raise RuntimeError(f"unexpected filter with {type(filters)}")
     final_ext = {"lvector": {}}
     if min_score != "0.0":
