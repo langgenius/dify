@@ -157,11 +157,11 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
 
   const mode = useMemo(() => {
     return documentDetail?.dataset_process_rule?.mode
-  }, [documentDetail])
+  }, [documentDetail?.dataset_process_rule])
 
   const parentMode = useMemo(() => {
-    return documentDetail?.dataset_process_rule.rules.parent_mode
-  }, [documentDetail])
+    return documentDetail?.dataset_process_rule?.rules?.parent_mode
+  }, [documentDetail?.dataset_process_rule])
 
   const isFullDocMode = useMemo(() => {
     return mode === 'hierarchical' && parentMode === 'full-doc'
@@ -185,7 +185,8 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
             extension={documentDetail?.data_source_info?.upload_file?.extension}
             name={documentDetail?.name}
             wrapperCls='mr-2'
-            processMode={documentDetail?.dataset_process_rule?.mode}
+            parent_mode={parentMode}
+            processMode={mode}
           />
           <div className='flex items-center flex-wrap'>
             {embeddingAvailable && documentDetail && !documentDetail.archived && !isFullDocMode && (
