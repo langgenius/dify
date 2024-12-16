@@ -66,7 +66,7 @@ const InputVarList: FC<Props> = ({
         }
         else {
           draft[variable] = {
-            type: varKindType || VarKindType.variable,
+            type: varKindType,
             value: varValue,
           }
         }
