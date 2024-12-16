@@ -1,9 +1,9 @@
 const translation = {
-  title: 'Retrieval Testing',
+  title: 'Retrieval Test',
   settingTitle: 'Retrieval Setting',
-  desc: 'Test the hitting effect of the Knowledge based on the given query text',
+  desc: 'Test the hitting effect of the Knowledge based on the given query text.',
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
-  recents: 'Recents',
+  records: 'Records',
   table: {
     header: {
       source: 'Source',
@@ -16,7 +16,7 @@ const translation = {
     placeholder: 'Please enter a text, a short declarative sentence is recommended.',
     countWarning: 'Up to 200 characters.',
     indexWarning: 'High quality Knowledge only.',
-    testing: 'Testing',
+    testing: 'Test',
   },
   hit: {
     title: '{{num}} Retrieved Chunks',

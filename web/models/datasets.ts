@@ -487,6 +487,7 @@ export type HitTestingChildChunk = {
 }
 export type HitTesting = {
   segment: Segment
+  content: Segment
   score: number
   tsne_position: TsnePosition
   child_chunks?: HitTestingChildChunk[] | null

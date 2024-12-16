@@ -17,15 +17,18 @@ import Tag from '@/app/components/datasets/documents/detail/completed/common/tag
 
 const i18nPrefix = 'datasetHitTesting'
 type Props = {
+  isExternal: boolean
   payload: HitTesting
 }
 
 const ResultItem: FC<Props> = ({
+  isExternal,
   payload,
 }) => {
   const { t } = useTranslation()
-  const { segment, score, child_chunks } = payload
-  const { position, word_count, content, keywords, document } = segment
+  const { segment, content: externalContent, score, child_chunks } = payload
+  const data = isExternal ? externalContent : segment
+  const { position, word_count, content, keywords, document } = data
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
   const [isFold, {
