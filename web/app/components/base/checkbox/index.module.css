@@ -1,9 +1,3 @@
-.checked {
-  background: var(--color-components-checkbox-bg) url(./assets/check.svg) center center no-repeat;
-  background-size: 12px 12px;
-  border: none;
-}
-
 .mixed {
   background: var(--color-components-checkbox-bg) url(./assets/mixed.svg) center center no-repeat;
   background-size: 12px 12px;

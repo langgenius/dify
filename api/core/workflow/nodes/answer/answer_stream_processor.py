@@ -6,6 +6,7 @@ from core.file import FILE_MODEL_IDENTITY, File
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.event import (
     GraphEngineEvent,
+    NodeRunExceptionEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
@@ -50,7 +51,7 @@ class AnswerStreamProcessor(StreamProcessor):
 
                 for _ in stream_out_answer_node_ids:
                     yield event
-            elif isinstance(event, NodeRunSucceededEvent):
+            elif isinstance(event, NodeRunSucceededEvent | NodeRunExceptionEvent):
                 yield event
                 if event.route_node_state.node_id in self.current_stream_chunk_generating_node_ids:
                     # update self.route_position after all stream event finished

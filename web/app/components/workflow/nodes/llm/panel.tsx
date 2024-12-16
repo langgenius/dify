@@ -270,17 +270,15 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         />
       </div>
       <Split />
-      <div className='px-4 pt-4 pb-2'>
-        <OutputVars>
-          <>
-            <VarItem
-              name='text'
-              type='string'
-              description={t(`${i18nPrefix}.outputVars.output`)}
-            />
-          </>
-        </OutputVars>
-      </div>
+      <OutputVars>
+        <>
+          <VarItem
+            name='text'
+            type='string'
+            description={t(`${i18nPrefix}.outputVars.output`)}
+          />
+        </>
+      </OutputVars>
       {isShowSingleRun && (
         <BeforeRunForm
           nodeName={inputs.title}

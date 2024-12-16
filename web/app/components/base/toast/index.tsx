@@ -51,12 +51,11 @@ const Toast = ({
     'top-0',
     'right-0',
   )}>
-    <div className={`absolute inset-0 opacity-40 -z-10 ${
-      (type === 'success' && 'bg-[linear-gradient(92deg,rgba(23,178,106,0.25)_0%,rgba(255,255,255,0.00)_100%)]')
+    <div className={`absolute inset-0 opacity-40 -z-10 ${(type === 'success' && 'bg-[linear-gradient(92deg,rgba(23,178,106,0.25)_0%,rgba(255,255,255,0.00)_100%)]')
       || (type === 'warning' && 'bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)]')
       || (type === 'error' && 'bg-[linear-gradient(92deg,rgba(240,68,56,0.25)_0%,rgba(255,255,255,0.00)_100%)]')
       || (type === 'info' && 'bg-[linear-gradient(92deg,rgba(11,165,236,0.25)_0%,rgba(255,255,255,0.00)_100%)]')
-    }`}
+      }`}
     />
     <div className={`flex ${size === 'md' ? 'gap-1' : 'gap-0.5'}`}>
       <div className={`flex justify-center items-center ${size === 'md' ? 'p-0.5' : 'p-1'}`}>
@@ -129,11 +128,25 @@ Toast.notify = ({
     const holder = document.createElement('div')
     const root = createRoot(holder)
 
-    root.render(<Toast type={type} size={size} message={message} duration={duration} className={className} customComponent={customComponent} />)
+    root.render(
+      <ToastContext.Provider value={{
+        notify: () => { },
+        close: () => {
+          if (holder) {
+            root.unmount()
+            holder.remove()
+          }
+        },
+      }}>
+        <Toast type={type} size={size} message={message} duration={duration} className={className} customComponent={customComponent} />
+      </ToastContext.Provider>,
+    )
     document.body.appendChild(holder)
     setTimeout(() => {
-      if (holder)
+      if (holder) {
+        root.unmount()
         holder.remove()
+      }
     }, duration || defaultDuring)
   }
 }
