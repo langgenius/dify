@@ -61,20 +61,12 @@ const InputVarList: FC<Props> = ({
       const newValue = produce(value, (draft: ToolVarInputs) => {
         const target = draft[variable]
         if (target) {
-          if (!isSupportConstantValue || varKindType === VarKindType.variable) {
-            if (isSupportConstantValue)
-              target.type = VarKindType.variable
-
-            target.value = varValue as ValueSelector
-          }
-          else {
-            target.type = VarKindType.constant
-            target.value = varValue as string
-          }
+          target.type = varKindType
+          target.value = varValue
         }
         else {
           draft[variable] = {
-            type: VarKindType.variable,
+            type: varKindType || VarKindType.variable,
             value: varValue,
           }
         }
