@@ -533,7 +533,7 @@ const Completed: FC<ICompletedProps> = ({
       {/* Segment list */}
       {
         isFullDocMode
-          ? <div className='grow relative overflow-x-hidden overflow-y-auto'>
+          ? <div className='flex flex-col grow relative overflow-x-hidden overflow-y-auto'>
             <SegmentCard
               detail={segments[0]}
               onClick={() => onClickCard(segments[0])}
@@ -549,6 +549,7 @@ const Completed: FC<ICompletedProps> = ({
               enabled={!archived}
               total={childChunkListData?.total || 0}
               inputValue={inputValue}
+              onClearFilter={onClearFilter}
             />
           </div>
           : <SegmentList
