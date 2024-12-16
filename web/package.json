@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.13.2",
+  "version": "0.14.0",
   "private": true,
   "engines": {
     "node": ">=18.17.0"
@@ -36,7 +36,7 @@
     "@mdx-js/react": "^2.3.0",
     "@monaco-editor/react": "^4.6.0",
     "@next/mdx": "^14.0.4",
-    "@remixicon/react": "^4.2.0",
+    "@remixicon/react": "^4.5.0",
     "@sentry/react": "^7.54.0",
     "@sentry/utils": "^7.54.0",
     "@svgdotjs/svg.js": "^3.2.4",
