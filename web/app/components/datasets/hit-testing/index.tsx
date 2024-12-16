@@ -9,11 +9,10 @@ import { useContext } from 'use-context-selector'
 import SegmentCard from '../documents/detail/completed/SegmentCard'
 import Textarea from './textarea'
 import s from './style.module.css'
-// import HitDetail from './hit-detail'
 import ModifyRetrievalModal from './modify-retrieval-modal'
 import ResultItem from './components/result-item'
 import cn from '@/utils/classnames'
-import type { ExternalKnowledgeBaseHitTestingResponse, ExternalKnowledgeBaseHitTesting as ExternalKnowledgeBaseHitTestingType, HitTestingResponse, HitTesting as HitTestingType } from '@/models/datasets'
+import type { ExternalKnowledgeBaseHitTestingResponse, HitTestingResponse } from '@/models/datasets'
 import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
 import Pagination from '@/app/components/base/pagination'
@@ -49,11 +48,8 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
   const isMobile = media === MediaType.mobile
 
   const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>() // 初始化记录为空数组
-  // console.log(hitResult?.records)
   const [externalHitResult, setExternalHitResult] = useState<ExternalKnowledgeBaseHitTestingResponse | undefined>()
   const [submitLoading, setSubmitLoading] = useState(false)
-  const [currParagraph, setCurrParagraph] = useState<{ paraInfo?: HitTestingType; showModal: boolean }>({ showModal: false })
-  const [externalCurrParagraph, setExternalCurrParagraph] = useState<{ paraInfo?: ExternalKnowledgeBaseHitTestingType; showModal: boolean }>({ showModal: false })
   const [text, setText] = useState('')
 
   const [currPage, setCurrPage] = React.useState<number>(0)
@@ -103,10 +99,10 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
 
   return (
     <div className={s.container}>
-      <div className={s.leftDiv}>
-        <div className={s.titleWrapper}>
-          <h1 className={s.title}>{t('datasetHitTesting.title')}</h1>
-          <p className={s.desc}>{t('datasetHitTesting.desc')}</p>
+      <div className='px-6 py-3 flex flex-col'>
+        <div className='flex flex-col justify-center mb-4'>
+          <h1 className='text-base font-semibold text-text-primary'>{t('datasetHitTesting.title')}</h1>
+          <p className='mt-0.5 text-[13px] leading-4 font-normal text-text-tertiary'>{t('datasetHitTesting.desc')}</p>
         </div>
         <Textarea
           datasetId={datasetId}
@@ -123,7 +119,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
           retrievalConfig={retrievalConfig}
           isEconomy={currentDataset?.indexing_technique === 'economy'}
         />
-        <div className={cn(s.title, 'mt-8 mb-2')}>{t('datasetHitTesting.records')}</div>
+        <div className='text-xl font-medium text-gray-900 mt-8 mb-2'>{t('datasetHitTesting.records')}</div>
         {(!recordsRes && !error)
           ? (
             <div className='flex-1'><Loading type='app' /></div>
@@ -132,7 +128,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
             ? (
               <>
                 <div className='grow overflow-y-auto'>
-                  <table className={`w-full border-collapse border-0 mt-3 ${s.table}`}>
+                  <table className={'w-full border-collapse border-0 mt-3 text-[13px] text-gray-500'}>
                     <thead className="sticky top-0 h-8 bg-white leading-8 border-b border-gray-200 text-gray-500 font-bold">
                       <tr>
                         <td className='w-28'>{t('datasetHitTesting.table.header.source')}</td>
@@ -172,7 +168,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
             )}
       </div>
       <FloatRightContainer panelClassname='!justify-start !overflow-y-auto' showClose isMobile={isMobile} isOpen={isShowRightPanel} onClose={hideRightPanel} footer={null}>
-        <div className={cn(s.rightDiv, 'pt-3')}>
+        <div className='flex flex-col pt-3'>
           {/* {renderHitResults(generalResultData)} */}
           {submitLoading
             ? <SegmentCard
@@ -194,29 +190,6 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
           }
         </div>
       </FloatRightContainer>
-      {/* <Modal
-        className={isExternal ? 'py-10 px-8' : 'w-full'}
-        closable
-        onClose={() => {
-          setCurrParagraph({ showModal: false })
-          setExternalCurrParagraph({ showModal: false })
-        }}
-        isShow={currParagraph.showModal || externalCurrParagraph.showModal}
-      >
-        {currParagraph.showModal && (
-          <HitDetail
-            segInfo={currParagraph.paraInfo?.segment}
-          />
-        )}
-        {externalCurrParagraph.showModal && (
-          <HitDetail
-            segInfo={{
-              id: 'external',
-              content: externalCurrParagraph.paraInfo?.content,
-            }}
-          />
-        )}
-      </Modal> */}
       <Drawer isOpen={isShowModifyRetrievalModal} onClose={() => setIsShowModifyRetrievalModal(false)} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
         <ModifyRetrievalModal
           indexMethod={currentDataset?.indexing_technique || ''}
