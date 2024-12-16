@@ -123,7 +123,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
           retrievalConfig={retrievalConfig}
           isEconomy={currentDataset?.indexing_technique === 'economy'}
         />
-        <div className={cn(s.title, 'mt-8 mb-2')}>{t('datasetHitTesting.recents')}</div>
+        <div className={cn(s.title, 'mt-8 mb-2')}>{t('datasetHitTesting.records')}</div>
         {(!recordsRes && !error)
           ? (
             <div className='flex-1'><Loading type='app' /></div>
