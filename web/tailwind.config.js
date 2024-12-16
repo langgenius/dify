@@ -65,12 +65,13 @@ module.exports = {
         ...tailwindThemeVarDefine,
       },
       screens: {
-        mobile: '100px',
+        'mobile': '100px',
         // => @media (min-width: 100px) { ... }
-        tablet: '640px', // 391
+        'tablet': '640px', // 391
         // => @media (min-width: 600px) { ... }
-        pc: '769px',
+        'pc': '769px',
         // => @media (min-width: 769px) { ... }
+        '2k': '2560px',
       },
       boxShadow: {
         'xs': '0px 1px 2px 0px rgba(16, 24, 40, 0.05)',
