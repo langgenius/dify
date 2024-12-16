@@ -12,13 +12,13 @@ import I18NContext from '@/context/i18n'
 
 type MailAndPasswordAuthProps = {
   isInvite: boolean
-  isEmailSetUp: boolean
+  isEmailSetup: boolean
   allowRegistration: boolean
 }
 
 const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
-export default function MailAndPasswordAuth({ isInvite, isEmailSetUp, allowRegistration }: MailAndPasswordAuthProps) {
+export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegistration }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
   const { locale } = useContext(I18NContext)
   const router = useRouter()
@@ -127,9 +127,9 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetUp, allowRegis
         <span className='system-md-semibold text-text-secondary'>{t('login.password')}</span>
         <Link
           href={`/reset-password?${searchParams.toString()}`}
-          className={`system-xs-regular ${isEmailSetUp ? 'text-components-button-secondary-accent-text' : 'text-components-button-secondary-accent-text-disabled pointer-events-none'}`}
-          tabIndex={isEmailSetUp ? 0 : -1}
-          aria-disabled={!isEmailSetUp}
+          className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'text-components-button-secondary-accent-text-disabled pointer-events-none'}`}
+          tabIndex={isEmailSetup ? 0 : -1}
+          aria-disabled={!isEmailSetup}
         >
           {t('login.forget')}
         </Link>
