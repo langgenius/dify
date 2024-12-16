@@ -42,10 +42,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
-        args: Mapping,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        streaming: Literal[True] = True,
-    ) -> Generator[Mapping | str, None, None]: ...
+        streaming: Literal[False],
+    ) -> Mapping[str, Any]: ...
 
     @overload
     def generate(
@@ -55,8 +55,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         args: Mapping,
         invoke_from: InvokeFrom,
-        streaming: Literal[False] = False,
-    ) -> Mapping: ...
+        streaming: Literal[True],
+    ) -> Generator[Mapping | str, None, None]: ...
 
     @overload
     def generate(

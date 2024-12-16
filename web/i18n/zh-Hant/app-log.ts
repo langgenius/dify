@@ -52,6 +52,7 @@ const translation = {
     },
     variables: '變數',
     uploadImages: '上傳的圖片',
+    modelParams: '模型參數',
   },
   filter: {
     period: {

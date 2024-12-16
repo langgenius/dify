@@ -17,6 +17,7 @@ type NodeVariableItemProps = {
   writeMode?: string
   showBorder?: boolean
   className?: string
+  isException?: boolean
 }
 
 const i18nPrefix = 'workflow.nodes.assigner'
@@ -29,6 +30,7 @@ const NodeVariableItem = ({
   writeMode,
   showBorder,
   className,
+  isException,
 }: NodeVariableItemProps) => {
   const { t } = useTranslation()
   return (
@@ -50,14 +52,14 @@ const NodeVariableItem = ({
         </div>
       )}
       <div className='flex items-center text-primary-600 w-full'>
-        {!isEnv && !isChatVar && <Variable02 className='shrink-0 w-3.5 h-3.5 text-primary-500' />}
+        {!isEnv && !isChatVar && <Variable02 className={cn('shrink-0 w-3.5 h-3.5 text-primary-500', isException && 'text-text-warning')} />}
         {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
-        {!isChatVar && <div className={cn('max-w-[75px] truncate ml-0.5 system-xs-medium overflow-hidden text-ellipsis', isEnv && 'text-gray-900')} title={varName}>{varName}</div>}
+        {!isChatVar && <div className={cn('max-w-[75px] truncate ml-0.5 system-xs-medium overflow-hidden text-ellipsis', isEnv && 'text-gray-900', isException && 'text-text-warning')} title={varName}>{varName}</div>}
         {isChatVar
           && <div className='flex items-center w-full gap-1'>
             <div className='flex h-[18px] min-w-[18px] items-center gap-0.5 flex-1'>
               <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />
-              <div className='max-w-[75px] truncate ml-0.5 system-xs-medium overflow-hidden text-ellipsis text-util-colors-teal-teal-700'>{varName}</div>
+              <div className={cn('max-w-[75px] truncate ml-0.5 system-xs-medium overflow-hidden text-ellipsis text-util-colors-teal-teal-700')}>{varName}</div>
             </div>
             {writeMode && <Badge className='shrink-0' text={t(`${i18nPrefix}.operations.${writeMode}`)} />}
           </div>

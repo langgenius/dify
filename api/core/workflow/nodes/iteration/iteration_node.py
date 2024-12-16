@@ -164,7 +164,9 @@ class IterationNode(BaseNode[IterationNodeData]):
             if self.node_data.is_parallel:
                 futures: list[Future] = []
                 q: Queue = Queue()
-                thread_pool = GraphEngineThreadPool(max_workers=self.node_data.parallel_nums, max_submit_count=100)
+                thread_pool = GraphEngineThreadPool(
+                    max_workers=self.node_data.parallel_nums, max_submit_count=dify_config.MAX_SUBMIT_COUNT
+                )
                 for index, item in enumerate(iterator_list_value):
                     future: Future = thread_pool.submit(
                         self._run_single_iter_parallel,
@@ -184,7 +186,6 @@ class IterationNode(BaseNode[IterationNodeData]):
                     future.add_done_callback(thread_pool.task_done_callback)
                     futures.append(future)
                 succeeded_count = 0
-                empty_count = 0
                 while True:
                     try:
                         event = q.get(timeout=1)
@@ -598,3 +599,4 @@ class IterationNode(BaseNode[IterationNodeData]):
                 parallel_mode_run_id=parallel_mode_run_id,
             ):
                 q.put(event)
+            graph_engine.graph_runtime_state.total_tokens += graph_engine_copy.graph_runtime_state.total_tokens

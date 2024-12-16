@@ -1,9 +1,10 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
-class SupabaseStorageConfig(BaseModel):
+class SupabaseStorageConfig(BaseSettings):
     """
     Configuration settings for Supabase Object Storage Service
     """

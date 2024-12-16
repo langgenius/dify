@@ -61,7 +61,9 @@ class CodeNode(BaseNode[CodeNodeData]):
             # Transform result
             result = self._transform_result(result, self.node_data.outputs)
         except (CodeExecutionError, CodeNodeError) as e:
-            return NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e))
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e), error_type=type(e).__name__
+            )
 
         return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs=result)
 
