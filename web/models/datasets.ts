@@ -482,6 +482,7 @@ export type HitTestingRecord = {
 export type HitTestingChildChunk = {
   id: string
   content: string
+  position: number
   score: number
 }
 export type HitTesting = {
