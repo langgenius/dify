@@ -485,6 +485,11 @@ class AuthConfig(BaseSettings):
         default=60,
     )
 
+    LOGIN_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying login after exceeding the rate limit.",
+        default=86400,
+    )
+
 
 class ModerationConfig(BaseSettings):
     """
