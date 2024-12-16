@@ -32,8 +32,7 @@ import {
 } from '@/app/components/plugins/marketplace/hooks'
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginType } from '@/app/components/plugins/types'
-// import { getMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/utils'
-import type { MarketplaceCollection } from '@/app/components/plugins/marketplace/types'
+import { getMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/utils'
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
@@ -242,34 +241,11 @@ export const useUpdateModelProviders = () => {
   return updateModelProviders
 }
 
-export const useMarketplace = () => {
-  const [marketplaceCollections] = useState<MarketplaceCollection[]>([])
-  const [marketplaceCollectionPluginsMap] = useState<Record<string, Plugin[]>>()
-  const [isLoading] = useState(false)
-
-  // const getCollectionPlugins = useCallback(async () => {
-  //   setIsLoading(true)
-  //   const collectionPlugins = await getMarketplacePluginsByCollectionId('')
-  //   setIsLoading(false)
-
-  //   setCollectionPlugins(collectionPlugins)
-  // }, [])
-
-  // useEffect(() => {
-  //   getCollectionPlugins()
-  // }, [getCollectionPlugins])
-
-  return {
-    isLoading,
-    marketplaceCollections,
-    marketplaceCollectionPluginsMap,
-  }
-}
-
 export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText: string) => {
   const exclude = useMemo(() => {
     return providers.map(provider => provider.provider.replace(/(.+)\/([^/]+)$/, '$1'))
   }, [providers])
+  const [collectionPlugins, setCollectionPlugins] = useState<Plugin[]>([])
 
   const {
     plugins,
@@ -277,6 +253,16 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
     queryPluginsWithDebounced,
     isLoading,
   } = useMarketplacePlugins()
+
+  const getCollectionPlugins = useCallback(async () => {
+    const collectionPlugins = await getMarketplacePluginsByCollectionId('__model-settings-pinned-models')
+
+    setCollectionPlugins(collectionPlugins)
+  }, [])
+
+  useEffect(() => {
+    getCollectionPlugins()
+  }, [getCollectionPlugins])
 
   useEffect(() => {
     if (searchText) {
@@ -298,8 +284,23 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
     }
   }, [queryPlugins, queryPluginsWithDebounced, searchText, exclude])
 
+  const allPlugins = useMemo(() => {
+    const allPlugins = [...collectionPlugins.filter(plugin => !exclude.includes(plugin.plugin_id))]
+
+    if (plugins?.length) {
+      for (let i = 0; i < plugins.length; i++) {
+        const plugin = plugins[i]
+
+        if (plugin.type !== 'bundle' && !allPlugins.find(p => p.plugin_id === plugin.plugin_id))
+          allPlugins.push(plugin)
+      }
+    }
+
+    return allPlugins
+  }, [plugins, collectionPlugins, exclude])
+
   return {
-    plugins: plugins?.filter(plugin => plugin.type !== 'bundle'),
+    plugins: allPlugins,
     isLoading,
   }
 }

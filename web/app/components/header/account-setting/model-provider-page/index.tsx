@@ -21,7 +21,6 @@ import {
 } from './declarations'
 import {
   useDefaultModel,
-  useMarketplace,
   useMarketplaceAllPlugins,
   useUpdateModelList,
   useUpdateModelProviders,
@@ -122,11 +121,6 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const [collapse, setCollapse] = useState(false)
   const locale = getLocaleOnClient()
   const {
-    marketplaceCollections,
-    marketplaceCollectionPluginsMap,
-    isLoading: isPluginsLoading,
-  } = useMarketplace()
-  const {
     plugins: allPlugins,
     isLoading: isAllPluginsLoading,
   } = useMarketplaceAllPlugins(providers, searchText)
@@ -213,20 +207,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
             </Link>
           </div>
         </div>
-        {!collapse && (isPluginsLoading || isAllPluginsLoading) && <Loading type='area' />}
-        {
-          !isPluginsLoading && !collapse && (
-            <List
-              marketplaceCollections={marketplaceCollections || []}
-              marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
-              plugins={undefined}
-              showInstallButton
-              locale={locale}
-              cardContainerClassName='grid grid-cols-2 gap-2'
-              cardRender={cardRender}
-            />
-          )
-        }
+        {!collapse && isAllPluginsLoading && <Loading type='area' />}
         {
           !isAllPluginsLoading && !collapse && (
             <List
