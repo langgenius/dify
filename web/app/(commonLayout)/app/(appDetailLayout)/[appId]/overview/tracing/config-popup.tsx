@@ -134,7 +134,6 @@ const ConfigPopup: FC<PopupProps> = ({
     if (opikConfig)
       configuredPanels.push(opikPanel)
 
-    console.log(configuredPanels)
     return configuredPanels
   }
 
