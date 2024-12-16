@@ -21,7 +21,6 @@ import {
 } from './declarations'
 import {
   useDefaultModel,
-  useMarketplace,
   useMarketplaceAllPlugins,
   useUpdateModelList,
   useUpdateModelProviders,
@@ -122,11 +121,6 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const [collapse, setCollapse] = useState(false)
   const locale = getLocaleOnClient()
   const {
-    marketplaceCollections,
-    marketplaceCollectionPluginsMap,
-    isLoading: isPluginsLoading,
-  } = useMarketplace()
-  const {
     plugins: allPlugins,
     isLoading: isAllPluginsLoading,
   } = useMarketplaceAllPlugins(providers, searchText)
@@ -143,7 +137,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
       <div className={cn('flex items-center mb-2')}>
         <div className='grow text-text-primary system-md-semibold'>{t('common.modelProvider.models')}</div>
         <div className={cn(
-          'shrink-0 relative flex items-center justify-end gap-2 p-0.5 rounded-lg border border-transparent',
+          'shrink-0 relative flex items-center justify-end gap-2 p-px rounded-lg border border-transparent',
           defaultModelNotConfigured && 'pl-2 bg-components-panel-bg-blur border-components-panel-border shadow-xs',
         )}>
           {defaultModelNotConfigured && <div className='absolute top-0 bottom-0 right-0 left-0 opacity-40' style={{ background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)' }} />}
@@ -164,7 +158,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
         </div>
       </div>
       {!filteredConfiguredProviders?.length && (
-        <div className='mb-2 p-4 rounded-[10px]' style={{ background: 'linear-gradient(90deg, rgba(200, 206, 218, 0.20) 0%, rgba(200, 206, 218, 0.04) 100%)' }}>
+        <div className='mb-2 p-4 rounded-[10px] bg-workflow-process-bg'>
           <div className='w-10 h-10 flex items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur'>
             <RiBrainLine className='w-5 h-5 text-text-primary' />
           </div>
@@ -213,20 +207,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
             </Link>
           </div>
         </div>
-        {!collapse && (isPluginsLoading || isAllPluginsLoading) && <Loading type='area' />}
-        {
-          !isPluginsLoading && !collapse && (
-            <List
-              marketplaceCollections={marketplaceCollections || []}
-              marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
-              plugins={undefined}
-              showInstallButton
-              locale={locale}
-              cardContainerClassName='grid grid-cols-2 gap-2'
-              cardRender={cardRender}
-            />
-          )
-        }
+        {!collapse && isAllPluginsLoading && <Loading type='area' />}
         {
           !isAllPluginsLoading && !collapse && (
             <List

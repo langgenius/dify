@@ -36,7 +36,7 @@ const ProviderCard: FC<Props> = ({
   const { locale } = useI18N()
 
   return (
-    <div className={cn('group relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)}>
+    <div className={cn('group relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)}>
       {/* Header */}
       <div className="flex">
         <Icon src={payload.icon} />
@@ -61,7 +61,7 @@ const ProviderCard: FC<Props> = ({
         ))}
       </div>
       <div
-        className='hidden group-hover:flex items-center gap-2 absolute bottom-0 left-0 right-0 p-4 pt-8 rounded-xl bg-gradient-to-tr from-[#f9fafb] to-[rgba(249,250,251,0)]'
+        className='hidden group-hover:flex items-center gap-2 absolute bottom-0 left-0 right-0 p-4 pt-8 rounded-xl bg-gradient-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent'
       >
         <Button
           className='grow'

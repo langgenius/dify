@@ -39,8 +39,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import { CopyIcon } from '@/app/components/base/copy-icon'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
-import { correctProvider } from '@/utils'
-import { TONE_LIST } from '@/config'
+import cn from '@/utils/classnames'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -300,22 +299,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const isChatMode = appDetail?.mode !== 'completion'
   const isAdvanced = appDetail?.mode === 'advanced-chat'
 
-  const targetTone = TONE_LIST.find((item: any) => {
-    let res = true
-    validatedParams.forEach((param) => {
-      res = item.config?.[param] === detail?.model_config.model?.completion_params?.[param]
-    })
-    return res
-  })?.name ?? 'custom'
-
-  const modelName = (detail.model_config as any).model?.name
-  const provideName = correctProvider((detail.model_config as any).model?.provider as any)
-  const {
-    currentModel,
-    currentProvider,
-  } = useTextGenerationCurrentProviderAndModelAndModelList(
-    { provider: provideName, model: modelName },
-  )
   const varList = (detail.model_config as any).user_input_form?.map((item: any) => {
     const itemContent = item[Object.keys(item)[0]]
     return {

@@ -13,7 +13,6 @@ import type {
 } from '../declarations'
 import { ConfigurationMethodEnum } from '../declarations'
 import {
-  DEFAULT_BACKGROUND_COLOR,
   MODEL_PROVIDER_QUOTA_GET_PAID,
   modelTypeFormat,
 } from '../utils'
@@ -27,6 +26,7 @@ import { fetchModelProviderModelList } from '@/service/common'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { IS_CE_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
+import cn from '@/utils/classnames'
 
 export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
 type ProviderAddedCardProps = {
@@ -82,8 +82,11 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
 
   return (
     <div
-      className='mb-2 rounded-xl border-[0.5px] border-black/5 shadow-xs'
-      style={{ background: provider.background || DEFAULT_BACKGROUND_COLOR }}
+      className={cn(
+        'mb-2 rounded-xl border-[0.5px] border-divider-regular shadow-xs bg-third-party-model-bg-default',
+        provider.provider === 'langgenius/openai/openai' && 'bg-third-party-model-bg-openai',
+        provider.provider === 'langgenius/anthropic/anthropic' && 'bg-third-party-model-bg-anthropic',
+      )}
     >
       <div className='flex pl-3 py-2 pr-2 rounded-t-xl'>
         <div className='grow px-1 pt-1 pb-0.5'>
@@ -119,7 +122,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       </div>
       {
         collapsed && (
-          <div className='group flex items-center justify-between pl-2 py-1.5 pr-[11px] border-t border-t-black/5 bg-white/30 text-xs font-medium text-gray-500'>
+          <div className='group flex items-center justify-between pl-2 py-1.5 pr-[11px] border-t border-t-divider-subtle text-text-tertiary system-xs-medium'>
             {(showQuota || !notConfigured) && (
               <>
                 <div className='group-hover:hidden flex items-center pl-1 pr-1.5 h-6 leading-6'>
@@ -131,7 +134,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                   {!loading && <RiArrowRightSLine className='w-4 h-4' />}
                 </div>
                 <div
-                  className='hidden group-hover:flex items-center pl-1 pr-1.5 h-6 rounded-lg hover:bg-white cursor-pointer'
+                  className='hidden group-hover:flex items-center pl-1 pr-1.5 h-6 rounded-lg hover:bg-components-button-ghost-bg-hover cursor-pointer'
                   onClick={handleOpenModelList}
                 >
                   {
@@ -151,7 +154,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             {!showQuota && notConfigured && (
               <div className='flex items-center pl-1 pr-1.5 h-6'>
                 <RiInformation2Fill className='mr-1 w-4 h-4 text-text-accent' />
-                <span>{t('common.modelProvider.configureTip')}</span>
+                <span className='text-text-secondary system-xs-medium'>{t('common.modelProvider.configureTip')}</span>
               </div>
             )}
             {

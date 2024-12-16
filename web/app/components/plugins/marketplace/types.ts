@@ -1,5 +1,11 @@
 import type { Plugin } from '../types'
 
+export type SearchParamsFromCollection = {
+  query?: string
+  sort_by?: string
+  sort_order?: string
+}
+
 export type MarketplaceCollection = {
   name: string
   label: Record<string, string>
@@ -7,6 +13,8 @@ export type MarketplaceCollection = {
   rule: string
   created_at: string
   updated_at: string
+  searchable?: boolean
+  search_params?: SearchParamsFromCollection
 }
 
 export type MarketplaceCollectionsResponse = {

@@ -2242,10 +2242,10 @@
     classcat "^5.0.3"
     zustand "^4.4.1"
 
-"@remixicon/react@^4.3.0":
-  version "4.3.0"
-  resolved "https://registry.npmjs.org/@remixicon/react/-/react-4.3.0.tgz#8ab34d03fccca53bf66f87c6e3f943ef5c65684f"
-  integrity sha512-mAVDn8pAa9dURltGwiYrf7bPIqjG4ZAnCUHfjpgz3g+HLSDNXOaJ67Z5wmjVB5KMGpp9JbbTN5vsp2z+ajVLWg==
+"@remixicon/react@^4.5.0":
+  version "4.5.0"
+  resolved "https://registry.yarnpkg.com/@remixicon/react/-/react-4.5.0.tgz#5600d122ee4995bff2c4442cb056eeb4f11ecb5a"
+  integrity sha512-Xr20SxMpRNlgXZnoF5BCMyZuQEhXY3yJCyms8kxB/vJCCiV1nWdiO48XqRG5LBd1192iSHC4m658AIWi6rmBFg==
 
 "@rgrove/parse-xml@^4.1.0":
   version "4.1.0"

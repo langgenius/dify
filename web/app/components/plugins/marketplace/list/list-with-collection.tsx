@@ -1,9 +1,13 @@
 'use client'
+
+import { useTranslation } from 'react-i18next'
+import { RiArrowRightSLine } from '@remixicon/react'
 import type { MarketplaceCollection } from '../types'
 import CardWrapper from './card-wrapper'
 import type { Plugin } from '@/app/components/plugins/types'
 import { getLanguage } from '@/i18n/language'
 import cn from '@/utils/classnames'
+import type { SearchParamsFromCollection } from '@/app/components/plugins/marketplace/types'
 
 type ListWithCollectionProps = {
   marketplaceCollections: MarketplaceCollection[]
@@ -12,7 +16,7 @@ type ListWithCollectionProps = {
   locale: string
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => JSX.Element | null
-  onMoreClick?: () => void
+  onMoreClick?: (searchParams?: SearchParamsFromCollection) => void
 }
 const ListWithCollection = ({
   marketplaceCollections,
@@ -21,8 +25,10 @@ const ListWithCollection = ({
   locale,
   cardContainerClassName,
   cardRender,
-  // onMoreClick,
+  onMoreClick,
 }: ListWithCollectionProps) => {
+  const { t } = useTranslation()
+
   return (
     <>
       {
@@ -31,15 +37,22 @@ const ListWithCollection = ({
             key={collection.name}
             className='py-3'
           >
-            <div className='flex justify-between'>
+            <div className='flex justify-between items-end'>
               <div>
                 <div className='title-xl-semi-bold text-text-primary'>{collection.label[getLanguage(locale)]}</div>
                 <div className='system-xs-regular text-text-tertiary'>{collection.description[getLanguage(locale)]}</div>
               </div>
-              {/* <div
-                className='system-xs-regular text-text-tertiary cursor-pointer hover:underline'
-                onClick={() => onMoreClick?.()}
-              >more</div> */}
+              {
+                collection.searchable && onMoreClick && (
+                  <div
+                    className='flex items-center system-xs-medium text-text-accent cursor-pointer '
+                    onClick={() => onMoreClick?.(collection.search_params)}
+                  >
+                    {t('plugin.marketplace.viewMore')}
+                    <RiArrowRightSLine className='w-4 h-4' />
+                  </div>
+                )
+              }
             </div>
             <div className={cn(
               'grid grid-cols-4 gap-3 mt-2',

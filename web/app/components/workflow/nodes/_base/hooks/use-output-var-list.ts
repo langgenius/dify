@@ -1,9 +1,17 @@
 import { useCallback, useState } from 'react'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
-import type { OutputVar } from '../../code/types'
-import type { ValueSelector } from '@/app/components/workflow/types'
-import { VarType } from '@/app/components/workflow/types'
+import type {
+  CodeNodeType,
+  OutputVar,
+} from '../../code/types'
+import type {
+  ValueSelector,
+} from '@/app/components/workflow/types'
+import {
+  BlockEnum,
+  VarType,
+} from '@/app/components/workflow/types'
 import {
   useWorkflow,
 } from '@/app/components/workflow/hooks'

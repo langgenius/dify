@@ -24,6 +24,7 @@ import type {
   MarketplaceCollection,
   PluginsSort,
   SearchParams,
+  SearchParamsFromCollection,
 } from './types'
 import { DEFAULT_SORT } from './constants'
 import {
@@ -49,10 +50,12 @@ export type MarketplaceContextValue = {
   page: number
   handlePageChange: (page: number) => void
   plugins?: Plugin[]
+  pluginsTotal?: number
   resetPlugins: () => void
   sort: PluginsSort
   handleSortChange: (sort: PluginsSort) => void
   handleQueryPlugins: () => void
+  handleMoreClick: (searchParams: SearchParamsFromCollection) => void
   marketplaceCollectionsFromClient?: MarketplaceCollection[]
   setMarketplaceCollectionsFromClient: (collections: MarketplaceCollection[]) => void
   marketplaceCollectionPluginsMapFromClient?: Record<string, Plugin[]>
@@ -73,10 +76,12 @@ export const MarketplaceContext = createContext<MarketplaceContextValue>({
   page: 1,
   handlePageChange: () => {},
   plugins: undefined,
+  pluginsTotal: 0,
   resetPlugins: () => {},
   sort: DEFAULT_SORT,
   handleSortChange: () => {},
   handleQueryPlugins: () => {},
+  handleMoreClick: () => {},
   marketplaceCollectionsFromClient: [],
   setMarketplaceCollectionsFromClient: () => {},
   marketplaceCollectionPluginsMapFromClient: {},
@@ -248,13 +253,30 @@ export const MarketplaceContextProvider = ({
   }, [handleQueryPlugins])
 
   const handlePageChange = useCallback(() => {
-    if (pluginsTotal && plugins && pluginsTotal > plugins.length && (!!searchPluginTextRef.current || !!filterPluginTagsRef.current.length)) {
+    if (pluginsTotal && plugins && pluginsTotal > plugins.length) {
       setPage(pageRef.current + 1)
       pageRef.current++
 
       handleQueryPlugins()
     }
   }, [handleQueryPlugins, plugins, pluginsTotal])
+
+  const handleMoreClick = useCallback((searchParams: SearchParamsFromCollection) => {
+    setSearchPluginText(searchParams?.query || '')
+    searchPluginTextRef.current = searchParams?.query || ''
+    setSort({
+      sortBy: searchParams?.sort_by || DEFAULT_SORT.sortBy,
+      sortOrder: searchParams?.sort_order || DEFAULT_SORT.sortOrder,
+    })
+    sortRef.current = {
+      sortBy: searchParams?.sort_by || DEFAULT_SORT.sortBy,
+      sortOrder: searchParams?.sort_order || DEFAULT_SORT.sortOrder,
+    }
+    setPage(1)
+    pageRef.current = 1
+
+    handleQueryPlugins()
+  }, [handleQueryPlugins])
 
   useMarketplaceContainerScroll(handlePageChange, scrollContainerId)
 
@@ -272,10 +294,12 @@ export const MarketplaceContextProvider = ({
         page,
         handlePageChange,
         plugins,
+        pluginsTotal,
         resetPlugins,
         sort,
         handleSortChange,
         handleQueryPlugins,
+        handleMoreClick,
         marketplaceCollectionsFromClient,
         setMarketplaceCollectionsFromClient,
         marketplaceCollectionPluginsMapFromClient,

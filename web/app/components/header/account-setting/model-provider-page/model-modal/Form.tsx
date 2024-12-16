@@ -20,6 +20,7 @@ import Radio from '@/app/components/base/radio'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
+import RadioE from '@/app/components/base/radio/ui'
 
 type FormProps = {
   className?: string
@@ -177,17 +178,15 @@ const Form: FC<FormProps> = ({
               }).map(option => (
                 <div
                   className={`
-                    flex items-center px-3 py-2 rounded-lg border border-gray-100 bg-gray-25 cursor-pointer
-                    ${value[variable] === option.value && 'bg-white border-[1.5px] border-primary-400 shadow-sm'}
+                    flex items-center gap-2 px-3 py-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg cursor-pointer
+                    ${value[variable] === option.value && 'bg-components-option-card-option-selected-bg border-[1.5px] border-components-option-card-option-selected-border shadow-sm'}
                     ${disabled && '!cursor-not-allowed opacity-60'}
                   `}
                   onClick={() => handleFormChange(variable, option.value)}
                   key={`${variable}-${option.value}`}
                 >
-                  <div className={`
-                    flex justify-center items-center mr-2 w-4 h-4 border border-gray-300 rounded-full
-                    ${value[variable] === option.value && 'border-[5px] border-primary-600'}
-                  `} />
+                  <RadioE isChecked={value[variable] === option.value} />
+
                   <div className='system-sm-regular text-text-secondary'>{option.label[language] || option.label.en_US}</div>
                 </div>
               ))

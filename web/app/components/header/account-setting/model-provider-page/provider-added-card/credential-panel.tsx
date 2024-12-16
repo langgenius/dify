@@ -66,8 +66,8 @@ const CredentialPanel: FC<CredentialPanelProps> = ({
     <>
       {
         provider.provider_credential_schema && (
-          <div className='shrink-0 relative ml-1 p-1 w-[112px] rounded-lg bg-white/[0.3] border-[0.5px] border-black/5'>
-            <div className='flex items-center justify-between mb-1 pt-1 pl-2 pr-[7px] h-5 text-xs font-medium text-gray-500'>
+          <div className='shrink-0 relative ml-1 p-1 w-[112px] rounded-lg bg-white/[0.18] border-[0.5px] border-components-panel-border'>
+            <div className='flex items-center justify-between mb-1 pt-1 pl-2 pr-[7px] h-5 system-xs-medium-uppercase text-text-tertiary'>
               API-KEY
               <Indicator color={isCustomConfigured ? 'green' : 'red'} />
             </div>

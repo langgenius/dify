@@ -23,10 +23,14 @@ const Item: FC<ItemProps> = ({
   return (
     <div
       key={option.value}
-      className={cn('relative pb-2.5 text-text-tertiary system-sm-semibold-uppercase', !isActive && 'cursor-pointer', className)}
+      className={cn(
+        'relative pb-2.5 system-xl-semibold',
+        !isActive && 'cursor-pointer',
+        className,
+      )}
       onClick={() => !isActive && onClick(option.value)}
     >
-      <div className={cn(isActive && 'text-text-primary')}>{option.text}</div>
+      <div className={cn(isActive ? 'text-text-primary' : 'text-text-tertiary')}>{option.text}</div>
       {isActive && (
         <div className='absolute bottom-0 left-0 right-0 h-0.5 bg-util-colors-blue-blue-500'></div>
       )}
@@ -52,7 +56,7 @@ const TabSlider: FC<Props> = ({
   itemClassName,
 }) => {
   return (
-    <div className={cn('flex space-x-6', !noBorderBottom && 'border-b border-[#EAECF0]', className)}>
+    <div className={cn(className, !noBorderBottom && 'border-b border-divider-subtle', 'flex  space-x-6')}>
       {options.map(option => (
         <Item
           isActive={option.value === value}
