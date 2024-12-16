@@ -571,6 +571,7 @@ const Completed: FC<ICompletedProps> = ({
           />
       }
       {/* Pagination */}
+      <Divider type='horizontal' className='w-auto h-[1px] my-0 mx-6 bg-divider-subtle' />
       <Pagination
         current={currentPage - 1}
         onChange={cur => setCurrentPage(cur + 1)}
