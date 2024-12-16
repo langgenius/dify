@@ -9,6 +9,7 @@ import Input from '@/app/components/base/input'
 import classNames from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import { formatNumber } from '@/utils/format'
+import Loading from '@/app/components/base/loading'
 
 type IChildSegmentCardProps = {
   childChunks: ChildChunkDetail[]
@@ -21,6 +22,7 @@ type IChildSegmentCardProps = {
   total?: number
   inputValue?: string
   onClearFilter?: () => void
+  isLoading?: boolean
 }
 
 const ChildSegmentList: FC<IChildSegmentCardProps> = ({
@@ -34,6 +36,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   total,
   inputValue,
   onClearFilter,
+  isLoading,
 }) => {
   const { t } = useTranslation()
   const parentMode = useDocumentContext(s => s.parentMode)
@@ -57,7 +60,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   }, [enabled])
 
   const totalText = useMemo(() => {
-    const isSearch = inputValue !== ''
+    const isSearch = inputValue !== '' && isFullDocMode
     if (!isSearch) {
       const text = isFullDocMode
         ? !total
@@ -123,6 +126,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
       {(isFullDocMode || !collapsed)
         ? <div className={classNames('flex gap-x-0.5', isFullDocMode ? 'grow' : '')}>
           {isParagraphMode && <Divider type='vertical' className='h-auto w-[2px] mx-[7px] bg-text-accent-secondary' />}
+          {isLoading ? <Loading type='app' /> : null}
           {childChunks.length > 0
             ? <div className={classNames('w-full !leading-5 flex flex-col', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
               {childChunks.map((childChunk) => {
@@ -140,9 +144,11 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
                 />
               })}
             </div>
-            : <div className='h-full w-full'>
-              <Empty onClearFilter={onClearFilter!} />
-            </div>
+            : inputValue !== ''
+              ? <div className='h-full w-full'>
+                <Empty onClearFilter={onClearFilter!} />
+              </div>
+              : null
           }
         </div>
         : null}

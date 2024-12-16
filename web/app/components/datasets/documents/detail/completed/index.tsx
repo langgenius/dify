@@ -154,7 +154,7 @@ const Completed: FC<ICompletedProps> = ({
     }
   }, [segments])
 
-  const { data: childChunkListData } = useChildSegmentList(
+  const { isFetching: isLoadingChildSegmentList, data: childChunkListData } = useChildSegmentList(
     {
       datasetId,
       documentId,
@@ -550,6 +550,7 @@ const Completed: FC<ICompletedProps> = ({
               total={childChunkListData?.total || 0}
               inputValue={inputValue}
               onClearFilter={onClearFilter}
+              isLoading={isLoadingChildSegmentList}
             />
           </div>
           : <SegmentList
