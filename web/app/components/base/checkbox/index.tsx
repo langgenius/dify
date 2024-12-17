@@ -1,6 +1,6 @@
 import { RiCheckLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
 import s from './index.module.css'
+import cn from '@/utils/classnames'
 
 type CheckboxProps = {
   checked?: boolean

@@ -192,6 +192,7 @@ export const useWorkflowRun = () => {
           const newNodes = produce(nodes, (draft) => {
             draft.forEach((node) => {
               node.data._waitingRun = true
+              node.data._runningBranchId = undefined
             })
           })
           setNodes(newNodes)

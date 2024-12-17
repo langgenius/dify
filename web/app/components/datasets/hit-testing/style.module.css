@@ -6,10 +6,6 @@
   @apply flex-1 h-full;
 }
 
-.table td {
-  @apply whitespace-nowrap overflow-hidden text-ellipsis;
-}
-
 .commonIcon {
   @apply w-3.5 h-3.5 inline-block align-middle;
   background-repeat: no-repeat;
