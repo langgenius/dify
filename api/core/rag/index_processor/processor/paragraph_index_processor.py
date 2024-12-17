@@ -1,5 +1,5 @@
 """Paragraph index processor."""
-
+import concurrent
 import uuid
 from typing import Optional
 
@@ -63,7 +63,13 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             if node_ids:
-                vector.delete_by_ids(node_ids)
+                with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                    futures = {
+                        executor.submit(vector.delete_by_id, node_id): node_id
+                        for node_id in node_ids
+                    }
+                    for future in concurrent.futures.as_completed(futures):
+                        future.result()
             else:
                 vector.delete()
         if with_keywords:
