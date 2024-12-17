@@ -496,7 +496,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                                 sub_messages.append(sub_message_dict)
                             elif message_content.type == PromptMessageContentType.IMAGE:
                                 message_content = cast(ImagePromptMessageContent, message_content)
-                                if not message_content.b64data:
+                                if not message_content.base64_data:
                                     # fetch image data from url
                                     try:
                                         image_content = requests.get(message_content.url).content
@@ -506,7 +506,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                                             f"Failed to fetch image data from url {message_content.data}, {ex}"
                                         )
                                 else:
-                                    base64_data = message_content.b64data
+                                    base64_data = message_content.base64_data
 
                                 mime_type = message_content.mime_type
                                 if mime_type not in {"image/jpeg", "image/png", "image/gif", "image/webp"}:

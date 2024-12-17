@@ -85,14 +85,14 @@ class MultiModalPromptMessageContent(PromptMessageContent):
 
     type: PromptMessageContentType
     format: str = Field(..., description="the format of multi-modal file")
-    b64data: str = Field("", description="the base64 data of multi-modal file")
+    base64_data: str = Field("", description="the base64 data of multi-modal file")
     url: str = Field("", description="the url of multi-modal file")
     mime_type: str = Field(..., description="the mime type of multi-modal file")
 
     @computed_field(return_type=str)
     @property
     def data(self):
-        return self.url or f"data:{self.mime_type};base64,{self.b64data}"
+        return self.url or f"data:{self.mime_type};base64,{self.base64_data}"
 
 
 class VideoPromptMessageContent(MultiModalPromptMessageContent):

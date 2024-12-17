@@ -48,7 +48,7 @@ def to_prompt_message_content(
         raise ValueError("Missing file mime_type")
 
     params = {
-        "b64data": _get_encoded_string(f) if dify_config.MULTIMODAL_SEND_FORMAT == "base64" else "",
+        "base64_data": _get_encoded_string(f) if dify_config.MULTIMODAL_SEND_FORMAT == "base64" else "",
         "url": _to_url(f) if dify_config.MULTIMODAL_SEND_FORMAT == "url" else "",
         "format": f.extension.removeprefix("."),
         "mime_type": f.mime_type,
