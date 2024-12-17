@@ -50,6 +50,7 @@ const ChunkContent: FC<IChunkContentProps> = ({
 
   return (
     <AutoHeightTextarea
+      outerClassName='mb-6'
       className='body-md-regular text-text-secondary tracking-[-0.07px] caret-[#295EFF]'
       value={question}
       placeholder={t('datasetDocuments.segment.contentPlaceholder') || ''}

@@ -23,8 +23,6 @@ import type {
   IndexingStatusResponse,
   ProcessRuleResponse,
   RelatedAppResponse,
-  SegmentDetailModel,
-  SegmentUpdater,
   createDocumentResponse,
 } from '@/models/datasets'
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
@@ -178,18 +176,6 @@ export const modifyDocMetadata: Fetcher<CommonResponse, CommonDocReq & { body: {
 }
 
 // apis for segments in a document
-export const updateSegment: Fetcher<{ data: SegmentDetailModel; doc_form: string }, { datasetId: string; documentId: string; segmentId: string; body: SegmentUpdater }> = ({ datasetId, documentId, segmentId, body }) => {
-  return patch<{ data: SegmentDetailModel; doc_form: string }>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`, { body })
-}
-
-export const addSegment: Fetcher<{ data: SegmentDetailModel; doc_form: string }, { datasetId: string; documentId: string; body: SegmentUpdater }> = ({ datasetId, documentId, body }) => {
-  return post<{ data: SegmentDetailModel; doc_form: string }>(`/datasets/${datasetId}/documents/${documentId}/segment`, { body })
-}
-
-export const deleteSegment: Fetcher<CommonResponse, { datasetId: string; documentId: string; segmentId: string }> = ({ datasetId, documentId, segmentId }) => {
-  return del<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`)
-}
-
 export const segmentBatchImport: Fetcher<{ job_id: string; job_status: string }, { url: string; body: FormData }> = ({ url, body }) => {
   return post<{ job_id: string; job_status: string }>(url, { body }, { bodyStringify: false, deleteContentType: true })
 }

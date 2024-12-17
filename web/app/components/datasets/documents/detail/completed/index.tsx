@@ -24,7 +24,6 @@ import Input from '@/app/components/base/input'
 import { ToastContext } from '@/app/components/base/toast'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
-import { updateSegment } from '@/service/datasets'
 import { type ChildChunkDetail, ChuckingMode, type SegmentDetailModel, type SegmentUpdater } from '@/models/datasets'
 import NewSegment from '@/app/components/datasets/documents/detail/new-segment'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -39,6 +38,7 @@ import {
   useSegmentList,
   useSegmentListKey,
   useUpdateChildSegment,
+  useUpdateSegment,
 } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
 
@@ -244,6 +244,8 @@ const Completed: FC<ICompletedProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetId, documentId, selectedSegmentIds])
 
+  const { mutateAsync: updateSegment } = useUpdateSegment()
+
   const handleUpdateSegment = useCallback(async (
     segmentId: string,
     question: string,
@@ -274,30 +276,31 @@ const Completed: FC<ICompletedProps> = ({
     if (needRegenerate)
       params.regenerate_child_chunks = needRegenerate
 
-    try {
-      eventEmitter?.emit('update-segment')
-      const res = await updateSegment({ datasetId, documentId, segmentId, body: params })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      if (!needRegenerate)
-        onCloseSegmentDetail()
-      for (const seg of segments) {
-        if (seg.id === segmentId) {
-          seg.answer = res.data.answer
-          seg.content = res.data.content
-          seg.keywords = res.data.keywords
-          seg.word_count = res.data.word_count
-          seg.hit_count = res.data.hit_count
-          seg.enabled = res.data.enabled
-          seg.updated_at = res.data.updated_at
-          seg.child_chunks = res.data.child_chunks
+    eventEmitter?.emit('update-segment')
+    await updateSegment({ datasetId, documentId, segmentId, body: params }, {
+      onSuccess(data) {
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        if (!needRegenerate)
+          onCloseSegmentDetail()
+        for (const seg of segments) {
+          if (seg.id === segmentId) {
+            seg.answer = data.data.answer
+            seg.content = data.data.content
+            seg.keywords = data.data.keywords
+            seg.word_count = data.data.word_count
+            seg.hit_count = data.data.hit_count
+            seg.enabled = data.data.enabled
+            seg.updated_at = data.data.updated_at
+            seg.child_chunks = data.data.child_chunks
+          }
         }
-      }
-      setSegments([...segments])
-      eventEmitter?.emit('update-segment-success')
-    }
-    finally {
-      eventEmitter?.emit('update-segment-done')
-    }
+        setSegments([...segments])
+        eventEmitter?.emit('update-segment-success')
+      },
+      onSettled() {
+        eventEmitter?.emit('update-segment-done')
+      },
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segments, datasetId, documentId])
 
