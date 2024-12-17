@@ -271,9 +271,9 @@ class WorkflowCycleManage:
 
         db.session.close()
 
-        with Session(db.engine, expire_on_commit=False) as session:
-            session.add(workflow_run)
-            session.refresh(workflow_run)
+        # with Session(db.engine, expire_on_commit=False) as session:
+        #     session.add(workflow_run)
+        #     session.refresh(workflow_run)
 
         if trace_manager:
             trace_manager.add_trace_task(

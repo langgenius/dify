@@ -948,7 +948,7 @@ class DocumentRetryApi(DocumentResource):
                 if document.indexing_status == "completed":
                     raise DocumentAlreadyFinishedError()
                 retry_documents.append(document)
-            except Exception as e:
+            except Exception:
                 logging.exception(f"Failed to retry document, document id: {document_id}")
                 continue
         # retry document

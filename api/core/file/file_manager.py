@@ -42,39 +42,31 @@ def to_prompt_message_content(
     *,
     image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
 ):
-    match f.type:
-        case FileType.IMAGE:
-            image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
-            if dify_config.MULTIMODAL_SEND_IMAGE_FORMAT == "url":
-                data = _to_url(f)
-            else:
-                data = _to_base64_data_string(f)
+    if f.extension is None:
+        raise ValueError("Missing file extension")
+    if f.mime_type is None:
+        raise ValueError("Missing file mime_type")
 
-            return ImagePromptMessageContent(data=data, detail=image_detail_config)
-        case FileType.AUDIO:
-            encoded_string = _get_encoded_string(f)
-            if f.extension is None:
-                raise ValueError("Missing file extension")
-            return AudioPromptMessageContent(data=encoded_string, format=f.extension.lstrip("."))
-        case FileType.VIDEO:
-            if dify_config.MULTIMODAL_SEND_VIDEO_FORMAT == "url":
-                data = _to_url(f)
-            else:
-                data = _to_base64_data_string(f)
-            if f.extension is None:
-                raise ValueError("Missing file extension")
-            return VideoPromptMessageContent(data=data, format=f.extension.lstrip("."))
-        case FileType.DOCUMENT:
-            data = _get_encoded_string(f)
-            if f.mime_type is None:
-                raise ValueError("Missing file mime_type")
-            return DocumentPromptMessageContent(
-                encode_format="base64",
-                mime_type=f.mime_type,
-                data=data,
-            )
-        case _:
-            raise ValueError(f"file type {f.type} is not supported")
+    params = {
+        "base64_data": _get_encoded_string(f) if dify_config.MULTIMODAL_SEND_FORMAT == "base64" else "",
+        "url": _to_url(f) if dify_config.MULTIMODAL_SEND_FORMAT == "url" else "",
+        "format": f.extension.removeprefix("."),
+        "mime_type": f.mime_type,
+    }
+    if f.type == FileType.IMAGE:
+        params["detail"] = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
+
+    prompt_class_map = {
+        FileType.IMAGE: ImagePromptMessageContent,
+        FileType.AUDIO: AudioPromptMessageContent,
+        FileType.VIDEO: VideoPromptMessageContent,
+        FileType.DOCUMENT: DocumentPromptMessageContent,
+    }
+
+    try:
+        return prompt_class_map[f.type](**params)
+    except KeyError:
+        raise ValueError(f"file type {f.type} is not supported")
 
 
 def download(f: File, /):
@@ -126,11 +118,6 @@ def _get_encoded_string(f: File, /):
 
     encoded_string = base64.b64encode(data).decode("utf-8")
     return encoded_string
-
-
-def _to_base64_data_string(f: File, /):
-    encoded_string = _get_encoded_string(f)
-    return f"data:{f.mime_type};base64,{encoded_string}"
 
 
 def _to_url(f: File, /):

@@ -434,9 +434,9 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                             sub_messages.append(sub_message_dict)
                         elif message_content.type == PromptMessageContentType.VIDEO:
                             message_content = cast(VideoPromptMessageContent, message_content)
-                            video_url = message_content.data
-                            if message_content.data.startswith("data:"):
-                                raise InvokeError("not support base64, please set MULTIMODAL_SEND_VIDEO_FORMAT to url")
+                            video_url = message_content.url
+                            if not video_url:
+                                raise InvokeError("not support base64, please set MULTIMODAL_SEND_FORMAT to url")
 
                             sub_message_dict = {"video": video_url}
                             sub_messages.append(sub_message_dict)

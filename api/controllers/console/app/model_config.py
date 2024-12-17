@@ -70,7 +70,7 @@ class ModelConfigResource(Resource):
                         provider_type=agent_tool_entity.provider_type,
                         identity_id=f"AGENT.{app_model.id}",
                     )
-                except Exception as e:
+                except Exception:
                     continue
 
                 # get decrypted parameters
@@ -102,7 +102,7 @@ class ModelConfigResource(Resource):
                             app_id=app_model.id,
                             agent_tool=agent_tool_entity,
                         )
-                    except Exception as e:
+                    except Exception:
                         continue
 
                 manager = ToolParameterConfigurationManager(

@@ -439,6 +439,17 @@ class WorkflowConfig(BaseSettings):
     )
 
 
+class WorkflowNodeExecutionConfig(BaseSettings):
+    """
+    Configuration for workflow node execution
+    """
+
+    MAX_SUBMIT_COUNT: PositiveInt = Field(
+        description="Maximum number of submitted thread count in a ThreadPool for parallel node execution",
+        default=100,
+    )
+
+
 class AuthConfig(BaseSettings):
     """
     Configuration for authentication and OAuth
@@ -472,6 +483,11 @@ class AuthConfig(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: PositiveInt = Field(
         description="Expiration time for access tokens in minutes",
         default=60,
+    )
+
+    LOGIN_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying login after exceeding the rate limit.",
+        default=86400,
     )
 
 
@@ -649,14 +665,9 @@ class IndexingConfig(BaseSettings):
     )
 
 
-class VisionFormatConfig(BaseSettings):
-    MULTIMODAL_SEND_IMAGE_FORMAT: Literal["base64", "url"] = Field(
-        description="Format for sending images in multimodal contexts ('base64' or 'url'), default is base64",
-        default="base64",
-    )
-
-    MULTIMODAL_SEND_VIDEO_FORMAT: Literal["base64", "url"] = Field(
-        description="Format for sending videos in multimodal contexts ('base64' or 'url'), default is base64",
+class MultiModalTransferConfig(BaseSettings):
+    MULTIMODAL_SEND_FORMAT: Literal["base64", "url"] = Field(
+        description="Format for sending files in multimodal contexts ('base64' or 'url'), default is base64",
         default="base64",
     )
 
@@ -762,19 +773,20 @@ class FeatureConfig(
     FileAccessConfig,
     FileUploadConfig,
     HttpConfig,
-    VisionFormatConfig,
     InnerAPIConfig,
     IndexingConfig,
     LoggingConfig,
     MailConfig,
     ModelLoadBalanceConfig,
     ModerationConfig,
+    MultiModalTransferConfig,
     PositionConfig,
     RagEtlConfig,
     SecurityConfig,
     ToolConfig,
     UpdateConfig,
     WorkflowConfig,
+    WorkflowNodeExecutionConfig,
     WorkspaceConfig,
     LoginConfig,
     # hosted services config

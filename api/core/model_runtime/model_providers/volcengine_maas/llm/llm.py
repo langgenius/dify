@@ -132,6 +132,14 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
         messages_dict = [ArkClientV3.convert_prompt_message(m) for m in messages]
         for message in messages_dict:
             for key, value in message.items():
+                # Ignore tokens for image type
+                if isinstance(value, list):
+                    text = ""
+                    for item in value:
+                        if isinstance(item, dict) and item["type"] == "text":
+                            text += item["text"]
+
+                    value = text
                 num_tokens += self._get_num_tokens_by_gpt2(str(key))
                 num_tokens += self._get_num_tokens_by_gpt2(str(value))
 
