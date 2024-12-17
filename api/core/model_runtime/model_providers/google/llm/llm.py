@@ -317,7 +317,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                     )
                 else:
                     # calculate num tokens
-                    if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                    if hasattr(response, "usage_metadata") and response.usage_metadata:
                         prompt_tokens = response.usage_metadata.prompt_token_count
                         completion_tokens = response.usage_metadata.candidates_token_count
                     else:
