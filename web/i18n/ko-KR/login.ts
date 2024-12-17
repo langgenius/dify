@@ -99,6 +99,12 @@ const translation = {
   enterYourName: '사용자 이름을 입력해 주세요',
   noLoginMethodTip: '인증 방법을 추가하려면 시스템 관리자에게 문의하십시오.',
   resetPasswordDesc: 'Dify에 가입할 때 사용한 이메일을 입력하면 비밀번호 재설정 이메일을 보내드립니다.',
+  licenseInactiveTip: '작업 영역에 대한 Dify Enterprise 라이선스가 비활성 상태입니다. Dify를 계속 사용하려면 관리자에게 문의하십시오.',
+  licenseLost: '라이센스 분실',
+  licenseLostTip: 'Dify 라이선스 서버에 연결하지 못했습니다. Dify를 계속 사용하려면 관리자에게 문의하십시오.',
+  licenseInactive: 'License Inactive(라이선스 비활성)',
+  licenseExpired: '라이센스가 만료되었습니다.',
+  licenseExpiredTip: '작업 영역에 대한 Dify Enterprise 라이선스가 만료되었습니다. Dify를 계속 사용하려면 관리자에게 문의하십시오.',
 }
 
 export default translation

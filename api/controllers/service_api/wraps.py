@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from functools import wraps
 from typing import Optional
@@ -198,7 +198,7 @@ def validate_and_get_api_token(scope=None):
     if not api_token:
         raise Unauthorized("Access token is invalid")
 
-    api_token.last_used_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    api_token.last_used_at = datetime.now(UTC).replace(tzinfo=None)
     db.session.commit()
 
     return api_token

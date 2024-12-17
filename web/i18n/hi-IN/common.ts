@@ -613,6 +613,13 @@ const translation = {
     fileExtensionNotSupport: 'फ़ाइल एक्सटेंशन समर्थित नहीं है',
     uploadFromComputer: 'स्थानीय अपलोड',
   },
+  license: {
+    expiring: 'एक दिन में समाप्त हो रहा है',
+    expiring_plural: '{{गिनती}} दिनों में समाप्त हो रहा है',
+  },
+  pagination: {
+    perPage: 'प्रति पृष्ठ आइटम',
+  },
 }
 
 export default translation

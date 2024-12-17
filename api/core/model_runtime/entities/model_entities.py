@@ -1,5 +1,5 @@
 from decimal import Decimal
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict
@@ -87,9 +87,12 @@ class ModelFeature(Enum):
     AGENT_THOUGHT = "agent-thought"
     VISION = "vision"
     STREAM_TOOL_CALL = "stream-tool-call"
+    DOCUMENT = "document"
+    VIDEO = "video"
+    AUDIO = "audio"
 
 
-class DefaultParameterName(str, Enum):
+class DefaultParameterName(StrEnum):
     """
     Enum class for parameter template variable.
     """

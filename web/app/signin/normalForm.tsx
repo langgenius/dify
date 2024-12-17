@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { RiDoorLockLine } from '@remixicon/react'
+import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
 import Loading from '../components/base/loading'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
@@ -10,13 +10,11 @@ import SocialAuth from './components/social-auth'
 import SSOAuth from './components/sso-auth'
 import cn from '@/utils/classnames'
 import { getSystemFeatures, invitationCheck } from '@/service/common'
-import { defaultSystemFeatures } from '@/types/feature'
+import { LicenseStatus, defaultSystemFeatures } from '@/types/feature'
 import Toast from '@/app/components/base/toast'
-import useRefreshToken from '@/hooks/use-refresh-token'
 import { IS_CE_EDITION } from '@/config'
 
 const NormalForm = () => {
-  const { getNewAccessToken } = useRefreshToken()
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -38,7 +36,6 @@ const NormalForm = () => {
       if (consoleToken && refreshToken) {
         localStorage.setItem('console_token', consoleToken)
         localStorage.setItem('refresh_token', refreshToken)
-        getNewAccessToken()
         router.replace('/apps')
         return
       }
@@ -71,7 +68,7 @@ const NormalForm = () => {
       setSystemFeatures(defaultSystemFeatures)
     }
     finally { setIsLoading(false) }
-  }, [consoleToken, refreshToken, message, router, invite_token, isInviteLink, getNewAccessToken])
+  }, [consoleToken, refreshToken, message, router, invite_token, isInviteLink])
   useEffect(() => {
     init()
   }, [init])
@@ -84,6 +81,48 @@ const NormalForm = () => {
       )
     }>
       <Loading type='area' />
+    </div>
+  }
+  if (systemFeatures.license?.status === LicenseStatus.LOST) {
+    return <div className='w-full mx-auto mt-8'>
+      <div className='bg-white'>
+        <div className="p-4 rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2">
+          <div className='flex items-center justify-center w-10 h-10 rounded-xl bg-components-card-bg shadow shadows-shadow-lg mb-2 relative'>
+            <RiContractLine className='w-5 h-5' />
+            <RiErrorWarningFill className='absolute w-4 h-4 text-text-warning-secondary -top-1 -right-1' />
+          </div>
+          <p className='system-sm-medium text-text-primary'>{t('login.licenseLost')}</p>
+          <p className='system-xs-regular text-text-tertiary mt-1'>{t('login.licenseLostTip')}</p>
+        </div>
+      </div>
+    </div>
+  }
+  if (systemFeatures.license?.status === LicenseStatus.EXPIRED) {
+    return <div className='w-full mx-auto mt-8'>
+      <div className='bg-white'>
+        <div className="p-4 rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2">
+          <div className='flex items-center justify-center w-10 h-10 rounded-xl bg-components-card-bg shadow shadows-shadow-lg mb-2 relative'>
+            <RiContractLine className='w-5 h-5' />
+            <RiErrorWarningFill className='absolute w-4 h-4 text-text-warning-secondary -top-1 -right-1' />
+          </div>
+          <p className='system-sm-medium text-text-primary'>{t('login.licenseExpired')}</p>
+          <p className='system-xs-regular text-text-tertiary mt-1'>{t('login.licenseExpiredTip')}</p>
+        </div>
+      </div>
+    </div>
+  }
+  if (systemFeatures.license?.status === LicenseStatus.INACTIVE) {
+    return <div className='w-full mx-auto mt-8'>
+      <div className='bg-white'>
+        <div className="p-4 rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2">
+          <div className='flex items-center justify-center w-10 h-10 rounded-xl bg-components-card-bg shadow shadows-shadow-lg mb-2 relative'>
+            <RiContractLine className='w-5 h-5' />
+            <RiErrorWarningFill className='absolute w-4 h-4 text-text-warning-secondary -top-1 -right-1' />
+          </div>
+          <p className='system-sm-medium text-text-primary'>{t('login.licenseInactive')}</p>
+          <p className='system-xs-regular text-text-tertiary mt-1'>{t('login.licenseInactiveTip')}</p>
+        </div>
+      </div>
     </div>
   }
 

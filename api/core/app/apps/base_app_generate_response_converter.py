@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from typing import Any, Union
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -14,8 +14,10 @@ class AppGenerateResponseConverter(ABC):
 
     @classmethod
     def convert(
-        cls, response: Union[AppBlockingResponse, Generator[AppStreamResponse, Any, None]], invoke_from: InvokeFrom
-    ) -> dict[str, Any] | Generator[str, Any, None]:
+        cls,
+        response: Union[AppBlockingResponse, Generator[AppStreamResponse, Any, None]],
+        invoke_from: InvokeFrom,
+    ) -> Mapping[str, Any] | Generator[str, None, None]:
         if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API}:
             if isinstance(response, AppBlockingResponse):
                 return cls.convert_blocking_full_response(response)
@@ -80,7 +82,7 @@ class AppGenerateResponseConverter(ABC):
             for resource in metadata["retriever_resources"]:
                 updated_resources.append(
                     {
-                        "segment_id": resource["segment_id"],
+                        "segment_id": resource.get("segment_id", ""),
                         "position": resource["position"],
                         "document_name": resource["document_name"],
                         "score": resource["score"],

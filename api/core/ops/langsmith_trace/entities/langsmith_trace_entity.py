@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
@@ -8,7 +8,7 @@ from pydantic_core.core_schema import ValidationInfo
 from core.ops.utils import replace_text_with_content
 
 
-class LangSmithRunType(str, Enum):
+class LangSmithRunType(StrEnum):
     tool = "tool"
     chain = "chain"
     llm = "llm"
@@ -49,6 +49,7 @@ class LangSmithRunModel(LangSmithTokenUsage, LangSmithMultiModel):
     reference_example_id: Optional[str] = Field(None, description="Reference example ID associated with the run")
     input_attachments: Optional[dict[str, Any]] = Field(None, description="Input attachments of the run")
     output_attachments: Optional[dict[str, Any]] = Field(None, description="Output attachments of the run")
+    dotted_order: Optional[str] = Field(None, description="Dotted order of the run")
 
     @field_validator("inputs", "outputs")
     @classmethod

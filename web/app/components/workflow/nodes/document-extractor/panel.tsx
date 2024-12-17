@@ -72,7 +72,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
         </Field>
       </div>
       <Split />
-      <div className='px-4 pt-4 pb-2'>
+      <div>
         <OutputVars>
           <VarItem
             name='text'

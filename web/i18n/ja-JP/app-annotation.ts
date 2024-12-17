@@ -9,6 +9,8 @@ const translation = {
   table: {
     header: {
       question: '質問',
+      match: 'マッチ',
+      response: '応答',
       answer: '回答',
       createdAt: '作成日時',
       hits: 'ヒット数',

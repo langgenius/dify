@@ -4,6 +4,7 @@ import uuid
 import requests
 from requests.auth import HTTPDigestAuth
 
+from configs import dify_config
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import TidbAuthBinding
@@ -36,7 +37,7 @@ class TidbService:
         }
 
         spending_limit = {
-            "monthly": 100,
+            "monthly": dify_config.TIDB_SPEND_LIMIT,
         }
         password = str(uuid.uuid4()).replace("-", "")[:16]
         display_name = str(uuid.uuid4()).replace("-", "")[:16]
@@ -161,7 +162,7 @@ class TidbService:
         clusters = []
         tidb_serverless_list_map = {item.cluster_id: item for item in tidb_serverless_list}
         cluster_ids = [item.cluster_id for item in tidb_serverless_list]
-        params = {"clusterIds": cluster_ids, "view": "FULL"}
+        params = {"clusterIds": cluster_ids, "view": "BASIC"}
         response = requests.get(
             f"{api_url}/clusters:batchGet", params=params, auth=HTTPDigestAuth(public_key, private_key)
         )
@@ -208,7 +209,7 @@ class TidbService:
             }
 
             spending_limit = {
-                "monthly": 10,
+                "monthly": dify_config.TIDB_SPEND_LIMIT,
             }
             password = str(uuid.uuid4()).replace("-", "")[:16]
             display_name = str(uuid.uuid4()).replace("-", "")

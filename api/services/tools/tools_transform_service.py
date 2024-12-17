@@ -183,7 +183,7 @@ class ToolTransformService:
         try:
             username = db_provider.user.name
         except Exception as e:
-            logger.error(f"failed to get user name for api provider {db_provider.id}: {str(e)}")
+            logger.exception(f"failed to get user name for api provider {db_provider.id}")
         # add provider into providers
         credentials = db_provider.credentials
         result = UserToolProvider(
@@ -242,7 +242,7 @@ class ToolTransformService:
             # get tool parameters
             parameters = tool.parameters or []
             # get tool runtime parameters
-            runtime_parameters = tool.get_runtime_parameters() or []
+            runtime_parameters = tool.get_runtime_parameters()
             # override parameters
             current_parameters = parameters.copy()
             for runtime_parameter in runtime_parameters:

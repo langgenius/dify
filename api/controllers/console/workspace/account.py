@@ -8,14 +8,13 @@ from flask_restful import Resource, fields, marshal_with, reqparse
 from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
-from controllers.console.setup import setup_required
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
     InvalidInvitationCodeError,
     RepeatPasswordNotMatchError,
 )
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
 from extensions.ext_database import db
 from fields.member_fields import account_fields
 from libs.helper import TimestampField, timezone
@@ -61,7 +60,7 @@ class AccountInitApi(Resource):
                 raise InvalidInvitationCodeError()
 
             invitation_code.status = "used"
-            invitation_code.used_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            invitation_code.used_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             invitation_code.used_by_tenant_id = account.current_tenant_id
             invitation_code.used_by_account_id = account.id
 
@@ -69,7 +68,7 @@ class AccountInitApi(Resource):
         account.timezone = args["timezone"]
         account.interface_theme = "light"
         account.status = "active"
-        account.initialized_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        account.initialized_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         db.session.commit()
 
         return {"result": "success"}
@@ -80,6 +79,7 @@ class AccountProfileApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
+    @enterprise_license_required
     def get(self):
         return current_user
 

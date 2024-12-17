@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -22,6 +22,11 @@ class BaseTraceInfo(BaseModel):
         if isinstance(v, str | dict | list):
             return v
         return ""
+
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+        }
 
 
 class WorkflowTraceInfo(BaseTraceInfo):
@@ -100,6 +105,12 @@ class GenerateNameTraceInfo(BaseTraceInfo):
     tenant_id: str
 
 
+class TaskData(BaseModel):
+    app_id: str
+    trace_info_type: str
+    trace_info: Any
+
+
 trace_info_info_map = {
     "WorkflowTraceInfo": WorkflowTraceInfo,
     "MessageTraceInfo": MessageTraceInfo,
@@ -111,7 +122,7 @@ trace_info_info_map = {
 }
 
 
-class TraceTaskName(str, Enum):
+class TraceTaskName(StrEnum):
     CONVERSATION_TRACE = "conversation"
     WORKFLOW_TRACE = "workflow"
     MESSAGE_TRACE = "message"

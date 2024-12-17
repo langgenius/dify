@@ -28,7 +28,7 @@ import IterationResultPanel from '../run/iteration-result-panel'
 import InputsPanel from './inputs-panel'
 import cn from '@/utils/classnames'
 import Loading from '@/app/components/base/loading'
-import type { NodeTracing } from '@/types/workflow'
+import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 
 const WorkflowPreview = () => {
   const { t } = useTranslation()
@@ -48,17 +48,19 @@ const WorkflowPreview = () => {
   }, [showDebugAndPreviewPanel, showInputsPanel])
 
   useEffect(() => {
-    if ((workflowRunningData?.result.status === WorkflowRunningStatus.Succeeded || workflowRunningData?.result.status === WorkflowRunningStatus.Failed) && !workflowRunningData.resultText)
+    if ((workflowRunningData?.result.status === WorkflowRunningStatus.Succeeded || workflowRunningData?.result.status === WorkflowRunningStatus.Failed) && !workflowRunningData.resultText && !workflowRunningData.result.files?.length)
       switchTab('DETAIL')
   }, [workflowRunningData])
 
   const [iterationRunResult, setIterationRunResult] = useState<NodeTracing[][]>([])
+  const [iterDurationMap, setIterDurationMap] = useState<IterationDurationMap>({})
   const [isShowIterationDetail, {
     setTrue: doShowIterationDetail,
     setFalse: doHideIterationDetail,
   }] = useBoolean(false)
 
-  const handleShowIterationDetail = useCallback((detail: NodeTracing[][]) => {
+  const handleShowIterationDetail = useCallback((detail: NodeTracing[][], iterationDurationMap: IterationDurationMap) => {
+    setIterDurationMap(iterationDurationMap)
     setIterationRunResult(detail)
     doShowIterationDetail()
   }, [doShowIterationDetail])
@@ -72,6 +74,7 @@ const WorkflowPreview = () => {
           list={iterationRunResult}
           onHide={doHideIterationDetail}
           onBack={doHideIterationDetail}
+          iterDurationMap={iterDurationMap}
         />
       </div>
     )
@@ -94,6 +97,7 @@ const WorkflowPreview = () => {
               list={iterationRunResult}
               onHide={doHideIterationDetail}
               onBack={doHideIterationDetail}
+              iterDurationMap={iterDurationMap}
             />
           )
           : (
@@ -189,6 +193,7 @@ const WorkflowPreview = () => {
                     created_at={workflowRunningData?.result?.created_at}
                     created_by={(workflowRunningData?.result?.created_by as any)?.name}
                     steps={workflowRunningData?.result?.total_steps}
+                    exceptionCounts={workflowRunningData?.result?.exceptions_count}
                   />
                 )}
                 {currentTab === 'DETAIL' && !workflowRunningData?.result && (

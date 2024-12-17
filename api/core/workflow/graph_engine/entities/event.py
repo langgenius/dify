@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Any, Optional
 
@@ -32,6 +33,12 @@ class GraphRunSucceededEvent(BaseGraphEvent):
 
 class GraphRunFailedEvent(BaseGraphEvent):
     error: str = Field(..., description="failed reason")
+    exceptions_count: Optional[int] = Field(description="exception count", default=0)
+
+
+class GraphRunPartialSucceededEvent(BaseGraphEvent):
+    exceptions_count: int = Field(..., description="exception count")
+    outputs: Optional[dict[str, Any]] = None
 
 
 ###########################################
@@ -59,6 +66,7 @@ class BaseNodeEvent(GraphEngineEvent):
 
 class NodeRunStartedEvent(BaseNodeEvent):
     predecessor_node_id: Optional[str] = None
+    parallel_mode_run_id: Optional[str] = None
     """predecessor node id"""
 
 
@@ -78,6 +86,14 @@ class NodeRunSucceededEvent(BaseNodeEvent):
 
 
 class NodeRunFailedEvent(BaseNodeEvent):
+    error: str = Field(..., description="error")
+
+
+class NodeRunExceptionEvent(BaseNodeEvent):
+    error: str = Field(..., description="error")
+
+
+class NodeInIterationFailedEvent(BaseNodeEvent):
     error: str = Field(..., description="error")
 
 
@@ -129,33 +145,37 @@ class BaseIterationEvent(GraphEngineEvent):
     """parent parallel id if node is in parallel"""
     parent_parallel_start_node_id: Optional[str] = None
     """parent parallel start node id if node is in parallel"""
+    parallel_mode_run_id: Optional[str] = None
+    """iteratoin run in parallel mode run id"""
 
 
 class IterationRunStartedEvent(BaseIterationEvent):
     start_at: datetime = Field(..., description="start at")
-    inputs: Optional[dict[str, Any]] = None
-    metadata: Optional[dict[str, Any]] = None
+    inputs: Optional[Mapping[str, Any]] = None
+    metadata: Optional[Mapping[str, Any]] = None
     predecessor_node_id: Optional[str] = None
 
 
 class IterationRunNextEvent(BaseIterationEvent):
     index: int = Field(..., description="index")
     pre_iteration_output: Optional[Any] = Field(None, description="pre iteration output")
+    duration: Optional[float] = Field(None, description="duration")
 
 
 class IterationRunSucceededEvent(BaseIterationEvent):
     start_at: datetime = Field(..., description="start at")
-    inputs: Optional[dict[str, Any]] = None
-    outputs: Optional[dict[str, Any]] = None
-    metadata: Optional[dict[str, Any]] = None
+    inputs: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    metadata: Optional[Mapping[str, Any]] = None
     steps: int = 0
+    iteration_duration_map: Optional[dict[str, float]] = None
 
 
 class IterationRunFailedEvent(BaseIterationEvent):
     start_at: datetime = Field(..., description="start at")
-    inputs: Optional[dict[str, Any]] = None
-    outputs: Optional[dict[str, Any]] = None
-    metadata: Optional[dict[str, Any]] = None
+    inputs: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    metadata: Optional[Mapping[str, Any]] = None
     steps: int = 0
     error: str = Field(..., description="failed reason")
 

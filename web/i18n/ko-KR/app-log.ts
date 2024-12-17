@@ -53,6 +53,7 @@ const translation = {
     },
     variables: '변수',
     uploadImages: '업로드된 이미지',
+    modelParams: '모델 매개 변수',
   },
   filter: {
     period: {
@@ -80,6 +81,8 @@ const translation = {
   runDetail: {
     title: '대화 로그',
     workflowTitle: '로그 세부 정보',
+    fileListDetail: '세부',
+    fileListLabel: '파일 세부 정보',
   },
   promptLog: '프롬프트 로그',
   agentLog: '에이전트 로그',

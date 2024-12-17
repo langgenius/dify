@@ -1,0 +1,35 @@
+identity:
+  name: create_spreadsheet
+  author: Doug Lea
+  label:
+    en_US: Create Spreadsheet
+    zh_Hans: 创建电子表格
+description:
+  human:
+    en_US: Create Spreadsheet
+    zh_Hans: 创建电子表格
+  llm: A tool for creating spreadsheets. (创建电子表格)
+parameters:
+  - name: title
+    type: string
+    required: false
+    label:
+      en_US: Spreadsheet Title
+      zh_Hans: 电子表格标题
+    human_description:
+      en_US: The title of the spreadsheet
+      zh_Hans: 电子表格的标题
+    llm_description: 电子表格的标题
+    form: llm
+
+  - name: folder_token
+    type: string
+    required: false
+    label:
+      en_US: Folder Token
+      zh_Hans: 文件夹 token
+    human_description:
+      en_US: The token of the folder, supports folder URL input, e.g., https://bytedance.larkoffice.com/drive/folder/CxHEf4DCSlNkL2dUTCJcPRgentg
+      zh_Hans: 文件夹 token，支持文件夹 URL 输入，如：https://bytedance.larkoffice.com/drive/folder/CxHEf4DCSlNkL2dUTCJcPRgentg
+    llm_description: 文件夹 token，支持文件夹 URL 输入，如：https://bytedance.larkoffice.com/drive/folder/CxHEf4DCSlNkL2dUTCJcPRgentg
+    form: llm

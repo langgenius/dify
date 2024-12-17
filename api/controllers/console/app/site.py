@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from flask_login import current_user
 from flask_restful import Resource, marshal_with, reqparse
@@ -7,8 +7,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
 from fields.app_fields import app_site_fields
 from libs.login import login_required
@@ -76,7 +75,7 @@ class AppSite(Resource):
                 setattr(site, attr_name, value)
 
         site.updated_by = current_user.id
-        site.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        site.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
         return site
@@ -100,7 +99,7 @@ class AppSiteAccessTokenReset(Resource):
 
         site.code = Site.generate_code(16)
         site.updated_by = current_user.id
-        site.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        site.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
         return site

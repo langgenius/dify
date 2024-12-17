@@ -591,6 +591,13 @@ const translation = {
     pasteFileLink: 'پیوند فایل را جایگذاری کنید',
     uploadFromComputerLimit: 'آپلود فایل نمی تواند از {{size}} تجاوز کند',
   },
+  license: {
+    expiring_plural: 'انقضا در {{count}} روز',
+    expiring: 'انقضا در یک روز',
+  },
+  pagination: {
+    perPage: 'موارد در هر صفحه',
+  },
 }
 
 export default translation

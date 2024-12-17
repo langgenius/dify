@@ -1,12 +1,12 @@
 import json
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Optional, Union
 
 import httpx
 import validators
 
-# from tasks.external_document_indexing_task import external_document_indexing_task
+from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from models.dataset import (
@@ -68,8 +68,11 @@ class ExternalDatasetService:
 
         endpoint = f"{settings['endpoint']}/retrieval"
         api_key = settings["api_key"]
-        if not validators.url(endpoint):
-            raise ValueError(f"invalid endpoint: {endpoint}")
+        if not validators.url(endpoint, simple_host=True):
+            if not endpoint.startswith("http://") and not endpoint.startswith("https://"):
+                raise ValueError(f"invalid endpoint: {endpoint} must start with http:// or https://")
+            else:
+                raise ValueError(f"invalid endpoint: {endpoint}")
         try:
             response = httpx.post(endpoint, headers={"Authorization": f"Bearer {api_key}"})
         except Exception as e:
@@ -92,12 +95,14 @@ class ExternalDatasetService:
         ).first()
         if external_knowledge_api is None:
             raise ValueError("api template not found")
+        if args.get("settings") and args.get("settings").get("api_key") == HIDDEN_VALUE:
+            args.get("settings")["api_key"] = external_knowledge_api.settings_dict.get("api_key")
 
         external_knowledge_api.name = args.get("name")
         external_knowledge_api.description = args.get("description", "")
         external_knowledge_api.settings = json.dumps(args.get("settings"), ensure_ascii=False)
         external_knowledge_api.updated_by = user_id
-        external_knowledge_api.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        external_knowledge_api.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
         return external_knowledge_api

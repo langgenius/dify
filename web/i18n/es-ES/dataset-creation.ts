@@ -147,7 +147,7 @@ const translation = {
     retrievalSettingTip: 'Para cambiar el método de índice, por favor ve a la ',
     datasetSettingLink: 'configuración del conocimiento.',
     separatorTip: 'Un delimitador es el carácter que se utiliza para separar el texto. \\n\\n y \\n son delimitadores comúnmente utilizados para separar párrafos y líneas. Combinado con comas (\\n\\n,\\n), los párrafos se segmentarán por líneas cuando excedan la longitud máxima del fragmento. También puede utilizar delimitadores especiales definidos por usted mismo (por ejemplo, ***).',
-    maxLengthCheck: 'La longitud máxima del fragmento debe ser inferior a 4000',
+    maxLengthCheck: 'La longitud máxima del fragmento debe ser inferior a {{limit}}',
   },
   stepThree: {
     creationTitle: '🎉 Conocimiento creado',

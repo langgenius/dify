@@ -33,6 +33,10 @@ import { LoveMessage } from '@/app/components/base/icons/src/vender/features'
 // type
 import type { AutomaticRes } from '@/service/debug'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
+import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
+import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 export type IGetAutomaticResProps = {
   mode: AppType
@@ -68,7 +72,10 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   onFinished,
 }) => {
   const { t } = useTranslation()
-
+  const {
+    currentProvider,
+    currentModel,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
   const tryList = [
     {
       icon: RiTerminalBoxLine,
@@ -190,6 +197,19 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           <div className='mb-8'>
             <div className={`leading-[28px] text-lg font-bold ${s.textGradient}`}>{t('appDebug.generate.title')}</div>
             <div className='mt-1 text-[13px] font-normal text-gray-500'>{t('appDebug.generate.description')}</div>
+          </div>
+          <div className='flex items-center mb-8'>
+            <ModelIcon
+              className='shrink-0 mr-1.5 '
+              provider={currentProvider}
+              modelName={currentModel?.model}
+            />
+            <ModelName
+              className='grow'
+              modelItem={currentModel!}
+              showMode
+              showFeatures
+            />
           </div>
           <div >
             <div className='flex items-center'>

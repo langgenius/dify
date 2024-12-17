@@ -173,6 +173,9 @@ docker/volumes/myscale/log/*
 docker/volumes/unstructured/*
 docker/volumes/pgvector/data/*
 docker/volumes/pgvecto_rs/data/*
+docker/volumes/couchbase/*
+docker/volumes/oceanbase/*
+!docker/volumes/oceanbase/init.d
 
 docker/nginx/conf.d/default.conf
 docker/nginx/ssl/*

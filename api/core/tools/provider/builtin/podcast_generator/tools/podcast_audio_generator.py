@@ -1,14 +1,19 @@
 import concurrent.futures
 import io
 import random
+import warnings
 from typing import Any, Literal, Optional, Union
 
 import openai
-from pydub import AudioSegment
+from yarl import URL
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolParameterValidationError, ToolProviderCredentialValidationError
 from core.tools.tool.builtin_tool import BuiltinTool
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    from pydub import AudioSegment
 
 
 class PodcastAudioGeneratorTool(BuiltinTool):
@@ -49,15 +54,24 @@ class PodcastAudioGeneratorTool(BuiltinTool):
         if not host1_voice or not host2_voice:
             raise ToolParameterValidationError("Host voices are required")
 
-        # Get OpenAI API key from credentials
+        # Ensure runtime and credentials
         if not self.runtime or not self.runtime.credentials:
             raise ToolProviderCredentialValidationError("Tool runtime or credentials are missing")
+
+        # Get OpenAI API key from credentials
         api_key = self.runtime.credentials.get("api_key")
         if not api_key:
             raise ToolProviderCredentialValidationError("OpenAI API key is missing")
 
+        # Get OpenAI base URL
+        openai_base_url = self.runtime.credentials.get("openai_base_url", None)
+        openai_base_url = str(URL(openai_base_url) / "v1") if openai_base_url else None
+
         # Initialize OpenAI client
-        client = openai.OpenAI(api_key=api_key)
+        client = openai.OpenAI(
+            api_key=api_key,
+            base_url=openai_base_url,
+        )
 
         # Create a thread pool
         max_workers = 5
