@@ -498,22 +498,19 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                                 sub_messages.append(sub_message_dict)
                             elif message_content.type == PromptMessageContentType.IMAGE:
                                 message_content = cast(ImagePromptMessageContent, message_content)
-                                if not message_content.data.startswith("data:"):
+                                if not message_content.b64data:
                                     # fetch image data from url
                                     try:
-                                        image_content = requests.get(message_content.data).content
-                                        with Image.open(io.BytesIO(image_content)) as img:
-                                            mime_type = f"image/{img.format.lower()}"
+                                        image_content = requests.get(message_content.url).content
                                         base64_data = base64.b64encode(image_content).decode("utf-8")
                                     except Exception as ex:
                                         raise ValueError(
                                             f"Failed to fetch image data from url {message_content.data}, {ex}"
                                         )
                                 else:
-                                    data_split = message_content.data.split(";base64,")
-                                    mime_type = data_split[0].replace("data:", "")
-                                    base64_data = data_split[1]
+                                    base64_data = message_content.b64data
 
+                                mime_type = message_content.mime_type
                                 if mime_type not in {"image/jpeg", "image/png", "image/gif", "image/webp"}:
                                     raise ValueError(
                                         f"Unsupported image type {mime_type}, "
@@ -534,7 +531,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                                 sub_message_dict = {
                                     "type": "document",
                                     "source": {
-                                        "type": message_content.encode_format,
+                                        "type": "base64",
                                         "media_type": message_content.mime_type,
                                         "data": message_content.data,
                                     },
