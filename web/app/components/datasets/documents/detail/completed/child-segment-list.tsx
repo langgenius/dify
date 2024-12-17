@@ -3,6 +3,7 @@ import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { EditSlice } from '../../../formatted-text/flavours/edit-slice'
 import { useDocumentContext } from '../index'
+import { FormattedText } from '../../../formatted-text/formatted'
 import Empty from './common/empty'
 import FullDocListSkeleton from './skeleton/full-doc-list-skeleton'
 import type { ChildChunkDetail } from '@/models/datasets'
@@ -135,9 +136,13 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
       {isLoading ? <FullDocListSkeleton /> : null}
       {((isFullDocMode && !isLoading) || !collapsed)
         ? <div className={classNames('flex items-center gap-x-0.5', isFullDocMode ? 'grow' : '')}>
-          {isParagraphMode && <Divider type='vertical' className='h-auto w-[2px] mx-[7px] bg-text-accent-secondary' />}
+          {isParagraphMode && (
+            <div className='self-stretch my-0.5'>
+              <Divider type='vertical' className='w-[2px] mx-[7px] bg-text-accent-secondary' />
+            </div>
+          )}
           {childChunks.length > 0
-            ? <div className={classNames('w-full !leading-5 flex flex-col', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
+            ? <FormattedText className={classNames('w-full !leading-6 flex flex-col', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
               {childChunks.map((childChunk) => {
                 const edited = childChunk.updated_at !== childChunk.created_at
                 return <EditSlice
@@ -146,13 +151,15 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
                   text={childChunk.content}
                   onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
                   className='line-clamp-3'
+                  labelClassName='font-semibold'
+                  contentClassName={'!leading-6'}
                   onClick={(e) => {
                     e.stopPropagation()
                     onClickSlice?.(childChunk)
                   }}
                 />
               })}
-            </div>
+            </FormattedText>
             : inputValue !== ''
               ? <div className='h-full w-full'>
                 <Empty onClearFilter={onClearFilter!} />

@@ -10,7 +10,6 @@ import { SegmentIndexTag } from './common/segment-index-tag'
 import ParentChunkCardSkeleton from './skeleton/parent-chunk-card-skeleton'
 import { useSegmentListContext } from './index'
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
-import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import { formatNumber } from '@/utils/format'
@@ -157,66 +156,58 @@ const SegmentCard: FC<ISegmentCardProps> = ({
           </div>
           {!isFullDocMode
             ? <div className='flex items-center'>
-              {loading
-                ? (
-                  <Indicator color="gray" />
-                )
-                : (
-                  <>
-                    <StatusItem status={enabled ? 'enabled' : 'disabled'} reverse textCls="text-text-tertiary system-xs-regular" />
-                    {embeddingAvailable && (
-                      <div className="absolute -top-2 -right-2.5 z-20 hidden group-hover/card:flex items-center gap-x-0.5 p-1
+              <StatusItem status={enabled ? 'enabled' : 'disabled'} reverse textCls="text-text-tertiary system-xs-regular" />
+              {embeddingAvailable && (
+                <div className="absolute -top-2 -right-2.5 z-20 hidden group-hover/card:flex items-center gap-x-0.5 p-1
                       rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-[5px]">
-                        {!archived && (
-                          <>
-                            <Tooltip
-                              popupContent='Edit'
-                              popupClassName='text-text-secondary system-xs-medium'
-                            >
-                              <div
-                                className='shrink-0 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-state-base-hover cursor-pointer'
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  onClickEdit?.()
-                                }}>
-                                <RiEditLine className='w-4 h-4 text-text-tertiary' />
-                              </div>
-                            </Tooltip>
-                            <Tooltip
-                              popupContent='Delete'
-                              popupClassName='text-text-secondary system-xs-medium'
-                            >
-                              <div className='shrink-0 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-state-destructive-hover cursor-pointer group/delete'
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setShowModal(true)
-                                }
-                                }>
-                                <RiDeleteBinLine className='w-4 h-4 text-text-tertiary group-hover/delete:text-text-destructive' />
-                              </div>
-                            </Tooltip>
-                            <Divider type="vertical" className="h-3.5 bg-divider-regular" />
-                          </>
-                        )}
+                  {!archived && (
+                    <>
+                      <Tooltip
+                        popupContent='Edit'
+                        popupClassName='text-text-secondary system-xs-medium'
+                      >
                         <div
-                          onClick={(e: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
+                          className='shrink-0 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-state-base-hover cursor-pointer'
+                          onClick={(e) => {
                             e.stopPropagation()
-                          }
-                          className="flex items-center"
-                        >
-                          <Switch
-                            size='md'
-                            disabled={archived || detail.status !== 'completed'}
-                            defaultValue={enabled}
-                            onChange={async (val) => {
-                              await onChangeSwitch?.(val, id)
-                            }}
-                          />
+                            onClickEdit?.()
+                          }}>
+                          <RiEditLine className='w-4 h-4 text-text-tertiary' />
                         </div>
-                      </div>
-                    )}
-                  </>
-                )}
+                      </Tooltip>
+                      <Tooltip
+                        popupContent='Delete'
+                        popupClassName='text-text-secondary system-xs-medium'
+                      >
+                        <div className='shrink-0 w-6 h-6 flex items-center justify-center rounded-lg hover:bg-state-destructive-hover cursor-pointer group/delete'
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setShowModal(true)
+                          }
+                          }>
+                          <RiDeleteBinLine className='w-4 h-4 text-text-tertiary group-hover/delete:text-text-destructive' />
+                        </div>
+                      </Tooltip>
+                      <Divider type="vertical" className="h-3.5 bg-divider-regular" />
+                    </>
+                  )}
+                  <div
+                    onClick={(e: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
+                      e.stopPropagation()
+                    }
+                    className="flex items-center"
+                  >
+                    <Switch
+                      size='md'
+                      disabled={archived || detail.status !== 'completed'}
+                      defaultValue={enabled}
+                      onChange={async (val) => {
+                        await onChangeSwitch?.(val, id)
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             : null}
         </>
