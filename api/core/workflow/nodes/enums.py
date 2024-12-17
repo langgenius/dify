@@ -35,3 +35,5 @@ class FailBranchSourceHandle(StrEnum):
 
 
 CONTINUE_ON_ERROR_NODE_TYPE = [NodeType.LLM, NodeType.CODE, NodeType.TOOL, NodeType.HTTP_REQUEST]
+# TODO Remove code node
+RETRY_ON_ERROR_NODE_TYPE = [NodeType.LLM, NodeType.CODE, NodeType.TOOL, NodeType.HTTP_REQUEST]

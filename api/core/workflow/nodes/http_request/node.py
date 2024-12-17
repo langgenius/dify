@@ -56,10 +56,15 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
     def _run(self) -> NodeRunResult:
         process_data = {}
         try:
+            executor_config = {
+                "node_data": self.node_data,
+                "timeout": self._get_request_timeout(self.node_data),
+                "variable_pool": self.graph_runtime_state.variable_pool,
+            }
+            if self.should_retry:
+                executor_config["max_retries"] = 0
             http_executor = Executor(
-                node_data=self.node_data,
-                timeout=self._get_request_timeout(self.node_data),
-                variable_pool=self.graph_runtime_state.variable_pool,
+                **executor_config,
             )
             process_data["request"] = http_executor.to_log()
 

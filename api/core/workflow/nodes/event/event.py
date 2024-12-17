@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -26,3 +28,11 @@ class ModelInvokeCompletedEvent(BaseModel):
     text: str
     usage: LLMUsage
     finish_reason: str | None = None
+
+
+class RunRetryEvent(BaseModel):
+    """Node Run Retry event"""
+
+    error: str = Field(..., description="error")
+    retry_index: int = Field(..., description="Retry attempt number")
+    start_at: datetime = Field(..., description="Retry start time")

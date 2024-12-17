@@ -29,6 +29,7 @@ workflow_run_for_list_fields = {
     "created_at": TimestampField,
     "finished_at": TimestampField,
     "exceptions_count": fields.Integer,
+    "retry_index": fields.Integer,
 }
 
 advanced_chat_workflow_run_for_list_fields = {
@@ -45,6 +46,7 @@ advanced_chat_workflow_run_for_list_fields = {
     "created_at": TimestampField,
     "finished_at": TimestampField,
     "exceptions_count": fields.Integer,
+    "retry_index": fields.Integer,
 }
 
 advanced_chat_workflow_run_pagination_fields = {
