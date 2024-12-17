@@ -27,6 +27,7 @@ import {
 } from '../hooks'
 import AppPublisher from '../../app/app-publisher'
 import { ToastContext } from '../../base/toast'
+import Divider from '../../base/divider'
 import RunAndHistory from './run-and-history'
 import EditingTitle from './editing-title'
 import RunningTitle from './running-title'
@@ -144,15 +145,12 @@ const Header: FC = () => {
 
   return (
     <div
-      className='absolute top-0 left-0 z-10 flex items-center justify-between w-full px-3 h-14'
-      style={{
-        background: 'linear-gradient(180deg, #F9FAFB 0%, rgba(249, 250, 251, 0.00) 100%)',
-      }}
+      className='absolute top-0 left-0 z-10 flex items-center justify-between w-full px-3 h-14 bg-mask-top2bottom-gray-50-to-transparent'
     >
       <div>
         {
           appSidebarExpand === 'collapse' && (
-            <div className='text-xs font-medium text-gray-700'>{appDetail?.name}</div>
+            <div className='system-xs-regular text-text-tertiary'>{appDetail?.name}</div>
           )
         }
         {
@@ -171,7 +169,7 @@ const Header: FC = () => {
             {/* <GlobalVariableButton disabled={nodesReadOnly} /> */}
             {isChatMode && <ChatVariableButton disabled={nodesReadOnly} />}
             <EnvButton disabled={nodesReadOnly} />
-            <div className='w-[1px] h-3.5 bg-gray-200'></div>
+            <Divider type='vertical' className='h-3.5 mx-auto' />
             <RunAndHistory />
             <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
               <RiApps2AddLine className='w-4 h-4 mr-1 text-components-button-secondary-text' />
@@ -196,12 +194,11 @@ const Header: FC = () => {
       }
       {
         viewHistory && (
-          <div className='flex items-center'>
+          <div className='flex items-center space-x-2'>
             <ViewHistory withText />
-            <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
+            <Divider type='vertical' className='h-3.5 mx-auto' />
             <Button
               variant='primary'
-              className='mr-2'
               onClick={handleGoBackToEdit}
             >
               <ArrowNarrowLeft className='w-4 h-4 mr-1' />
@@ -212,14 +209,13 @@ const Header: FC = () => {
       }
       {
         restoring && (
-          <div className='flex items-center'>
+          <div className='flex items-center space-x-2'>
             <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
               <RiApps2AddLine className='w-4 h-4 mr-1 text-components-button-secondary-text' />
               {t('workflow.common.features')}
             </Button>
-            <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
+            <Divider type='vertical' className='h-3.5 mx-auto' />
             <Button
-              className='mr-2'
               onClick={handleCancelRestore}
             >
               {t('common.operation.cancel')}
