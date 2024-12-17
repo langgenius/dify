@@ -38,7 +38,7 @@ const ChunkDetailModal: FC<Props> = ({
       onClose={onHide}
       className={cn(isParentChildRetrieval ? '!min-w-[1200px]' : '!min-w-[720px]')}
     >
-      <div className='mt-4 flex pb-6'>
+      <div className='mt-4 flex'>
         <div>
           {/* Meta info */}
           <div className='flex justify-between items-center'>
