@@ -1,5 +1,4 @@
 import base64
-import io
 import json
 from collections.abc import Generator, Sequence
 from typing import Optional, Union, cast
@@ -18,7 +17,6 @@ from anthropic.types import (
 )
 from anthropic.types.beta.tools import ToolsBetaMessage
 from httpx import Timeout
-from PIL import Image
 
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities import (

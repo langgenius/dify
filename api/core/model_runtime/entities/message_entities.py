@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from enum import Enum, StrEnum
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 
 class PromptMessageRole(Enum):
