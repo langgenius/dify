@@ -500,8 +500,6 @@ services:
     image: pingcap/tidb:v8.4.0
     profiles:
       - tidb
-    ports:
-      - "4000:4000"
     command:
       - --store=unistore
     restart: always
