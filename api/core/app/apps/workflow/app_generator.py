@@ -47,6 +47,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     @overload
     def generate(
         self,
+        *,
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
@@ -60,6 +61,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     @overload
     def generate(
         self,
+        *,
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
@@ -72,6 +74,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
     def generate(
         self,
+        *,
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],

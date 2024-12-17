@@ -94,6 +94,8 @@ class AppGenerateService:
                             args=args,
                             invoke_from=invoke_from,
                             streaming=streaming,
+                            call_depth=0,
+                            workflow_thread_pool_id=None,
                         ),
                     ),
                     request_id,
