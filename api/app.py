@@ -1,12 +1,19 @@
-import sys
-
 from libs import version_utils
 
 # preparation before creating app
 version_utils.check_supported_python_version()
 
+
+def is_db_command():
+    import sys
+
+    if len(sys.argv) > 1 and sys.argv[0].endswith("flask") and sys.argv[1] == "db":
+        return True
+    return False
+
+
 # create app
-if "db" in sys.argv:
+if is_db_command():
     from app_factory import create_migrations_app
 
     app = create_migrations_app()
