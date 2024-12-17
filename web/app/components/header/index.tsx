@@ -78,7 +78,6 @@ const Header = () => {
         </div>
       )}
       <div className='flex items-center flex-shrink-0'>
-        <LicenseNav />
         <EnvNav />
         {enableBilling && (
           <div className='mr-3 select-none'>
