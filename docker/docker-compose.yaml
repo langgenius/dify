@@ -498,6 +498,8 @@ services:
   # For production use, please refer to https://github.com/pingcap/tidb-docker-compose
   tidb:
     image: pingcap/tidb:v8.4.0
+    profiles:
+      - tidb
     ports:
       - "4000:4000"
     command:
