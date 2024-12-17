@@ -538,7 +538,7 @@ const Completed: FC<ICompletedProps> = ({
       {
         isFullDocMode
           ? <div className={cn(
-            'flex flex-col grow relative overflow-x-hidden',
+            'flex flex-col grow overflow-x-hidden',
             (isLoadingSegmentList || isLoadingChildSegmentList) ? 'overflow-y-hidden' : 'overflow-y-auto',
           )}>
             <SegmentCard

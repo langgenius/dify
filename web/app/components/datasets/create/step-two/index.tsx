@@ -656,7 +656,7 @@ const StepTwo = ({
                       />
                       <div className='flex items-center gap-1'>
                         <label className="ml-2 system-sm-regular cursor-pointer text-text-secondary">
-                          {t('datasetCreation.stepTwo.QALanguage')}
+                          {t('datasetCreation.stepTwo.useQALanguage')}
                         </label>
                         <div className='z-50 relative'>
                           <LanguageSelect

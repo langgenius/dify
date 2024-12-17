@@ -135,7 +135,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
       </div>
       {isLoading ? <FullDocListSkeleton /> : null}
       {((isFullDocMode && !isLoading) || !collapsed)
-        ? <div className={classNames('flex items-center gap-x-0.5', isFullDocMode ? 'grow' : '')}>
+        ? <div className={classNames('flex items-center gap-x-0.5', isFullDocMode ? 'grow mb-6' : '')}>
           {isParagraphMode && (
             <div className='self-stretch my-0.5'>
               <Divider type='vertical' className='w-[2px] mx-[7px] bg-text-accent-secondary' />

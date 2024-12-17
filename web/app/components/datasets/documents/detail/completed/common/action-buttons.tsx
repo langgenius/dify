@@ -31,9 +31,9 @@ const ActionButtons: FC<IActionButtonsProps> = ({
   })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.s`, (e) => {
+    e.preventDefault()
     if (loading)
       return
-    e.preventDefault()
     handleSave()
   }
   , { exactMatch: true, useCapture: true })
