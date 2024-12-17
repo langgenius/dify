@@ -3,7 +3,6 @@
 import type { FC } from 'react'
 import { init } from 'emoji-mart'
 import data from '@emoji-mart/data'
-import Image from 'next/image'
 import { cva } from 'class-variance-authority'
 import type { AppIconType } from '@/types/app'
 import classNames from '@/utils/classnames'
@@ -62,7 +61,8 @@ const AppIcon: FC<AppIconProps> = ({
     onClick={onClick}
   >
     {isValidImageIcon
-      ? <Image src={imageUrl} className="w-full h-full" alt="app icon" />
+      // eslint-disable-next-line @next/next/no-img-element
+      ? <img src={imageUrl} className="w-full h-full" alt="app icon" />
       : (innerIcon || ((icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />))
     }
   </span>

@@ -326,6 +326,7 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
                     tenant_id="test",
                     type=FileType.IMAGE,
                     filename="test1.jpg",
+                    extension=".jpg",
                     transfer_method=FileTransferMethod.REMOTE_URL,
                     remote_url=fake_remote_url,
                 )
@@ -395,6 +396,7 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
                     tenant_id="test",
                     type=FileType.IMAGE,
                     filename="test1.jpg",
+                    extension=".jpg",
                     transfer_method=FileTransferMethod.REMOTE_URL,
                     remote_url=fake_remote_url,
                 )

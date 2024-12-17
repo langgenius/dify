@@ -70,7 +70,20 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
 
         except KnowledgeRetrievalNodeError as e:
             logger.warning("Error when running knowledge retrieval node")
-            return NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e))
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=variables,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+        # Temporary handle all exceptions from DatasetRetrieval class here.
+        except Exception as e:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=variables,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
 
     def _fetch_dataset_retriever(self, node_data: KnowledgeRetrievalNodeData, query: str) -> list[dict[str, Any]]:
         available_datasets = []
@@ -160,18 +173,18 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
                 reranking_model = None
                 weights = None
             all_documents = dataset_retrieval.multiple_retrieve(
-                self.app_id,
-                self.tenant_id,
-                self.user_id,
-                self.user_from.value,
-                available_datasets,
-                query,
-                node_data.multiple_retrieval_config.top_k,
-                node_data.multiple_retrieval_config.score_threshold,
-                node_data.multiple_retrieval_config.reranking_mode,
-                reranking_model,
-                weights,
-                node_data.multiple_retrieval_config.reranking_enable,
+                app_id=self.app_id,
+                tenant_id=self.tenant_id,
+                user_id=self.user_id,
+                user_from=self.user_from.value,
+                available_datasets=available_datasets,
+                query=query,
+                top_k=node_data.multiple_retrieval_config.top_k,
+                score_threshold=node_data.multiple_retrieval_config.score_threshold,
+                reranking_mode=node_data.multiple_retrieval_config.reranking_mode,
+                reranking_model=reranking_model,
+                weights=weights,
+                reranking_enable=node_data.multiple_retrieval_config.reranking_enable,
             )
         dify_documents = [item for item in all_documents if item.provider == "dify"]
         external_documents = [item for item in all_documents if item.provider == "external"]
