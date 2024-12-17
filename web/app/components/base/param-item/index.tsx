@@ -59,7 +59,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             onChange={(value) => {
               onChange(id, value)
             }}
-            className='w-8'
+            className='w-[72px]'
           />
         </div>
         <div className="flex items-center h-7 grow">

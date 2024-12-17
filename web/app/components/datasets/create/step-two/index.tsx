@@ -121,7 +121,7 @@ const defaultParentChildConfig: ParentChildConfig = {
     maxLength: 500,
   },
   child: {
-    delimiter: '\\n\\n',
+    delimiter: '\\n',
     maxLength: 200,
   },
 }
