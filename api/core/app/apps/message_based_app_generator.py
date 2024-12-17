@@ -38,7 +38,6 @@ from services.errors.conversation import (
 )
 
 logger = logging.getLogger(__name__)
-CONVERSATION_UUID_VERSION = 4
 
 
 class MessageBasedAppGenerator(BaseAppGenerator):
