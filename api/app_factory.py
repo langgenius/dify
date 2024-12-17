@@ -98,3 +98,14 @@ def initialize_extensions(app: DifyApp):
         end_time = time.perf_counter()
         if dify_config.DEBUG:
             logging.info(f"Loaded {short_name} ({round((end_time - start_time) * 1000, 2)} ms)")
+
+
+def create_migrations_app():
+    app = create_flask_app_with_configs()
+    from extensions import ext_database, ext_migrate
+
+    # Initialize only required extensions
+    ext_database.init_app(app)
+    ext_migrate.init_app(app)
+
+    return app
