@@ -1,7 +1,8 @@
 import meilisearch
 import csv
+import os
 
-client = meilisearch.Client('http://localhost:7700', 'aSampleMasterKey')
+client = meilisearch.Client('http://localhost:7700', os.environ['MEILI_MASTER_KEY'])
 
 # Open CSV File
 

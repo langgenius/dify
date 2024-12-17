@@ -341,7 +341,8 @@ services:
     networks:
       - default
     extra_hosts:
-      - "172.17.0.1"
+      - "search:172.17.0.1"
+      - "host.docker.internal:host-gateway"
 
   # Frontend web application.
   web:
