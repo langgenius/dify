@@ -25,7 +25,7 @@ import { ToastContext } from '@/app/components/base/toast'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
 import { updateSegment } from '@/service/datasets'
-import type { ChildChunkDetail, SegmentDetailModel, SegmentUpdater } from '@/models/datasets'
+import { type ChildChunkDetail, ChuckingMode, type SegmentDetailModel, type SegmentUpdater } from '@/models/datasets'
 import NewSegment from '@/app/components/datasets/documents/detail/new-segment'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import Checkbox from '@/app/components/base/checkbox'
@@ -154,7 +154,7 @@ const Completed: FC<ICompletedProps> = ({
     }
   }, [segments])
 
-  const { data: childChunkListData } = useChildSegmentList(
+  const { isFetching: isLoadingChildSegmentList, data: childChunkListData } = useChildSegmentList(
     {
       datasetId,
       documentId,
@@ -252,7 +252,7 @@ const Completed: FC<ICompletedProps> = ({
     needRegenerate = false,
   ) => {
     const params: SegmentUpdater = { content: '' }
-    if (docForm === 'qa_model') {
+    if (docForm === ChuckingMode.qa) {
       if (!question.trim())
         return notify({ type: 'error', message: t('datasetDocuments.segment.questionEmpty') })
       if (!answer.trim())
@@ -350,7 +350,7 @@ const Completed: FC<ICompletedProps> = ({
       return `${total} ${t('datasetDocuments.segment.searchResults', { count })}`
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segmentListData?.total, mode, parentMode])
+  }, [segmentListData?.total, mode, parentMode, searchValue, selectedStatus])
 
   const toggleFullScreen = useCallback(() => {
     setFullScreen(!fullScreen)
@@ -507,6 +507,7 @@ const Completed: FC<ICompletedProps> = ({
           checked={isAllSelected}
           mixed={!isAllSelected && isSomeSelected}
           onCheck={onSelectedAll}
+          disabled={isLoadingSegmentList}
         />
         <div className={cn('system-sm-semibold-uppercase pl-5', s.totalText)}>{totalText}</div>
         <SimpleSelect
@@ -533,11 +534,14 @@ const Completed: FC<ICompletedProps> = ({
       {/* Segment list */}
       {
         isFullDocMode
-          ? <div className='grow relative overflow-x-hidden overflow-y-auto'>
+          ? <div className={cn(
+            'flex flex-col grow relative overflow-x-hidden',
+            (isLoadingSegmentList || isLoadingChildSegmentList) ? 'overflow-y-hidden' : 'overflow-y-auto',
+          )}>
             <SegmentCard
               detail={segments[0]}
               onClick={() => onClickCard(segments[0])}
-              loading={false}
+              loading={isLoadingSegmentList}
             />
             <ChildSegmentList
               parentChunkId={segments[0]?.id}
@@ -549,6 +553,8 @@ const Completed: FC<ICompletedProps> = ({
               enabled={!archived}
               total={childChunkListData?.total || 0}
               inputValue={inputValue}
+              onClearFilter={onClearFilter}
+              isLoading={isLoadingSegmentList || isLoadingChildSegmentList}
             />
           </div>
           : <SegmentList
@@ -569,6 +575,7 @@ const Completed: FC<ICompletedProps> = ({
           />
       }
       {/* Pagination */}
+      <Divider type='horizontal' className='w-auto h-[1px] my-0 mx-6 bg-divider-subtle' />
       <Pagination
         current={currentPage - 1}
         onChange={cur => setCurrentPage(cur + 1)}

@@ -3,7 +3,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Optional, Union
+from typing import Any, Literal, Optional, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -36,6 +36,29 @@ logger = logging.getLogger(__name__)
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
     _dialogue_count: int
 
+    @overload
+    def generate(
+        self,
+        app_model: App,
+        workflow: Workflow,
+        user: Union[Account, EndUser],
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: Literal[True],
+    ) -> Generator[str, None, None]: ...
+
+    @overload
+    def generate(
+        self,
+        app_model: App,
+        workflow: Workflow,
+        user: Union[Account, EndUser],
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: Literal[False],
+    ) -> Mapping[str, Any]: ...
+
+    @overload
     def generate(
         self,
         app_model: App,
@@ -44,7 +67,17 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
-    ) -> Mapping[str, Any] | Generator[str, None, None]:
+    ) -> Union[Mapping[str, Any], Generator[str, None, None]]: ...
+
+    def generate(
+        self,
+        app_model: App,
+        workflow: Workflow,
+        user: Union[Account, EndUser],
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: bool = True,
+    ):
         """
         Generate App response.
 

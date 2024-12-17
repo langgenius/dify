@@ -482,10 +482,12 @@ export type HitTestingRecord = {
 export type HitTestingChildChunk = {
   id: string
   content: string
+  position: number
   score: number
 }
 export type HitTesting = {
   segment: Segment
+  content: Segment
   score: number
   tsne_position: TsnePosition
   child_chunks?: HitTestingChildChunk[] | null

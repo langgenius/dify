@@ -15,7 +15,7 @@ import Dot from './completed/common/dot'
 import { useDocumentContext } from './index'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
-import type { SegmentUpdater } from '@/models/datasets'
+import { ChuckingMode, type SegmentUpdater } from '@/models/datasets'
 import { addSegment } from '@/service/datasets'
 import classNames from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
@@ -23,7 +23,7 @@ import Divider from '@/app/components/base/divider'
 
 type NewSegmentModalProps = {
   onCancel: () => void
-  docForm: string
+  docForm: ChuckingMode
   onSave: () => void
   viewNewlyAddedChunk: () => void
 }
@@ -59,6 +59,10 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     </button>
   </>
 
+  const isQAModel = useMemo(() => {
+    return docForm === ChuckingMode.qa
+  }, [docForm])
+
   const handleCancel = (actionType: 'esc' | 'add' = 'esc') => {
     if (actionType === 'esc' || !addAnother)
       onCancel()
@@ -69,18 +73,30 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
 
   const handleSave = async () => {
     const params: SegmentUpdater = { content: '' }
-    if (docForm === 'qa_model') {
-      if (!question.trim())
-        return notify({ type: 'error', message: t('datasetDocuments.segment.questionEmpty') })
-      if (!answer.trim())
-        return notify({ type: 'error', message: t('datasetDocuments.segment.answerEmpty') })
+    if (isQAModel) {
+      if (!question.trim()) {
+        return notify({
+          type: 'error',
+          message: t('datasetDocuments.segment.questionEmpty'),
+        })
+      }
+      if (!answer.trim()) {
+        return notify({
+          type: 'error',
+          message: t('datasetDocuments.segment.answerEmpty'),
+        })
+      }
 
       params.content = question
       params.answer = answer
     }
     else {
-      if (!question.trim())
-        return notify({ type: 'error', message: t('datasetDocuments.segment.contentEmpty') })
+      if (!question.trim()) {
+        return notify({
+          type: 'error',
+          message: t('datasetDocuments.segment.contentEmpty'),
+        })
+      }
 
       params.content = question
     }
@@ -109,19 +125,17 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   }
 
   const wordCountText = useMemo(() => {
-    const count = question.length
+    const count = isQAModel ? (question.length + answer.length) : question.length
     return `${formatNumber(count)} ${t('datasetDocuments.segment.characters', { count })}`
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [question.length])
+  }, [question.length, answer.length, isQAModel])
 
   return (
     <div className={'flex flex-col h-full'}>
       <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
         <div className='flex flex-col'>
           <div className='text-text-primary system-xl-semibold'>{
-            docForm === 'qa_model'
-              ? t('datasetDocuments.segment.newQaSegment')
-              : t('datasetDocuments.segment.addChunk')
+            t('datasetDocuments.segment.addChunk')
           }</div>
           <div className='flex items-center gap-x-2'>
             <SegmentIndexTag label={'New Chunk'} />

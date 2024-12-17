@@ -12,7 +12,7 @@ import RegenerationModal from './common/regeneration-modal'
 import { SegmentIndexTag } from './common/segment-index-tag'
 import Dot from './common/dot'
 import { useSegmentListContext } from './index'
-import type { SegmentDetailModel } from '@/models/datasets'
+import { ChuckingMode, type SegmentDetailModel } from '@/models/datasets'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { formatNumber } from '@/utils/format'
 import classNames from '@/utils/classnames'
@@ -23,7 +23,7 @@ type ISegmentDetailProps = {
   onUpdate: (segmentId: string, q: string, a: string, k: string[], needRegenerate?: boolean) => void
   onCancel: () => void
   isEditMode?: boolean
-  docForm: string
+  docForm: ChuckingMode
 }
 
 /**
@@ -85,12 +85,17 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditMode])
 
+  const isQAModel = useMemo(() => {
+    return docForm === ChuckingMode.qa
+  }, [docForm])
+
   const wordCountText = useMemo(() => {
-    const total = formatNumber(isEditMode ? question.length : segInfo!.word_count as number)
-    const count = isEditMode ? question.length : segInfo!.word_count as number
+    const contentLength = isQAModel ? (question.length + answer.length) : question.length
+    const total = formatNumber(isEditMode ? contentLength : segInfo!.word_count as number)
+    const count = isEditMode ? contentLength : segInfo!.word_count as number
     return `${total} ${t('datasetDocuments.segment.characters', { count })}`
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditMode, question.length, segInfo?.word_count])
+  }, [isEditMode, question.length, answer.length, segInfo?.word_count, isQAModel])
 
   const labelPrefix = useMemo(() => {
     return isParentChildMode ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')

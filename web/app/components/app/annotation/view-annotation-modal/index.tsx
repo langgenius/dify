@@ -4,17 +4,17 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditItem, { EditItemType } from '../edit-annotation-modal/edit-item'
 import type { AnnotationItem, HitHistoryItem } from '../type'
-import s from './style.module.css'
 import HitHistoryNoData from './hit-history-no-data'
-import cn from '@/utils/classnames'
-import Pagination from '@/app/components/base/pagination'
+import Badge from '@/app/components/base/badge'
 import Drawer from '@/app/components/base/drawer-plus'
+import Pagination from '@/app/components/base/pagination'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
 import Confirm from '@/app/components/base/confirm'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import { fetchHitHistoryList } from '@/service/annotation'
 import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
+import cn from '@/utils/classnames'
 
 type Props = {
   appId: string
@@ -72,7 +72,9 @@ const ViewAnnotationModal: FC<Props> = ({
           ? (
             <div className='flex items-center space-x-1'>
               <div>{t('appAnnotation.viewModal.hitHistory')}</div>
-              <div className='flex px-1.5 item-center rounded-md border border-black/[8%] h-5 text-xs font-medium text-gray-500'>{total} {t(`appAnnotation.viewModal.hit${hitHistoryList.length > 1 ? 's' : ''}`)}</div>
+              <Badge
+                text={`${total} ${t(`appAnnotation.viewModal.hit${hitHistoryList.length > 1 ? 's' : ''}`)}`}
+              />
             </div>
           )
           : t('appAnnotation.viewModal.hitHistory')
@@ -111,44 +113,45 @@ const ViewAnnotationModal: FC<Props> = ({
     ? (<HitHistoryNoData />)
     : (
       <div>
-        <table className={cn(s.table, 'w-full min-w-[440px] border-collapse border-0 text-sm')} >
-          <thead className="h-8 leading-8 border-b border-gray-200 text-gray-500 font-bold">
-            <tr className='uppercase'>
-              <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.query')}</td>
-              <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.match')}</td>
-              <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.response')}</td>
-              <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.source')}</td>
-              <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.score')}</td>
-              <td className='whitespace-nowrap w-[160px]'>{t('appAnnotation.hitHistoryTable.time')}</td>
+        <table className={cn('w-full min-w-[440px] border-collapse border-0')} >
+          <thead className="system-xs-medium-uppercase text-text-tertiary">
+            <tr>
+              <td className='pl-2 pr-1 w-5 rounded-l-lg bg-background-section-burn whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.query')}</td>
+              <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.match')}</td>
+              <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.response')}</td>
+              <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.source')}</td>
+              <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.score')}</td>
+              <td className='pl-3 py-1.5 rounded-r-lg bg-background-section-burn whitespace-nowrap w-[160px]'>{t('appAnnotation.hitHistoryTable.time')}</td>
             </tr>
           </thead>
-          <tbody className="text-gray-500">
+          <tbody className="text-text-secondary system-sm-regular">
             {hitHistoryList.map(item => (
               <tr
                 key={item.id}
-                className={'border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer'}
+                className={'border-b border-divider-subtle hover:bg-background-default-hover cursor-pointer'}
               >
                 <td
-                  className='whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
+                  className='p-3 pr-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
                   title={item.question}
                 >{item.question}</td>
                 <td
-                  className='whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
+                  className='p-3 pr-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
                   title={item.match}
                 >{item.match}</td>
                 <td
-                  className='whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
+                  className='p-3 pr-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
                   title={item.response}
                 >{item.response}</td>
-                <td>{item.source}</td>
-                <td>{item.score ? item.score.toFixed(2) : '-'}</td>
-                <td>{formatTime(item.created_at, t('appLog.dateTimeFormat') as string)}</td>
+                <td className='p-3 pr-2'>{item.source}</td>
+                <td className='p-3 pr-2'>{item.score ? item.score.toFixed(2) : '-'}</td>
+                <td className='p-3 pr-2'>{formatTime(item.created_at, t('appLog.dateTimeFormat') as string)}</td>
               </tr>
             ))}
           </tbody>
         </table>
         {(total && total > APP_PAGE_LIMIT)
           ? <Pagination
+            className='px-0'
             current={currPage}
             onChange={setCurrPage}
             total={total}
@@ -163,7 +166,6 @@ const ViewAnnotationModal: FC<Props> = ({
         isShow={isShow}
         onHide={onHide}
         maxWidthClassName='!max-w-[800px]'
-        // t('appAnnotation.editModal.title') as string
         title={
           <TabSlider
             className='shrink-0 relative top-[9px]'
@@ -193,7 +195,7 @@ const ViewAnnotationModal: FC<Props> = ({
         )}
         foot={id
           ? (
-            <div className='px-4 flex h-16 items-center justify-between border-t border-black/5 bg-gray-50 rounded-bl-xl rounded-br-xl leading-[18px] text-[13px] font-medium text-gray-500'>
+            <div className='px-4 flex h-16 items-center justify-between border-t border-divider-subtle bg-background-section-burn rounded-bl-xl rounded-br-xl system-sm-medium text-text-tertiary'>
               <div
                 className='flex items-center pl-3 space-x-2 cursor-pointer'
                 onClick={() => setShowModal(true)}

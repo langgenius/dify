@@ -14,16 +14,8 @@ from core.workflow.nodes.http_request import (
     HttpRequestNodeBody,
     HttpRequestNodeData,
 )
-from core.workflow.nodes.http_request.executor import _plain_text_to_dict
 from models.enums import UserFrom
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
-
-
-def test_plain_text_to_dict():
-    assert _plain_text_to_dict("aa\n cc:") == {"aa": "", "cc": ""}
-    assert _plain_text_to_dict("aa:bb\n cc:dd") == {"aa": "bb", "cc": "dd"}
-    assert _plain_text_to_dict("aa:bb\n cc:dd\n") == {"aa": "bb", "cc": "dd"}
-    assert _plain_text_to_dict("aa:bb\n\n cc : dd\n\n") == {"aa": "bb", "cc": "dd"}
 
 
 def test_http_request_node_binary_file(monkeypatch):

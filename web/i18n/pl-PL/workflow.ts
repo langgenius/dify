@@ -101,6 +101,9 @@ const translation = {
     featuresDocLink: 'Dowiedz się więcej',
     importWarning: 'Ostrożność',
     importWarningDetails: 'Różnica w wersji DSL może mieć wpływ na niektóre funkcje',
+    openInExplore: 'Otwieranie w obszarze Eksploruj',
+    onFailure: 'W przypadku niepowodzenia',
+    addFailureBranch: 'Dodawanie gałęzi niepowodzenia',
   },
   env: {
     envPanelTitle: 'Zmienne Środowiskowe',
@@ -293,6 +296,31 @@ const translation = {
         title: 'Pamięci',
         tip: 'Pamięć rozmowy',
         builtIn: 'Wbudowane',
+      },
+      errorHandle: {
+        none: {
+          desc: 'Węzeł przestanie działać, jeśli wystąpi wyjątek i nie zostanie obsłużony',
+          title: 'Żaden',
+        },
+        defaultValue: {
+          title: 'Wartość domyślna',
+          desc: 'Gdy wystąpi błąd, określ statyczną zawartość wyjściową.',
+          tip: 'W przypadku błędu, zwróci wartość poniżej.',
+          inLog: 'Wyjątek węzła, wyprowadzanie zgodnie z wartościami domyślnymi.',
+          output: 'Wyjściowa wartość domyślna',
+        },
+        failBranch: {
+          title: 'Gałąź Fail (Gałąź Niepowodzenia',
+          customize: 'Przejdź do kanwy, aby dostosować logikę gałęzi niepowodzenia.',
+          customizeTip: 'Gdy gałąź fail jest aktywowana, wyjątki zgłaszane przez węzły nie zakończą procesu. Zamiast tego automatycznie wykona predefiniowaną gałąź niepowodzenia, co pozwoli Ci elastycznie dostarczać komunikaty o błędach, raporty, poprawki lub pomijać akcje.',
+          inLog: 'Wyjątek węzła, automatycznie wykona gałąź niepowodzenia. Dane wyjściowe węzła zwrócą typ błędu i komunikat o błędzie, a następnie przekażą je do podrzędnego.',
+          desc: 'Gdy wystąpi błąd, wykona gałąź wyjątku',
+        },
+        partialSucceeded: {
+          tip: 'W procesie {{num}} węzły działają nieprawidłowo, przejdź do śledzenia, aby sprawdzić dzienniki.',
+        },
+        tip: 'Strategia obsługi wyjątków, wyzwalana, gdy węzeł napotka wyjątek.',
+        title: 'Obsługa błędów',
       },
     },
     start: {

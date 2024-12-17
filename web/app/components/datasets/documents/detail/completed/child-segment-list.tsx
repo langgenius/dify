@@ -3,6 +3,8 @@ import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { EditSlice } from '../../../formatted-text/flavours/edit-slice'
 import { useDocumentContext } from '../index'
+import Empty from './common/empty'
+import FullDocListSkeleton from './skeleton/full-doc-list-skeleton'
 import type { ChildChunkDetail } from '@/models/datasets'
 import Input from '@/app/components/base/input'
 import classNames from '@/utils/classnames'
@@ -19,6 +21,8 @@ type IChildSegmentCardProps = {
   onClickSlice?: (childChunk: ChildChunkDetail) => void
   total?: number
   inputValue?: string
+  onClearFilter?: () => void
+  isLoading?: boolean
 }
 
 const ChildSegmentList: FC<IChildSegmentCardProps> = ({
@@ -31,6 +35,8 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   onClickSlice,
   total,
   inputValue,
+  onClearFilter,
+  isLoading,
 }) => {
   const { t } = useTranslation()
   const parentMode = useDocumentContext(s => s.parentMode)
@@ -54,25 +60,38 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   }, [enabled])
 
   const totalText = useMemo(() => {
-    const text = isFullDocMode
-      ? !total
-        ? '--'
-        : formatNumber(total)
-      : formatNumber(childChunks.length)
-    const count = isFullDocMode
-      ? text === '--'
-        ? 0
-        : total
-      : childChunks.length
-    return `${isFullDocMode ? count : childChunks.length} ${t('datasetDocuments.segment.childChunks', { count })}`
+    const isSearch = inputValue !== '' && isFullDocMode
+    if (!isSearch) {
+      const text = isFullDocMode
+        ? !total
+          ? '--'
+          : formatNumber(total)
+        : formatNumber(childChunks.length)
+      const count = isFullDocMode
+        ? text === '--'
+          ? 0
+          : total
+        : childChunks.length
+      return `${text} ${t('datasetDocuments.segment.childChunks', { count })}`
+    }
+    else {
+      const text = !total ? '--' : formatNumber(total)
+      const count = text === '--' ? 0 : total
+      return `${count} ${t('datasetDocuments.segment.searchResults', { count })}`
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFullDocMode, total, childChunks.length])
+  }, [isFullDocMode, total, childChunks.length, inputValue])
 
   return (
-    <div className={classNames('flex flex-col', contentOpacity, isParagraphMode ? 'p-1 pb-2' : 'px-3 grow')}>
+    <div className={classNames(
+      'flex flex-col',
+      contentOpacity,
+      isParagraphMode ? 'p-1 pb-2' : 'px-3 grow',
+      (isFullDocMode && isLoading) && 'overflow-y-hidden',
+    )}>
       {isFullDocMode ? <Divider type='horizontal' className='h-[1px] bg-divider-subtle my-1' /> : null}
-      <div className={classNames('flex items-center justify-between', isFullDocMode ? 'pt-2 pb-3 sticky top-0 left-0 bg-components-panel-bg' : '')}>
-        <div className={classNames('h-7 flex items-center pl-1 pr-3 rounded-lg', (isParagraphMode && collapsed) ? 'bg-dataset-child-chunk-expand-btn-bg' : '')} onClick={(event) => {
+      <div className={classNames('flex items-center justify-between', isFullDocMode ? 'pt-2 pb-3 sticky -top-2 left-0 bg-components-panel-bg' : '')}>
+        <div className={classNames('h-7 flex items-center pl-1 pr-3 rounded-lg', (isParagraphMode && collapsed) && 'bg-dataset-child-chunk-expand-btn-bg', isFullDocMode && 'pl-0')} onClick={(event) => {
           event.stopPropagation()
           toggleCollapse()
         }}>
@@ -88,11 +107,16 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
           <span className='text-text-secondary system-sm-semibold-uppercase'>{totalText}</span>
           <span className={classNames('text-text-quaternary text-xs font-medium pl-1.5', isParagraphMode ? 'hidden group-hover/card:inline-block' : '')}>·</span>
           <button
-            className={classNames('px-1.5 py-1 text-components-button-secondary-accent-text system-xs-semibold-uppercase', isParagraphMode ? 'hidden group-hover/card:inline-block' : '')}
+            className={classNames(
+              'px-1.5 py-1 text-components-button-secondary-accent-text system-xs-semibold-uppercase',
+              isParagraphMode ? 'hidden group-hover/card:inline-block' : '',
+              (isFullDocMode && isLoading) ? 'text-components-button-secondary-accent-text-disabled' : '',
+            )}
             onClick={(event) => {
               event.stopPropagation()
               handleAddNewChildChunk?.(parentChunkId)
             }}
+            disabled={isLoading}
           >
             {t('common.operation.add')}
           </button>
@@ -108,25 +132,33 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
           />
           : null}
       </div>
-      {(isFullDocMode || !collapsed)
-        ? <div className={classNames('flex gap-x-0.5', isFullDocMode ? 'grow' : '')}>
+      {isLoading ? <FullDocListSkeleton /> : null}
+      {((isFullDocMode && !isLoading) || !collapsed)
+        ? <div className={classNames('flex items-center gap-x-0.5', isFullDocMode ? 'grow' : '')}>
           {isParagraphMode && <Divider type='vertical' className='h-auto w-[2px] mx-[7px] bg-text-accent-secondary' />}
-          <div className={classNames('w-full !leading-5 flex flex-col', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
-            {childChunks.map((childChunk) => {
-              const edited = childChunk.updated_at !== childChunk.created_at
-              return <EditSlice
-                key={childChunk.id}
-                label={`C-${childChunk.position}${edited ? ` · ${t('datasetDocuments.segment.edited')}` : ''}`}
-                text={childChunk.content}
-                onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
-                className='line-clamp-3'
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onClickSlice?.(childChunk)
-                }}
-              />
-            })}
-          </div>
+          {childChunks.length > 0
+            ? <div className={classNames('w-full !leading-5 flex flex-col', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
+              {childChunks.map((childChunk) => {
+                const edited = childChunk.updated_at !== childChunk.created_at
+                return <EditSlice
+                  key={childChunk.id}
+                  label={`C-${childChunk.position}${edited ? ` · ${t('datasetDocuments.segment.edited')}` : ''}`}
+                  text={childChunk.content}
+                  onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
+                  className='line-clamp-3'
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onClickSlice?.(childChunk)
+                  }}
+                />
+              })}
+            </div>
+            : inputValue !== ''
+              ? <div className='h-full w-full'>
+                <Empty onClearFilter={onClearFilter!} />
+              </div>
+              : null
+          }
         </div>
         : null}
     </div>

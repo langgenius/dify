@@ -56,6 +56,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                     NodeRunMetadataKey.TOOL_INFO: tool_info,
                 },
                 error=f"Failed to get tool runtime: {str(e)}",
+                error_type=type(e).__name__,
             )
 
         # get parameters
@@ -89,6 +90,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                     NodeRunMetadataKey.TOOL_INFO: tool_info,
                 },
                 error=f"Failed to invoke tool: {str(e)}",
+                error_type=type(e).__name__,
             )
 
         # convert tool messages
