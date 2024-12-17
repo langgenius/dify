@@ -6,6 +6,7 @@ import useSWR from 'swr'
 import { omit } from 'lodash-es'
 import { useBoolean } from 'ahooks'
 import { useContext } from 'use-context-selector'
+import { RiApps2Line, RiFocus2Line } from '@remixicon/react'
 import SegmentCard from '../documents/detail/completed/SegmentCard'
 import Textarea from './textarea'
 import s from './style.module.css'
@@ -128,29 +129,30 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
             ? (
               <>
                 <div className='grow overflow-y-auto'>
-                  <table className={'w-full border-collapse border-0 mt-3 text-[13px] text-gray-500'}>
-                    <thead className="sticky top-0 h-8 bg-white leading-8 border-b border-gray-200 text-gray-500 font-bold">
+                  <table className={'w-full border-collapse border-0 text-[13px] leading-4 text-text-secondary '}>
+                    <thead className="sticky top-0 h-7 leading-7  text-xs text-text-tertiary font-medium uppercase">
                       <tr>
-                        <td className='w-28'>{t('datasetHitTesting.table.header.source')}</td>
-                        <td>{t('datasetHitTesting.table.header.text')}</td>
-                        <td className='w-48'>{t('datasetHitTesting.table.header.time')}</td>
+                        <td className='pl-3 w-[128px] rounded-l-lg bg-background-section-burn'>{t('datasetHitTesting.table.header.source')}</td>
+                        <td className='bg-background-section-burn'>{t('datasetHitTesting.table.header.text')}</td>
+                        <td className='pl-2 w-48 rounded-r-lg bg-background-section-burn'>{t('datasetHitTesting.table.header.time')}</td>
                       </tr>
                     </thead>
-                    <tbody className="text-gray-500">
+                    <tbody>
                       {recordsRes?.data?.map((record) => {
+                        const SourceIcon = record.source === 'app' ? RiApps2Line : RiFocus2Line
                         return <tr
                           key={record.id}
-                          className='group border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer'
+                          className='group border-b border-divider-subtle h-10 hover:bg-background-default-hover cursor-pointer'
                           onClick={() => setText(record.content)}
                         >
-                          <td className='w-24'>
+                          <td className='pl-3 w-[128px]'>
                             <div className='flex items-center'>
-                              <div className={cn(s[`${record.source}_icon`], s.commonIcon, 'mr-1')} />
-                              <span className='capitalize'>{record.source.replace('_', ' ')}</span>
+                              <SourceIcon className='mr-1 size-4 text-text-tertiary' />
+                              <span className='capitalize'>{record.source.replace('_', ' ').replace('hit testing', 'retrieval test')}</span>
                             </div>
                           </td>
-                          <td className='max-w-xs group-hover:text-primary-600'>{record.content}</td>
-                          <td className='w-36'>
+                          <td className='max-w-xs py-2'>{record.content}</td>
+                          <td className='pl-2 w-36'>
                             {formatTime(record.created_at, t('datasetHitTesting.dateTimeFormat') as string)}
                           </td>
                         </tr>
