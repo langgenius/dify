@@ -41,7 +41,7 @@ class BuiltinToolProvider(db.Model):  # type: ignore[name-defined]
 
     @property
     def credentials(self) -> dict:
-        return json.loads(self.encrypted_credentials)
+        return dict(json.loads(self.encrypted_credentials))
 
 
 class PublishedAppTool(db.Model):  # type: ignore[name-defined]
@@ -83,7 +83,10 @@ class PublishedAppTool(db.Model):  # type: ignore[name-defined]
 
     @property
     def app(self) -> App:
-        return db.session.query(App).filter(App.id == self.app_id).first()
+        app = db.session.query(App).filter(App.id == self.app_id).first()
+        if app is None:
+            raise ValueError(f"App {self.app_id} not found")
+        return app
 
 
 class ApiToolProvider(db.Model):  # type: ignore[name-defined]
@@ -133,7 +136,7 @@ class ApiToolProvider(db.Model):  # type: ignore[name-defined]
 
     @property
     def credentials(self) -> dict:
-        return json.loads(self.credentials_str)
+        return dict(json.loads(self.credentials_str))
 
     @property
     def user(self) -> Account | None:
@@ -287,7 +290,7 @@ class ToolConversationVariables(db.Model):  # type: ignore[name-defined]
 
     @property
     def variables(self) -> dict:
-        return json.loads(self.variables_str)
+        return dict(json.loads(self.variables_str))
 
 
 class ToolFile(db.Model):  # type: ignore[name-defined]

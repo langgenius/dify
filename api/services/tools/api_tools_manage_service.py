@@ -129,7 +129,7 @@ class ApiToolManageService:
             raise ValueError(f"provider {provider_name} already exists")
 
         # parse openapi to tool bundle
-        extra_info = {}
+        extra_info: dict[str, str] = {}
         # extra info like description will be set here
         tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
 
@@ -262,9 +262,8 @@ class ApiToolManageService:
 
         if provider is None:
             raise ValueError(f"api provider {provider_name} does not exists")
-
         # parse openapi to tool bundle
-        extra_info = {}
+        extra_info: dict[str, str] = {}
         # extra info like description will be set here
         tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
 

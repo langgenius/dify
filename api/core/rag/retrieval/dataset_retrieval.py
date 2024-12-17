@@ -458,7 +458,7 @@ class DatasetRetrieval:
                 db.session.commit()
 
         # get tracing instance
-        trace_manager: TraceQueueManager = (
+        trace_manager: Optional[TraceQueueManager] = (
             self.application_generate_entity.trace_manager if self.application_generate_entity else None
         )
         if trace_manager:

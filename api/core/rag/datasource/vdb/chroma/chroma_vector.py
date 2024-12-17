@@ -94,15 +94,19 @@ class ChromaVector(BaseVector):
         results: QueryResult = collection.query(query_embeddings=query_vector, n_results=kwargs.get("top_k", 4))
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
 
-        ids: list[str] = results["ids"][0]
-        documents: list[str] = results["documents"][0]
-        metadatas: dict[str, Any] = results["metadatas"][0]
-        distances: list[float] = results["distances"][0]
+        # Check if results contain data
+        if not results["ids"] or not results["documents"] or not results["metadatas"] or not results["distances"]:
+            return []
+
+        ids = results["ids"][0]
+        documents = results["documents"][0]
+        metadatas = results["metadatas"][0]
+        distances = results["distances"][0]
 
         docs = []
         for index in range(len(ids)):
             distance = distances[index]
-            metadata = metadatas[index]
+            metadata = dict(metadatas[index])
             if distance >= score_threshold:
                 metadata["score"] = distance
                 doc = Document(
@@ -111,7 +115,7 @@ class ChromaVector(BaseVector):
                 )
                 docs.append(doc)
         # Sort the documents by score in descending order
-        docs = sorted(docs, key=lambda x: x.metadata["score"], reverse=True)
+        docs = sorted(docs, key=lambda x: x.metadata["score"] if x.metadata is not None else 0, reverse=True)
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:

@@ -443,7 +443,7 @@ def default_vector_search_query(
     if client_refactor:
         final_ext["lvector"]["client_refactor"] = client_refactor
 
-    search_query = {
+    search_query: dict[str, Any] = {
         "size": k,
         "_source": True,  # force return '_source'
         "query": {"knn": {vector_field: {"vector": query_vector, "k": k}}},
@@ -451,8 +451,8 @@ def default_vector_search_query(
 
     if filters is not None:
         # when using filter, transform filter from List[Dict] to Dict as valid format
-        filters = {"bool": {"must": filters}} if len(filters) > 1 else filters[0]
-        search_query["query"]["knn"][vector_field]["filter"] = filters  # filter should be Dict
+        filter_dict = {"bool": {"must": filters}} if len(filters) > 1 else filters[0]
+        search_query["query"]["knn"][vector_field]["filter"] = filter_dict  # filter should be Dict
         if filter_type:
             final_ext["lvector"]["filter_type"] = filter_type
 

@@ -141,7 +141,7 @@ class ToolNode(BaseNode[ToolNodeData]):
         """
         tool_parameters_dictionary = {parameter.name: parameter for parameter in tool_parameters}
 
-        result = {}
+        result: dict[str, Any] = {}
         for parameter_name in node_data.tool_parameters:
             parameter = tool_parameters_dictionary.get(parameter_name)
             if not parameter:
@@ -259,9 +259,9 @@ class ToolNode(BaseNode[ToolNodeData]):
         """
         return "\n".join(
             [
-                f"{message.message}"
+                str(message.message)
                 if message.type == ToolInvokeMessage.MessageType.TEXT
-                else f"Link: {message.message}"
+                else f"Link: {str(message.message)}"
                 for message in tool_response
                 if message.type in {ToolInvokeMessage.MessageType.TEXT, ToolInvokeMessage.MessageType.LINK}
             ]

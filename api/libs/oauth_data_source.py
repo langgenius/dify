@@ -1,5 +1,6 @@
 import datetime
 import urllib.parse
+from typing import Any
 
 import requests
 from flask_login import current_user  # type: ignore
@@ -226,7 +227,7 @@ class NotionOAuth(OAuthDataSource):
         has_more = True
 
         while has_more:
-            data = {
+            data: dict[str, Any] = {
                 "filter": {"value": "page", "property": "object"},
                 **({"start_cursor": next_cursor} if next_cursor else {}),
             }
@@ -281,7 +282,7 @@ class NotionOAuth(OAuthDataSource):
         has_more = True
 
         while has_more:
-            data = {
+            data: dict[str, Any] = {
                 "filter": {"value": "database", "property": "object"},
                 **({"start_cursor": next_cursor} if next_cursor else {}),
             }

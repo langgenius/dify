@@ -32,15 +32,16 @@ class QAIndexProcessor(BaseIndexProcessor):
 
     def transform(self, documents: list[Document], **kwargs) -> list[Document]:
         splitter = self._get_splitter(
-            processing_rule=kwargs.get("process_rule"), embedding_model_instance=kwargs.get("embedding_model_instance")
+            processing_rule=kwargs.get("process_rule") or {},
+            embedding_model_instance=kwargs.get("embedding_model_instance"),
         )
 
         # Split the text documents into nodes.
-        all_documents = []
-        all_qa_documents = []
+        all_documents: list[Document] = []
+        all_qa_documents: list[Document] = []
         for document in documents:
             # document clean
-            document_text = CleanProcessor.clean(document.page_content, kwargs.get("process_rule"))
+            document_text = CleanProcessor.clean(document.page_content, kwargs.get("process_rule") or {})
             document.page_content = document_text
 
             # parse document to nodes
@@ -50,8 +51,9 @@ class QAIndexProcessor(BaseIndexProcessor):
                 if document_node.page_content.strip():
                     doc_id = str(uuid.uuid4())
                     hash = helper.generate_text_hash(document_node.page_content)
-                    document_node.metadata["doc_id"] = doc_id
-                    document_node.metadata["doc_hash"] = hash
+                    if document_node.metadata is not None:
+                        document_node.metadata["doc_id"] = doc_id
+                        document_node.metadata["doc_hash"] = hash
                     # delete Splitter character
                     page_content = document_node.page_content
                     document_node.page_content = remove_leading_symbols(page_content)

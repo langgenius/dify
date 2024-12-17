@@ -150,7 +150,7 @@ class AppGenerateService:
         message_id: str,
         invoke_from: InvokeFrom,
         streaming: bool = True,
-    ) -> Union[dict, Generator]:
+    ) -> Union[Mapping, Generator]:
         """
         Generate more like this
         :param app_model: app model

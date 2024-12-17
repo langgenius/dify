@@ -131,7 +131,7 @@ class WorkflowToolManageService:
         if existing_workflow_tool_provider is not None:
             raise ValueError(f"Tool with name {name} already exists")
 
-        workflow_tool_provider: WorkflowToolProvider = (
+        workflow_tool_provider: Optional[WorkflowToolProvider] = (
             db.session.query(WorkflowToolProvider)
             .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
             .first()
@@ -140,14 +140,14 @@ class WorkflowToolManageService:
         if workflow_tool_provider is None:
             raise ValueError(f"Tool {workflow_tool_id} not found")
 
-        app: App = (
+        app: Optional[App] = (
             db.session.query(App).filter(App.id == workflow_tool_provider.app_id, App.tenant_id == tenant_id).first()
         )
 
         if app is None:
             raise ValueError(f"App {workflow_tool_provider.app_id} not found")
 
-        workflow: Workflow = app.workflow
+        workflow: Optional[Workflow] = app.workflow
         if workflow is None:
             raise ValueError(f"Workflow not found for app {workflow_tool_provider.app_id}")
 
@@ -236,7 +236,7 @@ class WorkflowToolManageService:
         :param workflow_app_id: the workflow app id
         :return: the tool
         """
-        db_tool: WorkflowToolProvider = (
+        db_tool: Optional[WorkflowToolProvider] = (
             db.session.query(WorkflowToolProvider)
             .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
             .first()
@@ -245,7 +245,9 @@ class WorkflowToolManageService:
         if db_tool is None:
             raise ValueError(f"Tool {workflow_tool_id} not found")
 
-        workflow_app: App = db.session.query(App).filter(App.id == db_tool.app_id, App.tenant_id == tenant_id).first()
+        workflow_app: Optional[App] = (
+            db.session.query(App).filter(App.id == db_tool.app_id, App.tenant_id == tenant_id).first()
+        )
 
         if workflow_app is None:
             raise ValueError(f"App {db_tool.app_id} not found")
@@ -276,7 +278,7 @@ class WorkflowToolManageService:
         :param workflow_app_id: the workflow app id
         :return: the tool
         """
-        db_tool: WorkflowToolProvider = (
+        db_tool: Optional[WorkflowToolProvider] = (
             db.session.query(WorkflowToolProvider)
             .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.app_id == workflow_app_id)
             .first()
@@ -285,7 +287,9 @@ class WorkflowToolManageService:
         if db_tool is None:
             raise ValueError(f"Tool {workflow_app_id} not found")
 
-        workflow_app: App = db.session.query(App).filter(App.id == db_tool.app_id, App.tenant_id == tenant_id).first()
+        workflow_app: Optional[App] = (
+            db.session.query(App).filter(App.id == db_tool.app_id, App.tenant_id == tenant_id).first()
+        )
 
         if workflow_app is None:
             raise ValueError(f"App {db_tool.app_id} not found")
@@ -316,7 +320,7 @@ class WorkflowToolManageService:
         :param workflow_app_id: the workflow app id
         :return: the list of tools
         """
-        db_tool: WorkflowToolProvider = (
+        db_tool: Optional[WorkflowToolProvider] = (
             db.session.query(WorkflowToolProvider)
             .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
             .first()

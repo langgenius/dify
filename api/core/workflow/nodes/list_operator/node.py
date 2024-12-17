@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import Literal, Union
+from typing import Any, Literal, Union
 
 from core.file import File
 from core.variables import ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment
@@ -17,9 +17,9 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
     _node_type = NodeType.LIST_OPERATOR
 
     def _run(self):
-        inputs = {}
-        process_data = {}
-        outputs = {}
+        inputs: dict[str, list] = {}
+        process_data: dict[str, list] = {}
+        outputs: dict[str, Any] = {}
 
         variable = self.graph_runtime_state.variable_pool.get(self.node_data.variable)
         if variable is None:
