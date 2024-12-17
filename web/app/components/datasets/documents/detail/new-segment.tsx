@@ -16,10 +16,10 @@ import { useDocumentContext } from './index'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
 import { ChuckingMode, type SegmentUpdater } from '@/models/datasets'
-import { addSegment } from '@/service/datasets'
 import classNames from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import Divider from '@/app/components/base/divider'
+import { useAddSegment } from '@/service/knowledge/use-segment'
 
 type NewSegmentModalProps = {
   onCancel: () => void
@@ -71,6 +71,8 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     setKeywords([])
   }
 
+  const { mutateAsync: addSegment } = useAddSegment()
+
   const handleSave = async () => {
     const params: SegmentUpdater = { content: '' }
     if (isQAModel) {
@@ -105,23 +107,24 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
       params.keywords = keywords
 
     setLoading(true)
-    try {
-      await addSegment({ datasetId, documentId, body: params })
-      notify({
-        type: 'success',
-        message: t('datasetDocuments.segment.chunkAdded'),
-        className: `!w-[296px] !bottom-0 ${appSidebarExpand === 'expand' ? '!left-[216px]' : '!left-14'}
+    await addSegment({ datasetId, documentId, body: params }, {
+      onSuccess() {
+        notify({
+          type: 'success',
+          message: t('datasetDocuments.segment.chunkAdded'),
+          className: `!w-[296px] !bottom-0 ${appSidebarExpand === 'expand' ? '!left-[216px]' : '!left-14'}
           !top-auto !right-auto !mb-[52px] !ml-11`,
-        customComponent: CustomButton,
-      })
-      handleCancel('add')
-      refreshTimer.current = setTimeout(() => {
-        onSave()
-      }, 3000)
-    }
-    finally {
-      setLoading(false)
-    }
+          customComponent: CustomButton,
+        })
+        handleCancel('add')
+        refreshTimer.current = setTimeout(() => {
+          onSave()
+        }, 3000)
+      },
+      onSettled() {
+        setLoading(false)
+      },
+    })
   }
 
   const wordCountText = useMemo(() => {
