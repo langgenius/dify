@@ -16,7 +16,6 @@ from google.generativeai.types.content_types import to_part
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
-    ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContent,
     PromptMessageContentType,
@@ -24,7 +23,6 @@ from core.model_runtime.entities.message_entities import (
     SystemPromptMessage,
     ToolPromptMessage,
     UserPromptMessage,
-    VideoPromptMessageContent,
 )
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
@@ -342,35 +340,31 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
             except:
                 pass
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            if message_content.data.startswith("data:"):
-                metadata, base64_data = message_content.data.split(",", 1)
-                file_content = base64.b64decode(base64_data)
-                mime_type = metadata.split(";", 1)[0].split(":")[1]
+            if message_content.base64_data:
+                file_content = base64.b64decode(message_content.base64_data)
                 temp_file.write(file_content)
             else:
-                # only ImagePromptMessageContent and VideoPromptMessageContent has url
                 try:
-                    response = requests.get(message_content.data)
+                    response = requests.get(message_content.url)
                     response.raise_for_status()
-                    if message_content.type is ImagePromptMessageContent:
-                        prefix = "image/"
-                    elif message_content.type is VideoPromptMessageContent:
-                        prefix = "video/"
-                    mime_type = prefix + message_content.format
                     temp_file.write(response.content)
                 except Exception as ex:
-                    raise ValueError(f"Failed to fetch data from url {message_content.data}, {ex}")
+                    raise ValueError(f"Failed to fetch data from url {message_content.url}, {ex}")
             temp_file.flush()
+
+        file = genai.upload_file(path=temp_file.name, mime_type=message_content.mime_type)
+        while file.state.name == "PROCESSING":
+            time.sleep(5)
+            file = genai.get_file(file.name)
+        # google will delete your upload files in 2 days.
+        redis_client.setex(key, 47 * 60 * 60, file.name)
+
         try:
-            file = genai.upload_file(path=temp_file.name, mime_type=mime_type)
-            while file.state.name == "PROCESSING":
-                time.sleep(5)
-                file = genai.get_file(file.name)
-            # google will delete your upload files in 2 days.
-            redis_client.setex(key, 47 * 60 * 60, file.name)
-            return file
-        finally:
             os.unlink(temp_file.name)
+        except PermissionError:
+            # windows may raise permission error
+            pass
+        return file
 
     def _format_message_to_glm_content(self, message: PromptMessage) -> ContentType:
         """
