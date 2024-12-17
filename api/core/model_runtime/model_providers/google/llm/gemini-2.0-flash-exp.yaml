@@ -32,6 +32,11 @@ parameter_rules:
     max: 8192
   - name: json_schema
     use_template: json_schema
+  - name: google_search
+    label:
+      en_US: Google Search
+    type: boolean
+    required: false
 pricing:
   input: '0.00'
   output: '0.00'

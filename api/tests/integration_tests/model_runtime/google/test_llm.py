@@ -13,7 +13,7 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.google.llm.llm import GoogleLargeLanguageModel
-from tests.integration_tests.model_runtime.__mock.google import setup_google_mock
+from tests.integration_tests.model_runtime.__mock.google import setup_google_mock, setup_mock_redis
 
 
 @pytest.mark.parametrize("setup_google_mock", [["none"]], indirect=True)
@@ -95,7 +95,7 @@ def test_invoke_stream_model(setup_google_mock):
 
 
 @pytest.mark.parametrize("setup_google_mock", [["none"]], indirect=True)
-def test_invoke_chat_model_with_vision(setup_google_mock):
+def test_invoke_chat_model_with_vision(setup_google_mock, setup_mock_redis):
     model = GoogleLargeLanguageModel()
 
     result = model.invoke(
@@ -126,7 +126,7 @@ def test_invoke_chat_model_with_vision(setup_google_mock):
 
 
 @pytest.mark.parametrize("setup_google_mock", [["none"]], indirect=True)
-def test_invoke_chat_model_with_vision_multi_pics(setup_google_mock):
+def test_invoke_chat_model_with_vision_multi_pics(setup_google_mock, setup_mock_redis):
     model = GoogleLargeLanguageModel()
 
     result = model.invoke(
