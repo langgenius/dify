@@ -665,14 +665,9 @@ class IndexingConfig(BaseSettings):
     )
 
 
-class VisionFormatConfig(BaseSettings):
-    MULTIMODAL_SEND_IMAGE_FORMAT: Literal["base64", "url"] = Field(
-        description="Format for sending images in multimodal contexts ('base64' or 'url'), default is base64",
-        default="base64",
-    )
-
-    MULTIMODAL_SEND_VIDEO_FORMAT: Literal["base64", "url"] = Field(
-        description="Format for sending videos in multimodal contexts ('base64' or 'url'), default is base64",
+class MultiModalTransferConfig(BaseSettings):
+    MULTIMODAL_SEND_FORMAT: Literal["base64", "url"] = Field(
+        description="Format for sending files in multimodal contexts ('base64' or 'url'), default is base64",
         default="base64",
     )
 
@@ -778,13 +773,13 @@ class FeatureConfig(
     FileAccessConfig,
     FileUploadConfig,
     HttpConfig,
-    VisionFormatConfig,
     InnerAPIConfig,
     IndexingConfig,
     LoggingConfig,
     MailConfig,
     ModelLoadBalanceConfig,
     ModerationConfig,
+    MultiModalTransferConfig,
     PositionConfig,
     RagEtlConfig,
     SecurityConfig,
