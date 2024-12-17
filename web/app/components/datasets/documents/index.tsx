@@ -22,6 +22,7 @@ import type { NotionPage } from '@/models/common'
 import type { CreateDocumentReq } from '@/models/datasets'
 import { DataSourceType } from '@/models/datasets'
 import IndexFailed from '@/app/components/datasets/common/document-status-with-action/index-failed'
+import { useProviderContext } from '@/context/provider-context'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -77,6 +78,8 @@ const DEFAULT_LIMIT = 15
 
 const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const { t } = useTranslation()
+  const { plan } = useProviderContext()
+  const isFreePlan = plan.type === 'sandbox'
   const [inputValue, setInputValue] = useState<string>('') // the input value
   const [searchValue, setSearchValue] = useState<string>('')
   const [currPage, setCurrPage] = React.useState<number>(0)
@@ -232,7 +235,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             onClear={() => handleInputChange('')}
           />
           <div className='flex gap-2 justify-center items-center !h-8'>
-            <AutoDisabledDocument datasetId={datasetId} />
+            {!isFreePlan && <AutoDisabledDocument datasetId={datasetId} />}
             <IndexFailed datasetId={datasetId} />
             {embeddingAvailable && (
               <Button variant='primary' onClick={routeToDocCreate} className='shrink-0'>
