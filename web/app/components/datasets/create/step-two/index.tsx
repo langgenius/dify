@@ -550,7 +550,7 @@ const StepTwo = ({
       getRulesFromDetail()
       getDefaultMode()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -658,7 +658,7 @@ const StepTwo = ({
                         />
                         <div className='flex items-center gap-1'>
                           <TextLabel>
-                            {t('datasetCreation.stepTwo.QALanguage')}
+                            {t('datasetCreation.stepTwo.useQALanguage')}
                           </TextLabel>
                           <div className='z-50 relative'>
                             <LanguageSelect
