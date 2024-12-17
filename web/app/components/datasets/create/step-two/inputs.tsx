@@ -19,8 +19,8 @@ const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
 
 export const DelimiterInput: FC<InputProps> = (props) => {
   const { t } = useTranslation()
-  return <FormField label={<div className='flex'>
-    {t('datasetCreation.stepTwo.separator')}
+  return <FormField label={<div className='flex items-center mb-1'>
+    <span className='system-sm-semibold mr-0.5'>{t('datasetCreation.stepTwo.separator')}</span>
     <Tooltip
       popupContent={
         <div className='max-w-[200px]'>
@@ -40,7 +40,7 @@ export const DelimiterInput: FC<InputProps> = (props) => {
 
 export const MaxLengthInput: FC<InputNumberProps> = (props) => {
   const { t } = useTranslation()
-  return <FormField label={<div className='h-[14px]'>
+  return <FormField label={<div className='system-sm-semibold mb-1'>
     {t('datasetCreation.stepTwo.maxLength')}
   </div>}>
     <InputNumber
@@ -56,8 +56,8 @@ export const MaxLengthInput: FC<InputNumberProps> = (props) => {
 
 export const OverlapInput: FC<InputNumberProps> = (props) => {
   const { t } = useTranslation()
-  return <FormField label={<div className='flex'>
-    {t('datasetCreation.stepTwo.overlap')}
+  return <FormField label={<div className='flex items-center mb-1'>
+    <span className='system-sm-semibold'>{t('datasetCreation.stepTwo.overlap')}</span>
     <Tooltip
       popupContent={
         <div className='max-w-[200px]'>

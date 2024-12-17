@@ -20,7 +20,9 @@ export const Topbar: FC<TopbarProps> = (props) => {
   const { t } = useTranslation()
   return <div className={classNames('flex h-[52px] items-center justify-between relative border-b border-b-divider-subtle', className)}>
     <Link href={'/datasets'} className="h-12 pl-2 pr-6 py-2 justify-start items-center gap-1 inline-flex">
-      <RiArrowLeftLine className='size-4 mr-2 text-text-primary' />
+      <div className='p-2'>
+        <RiArrowLeftLine className='size-4 text-text-primary' />
+      </div>
       <p className="text-text-primary system-sm-semibold-uppercase">
         {t('datasetCreation.steps.header.creation')}
       </p>
