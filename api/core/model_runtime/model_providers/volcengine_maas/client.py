@@ -1,4 +1,3 @@
-import re
 from collections.abc import Generator
 from typing import Optional, cast
 
@@ -104,17 +103,16 @@ class ArkClientV3:
                     if message_content.type == PromptMessageContentType.TEXT:
                         content.append(
                             ChatCompletionContentPartTextParam(
-                                text=message_content.text,
+                                text=message_content.data,
                                 type="text",
                             )
                         )
                     elif message_content.type == PromptMessageContentType.IMAGE:
                         message_content = cast(ImagePromptMessageContent, message_content)
-                        image_data = re.sub(r"^data:image\/[a-zA-Z]+;base64,", "", message_content.data)
                         content.append(
                             ChatCompletionContentPartImageParam(
                                 image_url=ImageURL(
-                                    url=image_data,
+                                    url=message_content.data,
                                     detail=message_content.detail.value,
                                 ),
                                 type="image_url",
