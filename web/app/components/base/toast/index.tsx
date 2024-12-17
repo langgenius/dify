@@ -130,7 +130,7 @@ Toast.notify = ({
 
     root.render(
       <ToastContext.Provider value={{
-        notify: () => { },
+        notify: () => {},
         close: () => {
           if (holder) {
             root.unmount()
