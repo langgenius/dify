@@ -225,8 +225,10 @@ class Workflow(db.Model):
         from models.tools import WorkflowToolProvider
 
         return (
-            db.session.query(WorkflowToolProvider).filter(WorkflowToolProvider.app_id == self.app_id).first()
-            is not None
+            db.session.query(WorkflowToolProvider)
+            .filter(WorkflowToolProvider.tenant_id == self.tenant_id, WorkflowToolProvider.app_id == self.app_id)
+            .count()
+            > 0
         )
 
     @property
@@ -325,6 +327,7 @@ class WorkflowRunStatus(StrEnum):
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     STOPPED = "stopped"
+    PARTIAL_SUCCESSED = "partial-succeeded"
 
     @classmethod
     def value_of(cls, value: str) -> "WorkflowRunStatus":
@@ -395,7 +398,7 @@ class WorkflowRun(db.Model):
     version = db.Column(db.String(255), nullable=False)
     graph = db.Column(db.Text)
     inputs = db.Column(db.Text)
-    status = db.Column(db.String(255), nullable=False)  # running, succeeded, failed, stopped
+    status = db.Column(db.String(255), nullable=False)  # running, succeeded, failed, stopped, partial-succeeded
     outputs: Mapped[str] = mapped_column(sa.Text, default="{}")
     error = db.Column(db.Text)
     elapsed_time = db.Column(db.Float, nullable=False, server_default=db.text("0"))
@@ -405,6 +408,7 @@ class WorkflowRun(db.Model):
     created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     finished_at = db.Column(db.DateTime)
+    exceptions_count = db.Column(db.Integer, server_default=db.text("0"))
 
     @property
     def created_by_account(self):
@@ -464,6 +468,7 @@ class WorkflowRun(db.Model):
             "created_by": self.created_by,
             "created_at": self.created_at,
             "finished_at": self.finished_at,
+            "exceptions_count": self.exceptions_count,
         }
 
     @classmethod
@@ -489,6 +494,7 @@ class WorkflowRun(db.Model):
             created_by=data.get("created_by"),
             created_at=data.get("created_at"),
             finished_at=data.get("finished_at"),
+            exceptions_count=data.get("exceptions_count"),
         )
 
 
@@ -522,6 +528,7 @@ class WorkflowNodeExecutionStatus(Enum):
     RUNNING = "running"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
+    EXCEPTION = "exception"
 
     @classmethod
     def value_of(cls, value: str) -> "WorkflowNodeExecutionStatus":

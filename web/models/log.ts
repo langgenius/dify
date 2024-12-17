@@ -297,6 +297,7 @@ export type WorkflowRunDetailResponse = {
   created_by_end_user?: EndUserInfo
   created_at: number
   finished_at: number
+  exceptions_count?: number
 }
 
 export type AgentLogMeta = {

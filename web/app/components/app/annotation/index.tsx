@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounce } from 'ahooks'
+import { RiEqualizer2Line } from '@remixicon/react'
 import Toast from '../../base/toast'
 import Filter from './filter'
 import type { QueryParam } from './filter'
@@ -11,7 +12,8 @@ import EmptyElement from './empty-element'
 import HeaderOpts from './header-opts'
 import { AnnotationEnableStatus, type AnnotationItem, type AnnotationItemBasic, JobStatus } from './type'
 import ViewAnnotationModal from './view-annotation-modal'
-import cn from '@/utils/classnames'
+import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
+import ActionButton from '@/app/components/base/action-button'
 import Pagination from '@/app/components/base/pagination'
 import Switch from '@/app/components/base/switch'
 import { addAnnotation, delAnnotation, fetchAnnotationConfig as doFetchAnnotationConfig, editAnnotation, fetchAnnotationList, queryAnnotationJobStatus, updateAnnotationScore, updateAnnotationStatus } from '@/service/annotation'
@@ -22,8 +24,8 @@ import type { AnnotationReplyConfig } from '@/models/debug'
 import { sleep } from '@/utils'
 import { useProviderContext } from '@/context/provider-context'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
-import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import type { App } from '@/types/app'
+import cn from '@/utils/classnames'
 
 type Props = {
   appDetail: App
@@ -157,8 +159,9 @@ const Annotation: FC<Props> = ({
           <div className='flex items-center space-x-2'>
             {isChatApp && (
               <>
-                <div className={cn(!annotationConfig?.enabled && 'pr-2', 'flex items-center h-7 rounded-lg border border-gray-200 pl-2 space-x-1')}>
-                  <div className='leading-[18px] text-[13px] font-medium text-gray-900'>{t('appAnnotation.name')}</div>
+                <div className={cn(!annotationConfig?.enabled && 'pr-2', 'flex items-center h-7 rounded-lg bg-components-panel-bg-blur border border-components-panel-border pl-2 space-x-1')}>
+                  <MessageFast className='w-4 h-4 text-util-colors-indigo-indigo-600' />
+                  <div className='system-sm-medium text-text-primary'>{t('appAnnotation.name')}</div>
                   <Switch
                     key={controlRefreshSwitch}
                     defaultValue={annotationConfig?.enabled}
@@ -185,22 +188,14 @@ const Annotation: FC<Props> = ({
                   ></Switch>
                   {annotationConfig?.enabled && (
                     <div className='flex items-center pl-1.5'>
-                      <div className='shrink-0 mr-1 w-[1px] h-3.5 bg-gray-200'></div>
-                      <div
-                        className={`
-                      shrink-0  h-7 w-7 flex items-center justify-center
-                      text-xs text-gray-700 font-medium 
-                    `}
-                        onClick={() => { setIsShowEdit(true) }}
-                      >
-                        <div className='flex h-6 w-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-200'>
-                          <Settings04 className='w-4 h-4' />
-                        </div>
-                      </div>
+                      <div className='shrink-0 mr-1 w-[1px] h-3.5 bg-divider-subtle'></div>
+                      <ActionButton onClick={() => setIsShowEdit(true)}>
+                        <RiEqualizer2Line className='w-4 h-4 text-text-tertiary' />
+                      </ActionButton>
                     </div>
                   )}
                 </div>
-                <div className='shrink-0 mx-3 w-[1px] h-3.5 bg-gray-200'></div>
+                <div className='shrink-0 mx-3 w-[1px] h-3.5 bg-divider-regular'></div>
               </>
             )}
 

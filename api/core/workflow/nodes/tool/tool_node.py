@@ -56,6 +56,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                     NodeRunMetadataKey.TOOL_INFO: tool_info,
                 },
                 error=f"Failed to get tool runtime: {str(e)}",
+                error_type=type(e).__name__,
             )
 
         # get parameters
@@ -89,6 +90,17 @@ class ToolNode(BaseNode[ToolNodeData]):
                     NodeRunMetadataKey.TOOL_INFO: tool_info,
                 },
                 error=f"Failed to invoke tool: {str(e)}",
+                error_type=type(e).__name__,
+            )
+        except Exception as e:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=parameters_for_log,
+                metadata={
+                    NodeRunMetadataKey.TOOL_INFO: tool_info,
+                },
+                error=f"Failed to invoke tool: {str(e)}",
+                error_type="UnknownError",
             )
 
         # convert tool messages

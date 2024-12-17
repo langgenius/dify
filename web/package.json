@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.13.2",
+  "version": "0.14.0",
   "private": true,
   "engines": {
     "node": ">=18.17.0"
@@ -36,7 +36,7 @@
     "@mdx-js/react": "^2.3.0",
     "@monaco-editor/react": "^4.6.0",
     "@next/mdx": "^14.0.4",
-    "@remixicon/react": "^4.2.0",
+    "@remixicon/react": "^4.5.0",
     "@sentry/react": "^7.54.0",
     "@sentry/utils": "^7.54.0",
     "@svgdotjs/svg.js": "^3.2.4",
@@ -79,11 +79,13 @@
     "react-easy-crop": "^5.0.8",
     "react-error-boundary": "^4.0.2",
     "react-hook-form": "^7.51.4",
+    "react-hotkeys-hook": "^4.6.1",
     "react-i18next": "^12.2.0",
     "react-infinite-scroll-component": "^6.1.0",
     "react-markdown": "^8.0.6",
     "react-multi-email": "^1.0.14",
     "react-papaparse": "^4.1.0",
+    "react-pdf-highlighter": "^8.0.0-rc.0",
     "react-slider": "^2.0.4",
     "react-sortablejs": "^6.1.4",
     "react-syntax-highlighter": "^15.5.0",

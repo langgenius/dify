@@ -18,8 +18,7 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType, ProviderModel
-from core.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
@@ -249,8 +248,7 @@ def test_fetch_prompt_messages__vison_disabled(faker, llm_node, model_config):
 
 def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
     # Setup dify config
-    dify_config.MULTIMODAL_SEND_IMAGE_FORMAT = "url"
-    dify_config.MULTIMODAL_SEND_VIDEO_FORMAT = "url"
+    dify_config.MULTIMODAL_SEND_FORMAT = "url"
 
     # Generate fake values for prompt template
     fake_assistant_prompt = faker.sentence()
@@ -328,6 +326,8 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
                     filename="test1.jpg",
                     transfer_method=FileTransferMethod.REMOTE_URL,
                     remote_url=fake_remote_url,
+                    extension=".jpg",
+                    mime_type="image/jpg",
                 )
             ],
             vision_enabled=True,
@@ -361,7 +361,9 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
                 UserPromptMessage(
                     content=[
                         TextPromptMessageContent(data=fake_query),
-                        ImagePromptMessageContent(data=fake_remote_url, detail=fake_vision_detail),
+                        ImagePromptMessageContent(
+                            url=fake_remote_url, mime_type="image/jpg", format="jpg", detail=fake_vision_detail
+                        ),
                     ]
                 ),
             ],
@@ -384,7 +386,9 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
             expected_messages=[
                 UserPromptMessage(
                     content=[
-                        ImagePromptMessageContent(data=fake_remote_url, detail=fake_vision_detail),
+                        ImagePromptMessageContent(
+                            url=fake_remote_url, mime_type="image/jpg", format="jpg", detail=fake_vision_detail
+                        ),
                     ]
                 ),
             ]
@@ -397,6 +401,8 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
                     filename="test1.jpg",
                     transfer_method=FileTransferMethod.REMOTE_URL,
                     remote_url=fake_remote_url,
+                    extension=".jpg",
+                    mime_type="image/jpg",
                 )
             },
         ),

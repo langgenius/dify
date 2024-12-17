@@ -52,6 +52,7 @@ const translation = {
     },
     variables: 'متغیرها',
     uploadImages: 'تصاویر آپلود شده',
+    modelParams: 'پارامترهای مدل',
   },
   filter: {
     period: {

@@ -225,8 +225,7 @@ x-shared-env: &shared-api-worker-env
   UNSTRUCTURED_API_KEY: ${UNSTRUCTURED_API_KEY:-}
   PROMPT_GENERATION_MAX_TOKENS: ${PROMPT_GENERATION_MAX_TOKENS:-512}
   CODE_GENERATION_MAX_TOKENS: ${CODE_GENERATION_MAX_TOKENS:-1024}
-  MULTIMODAL_SEND_IMAGE_FORMAT: ${MULTIMODAL_SEND_IMAGE_FORMAT:-base64}
-  MULTIMODAL_SEND_VIDEO_FORMAT: ${MULTIMODAL_SEND_VIDEO_FORMAT:-base64}
+  MULTIMODAL_SEND_FORMAT: ${MULTIMODAL_SEND_FORMAT:-base64}
   UPLOAD_IMAGE_FILE_SIZE_LIMIT: ${UPLOAD_IMAGE_FILE_SIZE_LIMIT:-10}
   UPLOAD_VIDEO_FILE_SIZE_LIMIT: ${UPLOAD_VIDEO_FILE_SIZE_LIMIT:-100}
   UPLOAD_AUDIO_FILE_SIZE_LIMIT: ${UPLOAD_AUDIO_FILE_SIZE_LIMIT:-50}
@@ -287,12 +286,15 @@ x-shared-env: &shared-api-worker-env
   OCEANBASE_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
   OCEANBASE_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
   CREATE_TIDB_SERVICE_JOB_ENABLED: ${CREATE_TIDB_SERVICE_JOB_ENABLED:-false}
+  MAX_SUBMIT_COUNT: ${MAX_SUBMIT_COUNT:-100}
   RETRIEVAL_TOP_N: ${RETRIEVAL_TOP_N:-0}
+  HTTP_PROXY: ${HTTP_PROXY:-}
+  HTTPS_PROXY: ${HTTPS_PROXY:-}
 
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.13.2
+    image: langgenius/dify-api:0.14.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -312,7 +314,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.13.2
+    image: langgenius/dify-api:0.14.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -331,7 +333,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.13.2
+    image: langgenius/dify-web:0.14.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -490,6 +492,16 @@ services:
     ports:
       - '${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}'
       - '${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}'
+
+  # The TiDB vector store.
+  # For production use, please refer to https://github.com/pingcap/tidb-docker-compose
+  tidb:
+    image: pingcap/tidb:v8.4.0
+    profiles:
+      - tidb
+    command:
+      - --store=unistore
+    restart: always
 
   # The Weaviate vector store.
   weaviate:

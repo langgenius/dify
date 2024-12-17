@@ -4,7 +4,7 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
 
 from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.enums import CONTINUE_ON_ERROR_NODE_TYPE, NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from models.workflow import WorkflowNodeExecutionStatus
 
@@ -75,6 +75,7 @@ class BaseNode(Generic[GenericNodeData]):
             result = NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 error=str(e),
+                error_type="WorkflowNodeError",
             )
 
         if isinstance(result, NodeRunResult):
@@ -137,3 +138,12 @@ class BaseNode(Generic[GenericNodeData]):
         :return:
         """
         return self._node_type
+
+    @property
+    def should_continue_on_error(self) -> bool:
+        """judge if should continue on error
+
+        Returns:
+            bool: if should continue on error
+        """
+        return self.node_data.error_strategy is not None and self.node_type in CONTINUE_ON_ERROR_NODE_TYPE

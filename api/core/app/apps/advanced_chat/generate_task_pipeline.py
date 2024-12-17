@@ -19,6 +19,7 @@ from core.app.entities.queue_entities import (
     QueueIterationNextEvent,
     QueueIterationStartEvent,
     QueueMessageReplaceEvent,
+    QueueNodeExceptionEvent,
     QueueNodeFailedEvent,
     QueueNodeInIterationFailedEvent,
     QueueNodeStartedEvent,
@@ -31,6 +32,7 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
+    QueueWorkflowPartialSuccessEvent,
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
@@ -127,7 +129,6 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
         self._conversation_name_generate_thread = None
         self._recorded_files: list[Mapping[str, Any]] = []
-        self.total_tokens: int = 0
 
     def process(self):
         """
@@ -318,7 +319,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
                 if response:
                     yield response
-            elif isinstance(event, QueueNodeFailedEvent | QueueNodeInIterationFailedEvent):
+            elif isinstance(event, QueueNodeFailedEvent | QueueNodeInIterationFailedEvent | QueueNodeExceptionEvent):
                 workflow_node_execution = self._handle_workflow_node_execution_failed(event)
 
                 response = self._workflow_node_finish_to_stream_response(
@@ -361,8 +362,6 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 if not workflow_run:
                     raise Exception("Workflow run not initialized.")
 
-                # FIXME for issue #11221 quick fix maybe have a better solution
-                self.total_tokens += event.metadata.get("total_tokens", 0) if event.metadata else 0
                 yield self._workflow_iteration_completed_to_stream_response(
                     task_id=self._application_generate_entity.task_id, workflow_run=workflow_run, event=event
                 )
@@ -376,10 +375,33 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 workflow_run = self._handle_workflow_run_success(
                     workflow_run=workflow_run,
                     start_at=graph_runtime_state.start_at,
-                    total_tokens=graph_runtime_state.total_tokens or self.total_tokens,
+                    total_tokens=graph_runtime_state.total_tokens,
                     total_steps=graph_runtime_state.node_run_steps,
                     outputs=event.outputs,
                     conversation_id=self._conversation.id,
+                    trace_manager=trace_manager,
+                )
+
+                yield self._workflow_finish_to_stream_response(
+                    task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
+                )
+
+                self._queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
+            elif isinstance(event, QueueWorkflowPartialSuccessEvent):
+                if not workflow_run:
+                    raise Exception("Workflow run not initialized.")
+
+                if not graph_runtime_state:
+                    raise Exception("Graph runtime state not initialized.")
+
+                workflow_run = self._handle_workflow_run_partial_success(
+                    workflow_run=workflow_run,
+                    start_at=graph_runtime_state.start_at,
+                    total_tokens=graph_runtime_state.total_tokens,
+                    total_steps=graph_runtime_state.node_run_steps,
+                    outputs=event.outputs,
+                    exceptions_count=event.exceptions_count,
+                    conversation_id=None,
                     trace_manager=trace_manager,
                 )
 
@@ -404,6 +426,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     error=event.error,
                     conversation_id=self._conversation.id,
                     trace_manager=trace_manager,
+                    exceptions_count=event.exceptions_count,
                 )
 
                 yield self._workflow_finish_to_stream_response(
