@@ -4,7 +4,7 @@ import json
 import logging
 import time
 from collections.abc import Generator
-from typing import Optional, Union, cast
+from typing import TYPE_CHECKING, Optional, Union, cast
 
 import google.auth.transport.requests
 import requests
@@ -19,8 +19,6 @@ from anthropic.types import (
     MessageStreamEvent,
 )
 from google.api_core import exceptions
-from google.cloud import aiplatform
-from google.oauth2 import service_account
 from PIL import Image
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -46,6 +44,9 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+
+if TYPE_CHECKING:
+    import vertexai.generative_models as glm
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +103,8 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
         :param stream: is stream response
         :return: full response or stream response chunk generator result
         """
+        from google.oauth2 import service_account
+
         # use Anthropic official SDK references
         # - https://github.com/anthropics/anthropic-sdk-python
         service_account_key = credentials.get("vertex_service_account_key", "")
@@ -413,6 +416,8 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
         :param tools: tool messages
         :return: glm tools
         """
+        import vertexai.generative_models as glm
+
         return glm.Tool(
             function_declarations=[
                 glm.FunctionDeclaration(
@@ -473,6 +478,10 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
+        import vertexai.generative_models as glm
+        from google.cloud import aiplatform
+        from google.oauth2 import service_account
+
         config_kwargs = model_parameters.copy()
         config_kwargs["max_output_tokens"] = config_kwargs.pop("max_tokens_to_sample", None)
 
@@ -645,6 +654,8 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
         :param message: one PromptMessage
         :return: glm Content representation of message
         """
+        import vertexai.generative_models as glm
+
         if isinstance(message, UserPromptMessage):
             glm_content = glm.Content(role="user", parts=[])
 
