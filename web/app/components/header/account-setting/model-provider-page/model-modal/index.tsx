@@ -35,7 +35,6 @@ import {
   useLanguage,
   useProviderCredentialsAndLoadBalancing,
 } from '../hooks'
-import ProviderIcon from '../provider-icon'
 import { useValidate } from '../../key-validator/hooks'
 import { ValidatedStatus } from '../../key-validator/declarations'
 import ModelLoadBalancingConfigs from '../provider-added-card/model-load-balancing-configs'
@@ -282,9 +281,8 @@ const ModelModal: FC<ModelModalProps> = ({
         <div className='fixed inset-0 flex items-center justify-center bg-black/[.25]'>
           <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-components-panel-bg shadow-xl rounded-2xl overflow-y-auto'>
             <div className='px-8 pt-8'>
-              <div className='flex justify-between items-center mb-2'>
+              <div className='flex items-center mb-2'>
                 <div className='text-xl font-semibold text-text-primary'>{renderTitlePrefix()}</div>
-                <ProviderIcon provider={provider} />
               </div>
 
               <Form

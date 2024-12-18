@@ -64,7 +64,7 @@ const PopupItem: FC<PopupItemProps> = ({
 
   return (
     <div className='mb-1'>
-      <div className='flex items-center px-3 h-[22px] text-xs font-medium text-gray-500'>
+      <div className='flex items-center px-3 h-[22px] text-xs font-medium text-text-tertiary'>
         {model.label[language] || model.label.en_US}
       </div>
       {
@@ -78,7 +78,7 @@ const PopupItem: FC<PopupItemProps> = ({
               key={modelItem.model}
               className={`
                 group relative flex items-center px-3 py-1.5 h-8 rounded-lg
-                ${modelItem.status === ModelStatusEnum.active ? 'cursor-pointer hover:bg-gray-50' : 'cursor-not-allowed hover:bg-gray-50/60'}
+                ${modelItem.status === ModelStatusEnum.active ? 'cursor-pointer hover:bg-state-base-hover' : 'cursor-not-allowed hover:bg-state-base-hover-alt'}
               `}
               onClick={() => handleSelect(model.provider, modelItem)}
             >
@@ -92,7 +92,7 @@ const PopupItem: FC<PopupItemProps> = ({
               />
               <ModelName
                 className={`
-                  grow text-sm font-normal text-gray-900
+                  grow text-sm font-normal text-text-primary
                   ${modelItem.status !== ModelStatusEnum.active && 'opacity-60'}
                 `}
                 modelItem={modelItem}
@@ -101,13 +101,13 @@ const PopupItem: FC<PopupItemProps> = ({
               />
               {
                 defaultModel?.model === modelItem.model && defaultModel.provider === currentProvider.provider && (
-                  <Check className='shrink-0 w-4 h-4 text-primary-600' />
+                  <Check className='shrink-0 w-4 h-4 text-text-accent' />
                 )
               }
               {
                 modelItem.status === ModelStatusEnum.noConfigure && (
                   <div
-                    className='hidden group-hover:block text-xs font-medium text-primary-600 cursor-pointer'
+                    className='hidden group-hover:block text-xs font-medium text-text-accent cursor-pointer'
                     onClick={handleOpenModelModal}
                   >
                     {t('common.operation.add').toLocaleUpperCase()}

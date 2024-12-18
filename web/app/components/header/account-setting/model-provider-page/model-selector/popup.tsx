@@ -39,20 +39,20 @@ const Popup: FC<PopupProps> = ({
   }).filter(model => model.models.length > 0)
 
   return (
-    <div className='w-[320px] max-h-[480px] rounded-lg border-[0.5px] border-gray-200 bg-white shadow-lg overflow-y-auto'>
-      <div className='sticky top-0 pl-3 pt-3 pr-2 pb-1 bg-white z-10'>
+    <div className='w-[320px] max-h-[480px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg overflow-y-auto'>
+      <div className='sticky top-0 pl-3 pt-3 pr-2 pb-1 bg-components-panel-bg z-10'>
         <div className={`
           flex items-center pl-[9px] pr-[10px] h-8 rounded-lg border
-          ${searchText ? 'bg-white border-gray-300 shadow-xs' : 'bg-gray-100 border-transparent'}
+          ${searchText ? 'bg-components-input-bg-active border-components-input-border-active shadow-xs' : 'bg-components-input-bg-normal border-transparent'}
         `}>
           <RiSearchLine
             className={`
               shrink-0 mr-[7px] w-[14px] h-[14px]
-              ${searchText ? 'text-gray-500' : 'text-gray-400'}
+              ${searchText ? 'text-text-tertiary' : 'text-text-quaternary'}
             `}
           />
           <input
-            className='block grow h-[18px] text-[13px] appearance-none outline-none bg-transparent'
+            className='block grow h-[18px] text-[13px] text-text-primary appearance-none outline-none bg-transparent'
             placeholder='Search model'
             value={searchText}
             onChange={e => setSearchText(e.target.value)}
@@ -60,7 +60,7 @@ const Popup: FC<PopupProps> = ({
           {
             searchText && (
               <XCircle
-                className='shrink-0 ml-1.5 w-[14px] h-[14px] text-gray-400 cursor-pointer'
+                className='shrink-0 ml-1.5 w-[14px] h-[14px] text-text-quaternary cursor-pointer'
                 onClick={() => setSearchText('')}
               />
             )
@@ -80,7 +80,7 @@ const Popup: FC<PopupProps> = ({
         }
         {
           !filteredModelList.length && (
-            <div className='px-3 py-1.5 leading-[18px] text-center text-xs text-gray-500 break-all'>
+            <div className='px-3 py-1.5 leading-[18px] text-center text-xs text-text-tertiary break-all'>
               {`No model found for “${searchText}”`}
             </div>
           )

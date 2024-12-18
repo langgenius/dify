@@ -63,7 +63,7 @@ const ModelName: FC<ModelNameProps> = ({
           <FeatureIcon
             key={feature}
             feature={feature}
-            className={featuresClassName}
+            className={cn('ml-1', featuresClassName)}
           />
         ))
       }
