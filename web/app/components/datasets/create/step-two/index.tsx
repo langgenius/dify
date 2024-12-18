@@ -226,7 +226,6 @@ const StepTwo = ({
               parentChildConfig.parent.delimiter,
             ),
             max_tokens: parentChildConfig.parent.maxLength,
-            chunk_overlap: overlap,
           },
           parent_mode: parentChildConfig.chunkForContext,
           subchunk_segmentation: {
