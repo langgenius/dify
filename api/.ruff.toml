@@ -70,7 +70,6 @@ ignore = [
     "SIM113", # eumerate-for-loop
     "SIM117", # multiple-with-statements
     "SIM210", # if-expr-with-true-false
-    "SIM300", # yoda-conditions,
 ]
 
 [lint.per-file-ignores]
