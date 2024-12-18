@@ -18,6 +18,7 @@ x-shared-env: &shared-api-worker-env
   LOG_DATEFORMAT: ${LOG_DATEFORMAT:-"%Y-%m-%d %H:%M:%S"}
   LOG_TZ: ${LOG_TZ:-UTC}
   DEBUG: ${DEBUG:-false}
+  SENTRY_DSN: ${SENTRY_DSN:-}
   FLASK_DEBUG: ${FLASK_DEBUG:-false}
   SECRET_KEY: ${SECRET_KEY:-sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U}
   INIT_PASSWORD: ${INIT_PASSWORD:-}
@@ -28,6 +29,7 @@ x-shared-env: &shared-api-worker-env
   FILES_ACCESS_TIMEOUT: ${FILES_ACCESS_TIMEOUT:-300}
   ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
   APP_MAX_ACTIVE_REQUESTS: ${APP_MAX_ACTIVE_REQUESTS:-0}
+  APP_MAX_EXECUTION_TIME: ${APP_MAX_EXECUTION_TIME:-1200}
   DIFY_BIND_ADDRESS: ${DIFY_BIND_ADDRESS:-0.0.0.0}
   DIFY_PORT: ${DIFY_PORT:-5001}
   SERVER_WORKER_AMOUNT: ${SERVER_WORKER_AMOUNT:-}
@@ -389,7 +391,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.14.0
+    image: langgenius/dify-api:0.14.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -412,7 +414,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.14.0
+    image: langgenius/dify-api:0.14.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -434,7 +436,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.14.0
+    image: langgenius/dify-web:0.14.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}

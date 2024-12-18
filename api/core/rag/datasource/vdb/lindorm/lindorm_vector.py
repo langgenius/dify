@@ -49,10 +49,10 @@ class LindormVectorStoreConfig(BaseModel):
 
 
 class LindormVectorStore(BaseVector):
-    def __init__(self, collection_name: str, config: LindormVectorStoreConfig, **kwargs):
+    def __init__(self, collection_name: str, config: LindormVectorStoreConfig, using_ugc: bool, **kwargs):
         self._routing = None
         self._routing_field = None
-        if config.using_ugc:
+        if using_ugc:
             routing_value: str = kwargs.get("routing_value")
             if routing_value is None:
                 raise ValueError("UGC index should init vector with valid 'routing_value' parameter value")
@@ -64,7 +64,7 @@ class LindormVectorStore(BaseVector):
             super().__init__(collection_name.lower())
         self._client_config = config
         self._client = OpenSearch(**config.to_opensearch_params())
-        self._using_ugc = config.using_ugc
+        self._using_ugc = using_ugc
         self.kwargs = kwargs
 
     def get_type(self) -> str:
@@ -467,12 +467,16 @@ class LindormVectorStoreFactory(AbstractVectorFactory):
         using_ugc = dify_config.USING_UGC_INDEX
         routing_value = None
         if dataset.index_struct:
-            if using_ugc:
+            # if an existed record's index_struct_dict doesn't contain using_ugc field,
+            # it actually stores in the normal index format
+            stored_in_ugc = dataset.index_struct_dict.get("using_ugc", False)
+            using_ugc = stored_in_ugc
+            if stored_in_ugc:
                 dimension = dataset.index_struct_dict["dimension"]
                 index_type = dataset.index_struct_dict["index_type"]
                 distance_type = dataset.index_struct_dict["distance_type"]
-                index_name = f"{UGC_INDEX_PREFIX}_{dimension}_{index_type}_{distance_type}"
                 routing_value = dataset.index_struct_dict["vector_store"]["class_prefix"]
+                index_name = f"{UGC_INDEX_PREFIX}_{dimension}_{index_type}_{distance_type}"
             else:
                 index_name = dataset.index_struct_dict["vector_store"]["class_prefix"]
         else:
@@ -487,6 +491,7 @@ class LindormVectorStoreFactory(AbstractVectorFactory):
                 "index_type": index_type,
                 "dimension": dimension,
                 "distance_type": distance_type,
+                "using_ugc": using_ugc,
             }
             dataset.index_struct = json.dumps(index_struct_dict)
             if using_ugc:
@@ -494,4 +499,4 @@ class LindormVectorStoreFactory(AbstractVectorFactory):
                 routing_value = class_prefix
             else:
                 index_name = class_prefix
-        return LindormVectorStore(index_name, lindorm_config, routing_value=routing_value)
+        return LindormVectorStore(index_name, lindorm_config, routing_value=routing_value, using_ugc=using_ugc)
