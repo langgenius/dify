@@ -364,10 +364,10 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                     raise ValueError(f"Failed to fetch data from url {message_content.url}, {ex}")
             temp_file.flush()
 
-        file = genai.upload_file(path=temp_file.name, mime_type=message_content.mime_type)
-        while file.state.name == "PROCESSING":
+        file = self.client.files.upload(path=temp_file.name, config={"mime_type": message_content.mime_type})
+        while file.state == "PROCESSING":
             time.sleep(5)
-            file = genai.get_file(file.name)
+            file = self.client.files.get(name=file.name)
         # google will delete your upload files in 2 days.
         redis_client.setex(key, 47 * 60 * 60, file.name)
 
@@ -424,11 +424,6 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
         """
         Map model invoke error to unified error
-        The key is the ermd = genai.GenerativeModel(model) error type thrown to the caller
-        The value is the md = genai.GenerativeModel(model) error type thrown by the model,
-        which needs to be converted into a unified error type for the caller.
-
-        :return: Invoke emd = genai.GenerativeModel(model) error mapping
         """
         return {
             InvokeConnectionError: [errors.APIError],

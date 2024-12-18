@@ -42,7 +42,7 @@ google-api-python-client = "2.90.0"
 google-auth = "2.29.0"
 google-auth-httplib2 = "0.2.0"
 google-cloud-aiplatform = "1.49.0"
-google-genai = "0.2.2"
+google-genai = "~0.3.0"
 googleapis-common-protos = "1.63.0"
 gunicorn = "~23.0.0"
 httpx = { version = "~0.27.0", extras = ["socks"] }
