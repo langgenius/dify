@@ -43,6 +43,13 @@ class JinaReaderTool(BuiltinTool):
         if wait_for_selector is not None and wait_for_selector != "":
             headers["X-Wait-For-Selector"] = wait_for_selector
 
+        remove_selector = tool_parameters.get("remove_selector")
+        if remove_selector is not None and remove_selector != "":
+            headers["X-Remove-Selector"] = remove_selector
+
+        if tool_parameters.get("retain_images", False):
+            headers["X-Retain-Images"] = "true"
+
         if tool_parameters.get("image_caption", False):
             headers["X-With-Generated-Alt"] = "true"
 
@@ -58,6 +65,12 @@ class JinaReaderTool(BuiltinTool):
 
         if tool_parameters.get("no_cache", False):
             headers["X-No-Cache"] = "true"
+
+        if tool_parameters.get("with_iframe", False):
+            headers["X-With-Iframe"] = "true"
+
+        if tool_parameters.get("with_shadow_dom", False):
+            headers["X-With-Shadow-Dom"] = "true"
 
         max_retries = tool_parameters.get("max_retries", 3)
         response = ssrf_proxy.get(

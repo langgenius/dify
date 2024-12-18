@@ -10,6 +10,7 @@ from core.model_runtime.entities.llm_entities import (
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
+    PromptMessageContentType,
     PromptMessageTool,
     SystemPromptMessage,
     ToolPromptMessage,
@@ -105,7 +106,11 @@ class BaichuanLanguageModel(LargeLanguageModel):
             if isinstance(message.content, str):
                 message_dict = {"role": "user", "content": message.content}
             else:
-                raise ValueError("User message content must be str")
+                for message_content in message.content:
+                    if message_content.type == PromptMessageContentType.TEXT:
+                        message_dict = {"role": "user", "content": message_content.data}
+                    elif message_content.type == PromptMessageContentType.IMAGE:
+                        raise ValueError("Content object type not support image_url")
         elif isinstance(message, AssistantPromptMessage):
             message = cast(AssistantPromptMessage, message)
             message_dict = {"role": "assistant", "content": message.content}

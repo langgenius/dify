@@ -1,6 +1,6 @@
 model: grok-beta
 label:
-  en_US: Grok Beta
+  en_US: grok-beta
 model_type: llm
 features:
   - agent-thought
