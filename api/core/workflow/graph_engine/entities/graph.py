@@ -349,6 +349,10 @@ class Graph(BaseModel):
                         edge_mapping=edge_mapping,
                         reverse_edge_mapping=reverse_edge_mapping,
                         parallel_branch_node_ids=condition_parallel_branch_node_ids,
+                        parent_parallel=parallel,
+                        start_node_id=start_node_id,
+                        node_parallel_mapping=node_parallel_mapping,
+                        parallel_mapping=parallel_mapping,
                     )
 
                     # collect all branches node ids
@@ -559,6 +563,10 @@ class Graph(BaseModel):
         edge_mapping: dict[str, list[GraphEdge]],
         reverse_edge_mapping: dict[str, list[GraphEdge]],
         parallel_branch_node_ids: list[str],
+        parent_parallel: GraphParallel,
+        start_node_id: str,
+        node_parallel_mapping: dict[str, str],
+        parallel_mapping: dict[str, GraphParallel],
     ) -> dict[str, list[str]]:
         """
         Fetch all node ids in parallels
@@ -628,6 +636,15 @@ class Graph(BaseModel):
         for node_id, branch_node_ids in merge_branch_node_ids.items():
             if len(branch_node_ids) <= 1:
                 continue
+
+            p = GraphParallel(
+                start_from_node_id=start_node_id,
+                end_node_id=node_id,
+                parent_parallel_id=parent_parallel.id,
+                parent_parallel_start_node_id=parent_parallel.start_from_node_id,
+            )
+            if p.start_from_node_id not in node_parallel_mapping or p.end_to_node_id not in node_parallel_mapping:
+                parallel_mapping[p.id] = p
 
             for branch_node_id in branch_node_ids:
                 if branch_node_id in branches_merge_node_ids:
