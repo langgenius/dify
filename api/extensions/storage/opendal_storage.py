@@ -34,7 +34,6 @@ class OpenDALStorage(BaseStorage):
             root = kwargs.get("root", "storage")
             Path(root).mkdir(parents=True, exist_ok=True)
 
-        # self.op = opendal.Operator(scheme=scheme, **kwargs)
         self.op = opendal.Operator(scheme=scheme, **kwargs)
         logger.debug(f"opendal operator created with scheme {scheme}")
         retry_layer = opendal.layers.RetryLayer(max_times=3, factor=2.0, jitter=True)
