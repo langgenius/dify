@@ -1,6 +1,7 @@
 from flask import request
 from flask_login import current_user
 from flask_restful import Resource, marshal_with
+from werkzeug.exceptions import Forbidden
 
 import services
 from configs import dify_config
@@ -41,6 +42,9 @@ class FileApi(Resource):
     @marshal_with(file_fields)
     @cloud_edition_billing_resource_check("documents")
     def post(self):
+        if current_user.is_dataset_editor:
+            raise Forbidden()
+        
         # get file from request
         file = request.files["file"]
 
