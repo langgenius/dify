@@ -25,6 +25,7 @@ import { fetchAppDetail, fetchAppSSO } from '@/service/apps'
 import AppContext, { useAppContext } from '@/context/app-context'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import type { App } from '@/types/app'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -41,12 +42,14 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace } = useAppContext()
   const { appDetail, setAppDetail, setAppSiderbarExpand } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
     setAppDetail: state.setAppDetail,
     setAppSiderbarExpand: state.setAppSiderbarExpand,
   })))
+  const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
+  const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
   const [navigation, setNavigation] = useState<Array<{
     name: string
     href: string
@@ -107,33 +110,43 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   useEffect(() => {
     setAppDetail()
+    setIsLoadingAppDetail(true)
     fetchAppDetail({ url: '/apps', id: appId }).then((res) => {
-      // redirection
-      const canIEditApp = isCurrentWorkspaceEditor
-      if (!canIEditApp && (pathname.endsWith('configuration') || pathname.endsWith('workflow') || pathname.endsWith('logs'))) {
-        router.replace(`/app/${appId}/overview`)
-        return
-      }
-      if ((res.mode === 'workflow' || res.mode === 'advanced-chat') && (pathname).endsWith('configuration')) {
-        router.replace(`/app/${appId}/workflow`)
-      }
-      else if ((res.mode !== 'workflow' && res.mode !== 'advanced-chat') && (pathname).endsWith('workflow')) {
-        router.replace(`/app/${appId}/configuration`)
-      }
-      else {
-        setAppDetail({ ...res, enable_sso: false })
-        setNavigation(getNavigations(appId, isCurrentWorkspaceEditor, res.mode))
-        if (systemFeatures.enable_web_sso_switch_component && canIEditApp) {
-          fetchAppSSO({ appId }).then((ssoRes) => {
-            setAppDetail({ ...res, enable_sso: ssoRes.enabled })
-          })
-        }
-      }
+      setAppDetailRes(res)
     }).catch((e: any) => {
       if (e.status === 404)
         router.replace('/apps')
+    }).finally(() => {
+      setIsLoadingAppDetail(false)
     })
-  }, [appId, isCurrentWorkspaceEditor, systemFeatures, getNavigations, pathname, router, setAppDetail])
+  }, [appId, router, setAppDetail])
+
+  useEffect(() => {
+    if (!appDetailRes || isLoadingCurrentWorkspace || isLoadingAppDetail)
+      return
+    const res = appDetailRes
+    // redirection
+    const canIEditApp = isCurrentWorkspaceEditor
+    if (!canIEditApp && (pathname.endsWith('configuration') || pathname.endsWith('workflow') || pathname.endsWith('logs'))) {
+      router.replace(`/app/${appId}/overview`)
+      return
+    }
+    if ((res.mode === 'workflow' || res.mode === 'advanced-chat') && (pathname).endsWith('configuration')) {
+      router.replace(`/app/${appId}/workflow`)
+    }
+    else if ((res.mode !== 'workflow' && res.mode !== 'advanced-chat') && (pathname).endsWith('workflow')) {
+      router.replace(`/app/${appId}/configuration`)
+    }
+    else {
+      setAppDetail({ ...res, enable_sso: false })
+      setNavigation(getNavigations(appId, isCurrentWorkspaceEditor, res.mode))
+      if (systemFeatures.enable_web_sso_switch_component && canIEditApp) {
+        fetchAppSSO({ appId }).then((ssoRes) => {
+          setAppDetail({ ...res, enable_sso: ssoRes.enabled })
+        })
+      }
+    }
+  }, [appDetailRes, appId, getNavigations, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, router, setAppDetail, systemFeatures.enable_web_sso_switch_component])
 
   useUnmount(() => {
     setAppDetail()
