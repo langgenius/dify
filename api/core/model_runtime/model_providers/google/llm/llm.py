@@ -3,8 +3,8 @@ import json
 import os
 import tempfile
 import time
-from collections.abc import Generator
-from typing import Iterator, Optional, Union
+from collections.abc import Generator, Iterator
+from typing import Optional, Union
 
 import requests
 from google import genai
