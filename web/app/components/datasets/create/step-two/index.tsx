@@ -230,7 +230,7 @@ const StepTwo = ({
           },
           parent_mode: parentChildConfig.chunkForContext,
           subchunk_segmentation: {
-            separator: parentChildConfig.child.delimiter,
+            separator: unescape(parentChildConfig.child.delimiter),
             max_tokens: parentChildConfig.child.maxLength,
           },
         }, // api will check this. It will be removed after api refactored.
@@ -630,7 +630,7 @@ const StepTwo = ({
                   <div className='inline-flex shrink-0'>
                     <TextLabel>{t('datasetCreation.stepTwo.rules')}</TextLabel>
                   </div>
-                  <Divider className='grow' bgStyle='gradient'/>
+                  <Divider className='grow' bgStyle='gradient' />
                 </div>
                 <div className='mt-1'>
                   {rules.map(rule => (
@@ -717,7 +717,7 @@ const StepTwo = ({
                   <div className='inline-flex shrink-0'>
                     <TextLabel>{t('datasetCreation.stepTwo.parentChunkForContext')}</TextLabel>
                   </div>
-                  <Divider className='grow' bgStyle='gradient'/>
+                  <Divider className='grow' bgStyle='gradient' />
                 </div>
                 <RadioCard className='mt-1'
                   icon={<Image src={Note} alt='' />}
@@ -774,7 +774,7 @@ const StepTwo = ({
                   <div className='inline-flex shrink-0'>
                     <TextLabel>{t('datasetCreation.stepTwo.childChunkForRetrieval')}</TextLabel>
                   </div>
-                  <Divider className='grow' bgStyle='gradient'/>
+                  <Divider className='grow' bgStyle='gradient' />
                 </div>
                 <div className='flex gap-3 mt-1'>
                   <DelimiterInput
@@ -804,7 +804,7 @@ const StepTwo = ({
                   <div className='inline-flex shrink-0'>
                     <TextLabel>{t('datasetCreation.stepTwo.rules')}</TextLabel>
                   </div>
-                  <Divider className='grow' bgStyle='gradient'/>
+                  <Divider className='grow' bgStyle='gradient' />
                 </div>
                 <div className='mt-1'>
                   {rules.map(rule => (
@@ -829,7 +829,7 @@ const StepTwo = ({
               title={<p className='flex items-center'>
                 {t('datasetCreation.stepTwo.qualified')}
                 {!hasSetIndexType
-                && <Badge className={cn('ml-1 h-[18px]', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>{t('datasetCreation.stepTwo.recommend')}</Badge>}
+                  && <Badge className={cn('ml-1 h-[18px]', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>{t('datasetCreation.stepTwo.recommend')}</Badge>}
                 <span className='ml-auto'>
                   {!hasSetIndexType && <span className={cn(s.radio)} />}
                 </span>
