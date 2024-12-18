@@ -674,7 +674,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="リクエスト" tag="GET" label="/conversations" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20'`}>
+    <CodeGroup title="リクエスト" tag="GET" label="/conversations" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \\\n --header 'Authorization: Bearer {api_key}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \
