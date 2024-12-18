@@ -99,6 +99,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
     def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True, **kwargs):
         # node_ids is segment's node_ids
         if dataset.indexing_technique == "high_quality":
+            delete_child_chunks = kwargs.get("delete_child_chunks") or False
             vector = Vector(dataset)
             if node_ids:
                 child_node_ids = (
@@ -113,15 +114,19 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 )
                 child_node_ids = [child_node_id[0] for child_node_id in child_node_ids]
                 vector.delete_by_ids(child_node_ids)
+                if delete_child_chunks:
+                    db.session.query(ChildChunk).filter(
+                        ChildChunk.dataset_id == dataset.id, ChildChunk.index_node_id.in_(child_node_ids)
+                    ).delete()
+                    db.session.commit()
             else:
                 vector.delete()
 
-            delete_child_chunks = kwargs.get("delete_child_chunks") or False
-            if delete_child_chunks:
-                db.session.query(ChildChunk).filter(
-                    ChildChunk.dataset_id == dataset.id, ChildChunk.index_node_id.in_(child_node_ids)
-                ).delete()
-                db.session.commit()
+                if delete_child_chunks:
+                    db.session.query(ChildChunk).filter(
+                        ChildChunk.dataset_id == dataset.id
+                    ).delete()
+                    db.session.commit()
 
     def retrieve(
         self,

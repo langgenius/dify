@@ -11,6 +11,7 @@ class RetrievalChildChunk(BaseModel):
     id: str
     content: str
     score: float
+    position: int
 
 
 class RetrievalSegments(BaseModel):

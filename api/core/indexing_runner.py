@@ -315,7 +315,7 @@ class IndexingRunner:
             if len(preview_texts) > 0:
                 # qa model document
                 response = LLMGenerator.generate_qa_document(
-                    current_user.current_tenant_id, preview_texts[0], doc_language
+                    current_user.current_tenant_id, preview_texts[0].content, doc_language
                 )
                 document_qa_list = self.format_split_text(response)
 
