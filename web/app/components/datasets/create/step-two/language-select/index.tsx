@@ -22,12 +22,13 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
       manualClose
       trigger='click'
       disabled={disabled}
+      popupClassName='z-20'
       htmlContent={
         <div className='w-full py-1'>
           {languages.filter(language => language.supported).map(({ prompt_name }) => (
             <div
               key={prompt_name}
-              className='py-2 px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer text-gray-700 text-sm'
+              className='py-2 px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer text-text-secondary text-sm'
               onClick={() => onSelect(prompt_name)}>{prompt_name}
             </div>
           ))}
@@ -39,7 +40,7 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
           <RiArrowDownSLine className='w-3 h-3 opacity-60' />
         </div>
       }
-      btnClassName={open => cn('!border-0 !px-0 !py-0 !bg-inherit !hover:bg-inherit', open ? 'text-blue-600' : 'text-gray-500')}
+      btnClassName={() => cn('!border-0 !px-0 !py-0 !bg-inherit !hover:bg-inherit text-components-button-tertiary-text')}
       className='!w-[120px] h-fit !z-20 !translate-x-0 !left-[-16px]'
     />
   )

@@ -44,7 +44,7 @@ const NotionPagePreview = ({
   }, [currentPage])
 
   return (
-    <div className={cn(s.filePreview)}>
+    <div className={cn(s.filePreview, 'h-full')}>
       <div className={cn(s.previewHeader)}>
         <div className={cn(s.title)}>
           <span>{t('datasetCreation.stepOne.pagePreview')}</span>

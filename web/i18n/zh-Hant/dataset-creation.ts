@@ -37,6 +37,7 @@ const translation = {
     notionSyncTitle: 'Notion 未繫結',
     notionSyncTip: '同步 Notion 內容前，須先繫結 Notion 空間',
     connect: '去繫結',
+    cancel: '取消',
     button: '下一步',
     emptyDatasetCreation: '建立一個空知識庫',
     modal: {
@@ -99,7 +100,7 @@ const translation = {
     removeExtraSpaces: '替換掉連續的空格、換行符和製表符',
     removeUrlEmails: '刪除所有 URL 和電子郵件地址',
     removeStopwords: '去除停用詞，例如 “a”，“an”，“the” 等',
-    preview: '確認並預覽',
+    preview: '預覽',
     reset: '重置',
     indexMode: '索引方式',
     qualified: '高質量',

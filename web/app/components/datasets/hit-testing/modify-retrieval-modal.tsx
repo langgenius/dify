@@ -77,7 +77,7 @@ const ModifyRetrievalModal: FC<Props> = ({
         <div className='text-base font-semibold text-gray-900'>
           <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
           <div className='leading-[18px] text-xs font-normal text-gray-500'>
-            <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+            <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
             {t('datasetSettings.form.retrievalSetting.description')}
           </div>
         </div>
@@ -114,8 +114,8 @@ const ModifyRetrievalModal: FC<Props> = ({
           borderColor: 'rgba(0, 0, 0, 0.05)',
         }}
       >
-        <Button className='mr-2 flex-shrink-0' onClick={onHide}>{t('common.operation.cancel')}</Button>
-        <Button variant='primary' className='flex-shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
+        <Button className='mr-2 shrink-0' onClick={onHide}>{t('common.operation.cancel')}</Button>
+        <Button variant='primary' className='shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
       </div>
     </div>
   )

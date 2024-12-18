@@ -9,7 +9,7 @@ import { ArrowRightIcon } from '@heroicons/react/24/solid'
 import SegmentCard from '../completed/SegmentCard'
 import { FieldInfo } from '../metadata'
 import style from '../completed/style.module.css'
-import { DocumentContext } from '../index'
+import { useDocumentContext } from '../index'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
@@ -111,7 +111,7 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
 
-  const { datasetId = '', documentId = '' } = useContext(DocumentContext)
+  const [datasetId, documentId] = useDocumentContext(s => [s.datasetId, s.documentId])
   const localDatasetId = dstId ?? datasetId
   const localDocumentId = docId ?? documentId
 
@@ -221,7 +221,7 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
       </div>
       {/* progress bar */}
       <div className={s.progressContainer}>
-        {new Array(10).fill('').map((_, idx) => <div
+        {Array.from({ length: 10 }).fill('').map((_, idx) => <div
           key={idx}
           className={cn(s.progressBgItem, isEmbedding ? 'bg-primary-50' : 'bg-gray-100')}
         />)}

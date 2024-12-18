@@ -6,9 +6,9 @@ import {
   RiDeleteBinLine,
 } from '@remixicon/react'
 import { StatusItem } from '../../list'
-import { DocumentTitle } from '../index'
+import style from '../../style.module.css'
 import s from './style.module.css'
-import { SegmentIndexTag } from './index'
+import { SegmentIndexTag } from './common/segment-index-tag'
 import cn from '@/utils/classnames'
 import Confirm from '@/app/components/base/confirm'
 import Switch from '@/app/components/base/switch'
@@ -29,6 +29,22 @@ const ProgressBar: FC<{ percent: number; loading: boolean }> = ({ percent, loadi
       <div className={loading ? s.progressTextLoading : s.progressText}>{loading ? null : percent.toFixed(2)}</div>
     </div>
   )
+}
+
+type DocumentTitleProps = {
+  extension?: string
+  name?: string
+  iconCls?: string
+  textCls?: string
+  wrapperCls?: string
+}
+
+const DocumentTitle: FC<DocumentTitleProps> = ({ extension, name, iconCls, textCls, wrapperCls }) => {
+  const localExtension = extension?.toLowerCase() || name?.split('.')?.pop()?.toLowerCase()
+  return <div className={cn('flex items-center justify-start flex-1', wrapperCls)}>
+    <div className={cn(s[`${localExtension || 'txt'}Icon`], style.titleIcon, iconCls)}></div>
+    <span className={cn('font-semibold text-lg text-gray-900 ml-1', textCls)}> {name || '--'}</span>
+  </div>
 }
 
 export type UsageScene = 'doc' | 'hitTesting'

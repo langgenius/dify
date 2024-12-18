@@ -21,6 +21,7 @@ export type IToastProps = {
   children?: ReactNode
   onClose?: () => void
   className?: string
+  customComponent?: ReactNode
 }
 type IToastContext = {
   notify: (props: IToastProps) => void
@@ -35,6 +36,7 @@ const Toast = ({
   message,
   children,
   className,
+  customComponent,
 }: IToastProps) => {
   const { close } = useToastContext()
   // sometimes message is react node array. Not handle it.
@@ -49,8 +51,7 @@ const Toast = ({
     'top-0',
     'right-0',
   )}>
-    <div className={`absolute inset-0 opacity-40 ${
-      (type === 'success' && 'bg-toast-success-bg')
+    <div className={`absolute inset-0 opacity-40 -z-10 ${(type === 'success' && 'bg-toast-success-bg')
       || (type === 'warning' && 'bg-toast-warning-bg')
       || (type === 'error' && 'bg-toast-error-bg')
       || (type === 'info' && 'bg-toast-info-bg')
@@ -63,8 +64,11 @@ const Toast = ({
         {type === 'warning' && <RiAlertFill className={`${size === 'md' ? 'w-5 h-5' : 'w-4 h-4'} text-text-warning-secondary`} aria-hidden="true" />}
         {type === 'info' && <RiInformation2Fill className={`${size === 'md' ? 'w-5 h-5' : 'w-4 h-4'} text-text-accent`} aria-hidden="true" />}
       </div>
-      <div className={`flex py-1 ${size === 'md' ? 'px-1' : 'px-0.5'} flex-col items-start gap-1 grow`}>
-        <div className='text-text-primary system-sm-semibold'>{message}</div>
+      <div className={`flex py-1 ${size === 'md' ? 'px-1' : 'px-0.5'} flex-col items-start gap-1 grow z-10`}>
+        <div className='flex items-center gap-1'>
+          <div className='text-text-primary system-sm-semibold'>{message}</div>
+          {customComponent}
+        </div>
         {children && <div className='text-text-secondary system-xs-regular'>
           {children}
         </div>
@@ -119,7 +123,8 @@ Toast.notify = ({
   message,
   duration,
   className,
-}: Pick<IToastProps, 'type' | 'size' | 'message' | 'duration' | 'className'>) => {
+  customComponent,
+}: Pick<IToastProps, 'type' | 'size' | 'message' | 'duration' | 'className' | 'customComponent'>) => {
   const defaultDuring = (type === 'success' || type === 'info') ? 3000 : 6000
   if (typeof window === 'object') {
     const holder = document.createElement('div')
@@ -127,7 +132,7 @@ Toast.notify = ({
 
     root.render(
       <ToastContext.Provider value={{
-        notify: () => {},
+        notify: () => { },
         close: () => {
           if (holder) {
             root.unmount()
@@ -135,7 +140,7 @@ Toast.notify = ({
           }
         },
       }}>
-        <Toast type={type} size={size} message={message} duration={duration} className={className} />
+        <Toast type={type} size={size} message={message} duration={duration} className={className} customComponent={customComponent} />
       </ToastContext.Provider>,
     )
     document.body.appendChild(holder)
