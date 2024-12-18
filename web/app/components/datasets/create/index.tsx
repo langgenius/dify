@@ -122,31 +122,29 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     return <AppUnavailable code={500} unknownReason={t('datasetCreation.error.unavailable') as string} />
 
   return (
-    <div className='flex flex-col' style={{ height: 'calc(100vh - 56px)' }}>
-      <div className="grow bg-components-panel-bg flex flex-col max-h-full h-full">
-        <Topbar activeIndex={step - 1} />
-        <div className={step === 1 ? 'block h-full max-h-full overflow-auto' : 'hidden'}>
-          <StepOne
-            hasConnection={hasConnection}
-            onSetting={() => setShowAccountSettingModal({ payload: 'data-source' })}
-            datasetId={datasetId}
-            dataSourceType={dataSourceType}
-            dataSourceTypeDisable={!!detail?.data_source_type}
-            changeType={setDataSourceType}
-            files={fileList}
-            updateFile={updateFile}
-            updateFileList={updateFileList}
-            notionPages={notionPages}
-            updateNotionPages={updateNotionPages}
-            onStepChange={nextStep}
-            websitePages={websitePages}
-            updateWebsitePages={setWebsitePages}
-            onWebsiteCrawlProviderChange={setWebsiteCrawlProvider}
-            onWebsiteCrawlJobIdChange={setWebsiteCrawlJobId}
-            crawlOptions={crawlOptions}
-            onCrawlOptionsChange={setCrawlOptions}
-          />
-        </div>
+    <div className='flex flex-col bg-components-panel-bg' style={{ height: 'calc(100vh - 56px)' }}>
+      <Topbar activeIndex={step - 1} />
+      <div style={{ height: 'calc(100% - 52px)' }}>
+        {step === 1 && <StepOne
+          hasConnection={hasConnection}
+          onSetting={() => setShowAccountSettingModal({ payload: 'data-source' })}
+          datasetId={datasetId}
+          dataSourceType={dataSourceType}
+          dataSourceTypeDisable={!!detail?.data_source_type}
+          changeType={setDataSourceType}
+          files={fileList}
+          updateFile={updateFile}
+          updateFileList={updateFileList}
+          notionPages={notionPages}
+          updateNotionPages={updateNotionPages}
+          onStepChange={nextStep}
+          websitePages={websitePages}
+          updateWebsitePages={setWebsitePages}
+          onWebsiteCrawlProviderChange={setWebsiteCrawlProvider}
+          onWebsiteCrawlJobIdChange={setWebsiteCrawlJobId}
+          crawlOptions={crawlOptions}
+          onCrawlOptionsChange={setCrawlOptions}
+        />}
         {(step === 2 && (!datasetId || (datasetId && !!detail))) && <StepTwo
           isAPIKeySet={!!embeddingsDefaultModel}
           onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}

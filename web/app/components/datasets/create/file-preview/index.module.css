@@ -1,6 +1,6 @@
 .filePreview {
     @apply flex flex-col border-l border-gray-200 shrink-0;
-    width: 50%;
+    width: 100%;
     background-color: #fcfcfd;
   }
   

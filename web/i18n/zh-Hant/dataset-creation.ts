@@ -100,7 +100,7 @@ const translation = {
     removeExtraSpaces: '替換掉連續的空格、換行符和製表符',
     removeUrlEmails: '刪除所有 URL 和電子郵件地址',
     removeStopwords: '去除停用詞，例如 “a”，“an”，“the” 等',
-    preview: '確認並預覽',
+    preview: '預覽',
     reset: '重置',
     indexMode: '索引方式',
     qualified: '高質量',

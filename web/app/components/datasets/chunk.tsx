@@ -15,7 +15,7 @@ export const ChunkLabel: FC<ChunkLabelProps> = (props) => {
       {label}
     </span>
     <span>
-      ·
+        ·
     </span>
     <span>
       {`${characterCount} characters`}
@@ -29,9 +29,9 @@ export const ChunkContainer: FC<ChunkContainerProps> = (props) => {
   const { label, characterCount, children } = props
   return <div className='space-y-2'>
     <ChunkLabel label={label} characterCount={characterCount} />
-    <div className='text-text-secondary text-sm tracking-[-0.0005em]'>
+    <p className='text-text-secondary body-md-regular'>
       {children}
-    </div>
+    </p>
   </div>
 }
 
