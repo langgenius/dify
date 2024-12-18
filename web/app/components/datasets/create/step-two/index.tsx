@@ -733,6 +733,7 @@ const StepTwo = ({
                     <div className='flex gap-3'>
                       <DelimiterInput
                         value={parentChildConfig.parent.delimiter}
+                        tooltip={t('datasetCreation.stepTwo.parentChildDelimiterTip')!}
                         onChange={e => setParentChildConfig({
                           ...parentChildConfig,
                           parent: {
@@ -778,6 +779,7 @@ const StepTwo = ({
                 <div className='flex gap-3 mt-1'>
                   <DelimiterInput
                     value={parentChildConfig.child.delimiter}
+                    tooltip={t('datasetCreation.stepTwo.parentChildChunkDelimiterTip')!}
                     onChange={e => setParentChildConfig({
                       ...parentChildConfig,
                       child: {
