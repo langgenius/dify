@@ -1,5 +1,6 @@
+from collections.abc import Generator
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 import pytz
 
@@ -16,7 +17,7 @@ class LocaltimeToTimestampTool(BuiltinTool):
         conversation_id: Optional[str] = None,
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
-    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Convert localtime to timestamp
         """
@@ -28,9 +29,10 @@ class LocaltimeToTimestampTool(BuiltinTool):
 
         timestamp = self.localtime_to_timestamp(localtime, time_format, timezone)
         if not timestamp:
-            return self.create_text_message(f"Invalid localtime: {localtime}")
+            yield self.create_text_message(f"Invalid localtime: {localtime}")
+            return
 
-        return self.create_text_message(f"{timestamp}")
+        yield self.create_text_message(f"{timestamp}")
 
     @staticmethod
     def localtime_to_timestamp(localtime: str, time_format: str, local_tz=None) -> int | None:

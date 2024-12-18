@@ -1,5 +1,6 @@
+from collections.abc import Generator
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 import pytz
 
@@ -16,7 +17,7 @@ class TimezoneConversionTool(BuiltinTool):
         conversation_id: Optional[str] = None,
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
-    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Convert time to equivalent time zone
         """
@@ -25,11 +26,12 @@ class TimezoneConversionTool(BuiltinTool):
         target_timezone = tool_parameters.get("target_timezone", "Asia/Tokyo")
         target_time = self.timezone_convert(current_time, current_timezone, target_timezone)
         if not target_time:
-            return self.create_text_message(
+            yield self.create_text_message(
                 f"Invalid datatime and timezone: {current_time},{current_timezone},{target_timezone}"
             )
+            return
 
-        return self.create_text_message(f"{target_time}")
+        yield self.create_text_message(f"{target_time}")
 
     @staticmethod
     def timezone_convert(current_time: str, source_timezone: str, target_timezone: str) -> str:
