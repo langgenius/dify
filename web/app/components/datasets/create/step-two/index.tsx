@@ -157,8 +157,8 @@ const StepTwo = ({
   const dataSourceType = isInCreatePage ? inCreatePageDataSourceType : currentDataset?.data_source_type
   const [segmentationType, setSegmentationType] = useState<SegmentType>(SegmentType.CUSTOM)
   const [segmentIdentifier, doSetSegmentIdentifier] = useState(DEFAULT_SEGMENT_IDENTIFIER)
-  const setSegmentIdentifier = useCallback((value: string) => {
-    doSetSegmentIdentifier(value ? escape(value) : DEFAULT_SEGMENT_IDENTIFIER)
+  const setSegmentIdentifier = useCallback((value: string, canEmpty?: boolean) => {
+    doSetSegmentIdentifier(value ? escape(value) : (canEmpty ? '' : DEFAULT_SEGMENT_IDENTIFIER))
   }, [])
   const [maxChunkLength, setMaxChunkLength] = useState(DEFAULT_MAXMIMUM_CHUNK_LENGTH) // default chunk length
   const [limitMaxChunkLength, setLimitMaxChunkLength] = useState(4000)
@@ -612,7 +612,7 @@ const StepTwo = ({
               <div className='flex gap-3'>
                 <DelimiterInput
                   value={segmentIdentifier}
-                  onChange={e => setSegmentIdentifier(e.target.value)}
+                  onChange={e => setSegmentIdentifier(e.target.value, true)}
                 />
                 <MaxLengthInput
                   value={maxChunkLength}
@@ -737,7 +737,7 @@ const StepTwo = ({
                           ...parentChildConfig,
                           parent: {
                             ...parentChildConfig.parent,
-                            delimiter: e.target.value,
+                            delimiter: e.target.value ? escape(e.target.value) : '',
                           },
                         })}
                       />
@@ -782,7 +782,7 @@ const StepTwo = ({
                       ...parentChildConfig,
                       child: {
                         ...parentChildConfig.child,
-                        delimiter: e.target.value,
+                        delimiter: e.target.value ? escape(e.target.value) : '',
                       },
                     })}
                   />
