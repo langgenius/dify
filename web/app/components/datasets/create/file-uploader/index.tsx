@@ -295,8 +295,10 @@ const FileUploader = ({
                 extension={getFileType(fileItem.file)}
               />
             </div>
-            <div className="grow shrink flex flex-col gap-0.5 pr-8">
-              <div className="text-sm leading-4 text-text-secondary w-full whitespace-nowrap text-ellipsis overflow-hidden">{fileItem.file.name}</div>
+            <div className="grow shrink flex flex-col gap-0.5">
+              <div className='flex w-full'>
+                <div className="text-sm leading-4 text-text-secondary w-0 grow truncate">{fileItem.file.name}</div>
+              </div>
               <div className="w-full leading-3 truncate text-text-tertiary">
                 <span className='uppercase'>{getFileType(fileItem.file)}</span>
                 <span className='px-1 text-text-quaternary'>·</span>
