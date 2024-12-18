@@ -7,10 +7,11 @@ import { SliceContainer, SliceContent, SliceDivider, SliceLabel } from './shared
 type PreviewSliceProps = SliceProps<{
   label: ReactNode
   tooltip: ReactNode
+  labelInnerClassName?: string
 }>
 
 export const PreviewSlice: FC<PreviewSliceProps> = (props) => {
-  const { label, className, text, tooltip, ...rest } = props
+  const { label, className, text, tooltip, labelInnerClassName, ...rest } = props
   const [tooltipOpen, setTooltipOpen] = useState(false)
   const { refs, floatingStyles, context } = useFloating({
     open: tooltipOpen,
@@ -37,7 +38,7 @@ export const PreviewSlice: FC<PreviewSliceProps> = (props) => {
         ref={refs.setReference}
         {...getReferenceProps()}
       >
-        <SliceLabel>{label}</SliceLabel>
+        <SliceLabel labelInnerClassName={labelInnerClassName}>{label}</SliceLabel>
         <SliceContent>{text}</SliceContent>
         <SliceDivider />
       </SliceContainer>

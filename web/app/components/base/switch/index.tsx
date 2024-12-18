@@ -11,7 +11,7 @@ type SwitchProps = {
   className?: string
 }
 
-const Switch = ({ onChange, size = 'md', defaultValue = false, disabled = false, className }: SwitchProps) => {
+const Switch = React.forwardRef<HTMLButtonElement>(({ onChange, size = 'md', defaultValue = false, disabled = false, className }: SwitchProps, ref) => {
   const [enabled, setEnabled] = useState(defaultValue)
   useEffect(() => {
     setEnabled(defaultValue)
@@ -38,6 +38,7 @@ const Switch = ({ onChange, size = 'md', defaultValue = false, disabled = false,
   }
   return (
     <OriginalSwitch
+      ref={ref}
       checked={enabled}
       onChange={(checked: boolean) => {
         if (disabled)
@@ -63,5 +64,8 @@ const Switch = ({ onChange, size = 'md', defaultValue = false, disabled = false,
       />
     </OriginalSwitch>
   )
-}
+})
+
+Switch.displayName = 'Switch'
+
 export default React.memo(Switch)

@@ -14,16 +14,18 @@ export const SliceContainer: FC<SliceContainerProps> = forwardRef((props, ref) =
 })
 SliceContainer.displayName = 'SliceContainer'
 
-export type SliceLabelProps = ComponentProps<'span'>
+export type SliceLabelProps = ComponentProps<'span'> & { labelInnerClassName?: string }
 
 export const SliceLabel: FC<SliceLabelProps> = forwardRef((props, ref) => {
-  const { className, children, ...rest } = props
+  const { className, children, labelInnerClassName, ...rest } = props
   return <span {...rest} ref={ref} className={classNames(
     baseStyle,
     'px-1 bg-state-base-hover-alt group-hover:bg-state-accent-solid group-hover:text-text-primary-on-surface uppercase text-text-tertiary',
     className,
   )}>
-    {children}
+    <span className={classNames('text-nowrap', labelInnerClassName)}>
+      {children}
+    </span>
   </span>
 })
 SliceLabel.displayName = 'SliceLabel'
@@ -47,7 +49,8 @@ export type SliceDividerProps = ComponentProps<'span'>
 export const SliceDivider: FC<SliceDividerProps> = forwardRef((props, ref) => {
   const { className, ...rest } = props
   return <span {...rest} ref={ref} className={classNames(
-    'py-[3px] bg-state-base-active group-hover:bg-state-accent-solid text-sm px-[1px]',
+    baseStyle,
+    'bg-state-base-active group-hover:bg-state-accent-solid text-sm px-[1px]',
     className,
   )}>
     {/* use a zero-width space to make the hover area bigger */}

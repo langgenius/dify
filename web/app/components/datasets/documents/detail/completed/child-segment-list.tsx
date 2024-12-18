@@ -137,7 +137,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
       {((isFullDocMode && !isLoading) || !collapsed)
         ? <div className={classNames('flex items-center gap-x-0.5', isFullDocMode ? 'grow mb-6' : '')}>
           {isParagraphMode && (
-            <div className='self-stretch my-0.5'>
+            <div className='self-stretch'>
               <Divider type='vertical' className='w-[2px] mx-[7px] bg-text-accent-secondary' />
             </div>
           )}
@@ -151,8 +151,9 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
                   text={childChunk.content}
                   onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
                   className='line-clamp-3'
-                  labelClassName='font-semibold'
-                  contentClassName={'!leading-6'}
+                  labelInnerClassName='text-[10px] font-semibold align-bottom leading-6'
+                  contentClassName='!leading-6'
+                  showDivider={false}
                   onClick={(e) => {
                     e.stopPropagation()
                     onClickSlice?.(childChunk)
