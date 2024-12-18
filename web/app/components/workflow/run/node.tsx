@@ -179,7 +179,7 @@ const NodePanel: FC<Props> = ({
                 <StatusContainer status='stopped'>
                   {nodeInfo.error}
                   <a
-                    href='https://docs.dify.ai/guides/workflow/error-handling/predefined-nodes-failure-logic'
+                    href='https://docs.dify.ai/guides/workflow/error-handling/error-type'
                     target='_blank'
                     className='text-text-accent'
                   >

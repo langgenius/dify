@@ -101,6 +101,9 @@ const translation = {
     ImageUploadLegacyTip: 'Bây giờ bạn có thể tạo các biến loại tệp trong biểu mẫu bắt đầu. Chúng tôi sẽ không còn hỗ trợ tính năng tải lên hình ảnh trong tương lai.',
     importWarning: 'Thận trọng',
     importWarningDetails: 'Sự khác biệt về phiên bản DSL có thể ảnh hưởng đến một số tính năng nhất định',
+    openInExplore: 'Mở trong Khám phá',
+    onFailure: 'Khi thất bại',
+    addFailureBranch: 'Thêm nhánh Fail',
   },
   env: {
     envPanelTitle: 'Biến Môi Trường',
@@ -293,6 +296,31 @@ const translation = {
         title: 'Bộ nhớ',
         tip: 'Bộ nhớ cuộc trò chuyện',
         builtIn: 'Tích hợp sẵn',
+      },
+      errorHandle: {
+        none: {
+          title: 'Không ai',
+          desc: 'Nút sẽ ngừng chạy nếu xảy ra ngoại lệ và không được xử lý',
+        },
+        defaultValue: {
+          title: 'Giá trị mặc định',
+          desc: 'Khi xảy ra lỗi, hãy chỉ định nội dung đầu ra tĩnh.',
+          tip: 'Nếu lỗi, sẽ trả về giá trị dưới đó.',
+          inLog: 'Ngoại lệ nút, xuất theo giá trị mặc định.',
+          output: 'Giá trị mặc định đầu ra',
+        },
+        failBranch: {
+          title: 'Chi nhánh thất bại',
+          desc: 'Khi xảy ra lỗi, nó sẽ thực thi nhánh ngoại lệ',
+          customize: 'Chuyển đến canvas để tùy chỉnh logic nhánh thất bại.',
+          customizeTip: 'Khi nhánh fail được kích hoạt, các ngoại lệ do các nút ném sẽ không chấm dứt quá trình. Thay vào đó, nó sẽ tự động thực thi nhánh lỗi được xác định trước, cho phép bạn linh hoạt cung cấp thông báo lỗi, báo cáo, bản sửa lỗi hoặc bỏ qua các hành động.',
+          inLog: 'Node exception, sẽ tự động thực thi nhánh fail. Đầu ra nút sẽ trả về loại lỗi và thông báo lỗi và chuyển chúng đến hạ lưu.',
+        },
+        partialSucceeded: {
+          tip: 'Có {{num}} node trong quá trình chạy bất thường, vui lòng truy tìm để kiểm tra nhật ký.',
+        },
+        tip: 'Chiến lược xử lý ngoại lệ, được kích hoạt khi một nút gặp phải ngoại lệ.',
+        title: 'Xử lý lỗi',
       },
     },
     start: {

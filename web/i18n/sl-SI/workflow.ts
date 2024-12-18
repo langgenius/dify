@@ -101,6 +101,9 @@ const translation = {
     ImageUploadLegacyTip: 'Zdaj lahko ustvarite spremenljivke vrste datoteke v začetnem obrazcu. V prihodnje ne bomo več podpirali funkcije nalaganja slik.',
     importWarning: 'Previdnost',
     importWarningDetails: 'Razlika v različici DSL lahko vpliva na nekatere funkcije',
+    openInExplore: 'Odpri v razišči',
+    addFailureBranch: 'Dodajanje veje »Fail«',
+    onFailure: 'O neuspehu',
   },
   env: {
     envPanelTitle: 'Spremenljivke okolja',
@@ -731,6 +734,31 @@ const translation = {
       },
       outputVars: 'Izhodne spremenljivke',
       insertVarTip: 'Vstavi spremenljivko',
+      errorHandle: {
+        none: {
+          desc: 'Vozlišče se bo prenehalo izvajati, če pride do izjeme in ne bo obravnavano',
+          title: 'Nobena',
+        },
+        defaultValue: {
+          output: 'Izhodna privzeta vrednost',
+          tip: 'Po napaki se vrne pod vrednost.',
+          title: 'Privzeta vrednost',
+          inLog: 'Izjema vozlišča, izhod v skladu s privzetimi vrednostmi.',
+          desc: 'Ko pride do napake, določite statično izhodno vsebino.',
+        },
+        failBranch: {
+          title: 'Neuspešna veja',
+          inLog: 'Izjema vozlišča, bo samodejno izvedla neuspešno vejo. Izhod vozlišča bo vrnil vrsto napake in sporočilo o napaki ter ju posredoval navzdol.',
+          desc: 'Ko pride do napake, bo izvedla vejo izjeme',
+          customizeTip: 'Ko je aktivirana veja neuspeha, izjeme, ki jih vržejo vozlišča, ne bodo prekinile procesa. Namesto tega bo samodejno izvedel vnaprej določeno vejo neuspeha, kar vam bo omogočilo prilagodljivo zagotavljanje sporočil o napakah, poročil, popravkov ali preskakovanja dejanj.',
+          customize: 'Pojdite na platno, da prilagodite logiko neuspešne veje.',
+        },
+        partialSucceeded: {
+          tip: 'V procesu so {{num}} vozlišča, ki se izvajajo nenormalno, pojdite na sledenje, da preverite dnevnike.',
+        },
+        title: 'Ravnanje z napakami',
+        tip: 'Strategija ravnanja z izjemami, ki se sproži, ko vozlišče naleti na izjemo.',
+      },
     },
     start: {
       outputVars: {

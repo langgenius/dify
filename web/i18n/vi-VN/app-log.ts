@@ -52,6 +52,7 @@ const translation = {
     },
     variables: 'Biến',
     uploadImages: 'Ảnh đã tải lên',
+    modelParams: 'Thông số mô hình',
   },
   filter: {
     period: {

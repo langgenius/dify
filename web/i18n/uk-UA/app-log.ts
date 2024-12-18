@@ -52,6 +52,7 @@ const translation = {
     },
     variables: 'Змінні',
     uploadImages: 'Завантажені Зображення',
+    modelParams: 'Параметри моделі',
   },
   filter: {
     period: {

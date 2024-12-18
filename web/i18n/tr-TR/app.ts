@@ -137,6 +137,11 @@ const translation = {
     title: 'Değiştirmek 🤖 için WebApp simgesini kullanın',
     description: 'Paylaşılan uygulamada değiştirmek 🤖 için WebApp simgesinin kullanılıp kullanılmayacağı',
   },
+  mermaid: {
+    handDrawn: 'Elle çizilmiş',
+    classic: 'Klasik',
+  },
+  openInExplore: 'Keşfet\'te Aç',
 }
 
 export default translation
