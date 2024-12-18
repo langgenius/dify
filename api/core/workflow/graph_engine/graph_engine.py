@@ -632,6 +632,13 @@ class GraphEngine:
                         if isinstance(item, RunCompletedEvent):
                             run_result = item.run_result
                             if run_result.status == WorkflowNodeExecutionStatus.FAILED:
+                                if (
+                                    retries == max_retries
+                                    and node_instance.node_type == NodeType.HTTP_REQUEST
+                                    and run_result.outputs
+                                    and not node_instance.should_continue_on_error
+                                ):
+                                    run_result.status = WorkflowNodeExecutionStatus.SUCCEEDED
                                 if node_instance.should_retry and retries < max_retries:
                                     retries += 1
                                     yield NodeRunRetryEvent(
@@ -697,7 +704,7 @@ class GraphEngine:
                                         parent_parallel_id=parent_parallel_id,
                                         parent_parallel_start_node_id=parent_parallel_start_node_id,
                                     )
-
+                                shoudl_continue_retry = False
                             elif run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
                                 if node_instance.should_continue_on_error and self.graph.edge_mapping.get(
                                     node_instance.node_id

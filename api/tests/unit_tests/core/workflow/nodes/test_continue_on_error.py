@@ -36,7 +36,10 @@ class ContinueOnErrorTestHelper:
 
     @staticmethod
     def get_http_node(
-        error_strategy: str = "fail-branch", default_value: dict | None = None, authorization_success: bool = False
+        error_strategy: str = "fail-branch",
+        default_value: dict | None = None,
+        authorization_success: bool = False,
+        retry_config: dict = {},
     ):
         """Helper method to create a http node configuration"""
         authorization = (
@@ -67,6 +70,7 @@ class ContinueOnErrorTestHelper:
                 "body": None,
                 "type": "http-request",
                 "error_strategy": error_strategy,
+                **retry_config,
             },
         }
         if default_value:

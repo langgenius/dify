@@ -51,6 +51,11 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
                     "max_write_timeout": dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
                 },
             },
+            "retry_config": {
+                "max_retries": dify_config.SSRF_DEFAULT_MAX_RETRIES,
+                "retry_interval": 0.5 * (2**2),
+                "retry_enabled": True,
+            },
         }
 
     def _run(self) -> NodeRunResult:
@@ -61,8 +66,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
                 "timeout": self._get_request_timeout(self.node_data),
                 "variable_pool": self.graph_runtime_state.variable_pool,
             }
-            if self.should_retry:
-                executor_config["max_retries"] = 0
+            executor_config["max_retries"] = 0
             http_executor = Executor(
                 **executor_config,
             )
@@ -70,7 +74,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
 
             response = http_executor.invoke()
             files = self.extract_files(url=http_executor.url, response=response)
-            if not response.response.is_success and self.should_continue_on_error:
+            if not response.response.is_success and (self.should_continue_on_error or self.should_retry):
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     outputs={
@@ -82,7 +86,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
                     process_data={
                         "request": http_executor.to_log(),
                     },
-                    error=f"Request failed with status code {response.status_code}",
+                    error=f"Request failed with status code {response.status_code}\nRaw response:{response.text}",
                     error_type="HTTPResponseCodeError",
                 )
             return NodeRunResult(
