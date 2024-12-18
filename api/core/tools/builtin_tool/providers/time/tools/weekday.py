@@ -1,6 +1,7 @@
 import calendar
+from collections.abc import Generator
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -14,7 +15,7 @@ class WeekdayTool(BuiltinTool):
         conversation_id: Optional[str] = None,
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
-    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Calculate the day of the week for a given date
         """
@@ -26,12 +27,13 @@ class WeekdayTool(BuiltinTool):
 
         date_obj = self.convert_datetime(year, month, day)
         if not date_obj:
-            return self.create_text_message(f"Invalid date: Year {year}, Month {month}, Day {day}.")
+            yield self.create_text_message(f"Invalid date: Year {year}, Month {month}, Day {day}.")
+            return
 
         weekday_name = calendar.day_name[date_obj.weekday()]
         month_name = calendar.month_name[month]
         readable_date = f"{month_name} {date_obj.day}, {date_obj.year}"
-        return self.create_text_message(f"{readable_date} is {weekday_name}.")
+        yield self.create_text_message(f"{readable_date} is {weekday_name}.")
 
     @staticmethod
     def convert_datetime(year, month, day) -> datetime | None:

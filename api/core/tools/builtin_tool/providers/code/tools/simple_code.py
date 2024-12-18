@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from typing import Any, Optional
 
 from core.helper.code_executor.code_executor import CodeExecutor, CodeLanguage
@@ -13,7 +14,7 @@ class SimpleCode(BuiltinTool):
         conversation_id: Optional[str] = None,
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
-    ) -> ToolInvokeMessage | list[ToolInvokeMessage]:
+    ) -> Generator[ToolInvokeMessage, None, None]:
         """
         invoke simple code
         """
@@ -26,4 +27,4 @@ class SimpleCode(BuiltinTool):
 
         result = CodeExecutor.execute_code(language, "", code)
 
-        return self.create_text_message(result)
+        yield self.create_text_message(result)

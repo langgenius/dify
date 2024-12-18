@@ -1,5 +1,6 @@
+from collections.abc import Generator
 from datetime import UTC, datetime
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from pytz import timezone as pytz_timezone
 
@@ -15,7 +16,7 @@ class CurrentTimeTool(BuiltinTool):
         conversation_id: Optional[str] = None,
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
-    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    ) -> Generator[ToolInvokeMessage, None, None]:
         """
         invoke tools
         """
@@ -23,10 +24,12 @@ class CurrentTimeTool(BuiltinTool):
         tz = tool_parameters.get("timezone", "UTC")
         fm = tool_parameters.get("format") or "%Y-%m-%d %H:%M:%S %Z"
         if tz == "UTC":
-            return self.create_text_message(f"{datetime.now(UTC).strftime(fm)}")
+            yield self.create_text_message(f"{datetime.now(UTC).strftime(fm)}")
+            return
 
         try:
             tz = pytz_timezone(tz)
-        except:
-            return self.create_text_message(f"Invalid timezone: {tz}")
-        return self.create_text_message(f"{datetime.now(tz).strftime(fm)}")
+        except Exception:
+            yield self.create_text_message(f"Invalid timezone: {tz}")
+            return
+        yield self.create_text_message(f"{datetime.now(tz).strftime(fm)}")
