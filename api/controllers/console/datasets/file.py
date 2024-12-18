@@ -42,7 +42,7 @@ class FileApi(Resource):
     @marshal_with(file_fields)
     @cloud_edition_billing_resource_check("documents")
     def post(self):
-        if current_user.is_dataset_editor:
+        if not current_user.is_dataset_editor:
             raise Forbidden()
         
         # get file from request
