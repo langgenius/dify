@@ -77,11 +77,16 @@ class ModelProviderFactory:
         try:
             contexts.plugin_model_providers.get()
         except LookupError:
-            contexts.plugin_model_providers.set([])
+            contexts.plugin_model_providers.set(None)
             contexts.plugin_model_providers_lock.set(Lock())
 
         with contexts.plugin_model_providers_lock.get():
             plugin_model_providers = contexts.plugin_model_providers.get()
+            if plugin_model_providers is not None:
+                return plugin_model_providers
+
+            plugin_model_providers = []
+            contexts.plugin_model_providers.set(plugin_model_providers)
 
             # Fetch plugin model providers
             plugin_providers = self.plugin_model_manager.fetch_model_providers(self.tenant_id)
