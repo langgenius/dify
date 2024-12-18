@@ -25,16 +25,18 @@ export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
   )}>
     <div className='size-14 flex items-center justify-center relative overflow-hidden'>
       {isActive && effectImg && <Image src={effectImg} className='absolute top-0 left-0 w-full h-full' alt='' width={56} height={56} />}
-      <div className='size-8 rounded-lg border p-1.5 shadow border-components-panel-border-subtle justify-center flex bg-background-default-dodge'>
-        {icon}
+      <div className='p-1'>
+        <div className='size-8 rounded-lg border p-1.5 shadow-md border-components-panel-border-subtle justify-center flex bg-background-default-dodge'>
+          {icon}
+        </div>
       </div>
     </div>
     <TriangleArrow
       className='absolute left-4 -bottom-1.5 text-components-panel-bg'
     />
-    <div className='flex-1 space-y-1 py-3 pr-4'>
-      <div className='text-text-secondary text-sm font-semibold leading-tight'>{title}</div>
-      <div className='text-text-tertiary text-xs font-normal leading-none'>{description}</div>
+    <div className='flex-1 space-y-0.5 py-3'>
+      <div className='text-text-secondary system-md-semibold'>{title}</div>
+      <div className='text-text-tertiary system-xs-regular'>{description}</div>
     </div>
   </div>
 }
@@ -57,16 +59,15 @@ export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
   const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSwitched, onClick, noHighlight, disabled, ...rest } = props
   return <div
     className={classNames(
-      'rounded-xl border bg-components-option-card-option-bg',
+      'rounded-xl bg-components-option-card-option-bg shadow-xs',
       (isActive && !noHighlight)
-        ? 'border-components-option-card-option-selected-border'
-        : 'border-components-option-card-option-border',
+        ? 'border-[1.5px] border-components-option-card-option-selected-border'
+        : 'border border-components-option-card-option-border',
       disabled && 'opacity-50',
       className,
     )}
     style={{
       ...style,
-      borderWidth: 1.5,
     }}
     onClick={(e) => {
       if (!isActive)
@@ -85,7 +86,7 @@ export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
       effectImg={effectImg}
     />
     {/** Body */}
-    {isActive && (children || actions) && <div className='p-3'>
+    {isActive && (children || actions) && <div className='py-3 px-4'>
       {children}
       {actions && <div className='flex gap-2 mt-4'>
         {actions}

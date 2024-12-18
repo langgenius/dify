@@ -13,17 +13,6 @@
   z-index: 10;
 }
 
-.form {
-  @apply px-16 py-8;
-}
-
-.form .label {
-  @apply pb-2 flex items-center text-text-secondary;
-  font-weight: 500;
-  font-size: 16px;
-  line-height: 24px;
-}
-
 .segmentationItem {
   min-height: 68px;
 }
@@ -249,7 +238,7 @@
 }
 
 .ruleItem {
-  @apply flex items-center;
+  @apply flex items-center py-1.5;
 }
 
 .formFooter {

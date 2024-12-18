@@ -120,7 +120,7 @@ const RetrievalParamConfig: FC<Props> = ({
     <div>
       {!isEconomical && !isHybridSearch && (
         <div>
-          <div className='flex h-8 items-center text-[13px] font-medium text-gray-900 space-x-2'>
+          <div className='flex items-center space-x-2 mb-2'>
             {canToggleRerankModalEnable && (
               <div
                 className='flex items-center'
@@ -140,7 +140,7 @@ const RetrievalParamConfig: FC<Props> = ({
               </div>
             )}
             <div className='flex items-center'>
-              <span className='mr-0.5 text-text-secondary'>{t('common.modelProvider.rerankModel.key')}</span>
+              <span className='mr-0.5 system-sm-semibold text-text-secondary'>{t('common.modelProvider.rerankModel.key')}</span>
               <Tooltip
                 popupContent={
                   <div className="w-[200px]">{t('common.modelProvider.rerankModel.tip')}</div>
@@ -167,7 +167,7 @@ const RetrievalParamConfig: FC<Props> = ({
       )}
       {
         !isHybridSearch && (
-          <div className={cn(!isEconomical && 'mt-4', 'flex space-between space-x-6')}>
+          <div className={cn(!isEconomical && 'mt-4', 'flex space-between space-x-4')}>
             <TopKItem
               className='grow'
               value={value.top_k}
