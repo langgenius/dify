@@ -15,5 +15,5 @@ workflow_variable_pool: ContextVar["VariablePool"] = ContextVar("workflow_variab
 plugin_tool_providers: ContextVar[dict[str, "PluginToolProviderController"]] = ContextVar("plugin_tool_providers")
 plugin_tool_providers_lock: ContextVar[Lock] = ContextVar("plugin_tool_providers_lock")
 
-plugin_model_providers: ContextVar[list["PluginModelProviderEntity"]] = ContextVar("plugin_model_providers")
+plugin_model_providers: ContextVar[list["PluginModelProviderEntity"] | None] = ContextVar("plugin_model_providers")
 plugin_model_providers_lock: ContextVar[Lock] = ContextVar("plugin_model_providers_lock")
