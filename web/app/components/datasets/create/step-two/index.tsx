@@ -585,7 +585,7 @@ const StepTwo = ({
           && <OptionCard
             className='bg-background-section mb-2'
             title={t('datasetCreation.stepTwo.general')}
-            icon={<Image src={SettingCog} alt={t('datasetCreation.stepTwo.general')} />}
+            icon={<Image width={20} height={20} src={SettingCog} alt={t('datasetCreation.stepTwo.general')} />}
             activeHeaderClassName='bg-dataset-option-card-blue-gradient'
             description={t('datasetCreation.stepTwo.generalTip')}
             isActive={
@@ -599,7 +599,7 @@ const StepTwo = ({
             actions={
               <>
                 <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
-                  <RiSearchEyeLine className='h-4 w-4 mr-1.5' />
+                  <RiSearchEyeLine className='h-4 w-4 mr-0.5' />
                   {t('datasetCreation.stepTwo.previewChunk')}
                 </Button>
                 <Button variant={'ghost'} onClick={resetRules}>
@@ -690,7 +690,7 @@ const StepTwo = ({
           (!datasetId || currentDataset!.doc_form === ChuckingMode.parentChild)
           && <OptionCard
             title={t('datasetCreation.stepTwo.parentChild')}
-            icon={<Image src={FamilyMod} alt={t('datasetCreation.stepTwo.parentChild')} />}
+            icon={<Image width={20} height={20} src={FamilyMod} alt={t('datasetCreation.stepTwo.parentChild')} />}
             effectImg={OrangeEffect.src}
             activeHeaderClassName='bg-dataset-option-card-orange-gradient'
             description={t('datasetCreation.stepTwo.parentChildTip')}
@@ -701,7 +701,7 @@ const StepTwo = ({
             actions={
               <>
                 <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
-                  <RiSearchEyeLine className='h-4 w-4 mr-1.5' />
+                  <RiSearchEyeLine className='h-4 w-4 mr-0.5' />
                   {t('datasetCreation.stepTwo.previewChunk')}
                 </Button>
                 <Button variant={'ghost'} onClick={resetRules}>
@@ -711,12 +711,15 @@ const StepTwo = ({
             }
             noHighlight={Boolean(datasetId)}
           >
-            <div className='space-y-4'>
-              <div className='space-y-2'>
-                <TextLabel>
-                  {t('datasetCreation.stepTwo.parentChunkForContext')}
-                </TextLabel>
-                <RadioCard
+            <div className='flex flex-col gap-4'>
+              <div>
+                <div className='flex items-center gap-x-2'>
+                  <div className='inline-flex shrink-0'>
+                    <TextLabel>{t('datasetCreation.stepTwo.parentChunkForContext')}</TextLabel>
+                  </div>
+                  <Divider className='grow' bgStyle='gradient'/>
+                </div>
+                <RadioCard className='mt-1'
                   icon={<Image src={Note} alt='' />}
                   title={t('datasetCreation.stepTwo.paragraph')}
                   description={t('datasetCreation.stepTwo.paragraphTip')}
@@ -728,7 +731,7 @@ const StepTwo = ({
                     },
                   )}
                   chosenConfig={
-                    <div className='flex gap-2'>
+                    <div className='flex gap-3'>
                       <DelimiterInput
                         value={parentChildConfig.parent.delimiter}
                         onChange={e => setParentChildConfig({
@@ -752,7 +755,7 @@ const StepTwo = ({
                     </div>
                   }
                 />
-                <RadioCard
+                <RadioCard className='mt-2'
                   icon={<Image src={FileList} alt='' />}
                   title={t('datasetCreation.stepTwo.fullDoc')}
                   description={t('datasetCreation.stepTwo.fullDocTip')}
@@ -766,11 +769,14 @@ const StepTwo = ({
                 />
               </div>
 
-              <div className='space-y-4'>
-                <TextLabel>
-                  {t('datasetCreation.stepTwo.childChunkForRetrieval')}
-                </TextLabel>
-                <div className='flex gap-3 mt-2'>
+              <div>
+                <div className='flex items-center gap-x-2'>
+                  <div className='inline-flex shrink-0'>
+                    <TextLabel>{t('datasetCreation.stepTwo.childChunkForRetrieval')}</TextLabel>
+                  </div>
+                  <Divider className='grow' bgStyle='gradient'/>
+                </div>
+                <div className='flex gap-3 mt-1'>
                   <DelimiterInput
                     value={parentChildConfig.child.delimiter}
                     onChange={e => setParentChildConfig({
@@ -792,23 +798,25 @@ const StepTwo = ({
                     })}
                   />
                 </div>
-
-                <div className='space-y-2'>
-                  <TextLabel>
-                    {t('datasetCreation.stepTwo.rules')}
-                  </TextLabel>
-                  <div className='space-y-2 mt-2'>
-                    {rules.map(rule => (
-                      <div key={rule.id} className={s.ruleItem} onClick={() => {
-                        ruleChangeHandle(rule.id)
-                      }}>
-                        <Checkbox
-                          checked={rule.enabled}
-                        />
-                        <label className="ml-2 text-sm font-normal cursor-pointer text-text-secondary">{getRuleName(rule.id)}</label>
-                      </div>
-                    ))}
+              </div>
+              <div>
+                <div className='flex items-center gap-x-2'>
+                  <div className='inline-flex shrink-0'>
+                    <TextLabel>{t('datasetCreation.stepTwo.rules')}</TextLabel>
                   </div>
+                  <Divider className='grow' bgStyle='gradient'/>
+                </div>
+                <div className='mt-1'>
+                  {rules.map(rule => (
+                    <div key={rule.id} className={s.ruleItem} onClick={() => {
+                      ruleChangeHandle(rule.id)
+                    }}>
+                      <Checkbox
+                        checked={rule.enabled}
+                      />
+                      <label className="ml-2 system-sm-regular cursor-pointer text-text-secondary">{getRuleName(rule.id)}</label>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -821,7 +829,7 @@ const StepTwo = ({
               title={<p className='flex items-center'>
                 {t('datasetCreation.stepTwo.qualified')}
                 {!hasSetIndexType
-                && <Badge className={cn('ml-1', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>{t('datasetCreation.stepTwo.recommend')}</Badge>}
+                && <Badge className={cn('ml-1 h-[18px]', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>{t('datasetCreation.stepTwo.recommend')}</Badge>}
                 <span className='ml-auto'>
                   {!hasSetIndexType && <span className={cn(s.radio)} />}
                 </span>

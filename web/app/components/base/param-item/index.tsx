@@ -24,30 +24,29 @@ type Props = {
 const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1, min = 0, max, value, enable, onChange, hasSwitch, onSwitchChange }) => {
   return (
     <div className={className}>
-      <div className="flex items-center h-8 justify-between">
+      <div className="flex items-center justify-between">
         <div className="flex items-center">
           {hasSwitch && (
             <Switch
               size='md'
+              className='mr-2'
               defaultValue={enable}
               onChange={async (val) => {
                 onSwitchChange?.(id, val)
               }}
             />
           )}
-          <span className="mx-1 text-text-secondary text-[13px] leading-[18px] font-medium">{name}</span>
+          <span className="mr-1 text-text-secondary system-sm-semibold">{name}</span>
           {!noTooltip && (
             <Tooltip
               triggerClassName='w-4 h-4 shrink-0'
               popupContent={<div className="w-[200px]">{tip}</div>}
             />
           )}
-
         </div>
-        <div className="flex items-center"></div>
       </div>
-      <div className="mt-2 flex items-center">
-        <div className="mr-4 flex shrink-0 items-center">
+      <div className="mt-1 flex items-center">
+        <div className="mr-3 flex shrink-0 items-center">
           <InputNumber
             disabled={!enable}
             type="number"
@@ -62,7 +61,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             className='w-[72px]'
           />
         </div>
-        <div className="flex items-center h-7 grow">
+        <div className="flex items-center grow">
           <Slider
             className='w-full'
             disabled={!enable}

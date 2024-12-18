@@ -25,14 +25,16 @@ export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
   )}>
     <div className='size-14 flex items-center justify-center relative overflow-hidden'>
       {isActive && effectImg && <Image src={effectImg} className='absolute top-0 left-0 w-full h-full' alt='' width={56} height={56} />}
-      <div className='size-8 rounded-lg border p-1.5 shadow-md border-components-panel-border-subtle justify-center flex bg-background-default-dodge'>
-        {icon}
+      <div className='p-1'>
+        <div className='size-8 rounded-lg border p-1.5 shadow-md border-components-panel-border-subtle justify-center flex bg-background-default-dodge'>
+          {icon}
+        </div>
       </div>
     </div>
     <TriangleArrow
       className='absolute left-4 -bottom-1.5 text-components-panel-bg'
     />
-    <div className='flex-1 space-y-0.5 p-3'>
+    <div className='flex-1 space-y-0.5 py-3'>
       <div className='text-text-secondary system-md-semibold'>{title}</div>
       <div className='text-text-tertiary system-xs-regular'>{description}</div>
     </div>
