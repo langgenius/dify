@@ -354,17 +354,17 @@ def default_text_mapping(dimension: int, method_name: str, **kwargs: Any) -> dic
 
 
 def default_text_search_query(
-        query_text: str,
-        k: int = 4,
-        text_field: str = Field.CONTENT_KEY.value,
-        must: Optional[list[dict]] = None,
-        must_not: Optional[list[dict]] = None,
-        should: Optional[list[dict]] = None,
-        minimum_should_match: int = 0,
-        filters: Optional[list[dict]] = None,
-        routing: Optional[str] = None,
-        routing_field: Optional[str] = None,
-        **kwargs,
+    query_text: str,
+    k: int = 4,
+    text_field: str = Field.CONTENT_KEY.value,
+    must: Optional[list[dict]] = None,
+    must_not: Optional[list[dict]] = None,
+    should: Optional[list[dict]] = None,
+    minimum_should_match: int = 0,
+    filters: Optional[list[dict]] = None,
+    routing: Optional[str] = None,
+    routing_field: Optional[str] = None,
+    **kwargs,
 ) -> dict:
     if routing is not None:
         query_clause = {
@@ -410,17 +410,17 @@ def default_text_search_query(
 
 
 def default_vector_search_query(
-        query_vector: list[float],
-        k: int = 4,
-        min_score: str = "0.0",
-        ef_search: Optional[str] = None,  # only for hnsw
-        nprobe: Optional[str] = None,  # "2000"
-        reorder_factor: Optional[str] = None,  # "20"
-        client_refactor: Optional[str] = None,  # "true"
-        vector_field: str = Field.VECTOR.value,
-        filters: Optional[list[dict]] = None,
-        filter_type: Optional[str] = None,
-        **kwargs,
+    query_vector: list[float],
+    k: int = 4,
+    min_score: str = "0.0",
+    ef_search: Optional[str] = None,  # only for hnsw
+    nprobe: Optional[str] = None,  # "2000"
+    reorder_factor: Optional[str] = None,  # "20"
+    client_refactor: Optional[str] = None,  # "true"
+    vector_field: str = Field.VECTOR.value,
+    filters: Optional[list[dict]] = None,
+    filter_type: Optional[str] = None,
+    **kwargs,
 ) -> dict:
     if filters is not None:
         filter_type = "post_filter" if filter_type is None else filter_type
@@ -491,7 +491,7 @@ class LindormVectorStoreFactory(AbstractVectorFactory):
                 "index_type": index_type,
                 "dimension": dimension,
                 "distance_type": distance_type,
-                "using_ugc": using_ugc
+                "using_ugc": using_ugc,
             }
             dataset.index_struct = json.dumps(index_struct_dict)
             if using_ugc:
