@@ -3,8 +3,8 @@ from threading import Lock
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from core.tools.plugin_tool.provider import PluginToolProviderController
     from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+    from core.tools.plugin_tool.provider import PluginToolProviderController
     from core.workflow.entities.variable_pool import VariablePool
 
 
