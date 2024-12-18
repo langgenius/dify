@@ -1048,7 +1048,7 @@ const StepTwo = ({
               }
               <Badge text={t(
                 'datasetCreation.stepTwo.previewChunkCount', {
-                  count: estimate?.preview.length || estimate?.qa_preview?.length || 0,
+                  count: estimate?.total_segments || 0,
                 }) as string} />
             </div>
           </PreviewHeader>}
