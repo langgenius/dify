@@ -92,10 +92,17 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
     )}>
       {isFullDocMode ? <Divider type='horizontal' className='h-[1px] bg-divider-subtle my-1' /> : null}
       <div className={classNames('flex items-center justify-between', isFullDocMode ? 'pt-2 pb-3 sticky -top-2 left-0 bg-components-panel-bg' : '')}>
-        <div className={classNames('h-7 flex items-center pl-1 pr-3 rounded-lg', (isParagraphMode && collapsed) && 'bg-dataset-child-chunk-expand-btn-bg', isFullDocMode && 'pl-0')} onClick={(event) => {
+        <div className={classNames(
+          'h-7 flex items-center pl-1 pr-3 rounded-lg',
+          isParagraphMode && 'cursor-pointer',
+          (isParagraphMode && collapsed) && 'bg-dataset-child-chunk-expand-btn-bg',
+          isFullDocMode && 'pl-0',
+        )}
+        onClick={(event) => {
           event.stopPropagation()
           toggleCollapse()
-        }}>
+        }}
+        >
           {
             isParagraphMode
               ? collapsed

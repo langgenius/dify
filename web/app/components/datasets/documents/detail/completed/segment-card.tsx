@@ -199,7 +199,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                   >
                     <Switch
                       size='md'
-                      disabled={archived || detail.status !== 'completed'}
+                      disabled={archived || detail?.status !== 'completed'}
                       defaultValue={enabled}
                       onChange={async (val) => {
                         await onChangeSwitch?.(val, id)
@@ -218,7 +218,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       )}>
         {renderContent()}
       </div>
-      {isGeneralMode && <div className={cn('flex items-center gap-x-2 py-1.5', textOpacity)}>
+      {isGeneralMode && <div className={cn('flex flex-wrap items-center gap-2 py-1.5', textOpacity)}>
         {keywords?.map(keyword => <Tag key={keyword} text={keyword} />)}
       </div>}
       {

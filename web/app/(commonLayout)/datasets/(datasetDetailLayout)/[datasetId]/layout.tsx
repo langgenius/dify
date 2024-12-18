@@ -201,7 +201,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }, [isMobile, setAppSiderbarExpand])
 
   if (!datasetRes && !error)
-    return <Loading />
+    return <Loading type='app' />
 
   return (
     <div className='grow flex overflow-hidden'>
