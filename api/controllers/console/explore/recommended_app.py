@@ -14,6 +14,7 @@ app_fields = {
     "mode": fields.String,
     "icon": fields.String,
     "icon_url": AppIconUrlField,
+    "icon_type": fields.String,
     "icon_background": fields.String,
 }
 
