@@ -1,6 +1,6 @@
 import io
 from collections.abc import Generator
-from typing import Any
+from typing import Any, Optional
 
 from core.file.enums import FileType
 from core.file.file_manager import download
@@ -14,7 +14,14 @@ from services.model_provider_service import ModelProviderService
 
 
 class ASRTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
+    def _invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
+    ) -> Generator[ToolInvokeMessage, None, None]:
         file = tool_parameters.get("audio_file")
         if file.type != FileType.AUDIO:  # type: ignore
             yield self.create_text_message("not a valid audio file")
