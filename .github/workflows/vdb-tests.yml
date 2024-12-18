@@ -51,7 +51,7 @@ jobs:
       - name: Expose Service Ports
         run: sh .github/workflows/expose_service_ports.sh
 
-      - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale, ElasticSearch, Couchbase)
+      - name: Set up Vector Stores (TiDB, Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale, ElasticSearch, Couchbase)
         uses: hoverkraft-tech/compose-action@v2.0.2
         with:
           compose-file: |
@@ -67,6 +67,7 @@ jobs:
             pgvector
             chroma
             elasticsearch
+            tidb
 
       - name: Test Vector Stores
         run: poetry run -C api bash dev/pytest/pytest_vdb.sh

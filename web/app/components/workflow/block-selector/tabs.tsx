@@ -30,16 +30,16 @@ const Tabs: FC<TabsProps> = ({
     <div onClick={e => e.stopPropagation()}>
       {
         !noBlocks && (
-          <div className='flex items-center px-3 border-b-[0.5px] border-b-black/5'>
+          <div className='flex items-center px-3 border-b-[0.5px] border-divider-subtle'>
             {
               tabs.map(tab => (
                 <div
                   key={tab.key}
                   className={cn(
-                    'relative mr-4 h-[34px] text-[13px] leading-[34px] font-medium cursor-pointer',
+                    'relative mr-4 pt-1 pb-2 system-sm-medium cursor-pointer',
                     activeTab === tab.key
-                      ? 'text-gray-700 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:bg-primary-600'
-                      : 'text-gray-500',
+                      ? 'text-text-primary after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:bg-util-colors-blue-brand-blue-brand-600'
+                      : 'text-text-tertiary',
                   )}
                   onClick={() => onActiveTabChange(tab.key)}
                 >

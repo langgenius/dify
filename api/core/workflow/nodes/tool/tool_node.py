@@ -92,6 +92,16 @@ class ToolNode(BaseNode[ToolNodeData]):
                 error=f"Failed to invoke tool: {str(e)}",
                 error_type=type(e).__name__,
             )
+        except Exception as e:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=parameters_for_log,
+                metadata={
+                    NodeRunMetadataKey.TOOL_INFO: tool_info,
+                },
+                error=f"Failed to invoke tool: {str(e)}",
+                error_type="UnknownError",
+            )
 
         # convert tool messages
         plain_text, files, json = self._convert_tool_messages(messages)
