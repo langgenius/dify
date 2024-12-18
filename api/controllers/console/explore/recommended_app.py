@@ -13,8 +13,8 @@ app_fields = {
     "name": fields.String,
     "mode": fields.String,
     "icon": fields.String,
-    "icon_url": AppIconUrlField,
     "icon_type": fields.String,
+    "icon_url": AppIconUrlField,
     "icon_background": fields.String,
 }
 
