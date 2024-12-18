@@ -18,7 +18,7 @@ const STEP_T_MAP: Record<number, string> = {
 export const Topbar: FC<TopbarProps> = (props) => {
   const { className, ...rest } = props
   const { t } = useTranslation()
-  return <div className={classNames('flex h-[52px] items-center justify-between relative border-b border-b-divider-subtle', className)}>
+  return <div className={classNames('flex shrink-0 h-[52px] items-center justify-between relative border-b border-b-divider-subtle', className)}>
     <Link href={'/datasets'} className="h-12 pl-2 pr-6 py-2 justify-start items-center gap-1 inline-flex">
       <div className='p-2'>
         <RiArrowLeftLine className='size-4 text-text-primary' />

@@ -577,7 +577,7 @@ const StepTwo = ({
   const isHoveringEconomy = useHover(economyDomRef)
 
   return (
-    <div className='flex w-full max-h-full h-full'>
+    <div className='flex w-full h-full'>
       <div className={cn('relative h-full w-1/2 py-6 overflow-y-auto', isMobile ? 'px-4' : 'px-12')}>
         <div className={'system-md-semibold mb-1'}>{t('datasetCreation.stepTwo.segmentation')}</div>
         {(!datasetId || [ChuckingMode.text, ChuckingMode.qa].includes(currentDataset!.doc_form))
@@ -986,9 +986,9 @@ const StepTwo = ({
       <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={() => { }} footer={null}>
         <PreviewContainer
           header={<PreviewHeader
-            title='Preview'
+            title={t('datasetCreation.stepTwo.preview')}
           >
-            <div className='flex items-center gap-2'>
+            <div className='flex items-center gap-1'>
               {dataSourceType === DataSourceType.FILE
                 && <PreviewDocumentPicker
                   files={files as Array<Required<CustomFile>>}
@@ -1052,7 +1052,7 @@ const StepTwo = ({
                 }) as string} />
             </div>
           </PreviewHeader>}
-          className={cn('flex shrink-0 w-1/2 relative h-full overflow-y-scroll', isMobile && 'w-full max-w-[524px]')}
+          className={cn('flex shrink-0 w-1/2 p-4 pr-0 relative h-full', isMobile && 'w-full max-w-[524px]')}
           mainClassName='space-y-6'
         >
           {docForm === ChuckingMode.qa && estimate?.qa_preview && (

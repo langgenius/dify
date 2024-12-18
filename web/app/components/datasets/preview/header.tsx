@@ -14,7 +14,7 @@ export const PreviewHeader: FC<PreviewHeaderProps> = (props) => {
     )}
   >
     <div
-      className='text-text-accent text-2xs font-semibold leading-3 uppercase'
+      className='text-text-accent system-2xs-semibold-uppercase uppercase px-1 mb-1'
     >
       {title}
     </div>

@@ -122,7 +122,7 @@ const translation = {
     removeExtraSpaces: 'Replace consecutive spaces, newlines and tabs',
     removeUrlEmails: 'Delete all URLs and email addresses',
     removeStopwords: 'Remove stopwords such as "a", "an", "the"',
-    preview: 'Confirm & Preview',
+    preview: 'Preview',
     previewChunk: 'Preview Chunk',
     reset: 'Reset',
     indexMode: 'Index mode',

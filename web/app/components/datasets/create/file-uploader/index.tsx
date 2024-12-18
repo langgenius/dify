@@ -262,9 +262,12 @@ const FileUploader = ({
         <div ref={dropRef} className={cn('relative box-border flex flex-col justify-center items-center gap-1 mb-2 px-4 py-3 max-w-[640px] min-h-20 leading-4 text-xs text-text-tertiary bg-components-dropzone-bg border border-dashed border-components-dropzone-border rounded-xl', dragging && 'bg-components-dropzone-bg-accent border-components-dropzone-border-accent')}>
           <div className="flex justify-center items-center min-h-5 text-sm leading-4 text-text-secondary">
             <RiUploadCloud2Line className='mr-2 size-5' />
+
             <span>
               {t('datasetCreation.stepOne.uploader.button')}
-              <label className="ml-1 text-text-accent cursor-pointer" onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
+              {supportTypes.length > 0 && (
+                <label className="ml-1 text-text-accent cursor-pointer" onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
+              )}
             </span>
           </div>
           <div>{t('datasetCreation.stepOne.uploader.tip', {
@@ -292,8 +295,10 @@ const FileUploader = ({
                 extension={getFileType(fileItem.file)}
               />
             </div>
-            <div className="grow shrink flex flex-col gap-0.5 pr-8">
-              <div className="text-sm leading-4 text-text-secondary w-full whitespace-nowrap text-ellipsis overflow-hidden">{fileItem.file.name}</div>
+            <div className="grow shrink flex flex-col gap-0.5">
+              <div className='flex w-full'>
+                <div className="text-sm leading-4 text-text-secondary w-0 grow truncate">{fileItem.file.name}</div>
+              </div>
               <div className="w-full leading-3 truncate text-text-tertiary">
                 <span className='uppercase'>{getFileType(fileItem.file)}</span>
                 <span className='px-1 text-text-quaternary'>·</span>

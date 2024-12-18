@@ -127,7 +127,7 @@ const StepOne = ({
 
   return (
     <div className='flex w-full h-full'>
-      <div className='w-1/2 overflow-y-auto relative'>
+      <div className='w-1/2 h-full overflow-y-auto relative'>
         <div className='flex justify-end'>
           <div className={classNames(s.form)}>
             {
@@ -285,9 +285,11 @@ const StepOne = ({
           <EmptyDatasetCreationModal show={showModal} onHide={modalCloseHandle} />
         </div>
       </div>
-      {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
-      {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
-      {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
+      <div className='w-1/2 h-full overflow-y-auto'>
+        {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
+        {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
+        {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
+      </div>
     </div>
   )
 }

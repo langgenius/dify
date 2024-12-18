@@ -122,7 +122,7 @@ const translation = {
     removeExtraSpaces: '替换掉连续的空格、换行符和制表符',
     removeUrlEmails: '删除所有 URL 和电子邮件地址',
     removeStopwords: '去除停用词，例如 “a”，“an”，“the” 等',
-    preview: '确认并预览',
+    preview: '预览',
     previewChunk: '预览块',
     reset: '重置',
     indexMode: '索引方式',
