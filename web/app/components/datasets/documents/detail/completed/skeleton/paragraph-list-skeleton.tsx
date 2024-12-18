@@ -1,7 +1,7 @@
 import React from 'react'
 import { RiArrowRightSLine } from '@remixicon/react'
 import {
-  SkeletonContanier,
+  SkeletonContainer,
   SkeletonPoint,
   SkeletonRectangle,
   SkeletonRow,
@@ -11,8 +11,8 @@ import Divider from '@/app/components/base/divider'
 
 const CardSkelton = React.memo(() => {
   return (
-    <SkeletonContanier className='p-1 pb-2 gap-y-0'>
-      <SkeletonContanier className='px-2 pt-1.5 gap-y-0.5'>
+    <SkeletonContainer className='p-1 pb-2 gap-y-0'>
+      <SkeletonContainer className='px-2 pt-1.5 gap-y-0.5'>
         <SkeletonRow className='py-0.5'>
           <SkeletonRectangle className='w-[72px] bg-text-quaternary' />
           <SkeletonPoint className='opacity-20' />
@@ -33,16 +33,16 @@ const CardSkelton = React.memo(() => {
         <SkeletonRow className='py-0.5'>
           <SkeletonRectangle className='w-2/3 bg-text-quaternary' />
         </SkeletonRow>
-      </SkeletonContanier>
-      <SkeletonContanier className='p-1 pb-2'>
+      </SkeletonContainer>
+      <SkeletonContainer className='p-1 pb-2'>
         <SkeletonRow>
           <SkeletonRow className='h-7 pl-1 pr-3 gap-x-0.5 rounded-lg bg-dataset-child-chunk-expand-btn-bg'>
             <RiArrowRightSLine className='w-4 h-4 text-text-secondary opacity-20' />
             <SkeletonRectangle className='w-32 bg-text-quaternary' />
           </SkeletonRow>
         </SkeletonRow>
-      </SkeletonContanier>
-    </SkeletonContanier>
+      </SkeletonContainer>
+    </SkeletonContainer>
   )
 })
 

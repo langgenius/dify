@@ -57,7 +57,7 @@ import { IS_CE_EDITION } from '@/config'
 import Divider from '@/app/components/base/divider'
 import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocument, useFetchDefaultProcessRule, useFetchFileIndexingEstimateForFile, useFetchFileIndexingEstimateForNotion, useFetchFileIndexingEstimateForWeb } from '@/service/knowledge/use-create-dataset'
 import Badge from '@/app/components/base/badge'
-import { SkeletonContanier, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Tooltip from '@/app/components/base/tooltip'
 import CustomDialog from '@/app/components/base/dialog'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
@@ -1111,7 +1111,7 @@ const StepTwo = ({
           {currentEstimateMutation.isPending && (
             <div className='space-y-6'>
               {Array.from({ length: 10 }, (_, i) => (
-                <SkeletonContanier key={i}>
+                <SkeletonContainer key={i}>
                   <SkeletonRow>
                     <SkeletonRectangle className="w-20" />
                     <SkeletonPoint />
@@ -1120,7 +1120,7 @@ const StepTwo = ({
                   <SkeletonRectangle className="w-full" />
                   <SkeletonRectangle className="w-full" />
                   <SkeletonRectangle className="w-[422px]" />
-                </SkeletonContanier>
+                </SkeletonContainer>
               ))}
             </div>
           )}

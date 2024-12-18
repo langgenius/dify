@@ -1,7 +1,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  SkeletonContanier,
+  SkeletonContainer,
   SkeletonPoint,
   SkeletonRectangle,
   SkeletonRow,
@@ -11,8 +11,8 @@ const ParentChunkCardSkelton = () => {
   const { t } = useTranslation()
   return (
     <div className='flex flex-col pb-2'>
-      <SkeletonContanier className='p-1 pb-0 gap-y-0'>
-        <SkeletonContanier className='px-2 pt-1.5 gap-y-0.5'>
+      <SkeletonContainer className='p-1 pb-0 gap-y-0'>
+        <SkeletonContainer className='px-2 pt-1.5 gap-y-0.5'>
           <SkeletonRow className='py-0.5'>
             <SkeletonRectangle className='w-[72px] bg-text-quaternary' />
             <SkeletonPoint className='opacity-20' />
@@ -29,8 +29,8 @@ const ParentChunkCardSkelton = () => {
           <SkeletonRow className='py-0.5'>
             <SkeletonRectangle className='w-2/3 bg-text-quaternary' />
           </SkeletonRow>
-        </SkeletonContanier>
-      </SkeletonContanier>
+        </SkeletonContainer>
+      </SkeletonContainer>
       <div className='flex items-center px-3 mt-0.5'>
         <button className='pt-0.5 text-components-button-secondary-accent-text-disabled system-xs-semibold-uppercase' disabled>
           {t('common.operation.viewMore')}
