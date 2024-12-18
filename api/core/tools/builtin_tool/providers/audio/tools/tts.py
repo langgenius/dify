@@ -1,6 +1,6 @@
 import io
 from collections.abc import Generator
-from typing import Any
+from typing import Any, Optional
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
@@ -12,7 +12,14 @@ from services.model_provider_service import ModelProviderService
 
 
 class TTSTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
+    def _invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
+    ) -> Generator[ToolInvokeMessage, None, None]:
         provider, model = tool_parameters.get("model").split("#")  # type: ignore
         voice = tool_parameters.get(f"voice#{provider}#{model}")
         model_manager = ModelManager()

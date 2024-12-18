@@ -288,7 +288,7 @@ class ToolTransformService:
         if isinstance(tool, ApiToolBundle):
             return ToolApiEntity(
                 author=tool.author,
-                name=tool.operation_id,
+                name=tool.operation_id or "",
                 label=I18nObject(en_US=tool.operation_id, zh_Hans=tool.operation_id),
                 description=I18nObject(en_US=tool.summary or "", zh_Hans=tool.summary or ""),
                 parameters=tool.parameters,
