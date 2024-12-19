@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiErrorWarningFill,
@@ -93,8 +93,12 @@ const TextGeneration: FC<IMainProps> = ({
   // Notice this situation isCallBatchAPI but not in batch tab
   const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)
   const isInBatchTab = currentTab === 'batch'
-  const [inputs, setInputs] = useState<Record<string, any>>({})
+  const [inputs, doSetInputs] = useState<Record<string, any>>({})
   const inputsRef = useRef(inputs)
+  const setInputs = useCallback((newInputs: Record<string, any>) => {
+    doSetInputs(newInputs)
+    inputsRef.current = newInputs
+  }, [])
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
