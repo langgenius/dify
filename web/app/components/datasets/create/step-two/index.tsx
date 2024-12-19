@@ -615,10 +615,12 @@ const StepTwo = ({
                   onChange={e => setSegmentIdentifier(e.target.value, true)}
                 />
                 <MaxLengthInput
+                  unit='tokens'
                   value={maxChunkLength}
                   onChange={setMaxChunkLength}
                 />
                 <OverlapInput
+                  unit='tokens'
                   value={overlap}
                   min={1}
                   onChange={setOverlap}
@@ -743,6 +745,7 @@ const StepTwo = ({
                         })}
                       />
                       <MaxLengthInput
+                        unit='tokens'
                         value={parentChildConfig.parent.maxLength}
                         onChange={value => setParentChildConfig({
                           ...parentChildConfig,
@@ -789,6 +792,7 @@ const StepTwo = ({
                     })}
                   />
                   <MaxLengthInput
+                    unit='tokens'
                     value={parentChildConfig.child.maxLength}
                     onChange={value => setParentChildConfig({
                       ...parentChildConfig,

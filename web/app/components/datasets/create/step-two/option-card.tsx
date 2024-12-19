@@ -86,7 +86,7 @@ export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
       effectImg={effectImg}
     />
     {/** Body */}
-    {isActive && (children || actions) && <div className='py-3 px-4'>
+    {isActive && (children || actions) && <div className='py-3 px-4 bg-components-panel-bg'>
       {children}
       {actions && <div className='flex gap-2 mt-4'>
         {actions}
