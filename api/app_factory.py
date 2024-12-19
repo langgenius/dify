@@ -92,11 +92,11 @@ def initialize_extensions(app: DifyApp):
 
 def create_migrations_app():
     app = create_flask_app_with_configs()
-    from extensions import ext_database, ext_import_modules, ext_migrate
+    from extensions import ext_database, ext_migrate
 
     # Initialize only required extensions
     ext_database.init_app(app)
     ext_migrate.init_app(app)
-    ext_import_modules.init_app(app)
+    from models import account, dataset, model, source, task, tools, web  # noqa: F401
 
     return app
