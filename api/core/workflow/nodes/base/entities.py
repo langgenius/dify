@@ -84,7 +84,7 @@ class DefaultValue(BaseModel):
             },
         }
 
-        validator = type_validators.get(self.type)
+        validator: dict[str, Any] = type_validators.get(self.type, {})
         if not validator:
             if self.type == DefaultValueType.ARRAY_FILES:
                 # Handle files type

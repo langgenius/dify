@@ -288,6 +288,7 @@ class ApiTool(Tool):
         """
         invoke http request
         """
+        response: httpx.Response | str = ""
         # assemble request
         headers = self.assembling_request(tool_parameters)
 

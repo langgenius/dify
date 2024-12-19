@@ -49,7 +49,8 @@ def init_app(app: DifyApp):
             return datetime.utcfromtimestamp(seconds).astimezone(timezone).timetuple()
 
         for handler in logging.root.handlers:
-            handler.formatter.converter = time_converter
+            if handler.formatter:
+                handler.formatter.converter = time_converter
 
 
 def get_request_id():

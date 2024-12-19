@@ -53,7 +53,7 @@ class LindormVectorStore(BaseVector):
         self._routing = None
         self._routing_field = None
         if using_ugc:
-            routing_value: str = kwargs.get("routing_value")
+            routing_value: str | None = kwargs.get("routing_value")
             if routing_value is None:
                 raise ValueError("UGC index should init vector with valid 'routing_value' parameter value")
             self._routing = routing_value.lower()
@@ -470,11 +470,13 @@ class LindormVectorStoreFactory(AbstractVectorFactory):
             using_ugc=dify_config.USING_UGC_INDEX,
         )
         using_ugc = dify_config.USING_UGC_INDEX
+        if using_ugc is None:
+            raise ValueError("USING_UGC_INDEX is not set")
         routing_value = None
         if dataset.index_struct:
             # if an existed record's index_struct_dict doesn't contain using_ugc field,
             # it actually stores in the normal index format
-            stored_in_ugc = dataset.index_struct_dict.get("using_ugc", False)
+            stored_in_ugc: bool = dataset.index_struct_dict.get("using_ugc", False)
             using_ugc = stored_in_ugc
             if stored_in_ugc:
                 dimension = dataset.index_struct_dict["dimension"]

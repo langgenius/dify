@@ -50,6 +50,8 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         if self.tools:
             return self.tools
+        if not self.identity:
+            return []
 
         provider = self.identity.name
         tool_path = path.join(path.dirname(path.realpath(__file__)), "builtin", provider, "tools")
