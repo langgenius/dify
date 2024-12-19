@@ -2,6 +2,7 @@ const translation = {
   list: {
     title: '文档',
     desc: '知识库的所有文件都在这里显示，整个知识库都可以链接到 Dify 引用或通过 Chat 插件进行索引。',
+    learnMore: '了解更多',
     addFile: '添加文件',
     addPages: '添加页面',
     addUrl: '添加 URL',
