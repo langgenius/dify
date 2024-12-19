@@ -1,6 +1,8 @@
 import boto3
 from botocore.config import Config
+
 from core.model_runtime.errors.invoke import InvokeBadRequestError
+
 
 def get_bedrock_client(service_name, credentials=None):
     region_name = credentials.get("aws_region")
