@@ -1100,6 +1100,7 @@ const StepTwo = ({
                           text={child}
                           tooltip={`Child-chunk-${indexForLabel} · ${child.length} Characters`}
                           labelInnerClassName='text-[10px] font-semibold align-bottom leading-7'
+                          dividerClassName='leading-7'
                         />
                       )
                     })}

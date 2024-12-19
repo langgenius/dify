@@ -8,10 +8,11 @@ type PreviewSliceProps = SliceProps<{
   label: ReactNode
   tooltip: ReactNode
   labelInnerClassName?: string
+  dividerClassName?: string
 }>
 
 export const PreviewSlice: FC<PreviewSliceProps> = (props) => {
-  const { label, className, text, tooltip, labelInnerClassName, ...rest } = props
+  const { label, className, text, tooltip, labelInnerClassName, dividerClassName, ...rest } = props
   const [tooltipOpen, setTooltipOpen] = useState(false)
   const { refs, floatingStyles, context } = useFloating({
     open: tooltipOpen,
@@ -40,7 +41,7 @@ export const PreviewSlice: FC<PreviewSliceProps> = (props) => {
       >
         <SliceLabel labelInnerClassName={labelInnerClassName}>{label}</SliceLabel>
         <SliceContent>{text}</SliceContent>
-        <SliceDivider />
+        <SliceDivider className={dividerClassName} />
       </SliceContainer>
       {tooltipOpen && <span
         ref={refs.setFloating}
