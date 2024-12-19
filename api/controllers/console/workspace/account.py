@@ -249,7 +249,7 @@ class AccountDeleteVerifyApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    def get(self):
         account = current_user
 
         try:
