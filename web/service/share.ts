@@ -130,8 +130,14 @@ export const generationConversationName = async (isInstalledApp: boolean, instal
   return getAction('post', isInstalledApp)(getUrl(`conversations/${id}/name`, isInstalledApp, installedAppId), { body: { auto_generate: true } }) as Promise<ConversationItem>
 }
 
-export const fetchChatList = async (conversationId: string, isInstalledApp: boolean, installedAppId = '') => {
-  return getAction('get', isInstalledApp)(getUrl('messages', isInstalledApp, installedAppId), { params: { conversation_id: conversationId, limit: 20, last_id: '' } }) as any
+export const fetchChatList = async (conversationId: string, isInstalledApp: boolean, installedAppId = '', firstId = '') => {
+  return getAction('get', isInstalledApp)(getUrl('messages', isInstalledApp, installedAppId), {
+    params: {
+      conversation_id: conversationId,
+      limit: 20,
+      first_id: firstId,
+    },
+  }) as any
 }
 
 // Abandoned API interface

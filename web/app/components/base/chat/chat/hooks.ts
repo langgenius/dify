@@ -75,6 +75,14 @@ export const useChat = (
     setChatList(newChatList)
     chatListRef.current = newChatList
   }, [])
+
+  useEffect(() => {
+    if (prevChatList && prevChatList.length > 0) {
+      setChatList(prevChatList)
+      chatListRef.current = prevChatList
+    }
+  }, [prevChatList])
+
   const handleResponding = useCallback((isResponding: boolean) => {
     setIsResponding(isResponding)
     isRespondingRef.current = isResponding
@@ -249,7 +257,7 @@ export const useChat = (
       else
         ttsUrl = `/apps/${params.appId}/text-to-audio`
     }
-    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', (_: any): any => {})
+    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', (_: any): any => { })
     ssePost(
       url,
       {
