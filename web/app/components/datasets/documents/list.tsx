@@ -19,6 +19,7 @@ import dayjs from 'dayjs'
 import { Edit03 } from '../../base/icons/src/vender/solid/general'
 import { Globe01 } from '../../base/icons/src/vender/line/mapsAndTravel'
 import ChunkingModeLabel from '../common/chunking-mode-label'
+import FileTypeIcon from '../../base/file-uploader/file-type-icon'
 import s from './style.module.css'
 import RenameModal from './rename-modal'
 import BatchAction from './detail/completed/common/batch-action'
@@ -43,6 +44,7 @@ import type { Props as PaginationProps } from '@/app/components/base/pagination'
 import Pagination from '@/app/components/base/pagination'
 import Checkbox from '@/app/components/base/checkbox'
 import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
+import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
 
 export const useIndexStatus = () => {
   const { t } = useTranslation()
@@ -556,10 +558,10 @@ const DocumentList: FC<IDocumentListProps> = ({
               </td>
               <td>
                 <div className='group flex items-center justify-between'>
-                  <span className={s.tdValue}>
+                  <span className={cn(s.tdValue, 'flex items-center')}>
                     {doc?.data_source_type === DataSourceType.NOTION && <NotionIcon className='inline-flex -mt-[3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />
                     }
-                    {doc?.data_source_type === DataSourceType.FILE && <div className={cn(s[`${doc?.data_source_info?.upload_file?.extension ?? fileType}Icon`], s.commonIcon, 'mr-1.5')}></div>}
+                    {doc?.data_source_type === DataSourceType.FILE && <FileTypeIcon type={extensionToFileType(doc?.data_source_info?.upload_file?.extension ?? fileType)} className='mr-1.5' />}
                     {doc?.data_source_type === DataSourceType.WEB && <Globe01 className='inline-flex -mt-[3px] mr-1.5 align-middle' />
                     }
                     {

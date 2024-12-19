@@ -53,13 +53,13 @@ type OptionCardProps = {
   onSwitched?: () => void
   noHighlight?: boolean
   disabled?: boolean
-} & Omit<ComponentProps<'div'>, 'title'>
+} & Omit<ComponentProps<'div'>, 'title' | 'onClick'>
 
 export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
-  const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSwitched, onClick, noHighlight, disabled, ...rest } = props
+  const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSwitched, noHighlight, disabled, ...rest } = props
   return <div
     className={classNames(
-      'rounded-xl bg-components-option-card-option-bg shadow-xs',
+      'rounded-xl bg-components-option-card-option-bg shadow-xs overflow-hidden',
       (isActive && !noHighlight)
         ? 'border-[1.5px] border-components-option-card-option-selected-border'
         : 'border border-components-option-card-option-border',
@@ -69,10 +69,9 @@ export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
     style={{
       ...style,
     }}
-    onClick={(e) => {
+    onClick={() => {
       if (!isActive)
         onSwitched?.()
-      onClick?.(e)
     }}
     {...rest}
     ref={ref}
@@ -86,7 +85,7 @@ export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
       effectImg={effectImg}
     />
     {/** Body */}
-    {isActive && (children || actions) && <div className='py-3 px-4'>
+    {isActive && (children || actions) && <div className='py-3 px-4 bg-components-panel-bg'>
       {children}
       {actions && <div className='flex gap-2 mt-4'>
         {actions}

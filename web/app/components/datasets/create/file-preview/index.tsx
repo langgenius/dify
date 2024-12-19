@@ -59,7 +59,7 @@ const FilePreview = ({
       <div className={cn(s.previewContent)}>
         {loading && <div className={cn(s.loading)} />}
         {!loading && (
-          <div className={cn(s.fileContent)}>{previewContent}</div>
+          <div className={cn(s.fileContent, 'body-md-regular')}>{previewContent}</div>
         )}
       </div>
     </div>

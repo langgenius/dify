@@ -2,6 +2,8 @@ import { useState } from 'react'
 import type { FC, ReactNode } from 'react'
 import { FloatingFocusManager, autoUpdate, flip, shift, useDismiss, useFloating, useHover, useInteractions, useRole } from '@floating-ui/react'
 import { RiDeleteBinLine } from '@remixicon/react'
+// @ts-expect-error no types available
+import lineClamp from 'line-clamp'
 import type { SliceProps } from './type'
 import { SliceContainer, SliceContent, SliceDivider, SliceLabel } from './shared'
 import classNames from '@/utils/classnames'
@@ -49,8 +51,12 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
   return (
     <span className='inline-block'>
       <SliceContainer {...rest}
-        className={className}
-        ref={refs.setReference}
+        className={classNames('block', className)}
+        ref={(ref) => {
+          refs.setReference(ref)
+          if (ref)
+            lineClamp(ref, 4)
+        }}
         {...getReferenceProps()}
       >
         <SliceLabel
