@@ -41,14 +41,14 @@ export type QAPreviewProps = {
 
 export const QAPreview: FC<QAPreviewProps> = (props) => {
   const { qa } = props
-  return <div className='space-y-2'>
-    <div className='flex gap-1 items-start'>
+  return <div className='flex gap-y-2'>
+    <div className='flex gap-x-1 items-start'>
       <label className='text-text-tertiary system-sm-medium'>Q</label>
-      <p className='text-text-secondary system-xs-regular'>{qa.question}</p>
+      <p className='text-text-secondary body-md-regular'>{qa.question}</p>
     </div>
-    <div className='flex gap-1 items-start'>
+    <div className='flex gap-x-1 items-start'>
       <label className='text-text-tertiary system-sm-medium'>A</label>
-      <p className='text-text-secondary system-xs-regular'>{qa.answer}</p>
+      <p className='text-text-secondary body-md-regular'>{qa.answer}</p>
     </div>
   </div>
 }
