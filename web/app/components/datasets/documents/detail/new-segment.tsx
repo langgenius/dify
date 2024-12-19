@@ -141,7 +141,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
             t('datasetDocuments.segment.addChunk')
           }</div>
           <div className='flex items-center gap-x-2'>
-            <SegmentIndexTag label={'New Chunk'} />
+            <SegmentIndexTag label={t('datasetDocuments.segment.newChunk')!} />
             <Dot />
             <span className='text-text-tertiary system-xs-medium'>{wordCountText}</span>
           </div>
@@ -167,8 +167,8 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
           </div>
         </div>
       </div>
-      <div className={classNames('flex grow overflow-hidden', fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8' : 'flex-col gap-y-1 py-3 px-4')}>
-        <div className={classNames('break-all overflow-y-auto whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
+      <div className={classNames('flex grow', fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8' : 'flex-col gap-y-1 py-3 px-4')}>
+        <div className={classNames('break-all overflow-hidden whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
           <ChunkContent
             docForm={docForm}
             question={question}

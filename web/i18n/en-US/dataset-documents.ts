@@ -346,6 +346,7 @@ const translation = {
     clearFilter: 'Clear filter',
     chunk: 'Chunk',
     parentChunk: 'Parent-Chunk',
+    newChunk: 'New Chunk',
     childChunk: 'Child-Chunk',
     newChildChunk: 'New Child Chunk',
     keywords: 'KEYWORDS',

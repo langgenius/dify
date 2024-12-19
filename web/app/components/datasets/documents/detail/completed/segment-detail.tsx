@@ -134,11 +134,11 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
         </div>
       </div>
       <div className={classNames(
-        'flex grow overflow-hidden',
-        fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8 mx-auto' : 'flex-col gap-y-1 py-3 px-4',
+        'flex grow',
+        fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8' : 'flex-col gap-y-1 py-3 px-4',
         !isEditMode && 'pb-0',
       )}>
-        <div className={classNames('break-all overflow-y-auto whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
+        <div className={classNames('break-all overflow-hidden whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
           <ChunkContent
             docForm={docForm}
             question={question}

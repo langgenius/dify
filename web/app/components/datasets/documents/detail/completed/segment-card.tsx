@@ -142,7 +142,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       <div className='h-5 relative flex items-center justify-between'>
         <>
           <div className='flex items-center gap-x-2'>
-            <SegmentIndexTag positionId={position} className={textOpacity} labelPrefix={labelPrefix} />
+            <SegmentIndexTag positionId={position} className={textOpacity} label={isFullDocMode ? labelPrefix : ''} labelPrefix={labelPrefix} />
             <Dot />
             <div className={cn('text-text-tertiary system-xs-medium', textOpacity)}>{wordCountText}</div>
             <Dot />

@@ -344,6 +344,7 @@ const translation = {
     clearFilter: '清空搜索条件',
     chunk: '分段',
     parentChunk: '父分段',
+    newChunk: '新分段',
     childChunk: '子分段',
     newChildChunk: '新子分段',
     keywords: '关键词',

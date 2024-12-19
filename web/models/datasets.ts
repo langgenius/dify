@@ -278,7 +278,7 @@ export type InitialDocumentDetail = {
   display_status: DocumentDisplayStatus
   completed_segments?: number
   total_segments?: number
-  doc_form: 'text_model' | 'qa_model'
+  doc_form: ChuckingMode
   doc_language: string
 }
 

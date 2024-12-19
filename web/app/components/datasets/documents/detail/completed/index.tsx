@@ -512,7 +512,7 @@ const Completed: FC<ICompletedProps> = ({
           onCheck={onSelectedAll}
           disabled={isLoadingSegmentList}
         />
-        <div className={cn('system-sm-semibold-uppercase pl-5', s.totalText)}>{totalText}</div>
+        <div className={'system-sm-semibold-uppercase pl-5 text-text-secondary flex-1'}>{totalText}</div>
         <SimpleSelect
           onSelect={onChangeStatus}
           items={[

@@ -17,7 +17,7 @@ export const SegmentIndexTag: FC<ISegmentIndexTagProps> = ({
 }) => {
   const localPositionId = useMemo(() => {
     const positionIdStr = String(positionId)
-    if (positionIdStr.length >= 3)
+    if (positionIdStr.length >= 2)
       return `${labelPrefix}-${positionId}`
     return `${labelPrefix}-${positionIdStr.padStart(2, '0')}`
   }, [positionId, labelPrefix])

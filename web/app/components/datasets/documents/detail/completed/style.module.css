@@ -1,12 +1,3 @@
-/* .cardWrapper {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, auto));
-  grid-gap: 16px;
-  grid-auto-rows: 180px;
-} */
-.totalText {
-  @apply text-text-secondary flex-1;
-}
 .docSearchWrapper {
   @apply sticky w-full -top-3 bg-white flex items-center mb-3 justify-between z-10 flex-wrap gap-y-1 pr-3;
 }

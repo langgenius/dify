@@ -78,28 +78,29 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
     params.content = content
 
     setLoading(true)
-    try {
-      const res = await addChildSegment({ datasetId, documentId, segmentId: chunkId, body: params })
-      notify({
-        type: 'success',
-        message: t('datasetDocuments.segment.childChunkAdded'),
-        className: `!w-[296px] !bottom-0 ${appSidebarExpand === 'expand' ? '!left-[216px]' : '!left-14'}
+    await addChildSegment({ datasetId, documentId, segmentId: chunkId, body: params }, {
+      onSuccess(data) {
+        notify({
+          type: 'success',
+          message: t('datasetDocuments.segment.childChunkAdded'),
+          className: `!w-[296px] !bottom-0 ${appSidebarExpand === 'expand' ? '!left-[216px]' : '!left-14'}
           !top-auto !right-auto !mb-[52px] !ml-11`,
-        customComponent: isFullDocMode && CustomButton,
-      })
-      handleCancel('add')
-      if (isFullDocMode) {
-        refreshTimer.current = setTimeout(() => {
-          onSave()
-        }, 3000)
-      }
-      else {
-        onSave(res.data)
-      }
-    }
-    finally {
-      setLoading(false)
-    }
+          customComponent: isFullDocMode && CustomButton,
+        })
+        handleCancel('add')
+        if (isFullDocMode) {
+          refreshTimer.current = setTimeout(() => {
+            onSave()
+          }, 3000)
+        }
+        else {
+          onSave(data.data)
+        }
+      },
+      onSettled() {
+        setLoading(false)
+      },
+    })
   }
 
   const wordCountText = useMemo(() => {
@@ -141,8 +142,8 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
           </div>
         </div>
       </div>
-      <div className={classNames('flex grow overflow-hidden', fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8' : 'flex-col gap-y-1 py-3 px-4')}>
-        <div className={classNames('break-all overflow-y-auto whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
+      <div className={classNames('flex grow w-full', fullScreen ? 'flex-row justify-center px-6 pt-6' : 'py-3 px-4')}>
+        <div className={classNames('break-all overflow-hidden whitespace-pre-line h-full', fullScreen ? 'w-1/2' : 'w-full')}>
           <ChunkContent
             docForm={ChuckingMode.parentChild}
             question={content}
