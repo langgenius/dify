@@ -8,51 +8,44 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, Optional, cast
 
-from pydantic import BaseModel
-from sqlalchemy import func
-from werkzeug.exceptions import Unauthorized
-
 from configs import dify_config
 from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.helper import RateLimiter, TokenManager
+from libs.helper import RateLimiter, TokenManager, generate_string
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
-from models.account import (
-    Account,
-    AccountIntegrate,
-    AccountStatus,
-    Tenant,
-    TenantAccountJoin,
-    TenantAccountJoinRole,
-    TenantAccountRole,
-    TenantStatus,
-)
+from models.account import (Account, AccountIntegrate, AccountStatus, Tenant,
+                            TenantAccountJoin, TenantAccountJoinRole,
+                            TenantAccountRole, TenantStatus)
 from models.model import DifySetup
-from services.errors.account import (
-    AccountAlreadyInTenantError,
-    AccountLoginError,
-    AccountNotFoundError,
-    AccountNotLinkTenantError,
-    AccountPasswordError,
-    AccountRegisterError,
-    CannotOperateSelfError,
-    CurrentPasswordIncorrectError,
-    InvalidActionError,
-    LinkAccountIntegrateError,
-    MemberNotInTenantError,
-    NoPermissionError,
-    RoleAlreadyAssignedError,
-    TenantNotFoundError,
-)
+from pydantic import BaseModel
+from services.errors.account import (AccountAlreadyInTenantError,
+                                     AccountLoginError, AccountNotFoundError,
+                                     AccountNotLinkTenantError,
+                                     AccountPasswordError,
+                                     AccountRegisterError,
+                                     CannotOperateSelfError,
+                                     CurrentPasswordIncorrectError,
+                                     InvalidActionError,
+                                     LinkAccountIntegrateError,
+                                     MemberNotInTenantError, NoPermissionError,
+                                     RoleAlreadyAssignedError,
+                                     TenantNotFoundError)
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
+from sqlalchemy import func
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_reset_password_task import send_reset_password_mail_task
+from werkzeug.exceptions import Unauthorized
+
+from api.services.account_deletion_log_service import AccountDeletionLogService
+from api.tasks.delete_account_task import delete_account_task
+from api.tasks.mail_account_deletion_task import \
+    send_account_deletion_verification_code
 
 
 class TokenPair(BaseModel):
@@ -201,6 +194,10 @@ class AccountService:
             from controllers.console.error import AccountNotFound
 
             raise AccountNotFound()
+
+        if AccountDeletionLogService.email_in_freeze(email):
+            raise AccountRegisterError("Email is in freeze.")
+
         account = Account()
         account.email = email
         account.name = name
@@ -239,6 +236,35 @@ class AccountService:
         TenantService.create_owner_tenant_if_not_exist(account=account)
 
         return account
+
+    @staticmethod
+    def generate_account_deletion_verification_code(account: Account) -> tuple[str, str]:
+        code = generate_string(6)
+        token = TokenManager.generate_token(
+            account=account, token_type="account_deletion", additional_data={"code": code}
+        )
+        return code, token
+
+    @staticmethod
+    def send_account_deletion_verification_email(account: Account, code: str):
+        language, email = account.interface_language, account.email
+        send_account_deletion_verification_code.delay(language=language, to=email, code=code)
+
+    @staticmethod
+    def verify_account_deletion_code(token: str, code: str) -> bool:
+        token_data = TokenManager.get_token_data(token, "account_deletion")
+        if token_data is None:
+            return False
+
+        if token_data["code"] != code:
+            return False
+
+        return True
+
+    @staticmethod
+    def delete_account(account: Account, reason="") -> None:
+        """Delete account. This method only adds a task to the queue for deletion."""
+        delete_account_task.delay(account, reason)
 
     @staticmethod
     def link_account_integrate(provider: str, open_id: str, account: Account) -> None:
@@ -351,7 +377,8 @@ class AccountService:
             raise ValueError("Email must be provided.")
 
         if cls.reset_password_rate_limiter.is_rate_limited(account_email):
-            from controllers.console.auth.error import PasswordResetRateLimitExceededError
+            from controllers.console.auth.error import \
+                PasswordResetRateLimitExceededError
 
             raise PasswordResetRateLimitExceededError()
 
@@ -376,13 +403,19 @@ class AccountService:
         return TokenManager.get_token_data(token, "reset_password")
 
     @classmethod
+    def send_account_delete_verification_email(cls, account: Account, code: str):
+        language, email = account.interface_language, account.email
+        send_account_deletion_verification_code.delay(language=language, to=email, code=code)
+
+    @classmethod
     def send_email_code_login_email(
         cls, account: Optional[Account] = None, email: Optional[str] = None, language: Optional[str] = "en-US"
     ):
         if email is None:
             raise ValueError("Email must be provided.")
         if cls.email_code_login_rate_limiter.is_rate_limited(email):
-            from controllers.console.auth.error import EmailCodeLoginRateLimitExceededError
+            from controllers.console.auth.error import \
+                EmailCodeLoginRateLimitExceededError
 
             raise EmailCodeLoginRateLimitExceededError()
 

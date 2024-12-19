@@ -2,10 +2,10 @@ import os
 from typing import Optional
 
 import httpx
-from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
-
 from extensions.ext_database import db
 from models.account import TenantAccountJoin, TenantAccountRole
+from tenacity import (retry, retry_if_exception_type, stop_before_delay,
+                      wait_fixed)
 
 
 class BillingService:
@@ -70,3 +70,15 @@ class BillingService:
 
         if not TenantAccountRole.is_privileged_role(join.role):
             raise ValueError("Only team owner or team admin can perform this action")
+
+    @staticmethod
+    def delete_tenant_customer(cls, tenant_id: str):
+        """ Delete related customer in billing service. Used when tenant is deleted."""
+        params = {"tenant_id": tenant_id}
+        headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
+
+        url = f"{cls.base_url}/customer"
+        response = requests.request("DELETE", url, params=params, headers=headers)
+        if response.status_code != 200:
+            raise Exception(f"Failed to delete customer for tenant {tenant_id}.")
+        return response.json()
