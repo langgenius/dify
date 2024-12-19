@@ -417,7 +417,7 @@ const StepTwo = ({
         },
         indexing_technique: getIndexing_technique(),
         process_rule: getProcessRule(),
-        doc_form: docForm,
+        doc_form: currentDataset ? currentDataset.doc_form : docForm,
         doc_language: docLanguage,
 
         retrieval_model: postRetrievalConfig,
