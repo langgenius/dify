@@ -158,6 +158,7 @@ def test_fetch_files_with_file_segment(llm_node):
         filename="test.jpg",
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="1",
+        storage_key="",
     )
     llm_node.graph_runtime_state.variable_pool.add(["sys", "files"], file)
 
@@ -174,6 +175,7 @@ def test_fetch_files_with_array_file_segment(llm_node):
             filename="test1.jpg",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="1",
+            storage_key="",
         ),
         File(
             id="2",
@@ -182,6 +184,7 @@ def test_fetch_files_with_array_file_segment(llm_node):
             filename="test2.jpg",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="2",
+            storage_key="",
         ),
     ]
     llm_node.graph_runtime_state.variable_pool.add(["sys", "files"], ArrayFileSegment(value=files))
@@ -225,6 +228,7 @@ def test_fetch_prompt_messages__vison_disabled(faker, llm_node, model_config):
             filename="test1.jpg",
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url=fake_remote_url,
+            storage_key="",
         )
     ]
 
@@ -329,6 +333,7 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
                     remote_url=fake_remote_url,
                     extension=".jpg",
                     mime_type="image/jpg",
+                    storage_key="",
                 )
             ],
             vision_enabled=True,
@@ -404,6 +409,7 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
                     remote_url=fake_remote_url,
                     extension=".jpg",
                     mime_type="image/jpg",
+                    storage_key="",
                 )
             },
         ),

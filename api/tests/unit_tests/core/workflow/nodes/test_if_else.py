@@ -248,6 +248,7 @@ def test_array_file_contains_file_name():
                 transfer_method=FileTransferMethod.LOCAL_FILE,
                 related_id="1",
                 filename="ab",
+                storage_key="",
             ),
         ],
     )
