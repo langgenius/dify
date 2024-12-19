@@ -3,7 +3,7 @@ from typing import Optional
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.datasource.vdb.vector_factory import Vector
-from extensions.ext_database import db
+from models import db
 from models.dataset import Dataset
 from models.model import App, AppAnnotationSetting, Message, MessageAnnotation
 from services.annotation_service import AppAnnotationService

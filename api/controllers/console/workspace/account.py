@@ -15,11 +15,10 @@ from controllers.console.workspace.error import (
     RepeatPasswordNotMatchError,
 )
 from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
-from extensions.ext_database import db
 from fields.member_fields import account_fields
 from libs.helper import TimestampField, timezone
 from libs.login import login_required
-from models import AccountIntegrate, InvitationCode
+from models import AccountIntegrate, InvitationCode, db
 from services.account_service import AccountService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
 

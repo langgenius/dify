@@ -10,10 +10,9 @@ from werkzeug.exceptions import Unauthorized
 from configs import dify_config
 from constants.languages import languages
 from events.tenant_event import tenant_was_created
-from extensions.ext_database import db
 from libs.helper import extract_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
-from models import Account
+from models import Account, db
 from models.account import AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountNotFoundError

@@ -17,9 +17,9 @@ from controllers.service_api.dataset.error import (
 )
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_resource_check
 from core.errors.error import ProviderTokenNotInitError
-from extensions.ext_database import db
 from fields.document_fields import document_fields, document_status_fields
 from libs.login import current_user
+from models import db
 from models.dataset import Dataset, Document, DocumentSegment
 from services.dataset_service import DocumentService
 from services.file_service import FileService

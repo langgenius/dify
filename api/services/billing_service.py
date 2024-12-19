@@ -2,7 +2,7 @@ import os
 
 import requests
 
-from extensions.ext_database import db
+from models import db
 from models.account import TenantAccountJoin, TenantAccountRole
 
 

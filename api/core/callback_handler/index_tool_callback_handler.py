@@ -2,7 +2,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueRetrieverResourcesEvent
 from core.rag.models.document import Document
-from extensions.ext_database import db
+from models import db
 from models.dataset import DatasetQuery, DocumentSegment
 from models.model import DatasetRetrieverResource
 

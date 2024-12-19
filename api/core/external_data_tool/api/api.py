@@ -3,7 +3,7 @@ from typing import Optional
 from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor
 from core.external_data_tool.base import ExternalDataTool
 from core.helper import encrypter
-from extensions.ext_database import db
+from models import db
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 
 

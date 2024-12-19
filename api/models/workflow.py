@@ -12,12 +12,12 @@ import contexts
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
 from core.variables import SecretVariable, Variable
-from extensions.ext_database import db
 from factories import variable_factory
 from libs import helper
 from models.enums import CreatedByRole
 
 from .account import Account
+from .engine import db
 from .types import StringUUID
 
 

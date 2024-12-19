@@ -1,7 +1,7 @@
 from flask_login import current_user
 
 from configs import dify_config
-from extensions.ext_database import db
+from models import db
 from models.account import Tenant, TenantAccountJoin, TenantAccountJoinRole
 from services.account_service import TenantService
 from services.feature_service import FeatureService

@@ -15,8 +15,8 @@ from constants import (
 )
 from core.file import helpers as file_helpers
 from core.rag.extractor.extract_processor import ExtractProcessor
-from extensions.ext_database import db
 from extensions.ext_storage import storage
+from models import db
 from models.account import Account
 from models.enums import CreatedByRole
 from models.model import EndUser, UploadFile

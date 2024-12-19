@@ -15,12 +15,12 @@ from werkzeug.exceptions import Unauthorized
 from configs import dify_config
 from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
+from models import db
 from models.account import (
     Account,
     AccountIntegrate,

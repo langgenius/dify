@@ -19,9 +19,8 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.ops_trace_manager import TraceQueueManager
-from extensions.ext_database import db
 from factories import file_factory
-from models import Account, App, EndUser, Message
+from models import Account, App, EndUser, Message, db
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
 

@@ -9,10 +9,9 @@ from controllers.console.wraps import (
     account_initialization_required,
     setup_required,
 )
-from extensions.ext_database import db
 from fields.app_fields import app_import_fields
 from libs.login import login_required
-from models import Account
+from models import Account, db
 from services.app_dsl_service import AppDslService, ImportStatus
 
 

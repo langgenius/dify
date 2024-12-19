@@ -14,8 +14,8 @@ from core.model_runtime.entities import (
     UserPromptMessage,
 )
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
-from extensions.ext_database import db
 from factories import file_factory
+from models import db
 from models.model import AppMode, Conversation, Message, MessageFile
 from models.workflow import WorkflowRun
 

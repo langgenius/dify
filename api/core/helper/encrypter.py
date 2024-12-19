@@ -1,7 +1,7 @@
 import base64
 
-from extensions.ext_database import db
 from libs import rsa
+from models import db
 
 
 def obfuscated_token(token: str):

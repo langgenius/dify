@@ -6,8 +6,8 @@ from sqlalchemy import asc, desc, or_
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.llm_generator import LLMGenerator
-from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
+from models import db
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError

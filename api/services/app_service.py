@@ -17,7 +17,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_was_created
-from extensions.ext_database import db
+from models import db
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig
 from models.tools import ApiToolProvider

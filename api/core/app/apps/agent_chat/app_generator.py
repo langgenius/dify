@@ -20,9 +20,8 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.ops_trace_manager import TraceQueueManager
-from extensions.ext_database import db
 from factories import file_factory
-from models import Account, App, EndUser
+from models import Account, App, EndUser, db
 
 logger = logging.getLogger(__name__)
 

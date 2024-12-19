@@ -11,7 +11,7 @@ from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCa
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from extensions.ext_database import db
+from models import db
 from models.model import App, Message
 
 logger = logging.getLogger(__name__)

@@ -11,8 +11,8 @@ from core.agent.entities import AgentToolEntity
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_model_config_was_updated
-from extensions.ext_database import db
 from libs.login import login_required
+from models import db
 from models.model import AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService
 

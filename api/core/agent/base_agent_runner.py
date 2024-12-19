@@ -42,8 +42,8 @@ from core.tools.entities.tool_entities import (
 from core.tools.tool.dataset_retriever_tool import DatasetRetrieverTool
 from core.tools.tool.tool import Tool
 from core.tools.tool_manager import ToolManager
-from extensions.ext_database import db
 from factories import file_factory
+from models import db
 from models.model import Conversation, Message, MessageAgentThought, MessageFile
 from models.tools import ToolConversationVariables
 

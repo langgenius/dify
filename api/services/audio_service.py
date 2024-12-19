@@ -79,7 +79,7 @@ class AudioService:
         from flask import Response, stream_with_context
 
         from app import app
-        from extensions.ext_database import db
+        from models import db
 
         def invoke_tts(text_content: str, app_model, voice: Optional[str] = None):
             with app.app_context():

@@ -17,7 +17,7 @@ from core.app.entities.task_entities import (
 from core.errors.error import QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.moderation.output_moderation import ModerationRule, OutputModeration
-from extensions.ext_database import db
+from models import db
 from models.account import Account
 from models.model import EndUser, Message
 

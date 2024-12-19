@@ -13,7 +13,7 @@ from core.tools.entities.tool_entities import (
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.workflow_tool import WorkflowTool
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
-from extensions.ext_database import db
+from models import db
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow

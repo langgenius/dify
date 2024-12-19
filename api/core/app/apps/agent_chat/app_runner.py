@@ -17,7 +17,7 @@ from core.model_runtime.entities.model_entities import ModelFeature, ModelProper
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.moderation.base import ModerationError
 from core.tools.entities.tool_entities import ToolRuntimeVariablePool
-from extensions.ext_database import db
+from models import db
 from models.model import App, Conversation, Message, MessageAgentThought
 from models.tools import ToolConversationVariables
 

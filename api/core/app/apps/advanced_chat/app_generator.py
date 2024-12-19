@@ -24,8 +24,8 @@ from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotA
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
-from extensions.ext_database import db
 from factories import file_factory
+from models import db
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
 from models.workflow import Workflow

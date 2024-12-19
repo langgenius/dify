@@ -3,8 +3,7 @@ from sqlalchemy.orm import Session
 
 from core.variables import Variable
 from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
-from extensions.ext_database import db
-from models import ConversationVariable
+from models import ConversationVariable, db
 
 
 def update_conversation_variable(conversation_id: str, variable: Variable):

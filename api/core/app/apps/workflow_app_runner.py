@@ -49,7 +49,7 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.workflow_entry import WorkflowEntry
-from extensions.ext_database import db
+from models import db
 from models.model import App
 from models.workflow import Workflow
 

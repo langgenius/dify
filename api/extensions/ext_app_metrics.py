@@ -51,7 +51,7 @@ def init_app(app: DifyApp):
 
     @app.route("/db-pool-stat")
     def pool_stat():
-        from extensions.ext_database import db
+        from models import db
 
         engine = db.engine
         return {

@@ -9,8 +9,8 @@ from core.model_runtime.entities import (
     ImagePromptMessageContent,
     VideoPromptMessageContent,
 )
-from extensions.ext_database import db
 from extensions.ext_storage import storage
+from models import db
 
 from . import helpers
 from .enums import FileAttribute

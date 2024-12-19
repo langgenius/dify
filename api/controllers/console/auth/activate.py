@@ -6,8 +6,8 @@ from flask_restful import Resource, reqparse
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.error import AlreadyActivateError
-from extensions.ext_database import db
 from libs.helper import StrLen, email, extract_remote_ip, timezone
+from models import db
 from models.account import AccountStatus, Tenant
 from services.account_service import AccountService, RegisterService
 

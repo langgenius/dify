@@ -53,7 +53,7 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
-from extensions.ext_database import db
+from models import db
 from models.account import Account
 from models.model import AppMode, Conversation, EndUser, Message, MessageAgentThought
 

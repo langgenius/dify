@@ -56,8 +56,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes import NodeType
 from events.message_event import message_was_created
-from extensions.ext_database import db
-from models import Conversation, EndUser, Message, MessageFile
+from models import Conversation, EndUser, Message, MessageFile, db
 from models.account import Account
 from models.enums import CreatedByRole
 from models.workflow import (

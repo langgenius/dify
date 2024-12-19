@@ -40,7 +40,6 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.rag.extractor.entity.extract_setting import ExtractSetting
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.document_fields import (
     dataset_and_document_fields,
@@ -49,7 +48,7 @@ from fields.document_fields import (
     document_with_segments_fields,
 )
 from libs.login import login_required
-from models import Dataset, DatasetProcessRule, Document, DocumentSegment, UploadFile
+from models import Dataset, DatasetProcessRule, Document, DocumentSegment, UploadFile, db
 from services.dataset_service import DatasetService, DocumentService
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.remove_document_from_index_task import remove_document_from_index_task

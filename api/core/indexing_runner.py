@@ -31,10 +31,10 @@ from core.rag.splitter.fixed_text_splitter import (
 from core.rag.splitter.text_splitter import TextSplitter
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from libs import helper
+from models import db
 from models.dataset import Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile

@@ -28,7 +28,7 @@ from core.model_runtime.entities.provider_entities import (
 from core.model_runtime.model_providers import model_provider_factory
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 from core.model_runtime.model_providers.__base.model_provider import ModelProvider
-from extensions.ext_database import db
+from models import db
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,

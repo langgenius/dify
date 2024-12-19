@@ -20,7 +20,7 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel, ModelPropertyKey
 from core.model_runtime.utils.encoders import jsonable_encoder
-from extensions.ext_database import db
+from models import db
 from models.tools import ToolModelInvoke
 
 

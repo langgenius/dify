@@ -28,7 +28,7 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
     UnitEnum,
 )
 from core.ops.utils import filter_none_values
-from extensions.ext_database import db
+from models import db
 from models.model import EndUser
 from models.workflow import WorkflowNodeExecution
 

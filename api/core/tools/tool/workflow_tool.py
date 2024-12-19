@@ -6,7 +6,7 @@ from typing import Any, Optional, Union
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolProviderType
 from core.tools.tool.tool import Tool
-from extensions.ext_database import db
+from models import db
 from models.account import Account
 from models.model import App, EndUser
 from models.workflow import Workflow

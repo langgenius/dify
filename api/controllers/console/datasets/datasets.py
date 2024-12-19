@@ -18,12 +18,11 @@ from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from extensions.ext_database import db
 from fields.app_fields import related_app_list
 from fields.dataset_fields import dataset_detail_fields, dataset_query_detail_fields
 from fields.document_fields import document_status_fields
 from libs.login import login_required
-from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
+from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile, db
 from models.dataset import DatasetPermissionEnum
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 

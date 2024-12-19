@@ -8,8 +8,8 @@ from werkzeug.exceptions import NotFound
 import app
 from configs import dify_config
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models import db
 from models.dataset import Dataset, DatasetQuery, Document
 from services.feature_service import FeatureService
 

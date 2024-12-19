@@ -97,6 +97,5 @@ def create_migrations_app():
     # Initialize only required extensions
     ext_database.init_app(app)
     ext_migrate.init_app(app)
-    from models import account, dataset, model, source, task, tools, web  # noqa: F401
 
     return app

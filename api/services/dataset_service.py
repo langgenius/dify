@@ -17,9 +17,9 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs import helper
+from models import db
 from models.account import Account, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,

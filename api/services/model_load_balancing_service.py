@@ -16,7 +16,7 @@ from core.model_runtime.entities.provider_entities import (
 )
 from core.model_runtime.model_providers import model_provider_factory
 from core.provider_manager import ProviderManager
-from extensions.ext_database import db
+from models import db
 from models.provider import LoadBalancingModelConfig
 
 logger = logging.getLogger(__name__)

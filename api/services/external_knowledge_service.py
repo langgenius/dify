@@ -8,7 +8,7 @@ import validators
 
 from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
-from extensions.ext_database import db
+from models import db
 from models.dataset import (
     Dataset,
     ExternalKnowledgeApis,

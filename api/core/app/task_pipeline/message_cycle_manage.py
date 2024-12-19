@@ -25,7 +25,7 @@ from core.app.entities.task_entities import (
 )
 from core.llm_generator.llm_generator import LLMGenerator
 from core.tools.tool_file_manager import ToolFileManager
-from extensions.ext_database import db
+from models import db
 from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
 from services.annotation_service import AppAnnotationService
 

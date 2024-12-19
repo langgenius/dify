@@ -7,8 +7,8 @@ from celery import shared_task
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
-from extensions.ext_database import db
 from extensions.ext_storage import storage
+from models import db
 from models.dataset import Dataset, DocumentSegment
 from models.model import UploadFile
 

@@ -1,5 +1,5 @@
 from events.app_event import app_was_created
-from extensions.ext_database import db
+from models import db
 from models.model import Site
 
 

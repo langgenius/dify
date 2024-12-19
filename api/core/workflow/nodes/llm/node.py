@@ -55,7 +55,7 @@ from core.workflow.nodes.event import (
     RunStreamChunkEvent,
 )
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
-from extensions.ext_database import db
+from models import db
 from models.model import Conversation
 from models.provider import Provider, ProviderType
 from models.workflow import WorkflowNodeExecutionStatus

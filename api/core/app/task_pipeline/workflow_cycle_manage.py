@@ -43,7 +43,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.workflow_entry import WorkflowEntry
-from extensions.ext_database import db
+from models import db
 from models.account import Account
 from models.enums import CreatedByRole, WorkflowRunTriggeredFrom
 from models.model import EndUser

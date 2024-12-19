@@ -1,6 +1,7 @@
 from .account import Account, AccountIntegrate, InvitationCode, Tenant
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from .dataset import Dataset, DatasetProcessRule, Document, DocumentSegment
+from .engine import db
 from .enums import CreatedByRole, UserFrom, WorkflowRunTriggeredFrom
 from .model import (
     ApiToken,
@@ -80,4 +81,5 @@ __all__ = [
     "WorkflowAppLog",
     "WorkflowRun",
     "WorkflowRunTriggeredFrom",
+    "db",
 ]

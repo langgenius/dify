@@ -47,7 +47,7 @@ from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTas
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.enums import SystemVariableKey
-from extensions.ext_database import db
+from models import db
 from models.account import Account
 from models.model import EndUser
 from models.workflow import (

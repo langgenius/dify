@@ -16,14 +16,13 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.ops.ops_trace_manager import OpsTraceManager
-from extensions.ext_database import db
 from fields.app_fields import (
     app_detail_fields,
     app_detail_fields_with_site,
     app_pagination_fields,
 )
 from libs.login import login_required
-from models import Account, App
+from models import Account, App, db
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
 
