@@ -102,7 +102,7 @@
   flex-direction: column;
   align-items: flex-start;
   padding: 24px;
-  max-width: 640px;
+  width: 640px;
   background: #F9FAFB;
   border-radius: 16px;
 }

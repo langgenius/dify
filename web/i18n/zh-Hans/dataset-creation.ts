@@ -107,7 +107,7 @@ const translation = {
     parentChunkForContext: '父块用作上下文',
     childChunkForRetrieval: '子块用于检索',
     paragraph: '段落',
-    paragraphTip: '此模式根据分隔符和最大块长度将文本拆分为段落，使用拆分文本作为检索的母块',
+    paragraphTip: '此模式根据分隔符和最大块长度将文本拆分为段落，使用拆分文本作为检索的父块',
     fullDoc: '全文',
     fullDocTip: '整个文档用作父块并直接检索。请注意，出于性能原因，超过10000个标记的文本将被自动截断。',
     separator: '分段标识符',
@@ -173,6 +173,8 @@ const translation = {
     qaSwitchHighQualityTipContent: '目前，只有高质量的索引方法支持 Q&A 格式分块。您要切换到高质量模式吗？',
     notAvailableForParentChild: '不支持父子索引',
     notAvailableForQA: '不支持 Q&A 索引',
+    parentChildDelimiterTip: '文本分隔符是用于分隔文本的字符。建议用 \n\n 将原始文档划分为较大的父级片段。您也可以自定义特殊分隔符。',
+    parentChildChunkDelimiterTip: '文本分隔符是用于分隔文本的字符。建议使用 \n 将父级片段拆分为较小的子级片段。您也可以自定义特殊分隔符。',
   },
   stepThree: {
     creationTitle: '🎉 知识库已创建',
