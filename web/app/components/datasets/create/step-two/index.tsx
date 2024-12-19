@@ -153,6 +153,11 @@ const StepTwo = ({
   const isMobile = media === MediaType.mobile
 
   const { dataset: currentDataset, mutateDatasetRes } = useDatasetDetailContext()
+
+  const isInUpload = Boolean(currentDataset)
+  const isUploadInEmptyDataset = isInUpload && !currentDataset?.doc_form
+  const isNotUploadInEmptyDataset = !isUploadInEmptyDataset
+
   const isInCreatePage = !datasetId || (datasetId && !currentDataset?.data_source_type)
   const dataSourceType = isInCreatePage ? inCreatePageDataSourceType : currentDataset?.data_source_type
   const [segmentationType, setSegmentationType] = useState<SegmentType>(SegmentType.CUSTOM)
@@ -215,7 +220,7 @@ const StepTwo = ({
   const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>(defaultParentChildConfig)
 
   const getIndexing_technique = () => indexingType || indexType
-  const currentDocForm = currentDataset ? currentDataset.doc_form : docForm
+  const currentDocForm = currentDataset?.doc_form || docForm
 
   const getProcessRule = (): ProcessRule => {
     if (currentDocForm === ChuckingMode.parentChild) {
@@ -379,7 +384,7 @@ const StepTwo = ({
     if (isSetting) {
       params = {
         original_document_id: documentDetail?.id,
-        doc_form: docForm,
+        doc_form: currentDocForm,
         doc_language: docLanguage,
         process_rule: getProcessRule(),
         // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -418,7 +423,7 @@ const StepTwo = ({
         },
         indexing_technique: getIndexing_technique(),
         process_rule: getProcessRule(),
-        doc_form: currentDataset ? currentDataset.doc_form : docForm,
+        doc_form: currentDocForm,
         doc_language: docLanguage,
 
         retrieval_model: postRetrievalConfig,
@@ -581,7 +586,8 @@ const StepTwo = ({
     <div className='flex w-full h-full'>
       <div className={cn('relative h-full w-1/2 py-6 overflow-y-auto', isMobile ? 'px-4' : 'px-12')}>
         <div className={'system-md-semibold mb-1'}>{t('datasetCreation.stepTwo.segmentation')}</div>
-        {(!datasetId || [ChuckingMode.text, ChuckingMode.qa].includes(currentDataset!.doc_form))
+        {(isInUpload || [ChuckingMode.text, ChuckingMode.qa].includes(currentDataset!.doc_form)
+        || isUploadInEmptyDataset)
           && <OptionCard
             className='bg-background-section mb-2'
             title={t('datasetCreation.stepTwo.general')}
@@ -605,7 +611,7 @@ const StepTwo = ({
                 </Button>
               </>
             }
-            noHighlight={Boolean(datasetId)}
+            noHighlight={isInUpload && isNotUploadInEmptyDataset}
           >
             <div className='flex flex-col gap-y-4'>
               <div className='flex gap-3'>
@@ -687,16 +693,16 @@ const StepTwo = ({
             </div>
           </OptionCard>}
         {
-          (!datasetId || currentDataset!.doc_form === ChuckingMode.parentChild)
+          (isInUpload || currentDataset!.doc_form === ChuckingMode.parentChild
+          || isUploadInEmptyDataset)
+          // if upload in a empty dataset, show this
           && <OptionCard
             title={t('datasetCreation.stepTwo.parentChild')}
             icon={<Image width={20} height={20} src={FamilyMod} alt={t('datasetCreation.stepTwo.parentChild')} />}
             effectImg={OrangeEffect.src}
             activeHeaderClassName='bg-dataset-option-card-orange-gradient'
             description={t('datasetCreation.stepTwo.parentChildTip')}
-            isActive={
-              datasetId ? currentDataset!.doc_form === ChuckingMode.parentChild : docForm === ChuckingMode.parentChild
-            }
+            isActive={currentDocForm === ChuckingMode.parentChild}
             onSwitched={() => handleChangeDocform(ChuckingMode.parentChild)}
             actions={
               <>
@@ -709,7 +715,7 @@ const StepTwo = ({
                 </Button>
               </>
             }
-            noHighlight={Boolean(datasetId)}
+            noHighlight={isInUpload && isNotUploadInEmptyDataset}
           >
             <div className='flex flex-col gap-4'>
               <div>
@@ -720,7 +726,7 @@ const StepTwo = ({
                   <Divider className='grow' bgStyle='gradient' />
                 </div>
                 {
-                  !(datasetId && parentChildConfig.chunkForContext !== 'paragraph')
+                  (!(isInUpload && parentChildConfig.chunkForContext !== 'paragraph') || isUploadInEmptyDataset)
                   && <RadioCard className='mt-1'
                     icon={<Image src={Note} alt='' />}
                     title={t('datasetCreation.stepTwo.paragraph')}
@@ -760,7 +766,7 @@ const StepTwo = ({
                     }
                   />}
                 {
-                  !(datasetId && parentChildConfig.chunkForContext !== 'full-doc')
+                  (!(datasetId && parentChildConfig.chunkForContext !== 'full-doc') || isUploadInEmptyDataset)
                   && <RadioCard className='mt-2'
                     icon={<Image src={FileList} alt='' />}
                     title={t('datasetCreation.stepTwo.fullDoc')}
