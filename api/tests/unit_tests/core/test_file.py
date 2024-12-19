@@ -11,7 +11,7 @@ def test_file_loads_and_dumps():
         type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://example.com/image1.jpg",
-        _storage_key="storage_key",
+        storage_key="storage_key",
     )
 
     file_dict = file.model_dump()
@@ -37,7 +37,7 @@ def test_file_to_dict():
         type=FileType.IMAGE,
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url="https://example.com/image1.jpg",
-        _storage_key="storage_key",
+        storage_key="storage_key",
     )
 
     file_dict = file.to_dict()
