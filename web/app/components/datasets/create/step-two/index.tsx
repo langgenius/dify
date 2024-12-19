@@ -589,9 +589,7 @@ const StepTwo = ({
             activeHeaderClassName='bg-dataset-option-card-blue-gradient'
             description={t('datasetCreation.stepTwo.generalTip')}
             isActive={
-              [ChuckingMode.text, ChuckingMode.qa].includes(
-                datasetId ? currentDataset!.doc_form : docForm,
-              )
+              [ChuckingMode.text, ChuckingMode.qa].includes(currentDocForm)
             }
             onSwitched={() =>
               handleChangeDocform(ChuckingMode.text)
@@ -714,64 +712,68 @@ const StepTwo = ({
             noHighlight={Boolean(datasetId)}
           >
             <div className='flex flex-col gap-4'>
-              {!datasetId && <div>
+              <div>
                 <div className='flex items-center gap-x-2'>
                   <div className='inline-flex shrink-0'>
                     <TextLabel>{t('datasetCreation.stepTwo.parentChunkForContext')}</TextLabel>
                   </div>
                   <Divider className='grow' bgStyle='gradient' />
                 </div>
-                <RadioCard className='mt-1'
-                  icon={<Image src={Note} alt='' />}
-                  title={t('datasetCreation.stepTwo.paragraph')}
-                  description={t('datasetCreation.stepTwo.paragraphTip')}
-                  isChosen={parentChildConfig.chunkForContext === 'paragraph'}
-                  onChosen={() => setParentChildConfig(
-                    {
-                      ...parentChildConfig,
-                      chunkForContext: 'paragraph',
-                    },
-                  )}
-                  chosenConfig={
-                    <div className='flex gap-3'>
-                      <DelimiterInput
-                        value={parentChildConfig.parent.delimiter}
-                        tooltip={t('datasetCreation.stepTwo.parentChildDelimiterTip')!}
-                        onChange={e => setParentChildConfig({
-                          ...parentChildConfig,
-                          parent: {
-                            ...parentChildConfig.parent,
-                            delimiter: e.target.value ? escape(e.target.value) : '',
-                          },
-                        })}
-                      />
-                      <MaxLengthInput
-                        unit='tokens'
-                        value={parentChildConfig.parent.maxLength}
-                        onChange={value => setParentChildConfig({
-                          ...parentChildConfig,
-                          parent: {
-                            ...parentChildConfig.parent,
-                            maxLength: value,
-                          },
-                        })}
-                      />
-                    </div>
-                  }
-                />
-                <RadioCard className='mt-2'
-                  icon={<Image src={FileList} alt='' />}
-                  title={t('datasetCreation.stepTwo.fullDoc')}
-                  description={t('datasetCreation.stepTwo.fullDocTip')}
-                  onChosen={() => setParentChildConfig(
-                    {
-                      ...parentChildConfig,
-                      chunkForContext: 'full-doc',
-                    },
-                  )}
-                  isChosen={parentChildConfig.chunkForContext === 'full-doc'}
-                />
-              </div>}
+                {
+                  !(datasetId && parentChildConfig.chunkForContext !== 'paragraph')
+                  && <RadioCard className='mt-1'
+                    icon={<Image src={Note} alt='' />}
+                    title={t('datasetCreation.stepTwo.paragraph')}
+                    description={t('datasetCreation.stepTwo.paragraphTip')}
+                    isChosen={parentChildConfig.chunkForContext === 'paragraph'}
+                    onChosen={() => setParentChildConfig(
+                      {
+                        ...parentChildConfig,
+                        chunkForContext: 'paragraph',
+                      },
+                    )}
+                    chosenConfig={
+                      <div className='flex gap-3'>
+                        <DelimiterInput
+                          value={parentChildConfig.parent.delimiter}
+                          tooltip={t('datasetCreation.stepTwo.parentChildDelimiterTip')!}
+                          onChange={e => setParentChildConfig({
+                            ...parentChildConfig,
+                            parent: {
+                              ...parentChildConfig.parent,
+                              delimiter: e.target.value ? escape(e.target.value) : '',
+                            },
+                          })}
+                        />
+                        <MaxLengthInput
+                          unit='tokens'
+                          value={parentChildConfig.parent.maxLength}
+                          onChange={value => setParentChildConfig({
+                            ...parentChildConfig,
+                            parent: {
+                              ...parentChildConfig.parent,
+                              maxLength: value,
+                            },
+                          })}
+                        />
+                      </div>
+                    }
+                  />}
+                {
+                  !(datasetId && parentChildConfig.chunkForContext !== 'full-doc')
+                  && <RadioCard className='mt-2'
+                    icon={<Image src={FileList} alt='' />}
+                    title={t('datasetCreation.stepTwo.fullDoc')}
+                    description={t('datasetCreation.stepTwo.fullDocTip')}
+                    onChosen={() => setParentChildConfig(
+                      {
+                        ...parentChildConfig,
+                        chunkForContext: 'full-doc',
+                      },
+                    )}
+                    isChosen={parentChildConfig.chunkForContext === 'full-doc'}
+                  />}
+              </div>
 
               <div>
                 <div className='flex items-center gap-x-2'>
