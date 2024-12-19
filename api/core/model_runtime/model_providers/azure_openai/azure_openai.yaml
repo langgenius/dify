@@ -172,6 +172,12 @@ model_credential_schema:
             - variable: __model_type
               value: llm
         - label:
+            en_US: gpt-4o-2024-11-20
+          value: gpt-4o-2024-11-20
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
             en_US: gpt-4-turbo
           value: gpt-4-turbo
           show_on:

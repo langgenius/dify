@@ -65,6 +65,11 @@ class CacheEmbedding(Embeddings):
                     for vector in embedding_result.embeddings:
                         try:
                             normalized_embedding = (vector / np.linalg.norm(vector)).tolist()
+                            # stackoverflow best way: https://stackoverflow.com/questions/20319813/how-to-check-list-containing-nan
+                            if np.isnan(normalized_embedding).any():
+                                # for issue #11827  float values are not json compliant
+                                logger.warning(f"Normalized embedding is nan: {normalized_embedding}")
+                                continue
                             embedding_queue_embeddings.append(normalized_embedding)
                         except IntegrityError:
                             db.session.rollback()
