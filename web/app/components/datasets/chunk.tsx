@@ -43,12 +43,12 @@ export const QAPreview: FC<QAPreviewProps> = (props) => {
   const { qa } = props
   return <div className='space-y-2'>
     <div className='flex gap-1 items-start'>
-      <label className='text-text-tertiary text-[13px] font-medium'>Q</label>
-      <p className='text-text-secondary tracking-[-0.0005em]'>{qa.question}</p>
+      <label className='text-text-tertiary system-sm-medium'>Q</label>
+      <p className='text-text-secondary system-xs-regular'>{qa.question}</p>
     </div>
     <div className='flex gap-1 items-start'>
-      <label className='text-text-tertiary text-[13px] font-medium'>A</label>
-      <p className='text-text-secondary tracking-[-0.0005em]'>{qa.answer}</p>
+      <label className='text-text-tertiary system-sm-medium'>A</label>
+      <p className='text-text-secondary system-xs-regular'>{qa.answer}</p>
     </div>
   </div>
 }

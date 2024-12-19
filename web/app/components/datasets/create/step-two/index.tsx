@@ -831,14 +831,14 @@ const StepTwo = ({
         <div className='flex items-center gap-2 flex-wrap sm:flex-nowrap'>
           {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.QUALIFIED)) && (
             <OptionCard
-              title={<p className='flex items-center'>
+              title={<div className='flex items-center'>
                 {t('datasetCreation.stepTwo.qualified')}
                 {!hasSetIndexType
                   && <Badge className={cn('ml-1 h-[18px]', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>{t('datasetCreation.stepTwo.recommend')}</Badge>}
                 <span className='ml-auto'>
                   {!hasSetIndexType && <span className={cn(s.radio)} />}
                 </span>
-              </p>}
+              </div>}
               description={t('datasetCreation.stepTwo.qualifiedTip')}
               icon={<Image src={indexMethodIcon.high_quality} alt='' />}
               isActive={!hasSetIndexType && indexType === IndexingType.QUALIFIED}

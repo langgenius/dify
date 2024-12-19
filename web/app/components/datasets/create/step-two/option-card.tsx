@@ -59,7 +59,7 @@ export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
   const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSwitched, onClick, noHighlight, disabled, ...rest } = props
   return <div
     className={classNames(
-      'rounded-xl bg-components-option-card-option-bg shadow-xs',
+      'rounded-xl bg-components-option-card-option-bg shadow-xs overflow-hidden',
       (isActive && !noHighlight)
         ? 'border-[1.5px] border-components-option-card-option-selected-border'
         : 'border border-components-option-card-option-border',
