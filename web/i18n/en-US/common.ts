@@ -42,6 +42,7 @@ const translation = {
     zoomOut: 'Zoom Out',
     zoomIn: 'Zoom In',
     openInNewTab: 'Open in new tab',
+    imageCopied: 'Image copied',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
