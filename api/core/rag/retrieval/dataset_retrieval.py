@@ -29,7 +29,7 @@ from core.rag.retrieval.router.multi_dataset_react_route import ReactMultiDatase
 from core.tools.tool.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
 from core.tools.tool.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from core.tools.tool.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool
-from models import db
+from extensions.ext_database import db
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService

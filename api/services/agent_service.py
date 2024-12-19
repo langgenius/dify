@@ -3,7 +3,7 @@ from flask_login import current_user
 
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
 from core.tools.tool_manager import ToolManager
-from models import db
+from extensions.ext_database import db
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message, MessageAgentThought
 

@@ -3,7 +3,7 @@ from core.tools.provider.api_tool_provider import ApiToolProviderController
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
-from models import db
+from extensions.ext_database import db
 from models.tools import ToolLabelBinding
 
 

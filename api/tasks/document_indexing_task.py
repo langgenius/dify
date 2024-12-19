@@ -7,7 +7,7 @@ from celery import shared_task
 
 from configs import dify_config
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
-from models import db
+from extensions.ext_database import db
 from models.dataset import Dataset, Document
 from services.feature_service import FeatureService
 

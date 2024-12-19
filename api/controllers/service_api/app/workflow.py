@@ -22,9 +22,9 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.model_runtime.errors.invoke import InvokeError
+from extensions.ext_database import db
 from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs import helper
-from models import db
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun
 from services.app_generate_service import AppGenerateService

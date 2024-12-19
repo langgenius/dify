@@ -1,5 +1,5 @@
 from core.moderation.factory import ModerationFactory, ModerationOutputsResult
-from models import db
+from extensions.ext_database import db
 from models.model import App, AppModelConfig
 
 

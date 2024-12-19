@@ -7,8 +7,8 @@ from werkzeug.exceptions import NotFound
 
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.models.document import Document
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models import db
 from models.dataset import Dataset
 from models.model import App, AppAnnotationSetting, MessageAnnotation
 from services.dataset_service import DatasetCollectionBindingService

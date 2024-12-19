@@ -5,7 +5,7 @@ from flask_login import current_user
 from sqlalchemy import func
 from werkzeug.exceptions import NotFound
 
-from models import db
+from extensions.ext_database import db
 from models.dataset import Dataset
 from models.model import App, Tag, TagBinding
 

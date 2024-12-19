@@ -24,7 +24,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool.tool import Tool
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ToolConfigurationManager, ToolParameterConfigurationManager
-from models import db
+from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 

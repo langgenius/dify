@@ -1,8 +1,8 @@
 from typing import Optional, Union
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models import db
 from models.account import Account
 from models.model import App, EndUser
 from models.web import PinnedConversation

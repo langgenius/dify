@@ -24,8 +24,8 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.provider_entities import CredentialFormSchema, FormType, ProviderEntity
 from core.model_runtime.model_providers import model_provider_factory
 from extensions import ext_hosting_provider
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models import db
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,

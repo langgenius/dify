@@ -6,8 +6,8 @@ import click
 from celery import shared_task  # type: ignore
 
 from core.indexing_runner import DocumentIsPausedError
+from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models import db
 from models.dataset import Dataset, ExternalKnowledgeApis
 from models.model import UploadFile
 from services.external_knowledge_service import ExternalDatasetService

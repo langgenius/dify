@@ -19,7 +19,7 @@ from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolConfigurationManager
 from core.tools.utils.parser import ApiBasedToolSchemaParser
-from models import db
+from extensions.ext_database import db
 from models.tools import ApiToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 

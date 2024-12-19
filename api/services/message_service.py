@@ -10,8 +10,8 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
+from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models import db
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig, EndUser, Message, MessageFeedback
 from services.conversation_service import ConversationService

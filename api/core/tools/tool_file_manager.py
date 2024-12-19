@@ -11,8 +11,8 @@ from uuid import uuid4
 from httpx import get
 
 from configs import dify_config
+from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models import db
 from models.model import MessageFile
 from models.tools import ToolFile
 

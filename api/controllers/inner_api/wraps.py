@@ -6,7 +6,7 @@ from hmac import new as hmac_new
 from flask import abort, request
 
 from configs import dify_config
-from models import db
+from extensions.ext_database import db
 from models.model import EndUser
 
 

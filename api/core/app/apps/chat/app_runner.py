@@ -13,7 +13,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from models import db
+from extensions.ext_database import db
 from models.model import App, Conversation, Message
 
 logger = logging.getLogger(__name__)

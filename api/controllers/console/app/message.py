@@ -22,11 +22,11 @@ from controllers.console.wraps import (
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
+from extensions.ext_database import db
 from fields.conversation_fields import annotation_fields, message_detail_fields
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import login_required
-from models import db
 from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from services.annotation_service import AppAnnotationService
 from services.errors.conversation import ConversationNotExistsError

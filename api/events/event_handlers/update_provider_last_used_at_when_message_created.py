@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ChatAppGenerateEntity
 from events.message_event import message_was_created
-from models import db
+from extensions.ext_database import db
 from models.provider import Provider
 
 

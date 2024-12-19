@@ -1,5 +1,5 @@
 from core.ops.ops_trace_manager import OpsTraceManager, provider_config_map
-from models import db
+from extensions.ext_database import db
 from models.model import App, TraceAppConfig
 
 

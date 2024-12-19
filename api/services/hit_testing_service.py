@@ -4,7 +4,7 @@ import time
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from models import db
+from extensions.ext_database import db
 from models.account import Account
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
 

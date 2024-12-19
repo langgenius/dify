@@ -8,7 +8,7 @@ from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.wraps import only_edition_cloud
-from models import db
+from extensions.ext_database import db
 from models.model import App, InstalledApp, RecommendedApp
 
 

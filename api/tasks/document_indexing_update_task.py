@@ -8,7 +8,7 @@ from werkzeug.exceptions import NotFound
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from models import db
+from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 
 

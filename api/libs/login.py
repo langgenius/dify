@@ -7,7 +7,7 @@ from werkzeug.exceptions import Unauthorized
 from werkzeug.local import LocalProxy
 
 from configs import dify_config
-from models import db
+from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountJoin
 
 #: A proxy for the current user. If no user is logged in, this will be an

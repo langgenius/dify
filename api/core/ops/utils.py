@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Optional, Union
 
-from models import db
+from extensions.ext_database import db
 from models.model import Message
 
 

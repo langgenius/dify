@@ -9,7 +9,7 @@ from core.tools.entities.tool_entities import (
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.api_tool import ApiTool
 from core.tools.tool.tool import Tool
-from models import db
+from extensions.ext_database import db
 from models.tools import ApiToolProvider
 
 

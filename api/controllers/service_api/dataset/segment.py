@@ -12,8 +12,8 @@ from controllers.service_api.wraps import (
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
+from extensions.ext_database import db
 from fields.segment_fields import segment_fields
-from models import db
 from models.dataset import Dataset, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 

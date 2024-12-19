@@ -21,9 +21,9 @@ from controllers.console.wraps import (
     cloud_edition_billing_resource_check,
     setup_required,
 )
+from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import login_required
-from models import db
 from models.account import Tenant, TenantStatus
 from services.account_service import TenantService
 from services.file_service import FileService

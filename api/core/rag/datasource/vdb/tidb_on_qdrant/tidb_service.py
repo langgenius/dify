@@ -5,8 +5,8 @@ import requests
 from requests.auth import HTTPDigestAuth
 
 from configs import dify_config
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models import db
 from models.dataset import TidbAuthBinding
 
 

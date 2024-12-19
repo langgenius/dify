@@ -10,8 +10,8 @@ from flask_restful import Resource
 from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden, Unauthorized
 
+from extensions.ext_database import db
 from libs.login import _get_user
-from models import db
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.model import ApiToken, App, EndUser
 from services.feature_service import FeatureService

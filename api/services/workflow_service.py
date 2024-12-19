@@ -18,7 +18,7 @@ from core.workflow.nodes.event import RunCompletedEvent
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
-from models import db
+from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatedByRole
 from models.model import App, AppMode

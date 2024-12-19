@@ -4,8 +4,8 @@ from werkzeug.exceptions import Forbidden
 from configs import dify_config
 from controllers.web import api
 from controllers.web.wraps import WebApiResource
+from extensions.ext_database import db
 from libs.helper import AppIconUrlField
-from models import db
 from models.account import TenantStatus
 from models.model import Site
 from services.feature_service import FeatureService

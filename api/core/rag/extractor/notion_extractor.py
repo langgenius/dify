@@ -7,7 +7,7 @@ import requests
 from configs import dify_config
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
-from models import db
+from extensions.ext_database import db
 from models.dataset import Document as DocumentModel
 from models.source import DataSourceOauthBinding
 

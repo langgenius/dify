@@ -5,7 +5,7 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolParameter, ToolParameterOption, ToolProviderType
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.tool import Tool
-from models import db
+from extensions.ext_database import db
 from models.model import App, AppModelConfig
 from models.tools import PublishedAppTool
 

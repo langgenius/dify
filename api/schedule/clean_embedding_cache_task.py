@@ -7,7 +7,7 @@ from werkzeug.exceptions import NotFound
 
 import app
 from configs import dify_config
-from models import db
+from extensions.ext_database import db
 from models.dataset import Embedding
 
 

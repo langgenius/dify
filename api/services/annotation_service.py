@@ -7,8 +7,8 @@ from sqlalchemy import or_
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models import db
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from services.feature_service import FeatureService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task

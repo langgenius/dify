@@ -10,7 +10,7 @@ from core.tools.entities.api_entities import UserToolProvider
 from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
-from models import db
+from extensions.ext_database import db
 from models.model import App
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow

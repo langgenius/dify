@@ -1,5 +1,5 @@
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
-from models import db
+from extensions.ext_database import db
 from models.model import Message
 
 

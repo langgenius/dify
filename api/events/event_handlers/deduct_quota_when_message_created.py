@@ -1,7 +1,7 @@
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ChatAppGenerateEntity
 from core.entities.provider_entities import QuotaUnit
 from events.message_event import message_was_created
-from models import db
+from extensions.ext_database import db
 from models.provider import Provider, ProviderType
 
 

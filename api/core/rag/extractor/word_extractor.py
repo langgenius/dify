@@ -17,8 +17,8 @@ from configs import dify_config
 from core.helper import ssrf_proxy
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
+from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models import db
 from models.enums import CreatedByRole
 from models.model import UploadFile
 

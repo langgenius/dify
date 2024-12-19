@@ -6,7 +6,7 @@ from celery import shared_task
 from werkzeug.exceptions import NotFound
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
-from models import db
+from extensions.ext_database import db
 from models.dataset import Document
 
 

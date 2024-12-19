@@ -13,7 +13,7 @@ from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntime
 from core.workflow.nodes.if_else.entities import IfElseNodeData
 from core.workflow.nodes.if_else.if_else_node import IfElseNode
 from core.workflow.utils.condition.entities import Condition, SubCondition, SubVariableCondition
-from models import db
+from extensions.ext_database import db
 from models.enums import UserFrom
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 

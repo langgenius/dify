@@ -1,5 +1,5 @@
 from dify_app import DifyApp
-from models import db
+from models.engine import db
 
 
 def init_app(app: DifyApp):

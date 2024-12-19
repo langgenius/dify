@@ -7,7 +7,7 @@ from werkzeug.exceptions import NotFound
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from events.event_handlers.document_index_event import document_index_created
-from models import db
+from extensions.ext_database import db
 from models.dataset import Document
 
 
