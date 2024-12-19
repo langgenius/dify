@@ -287,7 +287,8 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution,
                 )
-
+                if node_failed_response:
+                    yield node_failed_response
             elif isinstance(
                 event,
                 QueueNodeRetryEvent,
@@ -304,8 +305,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
                 if response:
                     yield response
-                if node_failed_response:
-                    yield node_failed_response
+
             elif isinstance(event, QueueParallelBranchRunStartedEvent):
                 if not workflow_run:
                     raise Exception("Workflow run not initialized.")
