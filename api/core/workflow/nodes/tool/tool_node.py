@@ -15,8 +15,9 @@ from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
+from extensions.ext_database import db
 from factories import file_factory
-from models import ToolFile, db
+from models import ToolFile
 from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import ToolNodeData

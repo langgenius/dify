@@ -20,10 +20,11 @@ from controllers.console.wraps import (
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.segment_fields import segment_fields
 from libs.login import login_required
-from models import DocumentSegment, db
+from models import DocumentSegment
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task

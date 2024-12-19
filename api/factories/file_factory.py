@@ -8,7 +8,8 @@ from sqlalchemy import select
 from constants import AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 from core.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUploadConfig
 from core.helper import ssrf_proxy
-from models import MessageFile, ToolFile, UploadFile, db
+from extensions.ext_database import db
+from models import MessageFile, ToolFile, UploadFile
 
 
 def build_from_message_files(

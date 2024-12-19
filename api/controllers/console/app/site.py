@@ -8,9 +8,10 @@ from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
+from extensions.ext_database import db
 from fields.app_fields import app_site_fields
 from libs.login import login_required
-from models import Site, db
+from models import Site
 
 
 def parse_app_site_args():

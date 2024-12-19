@@ -9,9 +9,10 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 from controllers.console import api
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
+from extensions.ext_database import db
 from fields.installed_app_fields import installed_app_list_fields
 from libs.login import login_required
-from models import App, InstalledApp, RecommendedApp, db
+from models import App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
 
 

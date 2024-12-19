@@ -5,8 +5,9 @@ from flask_restful import Resource
 from werkzeug.exceptions import NotFound
 
 from controllers.console.wraps import account_initialization_required
+from extensions.ext_database import db
 from libs.login import login_required
-from models import InstalledApp, db
+from models import InstalledApp
 
 
 def installed_app_required(view=None):

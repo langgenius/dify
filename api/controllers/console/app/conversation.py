@@ -12,6 +12,7 @@ from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.ext_database import db
 from fields.conversation_fields import (
     conversation_detail_fields,
     conversation_message_detail_fields,
@@ -20,7 +21,7 @@ from fields.conversation_fields import (
 )
 from libs.helper import DatetimeString
 from libs.login import login_required
-from models import Conversation, EndUser, Message, MessageAnnotation, db
+from models import Conversation, EndUser, Message, MessageAnnotation
 from models.model import AppMode
 
 
