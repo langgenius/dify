@@ -449,6 +449,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     else {},
                     in_iteration_id=event.in_iteration_id,
                     retry_index=event.retry_index,
+                    start_index=event.start_index,
                 )
             )
 

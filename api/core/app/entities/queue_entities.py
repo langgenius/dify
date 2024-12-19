@@ -342,6 +342,7 @@ class QueueNodeRetryEvent(AppQueueEvent):
 
     error: str
     retry_index: int  # retry index
+    start_index: int  # start index
 
 
 class QueueNodeInIterationFailedEvent(AppQueueEvent):

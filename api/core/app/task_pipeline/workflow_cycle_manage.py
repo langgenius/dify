@@ -436,8 +436,10 @@ class WorkflowCycleManage:
         created_at = event.start_at
         finished_at = datetime.now(UTC).replace(tzinfo=None)
         elapsed_time = (finished_at - created_at).total_seconds()
-        workflow_node_execution = WorkflowNodeExecution()
+        inputs = WorkflowEntry.handle_special_values(event.inputs)
+        outputs = WorkflowEntry.handle_special_values(event.outputs)
 
+        workflow_node_execution = WorkflowNodeExecution()
         workflow_node_execution.tenant_id = workflow_run.tenant_id
         workflow_node_execution.app_id = workflow_run.app_id
         workflow_node_execution.workflow_id = workflow_run.workflow_id
@@ -454,31 +456,18 @@ class WorkflowCycleManage:
         workflow_node_execution.finished_at = finished_at
         workflow_node_execution.elapsed_time = elapsed_time
         workflow_node_execution.error = event.error
+        workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
+        workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
         workflow_node_execution.execution_metadata = json.dumps(
             {
                 NodeRunMetadataKey.ITERATION_ID: event.in_iteration_id,
             }
         )
+        workflow_node_execution.index = event.start_index
 
-        with Session(db.engine, expire_on_commit=False) as session:
-            failed_execution = (
-                session.query(WorkflowNodeExecution)
-                .filter(
-                    WorkflowNodeExecution.tenant_id == workflow_run.tenant_id,
-                    WorkflowNodeExecution.app_id == workflow_run.app_id,
-                    WorkflowNodeExecution.workflow_id == workflow_run.workflow_id,
-                    WorkflowNodeExecution.workflow_run_id == workflow_run.id,
-                    WorkflowNodeExecution.status == WorkflowNodeExecutionStatus.RUNNING.value,
-                )
-                .first()
-            )
-
-            node_run_index = failed_execution.index
-            workflow_node_execution.index = node_run_index
-
-            session.add(workflow_node_execution)
-            session.commit()
-            session.refresh(workflow_node_execution)
+        db.session.add(workflow_node_execution)
+        db.session.commit()
+        db.session.refresh(workflow_node_execution)
 
         return workflow_node_execution
 
