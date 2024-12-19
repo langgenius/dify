@@ -34,6 +34,8 @@ const ChatWrapper = () => {
     currentChatInstanceRef,
     appData,
     themeBuilder,
+    setChatListSize,
+    hasMore,
   } = useChatWithHistoryContext()
   const appConfig = useMemo(() => {
     const config = appParams || {}
@@ -69,7 +71,7 @@ const ChatWrapper = () => {
   useEffect(() => {
     if (currentChatInstanceRef.current)
       currentChatInstanceRef.current.handleStop = handleStop
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const doSend: OnSend = useCallback((message, files, last_answer) => {
@@ -163,6 +165,11 @@ const ChatWrapper = () => {
     />
     : null
 
+  const onScrollToTop = useCallback(() => {
+    if (hasMore)
+      setChatListSize(size => size + 1)
+  }, [setChatListSize, hasMore])
+
   return (
     <div
       className='h-full bg-chatbot-bg overflow-hidden'
@@ -187,6 +194,8 @@ const ChatWrapper = () => {
         answerIcon={answerIcon}
         hideProcessDetail
         themeBuilder={themeBuilder}
+        onScrollToTop={onScrollToTop}
+        hasMoreMessages={hasMore}
       />
     </div>
   )
