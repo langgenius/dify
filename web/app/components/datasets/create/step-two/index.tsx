@@ -392,6 +392,7 @@ const StepTwo = ({
         retrieval_model: retrievalConfig, // Readonly. If want to changed, just go to settings page.
         embedding_model: embeddingModel.model, // Readonly
         embedding_model_provider: embeddingModel.provider, // Readonly
+        indexing_technique: getIndexing_technique(),
       } as CreateDocumentReq
     }
     else { // create
