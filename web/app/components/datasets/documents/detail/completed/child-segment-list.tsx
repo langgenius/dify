@@ -157,7 +157,6 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
                   label={`C-${childChunk.position}${edited ? ` · ${t('datasetDocuments.segment.edited')}` : ''}`}
                   text={childChunk.content}
                   onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
-                  className='line-clamp-3'
                   labelInnerClassName='text-[10px] font-semibold align-bottom leading-6'
                   contentClassName='!leading-6'
                   showDivider={false}
