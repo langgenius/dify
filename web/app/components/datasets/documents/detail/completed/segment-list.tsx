@@ -41,7 +41,8 @@ const SegmentList = React.forwardRef(({
 }: ISegmentListProps,
 ref: ForwardedRef<HTMLDivElement>,
 ) => {
-  const [mode, parentMode] = useDocumentContext(s => [s.mode, s.parentMode])
+  const mode = useDocumentContext(s => s.mode)
+  const parentMode = useDocumentContext(s => s.parentMode)
 
   const Skeleton = useMemo(() => {
     return (mode === 'hierarchical' && parentMode === 'paragraph') ? ParagraphListSkeleton : GeneralListSkeleton

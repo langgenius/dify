@@ -64,7 +64,8 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   } = detail as Required<ISegmentCardProps>['detail']
   const [showModal, setShowModal] = useState(false)
   const isCollapsed = useSegmentListContext(s => s.isCollapsed)
-  const [mode, parentMode] = useDocumentContext(s => [s.mode, s.parentMode])
+  const mode = useDocumentContext(s => s.mode)
+  const parentMode = useDocumentContext(s => s.parentMode)
 
   const isGeneralMode = useMemo(() => {
     return mode === 'custom'

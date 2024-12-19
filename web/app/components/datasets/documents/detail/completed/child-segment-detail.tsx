@@ -38,7 +38,8 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
   const [content, setContent] = useState(childChunkInfo?.content || '')
   const { eventEmitter } = useEventEmitterContextContext()
   const [loading, setLoading] = useState(false)
-  const [fullScreen, toggleFullScreen] = useSegmentListContext(s => [s.fullScreen, s.toggleFullScreen])
+  const fullScreen = useSegmentListContext(s => s.fullScreen)
+  const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
 
   eventEmitter?.useSubscription((v) => {
     if (v === 'update-child-segment')

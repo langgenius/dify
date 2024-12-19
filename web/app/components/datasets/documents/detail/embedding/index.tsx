@@ -111,7 +111,8 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
 
-  const [datasetId, documentId] = useDocumentContext(s => [s.datasetId, s.documentId])
+  const datasetId = useDocumentContext(s => s.datasetId)
+  const documentId = useDocumentContext(s => s.documentId)
   const localDatasetId = dstId ?? datasetId
   const localDocumentId = docId ?? documentId
 

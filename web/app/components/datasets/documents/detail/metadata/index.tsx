@@ -150,7 +150,8 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
   const [saveLoading, setSaveLoading] = useState(false)
 
   const { notify } = useContext(ToastContext)
-  const [datasetId, documentId] = useDocumentContext(s => [s.datasetId, s.documentId])
+  const datasetId = useDocumentContext(s => s.datasetId)
+  const documentId = useDocumentContext(s => s.documentId)
 
   useEffect(() => {
     if (docDetail?.doc_type) {

@@ -80,7 +80,11 @@ const Completed: FC<ICompletedProps> = ({
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const [datasetId = '', documentId = '', docForm, mode, parentMode] = useDocumentContext(s => [s.datasetId, s.documentId, s.docForm, s.mode, s.parentMode])
+  const datasetId = useDocumentContext(s => s.datasetId) || ''
+  const documentId = useDocumentContext(s => s.documentId) || ''
+  const docForm = useDocumentContext(s => s.docForm)
+  const mode = useDocumentContext(s => s.mode)
+  const parentMode = useDocumentContext(s => s.parentMode)
   // the current segment id and whether to show the modal
   const [currSegment, setCurrSegment] = useState<{ segInfo?: SegmentDetailModel; showModal: boolean; isEditMode?: boolean }>({ showModal: false })
   const [currChildChunk, setCurrChildChunk] = useState<{ childChunkInfo?: ChildChunkDetail; showModal: boolean }>({ showModal: false })

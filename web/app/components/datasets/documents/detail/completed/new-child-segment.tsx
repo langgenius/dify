@@ -39,7 +39,8 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
   const { datasetId, documentId } = useParams<{ datasetId: string; documentId: string }>()
   const [loading, setLoading] = useState(false)
   const [addAnother, setAddAnother] = useState(true)
-  const [fullScreen, toggleFullScreen] = useSegmentListContext(s => [s.fullScreen, s.toggleFullScreen])
+  const fullScreen = useSegmentListContext(s => s.fullScreen)
+  const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
   const { appSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
   })))
