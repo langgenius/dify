@@ -60,7 +60,7 @@ class File(BaseModel):
         remote_url: Optional[str] = None,
         related_id: Optional[str] = None,
         filename: Optional[str] = None,
-        extension: Optional[str] = Field(default=None, description="File extension, should contains dot"),
+        extension: Optional[str] = None,
         mime_type: Optional[str] = None,
         size: int = -1,
         storage_key: str,
