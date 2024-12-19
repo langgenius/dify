@@ -14,6 +14,7 @@ import Loading from '@/app/components/base/loading'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
+import { useRetryDetailShowInSingleRun } from '@/app/components/workflow/nodes/_base/components/retry/hooks'
 
 const i18nPrefix = 'workflow.nodes.tool'
 
@@ -48,6 +49,10 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     handleStop,
     runResult,
   } = useConfig(id, data)
+  const {
+    retryDetails,
+    handleRetryDetailsChange,
+  } = useRetryDetailShowInSingleRun()
 
   if (isLoading) {
     return <div className='flex h-[200px] items-center justify-center'>
@@ -148,7 +153,9 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}
-          result={<ResultPanel {...runResult} showSteps={false} />}
+          retryDetails={retryDetails}
+          onRetryDetailBack={handleRetryDetailsChange}
+          result={<ResultPanel {...runResult} showSteps={false} onShowRetryDetail={handleRetryDetailsChange} />}
         />
       )}
     </div>

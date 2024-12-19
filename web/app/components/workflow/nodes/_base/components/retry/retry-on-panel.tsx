@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useRetryConfig } from './hooks'
 import s from './style.module.css'
-import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
 import Slider from '@/app/components/base/slider'
 import Input from '@/app/components/base/input'
@@ -57,9 +56,6 @@ const RetryOnPanel = ({
         <div className='flex items-center justify-between px-4 py-2 h-10'>
           <div className='flex items-center'>
             <div className='mr-0.5 system-sm-semibold-uppercase text-text-secondary'>{t('workflow.nodes.common.retry.retryOnFailure')}</div>
-            <Tooltip
-              popupContent='Retry the node when it fails'
-            />
           </div>
           <Switch
             defaultValue={retry_config?.retry_enabled}
