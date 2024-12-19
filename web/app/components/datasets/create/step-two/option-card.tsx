@@ -53,10 +53,10 @@ type OptionCardProps = {
   onSwitched?: () => void
   noHighlight?: boolean
   disabled?: boolean
-} & Omit<ComponentProps<'div'>, 'title'>
+} & Omit<ComponentProps<'div'>, 'title' | 'onClick'>
 
 export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
-  const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSwitched, onClick, noHighlight, disabled, ...rest } = props
+  const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSwitched, noHighlight, disabled, ...rest } = props
   return <div
     className={classNames(
       'rounded-xl bg-components-option-card-option-bg shadow-xs overflow-hidden',
@@ -69,10 +69,9 @@ export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
     style={{
       ...style,
     }}
-    onClick={(e) => {
+    onClick={() => {
       if (!isActive)
         onSwitched?.()
-      onClick?.(e)
     }}
     {...rest}
     ref={ref}
