@@ -12,13 +12,41 @@ import ChunkDetailModal from './chunk-detail-modal'
 import type { HitTesting } from '@/models/datasets'
 import cn from '@/utils/classnames'
 import FileIcon from '@/app/components/base/file-uploader/file-type-icon'
-import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
+import { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import Tag from '@/app/components/datasets/documents/detail/completed/common/tag'
 
 const i18nPrefix = 'datasetHitTesting'
 type Props = {
   isExternal: boolean
   payload: HitTesting
+}
+
+const extensionToFileType = (extension: string): FileAppearanceTypeEnum => {
+  switch (extension) {
+    case 'pdf':
+      return FileAppearanceTypeEnum.pdf
+    case 'doc':
+    case 'docx':
+    case 'epub':
+      return FileAppearanceTypeEnum.document
+    case 'md':
+    case 'mdx':
+    case 'markdown':
+      return FileAppearanceTypeEnum.markdown
+    case 'csv':
+    case 'xls':
+    case 'xlsx':
+      return FileAppearanceTypeEnum.excel
+    case 'html':
+    case 'htm':
+    case 'xml':
+      return FileAppearanceTypeEnum.document
+    case 'ppt':
+    case 'pptx':
+      return FileAppearanceTypeEnum.ppt
+    default:
+      return FileAppearanceTypeEnum.custom
+  }
 }
 
 const ResultItem: FC<Props> = ({
@@ -31,6 +59,7 @@ const ResultItem: FC<Props> = ({
   const { position, word_count, content, keywords, document } = data
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
+  const fileType = extensionToFileType(extension)
   const [isFold, {
     toggle: toggleFold,
   }] = useBoolean(false)
@@ -88,7 +117,7 @@ const ResultItem: FC<Props> = ({
       {/* Foot */}
       <div className='mt-3 flex justify-between items-center h-10 pl-3 pr-2 border-t border-divider-subtle'>
         <div className='grow flex items-center space-x-1'>
-          <FileIcon type={extension} size='sm' />
+          <FileIcon type={fileType} size='sm' />
           <span className='grow w-0 truncate text-text-secondary text-[13px] font-normal'>{document.name}</span>
         </div>
         <div
