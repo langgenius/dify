@@ -304,8 +304,9 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       setShowNewConversationItemInList(true)
     }
   }, [setShowConfigPanelBeforeChat, setShowNewConversationItemInList, checkInputsRequired])
+
   const currentChatInstanceRef = useRef<{ handleStop: () => void }>({ handleStop: () => { } })
-  const handleChangeConversation = useCallback((conversationId: string) => {
+  const handleChangeConversation = useCallback((conversationId: string, reloadCurrent = true) => {
     currentChatInstanceRef.current.handleStop()
     setNewConversationId('')
     handleConversationIdInfoChange(conversationId)
@@ -314,21 +315,28 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       setShowConfigPanelBeforeChat(true)
     else
       setShowConfigPanelBeforeChat(false)
-  }, [handleConversationIdInfoChange, setShowConfigPanelBeforeChat, checkInputsRequired])
-  const handleNewConversation = useCallback(() => {
+
+    if (reloadCurrent)
+      mutateAppChatListData()
+  }, [handleConversationIdInfoChange, setShowConfigPanelBeforeChat, checkInputsRequired, mutateAppChatListData])
+
+  const handleNewConversation = useCallback((reloadCurrent = true) => {
     currentChatInstanceRef.current.handleStop()
     setNewConversationId('')
 
     if (showNewConversationItemInList) {
-      handleChangeConversation('')
+      handleChangeConversation('', reloadCurrent)
     }
     else if (currentConversationId) {
+      if (reloadCurrent)
+        mutateAppChatListData()
+
       handleConversationIdInfoChange('')
       setShowConfigPanelBeforeChat(true)
       setShowNewConversationItemInList(true)
       handleNewConversationInputsChange({})
     }
-  }, [handleChangeConversation, currentConversationId, handleConversationIdInfoChange, setShowConfigPanelBeforeChat, setShowNewConversationItemInList, showNewConversationItemInList, handleNewConversationInputsChange])
+  }, [handleChangeConversation, currentConversationId, handleConversationIdInfoChange, setShowConfigPanelBeforeChat, setShowNewConversationItemInList, showNewConversationItemInList, handleNewConversationInputsChange, mutateAppChatListData])
   const handleUpdateConversationList = useCallback(() => {
     mutateAppConversationData()
     mutateAppPinnedConversationData()
@@ -367,7 +375,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     }
 
     if (conversationId === currentConversationId)
-      handleNewConversation()
+      handleNewConversation(false)
 
     handleUpdateConversationList()
   }, [isInstalledApp, appId, notify, t, handleUpdateConversationList, handleNewConversation, currentConversationId, conversationDeleting])
