@@ -713,7 +713,7 @@ const StepTwo = ({
             noHighlight={Boolean(datasetId)}
           >
             <div className='flex flex-col gap-4'>
-              <div>
+              {!datasetId && <div>
                 <div className='flex items-center gap-x-2'>
                   <div className='inline-flex shrink-0'>
                     <TextLabel>{t('datasetCreation.stepTwo.parentChunkForContext')}</TextLabel>
@@ -770,7 +770,7 @@ const StepTwo = ({
                   )}
                   isChosen={parentChildConfig.chunkForContext === 'full-doc'}
                 />
-              </div>
+              </div>}
 
               <div>
                 <div className='flex items-center gap-x-2'>
