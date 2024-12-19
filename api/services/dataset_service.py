@@ -1032,7 +1032,7 @@ class DocumentService:
         # save process rule
         if document_data.process_rule:
             process_rule = document_data.process_rule
-            if process_rule.mode == "custom":
+            if process_rule.mode in {"custom", "hierarchical"}:
                 dataset_process_rule = DatasetProcessRule(
                     dataset_id=dataset.id,
                     mode=process_rule.mode,
