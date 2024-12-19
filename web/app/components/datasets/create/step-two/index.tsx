@@ -157,6 +157,7 @@ const StepTwo = ({
   const isInUpload = Boolean(currentDataset)
   const isUploadInEmptyDataset = isInUpload && !currentDataset?.doc_form
   const isNotUploadInEmptyDataset = !isUploadInEmptyDataset
+  const isInInit = !isInUpload && !isSetting
 
   const isInCreatePage = !datasetId || (datasetId && !currentDataset?.data_source_type)
   const dataSourceType = isInCreatePage ? inCreatePageDataSourceType : currentDataset?.data_source_type
@@ -586,8 +587,9 @@ const StepTwo = ({
     <div className='flex w-full h-full'>
       <div className={cn('relative h-full w-1/2 py-6 overflow-y-auto', isMobile ? 'px-4' : 'px-12')}>
         <div className={'system-md-semibold mb-1'}>{t('datasetCreation.stepTwo.segmentation')}</div>
-        {(isInUpload || [ChuckingMode.text, ChuckingMode.qa].includes(currentDataset!.doc_form)
-        || isUploadInEmptyDataset)
+        {((isInUpload && [ChuckingMode.text, ChuckingMode.qa].includes(currentDataset!.doc_form))
+        || isUploadInEmptyDataset
+        || isInInit)
           && <OptionCard
             className='bg-background-section mb-2'
             title={t('datasetCreation.stepTwo.general')}
@@ -693,8 +695,11 @@ const StepTwo = ({
             </div>
           </OptionCard>}
         {
-          (isInUpload || currentDataset!.doc_form === ChuckingMode.parentChild
-          || isUploadInEmptyDataset)
+          (
+            (isInUpload && currentDataset!.doc_form === ChuckingMode.parentChild)
+            || isUploadInEmptyDataset
+            || isInInit
+          )
           // if upload in a empty dataset, show this
           && <OptionCard
             title={t('datasetCreation.stepTwo.parentChild')}
