@@ -1,7 +1,7 @@
 import logging
+import mimetypes
 from collections.abc import Mapping, Sequence
 from typing import Any
-import mimetypes
 
 from configs import dify_config
 from core.file import File, FileTransferMethod
@@ -165,9 +165,9 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
         content = response.content
 
         if is_file:
-            # Get mime type from both URL and content type header
-            url_mime_type = mimetypes.guess_type(url)[0] or ""
-            mime_type = content_type or url_mime_type or "application/octet-stream"
+            # Guess file extension from URL or Content-Type header
+            filename = url.split("?")[0].split("/")[-1] or ""
+            mime_type = content_type or mimetypes.guess_type(filename)[0] or "application/octet-stream"
 
             tool_file = ToolFileManager.create_file_by_raw(
                 user_id=self.user_id,
