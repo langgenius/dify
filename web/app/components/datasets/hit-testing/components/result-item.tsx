@@ -12,41 +12,14 @@ import ChunkDetailModal from './chunk-detail-modal'
 import type { HitTesting } from '@/models/datasets'
 import cn from '@/utils/classnames'
 import FileIcon from '@/app/components/base/file-uploader/file-type-icon'
-import { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
+import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import Tag from '@/app/components/datasets/documents/detail/completed/common/tag'
+import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
 
 const i18nPrefix = 'datasetHitTesting'
 type Props = {
   isExternal: boolean
   payload: HitTesting
-}
-
-const extensionToFileType = (extension: string): FileAppearanceTypeEnum => {
-  switch (extension) {
-    case 'pdf':
-      return FileAppearanceTypeEnum.pdf
-    case 'doc':
-    case 'docx':
-    case 'epub':
-      return FileAppearanceTypeEnum.document
-    case 'md':
-    case 'mdx':
-    case 'markdown':
-      return FileAppearanceTypeEnum.markdown
-    case 'csv':
-    case 'xls':
-    case 'xlsx':
-      return FileAppearanceTypeEnum.excel
-    case 'html':
-    case 'htm':
-    case 'xml':
-      return FileAppearanceTypeEnum.document
-    case 'ppt':
-    case 'pptx':
-      return FileAppearanceTypeEnum.ppt
-    default:
-      return FileAppearanceTypeEnum.custom
-  }
 }
 
 const ResultItem: FC<Props> = ({
