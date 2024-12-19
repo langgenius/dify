@@ -341,6 +341,7 @@ const translation = {
         retryFailedTimes: '{{times}} 次重试失败',
         times: '次',
         ms: '毫秒',
+        retries: '{{num}} 重试次数',
       },
     },
     start: {

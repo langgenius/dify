@@ -28,6 +28,7 @@ import {
   getFilesInLogs,
 } from '@/app/components/base/file-uploader/utils'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import type { NodeTracing } from '@/types/workflow'
 
 export const useWorkflowRun = () => {
   const store = useStoreApi()
@@ -114,6 +115,7 @@ export const useWorkflowRun = () => {
       onIterationStart,
       onIterationNext,
       onIterationFinish,
+      onNodeRetry,
       onError,
       ...restCallback
     } = callback || {}
@@ -440,10 +442,13 @@ export const useWorkflowRun = () => {
               })
               if (currentIndex > -1 && draft.tracing) {
                 draft.tracing[currentIndex] = {
+                  ...data,
                   ...(draft.tracing[currentIndex].extras
                     ? { extras: draft.tracing[currentIndex].extras }
                     : {}),
-                  ...data,
+                  ...(draft.tracing[currentIndex].retryDetail
+                    ? { retryDetail: draft.tracing[currentIndex].retryDetail }
+                    : {}),
                 } as any
               }
             }))
@@ -615,6 +620,29 @@ export const useWorkflowRun = () => {
 
           if (onIterationFinish)
             onIterationFinish(params)
+        },
+        onNodeRetry: (params) => {
+          const { data } = params
+          const {
+            workflowRunningData,
+            setWorkflowRunningData,
+          } = workflowStore.getState()
+          setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+            const tracing = draft.tracing!
+            const currentRetryNodeIndex = tracing.findIndex(trace => trace.node_id === data.node_id)
+
+            if (currentRetryNodeIndex > -1) {
+              const currentRetryNode = tracing[currentRetryNodeIndex]
+              if (currentRetryNode.retryDetail)
+                draft.tracing![currentRetryNodeIndex].retryDetail!.push(data as NodeTracing)
+
+              else
+                draft.tracing![currentRetryNodeIndex].retryDetail = [data as NodeTracing]
+            }
+          }))
+
+          if (onNodeRetry)
+            onNodeRetry(params)
         },
         onParallelBranchStarted: (params) => {
           // console.log(params, 'parallel start')

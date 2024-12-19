@@ -9,6 +9,7 @@ import OutputPanel from './output-panel'
 import ResultPanel from './result-panel'
 import TracingPanel from './tracing-panel'
 import IterationResultPanel from './iteration-result-panel'
+import RetryResultPanel from './retry-result-panel'
 import cn from '@/utils/classnames'
 import { ToastContext } from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
@@ -107,6 +108,18 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
     const processNonIterationNode = (item: NodeTracing) => {
       const { execution_metadata } = item
       if (!execution_metadata?.iteration_id) {
+        if (item.status === 'retry') {
+          const retryNode = result.find(node => node.node_id === item.node_id)
+
+          if (retryNode) {
+            if (retryNode?.retryDetail)
+              retryNode.retryDetail.push(item)
+            else
+              retryNode.retryDetail = [item]
+          }
+
+          return
+        }
         result.push(item)
         return
       }
@@ -181,9 +194,14 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
 
   const [iterationRunResult, setIterationRunResult] = useState<NodeTracing[][]>([])
   const [iterDurationMap, setIterDurationMap] = useState<IterationDurationMap>({})
+  const [retryRunResult, setRetryRunResult] = useState<NodeTracing[]>([])
   const [isShowIterationDetail, {
     setTrue: doShowIterationDetail,
     setFalse: doHideIterationDetail,
+  }] = useBoolean(false)
+  const [isShowRetryDetail, {
+    setTrue: doShowRetryDetail,
+    setFalse: doHideRetryDetail,
   }] = useBoolean(false)
 
   const handleShowIterationDetail = useCallback((detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => {
@@ -191,6 +209,11 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
     doShowIterationDetail()
     setIterDurationMap(iterDurationMap)
   }, [doShowIterationDetail, setIterationRunResult, setIterDurationMap])
+
+  const handleShowRetryDetail = useCallback((detail: NodeTracing[]) => {
+    setRetryRunResult(detail)
+    doShowRetryDetail()
+  }, [doShowRetryDetail, setRetryRunResult])
 
   if (isShowIterationDetail) {
     return (
@@ -261,13 +284,22 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
             exceptionCounts={runDetail.exceptions_count}
           />
         )}
-        {!loading && currentTab === 'TRACING' && (
+        {!loading && currentTab === 'TRACING' && !isShowRetryDetail && (
           <TracingPanel
             className='bg-background-section-burn'
             list={list}
             onShowIterationDetail={handleShowIterationDetail}
+            onShowRetryDetail={handleShowRetryDetail}
           />
         )}
+        {
+          !loading && currentTab === 'TRACING' && isShowRetryDetail && (
+            <RetryResultPanel
+              list={retryRunResult}
+              onBack={doHideRetryDetail}
+            />
+          )
+        }
       </div>
     </div>
   )

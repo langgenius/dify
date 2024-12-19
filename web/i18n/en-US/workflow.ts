@@ -341,6 +341,7 @@ const translation = {
         retryFailedTimes: '{{times}} retries failed',
         times: 'times',
         ms: 'ms',
+        retries: '{{num}} Retries',
       },
     },
     start: {
