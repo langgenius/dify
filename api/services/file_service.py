@@ -1,10 +1,9 @@
 import datetime
 import hashlib
 import uuid
-from typing import Literal, Union
+from typing import Any, Literal, Union
 
 from flask_login import current_user
-from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -21,7 +20,8 @@ from extensions.ext_storage import storage
 from models.account import Account
 from models.enums import CreatedByRole
 from models.model import EndUser, UploadFile
-from services.errors.file import FileNotExistsError, FileTooLargeError, UnsupportedFileTypeError
+
+from .errors.file import FileTooLargeError, UnsupportedFileTypeError
 
 PREVIEW_WORDS_LIMIT = 3000
 
@@ -29,38 +29,28 @@ PREVIEW_WORDS_LIMIT = 3000
 class FileService:
     @staticmethod
     def upload_file(
-        file: FileStorage, user: Union[Account, EndUser], source: Literal["datasets"] | None = None
+        *,
+        filename: str,
+        content: bytes,
+        mimetype: str,
+        user: Union[Account, EndUser, Any],
+        source: Literal["datasets"] | None = None,
+        source_url: str = "",
     ) -> UploadFile:
-        # get file name
-        filename = file.filename
-        if not filename:
-            raise FileNotExistsError
-        extension = filename.split(".")[-1]
+        # get file extension
+        extension = filename.split(".")[-1].lower()
         if len(filename) > 200:
             filename = filename.split(".")[0][:200] + "." + extension
 
         if source == "datasets" and extension not in DOCUMENT_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
-        # select file size limit
-        if extension in IMAGE_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
-        elif extension in VIDEO_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT * 1024 * 1024
-        elif extension in AUDIO_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT * 1024 * 1024
-        else:
-            file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024
-
-        # read file content
-        file_content = file.read()
         # get file size
-        file_size = len(file_content)
+        file_size = len(content)
 
         # check if the file size is exceeded
-        if file_size > file_size_limit:
-            message = f"File size exceeded. {file_size} > {file_size_limit}"
-            raise FileTooLargeError(message)
+        if not FileService.is_file_size_within_limit(extension=extension, file_size=file_size):
+            raise FileTooLargeError
 
         # generate file key
         file_uuid = str(uuid.uuid4())
@@ -74,7 +64,7 @@ class FileService:
         file_key = "upload_files/" + current_tenant_id + "/" + file_uuid + "." + extension
 
         # save file to storage
-        storage.save(file_key, file_content)
+        storage.save(file_key, content)
 
         # save file to db
         upload_file = UploadFile(
@@ -84,18 +74,32 @@ class FileService:
             name=filename,
             size=file_size,
             extension=extension,
-            mime_type=file.mimetype,
+            mime_type=mimetype,
             created_by_role=(CreatedByRole.ACCOUNT if isinstance(user, Account) else CreatedByRole.END_USER),
             created_by=user.id,
-            created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+            created_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
             used=False,
-            hash=hashlib.sha3_256(file_content).hexdigest(),
+            hash=hashlib.sha3_256(content).hexdigest(),
+            source_url=source_url,
         )
 
         db.session.add(upload_file)
         db.session.commit()
 
         return upload_file
+
+    @staticmethod
+    def is_file_size_within_limit(*, extension: str, file_size: int) -> bool:
+        if extension in IMAGE_EXTENSIONS:
+            file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
+        elif extension in VIDEO_EXTENSIONS:
+            file_size_limit = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT * 1024 * 1024
+        elif extension in AUDIO_EXTENSIONS:
+            file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT * 1024 * 1024
+        else:
+            file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024
+
+        return file_size <= file_size_limit
 
     @staticmethod
     def upload_text(text: str, text_name: str) -> UploadFile:
@@ -119,10 +123,10 @@ class FileService:
             mime_type="text/plain",
             created_by=current_user.id,
             created_by_role=CreatedByRole.ACCOUNT,
-            created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+            created_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
             used=True,
             used_by=current_user.id,
-            used_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+            used_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
         )
 
         db.session.add(upload_file)

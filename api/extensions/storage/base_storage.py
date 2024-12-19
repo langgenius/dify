@@ -7,9 +7,6 @@ from collections.abc import Generator
 class BaseStorage(ABC):
     """Interface for file storage."""
 
-    def __init__(self):  # noqa: B027
-        pass
-
     @abstractmethod
     def save(self, filename, data):
         raise NotImplementedError

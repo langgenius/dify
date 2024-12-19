@@ -47,9 +47,9 @@ class AzureRerankModel(RerankModel):
                 result = response.read()
                 return json.loads(result)
         except urllib.error.HTTPError as error:
-            logger.error(f"The request failed with status code: {error.code}")
-            logger.error(error.info())
-            logger.error(error.read().decode("utf8", "ignore"))
+            logger.exception(f"The request failed with status code: {error.code}")
+            logger.exception(error.info())
+            logger.exception(error.read().decode("utf8", "ignore"))
             raise
 
     def _invoke(
@@ -103,7 +103,7 @@ class AzureRerankModel(RerankModel):
             return RerankResult(model=model, docs=rerank_documents)
 
         except Exception as e:
-            logger.exception(f"Exception in Azure rerank: {e}")
+            logger.exception(f"Failed to invoke rerank model, model: {model}")
             raise
 
     def validate_credentials(self, model: str, credentials: dict) -> None:

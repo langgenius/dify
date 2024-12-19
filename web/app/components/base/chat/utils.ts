@@ -127,7 +127,10 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
       lastAppendedLegacyAnswer = answerNode
     }
     else {
-      if (!parentMessageId)
+      if (
+        !parentMessageId
+        || !allMessages.some(item => item.id === parentMessageId) // parent message might not be fetched yet, in this case we will append the question to the root nodes
+      )
         rootNodes.push(questionNode)
       else
         map[parentMessageId]?.children!.push(questionNode)

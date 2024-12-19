@@ -20,13 +20,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </CodeGroup>
 </div>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
-  url='/datasets/{dataset_id}/document/create_by_text'
+  url='/datasets/{dataset_id}/document/create-by-text'
   method='POST'
   title='通过文本创建文档'
-  name='#create_by_text'
+  name='#create-by-text'
 />
 <Row>
   <Col>
@@ -50,7 +50,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         索引方式
           - <code>high_quality</code> 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
-          - <code>economy</code> 经济：使用 Keyword Table Index 的倒排索引进行构建
+          - <code>economy</code> 经济：使用 keyword table index 的倒排索引进行构建
       </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         处理规则
@@ -64,7 +64,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
               - <code>enabled</code> (bool) 是否选中该规则，不传入文档 ID 时代表默认值
             - <code>segmentation</code> (object) 分段规则
               - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
-              - <code>max_tokens</code> 最大长度 (token) 默认为 1000
+              - <code>max_tokens</code> 最大长度（token）默认为 1000
       </Property>
     </Properties>
   </Col>
@@ -72,11 +72,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup
       title="Request"
       tag="POST"
-      label="/datasets/{dataset_id}/document/create_by_text"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "text","text": "text","indexing_technique": "high_quality","process_rule": {"mode": "automatic"}}'`}
+      label="/datasets/{dataset_id}/document/create-by-text"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create-by-text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "text","text": "text","indexing_technique": "high_quality","process_rule": {"mode": "automatic"}}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_text' \
+    curl --location --request --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create-by-text' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -123,13 +123,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
-  url='/datasets/{dataset_id}/document/create_by_file'
+  url='/datasets/{dataset_id}/document/create-by-file'
   method='POST'
   title='通过文件创建文档 '
-  name='#create_by_file'
+  name='#create-by-file'
 />
 <Row>
   <Col>
@@ -145,17 +145,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Request Body
     <Properties>
       <Property name='data' type='multipart/form-data json string' key='data'>
-        - original_document_id 源文档 ID （选填）
+        - <code>original_document_id</code> 源文档 ID（选填）
           - 用于重新上传文档或修改文档清洗、分段配置，缺失的信息从源文档复制
           - 源文档不可为归档的文档
           - 当传入 <code>original_document_id</code> 时，代表文档进行更新操作，<code>process_rule</code> 为可填项目，不填默认使用源文档的分段方式
           - 未传入 <code>original_document_id</code> 时，代表文档进行新增操作，<code>process_rule</code> 为必填
 
-        - indexing_technique 索引方式
+        - <code>indexing_technique</code> 索引方式
           - <code>high_quality</code> 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
-          - <code>economy</code> 经济：使用 Keyword Table Index 的倒排索引进行构建
+          - <code>economy</code> 经济：使用 keyword table index 的倒排索引进行构建
 
-        - process_rule 处理规则
+        - <code>process_rule</code> 处理规则
           - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义
           - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
             - <code>pre_processing_rules</code> (array[object]) 预处理规则
@@ -166,7 +166,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
               - <code>enabled</code> (bool) 是否选中该规则，不传入文档 ID 时代表默认值
             - <code>segmentation</code> (object) 分段规则
               - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
-              - <code>max_tokens</code> 最大长度 (token) 默认为 1000
+              - <code>max_tokens</code> 最大长度（token）默认为 1000
       </Property>
       <Property name='file' type='multipart/form-data' key='file'>
         需要上传的文件。
@@ -177,11 +177,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup
       title="Request"
       tag="POST"
-      label="/datasets/{dataset_id}/document/create_by_file"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'data="{"indexing_technique":"high_quality","process_rule":{"rules":{"pre_processing_rules":[{"id":"remove_extra_spaces","enabled":true},{"id":"remove_urls_emails","enabled":true}],"segmentation":{"separator":"###","max_tokens":500}},"mode":"custom"}}";type=text/plain' \\\n--form 'file=@"/path/to/file"'`}
+      label="/datasets/{dataset_id}/document/create-by-file"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create-by-file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'data="{"indexing_technique":"high_quality","process_rule":{"rules":{"pre_processing_rules":[{"id":"remove_extra_spaces","enabled":true},{"id":"remove_urls_emails","enabled":true}],"segmentation":{"separator":"###","max_tokens":500}},"mode":"custom"}}";type=text/plain' \\\n--form 'file=@"/path/to/file"'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_file' \
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create-by-file' \
     --header 'Authorization: Bearer {api_key}' \
     --form 'data="{\"name\":\"Dify\",\"indexing_technique\":\"high_quality\",\"process_rule\":{\"rules\":{\"pre_processing_rules\":[{\"id\":\"remove_extra_spaces\",\"enabled\":true},{\"id\":\"remove_urls_emails\",\"enabled\":true}],\"segmentation\":{\"separator\":\"###\",\"max_tokens\":500}},\"mode\":\"custom\"}}";type=text/plain' \
     --form 'file=@"/path/to/file"'
@@ -221,7 +221,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets'
@@ -245,13 +245,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           - <code>economy</code> 经济
       </Property>
       <Property name='permission' type='string' key='permission'>
-        权限（选填，默认only_me）
+        权限（选填，默认 only_me）
           - <code>only_me</code> 仅自己
           - <code>all_team_members</code> 所有团队成员
           - <code>partial_members</code> 部分团队成员
       </Property>
       <Property name='provider' type='string' key='provider'>
-        provider，（选填，默认 vendor）
+        Provider（选填，默认 vendor）
           - <code>vendor</code> 上传文件
           - <code>external</code> 外部知识库
       </Property>
@@ -264,9 +264,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup 
-      title="Request" 
-      tag="POST" 
+    <CodeGroup
+      title="Request"
+      tag="POST"
       label="/datasets"
       targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name", "permission": "only_me"}'`}
     >
@@ -306,7 +306,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets'
@@ -329,7 +329,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col sticky>
     <CodeGroup
       title="Request"
-      tag="POST"
+      tag="GET"
       label="/datasets"
       targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
     >
@@ -369,7 +369,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}'
@@ -406,13 +406,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
-  url='/datasets/{dataset_id}/documents/{document_id}/update_by_text'
+  url='/datasets/{dataset_id}/documents/{document_id}/update-by-text'
   method='POST'
   title='通过文本更新文档 '
-  name='#update_by_text'
+  name='#update-by-text'
 />
 <Row>
   <Col>
@@ -431,7 +431,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Request Body
     <Properties>
       <Property name='name' type='string' key='name'>
-        文档名称 （选填）
+        文档名称（选填）
       </Property>
       <Property name='text' type='string' key='text'>
         文档内容（选填）
@@ -448,7 +448,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
               - <code>enabled</code> (bool) 是否选中该规则，不传入文档 ID 时代表默认值
             - <code>segmentation</code> (object) 分段规则
               - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
-              - <code>max_tokens</code> 最大长度 (token) 默认为 1000
+              - <code>max_tokens</code> 最大长度（token）默认为 1000
       </Property>
     </Properties>
   </Col>
@@ -456,11 +456,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup
       title="Request"
       tag="POST"
-      label="/datasets/{dataset_id}/documents/{document_id}/update_by_text"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update_by_text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name","text": "text"}'`}
+      label="/datasets/{dataset_id}/documents/{document_id}/update-by-text"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update-by-text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name","text": "text"}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update_by_text' \
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update-by-text' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -503,13 +503,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
-  url='/datasets/{dataset_id}/documents/{document_id}/update_by_file'
+  url='/datasets/{dataset_id}/documents/{document_id}/update-by-file'
   method='POST'
   title='通过文件更新文档  '
-  name='#update_by_file'
+  name='#update-by-file'
 />
 <Row>
   <Col>
@@ -528,7 +528,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Request Body
     <Properties>
       <Property name='name' type='string' key='name'>
-        文档名称 （选填）
+        文档名称（选填）
       </Property>
       <Property name='file' type='multipart/form-data' key='file'>
         需要上传的文件
@@ -545,7 +545,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
               - <code>enabled</code> (bool) 是否选中该规则，不传入文档 ID 时代表默认值
             - <code>segmentation</code> (object) 分段规则
               - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
-              - <code>max_tokens</code> 最大长度 (token) 默认为 1000
+              - <code>max_tokens</code> 最大长度（token）默认为 1000
       </Property>
     </Properties>
   </Col>
@@ -553,11 +553,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup
       title="Request"
       tag="POST"
-      label="/datasets/{dataset_id}/documents/{document_id}/update_by_file"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update_by_file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'data="{"name":"Dify","indexing_technique":"high_quality","process_rule":{"rules":{"pre_processing_rules":[{"id":"remove_extra_spaces","enabled":true},{"id":"remove_urls_emails","enabled":true}],"segmentation":{"separator":"###","max_tokens":500}},"mode":"custom"}}";type=text/plain' \\\n--form 'file=@"/path/to/file"'`}
+      label="/datasets/{dataset_id}/documents/{document_id}/update-by-file"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update-by-file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'data="{"name":"Dify","indexing_technique":"high_quality","process_rule":{"rules":{"pre_processing_rules":[{"id":"remove_extra_spaces","enabled":true},{"id":"remove_urls_emails","enabled":true}],"segmentation":{"separator":"###","max_tokens":500}},"mode":"custom"}}";type=text/plain' \\\n--form 'file=@"/path/to/file"'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update_by_file' \
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update-by-file' \
     --header 'Authorization: Bearer {api_key}' \
     --form 'data="{\"name\":\"Dify\",\"indexing_technique\":\"high_quality\",\"process_rule\":{\"rules\":{\"pre_processing_rules\":[{\"id\":\"remove_extra_spaces\",\"enabled\":true},{\"id\":\"remove_urls_emails\",\"enabled\":true}],\"segmentation\":{\"separator\":\"###\",\"max_tokens\":500}},\"mode\":\"custom\"}}";type=text/plain' \
     --form 'file=@"/path/to/file"'
@@ -597,7 +597,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{batch}/indexing-status'
@@ -652,7 +652,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}'
@@ -694,7 +694,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents'
@@ -769,7 +769,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments'
@@ -793,7 +793,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <Properties>
       <Property name='segments' type='object list' key='segments'>
         - <code>content</code> (text) 文本内容/问题内容，必填
-        - <code>answer</code> (text) 答案内容，非必填，如果知识库的模式为qa模式则传值
+        - <code>answer</code> (text) 答案内容，非必填，如果知识库的模式为 Q&A 模式则传值
         - <code>keywords</code> (list) 关键字，非必填
       </Property>
     </Properties>
@@ -855,7 +855,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments'
@@ -933,7 +933,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
@@ -979,7 +979,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
@@ -1006,7 +1006,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <Properties>
       <Property name='segment' type='object' key='segment'>
         - <code>content</code> (text) 文本内容/问题内容，必填
-        - <code>answer</code> (text) 答案内容，非必填，如果知识库的模式为qa模式则传值
+        - <code>answer</code> (text) 答案内容，非必填，如果知识库的模式为 Q&A 模式则传值
         - <code>keywords</code> (list) 关键字，非必填
         - <code>enabled</code> (bool) false/true，非必填
       </Property>
@@ -1068,13 +1068,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
-  url='/datasets/{dataset_id}/hit_testing'
+  url='/datasets/{dataset_id}/retrieve'
   method='POST'
-  title='知识库召回测试'
-  name='#dataset_hit_testing'
+  title='检索知识库'
+  name='#dataset_retrieval'
 />
 <Row>
   <Col>
@@ -1088,23 +1088,23 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Request Body
     <Properties>
       <Property name='query' type='string' key='query'>
-        召回关键词
+        检索关键词
       </Property>
       <Property name='retrieval_model' type='object' key='retrieval_model'>
-        召回参数(选填，如不填，按照默认方式召回)
+        检索参数（选填，如不填，按照默认方式召回）
         - <code>search_method</code> (text) 检索方法：以下三个关键字之一，必填
           - <code>keyword_search</code> 关键字检索
           - <code>semantic_search</code> 语义检索
           - <code>full_text_search</code> 全文检索
           - <code>hybrid_search</code> 混合检索
-        - <code>reranking_enable</code> (bool) 是否启用 Reranking，非必填，如果检索模式为semantic_search模式或者hybrid_search则传值
+        - <code>reranking_enable</code> (bool) 是否启用 Reranking，非必填，如果检索模式为 semantic_search 模式或者 hybrid_search 则传值
         - <code>reranking_mode</code> (object) Rerank模型配置，非必填，如果启用了 reranking 则传值
             - <code>reranking_provider_name</code> (string) Rerank 模型提供商
             - <code>reranking_model_name</code> (string) Rerank 模型名称
         - <code>weights</code> (double) 混合检索模式下语意检索的权重设置
         - <code>top_k</code> (integer) 返回结果数量，非必填
-        - <code>score_threshold_enabled</code> (bool) 是否开启Score阈值
-        - <code>score_threshold</code> (double) Score阈值
+        - <code>score_threshold_enabled</code> (bool) 是否开启 score 阈值
+        - <code>score_threshold</code> (double) Score 阈值
       </Property>
       <Property name='external_retrieval_model' type='object' key='external_retrieval_model'>
           未启用字段
@@ -1115,26 +1115,26 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup
       title="Request"
       tag="POST"
-      label="/datasets/{dataset_id}/hit_testing"
-      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/hit_testing' \\\n--header 'Authorization: Bearer {api_key}'\\\n--header 'Content-Type: application/json'\\\n--data-raw '{
-        "query": "test",
-        "retrieval_model": {
-            "search_method": "keyword_search",
-            "reranking_enable": false,
-            "reranking_mode": null,
-            "reranking_model": {
-                "reranking_provider_name": "",
-                "reranking_model_name": ""
-            },
-            "weights": null,
-            "top_k": 1,
-            "score_threshold_enabled": false,
-            "score_threshold": null
-        }
-    }'`}
+      label="/datasets/{dataset_id}/retrieve"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/retrieve' \\\n--header 'Authorization: Bearer {api_key}'\\\n--header 'Content-Type: application/json'\\\n--data-raw '{
+    "query": "test",
+    "retrieval_model": {
+        "search_method": "keyword_search",
+        "reranking_enable": false,
+        "reranking_mode": null,
+        "reranking_model": {
+            "reranking_provider_name": "",
+            "reranking_model_name": ""
+        },
+        "weights": null,
+        "top_k": 1,
+        "score_threshold_enabled": false,
+        "score_threshold": null
+    }
+}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/hit_testing' \
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/retrieve' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -1214,7 +1214,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 </Row>
 
 
----
+<hr className='ml-0 mr-0' />
 
 <Row>
   <Col>

@@ -1,7 +1,8 @@
 model: llama-3.1-70b-versatile
+deprecated: true
 label:
-  zh_Hans: Llama-3.1-70b-versatile
-  en_US: Llama-3.1-70b-versatile
+  zh_Hans: Llama-3.1-70b-versatile (DEPRECATED)
+  en_US: Llama-3.1-70b-versatile (DEPRECATED)
 model_type: llm
 features:
   - agent-thought

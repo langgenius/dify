@@ -1,8 +1,8 @@
 import logging
-import os
 from collections.abc import Callable, Generator, Iterable, Sequence
 from typing import IO, Any, Optional, Union, cast
 
+from configs import dify_config
 from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
@@ -100,10 +100,10 @@ class ModelInstance:
 
     def invoke_llm(
         self,
-        prompt_messages: list[PromptMessage],
+        prompt_messages: Sequence[PromptMessage],
         model_parameters: Optional[dict] = None,
         tools: Sequence[PromptMessageTool] | None = None,
-        stop: Optional[list[str]] = None,
+        stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
@@ -473,7 +473,7 @@ class LBModelManager:
 
                 continue
 
-            if bool(os.environ.get("DEBUG", "False").lower() == "true"):
+            if dify_config.DEBUG:
                 logger.info(
                     f"Model LB\nid: {config.id}\nname:{config.name}\n"
                     f"tenant_id: {self._tenant_id}\nprovider: {self._provider}\n"

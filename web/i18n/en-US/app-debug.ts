@@ -218,12 +218,18 @@ const translation = {
       enableText: 'Features Enabled',
       manage: 'Manage',
     },
+    documentUpload: {
+      title: 'Document',
+      description: 'Enable Document will allows the model to take in documents and answer questions about them.',
+    },
   },
   codegen: {
     title: 'Code Generator',
     description: 'The Code Generator uses configured models to generate high-quality code based on your instructions. Please provide clear and detailed instructions.',
     instruction: 'Instructions',
     instructionPlaceholder: 'Enter detailed description of the code you want to generate.',
+    noDataLine1: 'Describe your use case on the left,',
+    noDataLine2: 'the code preview will show here.',
     generate: 'Generate',
     generatedCodeTitle: 'Generated Code',
     loading: 'Generating code...',

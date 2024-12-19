@@ -53,7 +53,7 @@ const translation = {
     semantic_search: 'ベクトル検索',
     full_text_search: 'フルテキスト検索',
     hybrid_search: 'ハイブリッド検索',
-    invertedIndex: '逆さま',
+    invertedIndex: '転置',
   },
   mixtureHighQualityAndEconomicTip: '高品質なナレッジベースと経済的なナレッジベースを混在させるには、Rerankモデルを構成する必要がある。',
   inconsistentEmbeddingModelTip: '選択されたナレッジベースが一貫性のない埋め込みモデルで構成されている場合、Rerankモデルの構成が必要です。',
@@ -101,7 +101,7 @@ const translation = {
       end: '.次に、対応するナレッジIDを見つけて、左側のフォームに入力します。すべての情報が正しい場合は、接続ボタンをクリックした後、ナレッジベースの検索テストに自動的にジャンプします。',
     },
     title: '外部ナレッジベースに接続する方法',
-    learnMore: '詳細情報',
+    learnMore: '詳細を見る',
   },
   connectHelper: {
     helper2: '取得機能のみがサポートされています',

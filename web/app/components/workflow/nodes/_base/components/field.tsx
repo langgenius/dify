@@ -12,15 +12,15 @@ import Tooltip from '@/app/components/base/tooltip'
 type Props = {
   className?: string
   title: JSX.Element | string | DefaultTFuncReturn
+  tooltip?: React.ReactNode
   isSubTitle?: boolean
-  tooltip?: string
   supportFold?: boolean
   children?: JSX.Element | string | null
   operations?: JSX.Element
   inline?: boolean
 }
 
-const Filed: FC<Props> = ({
+const Field: FC<Props> = ({
   className,
   title,
   isSubTitle,
@@ -47,7 +47,6 @@ const Filed: FC<Props> = ({
               triggerClassName='w-4 h-4 ml-1'
             />
           )}
-
         </div>
         <div className='flex'>
           {operations && <div>{operations}</div>}
@@ -60,4 +59,4 @@ const Filed: FC<Props> = ({
     </div>
   )
 }
-export default React.memo(Filed)
+export default React.memo(Field)

@@ -67,6 +67,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
   const {
     currentModel: currentRerankModel,
+    currentProvider: currentRerankProvider,
   } = useCurrentProviderAndModel(
     rerankModelList,
     rerankDefaultModel
@@ -163,7 +164,10 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       draft.retrieval_mode = newMode
       if (newMode === RETRIEVE_TYPE.multiWay) {
         const multipleRetrievalConfig = draft.multiple_retrieval_config
-        draft.multiple_retrieval_config = getMultipleRetrievalConfig(multipleRetrievalConfig!, selectedDatasets, selectedDatasets, !!currentRerankModel)
+        draft.multiple_retrieval_config = getMultipleRetrievalConfig(multipleRetrievalConfig!, selectedDatasets, selectedDatasets, {
+          provider: currentRerankProvider?.provider,
+          model: currentRerankModel?.model,
+        })
       }
       else {
         const hasSetModel = draft.single_retrieval_config?.model?.provider
@@ -180,14 +184,17 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       }
     })
     setInputs(newInputs)
-  }, [currentModel?.model, currentModel?.model_properties?.mode, currentProvider?.provider, inputs, setInputs, selectedDatasets, currentRerankModel])
+  }, [currentModel?.model, currentModel?.model_properties?.mode, currentProvider?.provider, inputs, setInputs, selectedDatasets, currentRerankModel, currentRerankProvider])
 
   const handleMultipleRetrievalConfigChange = useCallback((newConfig: MultipleRetrievalConfig) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.multiple_retrieval_config = getMultipleRetrievalConfig(newConfig!, selectedDatasets, selectedDatasets, !!currentRerankModel)
+      draft.multiple_retrieval_config = getMultipleRetrievalConfig(newConfig!, selectedDatasets, selectedDatasets, {
+        provider: currentRerankProvider?.provider,
+        model: currentRerankModel?.model,
+      })
     })
     setInputs(newInputs)
-  }, [inputs, setInputs, selectedDatasets, currentRerankModel])
+  }, [inputs, setInputs, selectedDatasets, currentRerankModel, currentRerankProvider])
 
   // datasets
   useEffect(() => {
@@ -200,6 +207,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       }
       const newInputs = produce(inputs, (draft) => {
         draft.dataset_ids = datasetIds
+        draft._datasets = selectedDatasets
       })
       setInputs(newInputs)
     })()
@@ -228,10 +236,14 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     } = getSelectedDatasetsMode(newDatasets)
     const newInputs = produce(inputs, (draft) => {
       draft.dataset_ids = newDatasets.map(d => d.id)
+      draft._datasets = newDatasets
 
       if (payload.retrieval_mode === RETRIEVE_TYPE.multiWay && newDatasets.length > 0) {
         const multipleRetrievalConfig = draft.multiple_retrieval_config
-        draft.multiple_retrieval_config = getMultipleRetrievalConfig(multipleRetrievalConfig!, newDatasets, selectedDatasets, !!currentRerankModel)
+        draft.multiple_retrieval_config = getMultipleRetrievalConfig(multipleRetrievalConfig!, newDatasets, selectedDatasets, {
+          provider: currentRerankProvider?.provider,
+          model: currentRerankModel?.model,
+        })
       }
     })
     setInputs(newInputs)
@@ -240,10 +252,10 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     if (
       (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
       || mixtureInternalAndExternal
-      || (allExternal && newDatasets.length > 1)
+      || allExternal
     )
       setRerankModelOpen(true)
-  }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets, currentRerankModel])
+  }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets, currentRerankModel, currentRerankProvider])
 
   const filterVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.string

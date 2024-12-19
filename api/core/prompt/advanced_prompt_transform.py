@@ -15,6 +15,7 @@ from core.model_runtime.entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.prompt_transform import PromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
@@ -26,8 +27,13 @@ class AdvancedPromptTransform(PromptTransform):
     Advanced Prompt Transform for Workflow LLM Node.
     """
 
-    def __init__(self, with_variable_tmpl: bool = False) -> None:
+    def __init__(
+        self,
+        with_variable_tmpl: bool = False,
+        image_detail_config: ImagePromptMessageContent.DETAIL = ImagePromptMessageContent.DETAIL.LOW,
+    ) -> None:
         self.with_variable_tmpl = with_variable_tmpl
+        self.image_detail_config = image_detail_config
 
     def get_prompt(
         self,

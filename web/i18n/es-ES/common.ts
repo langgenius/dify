@@ -591,6 +591,13 @@ const translation = {
     pasteFileLinkInputPlaceholder: 'Introduzca la URL...',
     uploadFromComputerLimit: 'El archivo de carga no puede exceder {{size}}',
   },
+  license: {
+    expiring: 'Caduca en un día',
+    expiring_plural: 'Caducando en {{count}} días',
+  },
+  pagination: {
+    perPage: 'Elementos por página',
+  },
 }
 
 export default translation

@@ -36,23 +36,20 @@ class WeightRerankRunner(BaseRerankRunner):
 
         :return:
         """
-        docs = []
-        doc_id = []
         unique_documents = []
+        doc_ids = set()
         for document in documents:
-            if document.metadata["doc_id"] not in doc_id:
-                doc_id.append(document.metadata["doc_id"])
-                docs.append(document.page_content)
+            if document.metadata["doc_id"] not in doc_ids:
+                doc_ids.add(document.metadata["doc_id"])
                 unique_documents.append(document)
 
         documents = unique_documents
 
-        rerank_documents = []
         query_scores = self._calculate_keyword_score(query, documents)
-
         query_vector_scores = self._calculate_cosine(self.tenant_id, query, documents, self.weights.vector_setting)
+
+        rerank_documents = []
         for document, query_score, query_vector_score in zip(documents, query_scores, query_vector_scores):
-            # format document
             score = (
                 self.weights.vector_setting.vector_weight * query_vector_score
                 + self.weights.keyword_setting.keyword_weight * query_score
@@ -61,7 +58,8 @@ class WeightRerankRunner(BaseRerankRunner):
                 continue
             document.metadata["score"] = score
             rerank_documents.append(document)
-        rerank_documents = sorted(rerank_documents, key=lambda x: x.metadata["score"], reverse=True)
+
+        rerank_documents.sort(key=lambda x: x.metadata["score"], reverse=True)
         return rerank_documents[:top_n] if top_n else rerank_documents
 
     def _calculate_keyword_score(self, query: str, documents: list[Document]) -> list[float]:

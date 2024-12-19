@@ -1,8 +1,8 @@
+from collections.abc import Sequence
 from typing import Optional
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.file import file_manager
-from core.file.models import FileType
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import (
     AssistantPromptMessage,
@@ -27,7 +27,7 @@ class TokenBufferMemory:
 
     def get_history_prompt_messages(
         self, max_token_limit: int = 2000, message_limit: Optional[int] = None
-    ) -> list[PromptMessage]:
+    ) -> Sequence[PromptMessage]:
         """
         Get history prompt messages.
         :param max_token_limit: max token limit
@@ -81,15 +81,18 @@ class TokenBufferMemory:
                             db.session.query(WorkflowRun).filter(WorkflowRun.id == message.workflow_run_id).first()
                         )
 
-                        if workflow_run:
+                        if workflow_run and workflow_run.workflow:
                             file_extra_config = FileUploadConfigManager.convert(
                                 workflow_run.workflow.features_dict, is_vision=False
                             )
 
+                detail = ImagePromptMessageContent.DETAIL.LOW
                 if file_extra_config and app_record:
                     file_objs = file_factory.build_from_message_files(
                         message_files=files, tenant_id=app_record.tenant_id, config=file_extra_config
                     )
+                    if file_extra_config.image_config and file_extra_config.image_config.detail:
+                        detail = file_extra_config.image_config.detail
                 else:
                     file_objs = []
 
@@ -98,12 +101,15 @@ class TokenBufferMemory:
                 else:
                     prompt_message_contents: list[PromptMessageContent] = []
                     prompt_message_contents.append(TextPromptMessageContent(data=message.query))
-                    for file_obj in file_objs:
-                        if file_obj.type in {FileType.IMAGE, FileType.AUDIO}:
-                            prompt_message = file_manager.to_prompt_message_content(file_obj)
-                            prompt_message_contents.append(prompt_message)
+                    for file in file_objs:
+                        prompt_message = file_manager.to_prompt_message_content(
+                            file,
+                            image_detail_config=detail,
+                        )
+                        prompt_message_contents.append(prompt_message)
 
                     prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
+
             else:
                 prompt_messages.append(UserPromptMessage(content=message.query))
 

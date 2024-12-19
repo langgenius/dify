@@ -1,7 +1,7 @@
-model: hunyuan-standard-256k
+model: hunyuan-standard-256K
 label:
-  zh_Hans: hunyuan-standard-256k
-  en_US: hunyuan-standard-256k
+  zh_Hans: hunyuan-standard-256K
+  en_US: hunyuan-standard-256K
 model_type: llm
 features:
   - agent-thought

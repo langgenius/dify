@@ -20,17 +20,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </CodeGroup>
 </div>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
-  url='/datasets/{dataset_id}/document/create_by_text'
+  url='/datasets/{dataset_id}/document/create-by-text'
   method='POST'
-  title='Create a document from text'
-  name='#create_by_text'
+  title='Create a Document from Text'
+  name='#create-by-text'
 />
 <Row>
   <Col>
-    This api is based on an existing Knowledge and creates a new document through text based on this Knowledge.
+    This API is based on an existing knowledge and creates a new document through text based on this knowledge.
 
     ### Params
     <Properties>
@@ -50,7 +50,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         Index mode
           - <code>high_quality</code> High quality: embedding using embedding model, built as vector database index
-          - <code>economy</code> Economy: Build using inverted index of Keyword Table Index
+          - <code>economy</code> Economy: Build using inverted index of keyword table index
       </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         Processing rules
@@ -62,7 +62,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
                   - <code>remove_extra_spaces</code> Replace consecutive spaces, newlines, tabs
                   - <code>remove_urls_emails</code> Delete URL, email address
               - <code>enabled</code> (bool) Whether to select this rule or not. If no document ID is passed in, it represents the default value.
-            - <code>segmentation</code> (object) segmentation rules
+            - <code>segmentation</code> (object) Segmentation rules
               - <code>separator</code> Custom segment identifier, currently only allows one delimiter to be set. Default is \n
               - <code>max_tokens</code> Maximum length (token) defaults to 1000
       </Property>
@@ -72,11 +72,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup
       title="Request"
       tag="POST"
-      label="/datasets/{dataset_id}/document/create_by_text"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "text","text": "text","indexing_technique": "high_quality","process_rule": {"mode": "automatic"}}'`}
+      label="/datasets/{dataset_id}/document/create-by-text"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create-by-text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "text","text": "text","indexing_technique": "high_quality","process_rule": {"mode": "automatic"}}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_text' \
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create-by-text' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -123,17 +123,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
-  url='/datasets/{dataset_id}/document/create_by_file'
+  url='/datasets/{dataset_id}/document/create-by-file'
   method='POST'
-  title='Create documents from files'
-  name='#create_by_file'
+  title='Create a Document from a File'
+  name='#create-by-file'
 />
 <Row>
   <Col>
-    This api is based on an existing Knowledge and creates a new document through a file based on this Knowledge.
+    This API is based on an existing knowledge and creates a new document through a file based on this knowledge.
 
     ### Params
     <Properties>
@@ -145,17 +145,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Request Body
     <Properties>
       <Property name='data' type='multipart/form-data json string' key='data'>
-        - original_document_id Source document ID (optional)
+        - <code>original_document_id</code> Source document ID (optional)
           - Used to re-upload the document or modify the document cleaning and segmentation configuration. The missing information is copied from the source document
           - The source document cannot be an archived document
           - When original_document_id is passed in, the update operation is performed on behalf of the document. process_rule is a fillable item. If not filled in, the segmentation method of the source document will be used by default
           - When original_document_id is not passed in, the new operation is performed on behalf of the document, and process_rule is required
 
-        - indexing_technique Index mode
+        - <code>indexing_technique</code> Index mode
           - <code>high_quality</code> High quality: embedding using embedding model, built as vector database index
-          - <code>economy</code> Economy: Build using inverted index of Keyword Table Index
+          - <code>economy</code> Economy: Build using inverted index of keyword table index
 
-        - process_rule Processing rules
+        - <code>process_rule</code> Processing rules
           - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom
           - <code>rules</code> (object) Custom rules (in automatic mode, this field is empty)
             - <code>pre_processing_rules</code> (array[object]) Preprocessing rules
@@ -164,7 +164,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
                   - <code>remove_extra_spaces</code> Replace consecutive spaces, newlines, tabs
                   - <code>remove_urls_emails</code> Delete URL, email address
               - <code>enabled</code> (bool) Whether to select this rule or not. If no document ID is passed in, it represents the default value.
-            - <code>segmentation</code> (object) segmentation rules
+            - <code>segmentation</code> (object) Segmentation rules
               - <code>separator</code> Custom segment identifier, currently only allows one delimiter to be set. Default is \n
               - <code>max_tokens</code> Maximum length (token) defaults to 1000
       </Property>
@@ -177,11 +177,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup
       title="Request"
       tag="POST"
-      label="/datasets/{dataset_id}/document/create_by_file"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'data="{"indexing_technique":"high_quality","process_rule":{"rules":{"pre_processing_rules":[{"id":"remove_extra_spaces","enabled":true},{"id":"remove_urls_emails","enabled":true}],"segmentation":{"separator":"###","max_tokens":500}},"mode":"custom"}}";type=text/plain' \\\n--form 'file=@"/path/to/file"'`}
+      label="/datasets/{dataset_id}/document/create-by-file"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create-by-file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'data="{"indexing_technique":"high_quality","process_rule":{"rules":{"pre_processing_rules":[{"id":"remove_extra_spaces","enabled":true},{"id":"remove_urls_emails","enabled":true}],"segmentation":{"separator":"###","max_tokens":500}},"mode":"custom"}}";type=text/plain' \\\n--form 'file=@"/path/to/file"'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_file' \
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create-by-file' \
     --header 'Authorization: Bearer {api_key}' \
     --form 'data="{\"name\":\"Dify\",\"indexing_technique\":\"high_quality\",\"process_rule\":{\"rules\":{\"pre_processing_rules\":[{\"id\":\"remove_extra_spaces\",\"enabled\":true},{\"id\":\"remove_urls_emails\",\"enabled\":true}],\"segmentation\":{\"separator\":\"###\",\"max_tokens\":500}},\"mode\":\"custom\"}}";type=text/plain' \
     --form 'file=@"/path/to/file"'
@@ -221,12 +221,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets'
   method='POST'
-  title='Create an empty Knowledge'
+  title='Create an Empty Knowledge Base'
   name='#create_empty_dataset'
 />
 <Row>
@@ -240,9 +240,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         Knowledge description (optional)
       </Property>
       <Property name='indexing_technique' type='string' key='indexing_technique'>
-        Index Technique (optional)
-          - <code>high_quality</code> high_quality
-          - <code>economy</code> economy
+        Index technique (optional)
+          - <code>high_quality</code> High quality
+          - <code>economy</code> Economy
       </Property>
       <Property name='permission' type='string' key='permission'>
         Permission
@@ -252,21 +252,21 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       </Property>
       <Property name='provider' type='string' key='provider'>
         Provider (optional, default: vendor)
-          - <code>vendor</code> vendor
-          - <code>external</code> external knowledge
+          - <code>vendor</code> Vendor
+          - <code>external</code> External knowledge
       </Property>
       <Property name='external_knowledge_api_id' type='str' key='external_knowledge_api_id'>
-        External Knowledge api id (optional)
+        External knowledge API ID (optional)
       </Property>
       <Property name='external_knowledge_id' type='str' key='external_knowledge_id'>
-        External Knowledge id (optional)
+        External knowledge ID (optional)
       </Property>
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup 
-      title="Request" 
-      tag="POST" 
+    <CodeGroup
+      title="Request"
+      tag="POST"
       label="/datasets"
       targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name", "permission": "only_me"}'`}
     >
@@ -306,12 +306,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets'
   method='GET'
-  title='Knowledge list'
+  title='Get Knowledge Base List'
   name='#dataset_list'
 />
 <Row>
@@ -327,9 +327,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup 
-      title="Request" 
-      tag="POST" 
+    <CodeGroup
+      title="Request"
+      tag="GET"
       label="/datasets"
       targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
     >
@@ -369,12 +369,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}'
   method='DELETE'
-  title='Delete knowledge'
+  title='Delete a Knowledge Base'
   name='#delete_dataset'
 />
 <Row>
@@ -406,17 +406,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
-  url='/datasets/{dataset_id}/documents/{document_id}/update_by_text'
+  url='/datasets/{dataset_id}/documents/{document_id}/update-by-text'
   method='POST'
-  title='Update document via text'
-  name='#update_by_text'
+  title='Update a Document with Text'
+  name='#update-by-text'
 />
 <Row>
   <Col>
-    This api is based on an existing Knowledge and updates the document through text based on this Knowledge.
+    This API is based on an existing knowledge and updates the document through text based on this knowledge.
 
     ### Params
     <Properties>
@@ -446,7 +446,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
                   - <code>remove_extra_spaces</code> Replace consecutive spaces, newlines, tabs
                   - <code>remove_urls_emails</code> Delete URL, email address
               - <code>enabled</code> (bool) Whether to select this rule or not. If no document ID is passed in, it represents the default value.
-            - <code>segmentation</code> (object) segmentation rules
+            - <code>segmentation</code> (object) Segmentation rules
               - <code>separator</code> Custom segment identifier, currently only allows one delimiter to be set. Default is \n
               - <code>max_tokens</code> Maximum length (token) defaults to 1000
       </Property>
@@ -456,11 +456,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup
       title="Request"
       tag="POST"
-      label="/datasets/{dataset_id}/documents/{document_id}/update_by_text"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update_by_text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name","text": "text"}'`}
+      label="/datasets/{dataset_id}/documents/{document_id}/update-by-text"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update-by-text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name","text": "text"}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update_by_text' \
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update-by-text' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -503,17 +503,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
-  url='/datasets/{dataset_id}/documents/{document_id}/update_by_file'
+  url='/datasets/{dataset_id}/documents/{document_id}/update-by-file'
   method='POST'
-  title='Update a document from a file'
-  name='#update_by_file'
+  title='Update a Document with a File'
+  name='#update-by-file'
 />
 <Row>
   <Col>
-    This api is based on an existing Knowledge, and updates documents through files based on this Knowledge
+    This API is based on an existing knowledge, and updates documents through files based on this knowledge
 
     ### Params
     <Properties>
@@ -543,7 +543,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
                   - <code>remove_extra_spaces</code> Replace consecutive spaces, newlines, tabs
                   - <code>remove_urls_emails</code> Delete URL, email address
               - <code>enabled</code> (bool) Whether to select this rule or not. If no document ID is passed in, it represents the default value.
-            - <code>segmentation</code> (object) segmentation rules
+            - <code>segmentation</code> (object) Segmentation rules
               - <code>separator</code> Custom segment identifier, currently only allows one delimiter to be set. Default is \n
               - <code>max_tokens</code> Maximum length (token) defaults to 1000
       </Property>
@@ -553,11 +553,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup
       title="Request"
       tag="POST"
-      label="/datasets/{dataset_id}/documents/{document_id}/update_by_file"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update_by_file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'data="{"name":"Dify","indexing_technique":"high_quality","process_rule":{"rules":{"pre_processing_rules":[{"id":"remove_extra_spaces","enabled":true},{"id":"remove_urls_emails","enabled":true}],"segmentation":{"separator":"###","max_tokens":500}},"mode":"custom"}}";type=text/plain' \\\n--form 'file=@"/path/to/file"'`}
+      label="/datasets/{dataset_id}/documents/{document_id}/update-by-file"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update-by-file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'data="{"name":"Dify","indexing_technique":"high_quality","process_rule":{"rules":{"pre_processing_rules":[{"id":"remove_extra_spaces","enabled":true},{"id":"remove_urls_emails","enabled":true}],"segmentation":{"separator":"###","max_tokens":500}},"mode":"custom"}}";type=text/plain' \\\n--form 'file=@"/path/to/file"'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update_by_file' \
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update-by-file' \
     --header 'Authorization: Bearer {api_key}' \
     --form 'data="{\"name\":\"Dify\",\"indexing_technique\":\"high_quality\",\"process_rule\":{\"rules\":{\"pre_processing_rules\":[{\"id\":\"remove_extra_spaces\",\"enabled\":true},{\"id\":\"remove_urls_emails\",\"enabled\":true}],\"segmentation\":{\"separator\":\"###\",\"max_tokens\":500}},\"mode\":\"custom\"}}";type=text/plain' \
     --form 'file=@"/path/to/file"'
@@ -597,12 +597,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{batch}/indexing-status'
   method='GET'
-  title='Get document embedding status (progress)'
+  title='Get Document Embedding Status (Progress)'
   name='#indexing_status'
 />
 <Row>
@@ -652,12 +652,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}'
   method='DELETE'
-  title='Delete document'
+  title='Delete a Document'
   name='#delete_document'
 />
 <Row>
@@ -694,12 +694,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents'
   method='GET'
-  title='Knowledge document list'
+  title='Get the Document List of a Knowledge Base'
   name='#dataset_document_list'
 />
 <Row>
@@ -714,13 +714,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Query
     <Properties>
       <Property name='keyword' type='string' key='keyword'>
-        Search keywords, currently only search document names(optional)
+        Search keywords, currently only search document names (optional)
       </Property>
       <Property name='page' type='string' key='page'>
-        Page number(optional)
+        Page number (optional)
       </Property>
       <Property name='limit' type='string' key='limit'>
-        Number of items returned, default 20, range 1-100(optional)
+        Number of items returned, default 20, range 1-100 (optional)
       </Property>
     </Properties>
   </Col>
@@ -769,12 +769,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments'
   method='POST'
-  title='Add segment'
+  title='Add Chunks to a Document'
   name='#create_new_segment'
 />
 <Row>
@@ -792,9 +792,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Request Body
     <Properties>
       <Property name='segments' type='object list' key='segments'>
-        - <code>content</code> (text) Text content/question content, required
-        - <code>answer</code> (text) Answer content, if the mode of the Knowledge is qa mode, pass the value(optional)
-        - <code>keywords</code> (list) Keywords(optional)
+        - <code>content</code> (text) Text content / question content, required
+        - <code>answer</code> (text) Answer content, if the mode of the knowledge is Q&A mode, pass the value (optional)
+        - <code>keywords</code> (list) Keywords (optional)
       </Property>
     </Properties>
   </Col>
@@ -855,12 +855,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments'
   method='GET'
-  title='get documents segments'
+  title='Get Chunks from a Document'
   name='#get_segment'
 />
 <Row>
@@ -878,10 +878,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
      ### Query
     <Properties>
       <Property name='keyword' type='string' key='keyword'>
-        keyword，choosable
+        Keyword (optional)
       </Property>
       <Property name='status' type='string' key='status'>
-        Search status，completed
+        Search status, completed
       </Property>
     </Properties>
   </Col>
@@ -933,12 +933,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
   method='DELETE'
-  title='delete document segment'
+  title='Delete a Chunk in a Document'
   name='#delete_segment'
 />
 <Row>
@@ -979,12 +979,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
   method='POST'
-  title='update document segment'
+  title='Update a Chunk in a Document '
   name='#update_segment'
 />
 <Row>
@@ -1005,10 +1005,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Request Body
     <Properties>
       <Property name='segment' type='object' key='segment'>
-        - <code>content</code> (text) text content/question content，required
-        - <code>answer</code> (text) Answer content, not required, passed if the Knowledge is in qa mode
-        - <code>keywords</code> (list) keyword, not required
-        - <code>enabled</code> (bool) false/true, not required
+        - <code>content</code> (text) Text content / question content, required
+        - <code>answer</code> (text) Answer content, passed if the knowledge is in Q&A mode (optional)
+        - <code>keywords</code> (list) Keyword (optional)
+        - <code>enabled</code> (bool) False / true (optional)
       </Property>
     </Properties>
   </Col>
@@ -1067,41 +1067,41 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
-  url='/datasets/{dataset_id}/hit_testing'
+  url='/datasets/{dataset_id}/retrieve'
   method='POST'
-  title='Dataset hit testing'
-  name='#dataset_hit_testing'
+  title='Retrieve Chunks from a Knowledge Base'
+  name='#dataset_retrieval'
 />
 <Row>
   <Col>
     ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Dataset ID
+        Knowledge ID
       </Property>
     </Properties>
 
     ### Request Body
     <Properties>
       <Property name='query' type='string' key='query'>
-        retrieval keywordc
+        Query keyword
       </Property>
       <Property name='retrieval_model' type='object' key='retrieval_model'>
-        retrieval keyword(Optional, if not filled, it will be recalled according to the default method)
+        Retrieval model (optional, if not filled, it will be recalled according to the default method)
         - <code>search_method</code> (text) Search method: One of the following four keywords is required
           - <code>keyword_search</code> Keyword search
           - <code>semantic_search</code> Semantic search
           - <code>full_text_search</code> Full-text search
           - <code>hybrid_search</code> Hybrid search
-        - <code>reranking_enable</code> (bool) Whether to enable reranking, optional, required if the search mode is semantic_search or hybrid_search
-        - <code>reranking_mode</code> (object) Rerank model configuration, optional, required if reranking is enabled
+        - <code>reranking_enable</code> (bool) Whether to enable reranking, required if the search mode is semantic_search or hybrid_search (optional)
+        - <code>reranking_mode</code> (object) Rerank model configuration, required if reranking is enabled
             - <code>reranking_provider_name</code> (string) Rerank model provider
             - <code>reranking_model_name</code> (string) Rerank model name
         - <code>weights</code> (double) Semantic search weight setting in hybrid search mode
-        - <code>top_k</code> (integer) Number of results to return, optional
+        - <code>top_k</code> (integer) Number of results to return (optional)
         - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
         - <code>score_threshold</code> (double) Score threshold
       </Property>
@@ -1114,26 +1114,26 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup
       title="Request"
       tag="POST"
-      label="/datasets/{dataset_id}/hit_testing"
-      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/hit_testing' \\\n--header 'Authorization: Bearer {api_key}'\\\n--header 'Content-Type: application/json'\\\n--data-raw '{
-        "query": "test",
-        "retrieval_model": {
-            "search_method": "keyword_search",
-            "reranking_enable": false,
-            "reranking_mode": null,
-            "reranking_model": {
-                "reranking_provider_name": "",
-                "reranking_model_name": ""
-            },
-            "weights": null,
-            "top_k": 1,
-            "score_threshold_enabled": false,
-            "score_threshold": null
-        }
-    }'`}
+      label="/datasets/{dataset_id}/retrieve"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/retrieve' \\\n--header 'Authorization: Bearer {api_key}'\\\n--header 'Content-Type: application/json'\\\n--data-raw '{
+    "query": "test",
+    "retrieval_model": {
+        "search_method": "keyword_search",
+        "reranking_enable": false,
+        "reranking_mode": null,
+        "reranking_model": {
+            "reranking_provider_name": "",
+            "reranking_model_name": ""
+        },
+        "weights": null,
+        "top_k": 1,
+        "score_threshold_enabled": false,
+        "score_threshold": null
+    }
+}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/hit_testing' \
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/retrieve' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -1212,7 +1212,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Row>
   <Col>

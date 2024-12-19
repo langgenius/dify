@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any, Optional, Union, cast
 
 from pydantic import BaseModel, Field, field_validator
@@ -137,7 +137,7 @@ class ToolParameterOption(BaseModel):
 
 
 class ToolParameter(BaseModel):
-    class ToolParameterType(str, Enum):
+    class ToolParameterType(StrEnum):
         STRING = "string"
         NUMBER = "number"
         BOOLEAN = "boolean"
@@ -204,7 +204,7 @@ class ToolParameter(BaseModel):
                         return str(value)
 
             except Exception:
-                raise ValueError(f"The tool parameter value {value} is not in correct type of {parameter_type}.")
+                raise ValueError(f"The tool parameter value {value} is not in correct type.")
 
     class ToolParameterForm(Enum):
         SCHEMA = "schema"  # should be set while adding tool

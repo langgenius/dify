@@ -1,4 +1,6 @@
+import mimetypes
 from collections.abc import Sequence
+from email.message import Message
 from typing import Any, Literal, Optional
 
 import httpx
@@ -6,14 +8,6 @@ from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from configs import dify_config
 from core.workflow.nodes.base import BaseNodeData
-
-NON_FILE_CONTENT_TYPES = (
-    "application/json",
-    "application/xml",
-    "text/html",
-    "text/plain",
-    "application/x-www-form-urlencoded",
-)
 
 
 class HttpRequestNodeAuthorizationConfig(BaseModel):
@@ -93,17 +87,57 @@ class Response:
 
     @property
     def is_file(self):
-        content_type = self.content_type
-        content_disposition = self.response.headers.get("Content-Disposition", "")
+        """
+        Determine if the response contains a file by checking:
+        1. Content-Disposition header (RFC 6266)
+        2. Content characteristics
+        3. MIME type analysis
+        """
+        content_type = self.content_type.split(";")[0].strip().lower()
+        content_disposition = self.response.headers.get("content-disposition", "")
 
-        return "attachment" in content_disposition or (
-            not any(non_file in content_type for non_file in NON_FILE_CONTENT_TYPES)
-            and any(file_type in content_type for file_type in ("application/", "image/", "audio/", "video/"))
-        )
+        # Check if it's explicitly marked as an attachment
+        if content_disposition:
+            msg = Message()
+            msg["content-disposition"] = content_disposition
+            disp_type = msg.get_content_disposition()  # Returns 'attachment', 'inline', or None
+            filename = msg.get_filename()  # Returns filename if present, None otherwise
+            if disp_type == "attachment" or filename is not None:
+                return True
+
+        # For application types, try to detect if it's a text-based format
+        if content_type.startswith("application/"):
+            # Common text-based application types
+            if any(
+                text_type in content_type
+                for text_type in ("json", "xml", "javascript", "x-www-form-urlencoded", "yaml", "graphql")
+            ):
+                return False
+
+            # Try to detect if content is text-based by sampling first few bytes
+            try:
+                # Sample first 1024 bytes for text detection
+                content_sample = self.response.content[:1024]
+                content_sample.decode("utf-8")
+                # If we can decode as UTF-8 and find common text patterns, likely not a file
+                text_markers = (b"{", b"[", b"<", b"function", b"var ", b"const ", b"let ")
+                if any(marker in content_sample for marker in text_markers):
+                    return False
+            except UnicodeDecodeError:
+                # If we can't decode as UTF-8, likely a binary file
+                return True
+
+        # For other types, use MIME type analysis
+        main_type, _ = mimetypes.guess_type("dummy" + (mimetypes.guess_extension(content_type) or ""))
+        if main_type:
+            return main_type.split("/")[0] in ("application", "image", "audio", "video")
+
+        # For unknown types, check if it's a media type
+        return any(media_type in content_type for media_type in ("image/", "audio/", "video/"))
 
     @property
     def content_type(self) -> str:
-        return self.headers.get("Content-Type", "")
+        return self.headers.get("content-type", "")
 
     @property
     def text(self) -> str:

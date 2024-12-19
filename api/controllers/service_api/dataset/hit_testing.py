@@ -14,4 +14,4 @@ class HitTestingApi(DatasetApiResource, DatasetsHitTestingBase):
         return self.perform_hit_testing(dataset, args)
 
 
-api.add_resource(HitTestingApi, "/datasets/<uuid:dataset_id>/hit-testing")
+api.add_resource(HitTestingApi, "/datasets/<uuid:dataset_id>/hit-testing", "/datasets/<uuid:dataset_id>/retrieve")

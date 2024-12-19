@@ -97,8 +97,9 @@ const ChatVariableModal = ({
     return objectPlaceholder
   }, [type])
   const getObjectValue = useCallback(() => {
-    if (!chatVar)
+    if (!chatVar || Object.keys(chatVar.value).length === 0)
       return [DEFAULT_OBJECT_VALUE]
+
     return Object.keys(chatVar.value).map((key) => {
       return {
         key,

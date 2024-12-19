@@ -15,6 +15,7 @@ import { AppType } from '@/types/app'
 import type { DataSet } from '@/models/datasets'
 import {
   getMultipleRetrievalConfig,
+  getSelectedDatasetsMode,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -38,6 +39,7 @@ const DatasetConfig: FC = () => {
     isAgent,
     datasetConfigs,
     setDatasetConfigs,
+    setRerankSettingModalOpen,
   } = useContext(ConfigContext)
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
 
@@ -45,16 +47,34 @@ const DatasetConfig: FC = () => {
 
   const {
     currentModel: currentRerankModel,
+    currentProvider: currentRerankProvider,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   const onRemove = (id: string) => {
     const filteredDataSets = dataSet.filter(item => item.id !== id)
     setDataSet(filteredDataSets)
-    const retrievalConfig = getMultipleRetrievalConfig(datasetConfigs as any, filteredDataSets, dataSet, !!currentRerankModel)
+    const retrievalConfig = getMultipleRetrievalConfig(datasetConfigs as any, filteredDataSets, dataSet, {
+      provider: currentRerankProvider?.provider,
+      model: currentRerankModel?.model,
+    })
     setDatasetConfigs({
       ...(datasetConfigs as any),
       ...retrievalConfig,
     })
+    const {
+      allExternal,
+      allInternal,
+      mixtureInternalAndExternal,
+      mixtureHighQualityAndEconomic,
+      inconsistentEmbeddingModel,
+    } = getSelectedDatasetsMode(filteredDataSets)
+
+    if (
+      (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
+      || mixtureInternalAndExternal
+      || allExternal
+    )
+      setRerankSettingModalOpen(true)
     formattingChangedDispatcher()
   }
 

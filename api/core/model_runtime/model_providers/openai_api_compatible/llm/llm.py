@@ -462,7 +462,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                 # ignore sse comments
                 if chunk.startswith(":"):
                     continue
-                decoded_chunk = chunk.strip().lstrip("data: ").lstrip()
+                decoded_chunk = chunk.strip().removeprefix("data: ")
                 if decoded_chunk == "[DONE]":  # Some provider returns "data: [DONE]"
                     continue
 
@@ -478,6 +478,10 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                         usage=usage,
                     )
                     break
+                # handle the error here. for issue #11629
+                if chunk_json.get("error") and chunk_json.get("choices") is None:
+                    raise ValueError(chunk_json.get("error"))
+
                 if chunk_json:
                     if u := chunk_json.get("usage"):
                         usage = u
