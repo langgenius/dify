@@ -109,7 +109,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
     )
 
     CODE_MAX_PRECISION: PositiveInt = Field(
-        description="mMaximum number of decimal places for floating-point numbers in code execution",
+        description="Maximum number of decimal places for floating-point numbers in code execution",
         default=20,
     )
 
@@ -216,6 +216,11 @@ class FileUploadConfig(BaseSettings):
         default=20,
     )
 
+    WORKFLOW_FILE_UPLOAD_LIMIT: PositiveInt = Field(
+        description="Maximum number of files allowed in a workflow upload operation",
+        default=10,
+    )
+
 
 class HttpConfig(BaseSettings):
     """
@@ -271,6 +276,16 @@ class HttpConfig(BaseSettings):
         default=1 * 1024 * 1024,
     )
 
+    SSRF_DEFAULT_MAX_RETRIES: PositiveInt = Field(
+        description="Maximum number of retries for network requests (SSRF)",
+        default=3,
+    )
+
+    SSRF_PROXY_ALL_URL: Optional[str] = Field(
+        description="Proxy URL for HTTP or HTTPS requests to prevent Server-Side Request Forgery (SSRF)",
+        default=None,
+    )
+
     SSRF_PROXY_HTTP_URL: Optional[str] = Field(
         description="Proxy URL for HTTP requests to prevent Server-Side Request Forgery (SSRF)",
         default=None,
@@ -279,6 +294,26 @@ class HttpConfig(BaseSettings):
     SSRF_PROXY_HTTPS_URL: Optional[str] = Field(
         description="Proxy URL for HTTPS requests to prevent Server-Side Request Forgery (SSRF)",
         default=None,
+    )
+
+    SSRF_DEFAULT_TIME_OUT: PositiveFloat = Field(
+        description="The default timeout period used for network requests (SSRF)",
+        default=5,
+    )
+
+    SSRF_DEFAULT_CONNECT_TIME_OUT: PositiveFloat = Field(
+        description="The default connect timeout period used for network requests (SSRF)",
+        default=5,
+    )
+
+    SSRF_DEFAULT_READ_TIME_OUT: PositiveFloat = Field(
+        description="The default read timeout period used for network requests (SSRF)",
+        default=5,
+    )
+
+    SSRF_DEFAULT_WRITE_TIME_OUT: PositiveFloat = Field(
+        description="The default write timeout period used for network requests (SSRF)",
+        default=5,
     )
 
     RESPECT_XFORWARD_HEADERS_ENABLED: bool = Field(
@@ -341,7 +376,7 @@ class LoggingConfig(BaseSettings):
 
     LOG_TZ: Optional[str] = Field(
         description="Timezone for log timestamps (e.g., 'America/New_York')",
-        default=None,
+        default="UTC",
     )
 
 
@@ -404,6 +439,17 @@ class WorkflowConfig(BaseSettings):
     )
 
 
+class WorkflowNodeExecutionConfig(BaseSettings):
+    """
+    Configuration for workflow node execution
+    """
+
+    MAX_SUBMIT_COUNT: PositiveInt = Field(
+        description="Maximum number of submitted thread count in a ThreadPool for parallel node execution",
+        default=100,
+    )
+
+
 class AuthConfig(BaseSettings):
     """
     Configuration for authentication and OAuth
@@ -437,6 +483,11 @@ class AuthConfig(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: PositiveInt = Field(
         description="Expiration time for access tokens in minutes",
         default=60,
+    )
+
+    LOGIN_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying login after exceeding the rate limit.",
+        default=86400,
     )
 
 
@@ -550,6 +601,11 @@ class RagEtlConfig(BaseSettings):
         default=None,
     )
 
+    SCARF_NO_ANALYTICS: Optional[str] = Field(
+        description="This is about whether to disable Scarf analytics in Unstructured library.",
+        default="false",
+    )
+
 
 class DataSetConfig(BaseSettings):
     """
@@ -571,6 +627,21 @@ class DataSetConfig(BaseSettings):
         default=False,
     )
 
+    TIDB_SERVERLESS_NUMBER: PositiveInt = Field(
+        description="number of tidb serverless cluster",
+        default=500,
+    )
+
+    CREATE_TIDB_SERVICE_JOB_ENABLED: bool = Field(
+        description="Enable or disable create tidb service job",
+        default=False,
+    )
+
+    PLAN_SANDBOX_CLEAN_MESSAGE_DAY_SETTING: PositiveInt = Field(
+        description="Interval in days for message cleanup operations - plan: sandbox",
+        default=30,
+    )
+
 
 class WorkspaceConfig(BaseSettings):
     """
@@ -590,13 +661,13 @@ class IndexingConfig(BaseSettings):
 
     INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: PositiveInt = Field(
         description="Maximum token length for text segmentation during indexing",
-        default=1000,
+        default=4000,
     )
 
 
-class ImageFormatConfig(BaseSettings):
-    MULTIMODAL_SEND_IMAGE_FORMAT: Literal["base64", "url"] = Field(
-        description="Format for sending images in multimodal contexts ('base64' or 'url'), default is base64",
+class MultiModalTransferConfig(BaseSettings):
+    MULTIMODAL_SEND_FORMAT: Literal["base64", "url"] = Field(
+        description="Format for sending files in multimodal contexts ('base64' or 'url'), default is base64",
         default="base64",
     )
 
@@ -702,19 +773,20 @@ class FeatureConfig(
     FileAccessConfig,
     FileUploadConfig,
     HttpConfig,
-    ImageFormatConfig,
     InnerAPIConfig,
     IndexingConfig,
     LoggingConfig,
     MailConfig,
     ModelLoadBalanceConfig,
     ModerationConfig,
+    MultiModalTransferConfig,
     PositionConfig,
     RagEtlConfig,
     SecurityConfig,
     ToolConfig,
     UpdateConfig,
     WorkflowConfig,
+    WorkflowNodeExecutionConfig,
     WorkspaceConfig,
     LoginConfig,
     # hosted services config

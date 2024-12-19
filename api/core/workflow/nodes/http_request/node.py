@@ -1,11 +1,9 @@
 import logging
 from collections.abc import Mapping, Sequence
-from mimetypes import guess_extension
-from os import path
 from typing import Any
 
 from configs import dify_config
-from core.file import File, FileTransferMethod, FileType
+from core.file import File, FileTransferMethod
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_entities import VariableSelector
@@ -13,6 +11,7 @@ from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.http_request.executor import Executor
 from core.workflow.utils import variable_template_parser
+from factories import file_factory
 from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import (
@@ -20,6 +19,7 @@ from .entities import (
     HttpRequestNodeTimeout,
     Response,
 )
+from .exc import HttpRequestNodeError
 
 HTTP_REQUEST_DEFAULT_TIMEOUT = HttpRequestNodeTimeout(
     connect=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
@@ -65,6 +65,21 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
 
             response = http_executor.invoke()
             files = self.extract_files(url=http_executor.url, response=response)
+            if not response.response.is_success and self.should_continue_on_error:
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    outputs={
+                        "status_code": response.status_code,
+                        "body": response.text if not files else "",
+                        "headers": response.headers,
+                        "files": files,
+                    },
+                    process_data={
+                        "request": http_executor.to_log(),
+                    },
+                    error=f"Request failed with status code {response.status_code}",
+                    error_type="HTTPResponseCodeError",
+                )
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs={
@@ -77,12 +92,13 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
                     "request": http_executor.to_log(),
                 },
             )
-        except Exception as e:
+        except HttpRequestNodeError as e:
             logger.warning(f"http request node {self.node_id} failed to run: {e}")
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 error=str(e),
                 process_data=process_data,
+                error_type=type(e).__name__,
             )
 
     @staticmethod
@@ -105,6 +121,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
         node_data: HttpRequestNodeData,
     ) -> Mapping[str, Sequence[str]]:
         selectors: list[VariableSelector] = []
+        selectors += variable_template_parser.extract_selectors_from_template(node_data.url)
         selectors += variable_template_parser.extract_selectors_from_template(node_data.headers)
         selectors += variable_template_parser.extract_selectors_from_template(node_data.params)
         if node_data.body:
@@ -142,15 +159,11 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
         Extract files from response
         """
         files = []
+        is_file = response.is_file
         content_type = response.content_type
         content = response.content
 
-        if content_type:
-            # extract filename from url
-            filename = path.basename(url)
-            # extract extension if possible
-            extension = guess_extension(content_type) or ".bin"
-
+        if is_file and content_type:
             tool_file = ToolFileManager.create_file_by_raw(
                 user_id=self.user_id,
                 tenant_id=self.tenant_id,
@@ -159,16 +172,14 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
                 mimetype=content_type,
             )
 
-            files.append(
-                File(
-                    tenant_id=self.tenant_id,
-                    type=FileType.IMAGE,
-                    transfer_method=FileTransferMethod.TOOL_FILE,
-                    related_id=tool_file.id,
-                    filename=filename,
-                    extension=extension,
-                    mime_type=content_type,
-                )
+            mapping = {
+                "tool_file_id": tool_file.id,
+                "transfer_method": FileTransferMethod.TOOL_FILE.value,
+            }
+            file = file_factory.build_from_mapping(
+                mapping=mapping,
+                tenant_id=self.tenant_id,
             )
+            files.append(file)
 
         return files

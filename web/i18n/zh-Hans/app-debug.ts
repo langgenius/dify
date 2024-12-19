@@ -218,12 +218,18 @@ const translation = {
       enableText: '功能已开启',
       manage: '管理',
     },
+    documentUpload: {
+      title: '文档',
+      description: '启用文档后，模型可以接收文档并回答关于它们的问题。',
+    },
   },
   codegen: {
     title: '代码生成器',
     description: '代码生成器使用配置的模型根据您的指令生成高质量的代码。请提供清晰详细的说明。',
     instruction: '指令',
     instructionPlaceholder: '请输入您想要生成的代码的详细描述。',
+    noDataLine1: '在左侧描述您的用例，',
+    noDataLine2: '代码预览将在此处显示。',
     generate: '生成',
     generatedCodeTitle: '生成的代码',
     loading: '正在生成代码...',

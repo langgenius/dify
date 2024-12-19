@@ -591,6 +591,13 @@ const translation = {
     uploadFromComputerLimit: 'Carregar arquivo não pode exceder {{size}}',
     uploadFromComputerUploadError: 'Falha no upload do arquivo, faça o upload novamente.',
   },
+  license: {
+    expiring: 'Expirando em um dia',
+    expiring_plural: 'Expirando em {{count}} dias',
+  },
+  pagination: {
+    perPage: 'Itens por página',
+  },
 }
 
 export default translation

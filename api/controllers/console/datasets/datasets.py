@@ -10,8 +10,7 @@ from controllers.console import api
 from controllers.console.apikey import api_key_fields, api_key_list
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
 from core.model_runtime.entities.model_entities import ModelType
@@ -45,6 +44,7 @@ class DatasetListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @enterprise_license_required
     def get(self):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
@@ -103,6 +103,13 @@ class DatasetListApi(Resource):
             type=_validate_name,
         )
         parser.add_argument(
+            "description",
+            type=str,
+            nullable=True,
+            required=False,
+            default="",
+        )
+        parser.add_argument(
             "indexing_technique",
             type=str,
             location="json",
@@ -140,6 +147,7 @@ class DatasetListApi(Resource):
             dataset = DatasetService.create_empty_dataset(
                 tenant_id=current_user.current_tenant_id,
                 name=args["name"],
+                description=args["description"],
                 indexing_technique=args["indexing_technique"],
                 account=current_user,
                 permission=DatasetPermissionEnum.ONLY_ME,
@@ -449,7 +457,7 @@ class DatasetIndexingEstimateApi(Resource):
             )
         except LLMBadRequestError:
             raise ProviderNotInitializeError(
-                "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
+                "No Embedding Model available. Please configure a valid provider " "in the Settings -> Model Provider."
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -613,6 +621,7 @@ class DatasetRetrievalSettingApi(Resource):
             case (
                 VectorType.MILVUS
                 | VectorType.RELYT
+                | VectorType.PGVECTOR
                 | VectorType.TIDB_VECTOR
                 | VectorType.CHROMA
                 | VectorType.TENCENT
@@ -620,6 +629,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.BAIDU
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
+                | VectorType.OCEANBASE
             ):
                 return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
@@ -631,6 +641,9 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.ORACLE
                 | VectorType.ELASTICSEARCH
                 | VectorType.PGVECTOR
+                | VectorType.TIDB_ON_QDRANT
+                | VectorType.LINDORM
+                | VectorType.COUCHBASE
             ):
                 return {
                     "retrieval_method": [
@@ -659,6 +672,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.BAIDU
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
+                | VectorType.OCEANBASE
             ):
                 return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
@@ -669,7 +683,9 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.MYSCALE
                 | VectorType.ORACLE
                 | VectorType.ELASTICSEARCH
+                | VectorType.COUCHBASE
                 | VectorType.PGVECTOR
+                | VectorType.LINDORM
             ):
                 return {
                     "retrieval_method": [

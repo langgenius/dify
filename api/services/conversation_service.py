@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Optional, Union
 
 from sqlalchemy import asc, desc, or_
@@ -74,14 +75,14 @@ class ConversationService:
         return InfiniteScrollPagination(data=conversations, limit=limit, has_more=has_more)
 
     @classmethod
-    def _get_sort_params(cls, sort_by: str) -> tuple[str, callable]:
+    def _get_sort_params(cls, sort_by: str):
         if sort_by.startswith("-"):
             return sort_by[1:], desc
         return sort_by, asc
 
     @classmethod
     def _build_filter_condition(
-        cls, sort_field: str, sort_direction: callable, reference_conversation: Conversation, is_next_page: bool = False
+        cls, sort_field: str, sort_direction: Callable, reference_conversation: Conversation, is_next_page: bool = False
     ):
         field_value = getattr(reference_conversation, sort_field)
         if (sort_direction == desc and not is_next_page) or (sort_direction == asc and is_next_page):
@@ -104,7 +105,7 @@ class ConversationService:
             return cls.auto_generate_name(app_model, conversation)
         else:
             conversation.name = name
-            conversation.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            conversation.updated_at = datetime.now(UTC).replace(tzinfo=None)
             db.session.commit()
 
         return conversation
@@ -160,4 +161,5 @@ class ConversationService:
         conversation = cls.get_conversation(app_model, conversation_id, user)
 
         conversation.is_deleted = True
+        conversation.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()

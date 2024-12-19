@@ -67,6 +67,33 @@ parameters:
       pt_BR: css selector para aguardar elementos específicos
     llm_description: css selector of the target element to wait for
     form: form
+  - name: remove_selector
+    type: string
+    required: false
+    label:
+      en_US: Excluded Selector
+      zh_Hans: 排除选择器
+      pt_BR: Seletor Excluído
+    human_description:
+      en_US: css selector for remove for specific elements
+      zh_Hans: css 选择器用于排除特定元素
+      pt_BR: seletor CSS para remover elementos específicos
+    llm_description: css selector of the target element to remove for
+    form: form
+  - name: retain_images
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Remove All Images
+      zh_Hans: 删除所有图片
+      pt_BR: Remover todas as imagens
+    human_description:
+      en_US: Removes all images from the response.
+      zh_Hans: 从响应中删除所有图片。
+      pt_BR: Remove todas as imagens da resposta.
+    llm_description: Remove all images
+    form: form
   - name: image_caption
     type: boolean
     required: false
@@ -135,6 +162,34 @@ parameters:
       zh_Hans: 是否绕过缓存
       pt_BR: Ignorar o cache
     llm_description: bypass the cache
+    form: form
+  - name: with_iframe
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Enable iframe extraction
+      zh_Hans: 启用 iframe 提取
+      pt_BR: Habilitar extração de iframe
+    human_description:
+      en_US: Extract and process content of all embedded iframes in the DOM tree.
+      zh_Hans: 提取并处理 DOM 树中所有嵌入 iframe 的内容。
+      pt_BR: Extrair e processar o conteúdo de todos os iframes incorporados na árvore DOM.
+    llm_description: Extract content from embedded iframes
+    form: form
+  - name: with_shadow_dom
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Enable Shadow DOM extraction
+      zh_Hans: 启用 Shadow DOM 提取
+      pt_BR: Habilitar extração de Shadow DOM
+    human_description:
+      en_US: Traverse all Shadow DOM roots in the document and extract content.
+      zh_Hans: 遍历文档中所有 Shadow DOM 根并提取内容。
+      pt_BR: Percorra todas as raízes do Shadow DOM no documento e extraia o conteúdo.
+    llm_description: Extract content from Shadow DOM roots
     form: form
   - name: summary
     type: boolean

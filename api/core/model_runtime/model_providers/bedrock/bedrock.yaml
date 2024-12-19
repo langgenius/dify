@@ -16,6 +16,7 @@ help:
 supported_model_types:
   - llm
   - text-embedding
+  - rerank
 configurate_methods:
   - predefined-model
 provider_credential_schema:

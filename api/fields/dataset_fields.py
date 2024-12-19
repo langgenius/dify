@@ -41,6 +41,7 @@ dataset_retrieval_model_fields = {
 external_retrieval_model_fields = {
     "top_k": fields.Integer,
     "score_threshold": fields.Float,
+    "score_threshold_enabled": fields.Boolean,
 }
 
 tag_fields = {"id": fields.String, "name": fields.String, "type": fields.String}

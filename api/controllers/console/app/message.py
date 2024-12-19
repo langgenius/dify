@@ -14,8 +14,11 @@ from controllers.console.app.error import (
 )
 from controllers.console.app.wraps import get_app_model
 from controllers.console.explore.error import AppSuggestedQuestionsAfterAnswerDisabledError
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
+from controllers.console.wraps import (
+    account_initialization_required,
+    cloud_edition_billing_resource_check,
+    setup_required,
+)
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError

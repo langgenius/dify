@@ -216,7 +216,7 @@ export type FileUploadConfigResponse = {
   file_size_limit: number // default is 15MB
   audio_file_size_limit?: number // default is 50MB
   video_file_size_limit?: number // default is 100MB
-
+  workflow_file_upload_limit?: number // default is 10
 }
 
 export type InvitationResult = {

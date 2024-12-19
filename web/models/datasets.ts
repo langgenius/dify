@@ -1,4 +1,4 @@
-import type { DataSourceNotionPage } from './common'
+import type { DataSourceNotionPage, DataSourceProvider } from './common'
 import type { AppIconType, AppMode, RetrievalConfig } from '@/types/app'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 
@@ -175,11 +175,16 @@ export type ProcessMode = 'automatic' | 'custom'
 export type ProcessRuleResponse = {
   mode: ProcessMode
   rules: Rules
+  limits: Limits
 }
 
 export type Rules = {
   pre_processing_rules: PreProcessingRule[]
   segmentation: Segmentation
+}
+
+export type Limits = {
+  indexing_max_segmentation_tokens_length: number
 }
 
 export type PreProcessingRule = {
@@ -230,6 +235,9 @@ export type DataSourceInfo = {
     extension: string
   }
   notion_page_icon?: string
+  notion_workspace_id?: string
+  notion_page_id?: string
+  provider?: DataSourceProvider
   job_id: string
   url: string
 }

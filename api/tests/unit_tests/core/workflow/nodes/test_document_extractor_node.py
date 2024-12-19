@@ -125,7 +125,7 @@ def test_run_extract_text(
     result = document_extractor_node._run()
 
     assert isinstance(result, NodeRunResult)
-    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED, result.error
     assert result.outputs is not None
     assert result.outputs["text"] == expected_text
 
@@ -138,6 +138,17 @@ def test_run_extract_text(
 def test_extract_text_from_plain_text():
     text = _extract_text_from_plain_text(b"Hello, world!")
     assert text == "Hello, world!"
+
+
+def test_extract_text_from_plain_text_non_utf8():
+    import tempfile
+
+    non_utf8_content = b"Hello, world\xa9."  # \xA9 represents © in Latin-1
+    with tempfile.NamedTemporaryFile(delete=True) as temp_file:
+        temp_file.write(non_utf8_content)
+        temp_file.seek(0)
+        text = _extract_text_from_plain_text(temp_file.read())
+    assert text == "Hello, world."
 
 
 @patch("pypdfium2.PdfDocument")

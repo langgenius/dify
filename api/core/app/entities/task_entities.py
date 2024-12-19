@@ -213,6 +213,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
         created_by: Optional[dict] = None
         created_at: int
         finished_at: int
+        exceptions_count: Optional[int] = 0
         files: Optional[Sequence[Mapping[str, Any]]] = []
 
     event: StreamEvent = StreamEvent.WORKFLOW_FINISHED
@@ -244,6 +245,7 @@ class NodeStartStreamResponse(StreamResponse):
         parent_parallel_id: Optional[str] = None
         parent_parallel_start_node_id: Optional[str] = None
         iteration_id: Optional[str] = None
+        parallel_run_id: Optional[str] = None
 
     event: StreamEvent = StreamEvent.NODE_STARTED
     workflow_run_id: str
@@ -432,6 +434,8 @@ class IterationNodeNextStreamResponse(StreamResponse):
         extras: dict = {}
         parallel_id: Optional[str] = None
         parallel_start_node_id: Optional[str] = None
+        parallel_mode_run_id: Optional[str] = None
+        duration: Optional[float] = None
 
     event: StreamEvent = StreamEvent.ITERATION_NEXT
     workflow_run_id: str

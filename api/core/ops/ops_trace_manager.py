@@ -6,12 +6,13 @@ import threading
 import time
 from datetime import timedelta
 from typing import Any, Optional, Union
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from flask import current_app
 
 from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
 from core.ops.entities.config_entity import (
+    OPS_FILE_PATH,
     LangfuseConfig,
     LangSmithConfig,
     TracingProviderEnum,
@@ -22,6 +23,7 @@ from core.ops.entities.trace_entity import (
     MessageTraceInfo,
     ModerationTraceInfo,
     SuggestedQuestionTraceInfo,
+    TaskData,
     ToolTraceInfo,
     TraceTaskName,
     WorkflowTraceInfo,
@@ -30,6 +32,7 @@ from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
 from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
 from core.ops.utils import get_message_data
 from extensions.ext_database import db
+from extensions.ext_storage import storage
 from models.model import App, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog, WorkflowRun
 from tasks.ops_trace_task import process_trace_tasks
@@ -442,7 +445,7 @@ class TraceTask:
             "ls_provider": message_data.model_provider,
             "ls_model_name": message_data.model_id,
             "status": message_data.status,
-            "from_end_user_id": message_data.from_account_id,
+            "from_end_user_id": message_data.from_end_user_id,
             "from_account_id": message_data.from_account_id,
             "agent_based": message_data.agent_based,
             "workflow_run_id": message_data.workflow_run_id,
@@ -518,7 +521,7 @@ class TraceTask:
             "ls_provider": message_data.model_provider,
             "ls_model_name": message_data.model_id,
             "status": message_data.status,
-            "from_end_user_id": message_data.from_account_id,
+            "from_end_user_id": message_data.from_end_user_id,
             "from_account_id": message_data.from_account_id,
             "agent_based": message_data.agent_based,
             "workflow_run_id": message_data.workflow_run_id,
@@ -567,7 +570,7 @@ class TraceTask:
             "ls_provider": message_data.model_provider,
             "ls_model_name": message_data.model_id,
             "status": message_data.status,
-            "from_end_user_id": message_data.from_account_id,
+            "from_end_user_id": message_data.from_end_user_id,
             "from_account_id": message_data.from_account_id,
             "agent_based": message_data.agent_based,
             "workflow_run_id": message_data.workflow_run_id,
@@ -708,7 +711,7 @@ class TraceQueueManager:
                 trace_task.app_id = self.app_id
                 trace_manager_queue.put(trace_task)
         except Exception as e:
-            logging.error(f"Error adding trace task: {e}")
+            logging.exception(f"Error adding trace task, trace_type {trace_task.trace_type}")
         finally:
             self.start_timer()
 
@@ -727,7 +730,7 @@ class TraceQueueManager:
             if tasks:
                 self.send_to_celery(tasks)
         except Exception as e:
-            logging.error(f"Error processing trace tasks: {e}")
+            logging.exception("Error processing trace tasks")
 
     def start_timer(self):
         global trace_manager_timer
@@ -740,10 +743,17 @@ class TraceQueueManager:
     def send_to_celery(self, tasks: list[TraceTask]):
         with self.flask_app.app_context():
             for task in tasks:
+                file_id = uuid4().hex
                 trace_info = task.execute()
-                task_data = {
+                task_data = TaskData(
+                    app_id=task.app_id,
+                    trace_info_type=type(trace_info).__name__,
+                    trace_info=trace_info.model_dump() if trace_info else None,
+                )
+                file_path = f"{OPS_FILE_PATH}{task.app_id}/{file_id}.json"
+                storage.save(file_path, task_data.model_dump_json().encode("utf-8"))
+                file_info = {
+                    "file_id": file_id,
                     "app_id": task.app_id,
-                    "trace_info_type": type(trace_info).__name__,
-                    "trace_info": trace_info.model_dump() if trace_info else {},
                 }
-                process_trace_tasks.delay(task_data)
+                process_trace_tasks.delay(file_info)

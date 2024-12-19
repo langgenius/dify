@@ -36,6 +36,7 @@ import TypeSelector from '@/app/components/workflow/nodes/_base/components/selec
 import AddButton from '@/app/components/base/button/add-button'
 import Badge from '@/app/components/base/badge'
 import Tooltip from '@/app/components/base/tooltip'
+import { isExceptionVariable } from '@/app/components/workflow/utils'
 
 const TRIGGER_DEFAULT_WIDTH = 227
 
@@ -59,6 +60,10 @@ type Props = {
   isInTable?: boolean
   onRemove?: () => void
   typePlaceHolder?: string
+  isSupportFileVar?: boolean
+  placeholder?: string
+  minWidth?: number
+  popupFor?: 'assigned' | 'toAssigned'
 }
 
 const VarReferencePicker: FC<Props> = ({
@@ -81,6 +86,10 @@ const VarReferencePicker: FC<Props> = ({
   isInTable,
   onRemove,
   typePlaceHolder,
+  isSupportFileVar = true,
+  placeholder,
+  minWidth,
+  popupFor,
 }) => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -216,16 +225,18 @@ const VarReferencePicker: FC<Props> = ({
     isConstant: !!isConstant,
   })
 
-  const { isEnv, isChatVar, isValidVar } = useMemo(() => {
+  const { isEnv, isChatVar, isValidVar, isException } = useMemo(() => {
     const isEnv = isENV(value as ValueSelector)
     const isChatVar = isConversationVar(value as ValueSelector)
     const isValidVar = Boolean(outputVarNode) || isEnv || isChatVar
+    const isException = isExceptionVariable(varName, outputVarNode?.type)
     return {
       isEnv,
       isChatVar,
       isValidVar,
+      isException,
     }
-  }, [value, outputVarNode])
+  }, [value, outputVarNode, varName])
 
   // 8(left/right-padding) + 14(icon) + 4 + 14 + 2 = 42 + 17 buff
   const availableWidth = triggerWidth - 56
@@ -259,7 +270,7 @@ const VarReferencePicker: FC<Props> = ({
                   <AddButton onClick={() => { }}></AddButton>
                 </div>
               )
-              : (<div ref={!isSupportConstantValue ? triggerRef : null} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'relative group/wrap flex items-center w-full h-8', !isSupportConstantValue && 'p-1 rounded-lg bg-gray-100 border', isInTable && 'bg-transparent border-none')}>
+              : (<div ref={!isSupportConstantValue ? triggerRef : null} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'relative group/wrap flex items-center w-full h-8', !isSupportConstantValue && 'p-1 rounded-lg bg-gray-100 border', isInTable && 'bg-transparent border-none', readonly && 'bg-components-input-bg-disabled')}>
                 {isSupportConstantValue
                   ? <div onClick={(e) => {
                     e.stopPropagation()
@@ -283,7 +294,7 @@ const VarReferencePicker: FC<Props> = ({
                     />
                   </div>
                   : (!hasValue && <div className='ml-1.5 mr-1'>
-                    <Variable02 className='w-3.5 h-3.5 text-gray-400' />
+                    <Variable02 className={`w-4 h-4 ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'}`} />
                   </div>)}
                 {isConstant
                   ? (
@@ -327,17 +338,17 @@ const VarReferencePicker: FC<Props> = ({
                                     {!hasValue && <Variable02 className='w-3.5 h-3.5' />}
                                     {isEnv && <Env className='w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
                                     {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
-                                    <div className={cn('ml-0.5 text-xs font-medium truncate', (isEnv || isChatVar) && '!text-text-secondary')} title={varName} style={{
+                                    <div className={cn('ml-0.5 text-xs font-medium truncate', isEnv && '!text-text-secondary', isChatVar && 'text-util-colors-teal-teal-700', isException && 'text-text-warning')} title={varName} style={{
                                       maxWidth: maxVarNameWidth,
                                     }}>{varName}</div>
                                   </div>
-                                  <div className='ml-0.5 text-xs font-normal text-gray-500 capitalize truncate' title={type} style={{
+                                  <div className='ml-0.5 capitalize truncate text-text-tertiary text-center system-xs-regular' title={type} style={{
                                     maxWidth: maxTypeWidth,
                                   }}>{type}</div>
                                   {!isValidVar && <RiErrorWarningFill className='ml-0.5 w-3 h-3 text-[#D92D20]' />}
                                 </>
                               )
-                              : <div className='text-[13px] font-normal text-gray-400'>{t('workflow.common.setVarValuePlaceholder')}</div>}
+                              : <div className={`overflow-hidden ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'} text-ellipsis system-sm-regular`}>{placeholder ?? t('workflow.common.setVarValuePlaceholder')}</div>}
                           </div>
                         </Tooltip>
                       </div>
@@ -376,12 +387,14 @@ const VarReferencePicker: FC<Props> = ({
         </WrapElem>
         <PortalToFollowElemContent style={{
           zIndex: 100,
-        }}>
+        }} className='mt-1'>
           {!isConstant && (
             <VarReferencePopup
               vars={outputVars}
+              popupFor={popupFor}
               onChange={handleVarReferenceChange}
-              itemWidth={isAddBtnTrigger ? 260 : triggerWidth}
+              itemWidth={isAddBtnTrigger ? 260 : (minWidth || triggerWidth)}
+              isSupportFileVar={isSupportFileVar}
             />
           )}
         </PortalToFollowElemContent>

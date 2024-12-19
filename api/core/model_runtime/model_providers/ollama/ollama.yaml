@@ -96,3 +96,22 @@ model_credential_schema:
           label:
             en_US: 'No'
             zh_Hans: 否
+    - variable: function_call_support
+      label:
+        zh_Hans: 是否支持函数调用
+        en_US: Function call support
+      show_on:
+        - variable: __model_type
+          value: llm
+      default: 'false'
+      type: radio
+      required: false
+      options:
+        - value: 'true'
+          label:
+            en_US: 'Yes'
+            zh_Hans: 是
+        - value: 'false'
+          label:
+            en_US: 'No'
+            zh_Hans: 否

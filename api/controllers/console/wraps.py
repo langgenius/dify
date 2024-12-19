@@ -1,4 +1,5 @@
 import json
+import os
 from functools import wraps
 
 from flask import abort, request
@@ -6,8 +7,11 @@ from flask_login import current_user
 
 from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
-from services.feature_service import FeatureService
+from models.model import DifySetup
+from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService
+
+from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 
 
 def account_initialization_required(view):
@@ -121,6 +125,32 @@ def cloud_utm_record(view):
                     OperationService.record_utm(current_user.current_tenant_id, utm_info)
         except Exception as e:
             pass
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def setup_required(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        # check setup
+        if dify_config.EDITION == "SELF_HOSTED" and os.environ.get("INIT_PASSWORD") and not DifySetup.query.first():
+            raise NotInitValidateError()
+        elif dify_config.EDITION == "SELF_HOSTED" and not DifySetup.query.first():
+            raise NotSetupError()
+
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def enterprise_license_required(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        settings = FeatureService.get_system_features()
+        if settings.license.status in [LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST]:
+            raise UnauthorizedAndForceLogout("Your license is invalid. Please contact your administrator.")
+
         return view(*args, **kwargs)
 
     return decorated

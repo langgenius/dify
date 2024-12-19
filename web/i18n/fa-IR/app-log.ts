@@ -52,6 +52,7 @@ const translation = {
     },
     variables: 'متغیرها',
     uploadImages: 'تصاویر آپلود شده',
+    modelParams: 'پارامترهای مدل',
   },
   filter: {
     period: {
@@ -79,6 +80,8 @@ const translation = {
   runDetail: {
     title: 'لاگ مکالمه',
     workflowTitle: 'جزئیات لاگ',
+    fileListLabel: 'جزئیات فایل',
+    fileListDetail: 'جزئیات',
   },
   promptLog: 'لاگ درخواست',
   agentLog: 'لاگ عامل',

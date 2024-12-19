@@ -1,0 +1,96 @@
+identity:
+  name: get_chat_messages
+  author: Doug Lea
+  label:
+    en_US: Get Chat Messages
+    zh_Hans: 获取指定单聊、群聊的消息历史
+description:
+  human:
+    en_US: Get Chat Messages
+    zh_Hans: 获取指定单聊、群聊的消息历史
+  llm: A tool for getting chat messages from specific one-on-one chats or group chats.(获取指定单聊、群聊的消息历史)
+parameters:
+  - name: container_id
+    type: string
+    required: true
+    label:
+      en_US: Container Id
+      zh_Hans: 群聊或单聊的 ID
+    human_description:
+      en_US: The ID of the group chat or single chat. Refer to the group ID description for how to obtain it. https://open.larkoffice.com/document/server-docs/group/chat/chat-id-description
+      zh_Hans: 群聊或单聊的 ID，获取方式参见群 ID 说明。https://open.larkoffice.com/document/server-docs/group/chat/chat-id-description
+    llm_description: 群聊或单聊的 ID，获取方式参见群 ID 说明。https://open.larkoffice.com/document/server-docs/group/chat/chat-id-description
+    form: llm
+
+  - name: start_time
+    type: string
+    required: false
+    label:
+      en_US: Start Time
+      zh_Hans: 起始时间
+    human_description:
+      en_US: The start time for querying historical messages, formatted as "2006-01-02 15:04:05".
+      zh_Hans: 待查询历史信息的起始时间，格式为 "2006-01-02 15:04:05"。
+    llm_description: 待查询历史信息的起始时间，格式为 "2006-01-02 15:04:05"。
+    form: llm
+
+  - name: end_time
+    type: string
+    required: false
+    label:
+      en_US: End Time
+      zh_Hans: 结束时间
+    human_description:
+      en_US: The end time for querying historical messages, formatted as "2006-01-02 15:04:05".
+      zh_Hans: 待查询历史信息的结束时间，格式为 "2006-01-02 15:04:05"。
+    llm_description: 待查询历史信息的结束时间，格式为 "2006-01-02 15:04:05"。
+    form: llm
+
+  - name: sort_type
+    type: select
+    required: false
+    options:
+      - value: ByCreateTimeAsc
+        label:
+          en_US: ByCreateTimeAsc
+          zh_Hans: ByCreateTimeAsc
+      - value: ByCreateTimeDesc
+        label:
+          en_US: ByCreateTimeDesc
+          zh_Hans: ByCreateTimeDesc
+    default: "ByCreateTimeAsc"
+    label:
+      en_US: Sort Type
+      zh_Hans: 排序方式
+    human_description:
+      en_US: |
+        The message sorting method. Optional values are ByCreateTimeAsc: sorted in ascending order by message creation time; ByCreateTimeDesc: sorted in descending order by message creation time. The default value is ByCreateTimeAsc. Note: When using page_token for pagination requests, the sorting method (sort_type) is consistent with the first request and cannot be changed midway.
+      zh_Hans: |
+        消息排序方式，可选值有 ByCreateTimeAsc：按消息创建时间升序排列；ByCreateTimeDesc：按消息创建时间降序排列。默认值为：ByCreateTimeAsc。注意：使用 page_token 分页请求时，排序方式（sort_type）均与第一次请求一致，不支持中途改换排序方式。
+    llm_description: 消息排序方式，可选值有 ByCreateTimeAsc：按消息创建时间升序排列；ByCreateTimeDesc：按消息创建时间降序排列。默认值为：ByCreateTimeAsc。注意：使用 page_token 分页请求时，排序方式（sort_type）均与第一次请求一致，不支持中途改换排序方式。
+    form: form
+
+  - name: page_size
+    type: number
+    required: false
+    default: 20
+    label:
+      en_US: Page Size
+      zh_Hans: 分页大小
+    human_description:
+      en_US: The page size, i.e., the number of data entries returned in a single request. The default value is 20, and the value range is [1,50].
+      zh_Hans: 分页大小，即单次请求所返回的数据条目数。默认值为 20，取值范围为 [1,50]。
+    llm_description: 分页大小，即单次请求所返回的数据条目数。默认值为 20，取值范围为 [1,50]。
+    form: form
+
+  - name: page_token
+    type: string
+    required: false
+    label:
+      en_US: Page Token
+      zh_Hans: 分页标记
+    human_description:
+      en_US: The pagination token. Leave it blank for the first request, indicating to start traversing from the beginning; when the pagination query result has more items, a new page_token will be returned simultaneously, which can be used to obtain the query result in the next traversal.
+      zh_Hans: 分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果。
+    llm_description: 分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果。
+    form: llm

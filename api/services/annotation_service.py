@@ -132,14 +132,14 @@ class AppAnnotationService:
                         MessageAnnotation.content.ilike("%{}%".format(keyword)),
                     )
                 )
-                .order_by(MessageAnnotation.created_at.desc())
+                .order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
                 .paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
             )
         else:
             annotations = (
                 db.session.query(MessageAnnotation)
                 .filter(MessageAnnotation.app_id == app_id)
-                .order_by(MessageAnnotation.created_at.desc())
+                .order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
                 .paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
             )
         return annotations.items, annotations.total
@@ -429,7 +429,7 @@ class AppAnnotationService:
             raise NotFound("App annotation not found")
         annotation_setting.score_threshold = args["score_threshold"]
         annotation_setting.updated_user_id = current_user.id
-        annotation_setting.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        annotation_setting.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         db.session.add(annotation_setting)
         db.session.commit()
 

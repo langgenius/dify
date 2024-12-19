@@ -7,6 +7,7 @@ import type {
   Node,
 } from '@/app/components/workflow/types'
 import type { TransferMethod } from '@/types/app'
+import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 
 export type NodeTracing = {
   id: string
@@ -19,9 +20,10 @@ export type NodeTracing = {
   process_data: any
   outputs?: any
   status: string
+  parallel_run_id?: string
   error?: string
   elapsed_time: number
-  execution_metadata: {
+  execution_metadata?: {
     total_tokens: number
     total_price: number
     currency: string
@@ -31,6 +33,9 @@ export type NodeTracing = {
     parallel_start_node_id?: string
     parent_parallel_id?: string
     parent_parallel_start_node_id?: string
+    parallel_mode_run_id?: string
+    iteration_duration_map?: IterationDurationMap
+    error_strategy?: ErrorHandleTypeEnum
   }
   metadata: {
     iterator_length: number
@@ -42,6 +47,7 @@ export type NodeTracing = {
     name: string
     email: string
   }
+  iterDurationMap?: IterationDurationMap
   finished_at: number
   extras?: any
   expand?: boolean // for UI
@@ -121,6 +127,7 @@ export type NodeStartedResponse = {
     id: string
     node_id: string
     iteration_id?: string
+    parallel_run_id?: string
     node_type: string
     index: number
     predecessor_node_id?: string
@@ -166,6 +173,8 @@ export type NodeFinishedResponse = {
       parallel_start_node_id?: string
       iteration_index?: number
       iteration_id?: string
+      parallel_mode_run_id: string
+      error_strategy?: ErrorHandleTypeEnum
     }
     created_at: number
     files?: FileResponse[]
@@ -200,9 +209,13 @@ export type IterationNextResponse = {
     output: any
     extras?: any
     created_at: number
+    parallel_mode_run_id: string
     execution_metadata: {
       parallel_id?: string
+      iteration_index: number
+      parallel_mode_run_id?: string
     }
+    duration?: number
   }
 }
 
@@ -318,3 +331,5 @@ export type ConversationVariableResponse = {
   total: number
   page: number
 }
+
+export type IterationDurationMap = Record<string, number>
