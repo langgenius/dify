@@ -429,6 +429,7 @@ class ConvertToWorkflowApi(Resource):
 
 class WorkflowConfigApi(Resource):
     """Resource for workflow configuration."""
+
     @setup_required
     @login_required
     @account_initialization_required
