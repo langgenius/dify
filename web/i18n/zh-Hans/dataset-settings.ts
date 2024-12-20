@@ -32,6 +32,7 @@ const translation = {
     externalKnowledgeID: '外部知识库 ID',
     save: '保存',
     retrievalSettings: '检索设置',
+    indexMethodChangeToEconomyDisabledTip: '无法从高质量降级为经济',
   },
 }
 

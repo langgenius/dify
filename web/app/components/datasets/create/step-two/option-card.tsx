@@ -70,7 +70,7 @@ export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
       ...style,
     }}
     onClick={() => {
-      if (!isActive)
+      if (!isActive && !disabled)
         onSwitched?.()
     }}
     {...rest}

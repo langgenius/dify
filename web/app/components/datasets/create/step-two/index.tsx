@@ -843,8 +843,9 @@ const StepTwo = ({
             <OptionCard
               title={<div className='flex items-center'>
                 {t('datasetCreation.stepTwo.qualified')}
-                {!hasSetIndexType
-                  && <Badge className={cn('ml-1 h-[18px]', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>{t('datasetCreation.stepTwo.recommend')}</Badge>}
+                <Badge className={cn('ml-1 h-[18px]', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>
+                  {t('datasetCreation.stepTwo.recommend')}
+                </Badge>
                 <span className='ml-auto'>
                   {!hasSetIndexType && <span className={cn(s.radio)} />}
                 </span>

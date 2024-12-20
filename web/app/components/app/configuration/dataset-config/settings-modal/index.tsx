@@ -255,7 +255,6 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 disable={!localeCurrentDataset?.embedding_available}
                 value={indexMethod}
                 onChange={v => setIndexMethod(v!)}
-                itemClassName='sm:!w-[280px]'
                 docForm={currentDataset.doc_form}
               />
             </div>
