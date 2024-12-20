@@ -335,7 +335,7 @@ const translation = {
         maxRetries: 'max retries',
         retryInterval: 'retry interval',
         retryTimes: 'Retry {{times}} times on failure',
-        retrying: 'Retrying',
+        retrying: 'Retrying...',
         retrySuccessful: 'Retry successful',
         retryFailed: 'Retry failed',
         retryFailedTimes: '{{times}} retries failed',

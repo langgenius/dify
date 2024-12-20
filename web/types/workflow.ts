@@ -180,6 +180,7 @@ export type NodeFinishedResponse = {
     }
     created_at: number
     files?: FileResponse[]
+    retry_index?: number
   }
 }
 

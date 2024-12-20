@@ -335,7 +335,7 @@ const translation = {
         maxRetries: '最大重试次数',
         retryInterval: '重试间隔',
         retryTimes: '失败时重试 {{times}} 次',
-        retrying: '重试中',
+        retrying: '重试中...',
         retrySuccessful: '重试成功',
         retryFailed: '重试失败',
         retryFailedTimes: '{{times}} 次重试失败',

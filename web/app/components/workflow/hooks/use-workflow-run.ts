@@ -627,6 +627,12 @@ export const useWorkflowRun = () => {
             workflowRunningData,
             setWorkflowRunningData,
           } = workflowStore.getState()
+          const {
+            getNodes,
+            setNodes,
+          } = store.getState()
+
+          const nodes = getNodes()
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
             const tracing = draft.tracing!
             const currentRetryNodeIndex = tracing.findIndex(trace => trace.node_id === data.node_id)
@@ -640,6 +646,12 @@ export const useWorkflowRun = () => {
                 draft.tracing![currentRetryNodeIndex].retryDetail = [data as NodeTracing]
             }
           }))
+          const newNodes = produce(nodes, (draft) => {
+            const currentNode = draft.find(node => node.id === data.node_id)!
+
+            currentNode.data._retryIndex = data.retry_index
+          })
+          setNodes(newNodes)
 
           if (onNodeRetry)
             onNodeRetry(params)
