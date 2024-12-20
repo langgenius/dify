@@ -82,13 +82,15 @@ workflow_run_detail_fields = {
 }
 
 retry_event_field = {
+    "elapsed_time": fields.Float,
+    "status": fields.String,
+    "inputs": fields.Raw(attribute="inputs"),
+    "process_data": fields.Raw(attribute="process_data"),
+    "outputs": fields.Raw(attribute="outputs"),
+    "metadata": fields.Raw(attribute="metadata"),
+    "llm_usage": fields.Raw(attribute="llm_usage"),
     "error": fields.String,
     "retry_index": fields.Integer,
-    "inputs": fields.Raw(attribute="inputs"),
-    "elapsed_time": fields.Float,
-    "execution_metadata": fields.Raw(attribute="execution_metadata_dict"),
-    "status": fields.String,
-    "outputs": fields.Raw(attribute="outputs"),
 }
 
 

@@ -268,18 +268,14 @@ class WorkflowService:
                             node_run_result.retry_index = retries
                             retry_events.append(
                                 SingleStepRetryEvent(
-                                    inputs=WorkflowEntry.handle_special_values(node_run_result.inputs)
-                                    if node_run_result.inputs
-                                    else None,
-                                    error=node_run_result.error,
-                                    outputs=WorkflowEntry.handle_special_values(node_run_result.outputs)
-                                    if node_run_result.outputs
-                                    else None,
-                                    retry_index=node_run_result.retry_index,
                                     elapsed_time=time.perf_counter() - retry_start_at,
-                                    execution_metadata=WorkflowEntry.handle_special_values(node_run_result.metadata)
-                                    if node_run_result.metadata
-                                    else None,
+                                    inputs=WorkflowEntry.handle_special_values(node_run_result.inputs),
+                                    process_data=WorkflowEntry.handle_special_values(node_run_result.process_data),
+                                    outputs=WorkflowEntry.handle_special_values(node_run_result.outputs),
+                                    metadata=node_run_result.metadata,
+                                    llm_usage=node_run_result.llm_usage,
+                                    error=node_run_result.error,
+                                    retry_index=node_run_result.retry_index,
                                 )
                             )
                             time.sleep(retry_interval)
