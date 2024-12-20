@@ -60,12 +60,7 @@ class AnswerStreamProcessor(StreamProcessor):
 
                     del self.current_stream_chunk_generating_node_ids[event.route_node_state.node_id]
 
-                # remove unreachable nodes
-                # FIXME: because of the code branch can combine directly, so for answer node
-                # we remove the node maybe shortcut the answer node, so comment this code for now
-                # there is not effect on the answer node and the workflow, when we have a better solution
-                # we can open this code. Issues: #11542 #9560 #10638 #10564
-                # self._remove_unreachable_nodes(event)
+                self._remove_unreachable_nodes(event)
 
                 # generate stream outputs
                 yield from self._generate_stream_outputs_when_node_finished(event)
