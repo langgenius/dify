@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Optional, Union, cast
 
 import google.auth.transport.requests
 import requests
-import vertexai.generative_models as glm
 from anthropic import AnthropicVertex, Stream
 from anthropic.types import (
     ContentBlockDeltaEvent,
@@ -409,7 +408,7 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
 
         return text.rstrip()
 
-    def _convert_tools_to_glm_tool(self, tools: list[PromptMessageTool]) -> glm.Tool:
+    def _convert_tools_to_glm_tool(self, tools: list[PromptMessageTool]) -> "glm.Tool":
         """
         Convert tool messages to glm tools
 
@@ -531,7 +530,7 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
         return self._handle_generate_response(model, credentials, response, prompt_messages)
 
     def _handle_generate_response(
-        self, model: str, credentials: dict, response: glm.GenerationResponse, prompt_messages: list[PromptMessage]
+        self, model: str, credentials: dict, response: "glm.GenerationResponse", prompt_messages: list[PromptMessage]
     ) -> LLMResult:
         """
         Handle llm response
@@ -563,7 +562,7 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
         return result
 
     def _handle_generate_stream_response(
-        self, model: str, credentials: dict, response: glm.GenerationResponse, prompt_messages: list[PromptMessage]
+        self, model: str, credentials: dict, response: "glm.GenerationResponse", prompt_messages: list[PromptMessage]
     ) -> Generator:
         """
         Handle llm stream response
@@ -647,7 +646,7 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
 
         return message_text
 
-    def _format_message_to_glm_content(self, message: PromptMessage) -> glm.Content:
+    def _format_message_to_glm_content(self, message: PromptMessage) -> "glm.Content":
         """
         Format a single message into glm.Content for Google API
 
