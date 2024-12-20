@@ -50,7 +50,7 @@ const IndexMethodRadio = ({
   ]
 
   return (
-    <div className={classNames('flex justify-between w-full gap-2')}>
+    <div className={classNames('grow inline-flex gap-x-2')}>
 
       {
         options.map((option) => {
@@ -63,7 +63,7 @@ const IndexMethodRadio = ({
               }
               placement={'top'}
             >
-              <PortalToFollowElemTrigger>
+              <PortalToFollowElemTrigger asChild>
                 <OptionCard
                   disabled={
                     disable
