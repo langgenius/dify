@@ -25,7 +25,7 @@ const VersionHistoryModal = () => {
   }
 
   return (
-    <div className='w-[336px] bg-white rounded-2xl border-[0.5px] border-gray-200 shadow-xl p-2'>
+    <div className='w-[240px] bg-white rounded-2xl border-[0.5px] border-gray-200 shadow-xl p-2'>
       {isLoading && (
         <div className='flex items-center justify-center h-10'>
           <Loading/>

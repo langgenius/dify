@@ -96,7 +96,7 @@ class WorkflowService:
         )
 
         if len(workflows) > 1:
-            workflows[1].version = "current"
+            workflows[1].version = "latest"
 
         for workflow in workflows:
             try:
