@@ -167,6 +167,12 @@ model_credential_schema:
             - variable: __model_type
               value: llm
         - label:
+            en_US: Doubao-pro-256k
+          value: Doubao-pro-256k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
             en_US: Llama3-8B
           value: Llama3-8B
           show_on:
@@ -217,6 +223,12 @@ model_credential_schema:
         - label:
             en_US: Doubao-embedding
           value: Doubao-embedding
+          show_on:
+            - variable: __model_type
+              value: text-embedding
+        - label:
+            en_US: Doubao-embedding-large
+          value: Doubao-embedding-large
           show_on:
             - variable: __model_type
               value: text-embedding

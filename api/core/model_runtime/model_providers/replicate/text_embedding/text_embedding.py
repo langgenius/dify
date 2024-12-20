@@ -119,7 +119,7 @@ class ReplicateEmbeddingModel(_CommonReplicate, TextEmbeddingModel):
                 embeddings.append(result[0].get("embedding"))
 
             return [list(map(float, e)) for e in embeddings]
-        elif "texts" == text_input_key:
+        elif text_input_key == "texts":
             result = client.run(
                 replicate_model_version,
                 input={

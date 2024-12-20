@@ -15,10 +15,10 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from configs import dify_config
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from extensions.ext_database import db
 from extensions.ext_storage import storage
 
 from .account import Account
+from .engine import db
 from .model import App, Tag, TagBinding, UploadFile
 from .types import StringUUID
 

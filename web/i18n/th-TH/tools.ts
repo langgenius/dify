@@ -31,6 +31,8 @@ const translation = {
     manageInTools: 'จัดการในเครื่องมือ',
     emptyTitle: 'ไม่มีเครื่องมือเวิร์กโฟลว์',
     emptyTip: 'ไปที่ "เวิร์กโฟลว์ -> เผยแพร่เป็นเครื่องมือ"',
+    emptyTitleCustom: 'ไม่มีเครื่องมือที่กําหนดเอง',
+    emptyTipCustom: 'สร้างเครื่องมือแบบกําหนดเอง',
   },
   createTool: {
     title: 'สร้างเครื่องมือที่กําหนดเอง',

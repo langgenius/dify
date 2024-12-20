@@ -25,6 +25,7 @@ import {
 import { SimpleBtn } from '../../app/text-generate/item'
 import Toast from '../../base/toast'
 import IterationResultPanel from '../run/iteration-result-panel'
+import RetryResultPanel from '../run/retry-result-panel'
 import InputsPanel from './inputs-panel'
 import cn from '@/utils/classnames'
 import Loading from '@/app/components/base/loading'
@@ -53,10 +54,15 @@ const WorkflowPreview = () => {
   }, [workflowRunningData])
 
   const [iterationRunResult, setIterationRunResult] = useState<NodeTracing[][]>([])
+  const [retryRunResult, setRetryRunResult] = useState<NodeTracing[]>([])
   const [iterDurationMap, setIterDurationMap] = useState<IterationDurationMap>({})
   const [isShowIterationDetail, {
     setTrue: doShowIterationDetail,
     setFalse: doHideIterationDetail,
+  }] = useBoolean(false)
+  const [isShowRetryDetail, {
+    setTrue: doShowRetryDetail,
+    setFalse: doHideRetryDetail,
   }] = useBoolean(false)
 
   const handleShowIterationDetail = useCallback((detail: NodeTracing[][], iterationDurationMap: IterationDurationMap) => {
@@ -64,6 +70,11 @@ const WorkflowPreview = () => {
     setIterationRunResult(detail)
     doShowIterationDetail()
   }, [doShowIterationDetail])
+
+  const handleRetryDetail = useCallback((detail: NodeTracing[]) => {
+    setRetryRunResult(detail)
+    doShowRetryDetail()
+  }, [doShowRetryDetail])
 
   if (isShowIterationDetail) {
     return (
@@ -201,11 +212,12 @@ const WorkflowPreview = () => {
                     <Loading />
                   </div>
                 )}
-                {currentTab === 'TRACING' && (
+                {currentTab === 'TRACING' && !isShowRetryDetail && (
                   <TracingPanel
                     className='bg-background-section-burn'
                     list={workflowRunningData?.tracing || []}
                     onShowIterationDetail={handleShowIterationDetail}
+                    onShowRetryDetail={handleRetryDetail}
                   />
                 )}
                 {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
@@ -213,7 +225,14 @@ const WorkflowPreview = () => {
                     <Loading />
                   </div>
                 )}
-
+                {
+                  currentTab === 'TRACING' && isShowRetryDetail && (
+                    <RetryResultPanel
+                      list={retryRunResult}
+                      onBack={doHideRetryDetail}
+                    />
+                  )
+                }
               </div>
             </>
           )}
