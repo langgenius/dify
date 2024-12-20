@@ -52,7 +52,7 @@ const SearchInput: FC<SearchInputProps> = ({
           if (!isComposing.current)
             onChange(e.target.value)
         }}
-        onCompositionStart={(e) => {
+        onCompositionStart={() => {
           isComposing.current = true
         }}
         onCompositionEnd={(e) => {
