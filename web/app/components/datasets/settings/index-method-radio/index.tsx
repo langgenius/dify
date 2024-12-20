@@ -11,6 +11,7 @@ import type { DataSet } from '@/models/datasets'
 import { ChunkingMode } from '@/models/datasets'
 import Badge from '@/app/components/base/badge'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 
 type IIndexMethodRadioProps = {
   value?: DataSet['indexing_technique']
@@ -31,6 +32,7 @@ const IndexMethodRadio = ({
   const economyDomRef = useRef<HTMLDivElement>(null)
   const isHoveringEconomy = useHover(economyDomRef)
   const isEconomyDisabled = docForm === ChunkingMode.parentChild || currentValue === IndexingType.QUALIFIED
+  const displayChangeToHQTip = currentValue === IndexingType.ECONOMICAL && value === IndexingType.QUALIFIED
   const options = [
     {
       key: 'high_quality',
@@ -50,55 +52,63 @@ const IndexMethodRadio = ({
   ]
 
   return (
-    <div className={classNames('flex justify-between w-full gap-2')}>
-
-      {
-        options.map((option) => {
-          const isParentChild = docForm === ChunkingMode.parentChild
-          return (
-            <PortalToFollowElem
-              key={option.key}
-              open={
-                isHoveringEconomy && option.key === 'economy'
-              }
-              placement={'top'}
-            >
-              <PortalToFollowElemTrigger>
-                <OptionCard
-                  disabled={
-                    disable
+    <>
+      <div className={classNames('flex justify-between w-full gap-2')}>
+        {
+          options.map((option) => {
+            const isParentChild = docForm === ChunkingMode.parentChild
+            return (
+              <PortalToFollowElem
+                key={option.key}
+                open={
+                  isHoveringEconomy && option.key === 'economy'
+                }
+                placement={'top'}
+              >
+                <PortalToFollowElemTrigger>
+                  <OptionCard
+                    disabled={
+                      disable
                     || (isEconomyDisabled && option.key === IndexingType.ECONOMICAL)
-                  }
-                  isActive={option.key === value}
-                  onSwitched={() => {
-                    if (isParentChild && option.key === IndexingType.ECONOMICAL)
-                      return
-                    if (!disable)
-                      onChange(option.key as DataSet['indexing_technique'])
-                  } }
-                  icon={
-                    <Image
-                      src={option.key === 'high_quality' ? indexMethodIcon.high_quality : indexMethodIcon.economical}
-                      alt={option.desc}
-                    />
-                  }
-                  title={option.text}
-                  description={option.desc}
-                  ref={option.key === 'economy' ? economyDomRef : undefined}
-                  className={classNames(isEconomyDisabled && 'cursor-not-allowed')}
-                >
-                </OptionCard>
-              </PortalToFollowElemTrigger>
-              <PortalToFollowElemContent>
-                <div className='p-3 bg-components-tooltip-bg border-components-panel-border text-xs font-medium text-text-secondary rounded-lg shadow-lg'>
-                  {t('datasetSettings.form.indexMethodChangeToEconomyDisabledTip')}
-                </div>
-              </PortalToFollowElemContent>
-            </PortalToFollowElem>
-          )
-        })
-      }
-    </div>
+                    }
+                    isActive={option.key === value}
+                    onSwitched={() => {
+                      if (isParentChild && option.key === IndexingType.ECONOMICAL)
+                        return
+                      if (!disable)
+                        onChange(option.key as DataSet['indexing_technique'])
+                    } }
+                    icon={
+                      <Image
+                        src={option.key === 'high_quality' ? indexMethodIcon.high_quality : indexMethodIcon.economical}
+                        alt={option.desc}
+                      />
+                    }
+                    title={option.text}
+                    description={option.desc}
+                    ref={option.key === 'economy' ? economyDomRef : undefined}
+                    className={classNames(isEconomyDisabled && 'cursor-not-allowed')}
+                  >
+                  </OptionCard>
+                </PortalToFollowElemTrigger>
+                <PortalToFollowElemContent>
+                  <div className='p-3 bg-components-tooltip-bg border-components-panel-border text-xs font-medium text-text-secondary rounded-lg shadow-lg'>
+                    {t('datasetSettings.form.indexMethodChangeToEconomyDisabledTip')}
+                  </div>
+                </PortalToFollowElemContent>
+              </PortalToFollowElem>
+            )
+          })
+        }
+      </div>
+      {displayChangeToHQTip && <div className='mt-2 h-10 p-2 flex items-center gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border overflow-hidden bg-components-panel-bg-blur backdrop-blur-[5px] shadow-xs'>
+        <div className='absolute top-0 left-0 right-0 bottom-0 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)] opacity-40'>
+        </div>
+        <div className='p-1'>
+          <AlertTriangle className='size-4 text-text-warning-secondary'/>             </div>
+        <span className='system-xs-medium'>{t('datasetCreation.stepTwo.highQualityTip')}</span>
+      </div>}
+    </>
   )
 }
 
