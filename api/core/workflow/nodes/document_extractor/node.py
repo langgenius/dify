@@ -194,13 +194,11 @@ def _extract_images_from_pdf(file: File) -> list[File]:
             page_bitmap = page.render(scale=5)
             image = page_bitmap.to_pil()
             byte_io = io.BytesIO()
-            image.save(byte_io, format='PNG')
+            image.save(byte_io, format="PNG")
             img_bytes = byte_io.getvalue()
             image_upload_file = FileService.upload_file(
-                content=img_bytes,
-                user=current_user,
-                mimetype="image/png",
-                filename=f"{uuid4()}.png")
+                content=img_bytes, user=current_user, mimetype="image/png", filename=f"{uuid4()}.png"
+            )
             images.append(
                 File(
                     tenant_id=image_upload_file.tenant_id,
