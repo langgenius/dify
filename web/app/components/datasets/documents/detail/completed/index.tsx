@@ -24,7 +24,7 @@ import Input from '@/app/components/base/input'
 import { ToastContext } from '@/app/components/base/toast'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
-import { type ChildChunkDetail, ChuckingMode, type SegmentDetailModel, type SegmentUpdater } from '@/models/datasets'
+import { type ChildChunkDetail, ChunkingMode, type SegmentDetailModel, type SegmentUpdater } from '@/models/datasets'
 import NewSegment from '@/app/components/datasets/documents/detail/new-segment'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import Checkbox from '@/app/components/base/checkbox'
@@ -258,7 +258,7 @@ const Completed: FC<ICompletedProps> = ({
     needRegenerate = false,
   ) => {
     const params: SegmentUpdater = { content: '' }
-    if (docForm === ChuckingMode.qa) {
+    if (docForm === ChunkingMode.qa) {
       if (!question.trim())
         return notify({ type: 'error', message: t('datasetDocuments.segment.questionEmpty') })
       if (!answer.trim())

@@ -36,7 +36,7 @@ import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
 import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
-import { ChuckingMode, DataSourceType, DocumentActionType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
+import { ChunkingMode, DataSourceType, DocumentActionType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
@@ -416,8 +416,8 @@ const DocumentList: FC<IDocumentListProps> = ({
   const router = useRouter()
   const [datasetConfig] = useDatasetDetailContext(s => [s.dataset])
   const chunkingMode = datasetConfig?.doc_form
-  const isGeneralMode = chunkingMode !== ChuckingMode.parentChild
-  const isQAMode = chunkingMode === ChuckingMode.qa
+  const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
+  const isQAMode = chunkingMode === ChunkingMode.qa
   const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
   const [enableSort, setEnableSort] = useState(true)
 

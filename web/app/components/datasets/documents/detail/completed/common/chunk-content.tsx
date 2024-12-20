@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import type { ComponentProps, FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChuckingMode } from '@/models/datasets'
+import { ChunkingMode } from '@/models/datasets'
 import classNames from '@/utils/classnames'
 
 type IContentProps = ComponentProps<'textarea'>
@@ -152,7 +152,7 @@ type IChunkContentProps = {
   onQuestionChange: (question: string) => void
   onAnswerChange?: (answer: string) => void
   isEditMode?: boolean
-  docForm: ChuckingMode
+  docForm: ChunkingMode
 }
 
 const ChunkContent: FC<IChunkContentProps> = ({
@@ -165,7 +165,7 @@ const ChunkContent: FC<IChunkContentProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  if (docForm === ChuckingMode.qa) {
+  if (docForm === ChunkingMode.qa) {
     return <QATextArea
       question={question}
       answer={answer}

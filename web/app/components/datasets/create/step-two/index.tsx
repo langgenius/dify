@@ -41,7 +41,7 @@ import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/componen
 import Toast from '@/app/components/base/toast'
 import type { NotionPage } from '@/models/common'
 import { DataSourceProvider } from '@/models/common'
-import { ChuckingMode, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -199,15 +199,15 @@ const StepTwo = ({
   // QA Related
   const [isLanguageSelectDisabled, _setIsLanguageSelectDisabled] = useState(false)
   const [isQAConfirmDialogOpen, setIsQAConfirmDialogOpen] = useState(false)
-  const [docForm, setDocForm] = useState<ChuckingMode>(
-    (datasetId && documentDetail) ? documentDetail.doc_form as ChuckingMode : ChuckingMode.text,
+  const [docForm, setDocForm] = useState<ChunkingMode>(
+    (datasetId && documentDetail) ? documentDetail.doc_form as ChunkingMode : ChunkingMode.text,
   )
-  const handleChangeDocform = (value: ChuckingMode) => {
-    if (value === ChuckingMode.qa && indexType === IndexingType.ECONOMICAL) {
+  const handleChangeDocform = (value: ChunkingMode) => {
+    if (value === ChunkingMode.qa && indexType === IndexingType.ECONOMICAL) {
       setIsQAConfirmDialogOpen(true)
       return
     }
-    if (value === ChuckingMode.parentChild && indexType === IndexingType.ECONOMICAL)
+    if (value === ChunkingMode.parentChild && indexType === IndexingType.ECONOMICAL)
       setIndexType(IndexingType.QUALIFIED)
     setDocForm(value)
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -224,7 +224,7 @@ const StepTwo = ({
   const currentDocForm = currentDataset?.doc_form || docForm
 
   const getProcessRule = (): ProcessRule => {
-    if (currentDocForm === ChuckingMode.parentChild) {
+    if (currentDocForm === ChunkingMode.parentChild) {
       return {
         rules: {
           pre_processing_rules: rules,
@@ -541,7 +541,7 @@ const StepTwo = ({
   }
 
   const changeToEconomicalType = () => {
-    if (docForm !== ChuckingMode.text)
+    if (docForm !== ChunkingMode.text)
       return
 
     if (!hasSetIndexType)
@@ -588,7 +588,7 @@ const StepTwo = ({
     <div className='flex w-full h-full'>
       <div className={cn('relative h-full w-1/2 py-6 overflow-y-auto', isMobile ? 'px-4' : 'px-12')}>
         <div className={'system-md-semibold mb-1'}>{t('datasetCreation.stepTwo.segmentation')}</div>
-        {((isInUpload && [ChuckingMode.text, ChuckingMode.qa].includes(currentDataset!.doc_form))
+        {((isInUpload && [ChunkingMode.text, ChunkingMode.qa].includes(currentDataset!.doc_form))
         || isUploadInEmptyDataset
         || isInInit)
           && <OptionCard
@@ -598,10 +598,10 @@ const StepTwo = ({
             activeHeaderClassName='bg-dataset-option-card-blue-gradient'
             description={t('datasetCreation.stepTwo.generalTip')}
             isActive={
-              [ChuckingMode.text, ChuckingMode.qa].includes(currentDocForm)
+              [ChunkingMode.text, ChunkingMode.qa].includes(currentDocForm)
             }
             onSwitched={() =>
-              handleChangeDocform(ChuckingMode.text)
+              handleChangeDocform(ChunkingMode.text)
             }
             actions={
               <>
@@ -655,12 +655,12 @@ const StepTwo = ({
                   {IS_CE_EDITION && <>
                     <div className='flex items-center'>
                       <Checkbox
-                        checked={docForm === ChuckingMode.qa}
+                        checked={docForm === ChunkingMode.qa}
                         onCheck={() => {
-                          if (docForm === ChuckingMode.qa)
-                            handleChangeDocform(ChuckingMode.text)
+                          if (docForm === ChunkingMode.qa)
+                            handleChangeDocform(ChunkingMode.text)
                           else
-                            handleChangeDocform(ChuckingMode.qa)
+                            handleChangeDocform(ChunkingMode.qa)
                         }}
                       />
                       <div className='flex items-center gap-1'>
@@ -677,7 +677,7 @@ const StepTwo = ({
                         <Tooltip popupContent={t('datasetCreation.stepTwo.QATip')} />
                       </div>
                     </div>
-                    {docForm === ChuckingMode.qa && (
+                    {docForm === ChunkingMode.qa && (
                       <div
                         style={{
                           background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.1) 0%, rgba(255, 255, 255, 0.00) 100%)',
@@ -697,7 +697,7 @@ const StepTwo = ({
           </OptionCard>}
         {
           (
-            (isInUpload && currentDataset!.doc_form === ChuckingMode.parentChild)
+            (isInUpload && currentDataset!.doc_form === ChunkingMode.parentChild)
             || isUploadInEmptyDataset
             || isInInit
           )
@@ -707,8 +707,8 @@ const StepTwo = ({
             effectImg={OrangeEffect.src}
             activeHeaderClassName='bg-dataset-option-card-orange-gradient'
             description={t('datasetCreation.stepTwo.parentChildTip')}
-            isActive={currentDocForm === ChuckingMode.parentChild}
-            onSwitched={() => handleChangeDocform(ChuckingMode.parentChild)}
+            isActive={currentDocForm === ChunkingMode.parentChild}
+            onSwitched={() => handleChangeDocform(ChunkingMode.parentChild)}
             actions={
               <>
                 <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
@@ -880,7 +880,7 @@ const StepTwo = ({
                   <Button variant={'primary'} onClick={() => {
                     setIsQAConfirmDialogOpen(false)
                     setIndexType(IndexingType.QUALIFIED)
-                    setDocForm(ChuckingMode.qa)
+                    setDocForm(ChunkingMode.qa)
                   }}>
                     {t('datasetCreation.stepTwo.switch')}
                   </Button>
@@ -888,7 +888,7 @@ const StepTwo = ({
               </CustomDialog>
               <PortalToFollowElem
                 open={
-                  isHoveringEconomy && docForm !== ChuckingMode.text
+                  isHoveringEconomy && docForm !== ChunkingMode.text
                 }
                 placement={'top'}
               >
@@ -898,10 +898,10 @@ const StepTwo = ({
                     description={t('datasetCreation.stepTwo.economicalTip')}
                     icon={<Image src={indexMethodIcon.economical} alt='' />}
                     isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
-                    disabled={!isAPIKeySet || hasSetIndexType || docForm !== ChuckingMode.text}
+                    disabled={!isAPIKeySet || hasSetIndexType || docForm !== ChunkingMode.text}
                     ref={economyDomRef}
                     onSwitched={() => {
-                      if (isAPIKeySet && docForm === ChuckingMode.text)
+                      if (isAPIKeySet && docForm === ChunkingMode.text)
                         setIndexType(IndexingType.ECONOMICAL)
                     }}
                   />
@@ -909,7 +909,7 @@ const StepTwo = ({
                 <PortalToFollowElemContent>
                   <div className='p-3 bg-components-tooltip-bg border-components-panel-border text-xs font-medium text-text-secondary rounded-lg shadow-lg'>
                     {
-                      docForm === ChuckingMode.qa
+                      docForm === ChunkingMode.qa
                         ? t('datasetCreation.stepTwo.notAvailableForQA')
                         : t('datasetCreation.stepTwo.notAvailableForParentChild')
                     }
@@ -1072,12 +1072,12 @@ const StepTwo = ({
           className={cn('flex shrink-0 w-1/2 p-4 pr-0 relative h-full', isMobile && 'w-full max-w-[524px]')}
           mainClassName='space-y-6'
         >
-          {currentDocForm === ChuckingMode.qa && estimate?.qa_preview && (
+          {currentDocForm === ChunkingMode.qa && estimate?.qa_preview && (
             estimate?.qa_preview.map(item => (
               <QAPreview key={item.question} qa={item} />
             ))
           )}
-          {currentDocForm === ChuckingMode.text && estimate?.preview && (
+          {currentDocForm === ChunkingMode.text && estimate?.preview && (
             estimate?.preview.map((item, index) => (
               <ChunkContainer
                 key={item.content}
@@ -1088,7 +1088,7 @@ const StepTwo = ({
               </ChunkContainer>
             ))
           )}
-          {currentDocForm === ChuckingMode.parentChild && currentEstimateMutation.data?.preview && (
+          {currentDocForm === ChunkingMode.parentChild && currentEstimateMutation.data?.preview && (
             estimate?.preview?.map((item, index) => {
               const indexForLabel = index + 1
               return (

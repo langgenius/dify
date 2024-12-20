@@ -4,7 +4,7 @@ import { IndexingType } from '../../create/step-two'
 import s from './index.module.css'
 import classNames from '@/utils/classnames'
 import type { DataSet } from '@/models/datasets'
-import { ChuckingMode } from '@/models/datasets'
+import { ChunkingMode } from '@/models/datasets'
 
 const itemClass = `
   w-full sm:w-[234px] p-3 rounded-xl bg-gray-25 border border-gray-100 cursor-pointer
@@ -17,7 +17,7 @@ type IIndexMethodRadioProps = {
   onChange: (v?: DataSet['indexing_technique']) => void
   disable?: boolean
   itemClassName?: string
-  docForm?: ChuckingMode
+  docForm?: ChunkingMode
 }
 
 const IndexMethodRadio = ({
@@ -47,7 +47,7 @@ const IndexMethodRadio = ({
     <div className={classNames(s.wrapper, 'flex justify-between w-full flex-wrap gap-y-2')}>
       {
         options.map((option) => {
-          const isParentChild = docForm === ChuckingMode.parentChild
+          const isParentChild = docForm === ChunkingMode.parentChild
           return (
             <div
               key={option.key}

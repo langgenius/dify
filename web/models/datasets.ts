@@ -10,7 +10,7 @@ export enum DataSourceType {
 
 export type DatasetPermission = 'only_me' | 'all_team_members' | 'partial_members'
 
-export enum ChuckingMode {
+export enum ChunkingMode {
   'text' = 'text_model', // General text
   'qa' = 'qa_model', // General QA
   'parentChild' = 'hierarchical_model', // Parent-Child
@@ -29,7 +29,7 @@ export type DataSet = {
   updated_by: string
   updated_at: number
   app_count: number
-  doc_form: ChuckingMode
+  doc_form: ChunkingMode
   document_count: number
   word_count: number
   provider: string
@@ -278,7 +278,7 @@ export type InitialDocumentDetail = {
   display_status: DocumentDisplayStatus
   completed_segments?: number
   total_segments?: number
-  doc_form: ChuckingMode
+  doc_form: ChunkingMode
   doc_language: string
 }
 
@@ -310,7 +310,7 @@ export type DocumentListResponse = {
 export type DocumentReq = {
   original_document_id?: string
   indexing_technique?: string
-  doc_form: ChuckingMode
+  doc_form: ChunkingMode
   doc_language: string
   process_rule: ProcessRule
 }
@@ -570,11 +570,6 @@ export type SegmentUpdater = {
   answer?: string
   keywords?: string[]
   regenerate_child_chunks?: boolean
-}
-
-export enum DocForm {
-  TEXT = 'text_model',
-  QA = 'qa_model',
 }
 
 export type ErrorDocsResponse = {

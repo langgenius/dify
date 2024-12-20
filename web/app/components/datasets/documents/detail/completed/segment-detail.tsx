@@ -12,7 +12,7 @@ import RegenerationModal from './common/regeneration-modal'
 import { SegmentIndexTag } from './common/segment-index-tag'
 import Dot from './common/dot'
 import { useSegmentListContext } from './index'
-import { ChuckingMode, type SegmentDetailModel } from '@/models/datasets'
+import { ChunkingMode, type SegmentDetailModel } from '@/models/datasets'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { formatNumber } from '@/utils/format'
 import classNames from '@/utils/classnames'
@@ -23,7 +23,7 @@ type ISegmentDetailProps = {
   onUpdate: (segmentId: string, q: string, a: string, k: string[], needRegenerate?: boolean) => void
   onCancel: () => void
   isEditMode?: boolean
-  docForm: ChuckingMode
+  docForm: ChunkingMode
 }
 
 /**
@@ -92,7 +92,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   }, [isEditMode])
 
   const isQAModel = useMemo(() => {
-    return docForm === ChuckingMode.qa
+    return docForm === ChunkingMode.qa
   }, [docForm])
 
   const wordCountText = useMemo(() => {

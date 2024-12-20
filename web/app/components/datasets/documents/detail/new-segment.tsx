@@ -15,7 +15,7 @@ import Dot from './completed/common/dot'
 import { useDocumentContext } from './index'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
-import { ChuckingMode, type SegmentUpdater } from '@/models/datasets'
+import { ChunkingMode, type SegmentUpdater } from '@/models/datasets'
 import classNames from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import Divider from '@/app/components/base/divider'
@@ -23,7 +23,7 @@ import { useAddSegment } from '@/service/knowledge/use-segment'
 
 type NewSegmentModalProps = {
   onCancel: () => void
-  docForm: ChuckingMode
+  docForm: ChunkingMode
   onSave: () => void
   viewNewlyAddedChunk: () => void
 }
@@ -61,7 +61,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   </>
 
   const isQAModel = useMemo(() => {
-    return docForm === ChuckingMode.qa
+    return docForm === ChunkingMode.qa
   }, [docForm])
 
   const handleCancel = (actionType: 'esc' | 'add' = 'esc') => {

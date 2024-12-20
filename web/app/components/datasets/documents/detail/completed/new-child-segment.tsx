@@ -14,7 +14,7 @@ import Dot from './common/dot'
 import { useSegmentListContext } from './index'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
-import { type ChildChunkDetail, ChuckingMode, type SegmentUpdater } from '@/models/datasets'
+import { type ChildChunkDetail, ChunkingMode, type SegmentUpdater } from '@/models/datasets'
 import classNames from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import Divider from '@/app/components/base/divider'
@@ -146,7 +146,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
       <div className={classNames('flex grow w-full', fullScreen ? 'flex-row justify-center px-6 pt-6' : 'py-3 px-4')}>
         <div className={classNames('break-all overflow-hidden whitespace-pre-line h-full', fullScreen ? 'w-1/2' : 'w-full')}>
           <ChunkContent
-            docForm={ChuckingMode.parentChild}
+            docForm={ChunkingMode.parentChild}
             question={content}
             onQuestionChange={content => setContent(content)}
             isEditMode={true}

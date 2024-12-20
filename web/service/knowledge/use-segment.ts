@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { del, get, patch, post } from '../base'
 import type { CommonResponse } from '@/models/common'
-import type { ChildChunkDetail, ChildSegmentsResponse, ChuckingMode, SegmentDetailModel, SegmentUpdater, SegmentsResponse } from '@/models/datasets'
+import type { ChildChunkDetail, ChildSegmentsResponse, ChunkingMode, SegmentDetailModel, SegmentUpdater, SegmentsResponse } from '@/models/datasets'
 
 const NAME_SPACE = 'segment'
 
@@ -36,7 +36,7 @@ export const useUpdateSegment = () => {
     mutationKey: [NAME_SPACE, 'update'],
     mutationFn: (payload: { datasetId: string; documentId: string; segmentId: string; body: SegmentUpdater }) => {
       const { datasetId, documentId, segmentId, body } = payload
-      return patch<{ data: SegmentDetailModel; doc_form: ChuckingMode }>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`, { body })
+      return patch<{ data: SegmentDetailModel; doc_form: ChunkingMode }>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`, { body })
     },
   })
 }
@@ -46,7 +46,7 @@ export const useAddSegment = () => {
     mutationKey: [NAME_SPACE, 'add'],
     mutationFn: (payload: { datasetId: string; documentId: string; body: SegmentUpdater }) => {
       const { datasetId, documentId, body } = payload
-      return post<{ data: SegmentDetailModel; doc_form: ChuckingMode }>(`/datasets/${datasetId}/documents/${documentId}/segment`, { body })
+      return post<{ data: SegmentDetailModel; doc_form: ChunkingMode }>(`/datasets/${datasetId}/documents/${documentId}/segment`, { body })
     },
   })
 }

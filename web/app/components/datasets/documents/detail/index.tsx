@@ -21,7 +21,7 @@ import Loading from '@/app/components/base/loading'
 import type { MetadataType } from '@/service/datasets'
 import { checkSegmentBatchImportProgress, fetchDocumentDetail, segmentBatchImport } from '@/service/datasets'
 import { ToastContext } from '@/app/components/base/toast'
-import type { DocForm, ParentMode, ProcessMode } from '@/models/datasets'
+import type { ChunkingMode, ParentMode, ProcessMode } from '@/models/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -271,7 +271,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           isShow={batchModalVisible}
           onCancel={hideBatchModal}
           onConfirm={runBatch}
-          docForm={documentDetail?.doc_form as DocForm}
+          docForm={documentDetail?.doc_form as ChunkingMode}
         />
       </div>
     </DocumentContext.Provider>
