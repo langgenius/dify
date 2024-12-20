@@ -560,13 +560,29 @@ class Conversation(db.Model):
     @property
     def inputs(self):
         inputs = self._inputs.copy()
+
+        # Convert file mapping to File object
         for key, value in inputs.items():
+            # NOTE: It's not the best way to implement this, but it's the only way to avoid circular import for now.
+            from factories import file_factory
+
             if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                inputs[key] = File.model_validate(value)
+                if value["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                    value["tool_file_id"] = value["related_id"]
+                elif value["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                    value["upload_file_id"] = value["related_id"]
+                inputs[key] = file_factory.build_from_mapping(mapping=value, tenant_id=value["tenant_id"])
             elif isinstance(value, list) and all(
                 isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY for item in value
             ):
-                inputs[key] = [File.model_validate(item) for item in value]
+                inputs[key] = []
+                for item in value:
+                    if item["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                        item["tool_file_id"] = item["related_id"]
+                    elif item["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                        item["upload_file_id"] = item["related_id"]
+                    inputs[key].append(file_factory.build_from_mapping(mapping=item, tenant_id=item["tenant_id"]))
+
         return inputs
 
     @inputs.setter
@@ -758,12 +774,25 @@ class Message(db.Model):
     def inputs(self):
         inputs = self._inputs.copy()
         for key, value in inputs.items():
+            # NOTE: It's not the best way to implement this, but it's the only way to avoid circular import for now.
+            from factories import file_factory
+
             if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                inputs[key] = File.model_validate(value)
+                if value["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                    value["tool_file_id"] = value["related_id"]
+                elif value["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                    value["upload_file_id"] = value["related_id"]
+                inputs[key] = file_factory.build_from_mapping(mapping=value, tenant_id=value["tenant_id"])
             elif isinstance(value, list) and all(
                 isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY for item in value
             ):
-                inputs[key] = [File.model_validate(item) for item in value]
+                inputs[key] = []
+                for item in value:
+                    if item["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                        item["tool_file_id"] = item["related_id"]
+                    elif item["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                        item["upload_file_id"] = item["related_id"]
+                    inputs[key].append(file_factory.build_from_mapping(mapping=item, tenant_id=item["tenant_id"]))
         return inputs
 
     @inputs.setter

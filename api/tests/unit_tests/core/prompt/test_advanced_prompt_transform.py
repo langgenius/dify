@@ -136,6 +136,7 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/image1.jpg",
+            storage_key="",
         )
     ]
 
