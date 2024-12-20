@@ -21,13 +21,13 @@ class MockXinferenceClass:
         if not re.match(r"https?:\/\/[^\s\/$.?#].[^\s]*$", self.base_url):
             raise RuntimeError("404 Not Found")
 
-        if "generate" == model_uid:
+        if model_uid == "generate":
             return RESTfulGenerateModelHandle(model_uid, base_url=self.base_url, auth_headers={})
-        if "chat" == model_uid:
+        if model_uid == "chat":
             return RESTfulChatModelHandle(model_uid, base_url=self.base_url, auth_headers={})
-        if "embedding" == model_uid:
+        if model_uid == "embedding":
             return RESTfulEmbeddingModelHandle(model_uid, base_url=self.base_url, auth_headers={})
-        if "rerank" == model_uid:
+        if model_uid == "rerank":
             return RESTfulRerankModelHandle(model_uid, base_url=self.base_url, auth_headers={})
         raise RuntimeError("404 Not Found")
 

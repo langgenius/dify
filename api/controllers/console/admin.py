@@ -31,7 +31,7 @@ def admin_required(view):
         if auth_scheme != "bearer":
             raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
 
-        if dify_config.ADMIN_API_KEY != auth_token:
+        if auth_token != dify_config.ADMIN_API_KEY:
             raise Unauthorized("API key is invalid.")
 
         return view(*args, **kwargs)
