@@ -529,6 +529,7 @@ class WorkflowNodeExecutionStatus(Enum):
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     EXCEPTION = "exception"
+    RETRY = "retry"
 
     @classmethod
     def value_of(cls, value: str) -> "WorkflowNodeExecutionStatus":
@@ -639,6 +640,7 @@ class WorkflowNodeExecution(db.Model):
     created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(StringUUID, nullable=False)
     finished_at = db.Column(db.DateTime)
+    retry_index = db.Column(db.Integer, server_default=db.text("0"))
 
     @property
     def created_by_account(self):

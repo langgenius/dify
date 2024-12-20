@@ -29,6 +29,7 @@ workflow_run_for_list_fields = {
     "created_at": TimestampField,
     "finished_at": TimestampField,
     "exceptions_count": fields.Integer,
+    "retry_index": fields.Integer,
 }
 
 advanced_chat_workflow_run_for_list_fields = {
@@ -45,6 +46,7 @@ advanced_chat_workflow_run_for_list_fields = {
     "created_at": TimestampField,
     "finished_at": TimestampField,
     "exceptions_count": fields.Integer,
+    "retry_index": fields.Integer,
 }
 
 advanced_chat_workflow_run_pagination_fields = {
@@ -79,6 +81,17 @@ workflow_run_detail_fields = {
     "exceptions_count": fields.Integer,
 }
 
+retry_event_field = {
+    "error": fields.String,
+    "retry_index": fields.Integer,
+    "inputs": fields.Raw(attribute="inputs"),
+    "elapsed_time": fields.Float,
+    "execution_metadata": fields.Raw(attribute="execution_metadata_dict"),
+    "status": fields.String,
+    "outputs": fields.Raw(attribute="outputs"),
+}
+
+
 workflow_run_node_execution_fields = {
     "id": fields.String,
     "index": fields.Integer,
@@ -99,6 +112,7 @@ workflow_run_node_execution_fields = {
     "created_by_account": fields.Nested(simple_account_fields, attribute="created_by_account", allow_null=True),
     "created_by_end_user": fields.Nested(simple_end_user_fields, attribute="created_by_end_user", allow_null=True),
     "finished_at": TimestampField,
+    "retry_events": fields.List(fields.Nested(retry_event_field)),
 }
 
 workflow_run_node_execution_list_fields = {
