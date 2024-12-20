@@ -1,28 +1,51 @@
-import type { FC, SetStateAction } from 'react'
+import type { FC } from 'react'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import Input, { type InputProps } from '../input'
 import classNames from '@/utils/classnames'
 
 export type InputNumberProps = {
   unit?: string
-  value: number
-  onChange: (value: number) => void
+  value?: number
+  onChange: (value?: number) => void
   amount?: number
   size?: 'sm' | 'md'
-} & Omit<InputProps, 'value' | 'onChange' | 'size'>
+  max?: number
+  min?: number
+  defaultValue?: number
+} & Omit<InputProps, 'value' | 'onChange' | 'size' | 'min' | 'max' | 'defaultValue'>
 
 export const InputNumber: FC<InputNumberProps> = (props) => {
-  const { unit, className, onChange, amount = 1, value, size = 'md', max, min, ...rest } = props
-  const update = (input: SetStateAction<number>) => {
-    const current = typeof input === 'function' ? input(value) : input as number
-    if (max && current >= (max as number))
-      return
-    if (min && current <= (min as number))
-      return
-    onChange(current)
+  const { unit, className, onChange, amount = 1, value, size = 'md', max, min, defaultValue, ...rest } = props
+
+  const isValidValue = (v: number) => {
+    if (max && v > max)
+      return false
+    if (min && v < min)
+      return false
+    return true
   }
-  const inc = () => update(val => val + amount)
-  const dec = () => update(val => val - amount)
+
+  const inc = () => {
+    if (value === undefined) {
+      onChange(defaultValue)
+      return
+    }
+    const newValue = value + amount
+    if (!isValidValue(newValue))
+      return
+    onChange(newValue)
+  }
+  const dec = () => {
+    if (value === undefined) {
+      onChange(defaultValue)
+      return
+    }
+    const newValue = value - amount
+    if (!isValidValue(newValue))
+      return
+    onChange(newValue)
+  }
+
   return <div className='flex'>
     <Input {...rest}
       // disable default controller
@@ -32,8 +55,14 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
       max={max}
       min={min}
       onChange={(e) => {
+        if (e.target.value === '')
+          onChange(undefined)
+
         const parsed = Number(e.target.value)
         if (Number.isNaN(parsed))
+          return
+
+        if (!isValidValue(parsed))
           return
         onChange(parsed)
       }}

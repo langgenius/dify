@@ -11,6 +11,7 @@ import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/ec
 import Button from '@/app/components/base/button'
 import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { RerankingModeEnum } from '@/models/datasets'
 
 type Props = {
   indexMethod: string
@@ -57,7 +58,10 @@ const ModifyRetrievalModal: FC<Props> = ({
     }
     onSave(ensureRerankModelSelected({
       rerankDefaultModel: rerankDefaultModel!,
-      retrievalConfig,
+      retrievalConfig: {
+        ...retrievalConfig,
+        reranking_enable: retrievalConfig.reranking_mode === RerankingModeEnum.RerankingModel,
+      },
       indexMethod,
     }))
   }
