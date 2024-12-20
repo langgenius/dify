@@ -926,7 +926,7 @@ const StepTwo = ({
             <div className='p-1'>
               <AlertTriangle className='size-4 text-text-warning-secondary'/>
             </div>
-            <span className='system-xs-medium'>{t('datasetSettings.stepTwo.highQualityTip')}</span>
+            <span className='system-xs-medium'>{t('datasetCreation.stepTwo.highQualityTip')}</span>
           </div>
         )}
         {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
