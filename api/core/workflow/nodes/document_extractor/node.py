@@ -11,7 +11,7 @@ import pypdfium2  # type: ignore
 import yaml  # type: ignore
 
 from configs import dify_config
-from core.file import File, FileTransferMethod, file_manager, FileType
+from core.file import File, FileTransferMethod, FileType, file_manager
 from core.helper import ssrf_proxy
 from core.variables import ArrayFileSegment
 from core.variables.segments import FileSegment
@@ -184,6 +184,7 @@ def _extract_text_from_pdf(file_content: bytes) -> str:
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from PDF: {str(e)}") from e
 
+
 def _extract_images_from_pdf(file: File) -> list[File]:
     file_content = _download_file_content(file)
     images = []
@@ -199,7 +200,7 @@ def _extract_images_from_pdf(file: File) -> list[File]:
                 content=img_bytes,
                 user=current_user,
                 mimetype="image/png",
-                filename=f"{uuid4()}.png" )
+                filename=f"{uuid4()}.png")
             images.append(
                 File(
                     tenant_id=image_upload_file.tenant_id,
@@ -235,6 +236,7 @@ def _extract_images_from_file(files: list[File], user) -> list[File]:
                 raise UnsupportedFileTypeError("Unable to determine file type: MIME type or file extension is missing")
     except Exception as e:
         raise TextExtractionError(f"Failed to extract image from PDF: {str(e)}") from e
+
 
 def _extract_text_from_doc(file_content: bytes) -> str:
     try:
