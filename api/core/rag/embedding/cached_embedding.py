@@ -116,6 +116,8 @@ class CacheEmbedding(Embeddings):
 
             embedding_results = embedding_result.embeddings[0]
             embedding_results = (embedding_results / np.linalg.norm(embedding_results)).tolist()
+            if np.isnan(embedding_results).any():
+                raise ValueError("Normalized embedding is nan please try again")
         except Exception as ex:
             if dify_config.DEBUG:
                 logging.exception(f"Failed to embed query text '{text[:10]}...({len(text)} chars)'")
