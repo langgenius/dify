@@ -12,7 +12,7 @@ import Divider from '@/app/components/base/divider'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import type { DataSet } from '@/models/datasets'
+import { type DataSet, RerankingModeEnum } from '@/models/datasets'
 import { useToastContext } from '@/app/components/base/toast'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useAppContext } from '@/context/app-context'
@@ -111,7 +111,10 @@ const SettingsModal: FC<SettingsModalProps> = ({
     }
     const postRetrievalConfig = ensureRerankModelSelected({
       rerankDefaultModel: rerankDefaultModel!,
-      retrievalConfig,
+      retrievalConfig: {
+        ...retrievalConfig,
+        reranking_enable: retrievalConfig.reranking_mode === RerankingModeEnum.RerankingModel,
+      },
       indexMethod,
     })
     try {

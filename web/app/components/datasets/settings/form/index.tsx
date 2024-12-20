@@ -17,7 +17,7 @@ import Textarea from '@/app/components/base/textarea'
 import Divider from '@/app/components/base/divider'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { updateDatasetSetting } from '@/service/datasets'
-import { type DataSetListResponse } from '@/models/datasets'
+import { type DataSetListResponse, RerankingModeEnum } from '@/models/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { type RetrievalConfig } from '@/types/app'
 import { useAppContext } from '@/context/app-context'
@@ -122,7 +122,10 @@ const Form = () => {
     }
     const postRetrievalConfig = ensureRerankModelSelected({
       rerankDefaultModel: rerankDefaultModel!,
-      retrievalConfig,
+      retrievalConfig: {
+        ...retrievalConfig,
+        reranking_enable: retrievalConfig.reranking_mode === RerankingModeEnum.RerankingModel,
+      },
       indexMethod,
     })
     if (postRetrievalConfig.weights) {
