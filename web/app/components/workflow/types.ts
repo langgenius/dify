@@ -396,3 +396,6 @@ export type VisionSetting = {
   variable_selector: ValueSelector
   detail: Resolution
 }
+export type DocumentExtractorConfig = {
+  output_image: boolean
+}

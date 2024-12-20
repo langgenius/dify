@@ -671,8 +671,12 @@ const translation = {
     },
     docExtractor: {
       inputVar: '输入变量',
+      output_image: '图片输出（只支持PDF）',
+      output_text: '文本输出',
+      output_format: '输出类型',
       outputVars: {
         text: '提取的文本',
+        images: '提取的图片列表',
       },
       supportFileTypes: '支持的文件类型: {{types}}。',
       learnMore: '了解更多',

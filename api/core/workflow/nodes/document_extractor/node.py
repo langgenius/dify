@@ -3,6 +3,7 @@ import io
 import json
 import os
 import tempfile
+from uuid import uuid4
 
 import docx
 import pandas as pd
@@ -10,14 +11,16 @@ import pypdfium2  # type: ignore
 import yaml  # type: ignore
 
 from configs import dify_config
-from core.file import File, FileTransferMethod, file_manager
+from core.file import File, FileTransferMethod, file_manager, FileType
 from core.helper import ssrf_proxy
 from core.variables import ArrayFileSegment
 from core.variables.segments import FileSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
+from libs.login import current_user
 from models.workflow import WorkflowNodeExecutionStatus
+from services.file_service import FileService
 
 from .entities import DocumentExtractorNodeData
 from .exc import DocumentExtractorError, FileDownloadError, TextExtractionError, UnsupportedFileTypeError
@@ -34,6 +37,8 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
 
     def _run(self):
         variable_selector = self.node_data.variable_selector
+        output_image = self.node_data.output_image
+
         variable = self.graph_runtime_state.variable_pool.get(variable_selector)
 
         if variable is None:
@@ -46,23 +51,27 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
         value = variable.value
         inputs = {"variable_selector": variable_selector}
         process_data = {"documents": value if isinstance(value, list) else [value]}
-
+        images = []
         try:
             if isinstance(value, list):
+                if output_image:
+                    images = _extract_images_from_file(files=value, user=current_user)
                 extracted_text_list = list(map(_extract_text_from_file, value))
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=inputs,
                     process_data=process_data,
-                    outputs={"text": extracted_text_list},
+                    outputs={"text": extracted_text_list, "images": images},
                 )
             elif isinstance(value, File):
+                if output_image:
+                    images = _extract_images_from_file([value], user=current_user)
                 extracted_text = _extract_text_from_file(value)
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=inputs,
                     process_data=process_data,
-                    outputs={"text": extracted_text},
+                    outputs={"text": extracted_text, "images": images},
                 )
             else:
                 raise DocumentExtractorError(f"Unsupported variable type: {type(value)}")
@@ -175,6 +184,57 @@ def _extract_text_from_pdf(file_content: bytes) -> str:
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from PDF: {str(e)}") from e
 
+def _extract_images_from_pdf(file: File) -> list[File]:
+    file_content = _download_file_content(file)
+    images = []
+    try:
+        pdf_file = pypdfium2.PdfDocument(file_content, autoclose=True)
+        for page in pdf_file:
+            page_bitmap = page.render(scale=5)
+            image = page_bitmap.to_pil()
+            byte_io = io.BytesIO()
+            image.save(byte_io, format='PNG')
+            img_bytes = byte_io.getvalue()
+            image_upload_file = FileService.upload_file(
+                content=img_bytes,
+                user=current_user,
+                mimetype="image/png",
+                filename=f"{uuid4()}.png" )
+            images.append(
+                File(
+                    tenant_id=image_upload_file.tenant_id,
+                    type=FileType.IMAGE,
+                    transfer_method=FileTransferMethod.LOCAL_FILE,
+                    remote_url=image_upload_file.source_url,
+                    related_id=image_upload_file.id,
+                    filename=image_upload_file.name,
+                    extension=image_upload_file.extension,
+                    mime_type=image_upload_file.mime_type,
+                    size=image_upload_file.size,
+                    storage_key=image_upload_file.key,
+                )
+            )
+
+        return images
+    except Exception as e:
+        raise Exception(f"Failed to convert PDF to images: {e}")
+
+
+def _extract_images_from_file(files: list[File], user) -> list[File]:
+    try:
+        for file in files:
+            if file.extension:
+                if file.extension == ".pdf":
+                    return _extract_images_from_pdf(file=file)
+                return []
+            elif file.mime_type:
+                if file.mime_type == "application/pdf":
+                    return _extract_images_from_pdf(file=file)
+                return []
+            else:
+                raise UnsupportedFileTypeError("Unable to determine file type: MIME type or file extension is missing")
+    except Exception as e:
+        raise TextExtractionError(f"Failed to extract image from PDF: {str(e)}") from e
 
 def _extract_text_from_doc(file_content: bytes) -> str:
     try:

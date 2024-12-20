@@ -268,6 +268,10 @@ const formatItem = (
           variable: 'text',
           type: (data as DocExtractorNodeType).is_array_file ? VarType.arrayString : VarType.string,
         },
+        {
+          variable: 'images',
+          type: VarType.arrayFile,
+        },
       ]
       break
     }

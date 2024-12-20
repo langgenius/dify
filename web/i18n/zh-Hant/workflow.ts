@@ -664,8 +664,12 @@ const translation = {
       addNote: '添加註釋',
     },
     docExtractor: {
+      output_image: '圖片輸出（只支持PDF）',
+      output_text: '文本輸出',
+      output_format: '輸出类型',
       outputVars: {
-        text: '提取的文字',
+        text: '提取的文本',
+        images: '提取的圖片列表',
       },
       learnMore: '瞭解更多資訊',
       inputVar: '輸入變數',

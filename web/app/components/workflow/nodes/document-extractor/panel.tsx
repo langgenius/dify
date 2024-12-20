@@ -14,6 +14,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { BlockEnum, type NodePanelProps } from '@/app/components/workflow/types'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n/language'
+import RadioGroup from '@/app/components/base/radio-group'
 
 const i18nPrefix = 'workflow.nodes.docExtractor'
 
@@ -44,6 +45,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
   const {
     readOnly,
     inputs,
+    handleConfigChanges,
     handleVarChanges,
     filterVar,
   } = useConfig(id, data)
@@ -72,13 +74,42 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
         </Field>
       </div>
       <Split />
+      <div
+        className='ml-4 leading-[18px] text-[13px] font-semibold text-gray-800'>{t(`${i18nPrefix}.output_format`)}</div>
+      <div className='p-4 ml-4 mr-4 mt-2  border rounded-lg'>
+        <RadioGroup
+          className='space-x-3'
+          options={[
+            {
+              label: t(`${i18nPrefix}.output_image`),
+              value: 'image',
+            },
+            {
+              label: t(`${i18nPrefix}.output_text`),
+              value: 'text',
+            },
+          ]}
+          value={inputs.output_image ? 'image' : 'text'}
+          onChange={val => handleConfigChanges({
+            output_image: val === 'image',
+          })}
+        />
+      </div>
+      <Split />
       <div>
         <OutputVars>
-          <VarItem
-            name='text'
-            type={inputs.is_array_file ? 'array[string]' : 'string'}
-            description={t(`${i18nPrefix}.outputVars.text`)}
-          />
+          <div className=' p-4'>
+            <VarItem
+              name='text'
+              type={inputs.is_array_file ? 'array[string]' : 'string'}
+              description={t(`${i18nPrefix}.outputVars.text`)}
+            />
+            <VarItem
+              name='images'
+              type={'array[file]'}
+              description={t(`${i18nPrefix}.outputVars.images`)}
+            />
+          </div>
         </OutputVars>
       </div>
     </div>

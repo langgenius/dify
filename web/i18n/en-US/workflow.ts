@@ -671,8 +671,12 @@ const translation = {
     },
     docExtractor: {
       inputVar: 'Input Variable',
+      output_image: 'Image output (only pdf)',
+      output_text: 'Text output',
+      output_format: 'Text output',
       outputVars: {
         text: 'Extracted text',
+        images: 'Extracted images',
       },
       supportFileTypes: 'Support file types: {{types}}.',
       learnMore: 'Learn more',

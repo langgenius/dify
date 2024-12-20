@@ -76,6 +76,7 @@ class File(BaseModel):
             extension=extension,
             mime_type=mime_type,
             size=size,
+            storage_key=storage_key,
         )
         self._storage_key = storage_key
 

@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react'
 import produce from 'immer'
 import { useStoreApi } from 'reactflow'
 
-import type { ValueSelector, Var } from '../../types'
+import type { DocumentExtractorConfig, ValueSelector, Var } from '../../types'
 import { VarType } from '../../types'
 import { type DocExtractorNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
@@ -55,11 +55,19 @@ const useConfig = (id: string, payload: DocExtractorNodeType) => {
     setInputs(newInputs)
   }, [getType, inputs, setInputs])
 
+  const handleConfigChanges = useCallback((config: DocumentExtractorConfig) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.output_image = config.output_image
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   return {
     readOnly,
     inputs,
     filterVar,
     handleVarChanges,
+    handleConfigChanges,
   }
 }
 
