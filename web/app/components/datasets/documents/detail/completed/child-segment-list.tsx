@@ -91,7 +91,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
     <div className={classNames(
       'flex flex-col',
       contentOpacity,
-      isParagraphMode ? 'p-1 pb-2' : 'px-3 grow',
+      isParagraphMode ? 'pt-1 pb-2' : 'px-3 grow',
       (isFullDocMode && isLoading) && 'overflow-y-hidden',
     )}>
       {isFullDocMode ? <Divider type='horizontal' className='h-[1px] bg-divider-subtle my-1' /> : null}
@@ -169,6 +169,12 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
                   onClick={(e) => {
                     e.stopPropagation()
                     onClickSlice?.(childChunk)
+                  }}
+                  offsetOptions={({ rects }) => {
+                    return {
+                      mainAxis: isFullDocMode ? -rects.floating.width : 12 - rects.floating.width,
+                      crossAxis: (20 - rects.floating.height) / 2,
+                    }
                   }}
                 />
               })}

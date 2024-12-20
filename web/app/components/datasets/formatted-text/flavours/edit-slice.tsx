@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FC, ReactNode } from 'react'
-import { FloatingFocusManager, autoUpdate, flip, shift, useDismiss, useFloating, useHover, useInteractions, useRole } from '@floating-ui/react'
+import { FloatingFocusManager, type OffsetOptions, autoUpdate, flip, offset, shift, useDismiss, useFloating, useHover, useInteractions, useRole } from '@floating-ui/react'
 import { RiDeleteBinLine } from '@remixicon/react'
 // @ts-expect-error no types available
 import lineClamp from 'line-clamp'
@@ -16,6 +16,7 @@ type EditSliceProps = SliceProps<{
   labelInnerClassName?: string
   contentClassName?: string
   showDivider?: boolean
+  offsetOptions?: OffsetOptions
 }>
 
 export const EditSlice: FC<EditSliceProps> = (props) => {
@@ -28,6 +29,7 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
     labelInnerClassName,
     contentClassName,
     showDivider = true,
+    offsetOptions,
     ...rest
   } = props
   const [delBtnShow, setDelBtnShow] = useState(false)
@@ -36,11 +38,12 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
   const { refs, floatingStyles, context } = useFloating({
     open: delBtnShow,
     onOpenChange: setDelBtnShow,
-    placement: 'right',
+    placement: 'right-start',
     whileElementsMounted: autoUpdate,
     middleware: [
       flip(),
       shift(),
+      offset(offsetOptions),
     ],
   })
   const hover = useHover(context, {})
@@ -51,9 +54,9 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
   const isDestructive = delBtnShow && isDelBtnHover
 
   return (
-    <span className='inline-block'>
+    <>
       <SliceContainer {...rest}
-        className={classNames('block', className)}
+        className={classNames('block mr-0', className)}
         ref={(ref) => {
           refs.setReference(ref)
           if (ref)
@@ -86,11 +89,11 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
         {delBtnShow && <FloatingFocusManager
           context={context}
         >
-          <div
+          <span
             ref={refs.setFloating}
             style={floatingStyles}
             {...getFloatingProps()}
-            className='p-1 rounded-lg bg-components-actionbar-bg shadow flex items-center justify-center'
+            className='p-1 rounded-lg bg-components-actionbar-bg shadow inline-flex items-center justify-center'
             onMouseEnter={() => setDelBtnHover(true)}
             onMouseLeave={() => setDelBtnHover(false)}
           >
@@ -104,9 +107,9 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
             >
               <RiDeleteBinLine className='w-4 h-4' />
             </ActionButton>
-          </div>
+          </span>
         </FloatingFocusManager>}
       </SliceContainer>
-    </span>
+    </>
   )
 }
