@@ -351,6 +351,7 @@ const Form: FC<FormProps> = ({
         variable,
         label,
         required,
+        scope,
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
 
       return (
@@ -366,6 +367,7 @@ const Form: FC<FormProps> = ({
           </div>
           <AppSelector
             disabled={readonly}
+            scope={scope}
             value={value[variable]}
             onSelect={item => handleFormChange(variable, { ...item, type: FormTypeEnum.appSelector } as any)}
           />

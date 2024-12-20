@@ -17,6 +17,7 @@ import type { App } from '@/types/app'
 
 type Props = {
   appList: App[]
+  scope: string
   disabled: boolean
   trigger: React.ReactNode
   placement?: Placement
@@ -27,6 +28,7 @@ type Props = {
 }
 
 const AppPicker: FC<Props> = ({
+  scope,
   appList,
   disabled,
   trigger,
@@ -38,8 +40,16 @@ const AppPicker: FC<Props> = ({
 }) => {
   const [searchText, setSearchText] = useState('')
   const filteredAppList = useMemo(() => {
-    return (appList || []).filter(app => app.name.toLowerCase().includes(searchText.toLowerCase())).filter(app => (app.mode !== 'advanced-chat' && app.mode !== 'workflow') || !!app.workflow)
-  }, [appList, searchText])
+    return (appList || [])
+      .filter(app => app.name.toLowerCase().includes(searchText.toLowerCase()))
+      .filter(app => (app.mode !== 'advanced-chat' && app.mode !== 'workflow') || !!app.workflow)
+      .filter(app => scope === 'all'
+      || (scope === 'completion' && app.mode === 'completion')
+      || (scope === 'workflow' && app.mode === 'workflow')
+      || (scope === 'chat' && app.mode === 'advanced-chat')
+      || (scope === 'chat' && app.mode === 'agent-chat')
+      || (scope === 'chat' && app.mode === 'chat'))
+  }, [appList, scope, searchText])
   const getAppType = (app: App) => {
     switch (app.mode) {
       case 'advanced-chat':
@@ -74,7 +84,7 @@ const AppPicker: FC<Props> = ({
       </PortalToFollowElemTrigger>
 
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className="relative w-[356px] min-h-20 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg">
+        <div className="relative w-[356px] min-h-20 rounded-xl backdrop-blur-sm bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg">
           <div className='p-2 pb-1'>
             <Input
               showLeftIcon
