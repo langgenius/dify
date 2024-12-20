@@ -50,7 +50,7 @@ const IndexMethodRadio = ({
   ]
 
   return (
-    <div className={classNames('grow inline-flex gap-x-2')}>
+    <div className={classNames('inline-flex gap-x-2')}>
 
       {
         options.map((option) => {

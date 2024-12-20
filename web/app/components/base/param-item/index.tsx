@@ -25,7 +25,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
   return (
     <div className={className}>
       <div className="flex items-center justify-between">
-        <div className="flex items-center">
+        <div className="flex items-center h-6">
           {hasSwitch && (
             <Switch
               size='md'

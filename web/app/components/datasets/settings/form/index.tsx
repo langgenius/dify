@@ -30,6 +30,7 @@ import type { DefaultModel } from '@/app/components/header/account-setting/model
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
+import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
 
 const rowClass = 'flex'
 const labelClass = `
@@ -197,7 +198,7 @@ const Form = () => {
         <div className='grow'>
           <Textarea
             disabled={!currentDataset?.embedding_available}
-            className='mb-2 h-[120px] resize-none'
+            className='h-[120px] resize-none'
             placeholder={t('datasetSettings.form.descPlaceholder') || ''}
             value={description}
             onChange={e => setDescription(e.target.value)}
@@ -226,13 +227,22 @@ const Form = () => {
             <div className={labelClass}>
               <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.indexMethod')}</div>
             </div>
-            <IndexMethodRadio
-              disable={!currentDataset?.embedding_available}
-              value={indexMethod}
-              onChange={v => setIndexMethod(v)}
-              docForm={currentDataset.doc_form}
-              currentValue={currentDataset.indexing_technique}
-            />
+            <div className='grow'>
+              <IndexMethodRadio
+                disable={!currentDataset?.embedding_available}
+                value={indexMethod}
+                onChange={v => setIndexMethod(v)}
+                docForm={currentDataset.doc_form}
+                currentValue={currentDataset.indexing_technique}
+              />
+              {currentDataset.indexing_technique === 'economy' && indexMethod === 'high_quality' && <div className='mt-2 h-10 p-2 flex items-center gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border overflow-hidden bg-components-panel-bg-blur backdrop-blur-[5px] shadow-xs'>
+                <div className='absolute top-0 left-0 right-0 bottom-0 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)] opacity-40'></div>
+                <div className='p-1'>
+                  <AlertTriangle className='size-4 text-text-warning-secondary' />
+                </div>
+                <span className='system-xs-medium'>{t('datasetSettings.form.upgradeHighQualityTip')}</span>
+              </div>}
+            </div>
           </div>
         </>
       )}
