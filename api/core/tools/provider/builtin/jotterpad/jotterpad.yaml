@@ -4,7 +4,7 @@ identity:
   label:
     en_US: JotterPad
   description:
-    en_US: JotterPad prints and exports Markdown to PDF.
+    en_US: JotterPad prints and exports text content such as Markdown to document such as PDF.
   icon: icon.svg
   tags:
     - utilities
@@ -18,4 +18,4 @@ credentials_for_provider:
       en_US: Please input your JotterPad API key
     help:
       en_US: Get your JotterPad API key from your JotterPad account settings.
-    url: https://jotterpad.app/app/editor/local?new=markdown&openSettings=true
+    url: https://blog.jotterpad.app/dify-jotterpads-print-engine

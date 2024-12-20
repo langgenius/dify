@@ -1,12 +1,12 @@
 identity:
-  name: initiate_export
+  name: initiate_print_or_export
   author: JotterPad
   label:
-    en_US: Initiate Export
+    en_US: Initiate Print or Export
 description:
   human:
-    en_US: Initiate export of document.
-  llm: Initiate export of document.
+    en_US: Initiate print or export of document.
+  llm: Initiate print or export of document.
 parameters:
   - name: in_type
     type: string

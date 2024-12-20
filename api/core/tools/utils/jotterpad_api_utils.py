@@ -71,7 +71,7 @@ class JotterPadRequest:
             return res.get("status") == "ok"
         return False
 
-    def initiate_export(self, in_type: str, out_type, input_content: str, metadata: str, name: str) -> str:
+    def initiate_print_or_export(self, in_type: str, out_type, input_content: str, metadata: str, name: str) -> str:
         url = f"{self.API_BASE_URL}/exports/upload/{in_type}/{out_type}"
         payload = {
             "input": input_content,
