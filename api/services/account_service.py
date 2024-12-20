@@ -420,7 +420,7 @@ class AccountService:
         if count is None:
             count = 0
         count = int(count) + 1
-        redis_client.setex(key, 60 * 60 * 24, count)
+        redis_client.setex(key, dify_config.LOGIN_LOCKOUT_DURATION, count)
 
     @staticmethod
     def is_login_error_rate_limit(email: str) -> bool:

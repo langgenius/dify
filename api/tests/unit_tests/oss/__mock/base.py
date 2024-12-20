@@ -13,6 +13,10 @@ def get_example_bucket() -> str:
     return "dify"
 
 
+def get_opendal_bucket() -> str:
+    return "./dify"
+
+
 def get_example_filename() -> str:
     return "test.txt"
 

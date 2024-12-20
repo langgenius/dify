@@ -19,4 +19,9 @@ html[data-theme="light"] {
     rgba(249, 250, 251, 0.9) -0.1%,
     rgba(242, 244, 247, 0.9) 98.26%
   );
+  --mask-top2bottom-gray-50-to-transparent: linear-gradient(
+    180deg,
+    rgba(200, 206, 218, 0.2) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
 }

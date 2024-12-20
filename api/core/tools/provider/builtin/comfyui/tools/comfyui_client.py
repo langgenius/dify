@@ -40,7 +40,10 @@ class ComfyUiClient:
     def open_websocket_connection(self) -> tuple[WebSocket, str]:
         client_id = str(uuid.uuid4())
         ws = WebSocket()
-        ws_address = f"ws://{self.base_url.authority}/ws?clientId={client_id}"
+        ws_protocol = "ws"
+        if self.base_url.scheme == "https":
+            ws_protocol = "wss"
+        ws_address = f"{ws_protocol}://{self.base_url.authority}/ws?clientId={client_id}"
         ws.connect(ws_address)
         return ws, client_id
 

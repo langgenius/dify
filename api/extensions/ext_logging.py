@@ -1,7 +1,10 @@
 import logging
 import os
 import sys
+import uuid
 from logging.handlers import RotatingFileHandler
+
+import flask
 
 from configs import dify_config
 from dify_app import DifyApp
@@ -22,11 +25,14 @@ def init_app(app: DifyApp):
         )
 
     # Always add StreamHandler to log to console
-    log_handlers.append(logging.StreamHandler(sys.stdout))
+    sh = logging.StreamHandler(sys.stdout)
+    sh.addFilter(RequestIdFilter())
+    log_formatter = logging.Formatter(fmt=dify_config.LOG_FORMAT)
+    sh.setFormatter(log_formatter)
+    log_handlers.append(sh)
 
     logging.basicConfig(
         level=dify_config.LOG_LEVEL,
-        format=dify_config.LOG_FORMAT,
         datefmt=dify_config.LOG_DATEFORMAT,
         handlers=log_handlers,
         force=True,
@@ -44,3 +50,22 @@ def init_app(app: DifyApp):
 
         for handler in logging.root.handlers:
             handler.formatter.converter = time_converter
+
+
+def get_request_id():
+    if getattr(flask.g, "request_id", None):
+        return flask.g.request_id
+
+    new_uuid = uuid.uuid4().hex[:10]
+    flask.g.request_id = new_uuid
+
+    return new_uuid
+
+
+class RequestIdFilter(logging.Filter):
+    # This is a logging filter that makes the request ID available for use in
+    # the logging format. Note that we're checking if we're in a request
+    # context, as we may want to log things before Flask is fully loaded.
+    def filter(self, record):
+        record.req_id = get_request_id() if flask.has_request_context() else ""
+        return True

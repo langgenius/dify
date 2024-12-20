@@ -45,3 +45,6 @@ class NodeRunResult(BaseModel):
 
     error: Optional[str] = None  # error message if status is failed
     error_type: Optional[str] = None  # error type if status is failed
+
+    # single step node run retry
+    retry_index: int = 0

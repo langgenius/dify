@@ -37,8 +37,6 @@ class TiDBVectorConfig(BaseModel):
             raise ValueError("config TIDB_VECTOR_PORT is required")
         if not values["user"]:
             raise ValueError("config TIDB_VECTOR_USER is required")
-        if not values["password"]:
-            raise ValueError("config TIDB_VECTOR_PASSWORD is required")
         if not values["database"]:
             raise ValueError("config TIDB_VECTOR_DATABASE is required")
         if not values["program_name"]:

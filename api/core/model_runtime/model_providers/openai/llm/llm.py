@@ -920,10 +920,12 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                         }
                         sub_messages.append(sub_message_dict)
                     elif isinstance(message_content, AudioPromptMessageContent):
+                        data_split = message_content.data.split(";base64,")
+                        base64_data = data_split[1]
                         sub_message_dict = {
                             "type": "input_audio",
                             "input_audio": {
-                                "data": message_content.data,
+                                "data": base64_data,
                                 "format": message_content.format,
                             },
                         }
