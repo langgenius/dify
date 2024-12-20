@@ -15,7 +15,7 @@ import Input from '@/app/components/workflow/nodes/_base/components/input-suppor
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { VarType } from '@/app/components/workflow/types'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 
 type Props = {
   readOnly: boolean
@@ -242,15 +242,14 @@ const InputVarList: FC<Props> = ({
                   popupClassName='!w-[387px]'
                   isAdvancedMode
                   isInWorkflow
-                  provider={(varInput as any).provider}
-                  modelId={(varInput as any).model}
-                  mode={(varInput as any).mode}
-                  completionParams={(varInput as any).completion_params}
+                  provider={(varInput as any)?.provider}
+                  modelId={(varInput as any)?.model}
+                  mode={(varInput as any)?.mode}
+                  completionParams={(varInput as any)?.completion_params}
                   setModel={handleModelChange(variable)}
                   onCompletionParamsChange={handleModelParamsChange(variable)}
-                  hideDebugWithMultipleModel
-                  debugWithMultipleModel={false}
                   readonly={readOnly}
+                  scope={'embedding'}
                 />
               )}
               {tooltip && <div className='text-text-tertiary body-xs-regular'>{tooltip[language] || tooltip.en_US}</div>}
