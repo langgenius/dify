@@ -3,8 +3,7 @@ import json
 
 from flask_login import UserMixin  # type: ignore
 
-from extensions.ext_database import db
-
+from .engine import db
 from .types import StringUUID
 
 

@@ -45,6 +45,7 @@ class Executor:
     headers: dict[str, str]
     auth: HttpRequestNodeAuthorization
     timeout: HttpRequestNodeTimeout
+    max_retries: int
 
     boundary: str
 
@@ -54,6 +55,7 @@ class Executor:
         node_data: HttpRequestNodeData,
         timeout: HttpRequestNodeTimeout,
         variable_pool: VariablePool,
+        max_retries: int = dify_config.SSRF_DEFAULT_MAX_RETRIES,
     ):
         # If authorization API key is present, convert the API key using the variable pool
         if node_data.authorization.type == "api-key":
@@ -73,6 +75,7 @@ class Executor:
         self.files = None
         self.data = None
         self.json = None
+        self.max_retries = max_retries
 
         # init template
         self.variable_pool = variable_pool
@@ -241,6 +244,7 @@ class Executor:
             "params": self.params,
             "timeout": (self.timeout.connect, self.timeout.read, self.timeout.write),
             "follow_redirects": True,
+            "max_retries": self.max_retries,
         }
         # request_args = {k: v for k, v in request_args.items() if v is not None}
         try:

@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from celery import states  # type: ignore
 
-from extensions.ext_database import db
+from .engine import db
 
 
 class CeleryTask(db.Model):  # type: ignore[name-defined]

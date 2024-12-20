@@ -9,12 +9,6 @@ import docx
 import pandas as pd
 import pypdfium2  # type: ignore
 import yaml  # type: ignore
-from unstructured.partition.api import partition_via_api
-from unstructured.partition.email import partition_email
-from unstructured.partition.epub import partition_epub
-from unstructured.partition.msg import partition_msg
-from unstructured.partition.ppt import partition_ppt
-from unstructured.partition.pptx import partition_pptx
 
 from configs import dify_config
 from core.file import File, FileTransferMethod, file_manager
@@ -257,6 +251,8 @@ def _extract_text_from_excel(file_content: bytes) -> str:
 
 
 def _extract_text_from_ppt(file_content: bytes) -> str:
+    from unstructured.partition.ppt import partition_ppt
+
     try:
         with io.BytesIO(file_content) as file:
             elements = partition_ppt(file=file)
@@ -266,6 +262,9 @@ def _extract_text_from_ppt(file_content: bytes) -> str:
 
 
 def _extract_text_from_pptx(file_content: bytes) -> str:
+    from unstructured.partition.api import partition_via_api
+    from unstructured.partition.pptx import partition_pptx
+
     try:
         if dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY:
             with tempfile.NamedTemporaryFile(suffix=".pptx", delete=False) as temp_file:
@@ -288,6 +287,8 @@ def _extract_text_from_pptx(file_content: bytes) -> str:
 
 
 def _extract_text_from_epub(file_content: bytes) -> str:
+    from unstructured.partition.epub import partition_epub
+
     try:
         with io.BytesIO(file_content) as file:
             elements = partition_epub(file=file)
@@ -297,6 +298,8 @@ def _extract_text_from_epub(file_content: bytes) -> str:
 
 
 def _extract_text_from_eml(file_content: bytes) -> str:
+    from unstructured.partition.email import partition_email
+
     try:
         with io.BytesIO(file_content) as file:
             elements = partition_email(file=file)
@@ -306,6 +309,8 @@ def _extract_text_from_eml(file_content: bytes) -> str:
 
 
 def _extract_text_from_msg(file_content: bytes) -> str:
+    from unstructured.partition.msg import partition_msg
+
     try:
         with io.BytesIO(file_content) as file:
             elements = partition_msg(file=file)

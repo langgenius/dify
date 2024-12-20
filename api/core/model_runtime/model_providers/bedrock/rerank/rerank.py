@@ -62,7 +62,10 @@ class BedrockRerankModel(RerankModel):
                 }
             )
         modelId = model
-        region = credentials["aws_region"]
+        region = credentials.get("aws_region")
+        # region is a required field
+        if not region:
+            raise InvokeBadRequestError("aws_region is required in credentials")
         model_package_arn = f"arn:aws:bedrock:{region}::foundation-model/{modelId}"
         rerankingConfiguration = {
             "type": "BEDROCK_RERANKING_MODEL",

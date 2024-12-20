@@ -1,7 +1,6 @@
 from enum import Enum
 
-from extensions.ext_database import db
-
+from .engine import db
 from .types import StringUUID
 
 

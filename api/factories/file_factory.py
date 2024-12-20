@@ -139,6 +139,7 @@ def _build_from_local_file(
         remote_url=row.source_url,
         related_id=mapping.get("upload_file_id"),
         size=row.size,
+        storage_key=row.key,
     )
 
 
@@ -168,6 +169,7 @@ def _build_from_remote_url(
         mime_type=mime_type,
         extension=extension,
         size=file_size,
+        storage_key="",
     )
 
 
@@ -220,6 +222,7 @@ def _build_from_tool_file(
         extension=extension,
         mime_type=tool_file.mimetype,
         size=tool_file.size,
+        storage_key=tool_file.file_key,
     )
 
 
