@@ -18,7 +18,7 @@ from core.file import helpers as file_helpers
 from core.file.tool_file_parser import ToolFileParser
 from libs.helper import generate_string
 from models.enums import CreatedByRole
-from models.workflow import WorkflowRunStatus
+from models.workflow import Workflow, WorkflowRunStatus
 
 from .account import Account, Tenant
 from .engine import db
