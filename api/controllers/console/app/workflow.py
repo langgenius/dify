@@ -429,6 +429,15 @@ class ConvertToWorkflowApi(Resource):
 
 class WorkflowConfigApi(Resource):
     """Resource for workflow configuration."""
+    def get(self, app_model: App):
+        return {
+            "parallel_depth_limit": dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
+        }
+class PublishedAllWorkflowApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @marshal_with(workflow_fields)
     def get(self, app_model: App):
         """
@@ -441,16 +450,6 @@ class WorkflowConfigApi(Resource):
         workflow_service = WorkflowService()
         workflows = workflow_service.get_all_published_workflow(app_model=app_model)
         return workflows
-class PublishedAllWorkflowApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App):
-        return {
-            "parallel_depth_limit": dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
-        }
-    
 
 
 api.add_resource(DraftWorkflowApi, "/apps/<uuid:app_id>/workflows/draft")
