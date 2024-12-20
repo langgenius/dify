@@ -526,23 +526,12 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                                         f"Unsupported document type {message_content.mime_type}, "
                                         "only support application/pdf"
                                     )
-                                if not message_content.base64_data:
-                                    try:
-                                        document_content = requests.get(message_content.url).content
-                                        base64_data = base64.b64encode(document_content).decode("utf-8")
-                                    except Exception as ex:
-                                        raise ValueError(
-                                            f"Failed to fetch document data from url {message_content.url}, {ex}"
-                                        )
-                                else:
-                                    base64_data = message_content.base64_data
-
                                 sub_message_dict = {
                                     "type": "document",
                                     "source": {
                                         "type": "base64",
                                         "media_type": message_content.mime_type,
-                                        "data": base64_data,
+                                        "data": message_content.base64_data,
                                     },
                                 }
                                 sub_messages.append(sub_message_dict)
