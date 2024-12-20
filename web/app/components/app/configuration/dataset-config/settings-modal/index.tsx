@@ -259,6 +259,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 value={indexMethod}
                 onChange={v => setIndexMethod(v!)}
                 docForm={currentDataset.doc_form}
+                currentValue={currentDataset.indexing_technique}
               />
             </div>
           </div>

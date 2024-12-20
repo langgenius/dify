@@ -31,7 +31,7 @@ const IndexMethodRadio = ({
   const { t } = useTranslation()
   const economyDomRef = useRef<HTMLDivElement>(null)
   const isHoveringEconomy = useHover(economyDomRef)
-  const isEconomyDisabled = docForm === ChunkingMode.parentChild || currentValue === IndexingType.QUALIFIED
+  const isEconomyDisabled = currentValue === IndexingType.QUALIFIED
   const displayChangeToHQTip = currentValue === IndexingType.ECONOMICAL && value === IndexingType.QUALIFIED
   const options = [
     {
@@ -75,6 +75,8 @@ const IndexMethodRadio = ({
                     onSwitched={() => {
                       if (isParentChild && option.key === IndexingType.ECONOMICAL)
                         return
+                      if (isEconomyDisabled && option.key === IndexingType.ECONOMICAL)
+                        return
                       if (!disable)
                         onChange(option.key as DataSet['indexing_technique'])
                     } }
@@ -87,11 +89,11 @@ const IndexMethodRadio = ({
                     title={option.text}
                     description={option.desc}
                     ref={option.key === 'economy' ? economyDomRef : undefined}
-                    className={classNames(isEconomyDisabled && 'cursor-not-allowed')}
+                    className={classNames((isEconomyDisabled && option.key === 'economy') && 'cursor-not-allowed')}
                   >
                   </OptionCard>
                 </PortalToFollowElemTrigger>
-                <PortalToFollowElemContent>
+                <PortalToFollowElemContent style={{ zIndex: 60 }}>
                   <div className='p-3 bg-components-tooltip-bg border-components-panel-border text-xs font-medium text-text-secondary rounded-lg shadow-lg'>
                     {t('datasetSettings.form.indexMethodChangeToEconomyDisabledTip')}
                   </div>
@@ -105,7 +107,8 @@ const IndexMethodRadio = ({
         <div className='absolute top-0 left-0 right-0 bottom-0 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)] opacity-40'>
         </div>
         <div className='p-1'>
-          <AlertTriangle className='size-4 text-text-warning-secondary'/>             </div>
+          <AlertTriangle className='size-4 text-text-warning-secondary'/>
+        </div>
         <span className='system-xs-medium'>{t('datasetCreation.stepTwo.highQualityTip')}</span>
       </div>}
     </>
