@@ -429,6 +429,10 @@ class ConvertToWorkflowApi(Resource):
 
 class WorkflowConfigApi(Resource):
     """Resource for workflow configuration."""
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App):
         return {
             "parallel_depth_limit": dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
