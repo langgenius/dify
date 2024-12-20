@@ -16,11 +16,12 @@ from configs import dify_config
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
 from core.file.tool_file_parser import ToolFileParser
-from extensions.ext_database import db
 from libs.helper import generate_string
 from models.enums import CreatedByRole
+from models.workflow import WorkflowRunStatus
 
 from .account import Account, Tenant
+from .engine import db
 from .types import StringUUID
 
 
@@ -560,13 +561,29 @@ class Conversation(db.Model):
     @property
     def inputs(self):
         inputs = self._inputs.copy()
+
+        # Convert file mapping to File object
         for key, value in inputs.items():
+            # NOTE: It's not the best way to implement this, but it's the only way to avoid circular import for now.
+            from factories import file_factory
+
             if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                inputs[key] = File.model_validate(value)
+                if value["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                    value["tool_file_id"] = value["related_id"]
+                elif value["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                    value["upload_file_id"] = value["related_id"]
+                inputs[key] = file_factory.build_from_mapping(mapping=value, tenant_id=value["tenant_id"])
             elif isinstance(value, list) and all(
                 isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY for item in value
             ):
-                inputs[key] = [File.model_validate(item) for item in value]
+                inputs[key] = []
+                for item in value:
+                    if item["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                        item["tool_file_id"] = item["related_id"]
+                    elif item["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                        item["upload_file_id"] = item["related_id"]
+                    inputs[key].append(file_factory.build_from_mapping(mapping=item, tenant_id=item["tenant_id"]))
+
         return inputs
 
     @inputs.setter
@@ -680,6 +697,29 @@ class Conversation(db.Model):
         return {"like": like, "dislike": dislike}
 
     @property
+    def status_count(self):
+        messages = db.session.query(Message).filter(Message.conversation_id == self.id).all()
+        status_counts = {
+            WorkflowRunStatus.SUCCEEDED: 0,
+            WorkflowRunStatus.FAILED: 0,
+            WorkflowRunStatus.PARTIAL_SUCCESSED: 0,
+        }
+
+        for message in messages:
+            if message.workflow_run:
+                status_counts[message.workflow_run.status] += 1
+
+        return (
+            {
+                "success": status_counts[WorkflowRunStatus.SUCCEEDED],
+                "failed": status_counts[WorkflowRunStatus.FAILED],
+                "partial_success": status_counts[WorkflowRunStatus.PARTIAL_SUCCESSED],
+            }
+            if messages
+            else None
+        )
+
+    @property
     def first_message(self):
         return db.session.query(Message).filter(Message.conversation_id == self.id).first()
 
@@ -758,12 +798,25 @@ class Message(db.Model):
     def inputs(self):
         inputs = self._inputs.copy()
         for key, value in inputs.items():
+            # NOTE: It's not the best way to implement this, but it's the only way to avoid circular import for now.
+            from factories import file_factory
+
             if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                inputs[key] = File.model_validate(value)
+                if value["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                    value["tool_file_id"] = value["related_id"]
+                elif value["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                    value["upload_file_id"] = value["related_id"]
+                inputs[key] = file_factory.build_from_mapping(mapping=value, tenant_id=value["tenant_id"])
             elif isinstance(value, list) and all(
                 isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY for item in value
             ):
-                inputs[key] = [File.model_validate(item) for item in value]
+                inputs[key] = []
+                for item in value:
+                    if item["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                        item["tool_file_id"] = item["related_id"]
+                    elif item["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                        item["upload_file_id"] = item["related_id"]
+                    inputs[key].append(file_factory.build_from_mapping(mapping=item, tenant_id=item["tenant_id"]))
         return inputs
 
     @inputs.setter

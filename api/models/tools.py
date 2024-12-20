@@ -8,8 +8,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
-from extensions.ext_database import db
 
+from .engine import db
 from .model import Account, App, Tenant
 from .types import StringUUID
 
@@ -82,7 +82,7 @@ class PublishedAppTool(db.Model):
         return I18nObject(**json.loads(self.description))
 
     @property
-    def app(self) -> App:
+    def app(self):
         return db.session.query(App).filter(App.id == self.app_id).first()
 
 
@@ -200,10 +200,6 @@ class WorkflowToolProvider(db.Model):
 
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-
-    @property
-    def schema_type(self) -> ApiProviderSchemaType:
-        return ApiProviderSchemaType.value_of(self.schema_type_str)
 
     @property
     def user(self) -> Account | None:

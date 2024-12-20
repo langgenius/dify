@@ -12,12 +12,12 @@ import contexts
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
 from core.variables import SecretVariable, Variable
-from extensions.ext_database import db
 from factories import variable_factory
 from libs import helper
 from models.enums import CreatedByRole
 
 from .account import Account
+from .engine import db
 from .types import StringUUID
 
 
@@ -399,7 +399,7 @@ class WorkflowRun(db.Model):
     graph = db.Column(db.Text)
     inputs = db.Column(db.Text)
     status = db.Column(db.String(255), nullable=False)  # running, succeeded, failed, stopped, partial-succeeded
-    outputs: Mapped[str] = mapped_column(sa.Text, default="{}")
+    outputs: Mapped[Optional[str]] = mapped_column(sa.Text, default="{}")
     error = db.Column(db.Text)
     elapsed_time = db.Column(db.Float, nullable=False, server_default=db.text("0"))
     total_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
@@ -529,6 +529,7 @@ class WorkflowNodeExecutionStatus(Enum):
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     EXCEPTION = "exception"
+    RETRY = "retry"
 
     @classmethod
     def value_of(cls, value: str) -> "WorkflowNodeExecutionStatus":
@@ -639,6 +640,7 @@ class WorkflowNodeExecution(db.Model):
     created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(StringUUID, nullable=False)
     finished_at = db.Column(db.DateTime)
+    retry_index = db.Column(db.Integer, server_default=db.text("0"))
 
     @property
     def created_by_account(self):

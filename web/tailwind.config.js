@@ -109,7 +109,8 @@ const config = {
         'dataset-chunk-list-mask-bg': 'var(--color-dataset-chunk-list-mask-bg)',
       },
       lineClamp: {
-        20: '20',
+        '20': '20',
+        'mask-top2bottom-gray-50-to-transparent': 'var(--mask-top2bottom-gray-50-to-transparent)',
       },
     },
   },
