@@ -54,6 +54,7 @@ const translation = {
     },
     variables: 'वेरिएबल्स',
     uploadImages: 'अपलोड की गई छवियाँ',
+    modelParams: 'मॉडल पैरामीटर',
   },
   filter: {
     period: {

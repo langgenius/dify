@@ -21,6 +21,7 @@ from .entities import (
 from .exc import (
     AuthorizationConfigError,
     FileFetchError,
+    HttpRequestNodeError,
     InvalidHttpMethodError,
     ResponseSizeError,
 )
@@ -36,7 +37,7 @@ BODY_TYPE_TO_CONTENT_TYPE = {
 class Executor:
     method: Literal["get", "head", "post", "put", "delete", "patch"]
     url: str
-    params: Mapping[str, str] | None
+    params: list[tuple[str, str]] | None
     content: str | bytes | None
     data: Mapping[str, Any] | None
     files: Mapping[str, tuple[str | None, bytes, str]] | None
@@ -44,6 +45,7 @@ class Executor:
     headers: dict[str, str]
     auth: HttpRequestNodeAuthorization
     timeout: HttpRequestNodeTimeout
+    max_retries: int
 
     boundary: str
 
@@ -53,6 +55,7 @@ class Executor:
         node_data: HttpRequestNodeData,
         timeout: HttpRequestNodeTimeout,
         variable_pool: VariablePool,
+        max_retries: int = dify_config.SSRF_DEFAULT_MAX_RETRIES,
     ):
         # If authorization API key is present, convert the API key using the variable pool
         if node_data.authorization.type == "api-key":
@@ -66,12 +69,13 @@ class Executor:
         self.method = node_data.method
         self.auth = node_data.authorization
         self.timeout = timeout
-        self.params = {}
+        self.params = []
         self.headers = {}
         self.content = None
         self.files = None
         self.data = None
         self.json = None
+        self.max_retries = max_retries
 
         # init template
         self.variable_pool = variable_pool
@@ -88,14 +92,48 @@ class Executor:
         self.url = self.variable_pool.convert_template(self.node_data.url).text
 
     def _init_params(self):
-        params = _plain_text_to_dict(self.node_data.params)
-        for key in params:
-            params[key] = self.variable_pool.convert_template(params[key]).text
-        self.params = params
+        """
+        Almost same as _init_headers(), difference:
+        1. response a list tuple to support same key, like 'aa=1&aa=2'
+        2. param value may have '\n', we need to splitlines then extract the variable value.
+        """
+        result = []
+        for line in self.node_data.params.splitlines():
+            if not (line := line.strip()):
+                continue
+
+            key, *value = line.split(":", 1)
+            if not (key := key.strip()):
+                continue
+
+            value = value[0].strip() if value else ""
+            result.append(
+                (self.variable_pool.convert_template(key).text, self.variable_pool.convert_template(value).text)
+            )
+
+        self.params = result
 
     def _init_headers(self):
+        """
+        Convert the header string of frontend to a dictionary.
+
+        Each line in the header string represents a key-value pair.
+        Keys and values are separated by ':'.
+        Empty values are allowed.
+
+        Examples:
+            'aa:bb\n cc:dd'  -> {'aa': 'bb', 'cc': 'dd'}
+            'aa:\n cc:dd\n'  -> {'aa': '', 'cc': 'dd'}
+            'aa\n cc : dd'   -> {'aa': '', 'cc': 'dd'}
+
+        """
         headers = self.variable_pool.convert_template(self.node_data.headers).text
-        self.headers = _plain_text_to_dict(headers)
+        self.headers = {
+            key.strip(): (value[0].strip() if value else "")
+            for line in headers.splitlines()
+            if line.strip()
+            for key, *value in [line.split(":", 1)]
+        }
 
     def _init_body(self):
         body = self.node_data.body
@@ -206,10 +244,13 @@ class Executor:
             "params": self.params,
             "timeout": (self.timeout.connect, self.timeout.read, self.timeout.write),
             "follow_redirects": True,
+            "max_retries": self.max_retries,
         }
         # request_args = {k: v for k, v in request_args.items() if v is not None}
-
-        response = getattr(ssrf_proxy, self.method)(**request_args)
+        try:
+            response = getattr(ssrf_proxy, self.method)(**request_args)
+        except ssrf_proxy.MaxRetriesExceededError as e:
+            raise HttpRequestNodeError(str(e))
         return response
 
     def invoke(self) -> Response:
@@ -283,33 +324,6 @@ class Executor:
         raw += body
 
         return raw
-
-
-def _plain_text_to_dict(text: str, /) -> dict[str, str]:
-    """
-    Convert a string of key-value pairs to a dictionary.
-
-    Each line in the input string represents a key-value pair.
-    Keys and values are separated by ':'.
-    Empty values are allowed.
-
-    Examples:
-        'aa:bb\n cc:dd'  -> {'aa': 'bb', 'cc': 'dd'}
-        'aa:\n cc:dd\n'  -> {'aa': '', 'cc': 'dd'}
-        'aa\n cc : dd'   -> {'aa': '', 'cc': 'dd'}
-
-    Args:
-        convert_text (str): The input string to convert.
-
-    Returns:
-        dict[str, str]: A dictionary of key-value pairs.
-    """
-    return {
-        key.strip(): (value[0].strip() if value else "")
-        for line in text.splitlines()
-        if line.strip()
-        for key, *value in [line.split(":", 1)]
-    }
 
 
 def _generate_random_string(n: int) -> str:

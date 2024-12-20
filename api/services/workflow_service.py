@@ -2,7 +2,7 @@ import json
 import time
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import Optional
+from typing import Optional, cast
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
@@ -11,7 +11,11 @@ from core.variables import Variable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.nodes import NodeType
+from core.workflow.nodes.base.entities import BaseNodeData
+from core.workflow.nodes.base.node import BaseNode
+from core.workflow.nodes.enums import ErrorStrategy
 from core.workflow.nodes.event import RunCompletedEvent
+from core.workflow.nodes.event.event import SingleStepRetryEvent
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
@@ -217,29 +221,99 @@ class WorkflowService:
 
         # run draft workflow node
         start_at = time.perf_counter()
+        retries = 0
+        max_retries = 0
+        should_retry = True
+        retry_events = []
 
         try:
-            node_instance, generator = WorkflowEntry.single_step_run(
-                workflow=draft_workflow,
-                node_id=node_id,
-                user_inputs=user_inputs,
-                user_id=account.id,
-            )
+            while retries <= max_retries and should_retry:
+                retry_start_at = time.perf_counter()
+                node_instance, generator = WorkflowEntry.single_step_run(
+                    workflow=draft_workflow,
+                    node_id=node_id,
+                    user_inputs=user_inputs,
+                    user_id=account.id,
+                )
+                node_instance = cast(BaseNode[BaseNodeData], node_instance)
+                max_retries = (
+                    node_instance.node_data.retry_config.max_retries if node_instance.node_data.retry_config else 0
+                )
+                retry_interval = node_instance.node_data.retry_config.retry_interval_seconds
+                node_run_result: NodeRunResult | None = None
+                for event in generator:
+                    if isinstance(event, RunCompletedEvent):
+                        node_run_result = event.run_result
 
-            node_run_result: NodeRunResult | None = None
-            for event in generator:
-                if isinstance(event, RunCompletedEvent):
-                    node_run_result = event.run_result
+                        # sign output files
+                        node_run_result.outputs = WorkflowEntry.handle_special_values(node_run_result.outputs)
+                        break
 
-                    # sign output files
-                    node_run_result.outputs = WorkflowEntry.handle_special_values(node_run_result.outputs)
-                    break
-
-            if not node_run_result:
-                raise ValueError("Node run failed with no run result")
-
-            run_succeeded = True if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED else False
-            error = node_run_result.error if not run_succeeded else None
+                if not node_run_result:
+                    raise ValueError("Node run failed with no run result")
+                # single step debug mode error handling return
+                if node_run_result.status == WorkflowNodeExecutionStatus.FAILED:
+                    if (
+                        retries == max_retries
+                        and node_instance.node_type == NodeType.HTTP_REQUEST
+                        and node_run_result.outputs
+                        and not node_instance.should_continue_on_error
+                    ):
+                        node_run_result.status = WorkflowNodeExecutionStatus.SUCCEEDED
+                        should_retry = False
+                    else:
+                        if node_instance.should_retry:
+                            node_run_result.status = WorkflowNodeExecutionStatus.RETRY
+                            retries += 1
+                            node_run_result.retry_index = retries
+                            retry_events.append(
+                                SingleStepRetryEvent(
+                                    inputs=WorkflowEntry.handle_special_values(node_run_result.inputs)
+                                    if node_run_result.inputs
+                                    else None,
+                                    error=node_run_result.error,
+                                    outputs=WorkflowEntry.handle_special_values(node_run_result.outputs)
+                                    if node_run_result.outputs
+                                    else None,
+                                    retry_index=node_run_result.retry_index,
+                                    elapsed_time=time.perf_counter() - retry_start_at,
+                                    execution_metadata=WorkflowEntry.handle_special_values(node_run_result.metadata)
+                                    if node_run_result.metadata
+                                    else None,
+                                )
+                            )
+                            time.sleep(retry_interval)
+                        else:
+                            should_retry = False
+                    if node_instance.should_continue_on_error:
+                        node_error_args = {
+                            "status": WorkflowNodeExecutionStatus.EXCEPTION,
+                            "error": node_run_result.error,
+                            "inputs": node_run_result.inputs,
+                            "metadata": {"error_strategy": node_instance.node_data.error_strategy},
+                        }
+                        if node_instance.node_data.error_strategy is ErrorStrategy.DEFAULT_VALUE:
+                            node_run_result = NodeRunResult(
+                                **node_error_args,
+                                outputs={
+                                    **node_instance.node_data.default_value_dict,
+                                    "error_message": node_run_result.error,
+                                    "error_type": node_run_result.error_type,
+                                },
+                            )
+                        else:
+                            node_run_result = NodeRunResult(
+                                **node_error_args,
+                                outputs={
+                                    "error_message": node_run_result.error,
+                                    "error_type": node_run_result.error_type,
+                                },
+                            )
+                run_succeeded = node_run_result.status in (
+                    WorkflowNodeExecutionStatus.SUCCEEDED,
+                    WorkflowNodeExecutionStatus.EXCEPTION,
+                )
+                error = node_run_result.error if not run_succeeded else None
         except WorkflowNodeRunFailedError as e:
             node_instance = e.node_instance
             run_succeeded = False
@@ -260,7 +334,6 @@ class WorkflowService:
         workflow_node_execution.created_by = account.id
         workflow_node_execution.created_at = datetime.now(UTC).replace(tzinfo=None)
         workflow_node_execution.finished_at = datetime.now(UTC).replace(tzinfo=None)
-
         if run_succeeded and node_run_result:
             # create workflow node execution
             inputs = WorkflowEntry.handle_special_values(node_run_result.inputs) if node_run_result.inputs else None
@@ -277,7 +350,11 @@ class WorkflowService:
             workflow_node_execution.execution_metadata = (
                 json.dumps(jsonable_encoder(node_run_result.metadata)) if node_run_result.metadata else None
             )
-            workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
+            if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
+                workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
+            elif node_run_result.status == WorkflowNodeExecutionStatus.EXCEPTION:
+                workflow_node_execution.status = WorkflowNodeExecutionStatus.EXCEPTION.value
+                workflow_node_execution.error = node_run_result.error
         else:
             # create workflow node execution
             workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
@@ -285,6 +362,7 @@ class WorkflowService:
 
         db.session.add(workflow_node_execution)
         db.session.commit()
+        workflow_node_execution.retry_events = retry_events
 
         return workflow_node_execution
 

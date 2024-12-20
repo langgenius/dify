@@ -258,6 +258,7 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
             created_at={runDetail.created_at}
             created_by={executor}
             steps={runDetail.total_steps}
+            exceptionCounts={runDetail.exceptions_count}
           />
         )}
         {!loading && currentTab === 'TRACING' && (

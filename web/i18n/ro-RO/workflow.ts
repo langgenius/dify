@@ -101,6 +101,9 @@ const translation = {
     ImageUploadLegacyTip: 'Acum puteți crea variabile de tip de fișier în formularul de pornire. Nu vom mai accepta funcția de încărcare a imaginilor în viitor.',
     importWarning: 'Prudență',
     importWarningDetails: 'Diferența de versiune DSL poate afecta anumite caracteristici',
+    openInExplore: 'Deschide în Explorează',
+    onFailure: 'În caz de eșec',
+    addFailureBranch: 'Adăugare ramură Fail',
   },
   env: {
     envPanelTitle: 'Variabile de Mediu',
@@ -293,6 +296,31 @@ const translation = {
         title: 'Amintiri',
         tip: 'Memoria conversației',
         builtIn: 'Integrat',
+      },
+      errorHandle: {
+        none: {
+          title: 'Niciunul',
+          desc: 'Nodul se va opri din rulare dacă apare o excepție și nu este gestionat',
+        },
+        defaultValue: {
+          title: 'Valoare implicită',
+          desc: 'Când apare o eroare, specificați un conținut de ieșire static.',
+          tip: 'În caz de eroare, va reveni sub valoare.',
+          inLog: 'Excepție de nod, ieșire în funcție de valorile implicite.',
+          output: 'Valoare implicită de ieșire',
+        },
+        failBranch: {
+          title: 'Ramură Fail',
+          desc: 'Când apare o eroare, va executa ramura de excepție',
+          customize: 'Accesați pânza pentru a personaliza logica ramurii de eșec.',
+          inLog: 'Excepția nodului, va executa automat ramura de eșec. Ieșirea nodului va returna un tip de eroare și un mesaj de eroare și le va transmite în aval.',
+          customizeTip: 'Când ramura de eșec este activată, excepțiile aruncate de noduri nu vor încheia procesul. În schimb, va executa automat ramura de eșec predefinită, permițându-vă să furnizați în mod flexibil mesaje de eroare, rapoarte, remedieri sau acțiuni de omitere.',
+        },
+        partialSucceeded: {
+          tip: 'Există {{num}} noduri în proces care rulează anormal, vă rugăm să mergeți la urmărire pentru a verifica jurnalele.',
+        },
+        title: 'Gestionarea erorilor',
+        tip: 'Strategie de gestionare a excepțiilor, declanșată atunci când un nod întâlnește o excepție.',
       },
     },
     start: {

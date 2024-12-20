@@ -5,7 +5,8 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
-import { RiArrowDownSLine } from '@remixicon/react'
+import { RiArrowDownSLine, RiPlanetLine } from '@remixicon/react'
+import Toast from '../../base/toast'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import SuggestedAction from './suggested-action'
 import PublishWithMultipleModel from './publish-with-multiple-model'
@@ -15,6 +16,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { fetchInstalledAppList } from '@/service/explore'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useGetLanguage } from '@/context/i18n'
@@ -104,6 +106,19 @@ const AppPublisher = ({
     if (state)
       setPublished(false)
   }, [disabled, onToggle, open])
+
+  const handleOpenInExplore = useCallback(async () => {
+    try {
+      const { installed_apps }: any = await fetchInstalledAppList(appDetail?.id) || {}
+      if (installed_apps?.length > 0)
+        window.open(`/explore/installed/${installed_apps[0].id}`, '_blank')
+      else
+        throw new Error('No app found in Explore')
+    }
+    catch (e: any) {
+      Toast.notify({ type: 'error', message: `${e.message || e}` })
+    }
+  }, [appDetail?.id])
 
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
@@ -205,6 +220,15 @@ const AppPublisher = ({
                   {t('workflow.common.embedIntoSite')}
                 </SuggestedAction>
               )}
+            <SuggestedAction
+              onClick={() => {
+                handleOpenInExplore()
+              }}
+              disabled={!publishedAt}
+              icon={<RiPlanetLine className='w-4 h-4' />}
+            >
+              {t('workflow.common.openInExplore')}
+            </SuggestedAction>
             <SuggestedAction disabled={!publishedAt} link='./develop' icon={<FileText className='w-4 h-4' />}>{t('workflow.common.accessAPIReference')}</SuggestedAction>
             {appDetail?.mode === 'workflow' && (
               <WorkflowToolConfigureButton
