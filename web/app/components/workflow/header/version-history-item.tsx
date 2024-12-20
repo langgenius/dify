@@ -11,36 +11,26 @@ type VersionHistoryItemProps = {
 }
 
 const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({ item, selectedVersion, onClick }) => {
-  const formatTime = (time: number) => {
-    return dayjs.unix(time).format('YYYY-MM-DD HH:mm:ss')
-  }
+  const formatTime = (time: number) => dayjs.unix(time).format('YYYY-MM-DD HH:mm:ss')
 
-  const renderVersionLabel = (version: string) => {
-    switch (version) {
-      case WorkflowVersion.Draft:
-        return (
-          <div className="w-20 py-1 text-center rounded-md bg-[#EAECEF] text-[#707A8A]">
-            {version}
-          </div>
-        )
-      case WorkflowVersion.Current:
-        return (
-          <div className="w-20 py-1 text-center rounded-md bg-[#F2FFF7] text-[#0ECB81]">
-            {version}
-          </div>
-        )
-      default:
-        return null
-    }
-  }
+  const renderVersionLabel = (version: string) => (
+    (version === WorkflowVersion.Draft || version === WorkflowVersion.Latest)
+      ? (
+        <div className="shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate">
+          {version}
+        </div>
+      )
+      : null
+  )
 
   return (
     <div
       className={cn(
-        'flex mb-1 p-2 rounded-lg items-center justify-between h-12',
-        item.version === selectedVersion ? 'bg-primary-50' : 'hover:bg-primary-50 cursor-pointer',
+        'flex items-center p-2 h-9 text-xs font-medium text-gray-700 justify-between',
+        item.version === selectedVersion ? '' : 'hover:bg-gray-100',
+        item.version === WorkflowVersion.Draft ? 'cursor-not-allowed' : 'cursor-pointer',
       )}
-      onClick={() => onClick(item)}
+      onClick={() => item.version !== WorkflowVersion.Draft && onClick(item)}
     >
       <div>{formatTime(item.version === WorkflowVersion.Draft ? item.updated_at : item.created_at)}</div>
       {renderVersionLabel(item.version)}

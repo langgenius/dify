@@ -291,7 +291,7 @@ export enum WorkflowRunningStatus {
 
 export enum WorkflowVersion {
   Draft = 'draft',
-  Current = 'current',
+  Latest = 'latest',
 }
 
 export enum NodeRunningStatus {
