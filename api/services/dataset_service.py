@@ -1107,8 +1107,8 @@ class DocumentService:
             document.name = file_name
 
         # update document name
-        if document_data.get("name"):
-            document.name = document_data["name"]
+        if document_data.name:
+            document.name = document_data.name
         # update document to be waiting
         document.indexing_status = "waiting"
         document.completed_at = None

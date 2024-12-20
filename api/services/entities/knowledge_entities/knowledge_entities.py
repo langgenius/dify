@@ -97,6 +97,7 @@ class KnowledgeConfig(BaseModel):
     doc_language: str = "English"
     embedding_model: Optional[str] = None
     embedding_model_provider: Optional[str] = None
+    name: Optional[str] = None
 
 
 class SegmentUpdateArgs(BaseModel):
