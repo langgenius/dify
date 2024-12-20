@@ -63,13 +63,15 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
                 logging.warning(f"Received status code {response.status_code} for URL {url} which is in the force list")
 
         except httpx.RequestError as e:
+            if max_retries == 0:
+                raise
             logging.warning(f"Request to URL {url} failed on attempt {retries + 1}: {e}")
 
         retries += 1
         if retries <= max_retries:
             time.sleep(BACKOFF_FACTOR * (2 ** (retries - 1)))
-
-    raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
+    if max_retries != 0:
+        raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
 
 
 def get(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):

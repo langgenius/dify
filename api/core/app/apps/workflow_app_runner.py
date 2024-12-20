@@ -188,6 +188,38 @@ class WorkflowBasedAppRunner(AppRunner):
             )
         elif isinstance(event, GraphRunFailedEvent):
             self._publish_event(QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count))
+        elif isinstance(event, NodeRunRetryEvent):
+            self._publish_event(
+                QueueNodeRetryEvent(
+                    node_execution_id=event.id,
+                    node_id=event.node_id,
+                    node_type=event.node_type,
+                    node_data=event.node_data,
+                    parallel_id=event.parallel_id,
+                    parallel_start_node_id=event.parallel_start_node_id,
+                    parent_parallel_id=event.parent_parallel_id,
+                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
+                    start_at=event.start_at,
+                    node_run_index=event.node_run_index,
+                    predecessor_node_id=event.predecessor_node_id,
+                    in_iteration_id=event.in_iteration_id,
+                    parallel_mode_run_id=event.parallel_mode_run_id,
+                    inputs=event.route_node_state.node_run_result.inputs
+                    if event.route_node_state.node_run_result
+                    else {},
+                    process_data=event.route_node_state.node_run_result.process_data
+                    if event.route_node_state.node_run_result
+                    else {},
+                    outputs=event.route_node_state.node_run_result.outputs
+                    if event.route_node_state.node_run_result
+                    else {},
+                    error=event.error,
+                    execution_metadata=event.route_node_state.node_run_result.metadata
+                    if event.route_node_state.node_run_result
+                    else {},
+                    retry_index=event.retry_index,
+                )
+            )
         elif isinstance(event, NodeRunStartedEvent):
             self._publish_event(
                 QueueNodeStartedEvent(
@@ -420,36 +452,6 @@ class WorkflowBasedAppRunner(AppRunner):
                     metadata=event.metadata,
                     steps=event.steps,
                     error=event.error if isinstance(event, IterationRunFailedEvent) else None,
-                )
-            )
-        elif isinstance(event, NodeRunRetryEvent):
-            self._publish_event(
-                QueueNodeRetryEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
-                    node_type=event.node_type,
-                    node_data=event.node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    parent_parallel_id=event.parent_parallel_id,
-                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
-                    start_at=event.start_at,
-                    inputs=event.route_node_state.node_run_result.inputs
-                    if event.route_node_state.node_run_result
-                    else {},
-                    process_data=event.route_node_state.node_run_result.process_data
-                    if event.route_node_state.node_run_result
-                    else {},
-                    outputs=event.route_node_state.node_run_result.outputs
-                    if event.route_node_state.node_run_result
-                    else {},
-                    error=event.error,
-                    execution_metadata=event.route_node_state.node_run_result.metadata
-                    if event.route_node_state.node_run_result
-                    else {},
-                    in_iteration_id=event.in_iteration_id,
-                    retry_index=event.retry_index,
-                    start_index=event.start_index,
                 )
             )
 

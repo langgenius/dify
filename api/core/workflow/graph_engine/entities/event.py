@@ -97,11 +97,11 @@ class NodeInIterationFailedEvent(BaseNodeEvent):
     error: str = Field(..., description="error")
 
 
-class NodeRunRetryEvent(BaseNodeEvent):
+class NodeRunRetryEvent(NodeRunStartedEvent):
     error: str = Field(..., description="error")
     retry_index: int = Field(..., description="which retry attempt is about to be performed")
     start_at: datetime = Field(..., description="retry start time")
-    start_index: int = Field(..., description="retry start index")
+    node_run_index: int = Field(..., description="retry run index")
 
 
 ###########################################

@@ -649,14 +649,15 @@ class GraphEngine:
                                         node_type=node_instance.node_type,
                                         node_data=node_instance.node_data,
                                         route_node_state=route_node_state,
-                                        error=run_result.error,
-                                        retry_index=retries,
+                                        predecessor_node_id=node_instance.previous_node_id,
                                         parallel_id=parallel_id,
                                         parallel_start_node_id=parallel_start_node_id,
                                         parent_parallel_id=parent_parallel_id,
                                         parent_parallel_start_node_id=parent_parallel_start_node_id,
+                                        error=run_result.error,
+                                        retry_index=retries,
                                         start_at=retry_start_at,
-                                        start_index=self.graph_runtime_state.node_run_steps,
+                                        node_run_index=self.graph_runtime_state.node_run_steps,
                                     )
                                     time.sleep(retry_interval)
                                     continue

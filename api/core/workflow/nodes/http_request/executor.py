@@ -251,6 +251,8 @@ class Executor:
             response = getattr(ssrf_proxy, self.method)(**request_args)
         except ssrf_proxy.MaxRetriesExceededError as e:
             raise HttpRequestNodeError(str(e))
+        except httpx.RequestError as e:
+            raise HttpRequestNodeError(str(e))
         return response
 
     def invoke(self) -> Response:

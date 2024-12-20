@@ -15,7 +15,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from factories import variable_factory
 from fields.workflow_fields import workflow_fields
-from fields.workflow_run_fields import workflow_run_node_execution_fields
+from fields.workflow_run_fields import single_step_node_execution_fields
 from libs import helper
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
@@ -285,7 +285,7 @@ class DraftWorkflowNodeRunApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_run_node_execution_fields)
+    @marshal_with(single_step_node_execution_fields)
     def post(self, app_model: App, node_id: str):
         """
         Run draft workflow node

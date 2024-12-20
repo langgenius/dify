@@ -46,7 +46,7 @@ class SingleStepRetryEvent(BaseModel):
 
     inputs: dict | None = Field(..., description="input")
     error: str = Field(..., description="error")
-    outputs: dict = Field(..., description="output")
+    outputs: dict | None = Field(..., description="output")
     retry_index: int = Field(..., description="Retry attempt number")
     error: str = Field(..., description="error")
     elapsed_time: float = Field(..., description="elapsed time")

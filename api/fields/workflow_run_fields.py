@@ -112,6 +112,10 @@ workflow_run_node_execution_fields = {
     "created_by_account": fields.Nested(simple_account_fields, attribute="created_by_account", allow_null=True),
     "created_by_end_user": fields.Nested(simple_end_user_fields, attribute="created_by_end_user", allow_null=True),
     "finished_at": TimestampField,
+}
+
+single_step_node_execution_fields = {
+    **workflow_run_node_execution_fields,
     "retry_events": fields.List(fields.Nested(retry_event_field)),
 }
 
