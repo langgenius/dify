@@ -181,7 +181,7 @@ def generate_text_hash(text: str) -> str:
 
 
 def compact_generate_response(
-        response: Union[Mapping[str, Any], RateLimitGenerator, Generator[str, None, None]],
+    response: Union[Mapping[str, Any], RateLimitGenerator, Generator[str, None, None]],
 ) -> Response:
     if isinstance(response, dict):
         return Response(response=json.dumps(response), status=200, mimetype="application/json")
@@ -196,11 +196,11 @@ def compact_generate_response(
 class TokenManager:
     @classmethod
     def generate_token(
-            cls,
-            token_type: str,
-            account: Optional[Account] = None,
-            email: Optional[str] = None,
-            additional_data: Optional[dict] = None,
+        cls,
+        token_type: str,
+        account: Optional[Account] = None,
+        email: Optional[str] = None,
+        additional_data: Optional[dict] = None,
     ) -> str:
         if account is None and email is None:
             raise ValueError("Account or email must be provided")
@@ -259,7 +259,7 @@ class TokenManager:
 
     @classmethod
     def _set_current_token_for_account(
-            cls, account_id: str, token: str, token_type: str, expiry_hours: Union[int, float]
+        cls, account_id: str, token: str, token_type: str, expiry_hours: Union[int, float]
     ):
         key = cls._get_account_token_key(account_id, token_type)
         expiry_time = int(expiry_hours * 60 * 60)
