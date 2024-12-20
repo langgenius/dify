@@ -30,6 +30,7 @@ const IndexMethodRadio = ({
   const { t } = useTranslation()
   const economyDomRef = useRef<HTMLDivElement>(null)
   const isHoveringEconomy = useHover(economyDomRef)
+  const isEconomyDisabled = docForm === ChunkingMode.parentChild || currentValue === IndexingType.QUALIFIED
   const options = [
     {
       key: 'high_quality',
@@ -64,9 +65,9 @@ const IndexMethodRadio = ({
             >
               <PortalToFollowElemTrigger>
                 <OptionCard
-                  disabled={disable
-                || (isParentChild && option.key === IndexingType.ECONOMICAL)
-                || (currentValue === IndexingType.QUALIFIED && option.key === IndexingType.ECONOMICAL)
+                  disabled={
+                    disable
+                    || (isEconomyDisabled && option.key === IndexingType.ECONOMICAL)
                   }
                   isActive={option.key === value}
                   onSwitched={() => {
@@ -84,6 +85,7 @@ const IndexMethodRadio = ({
                   title={option.text}
                   description={option.desc}
                   ref={option.key === 'economy' ? economyDomRef : undefined}
+                  className={classNames(isEconomyDisabled && 'cursor-not-allowed')}
                 >
                 </OptionCard>
               </PortalToFollowElemTrigger>
