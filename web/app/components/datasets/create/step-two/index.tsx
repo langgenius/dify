@@ -61,6 +61,7 @@ import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from
 import Tooltip from '@/app/components/base/tooltip'
 import CustomDialog from '@/app/components/base/dialog'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='text-text-secondary system-sm-semibold'>{props.children}</label>
@@ -838,9 +839,9 @@ const StepTwo = ({
           </OptionCard>}
         <Divider className='my-5' />
         <div className={'system-md-semibold mb-1'}>{t('datasetCreation.stepTwo.indexMode')}</div>
-        <div className='flex items-center gap-2 flex-wrap sm:flex-nowrap'>
+        <div className='flex items-center gap-2'>
           {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.QUALIFIED)) && (
-            <OptionCard
+            <OptionCard className='flex-1'
               title={<div className='flex items-center'>
                 {t('datasetCreation.stepTwo.qualified')}
                 {!hasSetIndexType
@@ -892,8 +893,8 @@ const StepTwo = ({
                 }
                 placement={'top'}
               >
-                <PortalToFollowElemTrigger>
-                  <OptionCard
+                <PortalToFollowElemTrigger asChild>
+                  <OptionCard className='flex-1'
                     title={t('datasetCreation.stepTwo.economical')}
                     description={t('datasetCreation.stepTwo.economicalTip')}
                     icon={<Image src={indexMethodIcon.economical} alt='' />}
@@ -918,8 +919,17 @@ const StepTwo = ({
               </PortalToFollowElem>
             </>)}
         </div>
+        {indexType === IndexingType.QUALIFIED && (
+          <div className='mt-2 h-10 p-2 flex items-center gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border overflow-hidden bg-components-panel-bg-blur backdrop-blur-[5px] shadow-xs'>
+            <div className='absolute top-0 left-0 right-0 bottom-0 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)] opacity-40'></div>
+            <div className='p-1'>
+              <AlertTriangle className='size-4 text-text-warning-secondary'/>
+            </div>
+            <span className='system-xs-medium'>{t('datasetSettings.stepTwo.highQualityTip')}</span>
+          </div>
+        )}
         {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
-          <div className='mt-2 text-xs text-gray-500 font-medium'>
+          <div className='mt-2 system-xs-medium'>
             {t('datasetCreation.stepTwo.indexSettingTip')}
             <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
           </div>
@@ -937,7 +947,7 @@ const StepTwo = ({
               }}
             />
             {!!datasetId && (
-              <div className='mt-2 text-xs text-gray-500 font-medium'>
+              <div className='mt-2 system-xs-medium'>
                 {t('datasetCreation.stepTwo.indexSettingTip')}
                 <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
               </div>
