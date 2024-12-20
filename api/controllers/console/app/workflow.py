@@ -433,6 +433,8 @@ class WorkflowConfigApi(Resource):
         return {
             "parallel_depth_limit": dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
         }
+
+
 class PublishedAllWorkflowApi(Resource):
     @setup_required
     @login_required
