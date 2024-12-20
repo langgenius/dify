@@ -1,10 +1,12 @@
+from collections.abc import Mapping
+
 import boto3
 from botocore.config import Config
 
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 
 
-def get_bedrock_client(service_name, credentials=None):
+def get_bedrock_client(service_name: str, credentials: Mapping[str, str]):
     region_name = credentials.get("aws_region")
     if not region_name:
         raise InvokeBadRequestError("aws_region is required")
