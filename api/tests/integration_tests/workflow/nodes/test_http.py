@@ -384,7 +384,7 @@ def test_mock_404(setup_http_mock):
     assert result.outputs is not None
     resp = result.outputs
 
-    assert 404 == resp.get("status_code")
+    assert resp.get("status_code") == 404
     assert "Not Found" in resp.get("body", "")
 
 
