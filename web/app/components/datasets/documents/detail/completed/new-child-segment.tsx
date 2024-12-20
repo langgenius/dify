@@ -54,10 +54,13 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
 
   const CustomButton = <>
     <Divider type='vertical' className='h-3 mx-1 bg-divider-regular' />
-    <button className='text-text-accent system-xs-semibold' onClick={() => {
-      clearTimeout(refreshTimer.current)
-      viewNewlyAddedChildChunk?.()
-    }}>
+    <button
+      type='button'
+      className='text-text-accent system-xs-semibold'
+      onClick={() => {
+        clearTimeout(refreshTimer.current)
+        viewNewlyAddedChildChunk?.()
+      }}>
       {t('common.operation.view')}
     </button>
   </>

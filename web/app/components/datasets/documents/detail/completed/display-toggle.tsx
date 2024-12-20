@@ -21,7 +21,8 @@ const DisplayToggle: FC<DisplayToggleProps> = ({
       popupClassName='text-text-secondary system-xs-medium border-[0.5px] border-components-panel-border'
     >
       <button
-        className='flex items-center justify-center p-2 rounded-lg bg-components-button-secondary-bg cursor-pointer
+        type='button'
+        className='flex items-center justify-center p-2 rounded-lg bg-components-button-secondary-bg
         border-[0.5px] border-components-button-secondary-border shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]'
         onClick={toggleCollapsed}
       >

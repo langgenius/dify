@@ -119,6 +119,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
           <span className='text-text-secondary system-sm-semibold-uppercase'>{totalText}</span>
           <span className={classNames('text-text-quaternary text-xs font-medium pl-1.5', isParagraphMode ? 'hidden group-hover/card:inline-block' : '')}>·</span>
           <button
+            type='button'
             className={classNames(
               'px-1.5 py-1 text-components-button-secondary-accent-text system-xs-semibold-uppercase',
               isParagraphMode ? 'hidden group-hover/card:inline-block' : '',

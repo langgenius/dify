@@ -242,6 +242,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       {
         isFullDocMode
           ? <button
+            type='button'
             className='mt-0.5 mb-2 text-text-accent system-xs-semibold-uppercase'
             onClick={() => onClick?.()}
           >{t('common.operation.viewMore')}</button>

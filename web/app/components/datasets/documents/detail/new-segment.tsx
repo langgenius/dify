@@ -52,10 +52,13 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
 
   const CustomButton = <>
     <Divider type='vertical' className='h-3 mx-1 bg-divider-regular' />
-    <button className='text-text-accent system-xs-semibold' onClick={() => {
-      clearTimeout(refreshTimer.current)
-      viewNewlyAddedChunk()
-    }}>
+    <button
+      type='button'
+      className='text-text-accent system-xs-semibold'
+      onClick={() => {
+        clearTimeout(refreshTimer.current)
+        viewNewlyAddedChunk()
+      }}>
       {t('common.operation.view')}
     </button>
   </>
