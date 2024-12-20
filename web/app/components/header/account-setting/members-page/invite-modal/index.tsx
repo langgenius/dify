@@ -4,7 +4,7 @@ import { useContext } from 'use-context-selector'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import { ReactMultiEmail } from 'react-multi-email'
-import { RiInformation2Fill } from '@remixicon/react'
+import { RiErrorWarningFill } from '@remixicon/react'
 import RoleSelector from './role-selector'
 import s from './index.module.css'
 import cn from '@/utils/classnames'
@@ -69,7 +69,7 @@ const InviteModal = ({
               <div className='absolute top-0 left-0 w-full h-full rounded-xl opacity-40' style={{ background: 'linear-gradient(92deg, rgba(11, 165, 236, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)' }}></div>
               <div className='relative flex items-start w-full h-full'>
                 <div className='shrink-0 mr-0.5 p-0.5'>
-                  <RiInformation2Fill className='w-5 h-5 text-text-accent' />
+                  <RiErrorWarningFill className='w-5 h-5 text-text-accent' />
                 </div>
                 <div className='p-1 text-text-primary system-xs-medium'>
                   <span>{t('common.members.emailNotSetup')}</span>
