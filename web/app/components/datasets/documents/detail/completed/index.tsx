@@ -44,16 +44,31 @@ import { useInvalid } from '@/service/use-base'
 
 const DEFAULT_LIMIT = 10
 
+type CurrSegmentType = {
+  segInfo?: SegmentDetailModel
+  showModal: boolean
+  isEditMode?: boolean
+}
+
+type CurrChildChunkType = {
+  childChunkInfo?: ChildChunkDetail
+  showModal: boolean
+}
+
 type SegmentListContextValue = {
   isCollapsed: boolean
   fullScreen: boolean
   toggleFullScreen: (fullscreen?: boolean) => void
+  currSegment: CurrSegmentType
+  currChildChunk: CurrChildChunkType
 }
 
 const SegmentListContext = createContext<SegmentListContextValue>({
   isCollapsed: true,
   fullScreen: false,
   toggleFullScreen: () => {},
+  currSegment: { showModal: false },
+  currChildChunk: { showModal: false },
 })
 
 export const useSegmentListContext = (selector: (value: SegmentListContextValue) => any) => {
@@ -86,8 +101,8 @@ const Completed: FC<ICompletedProps> = ({
   const mode = useDocumentContext(s => s.mode)
   const parentMode = useDocumentContext(s => s.parentMode)
   // the current segment id and whether to show the modal
-  const [currSegment, setCurrSegment] = useState<{ segInfo?: SegmentDetailModel; showModal: boolean; isEditMode?: boolean }>({ showModal: false })
-  const [currChildChunk, setCurrChildChunk] = useState<{ childChunkInfo?: ChildChunkDetail; showModal: boolean }>({ showModal: false })
+  const [currSegment, setCurrSegment] = useState<CurrSegmentType>({ showModal: false })
+  const [currChildChunk, setCurrChildChunk] = useState<CurrChildChunkType>({ showModal: false })
   const [currChunkId, setCurrChunkId] = useState('')
 
   const [inputValue, setInputValue] = useState<string>('') // the input value
@@ -207,9 +222,9 @@ const Completed: FC<ICompletedProps> = ({
   }
 
   const onCloseSegmentDetail = useCallback(() => {
-    setCurrSegment({ ...currSegment, showModal: false })
+    setCurrSegment({ showModal: false })
     setFullScreen(false)
-  }, [currSegment])
+  }, [])
 
   const { mutateAsync: enableSegment } = useEnableSegment()
   const { mutateAsync: disableSegment } = useDisableSegment()
@@ -439,9 +454,9 @@ const Completed: FC<ICompletedProps> = ({
   }, [])
 
   const onCloseChildSegmentDetail = useCallback(() => {
-    setCurrChildChunk({ ...currChildChunk, showModal: false })
+    setCurrChildChunk({ showModal: false })
     setFullScreen(false)
-  }, [currChildChunk])
+  }, [])
 
   const { mutateAsync: updateChildSegment } = useUpdateChildSegment()
 
@@ -506,6 +521,8 @@ const Completed: FC<ICompletedProps> = ({
       isCollapsed,
       fullScreen,
       toggleFullScreen,
+      currSegment,
+      currChildChunk,
     }}>
       {/* Menu Bar */}
       {!isFullDocMode && <div className={s.docSearchWrapper}>
@@ -549,6 +566,10 @@ const Completed: FC<ICompletedProps> = ({
               detail={segments[0]}
               onClick={() => onClickCard(segments[0])}
               loading={isLoadingSegmentList}
+              focused={{
+                segmentIndex: currSegment?.segInfo?.id === segments[0]?.id,
+                segmentContent: currSegment?.segInfo?.id === segments[0]?.id,
+              }}
             />
             <ChildSegmentList
               parentChunkId={segments[0]?.id}

@@ -4,6 +4,7 @@ import SegmentCard from './segment-card'
 import Empty from './common/empty'
 import GeneralListSkeleton from './skeleton/general-list-skeleton'
 import ParagraphListSkeleton from './skeleton/paragraph-list-skeleton'
+import { useSegmentListContext } from './index'
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
@@ -43,6 +44,8 @@ ref: ForwardedRef<HTMLDivElement>,
 ) => {
   const mode = useDocumentContext(s => s.mode)
   const parentMode = useDocumentContext(s => s.parentMode)
+  const currSegment = useSegmentListContext(s => s.currSegment)
+  const currChildChunk = useSegmentListContext(s => s.currChildChunk)
 
   const Skeleton = useMemo(() => {
     return (mode === 'hierarchical' && parentMode === 'paragraph') ? ParagraphListSkeleton : GeneralListSkeleton
@@ -64,6 +67,11 @@ ref: ForwardedRef<HTMLDivElement>,
       {
         items.map((segItem) => {
           const isLast = items[items.length - 1].id === segItem.id
+          const segmentIndexFocused
+            = currSegment?.segInfo?.id === segItem.id
+            || (!currSegment && currChildChunk?.childChunkInfo?.segment_id === segItem.id)
+          const segmentContentFocused = currSegment?.segInfo?.id === segItem.id
+            || currChildChunk?.childChunkInfo?.segment_id === segItem.id
           return (
             <div key={segItem.id} className='flex items-start gap-x-2'>
               <Checkbox
@@ -86,6 +94,10 @@ ref: ForwardedRef<HTMLDivElement>,
                   loading={false}
                   archived={archived}
                   embeddingAvailable={embeddingAvailable}
+                  focused={{
+                    segmentIndex: segmentIndexFocused,
+                    segmentContent: segmentContentFocused,
+                  }}
                 />
                 {!isLast && <div className='w-full px-3'>
                   <Divider type='horizontal' className='bg-divider-subtle my-1' />

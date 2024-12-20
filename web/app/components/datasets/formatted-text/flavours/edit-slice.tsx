@@ -12,6 +12,7 @@ import ActionButton, { ActionButtonState } from '@/app/components/base/action-bu
 type EditSliceProps = SliceProps<{
   label: ReactNode
   onDelete: () => void
+  labelClassName?: string
   labelInnerClassName?: string
   contentClassName?: string
   showDivider?: boolean
@@ -23,6 +24,7 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
     className,
     text,
     onDelete,
+    labelClassName,
     labelInnerClassName,
     contentClassName,
     showDivider = true,
@@ -62,6 +64,7 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
         <SliceLabel
           className={classNames(
             isDestructive && '!bg-state-destructive-solid !text-text-primary-on-surface',
+            labelClassName,
           )}
           labelInnerClassName={labelInnerClassName}
         >
