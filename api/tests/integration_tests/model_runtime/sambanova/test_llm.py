@@ -17,7 +17,7 @@ def test_validate_credentials():
     model = SambanovaLargeLanguageModel()
 
     with pytest.raises(CredentialsValidateFailedError):
-        model.validate_credentials(model='Meta-Llama-3.1-8B-Instruct', credentials={"sambanova_api_key": "invalid_key"})
+        model.validate_credentials(model="Meta-Llama-3.1-8B-Instruct", credentials={"sambanova_api_key": "invalid_key"})
 
     model.validate_credentials(
         model="Meta-Llama-3.1-8B-Instruct", credentials={"sambanova_api_key": os.environ.get("SAMBANOVA_API_KEY")}
@@ -74,7 +74,7 @@ def test_invoke_stream_model():
         assert isinstance(chunk.delta, LLMResultChunkDelta)
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
-    
+
 
 def test_get_num_tokens():
     model = SambanovaLargeLanguageModel()
@@ -88,7 +88,7 @@ def test_get_num_tokens():
             ),
             UserPromptMessage(content="Hello World!"),
         ],
-        model_parameters={"temperature": 0.0}
+        model_parameters={"temperature": 0.0},
     )
 
     assert num_tokens == 25

@@ -21,8 +21,6 @@ from core.model_runtime.errors.invoke import (
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
-import json
-
 
 class SambanovaLargeLanguageModel(LargeLanguageModel):
     def _invoke(
@@ -102,7 +100,7 @@ class SambanovaLargeLanguageModel(LargeLanguageModel):
                 stream=stream,
                 **model_parameters,
             )
-            
+
         if stream:
             return self._handle_chat_generate_stream_response(model, credentials, response, prompt_messages)
         return self._handle_chat_generate_response(model, credentials, response, prompt_messages)
@@ -352,7 +350,6 @@ class SambanovaLargeLanguageModel(LargeLanguageModel):
 
         yield final_chunk
 
-
     def _to_credential_kwargs(self, credentials: dict) -> dict:
         """
         Transform credentials to kwargs for model instance
@@ -375,7 +372,7 @@ class SambanovaLargeLanguageModel(LargeLanguageModel):
             messages_dict:  role / content dict
         """
         message_dict: dict[str, Any] = {}
-        
+
         if isinstance(message, SystemPromptMessage):
             message_dict = {"role": "system", "content": message.content}
         elif isinstance(message, UserPromptMessage):
