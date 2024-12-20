@@ -7,6 +7,7 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import Optional, Union, cast
 
+import dashscope
 from dashscope import Generation, MultiModalConversation, get_tokenizer
 from dashscope.api_entities.dashscope_response import GenerationResponse
 from dashscope.common.error import (
@@ -17,7 +18,7 @@ from dashscope.common.error import (
     UnsupportedHTTPMethod,
     UnsupportedModel,
 )
-import dashscope
+
 dashscope.base_http_api_url = 'https://dashscope-intl.aliyuncs.com/api/v1'
 
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta

@@ -4,7 +4,8 @@ from collections.abc import Generator
 
 from core.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
-#from core.model_runtime.model_providers.tongyi.llm.llm import TongyiLargeLanguageModel
+
+# from core.model_runtime.model_providers.tongyi.llm.llm import TongyiLargeLanguageModel
 from core.model_runtime.model_providers.tongyi_international.llm.llm import TongyiLargeLanguageModel
 
 

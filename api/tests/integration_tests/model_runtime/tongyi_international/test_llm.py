@@ -9,7 +9,6 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.tongyi_international.llm.llm import TongyiLargeLanguageModel
 
 
-
 def test_validate_credentials():
     model = TongyiLargeLanguageModel()
 
