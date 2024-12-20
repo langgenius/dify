@@ -6,7 +6,7 @@ import classNames from '@/utils/classnames'
 export type InputNumberProps = {
   unit?: string
   value?: number
-  onChange: (value: number) => void
+  onChange: (value?: number) => void
   amount?: number
   size?: 'sm' | 'md'
   max?: number
@@ -15,11 +15,7 @@ export type InputNumberProps = {
 } & Omit<InputProps, 'value' | 'onChange' | 'size' | 'min' | 'max' | 'defaultValue'>
 
 export const InputNumber: FC<InputNumberProps> = (props) => {
-  const { unit, className, onChange, amount = 1, value, size = 'md', max, min, defaultValue = 0, ...rest } = props
-
-  const onSubmit = (value?: number) => {
-    onChange(value || defaultValue as number)
-  }
+  const { unit, className, onChange, amount = 1, value, size = 'md', max, min, defaultValue, ...rest } = props
 
   const isValidValue = (v: number) => {
     if (max && v > max)
@@ -31,23 +27,23 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
 
   const inc = () => {
     if (value === undefined) {
-      onSubmit(defaultValue)
+      onChange(defaultValue)
       return
     }
     const newValue = value + amount
     if (!isValidValue(newValue))
       return
-    onSubmit(newValue)
+    onChange(newValue)
   }
   const dec = () => {
     if (value === undefined) {
-      onSubmit(defaultValue)
+      onChange(defaultValue)
       return
     }
     const newValue = value - amount
     if (!isValidValue(newValue))
       return
-    onSubmit(newValue)
+    onChange(newValue)
   }
 
   return <div className='flex'>
@@ -60,7 +56,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
       min={min}
       onChange={(e) => {
         if (e.target.value === '')
-          onSubmit(undefined)
+          onChange(undefined)
 
         const parsed = Number(e.target.value)
         if (Number.isNaN(parsed))
