@@ -58,7 +58,7 @@ type IDrawerContext = {
   appDetail?: App
 }
 
-type StatusShow = {
+type StatusCount = {
   success: number
   failed: number
   partial_success: number
@@ -78,8 +78,8 @@ const HandThumbIconWithCount: FC<{ count: number; iconType: 'up' | 'down' }> = (
   </div>
 }
 
-const statusTdRender = (status: StatusShow) => {
-  if (status.partial_success + status.failed === 0) {
+const statusTdRender = (statusCount: StatusCount) => {
+  if (statusCount.partial_success + statusCount.failed === 0) {
     return (
       <div className='inline-flex items-center gap-1 system-xs-semibold-uppercase'>
         <Indicator color={'green'} />
@@ -87,7 +87,7 @@ const statusTdRender = (status: StatusShow) => {
       </div>
     )
   }
-  else if (status.failed === 0) {
+  else if (statusCount.failed === 0) {
     return (
       <div className='inline-flex items-center gap-1 system-xs-semibold-uppercase'>
         <Indicator color={'green'} />
@@ -99,7 +99,7 @@ const statusTdRender = (status: StatusShow) => {
     return (
       <div className='inline-flex items-center gap-1 system-xs-semibold-uppercase'>
         <Indicator color={'red'} />
-        <span className='text-util-colors-red-red-600'>{status.failed} {`${status.failed > 1 ? 'Failures' : 'Failure'}`}</span>
+        <span className='text-util-colors-red-red-600'>{statusCount.failed} {`${statusCount.failed > 1 ? 'Failures' : 'Failure'}`}</span>
       </div>
     )
   }
