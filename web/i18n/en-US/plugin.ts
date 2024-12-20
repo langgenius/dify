@@ -50,7 +50,7 @@ const translation = {
       viewDetail: 'View Detail',
       remove: 'Remove',
     },
-    actionNum: '{{num}} ACTIONS INCLUDED',
+    actionNum: '{{num}} {{action}} INCLUDED',
     endpoints: 'Endpoints',
     endpointsTip: 'This plugin provides specific functionalities via endpoints, and you can configure multiple endpoint sets for current workspace.',
     endpointsDocLink: 'View the document',
