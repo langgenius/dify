@@ -35,11 +35,15 @@ class SearchAPI:
 
     def get_params(self, query: str, **kwargs: Any) -> dict[str, str]:
         """Get parameters for SearchAPI."""
-        return {
+        params = {
             "engine": "google_news",
             "q": query,
-            **{key: value for key, value in kwargs.items() if value not in {None, ""}},
         }
+        # Add all non-empty parameters
+        for key, value in kwargs.items():
+            if value not in {None, ""}:
+                params[key] = value
+        return params
 
     @staticmethod
     def _process_response(res: dict, type: str) -> str:
@@ -86,10 +90,12 @@ class GoogleNewsTool(BuiltinTool):
         gl = tool_parameters.get("gl", "us")
         hl = tool_parameters.get("hl", "en")
         location = tool_parameters.get("location")
+        time_period = tool_parameters.get("time_period","last_month")
 
         api_key = self.runtime.credentials["searchapi_api_key"]
         result = SearchAPI(api_key).run(
-            query, result_type=result_type, num=num, google_domain=google_domain, gl=gl, hl=hl, location=location
+            query, result_type=result_type, num=num, google_domain=google_domain, gl=gl, hl=hl, location=location,
+            time_period=time_period
         )
 
         if result_type == "text":

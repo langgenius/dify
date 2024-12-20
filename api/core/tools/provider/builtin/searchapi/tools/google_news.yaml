@@ -1920,3 +1920,36 @@ parameters:
       pt_BR: Specifies the number of results to display per page. Default is 10. Max number - 100, min - 1.
     llm_description: Specifies the num of results to display per page.
     form: llm
+  - name: time_period
+    type: select
+    required: false
+    options:
+      - value: last_hour
+        label:
+          en_US: Last Hour
+          zh_Hans: 最近一小时
+      - value: last_day
+        label:
+          en_US: Last 24 Hours
+          zh_Hans: 最近24小时
+      - value: last_week
+        label:
+          en_US: Last Week
+          zh_Hans: 最近一周
+      - value: last_month
+        label:
+          en_US: Last Month
+          zh_Hans: 最近一个月
+      - value: last_year
+        label:
+          en_US: Last Year
+          zh_Hans: 最近一年
+    default: last_month
+    label:
+      en_US: Time Period
+      zh_Hans: 时间段
+    human_description:
+      en_US: Filter results by time period
+      zh_Hans: 按时间段筛选结果
+    llm_description: Filter results by time period (last_hour, last_day, last_week, last_month, last_year)
+    form: form
