@@ -106,12 +106,25 @@ class DefaultValue(BaseModel):
         return self
 
 
+class RetryConfig(BaseModel):
+    """node retry config"""
+
+    max_retries: int = 0  # max retry times
+    retry_interval: int = 0  # retry interval in milliseconds
+    retry_enabled: bool = False  # whether retry is enabled
+
+    @property
+    def retry_interval_seconds(self) -> float:
+        return self.retry_interval / 1000
+
+
 class BaseNodeData(ABC, BaseModel):
     title: str
     desc: Optional[str] = None
     error_strategy: Optional[ErrorStrategy] = None
     default_value: Optional[list[DefaultValue]] = None
     version: str = "1"
+    retry_config: RetryConfig = RetryConfig()
 
     @property
     def default_value_dict(self):

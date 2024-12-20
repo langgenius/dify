@@ -1,5 +1,4 @@
-from extensions.ext_database import db
-
+from .engine import db
 from .model import Message
 from .types import StringUUID
 
