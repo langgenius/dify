@@ -6,7 +6,7 @@ const NAME_SPACE = 'workflow'
 
 export const useWorkflowConfig = (appId: string) => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'config'],
+    queryKey: [NAME_SPACE, 'config', appId],
     queryFn: () => get<WorkflowConfigResponse>(`/apps/${appId}/workflows/draft/config`),
   })
 }
