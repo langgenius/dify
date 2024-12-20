@@ -249,7 +249,7 @@ const InputVarList: FC<Props> = ({
                   setModel={handleModelChange(variable)}
                   onCompletionParamsChange={handleModelParamsChange(variable)}
                   readonly={readOnly}
-                  scope={'embedding'}
+                  scope={scope}
                 />
               )}
               {tooltip && <div className='text-text-tertiary body-xs-regular'>{tooltip[language] || tooltip.en_US}</div>}
