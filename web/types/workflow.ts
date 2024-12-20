@@ -333,3 +333,7 @@ export type ConversationVariableResponse = {
 }
 
 export type IterationDurationMap = Record<string, number>
+
+export type WorkflowConfigResponse = {
+  parallel_depth_limit: number
+}
