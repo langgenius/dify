@@ -673,7 +673,7 @@ const translation = {
       inputVar: 'Input Variable',
       output_image: 'Image output (only pdf)',
       output_text: 'Text output',
-      output_format: 'Text output',
+      output_format: 'output format',
       outputVars: {
         text: 'Extracted text',
         images: 'Extracted images',
