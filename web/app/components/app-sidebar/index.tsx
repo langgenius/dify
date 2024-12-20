@@ -1,15 +1,13 @@
 import React, { useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { RiLayoutRight2Line } from '@remixicon/react'
+import { LayoutRight2LineMod } from '../base/icons/src/public/knowledge'
 import NavLink from './navLink'
 import type { NavIcon } from './navLink'
 import AppBasic from './basic'
 import AppInfo from './app-info'
 import DatasetInfo from './dataset-info'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import {
-  AlignLeft01,
-  AlignRight01,
-} from '@/app/components/base/icons/src/vender/line/layout'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import cn from '@/utils/classnames'
 
@@ -115,8 +113,8 @@ const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigati
             >
               {
                 expand
-                  ? <AlignLeft01 className='w-[14px] h-[14px]' />
-                  : <AlignRight01 className='w-[14px] h-[14px]' />
+                  ? <RiLayoutRight2Line className='w-5 h-5 text-components-menu-item-text' />
+                  : <LayoutRight2LineMod className='w-5 h-5 text-components-menu-item-text' />
               }
             </div>
           </div>
