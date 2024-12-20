@@ -112,6 +112,7 @@ export type CredentialFormSchemaBase = {
   tooltip?: TypeWithI18N
   show_on: FormShowOnObject[]
   url?: string
+  scope?: string
 }
 
 export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & { max_length?: number; placeholder?: TypeWithI18N }

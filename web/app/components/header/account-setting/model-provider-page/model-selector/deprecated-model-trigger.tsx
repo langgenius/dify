@@ -4,6 +4,7 @@ import ModelIcon from '../model-icon'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import { useProviderContext } from '@/context/provider-context'
 import Tooltip from '@/app/components/base/tooltip'
+import cn from '@/utils/classnames'
 
 type ModelTriggerProps = {
   modelName: string
@@ -21,17 +22,14 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
 
   return (
     <div
-      className={`
-        group flex items-center px-2 h-8 rounded-lg bg-[#FFFAEB] cursor-pointer
-        ${className}
-      `}
+      className={cn('group flex items-center px-2 h-8 rounded-lg bg-components-input-bg-disabled cursor-pointer', className)}
     >
       <ModelIcon
         className='shrink-0 mr-1.5'
         provider={currentProvider}
         modelName={modelName}
       />
-      <div className='mr-1 text-[13px] font-medium text-gray-800 truncate'>
+      <div className='mr-1 text-[13px] font-medium text-text-secondary truncate'>
         {modelName}
       </div>
       <div className='shrink-0 flex items-center justify-center w-4 h-4'>

@@ -9,7 +9,7 @@ export enum VarType {
 
 export type ToolVarInputs = Record<string, {
   type: VarType
-  value?: string | ValueSelector
+  value?: string | ValueSelector | any
 }>
 
 export type ToolNodeType = CommonNodeType & {

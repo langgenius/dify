@@ -21,7 +21,7 @@ const translation = {
     setupModalTitle: '设置授权',
     setupModalTitleDescription: '配置凭据后，工作区中的所有成员都可以在编排应用程序时使用此工具。',
   },
-  includeToolNum: '包含 {{num}} 个 action',
+  includeToolNum: '包含 {{num}} 个 {{action}}',
   addTool: '添加工具',
   addToolModal: {
     type: '类型',

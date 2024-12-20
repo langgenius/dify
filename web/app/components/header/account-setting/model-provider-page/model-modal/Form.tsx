@@ -17,7 +17,7 @@ import cn from '@/utils/classnames'
 import { SimpleSelect } from '@/app/components/base/select'
 import Tooltip from '@/app/components/base/tooltip'
 import Radio from '@/app/components/base/radio'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import RadioE from '@/app/components/base/radio/ui'
@@ -285,6 +285,7 @@ const Form: FC<FormProps> = ({
         variable,
         label,
         required,
+        scope,
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
@@ -307,9 +308,8 @@ const Form: FC<FormProps> = ({
             completionParams={value[variable]?.completion_params}
             setModel={model => handleModelChanged(variable, model)}
             onCompletionParamsChange={params => handleCompletionParamsChange(variable, params)}
-            hideDebugWithMultipleModel
-            debugWithMultipleModel={false}
             readonly={readonly}
+            scope={scope}
           />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
@@ -351,6 +351,7 @@ const Form: FC<FormProps> = ({
         variable,
         label,
         required,
+        scope,
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
 
       return (
@@ -366,6 +367,7 @@ const Form: FC<FormProps> = ({
           </div>
           <AppSelector
             disabled={readonly}
+            scope={scope}
             value={value[variable]}
             onSelect={item => handleFormChange(variable, { ...item, type: FormTypeEnum.appSelector } as any)}
           />

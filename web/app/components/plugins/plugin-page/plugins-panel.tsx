@@ -11,7 +11,8 @@ import Empty from './empty'
 import Loading from '../../base/loading'
 
 const PluginsPanel = () => {
-  const [filters, setFilters] = usePluginPageContext(v => [v.filters, v.setFilters]) as [FilterState, (filter: FilterState) => void]
+  const filters = usePluginPageContext(v => v.filters) as FilterState
+  const setFilters = usePluginPageContext(v => v.setFilters)
   const { data: pluginList, isLoading: isPluginListLoading } = useInstalledPluginList()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const currentPluginID = usePluginPageContext(v => v.currentPluginID)

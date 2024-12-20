@@ -297,7 +297,7 @@ const ProviderDetail = ({
           {/* Builtin type */}
           {!isDetailLoading && (collection.type === CollectionType.builtIn) && isAuthed && (
             <div className='mb-1 h-6 flex items-center justify-between text-text-secondary system-sm-semibold-uppercase'>
-              {t('plugin.detailPanel.actionNum', { num: 3 })}
+              {t('plugin.detailPanel.actionNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' })}
               {needAuth && (
                 <Button
                   variant='secondary'
@@ -317,7 +317,7 @@ const ProviderDetail = ({
           {!isDetailLoading && (collection.type === CollectionType.builtIn) && needAuth && !isAuthed && (
             <>
               <div className='text-text-secondary system-sm-semibold-uppercase'>
-                <span className=''>{t('tools.includeToolNum', { num: toolList.length }).toLocaleUpperCase()}</span>
+                <span className=''>{t('tools.includeToolNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
                 <span className='px-1'>·</span>
                 <span className='text-util-colors-orange-orange-600'>{t('tools.auth.setup').toLocaleUpperCase()}</span>
               </div>

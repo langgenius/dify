@@ -23,6 +23,7 @@ type Props = {
     inputs: Record<string, any>
     files?: any[]
   }
+  scope?: string
   disabled?: boolean
   placement?: Placement
   offset?: OffsetOptions
@@ -35,6 +36,7 @@ type Props = {
 }
 const AppSelector: FC<Props> = ({
   value,
+  scope,
   disabled,
   placement = 'bottom',
   offset = 4,
@@ -53,6 +55,7 @@ const AppSelector: FC<Props> = ({
       return undefined
     return appList.data.find(app => app.id === value.app_id)
   }, [appList?.data, value])
+
   const [isShowChooseApp, setIsShowChooseApp] = useState(false)
   const handleSelectApp = (app: App) => {
     const clearValue = app.id !== value?.app_id
@@ -103,7 +106,7 @@ const AppSelector: FC<Props> = ({
           />
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1000]'>
-          <div className="relative w-[389px] min-h-20 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg">
+          <div className="relative w-[389px] min-h-20 rounded-xl backdrop-blur-sm bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg">
             <div className='px-4 py-3 flex flex-col gap-1'>
               <div className='h-6 flex items-center system-sm-semibold text-text-secondary'>{t('app.appSelector.label')}</div>
               <AppPicker
@@ -120,6 +123,7 @@ const AppSelector: FC<Props> = ({
                 disabled={false}
                 appList={appList?.data || []}
                 onSelect={handleSelectApp}
+                scope={scope || 'all'}
               />
             </div>
             {/* app inputs config panel */}
