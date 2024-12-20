@@ -5,7 +5,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.datasource.vdb.vector_factory import Vector
 from extensions.ext_database import db
 from models.dataset import Dataset
-from models.model import App, AppAnnotationSetting, Message, MessageAnnotation
+from models.model import AppAnnotationSetting, Message, MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.dataset_service import DatasetCollectionBindingService
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class AnnotationReplyFeature:
     def query(
-        self, app_record: App, message: Message, query: str, user_id: str, invoke_from: InvokeFrom
+        self, app_id: str, tenant_id: str, message: Message, query: str, user_id: str, invoke_from: InvokeFrom
     ) -> Optional[MessageAnnotation]:
         """
         Query app annotations to reply
@@ -26,7 +26,7 @@ class AnnotationReplyFeature:
         :return:
         """
         annotation_setting = (
-            db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_record.id).first()
+            db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_id).first()
         )
 
         if not annotation_setting:
@@ -44,8 +44,8 @@ class AnnotationReplyFeature:
             )
 
             dataset = Dataset(
-                id=app_record.id,
-                tenant_id=app_record.tenant_id,
+                id=app_id,
+                tenant_id=tenant_id,
                 indexing_technique="high_quality",
                 embedding_model_provider=embedding_provider_name,
                 embedding_model=embedding_model_name,
@@ -70,15 +70,15 @@ class AnnotationReplyFeature:
 
                     # insert annotation history
                     AppAnnotationService.add_annotation_history(
-                        annotation.id,
-                        app_record.id,
-                        annotation.question,
-                        annotation.content,
-                        query,
-                        user_id,
-                        message.id,
-                        from_source,
-                        score,
+                        annotation_id=annotation.id,
+                        app_id=app_id,
+                        annotation_question=annotation.question,
+                        annotation_content=annotation.content,
+                        query=query,
+                        user_id=user_id,
+                        message_id=message.id,
+                        from_source=from_source,
+                        score=score,
                     )
 
                     return annotation

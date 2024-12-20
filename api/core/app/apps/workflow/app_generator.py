@@ -253,11 +253,22 @@ class WorkflowAppGenerator(BaseAppGenerator):
             var.set(val)
         with flask_app.app_context():
             try:
-                # workflow app
+                workflow = (
+                    db.session.query(Workflow)
+                    .filter(
+                        Workflow.tenant_id == application_generate_entity.app_config.tenant_id,
+                        Workflow.app_id == application_generate_entity.app_config.app_id,
+                        Workflow.id == application_generate_entity.app_config.workflow_id,
+                    )
+                    .first()
+                )
+                if not workflow:
+                    raise ValueError("Workflow not initialized")
                 runner = WorkflowAppRunner(
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
                     workflow_thread_pool_id=workflow_thread_pool_id,
+                    workflow=workflow,
                 )
 
                 runner.run()

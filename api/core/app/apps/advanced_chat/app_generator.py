@@ -314,12 +314,25 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)
 
+                workflow = (
+                    db.session.query(Workflow)
+                    .filter(
+                        Workflow.tenant_id == application_generate_entity.app_config.tenant_id,
+                        Workflow.app_id == application_generate_entity.app_config.app_id,
+                        Workflow.id == application_generate_entity.app_config.workflow_id,
+                    )
+                    .first()
+                )
+                if not workflow:
+                    raise ValueError("Workflow not initialized")
+
                 # chatbot app
                 runner = AdvancedChatAppRunner(
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
                     conversation=conversation,
                     message=message,
+                    workflow=workflow,
                     dialogue_count=self._dialogue_count,
                 )
 

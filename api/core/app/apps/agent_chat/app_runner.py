@@ -116,7 +116,8 @@ class AgentChatAppRunner(AppRunner):
         if query:
             # annotation reply
             annotation_reply = self.query_app_annotations_to_reply(
-                app_record=app_record,
+                app_id=app_record.id,
+                tenant_id=app_config.tenant_id,
                 message=message,
                 query=query,
                 user_id=application_generate_entity.user_id,

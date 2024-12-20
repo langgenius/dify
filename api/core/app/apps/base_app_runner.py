@@ -409,7 +409,7 @@ class AppRunner:
         )
 
     def query_app_annotations_to_reply(
-        self, app_record: App, message: Message, query: str, user_id: str, invoke_from: InvokeFrom
+        self, app_id: str, tenant_id: str, message: Message, query: str, user_id: str, invoke_from: InvokeFrom
     ) -> Optional[MessageAnnotation]:
         """
         Query app annotations to reply
@@ -422,5 +422,10 @@ class AppRunner:
         """
         annotation_reply_feature = AnnotationReplyFeature()
         return annotation_reply_feature.query(
-            app_record=app_record, message=message, query=query, user_id=user_id, invoke_from=invoke_from
+            app_id=app_id,
+            tenant_id=tenant_id,
+            message=message,
+            query=query,
+            user_id=user_id,
+            invoke_from=invoke_from,
         )
