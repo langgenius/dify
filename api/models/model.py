@@ -16,11 +16,11 @@ from configs import dify_config
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
 from core.file.tool_file_parser import ToolFileParser
-from extensions.ext_database import db
 from libs.helper import generate_string
 from models.enums import CreatedByRole
 
 from .account import Account, Tenant
+from .engine import db
 from .types import StringUUID
 
 
