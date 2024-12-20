@@ -219,9 +219,16 @@ class SambanovaLargeLanguageModel(LargeLanguageModel):
         # transform credentials to kwargs for model instance
         credentials_kwargs = self._to_credential_kwargs(credentials)
 
-        client = OpenAI(**credentials_kwargs)
-        response = client.chat.completions.create(model=model, messages=prompt_message_dicts, stream=False)
-        tokens = response.usage.completion_tokens
+        if len(prompt_message_dicts) != 0:
+            client = OpenAI(**credentials_kwargs)
+            # print('before getting number of tokens')
+            # print(f'model {model}')
+            # print(f'prompt_messages {prompt_messages}')
+            # print(f'prompt_message_dicts {prompt_message_dicts}')
+            response = client.chat.completions.create(model=model, messages=prompt_message_dicts, stream=False)
+            tokens = response.usage.completion_tokens
+        else:
+            tokens = 0
 
         return tokens
 
@@ -388,17 +395,17 @@ class SambanovaLargeLanguageModel(LargeLanguageModel):
             messages_dict:  role / content dict
         """
         message_dict: dict[str, Any] = {}
-
+        
         if isinstance(message, SystemPromptMessage):
             message_dict = {"role": "system", "content": message.content}
         elif isinstance(message, UserPromptMessage):
             message_dict = {"role": "user", "content": message.content}
-        elif isinstance(message, PromptMessage):
+        elif isinstance(message, AssistantPromptMessage):
             message_dict = {"role": "assistant", "content": message.content}
-            if "tool_calls" in message.additional_kwargs:
-                message_dict["tool_calls"] = message.additional_kwargs["tool_calls"]
-                if message_dict["content"] == "":
-                    message_dict["content"] = None
+            # if "tool_calls" in message.additional_kwargs:
+            #     message_dict["tool_calls"] = message.additional_kwargs["tool_calls"]
+            #     if message_dict["content"] == "":
+            #         message_dict["content"] = None
         elif isinstance(message, ToolPromptMessage):
             message_dict = {
                 "role": "tool",
@@ -411,4 +418,4 @@ class SambanovaLargeLanguageModel(LargeLanguageModel):
 
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
-        pass
+        print('hello theres an error')
