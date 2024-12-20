@@ -255,7 +255,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 disable={!localeCurrentDataset?.embedding_available}
                 value={indexMethod}
                 onChange={v => setIndexMethod(v!)}
-                itemClassName='sm:!w-[280px]'
+                docForm={currentDataset.doc_form}
               />
             </div>
           </div>
@@ -287,7 +287,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         {/* Retrieval Method Config */}
         {currentDataset?.provider === 'external'
           ? <>
-            <div className={rowClass}><Divider/></div>
+            <div className={rowClass}><Divider /></div>
             <div className={rowClass}>
               <div className={labelClass}>
                 <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.retrievalSetting.title')}</div>
@@ -300,7 +300,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 isInRetrievalSetting={true}
               />
             </div>
-            <div className={rowClass}><Divider/></div>
+            <div className={rowClass}><Divider /></div>
             <div className={rowClass}>
               <div className={labelClass}>
                 <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.externalKnowledgeAPI')}</div>
@@ -326,7 +326,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 </div>
               </div>
             </div>
-            <div className={rowClass}><Divider/></div>
+            <div className={rowClass}><Divider /></div>
           </>
           : <div className={rowClass}>
             <div className={cn(labelClass, 'w-auto min-w-[168px]')}>

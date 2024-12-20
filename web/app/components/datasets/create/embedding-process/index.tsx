@@ -282,7 +282,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
                   src={getIcon(indexingStatusDetail.id)}
                 />
               )}
-              <div className="grow flex items-center gap-1" title={getSourceName(indexingStatusDetail.id)}>
+              <div className="grow flex items-center gap-1 w-0" title={getSourceName(indexingStatusDetail.id)}>
                 <div className="text-xs truncate">
                   {getSourceName(indexingStatusDetail.id)}
                 </div>

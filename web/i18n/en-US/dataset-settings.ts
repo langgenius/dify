@@ -32,6 +32,7 @@ const translation = {
     externalKnowledgeID: 'External Knowledge ID',
     retrievalSettings: 'Retrieval Settings',
     save: 'Save',
+    indexMethodChangeToEconomyDisabledTip: 'Not available for downgrading from HQ to ECO',
   },
 }
 

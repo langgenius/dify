@@ -6,6 +6,7 @@ import { useDocumentContext } from '../index'
 import { FormattedText } from '../../../formatted-text/formatted'
 import Empty from './common/empty'
 import FullDocListSkeleton from './skeleton/full-doc-list-skeleton'
+import { useSegmentListContext } from './index'
 import type { ChildChunkDetail } from '@/models/datasets'
 import Input from '@/app/components/base/input'
 import classNames from '@/utils/classnames'
@@ -24,6 +25,7 @@ type IChildSegmentCardProps = {
   inputValue?: string
   onClearFilter?: () => void
   isLoading?: boolean
+  focused?: boolean
 }
 
 const ChildSegmentList: FC<IChildSegmentCardProps> = ({
@@ -38,9 +40,11 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   inputValue,
   onClearFilter,
   isLoading,
+  focused = false,
 }) => {
   const { t } = useTranslation()
   const parentMode = useDocumentContext(s => s.parentMode)
+  const currChildChunk = useSegmentListContext(s => s.currChildChunk)
 
   const [collapsed, setCollapsed] = useState(true)
 
@@ -57,8 +61,8 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   }, [parentMode])
 
   const contentOpacity = useMemo(() => {
-    return enabled ? '' : 'opacity-50 group-hover/card:opacity-100'
-  }, [enabled])
+    return (enabled || focused) ? '' : 'opacity-50 group-hover/card:opacity-100'
+  }, [enabled, focused])
 
   const totalText = useMemo(() => {
     const isSearch = inputValue !== '' && isFullDocMode
@@ -87,7 +91,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
     <div className={classNames(
       'flex flex-col',
       contentOpacity,
-      isParagraphMode ? 'p-1 pb-2' : 'px-3 grow',
+      isParagraphMode ? 'pt-1 pb-2' : 'px-3 grow',
       (isFullDocMode && isLoading) && 'overflow-y-hidden',
     )}>
       {isFullDocMode ? <Divider type='horizontal' className='h-[1px] bg-divider-subtle my-1' /> : null}
@@ -152,17 +156,25 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
             ? <FormattedText className={classNames('w-full !leading-6 flex flex-col', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
               {childChunks.map((childChunk) => {
                 const edited = childChunk.updated_at !== childChunk.created_at
+                const focused = currChildChunk?.childChunkInfo?.id === childChunk.id
                 return <EditSlice
                   key={childChunk.id}
                   label={`C-${childChunk.position}${edited ? ` · ${t('datasetDocuments.segment.edited')}` : ''}`}
                   text={childChunk.content}
                   onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
-                  labelInnerClassName='text-[10px] font-semibold align-bottom leading-6'
-                  contentClassName='!leading-6'
+                  labelClassName={focused ? 'bg-state-accent-solid text-text-primary-on-surface' : ''}
+                  labelInnerClassName={'text-[10px] font-semibold align-bottom leading-6'}
+                  contentClassName={classNames('!leading-6', focused ? 'bg-state-accent-hover-alt text-text-primary' : '')}
                   showDivider={false}
                   onClick={(e) => {
                     e.stopPropagation()
                     onClickSlice?.(childChunk)
+                  }}
+                  offsetOptions={({ rects }) => {
+                    return {
+                      mainAxis: isFullDocMode ? -rects.floating.width : 12 - rects.floating.width,
+                      crossAxis: (20 - rects.floating.height) / 2,
+                    }
                   }}
                 />
               })}

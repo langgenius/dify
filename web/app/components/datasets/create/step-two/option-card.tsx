@@ -34,7 +34,7 @@ export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
     <TriangleArrow
       className='absolute left-4 -bottom-1.5 text-components-panel-bg'
     />
-    <div className='flex-1 space-y-0.5 py-3 pr-3'>
+    <div className='flex-1 space-y-0.5 py-3 pr-4'>
       <div className='text-text-secondary system-md-semibold'>{title}</div>
       <div className='text-text-tertiary system-xs-regular'>{description}</div>
     </div>
@@ -70,7 +70,7 @@ export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
       ...style,
     }}
     onClick={() => {
-      if (!isActive)
+      if (!isActive && !disabled)
         onSwitched?.()
     }}
     {...rest}

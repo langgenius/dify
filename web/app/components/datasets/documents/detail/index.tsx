@@ -234,7 +234,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
             >
               {
                 showMetadata
-                  ? <LayoutRight2LineMod className='w-4 h-4 text-components-button-secondary-accent-text' />
+                  ? <LayoutRight2LineMod className='w-4 h-4 text-components-button-secondary-text' />
                   : <RiLayoutRight2Line className='w-4 h-4 text-components-button-secondary-text' />
               }
             </button>

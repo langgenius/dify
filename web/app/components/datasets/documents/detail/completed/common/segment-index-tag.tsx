@@ -7,6 +7,8 @@ type ISegmentIndexTagProps = {
   label?: string
   className?: string
   labelPrefix?: string
+  iconClassName?: string
+  labelClassName?: string
 }
 
 export const SegmentIndexTag: FC<ISegmentIndexTagProps> = ({
@@ -14,6 +16,8 @@ export const SegmentIndexTag: FC<ISegmentIndexTagProps> = ({
   label,
   className,
   labelPrefix = 'Chunk',
+  iconClassName,
+  labelClassName,
 }) => {
   const localPositionId = useMemo(() => {
     const positionIdStr = String(positionId)
@@ -23,8 +27,8 @@ export const SegmentIndexTag: FC<ISegmentIndexTagProps> = ({
   }, [positionId, labelPrefix])
   return (
     <div className={cn('flex items-center', className)}>
-      <Chunk className='w-3 h-3 p-[1px] text-text-tertiary mr-0.5' />
-      <div className='text-text-tertiary system-xs-medium'>
+      <Chunk className={cn('w-3 h-3 p-[1px] text-text-tertiary mr-0.5', iconClassName)} />
+      <div className={cn('text-text-tertiary system-xs-medium', labelClassName)}>
         {label || localPositionId}
       </div>
     </div>
