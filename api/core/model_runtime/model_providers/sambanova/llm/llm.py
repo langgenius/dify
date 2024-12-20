@@ -21,6 +21,8 @@ from core.model_runtime.errors.invoke import (
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
+import json
+
 
 class SambanovaLargeLanguageModel(LargeLanguageModel):
     def _invoke(
@@ -73,54 +75,36 @@ class SambanovaLargeLanguageModel(LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
-        # print('chat')
-        # print(f'model {model}')
-        # print(f'credentials {credentials}')
-        # print(f'prompt_messages {prompt_messages}')
-        # print(f'model_parameters {model_parameters}')
-        # print(f'tools {tools}')
-        # print(f'stop {stop}')
-        # print(f'stream {stream}')
-        # transform credentials to kwargs for model instance
+        # get credentials
         credentials_kwargs = self._to_credential_kwargs(credentials)
 
-        # transform model parameters from completion api of anthropic to chat api
+        # build model parameters and extra model kwargs
         if model_parameters.get("max_tokens_to_sample"):
             model_parameters["max_tokens"] = model_parameters.pop("max_tokens_to_sample")
-
-        # init model client
-        client = OpenAI(**credentials_kwargs)
 
         extra_model_kwargs = {}
         if stop:
             extra_model_kwargs["stop_sequences"] = stop
 
+        # init model client
+        client = OpenAI(**credentials_kwargs)
+
+        # transform to message dicts
         prompt_message_dicts = [self._convert_message_to_dict(m) for m in prompt_messages]
 
-        # if system:
-        #     extra_model_kwargs["system"] = system
-
         if tools:
-            # print('tools?')
+            # TODO: once tools are incorporated in stream responses
             pass
         else:
-            # print('before sending api request')
-            # print(f'model {model}')
-            # print(f'prompt_message_dicts {prompt_message_dicts}')
-            # print(f'stream {stream}')
-            # print(f'model_parameters {model_parameters}')
-            # chat model
             response = client.chat.completions.create(
                 model=model,
                 messages=prompt_message_dicts,
                 stream=stream,
                 **model_parameters,
             )
-            # print(f'response {response}')
-
+            
         if stream:
             return self._handle_chat_generate_stream_response(model, credentials, response, prompt_messages)
-
         return self._handle_chat_generate_response(model, credentials, response, prompt_messages)
 
     def _extract_response_function_call(
@@ -167,7 +151,6 @@ class SambanovaLargeLanguageModel(LargeLanguageModel):
         assistant_message_function_call = assistant_message.function_call
 
         # extract tool calls from response
-        # tool_calls = self._extract_response_tool_calls(assistant_message_tool_calls)
         function_call = self._extract_response_function_call(assistant_message_function_call)
         tool_calls = [function_call] if function_call else []
 
@@ -221,10 +204,6 @@ class SambanovaLargeLanguageModel(LargeLanguageModel):
 
         if len(prompt_message_dicts) != 0:
             client = OpenAI(**credentials_kwargs)
-            # print('before getting number of tokens')
-            # print(f'model {model}')
-            # print(f'prompt_messages {prompt_messages}')
-            # print(f'prompt_message_dicts {prompt_message_dicts}')
             response = client.chat.completions.create(model=model, messages=prompt_message_dicts, stream=False)
             tokens = response.usage.completion_tokens
         else:
@@ -373,6 +352,7 @@ class SambanovaLargeLanguageModel(LargeLanguageModel):
 
         yield final_chunk
 
+
     def _to_credential_kwargs(self, credentials: dict) -> dict:
         """
         Transform credentials to kwargs for model instance
@@ -402,10 +382,6 @@ class SambanovaLargeLanguageModel(LargeLanguageModel):
             message_dict = {"role": "user", "content": message.content}
         elif isinstance(message, AssistantPromptMessage):
             message_dict = {"role": "assistant", "content": message.content}
-            # if "tool_calls" in message.additional_kwargs:
-            #     message_dict["tool_calls"] = message.additional_kwargs["tool_calls"]
-            #     if message_dict["content"] == "":
-            #         message_dict["content"] = None
         elif isinstance(message, ToolPromptMessage):
             message_dict = {
                 "role": "tool",
@@ -418,4 +394,4 @@ class SambanovaLargeLanguageModel(LargeLanguageModel):
 
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
-        print('hello theres an error')
+        pass
