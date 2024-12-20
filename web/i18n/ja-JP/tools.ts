@@ -31,6 +31,8 @@ const translation = {
     manageInTools: 'ツールリストに移動して管理する',
     emptyTitle: '利用可能なワークフローツールはありません',
     emptyTip: '追加するには、「ワークフロー -> ツールとして公開 」に移動する',
+    emptyTitleCustom: 'カスタムツールはありません',
+    emptyTipCustom: 'カスタムツールの作成',
   },
   createTool: {
     title: 'カスタムツールを作成する',
