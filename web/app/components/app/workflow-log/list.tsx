@@ -66,7 +66,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     if (status === 'partial-succeeded') {
       return (
         <div className='inline-flex items-center gap-1 system-xs-semibold-uppercase'>
-          <Indicator color={'orange'} />
+          <Indicator color={'green'} />
           <span className='text-util-colors-green-green-600'>Partial Success</span>
         </div>
       )
