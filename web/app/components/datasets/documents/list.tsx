@@ -522,7 +522,7 @@ const DocumentList: FC<IDocumentListProps> = ({
             <td className='w-44'>
               <div className='flex items-center' onClick={onClickSort}>
                 {t('datasetDocuments.list.table.header.uploadTime')}
-                <ArrowDownIcon className={cn('ml-0.5 h-3 w-3 stroke-current stroke-2 cursor-pointer', enableSort ? 'text-text-tertiary' : 'text-gray-300')} />
+                <ArrowDownIcon className={cn('ml-0.5 h-3 w-3 stroke-current stroke-2 cursor-pointer', enableSort ? 'text-text-tertiary' : 'text-text-disabled')} />
               </div>
             </td>
             <td className='w-40'>{t('datasetDocuments.list.table.header.status')}</td>
