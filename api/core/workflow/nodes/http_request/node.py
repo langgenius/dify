@@ -62,14 +62,11 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
     def _run(self) -> NodeRunResult:
         process_data = {}
         try:
-            executor_config = {
-                "node_data": self.node_data,
-                "timeout": self._get_request_timeout(self.node_data),
-                "variable_pool": self.graph_runtime_state.variable_pool,
-            }
-            executor_config["max_retries"] = 0
             http_executor = Executor(
-                **executor_config,
+                node_data=self.node_data,
+                timeout=self._get_request_timeout(self.node_data),
+                variable_pool=self.graph_runtime_state.variable_pool,
+                max_retries=0,
             )
             process_data["request"] = http_executor.to_log()
 
@@ -87,7 +84,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
                     process_data={
                         "request": http_executor.to_log(),
                     },
-                    error=f"Request failed with status code {response.status_code}\nRaw response:{response.text}",
+                    error=f"Request failed with status code {response.status_code}",
                     error_type="HTTPResponseCodeError",
                 )
             return NodeRunResult(
