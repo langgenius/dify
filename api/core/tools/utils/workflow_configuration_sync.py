@@ -7,7 +7,7 @@ from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 
 class WorkflowToolConfigurationUtils:
     @classmethod
-    def check_parameter_configurations(cls, configurations: Mapping[str, Any]):
+    def check_parameter_configurations(cls, configurations: list[Mapping[str, Any]]):
         for configuration in configurations:
             WorkflowToolParameterConfiguration.model_validate(configuration)
 

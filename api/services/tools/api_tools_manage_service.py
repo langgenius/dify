@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Optional
+from typing import Optional, cast
 
 from httpx import get
 
@@ -68,13 +68,16 @@ class ApiToolManageService:
                 ),
             ]
 
-            return jsonable_encoder(
-                {
-                    "schema_type": schema_type,
-                    "parameters_schema": tool_bundles,
-                    "credentials_schema": credentials_schema,
-                    "warning": warnings,
-                }
+            return cast(
+                list[ApiToolBundle],
+                jsonable_encoder(
+                    {
+                        "schema_type": schema_type,
+                        "parameters_schema": tool_bundles,
+                        "credentials_schema": credentials_schema,
+                        "warning": warnings,
+                    }
+                ),
             )
         except Exception as e:
             raise ValueError(f"invalid schema: {str(e)}")
@@ -415,7 +418,7 @@ class ApiToolManageService:
             provider_controller.validate_credentials_format(credentials)
             # get tool
             tool = provider_controller.get_tool(tool_name)
-            tool = tool.fork_tool_runtime(
+            runtime_tool = tool.fork_tool_runtime(
                 runtime={
                     "credentials": credentials,
                     "tenant_id": tenant_id,

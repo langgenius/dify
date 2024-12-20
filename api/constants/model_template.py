@@ -2,7 +2,7 @@ import json
 
 from models.model import AppMode
 
-default_app_templates = {
+default_app_templates: dict[AppMode, dict] = {
     # workflow default mode
     AppMode.WORKFLOW: {
         "app": {

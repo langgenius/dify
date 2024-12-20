@@ -4,7 +4,7 @@ import uuid
 from collections.abc import Mapping
 from datetime import datetime
 from enum import Enum, StrEnum
-from typing import Any, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 import sqlalchemy as sa
 from flask import request
@@ -22,6 +22,9 @@ from models.enums import CreatedByRole
 
 from .account import Account, Tenant
 from .types import StringUUID
+
+if TYPE_CHECKING:
+    from models.workflow import Workflow
 
 
 class DifySetup(db.Model):  # type: ignore[name-defined]
@@ -150,7 +153,7 @@ class App(db.Model):  # type: ignore[name-defined]
         if self.mode == AppMode.CHAT.value and self.is_agent:
             return AppMode.AGENT_CHAT.value
 
-        return self.mode
+        return str(self.mode)
 
     @property
     def deleted_tools(self) -> list:
@@ -318,7 +321,7 @@ class AppModelConfig(db.Model):  # type: ignore[name-defined]
         return json.loads(self.external_data_tools) if self.external_data_tools else []
 
     @property
-    def user_input_form_list(self) -> dict:
+    def user_input_form_list(self) -> list[dict]:
         return json.loads(self.user_input_form) if self.user_input_form else []
 
     @property
@@ -340,7 +343,7 @@ class AppModelConfig(db.Model):  # type: ignore[name-defined]
     @property
     def dataset_configs_dict(self) -> dict:
         if self.dataset_configs:
-            dataset_configs = json.loads(self.dataset_configs)
+            dataset_configs: dict = json.loads(self.dataset_configs)
             if "retrieval_model" not in dataset_configs:
                 return {"retrieval_model": "single"}
             else:
@@ -582,6 +585,8 @@ class Conversation(db.Model):  # type: ignore[name-defined]
     @property
     def model_config(self):
         model_config = {}
+        app_model_config: Optional[AppModelConfig] = None
+
         if self.mode == AppMode.ADVANCED_CHAT.value:
             if self.override_model_configs:
                 override_model_configs = json.loads(self.override_model_configs)
@@ -593,6 +598,7 @@ class Conversation(db.Model):  # type: ignore[name-defined]
                 if "model" in override_model_configs:
                     app_model_config = AppModelConfig()
                     app_model_config = app_model_config.from_model_config_dict(override_model_configs)
+                    assert app_model_config is not None, "app model config not found"
                     model_config = app_model_config.to_dict()
                 else:
                     model_config["configs"] = override_model_configs
@@ -1248,7 +1254,7 @@ class OperationLog(db.Model):  # type: ignore[name-defined]
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class EndUser(UserMixin, db.Model):
+class EndUser(UserMixin, db.Model):  # type: ignore[name-defined]
     __tablename__ = "end_users"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="end_user_pkey"),
@@ -1488,7 +1494,7 @@ class MessageAgentThought(db.Model):  # type: ignore[name-defined]
     @property
     def files(self) -> list:
         if self.message_files:
-            return json.loads(self.message_files)
+            return cast(list, json.loads(self.message_files))
         else:
             return []
 
@@ -1500,7 +1506,7 @@ class MessageAgentThought(db.Model):  # type: ignore[name-defined]
     def tool_labels(self) -> dict:
         try:
             if self.tool_labels_str:
-                return json.loads(self.tool_labels_str)
+                return cast(dict, json.loads(self.tool_labels_str))
             else:
                 return {}
         except Exception as e:
@@ -1510,7 +1516,7 @@ class MessageAgentThought(db.Model):  # type: ignore[name-defined]
     def tool_meta(self) -> dict:
         try:
             if self.tool_meta_str:
-                return json.loads(self.tool_meta_str)
+                return cast(dict, json.loads(self.tool_meta_str))
             else:
                 return {}
         except Exception as e:
@@ -1558,6 +1564,8 @@ class MessageAgentThought(db.Model):  # type: ignore[name-defined]
         except Exception as e:
             if self.observation:
                 return dict.fromkeys(tools, self.observation)
+            else:
+                return {}
 
 
 class DatasetRetrieverResource(db.Model):  # type: ignore[name-defined]

@@ -16,6 +16,7 @@ from extensions.ext_database import db
 from factories import variable_factory
 from libs import helper
 from models.enums import CreatedByRole
+from models.model import AppMode, Message
 
 from .account import Account
 from .types import StringUUID
@@ -43,7 +44,7 @@ class WorkflowType(Enum):
         raise ValueError(f"invalid workflow type value {value}")
 
     @classmethod
-    def from_app_mode(cls, app_mode: Union[str, "AppMode"]) -> "WorkflowType":
+    def from_app_mode(cls, app_mode: Union[str, AppMode]) -> "WorkflowType":
         """
         Get workflow type from app mode.
 
@@ -198,7 +199,7 @@ class Workflow(db.Model):  # type: ignore[name-defined]
             return []
 
         # get user_input_form from start node
-        variables = start_node.get("data", {}).get("variables", [])
+        variables: list[Any] = start_node.get("data", {}).get("variables", [])
 
         if to_old_structure:
             old_structure_variables = []
@@ -435,7 +436,7 @@ class WorkflowRun(db.Model):  # type: ignore[name-defined]
         return json.loads(self.outputs) if self.outputs else {}
 
     @property
-    def message(self) -> Optional["Message"]:
+    def message(self) -> Optional[Message]:
         from models.model import Message
 
         return (

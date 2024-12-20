@@ -6,7 +6,8 @@ from typing import Any, Optional
 from sqlalchemy import or_
 
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.tools.entities.api_entities import UserToolProvider
+from core.tools.entities.api_entities import UserTool, UserToolProvider
+from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
@@ -32,7 +33,7 @@ class WorkflowToolManageService:
         label: str,
         icon: dict,
         description: str,
-        parameters: Mapping[str, Any],
+        parameters: list[Mapping[str, Any]],
         privacy_policy: str = "",
         labels: Optional[list[str]] = None,
     ) -> dict:
@@ -97,7 +98,7 @@ class WorkflowToolManageService:
         label: str,
         icon: dict,
         description: str,
-        parameters: list[dict],
+        parameters: list[Mapping[str, Any]],
         privacy_policy: str = "",
         labels: Optional[list[str]] = None,
     ) -> dict:
@@ -193,7 +194,7 @@ class WorkflowToolManageService:
                 # skip deleted tools
                 pass
 
-        labels = ToolLabelManager.get_tools_labels(tools)
+        labels = ToolLabelManager.get_tools_labels([t for t in tools if isinstance(t, ToolProviderController)])
 
         result = []
 
@@ -265,7 +266,7 @@ class WorkflowToolManageService:
             "tool": ToolTransformService.tool_to_user_tool(
                 tool.get_tools(user_id, tenant_id)[0], labels=ToolLabelManager.get_tool_labels(tool)
             ),
-            "synced": workflow_app.workflow.version == db_tool.version,
+            "synced": workflow_app.workflow.version == db_tool.version if workflow_app.workflow else False,
             "privacy_policy": db_tool.privacy_policy,
         }
 
@@ -307,12 +308,12 @@ class WorkflowToolManageService:
             "tool": ToolTransformService.tool_to_user_tool(
                 tool.get_tools(user_id, tenant_id)[0], labels=ToolLabelManager.get_tool_labels(tool)
             ),
-            "synced": workflow_app.workflow.version == db_tool.version,
+            "synced": workflow_app.workflow.version == db_tool.version if workflow_app.workflow else False,
             "privacy_policy": db_tool.privacy_policy,
         }
 
     @classmethod
-    def list_single_workflow_tools(cls, user_id: str, tenant_id: str, workflow_tool_id: str) -> list[dict]:
+    def list_single_workflow_tools(cls, user_id: str, tenant_id: str, workflow_tool_id: str) -> list[UserTool]:
         """
         List workflow tool provider tools.
         :param user_id: the user id

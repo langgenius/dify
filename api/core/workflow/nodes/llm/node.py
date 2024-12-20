@@ -88,8 +88,8 @@ class LLMNode(BaseNode[LLMNodeData]):
     _node_data_cls = LLMNodeData
     _node_type = NodeType.LLM
 
-    def _run(self) -> NodeRunResult | Generator[NodeEvent | InNodeEvent, None, None]:
-        node_inputs = None
+    def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
+        node_inputs: Optional[dict[str, Any]] = None
         process_data = None
 
         try:
@@ -196,7 +196,6 @@ class LLMNode(BaseNode[LLMNodeData]):
                     error_type=type(e).__name__,
                 )
             )
-            return
         except Exception as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
@@ -206,7 +205,6 @@ class LLMNode(BaseNode[LLMNodeData]):
                     process_data=process_data,
                 )
             )
-            return
 
         outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
 
@@ -302,7 +300,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         return messages
 
     def _fetch_jinja_inputs(self, node_data: LLMNodeData) -> dict[str, str]:
-        variables = {}
+        variables: dict[str, Any] = {}
 
         if not node_data.prompt_config:
             return variables
@@ -319,7 +317,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 """
                 # check if it's a context structure
                 if "metadata" in input_dict and "_source" in input_dict["metadata"] and "content" in input_dict:
-                    return input_dict["content"]
+                    return str(input_dict["content"])
 
                 # else, parse the dict
                 try:

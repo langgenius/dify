@@ -8,7 +8,7 @@ from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.variables import Variable
-from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.entities import BaseNodeData
@@ -242,15 +242,12 @@ class WorkflowService:
                 raise ValueError("Node run failed with no run result")
             # single step debug mode error handling return
             if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node_instance.should_continue_on_error:
-                node_error_args = {
-                    "status": WorkflowNodeExecutionStatus.EXCEPTION,
-                    "error": node_run_result.error,
-                    "inputs": node_run_result.inputs,
-                    "metadata": {"error_strategy": node_instance.node_data.error_strategy},
-                }
                 if node_instance.node_data.error_strategy is ErrorStrategy.DEFAULT_VALUE:
                     node_run_result = NodeRunResult(
-                        **node_error_args,
+                        status=WorkflowNodeExecutionStatus.EXCEPTION,
+                        error=node_run_result.error,
+                        inputs=node_run_result.inputs,
+                        metadata={NodeRunMetadataKey.ERROR_STRATEGY: node_instance.node_data.error_strategy},
                         outputs={
                             **node_instance.node_data.default_value_dict,
                             "error_message": node_run_result.error,
@@ -259,7 +256,10 @@ class WorkflowService:
                     )
                 else:
                     node_run_result = NodeRunResult(
-                        **node_error_args,
+                        status=WorkflowNodeExecutionStatus.EXCEPTION,
+                        error=node_run_result.error,
+                        inputs=node_run_result.inputs,
+                        metadata={NodeRunMetadataKey.ERROR_STRATEGY: node_instance.node_data.error_strategy},
                         outputs={
                             "error_message": node_run_result.error,
                             "error_type": node_run_result.error_type,
@@ -338,7 +338,7 @@ class WorkflowService:
             raise ValueError(f"Current App mode: {app_model.mode} is not supported convert to workflow.")
 
         # convert to workflow
-        new_app = workflow_converter.convert_to_workflow(
+        new_app: App = workflow_converter.convert_to_workflow(
             app_model=app_model,
             account=account,
             name=args.get("name", "Default Name"),

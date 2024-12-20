@@ -105,6 +105,8 @@ class Tool(BaseModel, ABC):
         """
         if not self.variables:
             return
+        if self.identity is None:
+            return
 
         self.variables.set_file(self.identity.name, variable_name, image_key)
 
@@ -113,6 +115,8 @@ class Tool(BaseModel, ABC):
         set a text variable
         """
         if not self.variables:
+            return
+        if self.identity is None:
             return
 
         self.variables.set_text(self.identity.name, variable_name, text)
@@ -197,9 +201,11 @@ class Tool(BaseModel, ABC):
 
         return result
 
-    def invoke(self, user_id: str, tool_parameters: Mapping[str, Any]) -> list[ToolInvokeMessage]:
+    def invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> list[ToolInvokeMessage]:
         # update tool_parameters
         # TODO: Fix type error.
+        if self.runtime is None:
+            return []
         if self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
 
@@ -221,7 +227,7 @@ class Tool(BaseModel, ABC):
         Transform tool parameters type
         """
         # Temp fix for the issue that the tool parameters will be converted to empty while validating the credentials
-        result = deepcopy(tool_parameters)
+        result: dict[str, Any] = deepcopy(dict(tool_parameters))
         for parameter in self.parameters or []:
             if parameter.name in tool_parameters:
                 result[parameter.name] = parameter.type.cast_value(tool_parameters[parameter.name])

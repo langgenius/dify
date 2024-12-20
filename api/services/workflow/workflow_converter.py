@@ -303,7 +303,7 @@ class WorkflowConverter:
             nodes.append(http_request_node)
 
             # append code node for response body parsing
-            code_node = {
+            code_node: dict[str, Any] = {
                 "id": f"code_{index}",
                 "position": None,
                 "data": {
