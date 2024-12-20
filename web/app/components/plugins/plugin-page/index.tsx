@@ -123,7 +123,8 @@ const PluginPage = ({
   const [currentFile, setCurrentFile] = useState<File | null>(null)
   const containerRef = usePluginPageContext(v => v.containerRef)
   const options = usePluginPageContext(v => v.options)
-  const [activeTab, setActiveTab] = usePluginPageContext(v => [v.activeTab, v.setActiveTab])
+  const activeTab = usePluginPageContext(v => v.activeTab)
+  const setActiveTab = usePluginPageContext(v => v.setActiveTab)
   const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
 
   const uploaderProps = useUploader({
