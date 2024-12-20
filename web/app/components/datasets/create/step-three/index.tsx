@@ -63,7 +63,7 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
             <div className="flex justify-center items-center size-10 bg-components-card-bg rounded-[10px] shadow-lg">
               <RiBookOpenLine className="size-5 text-text-accent" />
             </div>
-            <div className="text-base text-text-secondary">{t('datasetCreation.stepThree.sideTipTitle')}</div>
+            <div className="text-base font-semibold text-text-secondary">{t('datasetCreation.stepThree.sideTipTitle')}</div>
             <div className="text-text-tertiary">{t('datasetCreation.stepThree.sideTipContent')}</div>
           </div>
         </div>
