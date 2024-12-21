@@ -200,6 +200,9 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                 system_instruction = content["parts"][0]
             else:
                 history.append(content)
+        
+        if not history:
+            raise InvokeError("The user prompt message is required. You only add a system prompt message.")
 
         google_model = genai.GenerativeModel(model_name=model, system_instruction=system_instruction)
         response = google_model.generate_content(
