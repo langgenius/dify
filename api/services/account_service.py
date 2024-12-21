@@ -245,7 +245,6 @@ class AccountService:
         token = TokenManager.generate_token(
             account=account, token_type="account_deletion", additional_data={"code": code}
         )
-        logging.info(f"Account {account.id} generated account deletion verification code {code} with token {token}")
         return token, code
 
     @classmethod

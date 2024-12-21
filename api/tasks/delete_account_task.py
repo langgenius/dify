@@ -25,36 +25,38 @@ def delete_account_task(account_id, reason: str):
     tenant_account_joins = db.session.query(TenantAccountJoin).filter(TenantAccountJoin.account_id == account.id).all()
     for ta in tenant_account_joins:
         try:
-            with db.session.begin():
-                if ta.role == TenantAccountJoinRole.OWNER:
-                    # dismiss all members of the tenant
-                    members = db.session.query(TenantAccountJoin).filter(TenantAccountJoin.tenant_id == ta.tenant_id).delete()
-                    logging.info(f"Dismissed {members} members from tenant {ta.tenant_id}.")
+            if ta.role == TenantAccountJoinRole.OWNER:
+                # dismiss all members of the tenant
+                members = db.session.query(TenantAccountJoin).filter(TenantAccountJoin.tenant_id == ta.tenant_id).delete()
+                logging.info(f"Dismissed {members} members from tenant {ta.tenant_id}.")
 
-                    # delete the tenant
-                    db.session.query(Tenant).filter(Tenant.id == ta.tenant_id).delete()
-                    logging.info(f"Deleted tenant {ta.tenant_id}.")
+                # delete the tenant
+                db.session.query(Tenant).filter(Tenant.id == ta.tenant_id).delete()
+                logging.info(f"Deleted tenant {ta.tenant_id}.")
 
-                    # delete subscription
-                    try:
-                        BillingService.delete_tenant_customer(ta.tenant_id)
-                    except Exception as e:
-                        logging.error(f"Failed to delete subscription for tenant {ta.tenant_id}: {e}.")
-                        raise
-                else:
-                    # remove the account from tenant
-                    db.session.delete(ta)
-                    logging.info(f"Removed account {account.email} from tenant {ta.tenant_id}.")
+                # delete subscription
+                try:
+                    BillingService.delete_tenant_customer(ta.tenant_id)
+                except Exception as e:
+                    logging.error(f"Failed to delete subscription for tenant {ta.tenant_id}: {e}.")
+                    raise
+            else:
+                # remove the account from tenant
+                db.session.delete(ta)
+                logging.info(f"Removed account {account.email} from tenant {ta.tenant_id}.")
 
-                # delete the account
-                db.session.delete(account)
+            # delete the account
+            db.session.delete(account)
 
-                # prepare account deletion log
-                account_deletion_log = AccountDeletionLogService.create_account_deletion_log(account.email, reason)
-                db.session.add(account_deletion_log)
+            # prepare account deletion log
+            account_deletion_log = AccountDeletionLogService.create_account_deletion_log(account.email, reason)
+            db.session.add(account_deletion_log)
+
+            db.session.commit()
 
         except Exception as e:
-            logging.error(f"Failed to delete account {account.email}.")
+            db.session.rollback()
+            logging.error(f"Failed to delete account {account.email}: {e}.")
             send_deletion_fail_task.delay(account.interface_language, account.email)
             return
 

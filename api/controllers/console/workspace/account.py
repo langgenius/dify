@@ -23,7 +23,6 @@ from models import AccountIntegrate, InvitationCode
 from services.account_service import AccountService
 from services.errors.account import \
     CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
-from services.errors.account import RateLimitExceededError
 
 
 class AccountInitApi(Resource):
@@ -255,8 +254,8 @@ class AccountDeleteVerifyApi(Resource):
         try:
             token, code = AccountService.generate_account_deletion_verification_code(account)
             AccountService.send_account_delete_verification_email(account, code)
-        except RateLimitExceededError:
-            return {"result": "fail", "error": "Rate limit exceeded."}, 429
+        except Exception as e:
+            return {"result": "fail", "error": str(e)}, 429
 
         return {"result": "success", "data": token}
 
