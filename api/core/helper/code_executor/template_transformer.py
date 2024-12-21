@@ -3,7 +3,7 @@ import re
 from abc import ABC, abstractmethod
 from base64 import b64encode
 from collections.abc import Mapping
-from typing import Any, cast
+from typing import Any
 
 
 class TemplateTransformer(ABC):
