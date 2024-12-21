@@ -20,6 +20,7 @@ from core.model_runtime.entities.message_entities import (
     PromptMessageContent,
     PromptMessageContentType,
     PromptMessageTool,
+    TextPromptMessageContent,
     SystemPromptMessage,
     ToolPromptMessage,
     UserPromptMessage,
@@ -404,6 +405,9 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                 )
             return glm_content
         elif isinstance(message, SystemPromptMessage):
+            if isinstance(message.content, list):
+                text_contents = filter(lambda c: isinstance(c, TextPromptMessageContent), message.content)
+                message.content = "".join(c.data for c in text_contents)
             return {"role": "user", "parts": [to_part(message.content)]}
         elif isinstance(message, ToolPromptMessage):
             return {
