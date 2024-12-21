@@ -700,8 +700,10 @@ class Conversation(db.Model):
     def status_count(self):
         messages = db.session.query(Message).filter(Message.conversation_id == self.id).all()
         status_counts = {
+            WorkflowRunStatus.RUNNING: 0,
             WorkflowRunStatus.SUCCEEDED: 0,
             WorkflowRunStatus.FAILED: 0,
+            WorkflowRunStatus.STOPPED: 0,
             WorkflowRunStatus.PARTIAL_SUCCESSED: 0,
         }
 
