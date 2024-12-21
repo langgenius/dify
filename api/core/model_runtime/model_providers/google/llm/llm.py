@@ -187,7 +187,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         if stop:
             config_kwargs["stop_sequences"] = stop
 
-        genai.configure(api_key=credentials["google_api_key"])  
+        genai.configure(api_key=credentials["google_api_key"])
 
         history = []
         system_instruction = ""
