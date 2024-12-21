@@ -764,6 +764,13 @@ class RegisterConfig(BaseSettings):
     )
 
 
+class AccountConfig(BaseSettings):
+    ACCOUNT_DELETION_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default=5,
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -792,6 +799,7 @@ class FeatureConfig(
     WorkspaceConfig,
     LoginConfig,
     RegisterConfig,
+    AccountConfig,
     # hosted services config
     HostedServiceConfig,
     CeleryBeatConfig,

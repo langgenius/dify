@@ -20,11 +20,11 @@ def delete_account_task(account: Account, reason: str):
     start_at = time.perf_counter()
 
     logger.info(f"Start deletion of account {account.email}.")
-    try:
-        tenant_account_joins = db.session.query(TenantAccountJoin).filter(TenantAccountJoin.account_id == account.id).all()
-        with db.session.begin():
-            # find all tenants this account belongs to
-            for ta in tenant_account_joins:
+    # find all tenants this account belongs to
+    tenant_account_joins = db.session.query(TenantAccountJoin).filter(TenantAccountJoin.account_id == account.id).all()
+    for ta in tenant_account_joins:
+        try:
+            with db.session.begin():
                 if ta.role == TenantAccountJoinRole.OWNER:
                     # dismiss all members of the tenant
                     members = db.session.query(TenantAccountJoin).filter(TenantAccountJoin.tenant_id == ta.tenant_id).delete()
@@ -45,17 +45,17 @@ def delete_account_task(account: Account, reason: str):
                     db.session.delete(ta)
                     logging.info(f"Removed account {account.email} from tenant {ta.tenant_id}.")
 
-            # delete the account
-            db.session.delete(account)
+                # delete the account
+                db.session.delete(account)
 
-            # prepare account deletion log
-            account_deletion_log = AccountDeletionLogService.create_account_deletion_log(account.email, reason)
-            db.session.add(account_deletion_log)
+                # prepare account deletion log
+                account_deletion_log = AccountDeletionLogService.create_account_deletion_log(account.email, reason)
+                db.session.add(account_deletion_log)
 
-    except Exception as e:
-        logging.error(f"Failed to delete account {account.email}.")
-        send_deletion_fail_task.delay(account.interface_language, account.email)
-        return
+        except Exception as e:
+            logging.error(f"Failed to delete account {account.email}.")
+            send_deletion_fail_task.delay(account.interface_language, account.email)
+            return
 
     send_deletion_success_task.delay(account.interface_language, account.email)
     end_at = time.perf_counter()
