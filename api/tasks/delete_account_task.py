@@ -4,13 +4,12 @@ import time
 import click
 from celery import shared_task
 from extensions.ext_database import db
-
-from api.models.account import (Account, Tenant, TenantAccountJoin,
-                                TenantAccountJoinRole)
-from api.services.account_deletion_log_service import AccountDeletionLogService
-from api.services.billing_service import BillingService
-from api.tasks.mail_account_deletion_task import (send_deletion_fail_task,
-                                                  send_deletion_success_task)
+from models.account import (Account, Tenant, TenantAccountJoin,
+                            TenantAccountJoinRole)
+from services.account_deletion_log_service import AccountDeletionLogService
+from services.billing_service import BillingService
+from tasks.mail_account_deletion_task import (send_deletion_fail_task,
+                                              send_deletion_success_task)
 
 logger = logging.getLogger(__name__)
 

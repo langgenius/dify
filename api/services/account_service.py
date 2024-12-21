@@ -22,6 +22,7 @@ from models.account import (Account, AccountIntegrate, AccountStatus, Tenant,
                             TenantAccountRole, TenantStatus)
 from models.model import DifySetup
 from pydantic import BaseModel
+from services.account_deletion_log_service import AccountDeletionLogService
 from services.errors.account import (AccountAlreadyInTenantError,
                                      AccountLoginError, AccountNotFoundError,
                                      AccountNotLinkTenantError,
@@ -37,15 +38,13 @@ from services.errors.account import (AccountAlreadyInTenantError,
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
 from sqlalchemy import func
+from tasks.delete_account_task import delete_account_task
+from tasks.mail_account_deletion_task import \
+    send_account_deletion_verification_code
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_reset_password_task import send_reset_password_mail_task
 from werkzeug.exceptions import Unauthorized
-
-from api.services.account_deletion_log_service import AccountDeletionLogService
-from api.tasks.delete_account_task import delete_account_task
-from api.tasks.mail_account_deletion_task import \
-    send_account_deletion_verification_code
 
 
 class TokenPair(BaseModel):

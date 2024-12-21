@@ -1,11 +1,10 @@
 
 from datetime import timedelta
 
+from configs import dify_config
 from extensions.ext_database import db
-
-from api.configs import dify_config
-from api.libs.helper import get_current_datetime
-from api.models.account import AccountDeletionLog
+from libs.helper import get_current_datetime
+from models.account import AccountDeletionLog
 
 
 class AccountDeletionLogService:
