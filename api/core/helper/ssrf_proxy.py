@@ -24,7 +24,7 @@ BACKOFF_FACTOR = 0.5
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
 
 
-class MaxRetriesExceededError(Exception):
+class MaxRetriesExceededError(ValueError):
     """Raised when the maximum number of retries is exceeded."""
 
     pass
