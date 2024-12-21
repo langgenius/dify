@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
-def delete_account_task(account: Account, reason: str):
+def delete_account_task(account_id, reason: str):
+    account = db.session.query(Account).filter(Account.id == account_id).first()
     logger.info(click.style("Start delete account task.", fg="green"))
     start_at = time.perf_counter()
 

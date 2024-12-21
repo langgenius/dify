@@ -275,7 +275,7 @@ class AccountService:
     @staticmethod
     def delete_account(account: Account, reason="") -> None:
         """Delete account. This method only adds a task to the queue for deletion."""
-        delete_account_task.delay(account, reason)
+        delete_account_task.delay(account.id, reason)
 
     @staticmethod
     def link_account_integrate(provider: str, open_id: str, account: Account) -> None:
