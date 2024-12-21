@@ -179,6 +179,15 @@ class ParameterExtractorNode(LLMNode):
                 error=str(e),
                 metadata={},
             )
+        except Exception as e:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=inputs,
+                process_data=process_data,
+                outputs={"__is_success": 0, "__reason": "Failed to invoke model", "__error": str(e)},
+                error=str(e),
+                metadata={},
+            )
 
         error = None
 

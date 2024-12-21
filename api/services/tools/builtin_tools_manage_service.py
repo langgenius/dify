@@ -3,6 +3,9 @@ import logging
 from pathlib import Path
 from typing import Optional, cast
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from configs import dify_config
 from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -33,7 +36,7 @@ class BuiltinToolManageService:
             tenant_id=tenant_id, provider_controller=provider_controller
         )
         # check if user has added the provider
-        builtin_provider: Optional[BuiltinToolProvider] = (
+        builtin_provider = (
             db.session.query(BuiltinToolProvider)
             .filter(
                 BuiltinToolProvider.tenant_id == tenant_id,
@@ -72,19 +75,18 @@ class BuiltinToolManageService:
         return jsonable_encoder([v for _, v in (provider.credentials_schema or {}).items()])
 
     @staticmethod
-    def update_builtin_tool_provider(user_id: str, tenant_id: str, provider_name: str, credentials: dict):
+    def update_builtin_tool_provider(
+        session: Session, user_id: str, tenant_id: str, provider_name: str, credentials: dict
+    ):
         """
         update builtin tool provider
         """
         # get if the provider exists
-        provider: Optional[BuiltinToolProvider] = (
-            db.session.query(BuiltinToolProvider)
-            .filter(
-                BuiltinToolProvider.tenant_id == tenant_id,
-                BuiltinToolProvider.provider == provider_name,
-            )
-            .first()
+        stmt = select(BuiltinToolProvider).where(
+            BuiltinToolProvider.tenant_id == tenant_id,
+            BuiltinToolProvider.provider == provider_name,
         )
+        provider = session.scalar(stmt)
 
         try:
             # get provider
@@ -116,13 +118,10 @@ class BuiltinToolManageService:
                 encrypted_credentials=json.dumps(credentials),
             )
 
-            db.session.add(provider)
-            db.session.commit()
+            session.add(provider)
 
         else:
             provider.encrypted_credentials = json.dumps(credentials)
-            db.session.add(provider)
-            db.session.commit()
 
             # delete cache
             tool_configuration.delete_tool_credentials_cache()
@@ -130,11 +129,11 @@ class BuiltinToolManageService:
         return {"result": "success"}
 
     @staticmethod
-    def get_builtin_tool_provider_credentials(user_id: str, tenant_id: str, provider_name: str):
+    def get_builtin_tool_provider_credentials(tenant_id: str, provider_name: str):
         """
         get builtin tool provider credentials
         """
-        provider: Optional[BuiltinToolProvider] = (
+        provider = (
             db.session.query(BuiltinToolProvider)
             .filter(
                 BuiltinToolProvider.tenant_id == tenant_id,
@@ -157,7 +156,7 @@ class BuiltinToolManageService:
         """
         delete tool provider
         """
-        provider: Optional[BuiltinToolProvider] = (
+        provider = (
             db.session.query(BuiltinToolProvider)
             .filter(
                 BuiltinToolProvider.tenant_id == tenant_id,

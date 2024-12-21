@@ -32,13 +32,16 @@ class TemplateTransformer(ABC):
         return result.group(1)
 
     @classmethod
-    def transform_response(cls, response: str) -> dict:
+    def transform_response(cls, response: str):
         """
         Transform response to dict
         :param response: response
         :return:
         """
-        return cast(dict, json.loads(cls.extract_result_str_from_response(response)))
+        result = json.loads(cls.extract_result_str_from_response(response))
+        if not isinstance(result, dict):
+            raise ValueError("Result must be a dict")
+        return result
 
     @classmethod
     @abstractmethod

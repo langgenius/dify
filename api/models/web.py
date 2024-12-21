@@ -1,3 +1,5 @@
+from sqlalchemy import func
+
 from .engine import db
 from .model import Message
 from .types import StringUUID
@@ -15,7 +17,7 @@ class SavedMessage(db.Model):  # type: ignore[name-defined]
     message_id = db.Column(StringUUID, nullable=False)
     created_by_role = db.Column(db.String(255), nullable=False, server_default=db.text("'end_user'::character varying"))
     created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def message(self):
@@ -34,4 +36,4 @@ class PinnedConversation(db.Model):  # type: ignore[name-defined]
     conversation_id = db.Column(StringUUID, nullable=False)
     created_by_role = db.Column(db.String(255), nullable=False, server_default=db.text("'end_user'::character varying"))
     created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())

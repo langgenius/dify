@@ -1,0 +1,98 @@
+identity:
+  name: s3_operator
+  author: AWS
+  label:
+    en_US: AWS S3 Operator
+    zh_Hans: AWS S3 读写器
+    pt_BR: AWS S3 Operator
+  icon: icon.svg
+description:
+  human:
+    en_US: AWS S3 Writer and Reader
+    zh_Hans: 读写S3 bucket中的文件
+    pt_BR: AWS S3 Writer and Reader
+  llm: AWS S3 Writer and Reader
+parameters:
+  - name: text_content
+    type: string
+    required: false
+    label:
+      en_US: The text to write
+      zh_Hans: 待写入的文本
+      pt_BR: The text to write
+    human_description:
+      en_US: The text to write
+      zh_Hans: 待写入的文本
+      pt_BR: The text to write
+    llm_description: The text to write
+    form: llm
+  - name: s3_uri
+    type: string
+    required: true
+    label:
+      en_US: s3 uri
+      zh_Hans: s3 uri
+      pt_BR: s3 uri
+    human_description:
+      en_US: s3 uri
+      zh_Hans: s3 uri
+      pt_BR: s3 uri
+    llm_description: s3 uri
+    form: llm
+  - name: aws_region
+    type: string
+    required: true
+    label:
+      en_US: region of bucket
+      zh_Hans: bucket 所在的region
+      pt_BR: region of bucket
+    human_description:
+      en_US: region of bucket
+      zh_Hans: bucket 所在的region
+      pt_BR: region of bucket
+    llm_description: region of bucket
+    form: form
+  - name: operation_type
+    type: select
+    required: true
+    label:
+      en_US: operation type
+      zh_Hans: 操作类型
+      pt_BR: operation type
+    human_description:
+      en_US: operation type
+      zh_Hans: 操作类型
+      pt_BR: operation type
+    default: read
+    options:
+      - value: read
+        label:
+          en_US: read
+          zh_Hans: 读
+      - value: write
+        label:
+          en_US: write
+          zh_Hans: 写
+    form: form
+  - name: generate_presign_url
+    type: boolean
+    required: false
+    label:
+      en_US: Generate presigned URL
+      zh_Hans: 生成预签名URL
+    human_description:
+      en_US: Whether to generate a presigned URL for the S3 object
+      zh_Hans: 是否生成S3对象的预签名URL
+    default: false
+    form: form
+  - name: presign_expiry
+    type: number
+    required: false
+    label:
+      en_US: Presigned URL expiration time
+      zh_Hans: 预签名URL有效期
+    human_description:
+      en_US: Expiration time in seconds for the presigned URL
+      zh_Hans: 预签名URL的有效期（秒）
+    default: 3600
+    form: form

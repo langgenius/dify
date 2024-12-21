@@ -116,8 +116,11 @@ def _build_from_local_file(
     tenant_id: str,
     transfer_method: FileTransferMethod,
 ) -> File:
+    upload_file_id = mapping.get("upload_file_id")
+    if not upload_file_id:
+        raise ValueError("Invalid upload file id")
     stmt = select(UploadFile).where(
-        UploadFile.id == mapping.get("upload_file_id"),
+        UploadFile.id == upload_file_id,
         UploadFile.tenant_id == tenant_id,
     )
 

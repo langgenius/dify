@@ -505,6 +505,12 @@ class WorkflowCycleManage:
         :param workflow_run: workflow run
         :return:
         """
+        # Attach WorkflowRun to an active session so "created_by_role" can be accessed.
+        workflow_run = db.session.merge(workflow_run)
+
+        # Refresh to ensure any expired attributes are fully loaded
+        db.session.refresh(workflow_run)
+
         created_by = None
         if workflow_run.created_by_role == CreatedByRole.ACCOUNT.value:
             created_by_account = workflow_run.created_by_account
