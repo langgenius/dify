@@ -1,5 +1,7 @@
 import enum
 
+from sqlalchemy import func
+
 from .engine import db
 from .types import StringUUID
 
@@ -23,4 +25,4 @@ class APIBasedExtension(db.Model):
     name = db.Column(db.String(255), nullable=False)
     api_endpoint = db.Column(db.String(255), nullable=False)
     api_key = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())

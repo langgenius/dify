@@ -2,7 +2,7 @@ import json
 from typing import Optional
 
 import sqlalchemy as sa
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.tools.entities.common_entities import I18nObject
@@ -36,8 +36,8 @@ class BuiltinToolProvider(db.Model):
     provider = db.Column(db.String(40), nullable=False)
     # credential of the tool provider
     encrypted_credentials = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def credentials(self) -> dict:
@@ -74,8 +74,8 @@ class PublishedAppTool(db.Model):
     tool_name = db.Column(db.String(40), nullable=False)
     # author
     author = db.Column(db.String(40), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def description_i18n(self) -> I18nObject:
@@ -120,8 +120,8 @@ class ApiToolProvider(db.Model):
     # custom_disclaimer
     custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
 
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def schema_type(self) -> ApiProviderSchemaType:
@@ -198,8 +198,8 @@ class WorkflowToolProvider(db.Model):
     # privacy policy
     privacy_policy = db.Column(db.String(255), nullable=True, server_default="")
 
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def user(self) -> Account | None:
@@ -251,8 +251,8 @@ class ToolModelInvoke(db.Model):
     provider_response_latency = db.Column(db.Float, nullable=False, server_default=db.text("0"))
     total_price = db.Column(db.Numeric(10, 7))
     currency = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class ToolConversationVariables(db.Model):
@@ -278,8 +278,8 @@ class ToolConversationVariables(db.Model):
     # variables pool
     variables_str = db.Column(db.Text, nullable=False)
 
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def variables(self) -> dict:
