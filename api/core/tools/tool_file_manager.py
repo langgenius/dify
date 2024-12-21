@@ -8,7 +8,8 @@ from mimetypes import guess_extension, guess_type
 from typing import Optional, Union
 from uuid import uuid4
 
-from httpx import get
+import httpx
+from helper import ssrf_proxy
 
 from configs import dify_config
 from extensions.ext_database import db
@@ -94,12 +95,11 @@ class ToolFileManager:
     ) -> ToolFile:
         # try to download image
         try:
-            response = get(file_url)
+            response = ssrf_proxy.get(file_url)
             response.raise_for_status()
             blob = response.content
-        except Exception as e:
-            logger.exception(f"Failed to download file from {file_url}")
-            raise
+        except httpx.TimeoutException as e:
+            raise ValueError(f"timeout when downloading file from {file_url}")
 
         mimetype = guess_type(file_url)[0] or "octet/stream"
         extension = guess_extension(mimetype) or ".bin"
