@@ -9,9 +9,9 @@ from typing import Optional, Union
 from uuid import uuid4
 
 import httpx
-from helper import ssrf_proxy
 
 from configs import dify_config
+from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import MessageFile
