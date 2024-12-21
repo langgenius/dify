@@ -63,6 +63,9 @@ class AccountService:
     email_code_login_rate_limiter = RateLimiter(
         prefix="email_code_login_rate_limit", max_attempts=1, time_window=60 * 1
     )
+    email_code_account_deletion_rate_limiter = RateLimiter(
+        prefix="email_code_account_deletion_rate_limit", max_attempts=1, time_window=60 * 1
+    )
     LOGIN_MAX_ERROR_LIMITS = 5
 
     @staticmethod
@@ -245,10 +248,18 @@ class AccountService:
         )
         return code, token
 
-    @staticmethod
-    def send_account_deletion_verification_email(account: Account, code: str):
+    @classmethod
+    def send_account_deletion_verification_email(cls, account: Account, code: str):
+        if cls.email_code_account_deletion_rate_limiter.is_rate_limited(email):
+            from controllers.console.auth.error import \
+                EmailCodeAccountDeletionRateLimitExceededError
+
+            raise EmailCodeAccountDeletionRateLimitExceededError()
+
         language, email = account.interface_language, account.email
         send_account_deletion_verification_code.delay(language=language, to=email, code=code)
+
+        cls.email_code_account_deletion_rate_limiter.increment_rate_limit(email)
 
     @staticmethod
     def verify_account_deletion_code(token: str, code: str) -> bool:
