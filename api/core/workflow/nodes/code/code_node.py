@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
@@ -67,18 +67,17 @@ class CodeNode(BaseNode[CodeNodeData]):
 
         return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs=result)
 
-    def _check_string(self, value: str, variable: str) -> str:
+    def _check_string(self, value: str | None, variable: str) -> str | None:
         """
         Check string
         :param value: value
         :param variable: variable
         :return:
         """
+        if value is None:
+            return None
         if not isinstance(value, str):
-            if value is None:
-                return None
-            else:
-                raise OutputValidationError(f"Output variable `{variable}` must be a string")
+            raise OutputValidationError(f"Output variable `{variable}` must be a string")
 
         if len(value) > dify_config.CODE_MAX_STRING_LENGTH:
             raise OutputValidationError(
@@ -88,18 +87,17 @@ class CodeNode(BaseNode[CodeNodeData]):
 
         return value.replace("\x00", "")
 
-    def _check_number(self, value: Union[int, float], variable: str) -> Union[int, float]:
+    def _check_number(self, value: int | float | None, variable: str) -> int | float | None:
         """
         Check number
         :param value: value
         :param variable: variable
         :return:
         """
+        if value is None:
+            return None
         if not isinstance(value, int | float):
-            if value is None:
-                return None
-            else:
-                raise OutputValidationError(f"Output variable `{variable}` must be a number")
+            raise OutputValidationError(f"Output variable `{variable}` must be a number")
 
         if value > dify_config.CODE_MAX_NUMBER or value < dify_config.CODE_MIN_NUMBER:
             raise OutputValidationError(
