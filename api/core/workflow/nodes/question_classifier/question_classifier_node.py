@@ -154,8 +154,7 @@ class QuestionClassifierNode(LLMNode):
                 },
                 llm_usage=usage,
             )
-
-        except ValueError as e:
+        except Exception as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=variables,
