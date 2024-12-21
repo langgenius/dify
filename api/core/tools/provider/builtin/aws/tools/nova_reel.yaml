@@ -1,0 +1,124 @@
+identity:
+  name: nova_reel
+  author: AWS
+  label:
+    en_US: AWS Bedrock Nova Reel
+    zh_Hans: AWS Bedrock Nova Reel
+  icon: icon.svg
+description:
+  human:
+    en_US: A tool for generating videos using AWS Bedrock's Nova Reel model. Supports text-to-video generation and image-to-video generation with customizable parameters like duration, FPS, and dimensions. Input parameters reference https://docs.aws.amazon.com/nova/latest/userguide/video-generation.html
+    zh_Hans: 使用 AWS Bedrock 的 Nova Reel 模型生成视频的工具。支持文本生成视频和图像生成视频功能，可自定义持续时间、帧率和尺寸等参数。输入参数参考 https://docs.aws.amazon.com/nova/latest/userguide/video-generation.html
+  llm: Generate videos using AWS Bedrock's Nova Reel model with support for both text-to-video and image-to-video generation, allowing customization of video properties like duration, frame rate, and resolution.
+
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: Text description of the video you want to generate
+      zh_Hans: 您想要生成的视频的文本描述
+    llm_description: Describe the video you want to generate
+    form: llm
+
+  - name: video_output_s3uri
+    type: string
+    required: true
+    label:
+      en_US: Output S3 URI
+      zh_Hans: 输出S3 URI
+    human_description:
+      en_US: S3 URI where the generated video will be stored
+      zh_Hans: 生成的视频将存储的S3 URI
+    form: form
+
+  - name: dimension
+    type: string
+    required: false
+    default: 1280x720
+    label:
+      en_US: Dimension
+      zh_Hans: 尺寸
+    human_description:
+      en_US: Video dimensions (width x height)
+      zh_Hans: 视频尺寸（宽 x 高）
+    form: form
+
+  - name: duration
+    type: number
+    required: false
+    default: 6
+    label:
+      en_US: Duration
+      zh_Hans: 时长
+    human_description:
+      en_US: Video duration in seconds
+      zh_Hans: 视频时长（秒）
+    form: form
+
+  - name: seed
+    type: number
+    required: false
+    default: 0
+    label:
+      en_US: Seed
+      zh_Hans: 种子值
+    human_description:
+      en_US: Random seed for video generation
+      zh_Hans: 视频生成的随机种子
+    form: form
+
+  - name: fps
+    type: number
+    required: false
+    default: 24
+    label:
+      en_US: FPS
+      zh_Hans: 帧率
+    human_description:
+      en_US: Frames per second for the generated video
+      zh_Hans: 生成视频的每秒帧数
+    form: form
+
+  - name: async
+    type: boolean
+    required: false
+    default: true
+    label:
+      en_US: Async Mode
+      zh_Hans: 异步模式
+    human_description:
+      en_US: Whether to run in async mode (return immediately) or sync mode (wait for completion)
+      zh_Hans: 是否以异步模式运行（立即返回）或同步模式（等待完成）
+    form: llm
+
+  - name: aws_region
+    type: string
+    required: false
+    default: us-east-1
+    label:
+      en_US: AWS Region
+      zh_Hans: AWS 区域
+    human_description:
+      en_US: AWS region for Bedrock service
+      zh_Hans: Bedrock 服务的 AWS 区域
+    form: form
+
+  - name: image_input_s3uri
+    type: string
+    required: false
+    label:
+      en_US: Input Image S3 URI
+      zh_Hans: 输入图像S3 URI
+    human_description:
+      en_US: S3 URI of the input image (1280x720 JPEG/PNG) to use as first frame
+      zh_Hans: 用作第一帧的输入图像（1280x720 JPEG/PNG）的S3 URI
+    form: llm
+
+development:
+  dependencies:
+    - boto3
+    - pillow
