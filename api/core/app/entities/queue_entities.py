@@ -305,10 +305,10 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     start_at: datetime
 
-    inputs: Optional[dict[str, Any]] = None
-    process_data: Optional[dict[str, Any]] = None
-    outputs: Optional[dict[str, Any]] = None
-    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
+    inputs: Optional[Mapping[str, Any]] = None
+    process_data: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
 
     error: Optional[str] = None
     """single iteration duration map"""
@@ -336,10 +336,10 @@ class QueueNodeRetryEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     start_at: datetime
 
-    inputs: Optional[dict[str, Any]] = None
-    process_data: Optional[dict[str, Any]] = None
-    outputs: Optional[dict[str, Any]] = None
-    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
+    inputs: Optional[Mapping[str, Any]] = None
+    process_data: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
 
     error: str
     retry_index: int  # retry index
@@ -369,10 +369,10 @@ class QueueNodeInIterationFailedEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     start_at: datetime
 
-    inputs: Optional[dict[str, Any]] = None
-    process_data: Optional[dict[str, Any]] = None
-    outputs: Optional[dict[str, Any]] = None
-    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
+    inputs: Optional[Mapping[str, Any]] = None
+    process_data: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
 
     error: str
 
@@ -401,9 +401,9 @@ class QueueNodeExceptionEvent(AppQueueEvent):
     start_at: datetime
 
     inputs: Optional[Mapping[str, Any]] = None
-    process_data: Optional[dict[str, Any]] = None
+    process_data: Optional[Mapping[str, Any]] = None
     outputs: Optional[Mapping[str, Any]] = None
-    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
+    execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
 
     error: str
 
@@ -432,9 +432,9 @@ class QueueNodeFailedEvent(AppQueueEvent):
     start_at: datetime
 
     inputs: Optional[Mapping[str, Any]] = None
-    process_data: Optional[dict[str, Any]] = None
+    process_data: Optional[Mapping[str, Any]] = None
     outputs: Optional[Mapping[str, Any]] = None
-    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
+    execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
 
     error: str
 

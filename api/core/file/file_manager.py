@@ -63,7 +63,8 @@ def to_prompt_message_content(
     }
 
     try:
-        return prompt_class_map[f.type](**params)
+        # FIXME: fix the type error
+        return prompt_class_map[f.type](**params)  # type: ignore
     except KeyError:
         raise ValueError(f"file type {f.type} is not supported")
 

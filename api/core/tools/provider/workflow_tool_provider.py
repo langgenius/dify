@@ -116,6 +116,7 @@ class WorkflowToolProviderController(ToolProviderController):
                         llm_description=parameter.description,
                         required=variable.required,
                         options=options,
+                        placeholder=I18nObject(en_US="", zh_Hans=""),
                     )
                 )
             elif features.file_upload:
@@ -128,6 +129,7 @@ class WorkflowToolProviderController(ToolProviderController):
                         llm_description=parameter.description,
                         required=False,
                         form=parameter.form,
+                        placeholder=I18nObject(en_US="", zh_Hans=""),
                     )
                 )
             else:

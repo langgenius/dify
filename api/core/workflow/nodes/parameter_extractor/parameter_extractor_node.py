@@ -596,9 +596,10 @@ class ParameterExtractorNode(LLMNode):
                 json_str = extract_json(result[idx:])
                 if json_str:
                     try:
-                        return json.loads(json_str)
+                        return cast(dict, json.loads(json_str))
                     except Exception:
                         pass
+        return None
 
     def _extract_json_from_tool_call(self, tool_call: AssistantPromptMessage.ToolCall) -> Optional[dict]:
         """
@@ -607,13 +608,13 @@ class ParameterExtractorNode(LLMNode):
         if not tool_call or not tool_call.function.arguments:
             return None
 
-        return json.loads(tool_call.function.arguments)
+        return cast(dict, json.loads(tool_call.function.arguments))
 
     def _generate_default_result(self, data: ParameterExtractorNodeData) -> dict:
         """
         Generate default result.
         """
-        result = {}
+        result: dict[str, Any] = {}
         for parameter in data.parameters:
             if parameter.type == "number":
                 result[parameter.name] = 0

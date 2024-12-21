@@ -85,6 +85,7 @@ class DatasetRetrieverTool(Tool):
                 llm_description="Query for the dataset to be used to retrieve the dataset.",
                 required=True,
                 default="",
+                placeholder=I18nObject(en_US="", zh_Hans=""),
             ),
         ]
 

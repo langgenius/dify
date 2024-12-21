@@ -32,11 +32,13 @@ class ApiTool(Tool):
         :param meta: the meta data of a tool call processing, tenant_id is required
         :return: the new tool
         """
+        if self.api_bundle is None:
+            raise ValueError("api_bundle is required")
         return self.__class__(
             identity=self.identity.model_copy() if self.identity else None,
             parameters=self.parameters.copy() if self.parameters else None,
             description=self.description.model_copy() if self.description else None,
-            api_bundle=self.api_bundle.model_copy() if self.api_bundle else None,
+            api_bundle=self.api_bundle.model_copy(),
             runtime=Tool.Runtime(**runtime),
         )
 
@@ -198,7 +200,7 @@ class ApiTool(Tool):
                 body = body
 
         if method in {"get", "head", "post", "put", "delete", "patch"}:
-            response = getattr(ssrf_proxy, method)(
+            response: httpx.Response = getattr(ssrf_proxy, method)(
                 url,
                 params=params,
                 headers=headers,
@@ -210,7 +212,7 @@ class ApiTool(Tool):
             )
             return response
         else:
-            raise ValueError(f"Invalid http method {self.method}")
+            raise ValueError(f"Invalid http method {method}")
 
     def _convert_body_property_any_of(
         self, property: dict[str, Any], value: Any, any_of: list[dict[str, Any]], max_recursive=10

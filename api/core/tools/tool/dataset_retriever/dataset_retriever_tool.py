@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from core.rag.datasource.retrieval_service import RetrievalService
@@ -97,7 +99,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             return str("\n".join([item.page_content for item in results]))
         else:
             # get retrieval model , if the model is not setting , using default
-            retrieval_model = dataset.retrieval_model or default_retrieval_model
+            retrieval_model: dict[str, Any] = dataset.retrieval_model or default_retrieval_model
             if dataset.indexing_technique == "economy":
                 # use keyword table query
                 documents = RetrievalService.retrieve(
@@ -115,11 +117,11 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                         score_threshold=retrieval_model.get("score_threshold", 0.0)
                         if retrieval_model["score_threshold_enabled"]
                         else 0.0,
-                        reranking_model=retrieval_model.get("reranking_model", None)
+                        reranking_model=retrieval_model.get("reranking_model")
                         if retrieval_model["reranking_enable"]
                         else None,
                         reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
-                        weights=retrieval_model.get("weights", None),
+                        weights=retrieval_model.get("weights"),
                     )
                 else:
                     documents = []
@@ -157,20 +159,21 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                         context_list = []
                         resource_number = 1
                         for segment in sorted_segments:
-                            context = {}
-                            document = Document.query.filter(
+                            document_segment = Document.query.filter(
                                 Document.id == segment.document_id,
                                 Document.enabled == True,
                                 Document.archived == False,
                             ).first()
-                            if dataset and document:
+                            if not document_segment:
+                                continue
+                            if dataset and document_segment:
                                 source = {
                                     "position": resource_number,
                                     "dataset_id": dataset.id,
                                     "dataset_name": dataset.name,
-                                    "document_id": document.id,
-                                    "document_name": document.name,
-                                    "data_source_type": document.data_source_type,
+                                    "document_id": document_segment.id,
+                                    "document_name": document_segment.name,
+                                    "data_source_type": document_segment.data_source_type,
                                     "segment_id": segment.id,
                                     "retriever_from": self.retriever_from,
                                     "score": document_score_list.get(segment.index_node_id, None),

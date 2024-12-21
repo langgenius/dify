@@ -640,7 +640,7 @@ class WorkflowCycleManage:
         event: QueueNodeRetryEvent,
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
-    ) -> Optional[NodeFinishStreamResponse]:
+    ) -> Optional[Union[NodeRetryStreamResponse, NodeFinishStreamResponse]]:
         """
         Workflow node finish to stream response.
         :param event: queue node succeeded or failed event
@@ -823,7 +823,7 @@ class WorkflowCycleManage:
             ),
         )
 
-    def _fetch_files_from_node_outputs(self, outputs_dict: dict) -> Sequence[Mapping[str, Any]]:
+    def _fetch_files_from_node_outputs(self, outputs_dict: Mapping[str, Any]) -> Sequence[Mapping[str, Any]]:
         """
         Fetch files from node outputs
         :param outputs_dict: node outputs dict

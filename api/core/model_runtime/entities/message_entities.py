@@ -89,8 +89,8 @@ class MultiModalPromptMessageContent(PromptMessageContent):
     url: str = Field(default="", description="the url of multi-modal file")
     mime_type: str = Field(default=..., description="the mime type of multi-modal file")
 
-    @computed_field(return_type=str)
-    @property
+    @computed_field(return_type=str)  # type: ignore
+    @property  # type: ignore
     def data(self):
         return self.url or f"data:{self.mime_type};base64,{self.base64_data}"
 

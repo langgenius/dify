@@ -293,6 +293,9 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 event,
                 QueueNodeRetryEvent,
             ):
+                if not workflow_run:
+                    raise Exception("Workflow run not initialized.")
+
                 workflow_node_execution = self._handle_workflow_node_execution_retried(
                     workflow_run=workflow_run, event=event
                 )

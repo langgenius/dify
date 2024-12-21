@@ -201,12 +201,14 @@ class Tool(BaseModel, ABC):
 
         return result
 
-    def invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> list[ToolInvokeMessage]:
+    def invoke(self, user_id: str, tool_parameters: Mapping[str, Any]) -> list[ToolInvokeMessage]:
         # update tool_parameters
         # TODO: Fix type error.
         if self.runtime is None:
             return []
         if self.runtime.runtime_parameters:
+            # Convert Mapping to dict before updating
+            tool_parameters = dict(tool_parameters)
             tool_parameters.update(self.runtime.runtime_parameters)
 
         # try parse tool parameters into the correct type

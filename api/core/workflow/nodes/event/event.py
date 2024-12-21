@@ -1,4 +1,6 @@
+from collections.abc import Mapping
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -44,10 +46,9 @@ class SingleStepRetryEvent(BaseModel):
 
     status: str = WorkflowNodeExecutionStatus.RETRY.value
 
-    inputs: dict | None = Field(..., description="input")
+    inputs: Mapping[str, Any] | None = Field(..., description="input")
     error: str = Field(..., description="error")
-    outputs: dict = Field(..., description="output")
+    outputs: Mapping[str, Any] | None = Field(..., description="output")
     retry_index: int = Field(..., description="Retry attempt number")
-    error: str = Field(..., description="error")
     elapsed_time: float = Field(..., description="elapsed time")
-    execution_metadata: dict | None = Field(..., description="execution metadata")
+    execution_metadata: Mapping[str, Any] | None = Field(..., description="execution metadata")

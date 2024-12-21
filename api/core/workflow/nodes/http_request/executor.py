@@ -106,9 +106,9 @@ class Executor:
             if not (key := key.strip()):
                 continue
 
-            value = value[0].strip() if value else ""
+            value_str = value[0].strip() if value else ""
             result.append(
-                (self.variable_pool.convert_template(key).text, self.variable_pool.convert_template(value).text)
+                (self.variable_pool.convert_template(key).text, self.variable_pool.convert_template(value_str).text)
             )
 
         self.params = result
@@ -175,9 +175,10 @@ class Executor:
                         self.variable_pool.convert_template(item.key).text: item.file
                         for item in filter(lambda item: item.type == "file", data)
                     }
+                    files: dict[str, Any] = {}
                     files = {k: self.variable_pool.get_file(selector) for k, selector in file_selectors.items()}
                     files = {k: v for k, v in files.items() if v is not None}
-                    files = {k: variable.value for k, variable in files.items()}
+                    files = {k: variable.value for k, variable in files.items() if variable is not None}
                     files = {
                         k: (v.filename, file_manager.download(v), v.mime_type or "application/octet-stream")
                         for k, v in files.items()

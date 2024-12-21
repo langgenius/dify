@@ -29,7 +29,7 @@ class ToolProviderController(BaseModel, ABC):
         return self.credentials_schema.copy()
 
     @abstractmethod
-    def get_tools(self) -> list[Tool]:
+    def get_tools(self) -> Optional[list[Tool]]:
         """
         returns a list of tools that the provider can provide
 
@@ -53,10 +53,10 @@ class ToolProviderController(BaseModel, ABC):
         :param tool_name: the name of the tool, defined in `get_tools`
         :return: list of parameters
         """
-        tool = next(filter(lambda x: x.identity.name == tool_name, self.get_tools()), None)
+        tool = next(filter(lambda x: x.identity.name == tool_name if x.identity else False, self.get_tools()), None)
         if tool is None:
             raise ToolNotFoundError(f"tool {tool_name} not found")
-        return tool.parameters
+        return tool.parameters or []
 
     @property
     def provider_type(self) -> ToolProviderType:

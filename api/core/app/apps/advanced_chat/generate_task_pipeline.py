@@ -65,6 +65,7 @@ from models.enums import CreatedByRole
 from models.workflow import (
     Workflow,
     WorkflowNodeExecution,
+    WorkflowRun,
     WorkflowRunStatus,
 )
 
@@ -264,8 +265,8 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         :return:
         """
         # init fake graph runtime state
-        graph_runtime_state = None
-        workflow_run = None
+        graph_runtime_state: Optional[GraphRuntimeState] = None
+        workflow_run: Optional[WorkflowRun] = None
 
         for queue_message in self._queue_manager.listen():
             event = queue_message.event
@@ -320,8 +321,8 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     workflow_node_execution=workflow_node_execution,
                 )
 
-                if response:
-                    yield response
+                if response_finish:
+                    yield response_finish
             elif isinstance(event, QueueNodeFailedEvent | QueueNodeInIterationFailedEvent | QueueNodeExceptionEvent):
                 workflow_node_execution = self._handle_workflow_node_execution_failed(event)
 
@@ -331,24 +332,27 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     workflow_node_execution=workflow_node_execution,
                 )
 
-                if response:
-                    yield response
+                if response_finish:
+                    yield response_finish
             elif isinstance(
                 event,
                 QueueNodeRetryEvent,
             ):
+                if not workflow_run:
+                    raise Exception("Workflow run not initialized.")
+
                 workflow_node_execution = self._handle_workflow_node_execution_retried(
                     workflow_run=workflow_run, event=event
                 )
 
-                response = self._workflow_node_retry_to_stream_response(
+                response_retry = self._workflow_node_retry_to_stream_response(
                     event=event,
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution,
                 )
 
-                if response:
-                    yield response
+                if response_retry:
+                    yield response_retry
             elif isinstance(event, QueueParallelBranchRunStartedEvent):
                 if not workflow_run:
                     raise Exception("Workflow run not initialized.")

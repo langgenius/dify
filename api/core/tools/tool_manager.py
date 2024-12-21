@@ -177,7 +177,7 @@ class ToolManager:
                 }
             )
         elif provider_type == "workflow":
-            workflow_provider = (
+            workflow_provider: Optional[WorkflowToolProvider] = (
                 db.session.query(WorkflowToolProvider)
                 .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
                 .first()
@@ -450,8 +450,8 @@ class ToolManager:
             for provider in builtin_providers:
                 # handle include, exclude
                 if is_filtered(
-                    include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
-                    exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
+                    include_set=cast(set[str], dify_config.POSITION_TOOL_INCLUDES_SET),
+                    exclude_set=cast(set[str], dify_config.POSITION_TOOL_EXCLUDES_SET),
                     data=provider,
                     name_func=lambda x: x.identity.name,
                 ):
@@ -472,7 +472,7 @@ class ToolManager:
                 db.session.query(ApiToolProvider).filter(ApiToolProvider.tenant_id == tenant_id).all()
             )
 
-            api_provider_controllers = [
+            api_provider_controllers: list[dict[str, Any]] = [
                 {"provider": provider, "controller": ToolTransformService.api_provider_to_controller(provider)}
                 for provider in db_api_providers
             ]
@@ -527,7 +527,7 @@ class ToolManager:
 
         :return: the provider controller, the credentials
         """
-        provider: ApiToolProvider = (
+        provider: Optional[ApiToolProvider] = (
             db.session.query(ApiToolProvider)
             .filter(
                 ApiToolProvider.id == provider_id,
@@ -556,7 +556,7 @@ class ToolManager:
             get tool provider
         """
         provider_name = provider
-        provider: ApiToolProvider = (
+        provider_tool: Optional[ApiToolProvider] = (
             db.session.query(ApiToolProvider)
             .filter(
                 ApiToolProvider.tenant_id == tenant_id,
@@ -565,17 +565,18 @@ class ToolManager:
             .first()
         )
 
-        if provider is None:
+        if provider_tool is None:
             raise ValueError(f"you have not added provider {provider_name}")
 
         try:
-            credentials = json.loads(provider.credentials_str) or {}
+            credentials = json.loads(provider_tool.credentials_str) or {}
         except:
             credentials = {}
 
         # package tool provider controller
         controller = ApiToolProviderController.from_db(
-            provider, ApiProviderAuthType.API_KEY if credentials["auth_type"] == "api_key" else ApiProviderAuthType.NONE
+            provider_tool,
+            ApiProviderAuthType.API_KEY if credentials["auth_type"] == "api_key" else ApiProviderAuthType.NONE,
         )
         # init tool configuration
         tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=controller)
@@ -584,7 +585,7 @@ class ToolManager:
         masked_credentials = tool_configuration.mask_tool_credentials(decrypted_credentials)
 
         try:
-            icon = json.loads(provider.icon)
+            icon = json.loads(provider_tool.icon)
         except:
             icon = {"background": "#252525", "content": "\ud83d\ude01"}
 
@@ -595,14 +596,14 @@ class ToolManager:
             dict,
             jsonable_encoder(
                 {
-                    "schema_type": provider.schema_type,
-                    "schema": provider.schema,
-                    "tools": provider.tools,
+                    "schema_type": provider_tool.schema_type,
+                    "schema": provider_tool.schema,
+                    "tools": provider_tool.tools,
                     "icon": icon,
-                    "description": provider.description,
+                    "description": provider_tool.description,
                     "credentials": masked_credentials,
-                    "privacy_policy": provider.privacy_policy,
-                    "custom_disclaimer": provider.custom_disclaimer,
+                    "privacy_policy": provider_tool.privacy_policy,
+                    "custom_disclaimer": provider_tool.custom_disclaimer,
                     "labels": labels,
                 }
             ),

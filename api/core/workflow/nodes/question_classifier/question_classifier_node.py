@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import Any, Optional, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.llm_generator.output_parser.errors import OutputParserError
@@ -36,12 +36,9 @@ from .template_prompts import (
     QUESTION_CLASSIFIER_USER_PROMPT_3,
 )
 
-if TYPE_CHECKING:
-    pass
-
 
 class QuestionClassifierNode(LLMNode):
-    _node_data_cls = QuestionClassifierNodeData
+    _node_data_cls = QuestionClassifierNodeData  # type: ignore
     _node_type = NodeType.QUESTION_CLASSIFIER
 
     def _run(self):
@@ -174,7 +171,7 @@ class QuestionClassifierNode(LLMNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: QuestionClassifierNodeData,
+        node_data: Any,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -183,6 +180,7 @@ class QuestionClassifierNode(LLMNode):
         :param node_data: node data
         :return:
         """
+        node_data = cast(QuestionClassifierNodeData, node_data)
         variable_mapping = {"query": node_data.query_variable_selector}
         variable_selectors = []
         if node_data.instruction:
