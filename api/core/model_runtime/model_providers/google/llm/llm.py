@@ -20,8 +20,8 @@ from core.model_runtime.entities.message_entities import (
     PromptMessageContent,
     PromptMessageContentType,
     PromptMessageTool,
-    TextPromptMessageContent,
     SystemPromptMessage,
+    TextPromptMessageContent,
     ToolPromptMessage,
     UserPromptMessage,
 )
