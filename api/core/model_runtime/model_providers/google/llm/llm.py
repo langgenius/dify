@@ -1,7 +1,6 @@
 import base64
 import json
 import os
-import sys
 import tempfile
 import time
 from collections.abc import Generator
