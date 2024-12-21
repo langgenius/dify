@@ -200,7 +200,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                 system_instruction = content["parts"][0]
             else:
                 history.append(content)
-        
+
         if not history:
             raise InvokeError("The user prompt message is required. You only add a system prompt message.")
 
