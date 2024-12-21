@@ -38,7 +38,7 @@ class S3Operator(BuiltinTool):
 
             bucket = parsed_uri.netloc
             # Remove leading slash from key
-            key = parsed_uri.path.lstrip('/')
+            key = parsed_uri.path.lstrip("/")
 
             operation_type = tool_parameters.get("operation_type", "read")
             generate_presign_url = tool_parameters.get("generate_presign_url", False)
@@ -50,35 +50,24 @@ class S3Operator(BuiltinTool):
                     return self.create_text_message("text_content parameter is required for write operation")
 
                 # Write content to S3
-                self.s3_client.put_object(
-                    Bucket=bucket,
-                    Key=key,
-                    Body=text_content.encode('utf-8')
-                )
+                self.s3_client.put_object(Bucket=bucket, Key=key, Body=text_content.encode("utf-8"))
                 result = f"s3://{bucket}/{key}"
 
                 # Generate presigned URL for the written object if requested
                 if generate_presign_url:
                     result = self.s3_client.generate_presigned_url(
-                        'get_object',
-                        Params={'Bucket': bucket, 'Key': key},
-                        ExpiresIn=presign_expiry
+                        "get_object", Params={"Bucket": bucket, "Key": key}, ExpiresIn=presign_expiry
                     )
 
             else:  # read operation
                 # Get object from S3
-                response = self.s3_client.get_object(
-                    Bucket=bucket,
-                    Key=key
-                )
-                result = response['Body'].read().decode('utf-8')
+                response = self.s3_client.get_object(Bucket=bucket, Key=key)
+                result = response["Body"].read().decode("utf-8")
 
                 # Generate presigned URL if requested
                 if generate_presign_url:
                     result = self.s3_client.generate_presigned_url(
-                        'get_object',
-                        Params={'Bucket': bucket, 'Key': key},
-                        ExpiresIn=presign_expiry
+                        "get_object", Params={"Bucket": bucket, "Key": key}, ExpiresIn=presign_expiry
                     )
 
             return self.create_text_message(text=result)
