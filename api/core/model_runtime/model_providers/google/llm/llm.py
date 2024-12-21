@@ -144,7 +144,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         """
 
         try:
-            ping_message = SystemPromptMessage(content="ping")
+            ping_message = UserPromptMessage(content="ping")
             self._generate(model, credentials, [ping_message], {"max_output_tokens": 5})
 
         except Exception as ex:
