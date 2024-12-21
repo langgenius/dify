@@ -191,7 +191,7 @@ class NovaCanvasTool(BuiltinTool):
                 )
                 logger.info(f"Image uploaded to s3://{output_bucket}/{output_key}")
             except Exception as e:
-                logger.error(f"Failed to upload image to S3: {str(e)}")
+                logger.exception(f"Failed to upload image to S3: {str(e)}")
 
             # Return image
             return [self.create_text_message(

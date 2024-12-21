@@ -74,7 +74,7 @@ class NovaReelTool(BuiltinTool):
         except ClientError as e:
             error_code = e.response.get('Error', {}).get('Code', 'Unknown')
             error_message = e.response.get('Error', {}).get('Message', str(e))
-            logger.error(f"AWS API error: {error_code} - {error_message}")
+            logger.exception(f"AWS API error: {error_code} - {error_message}")
             return self.create_text_message(
                 f"AWS service error: {error_code} - {error_message}"
             )

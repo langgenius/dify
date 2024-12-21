@@ -7,7 +7,7 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
 
-class S3_Operator(BuiltinTool):
+class S3Operator(BuiltinTool):
     s3_client: Any = None
 
     def _invoke(
