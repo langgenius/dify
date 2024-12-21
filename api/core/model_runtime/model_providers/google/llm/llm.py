@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import sys
 import tempfile
 import time
 from collections.abc import Generator
@@ -187,18 +188,21 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         if stop:
             config_kwargs["stop_sequences"] = stop
 
-        genai.configure(api_key=credentials["google_api_key"])
-        google_model = genai.GenerativeModel(model_name=model)
+        genai.configure(api_key=credentials["google_api_key"])  
 
         history = []
+        system_instruction = ""
 
         for msg in prompt_messages:  # makes message roles strictly alternating
             content = self._format_message_to_glm_content(msg)
             if history and history[-1]["role"] == content["role"]:
                 history[-1]["parts"].extend(content["parts"])
+            elif content["role"] == "system":
+                system_instruction = content["parts"][0]
             else:
                 history.append(content)
 
+        google_model = genai.GenerativeModel(model_name=model, system_instruction=system_instruction)
         response = google_model.generate_content(
             contents=history,
             generation_config=genai.types.GenerationConfig(**config_kwargs),
@@ -408,7 +412,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
             if isinstance(message.content, list):
                 text_contents = filter(lambda c: isinstance(c, TextPromptMessageContent), message.content)
                 message.content = "".join(c.data for c in text_contents)
-            return {"role": "user", "parts": [to_part(message.content)]}
+            return {"role": "system", "parts": [to_part(message.content)]}
         elif isinstance(message, ToolPromptMessage):
             return {
                 "role": "function",
