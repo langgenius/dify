@@ -249,6 +249,8 @@ class Executor:
         # request_args = {k: v for k, v in request_args.items() if v is not None}
         try:
             response = getattr(ssrf_proxy, self.method)(**request_args)
+        except httpx.RequestError as e:
+            raise HttpRequestNodeError(str(e))
         except ssrf_proxy.MaxRetriesExceededError as e:
             raise HttpRequestNodeError(str(e))
         return response
