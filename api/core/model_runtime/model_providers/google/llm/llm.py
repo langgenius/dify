@@ -190,7 +190,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         genai.configure(api_key=credentials["google_api_key"])
 
         history = []
-        system_instruction = ""
+        system_instruction = None
 
         for msg in prompt_messages:  # makes message roles strictly alternating
             content = self._format_message_to_glm_content(msg)
