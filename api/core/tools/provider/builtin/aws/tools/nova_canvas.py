@@ -1,10 +1,10 @@
-import json
 import base64
-from typing import Union, Any
-from urllib.parse import urlparse
+import json
 import logging
 import re
 from datetime import datetime
+from typing import Any, Union
+from urllib.parse import urlparse
 
 import boto3
 
@@ -14,6 +14,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class NovaCanvasTool(BuiltinTool):
     def _invoke(

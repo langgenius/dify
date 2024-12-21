@@ -73,13 +73,13 @@ parameters:
     llm_description: AWS region where the Bedrock Knowledge Base is located
     form: form
 
-  - name: metadata_filter   # 新增的元数据过滤参数 
-    type: string            # 可以是字符串类型，包含 JSON 格式的过滤条件 
-    required: false         # 可选参数 
+  - name: metadata_filter
+    type: string
+    required: false
     label:
-      en_US: Metadata Filter 
-      zh_Hans: 元数据过滤器 
-      pt_BR: Metadata Filter 
+      en_US: Metadata Filter
+      zh_Hans: 元数据过滤器
+      pt_BR: Metadata Filter
     human_description:
       en_US: 'JSON formatted filter conditions for metadata (e.g., {"greaterThan": {"key: "aaa", "value": 10}})'
       zh_Hans: '元数据的JSON格式过滤条件（例如，{{"greaterThan": {"key: "aaa", "value": 10}}）'

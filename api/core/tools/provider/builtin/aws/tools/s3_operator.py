@@ -1,4 +1,3 @@
-import json
 from typing import Any, Union
 from urllib.parse import urlparse
 

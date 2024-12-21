@@ -1,10 +1,9 @@
-import json
 import base64
-import time
 import logging
-from typing import Union, Any, Optional
-from urllib.parse import urlparse
+import time
 from io import BytesIO
+from typing import Any, Optional, Union
+from urllib.parse import urlparse
 
 import boto3
 from botocore.exceptions import ClientError
@@ -28,6 +27,7 @@ NOVA_REEL_STATUS_CHECK_INTERVAL = 5
 NOVA_REEL_REQUIRED_IMAGE_WIDTH = 1280
 NOVA_REEL_REQUIRED_IMAGE_HEIGHT = 720
 NOVA_REEL_REQUIRED_IMAGE_MODE = 'RGB'
+
 
 class NovaReelTool(BuiltinTool):
     def _invoke(

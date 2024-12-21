@@ -81,7 +81,7 @@ class BedrockRetrieveTool(BuiltinTool):
                 return self.create_text_message("Please input query")
 
             # 获取元数据过滤条件（如果存在）
-            metadata_filter_str = tool_parameters.get("metadata_filter", None)
+            metadata_filter_str = tool_parameters.get("metadata_filter")
             metadata_filter = json.loads(metadata_filter_str) if metadata_filter_str else None
 
             line = 4
