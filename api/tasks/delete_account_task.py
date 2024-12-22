@@ -48,7 +48,7 @@ def _process_account_deletion(account, reason):
     ).all()
 
     for ta in tenant_account_joins:
-        if ta.role == TenantAccountJoinRole.OWNER:
+        if ta.role == TenantAccountJoinRole.OWNER.value:
             _handle_owner_tenant_deletion(ta)
         else:
             _remove_account_from_tenant(ta, account.email)
