@@ -8,7 +8,6 @@ from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCal
 from core.file import File, FileTransferMethod, FileType
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.tool_engine import ToolEngine
-from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
@@ -45,6 +44,7 @@ class ToolNode(BaseNode[ToolNodeData]):
 
         # get tool runtime
         try:
+            from core.tools.tool_manager import ToolManager
             tool_runtime = ToolManager.get_workflow_tool_runtime(
                 self.tenant_id, self.app_id, self.node_id, self.node_data, self.invoke_from
             )
