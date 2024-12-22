@@ -62,3 +62,10 @@ workflow_partial_fields = {
     "updated_by": fields.String,
     "updated_at": TimestampField,
 }
+
+workflow_pagination_fields = {
+    'data': fields.List(fields.Nested(workflow_fields), attribute="data"),
+    'page': fields.Integer,
+    "limit": fields.Integer(attribute="limit"),
+    "has_more": fields.Boolean(attribute="has_more"),
+}

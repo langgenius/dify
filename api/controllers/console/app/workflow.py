@@ -441,6 +441,11 @@ class WorkflowConfigApi(Resource):
 
 
 class PublishedAllWorkflowApi(Resource):
+    def __init__(self):
+        self.parser = reqparse.RequestParser()
+        self.parser.add_argument('page', type=int, default=1, location='args')
+        self.parser.add_argument('page_size', type=int, default=10, location='args')
+
     @setup_required
     @login_required
     @account_initialization_required
@@ -450,13 +455,26 @@ class PublishedAllWorkflowApi(Resource):
         """
         Get published workflows
         """
-
         if not current_user.is_editor:
             raise Forbidden()
 
+        args = self.parser.parse_args()
+        page = args['page']
+        limit = args['limit']
+
         workflow_service = WorkflowService()
-        workflows = workflow_service.get_all_published_workflow(app_model=app_model)
-        return workflows
+        workflows, has_more = workflow_service.get_all_published_workflow(
+            app_model=app_model,
+            page=page,
+            limit=limit
+        )
+
+        return {
+            'data': workflows,
+            'page': page,
+            'limit': limit,
+            'has_more': has_more
+        }
 
 
 api.add_resource(DraftWorkflowApi, "/apps/<uuid:app_id>/workflows/draft")

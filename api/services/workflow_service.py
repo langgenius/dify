@@ -78,37 +78,40 @@ class WorkflowService:
 
         return workflow
 
-    def get_all_published_workflow(self, app_model: App) -> list[Workflow]:
+    def get_all_published_workflow(self, app_model: App, page: int, limit: int) -> tuple[list[Workflow], bool]:
         """
-        Get published workflow
+        Get published workflow with pagination
         """
-
         if not app_model.workflow_id:
-            return None
+            return [], False
 
-        # fetch published workflow by workflow_id
+        # 多查询一条数据来判断是否还有下一页
         workflows = (
             db.session.query(Workflow)
             .filter(Workflow.app_id == app_model.id)
             .order_by(desc(Workflow.version))
-            .limit(10)
+            .offset((page - 1) * limit)
+            .limit(limit + 1)  # 多查一条
             .all()
         )
+
+        # 判断是否还有更多数据
+        has_more = len(workflows) > limit
+        # 如果多查到了数据，则移除最后一条
+        if has_more:
+            workflows = workflows[:-1]
 
         if len(workflows) > 1:
             workflows[1].version = "latest"
 
         for workflow in workflows:
             try:
-                # Try to parse the version as a datetime object
                 version_datetime = datetime.strptime(workflow.version, "%Y-%m-%d %H:%M:%S.%f")
-                # If successful, reformat it to the desired format
                 workflow.version = version_datetime.strftime("%Y-%m-%d %H:%M:%S")
             except ValueError:
-                # If parsing fails, then the version is not a datetime string, so we skip formatting
                 pass
 
-        return workflows
+        return workflows, has_more
 
     def sync_draft_workflow(
         self,
