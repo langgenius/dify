@@ -62,7 +62,7 @@ class AppToolProviderEntity(ToolProviderController):
             user_input_form_list = app_model_config.user_input_form_list
             for input_form in user_input_form_list:
                 # get type
-                form_type = input_form.keys()[0]
+                form_type = list(input_form.keys())[0]
                 default = input_form[form_type]["default"]
                 required = input_form[form_type]["required"]
                 label = input_form[form_type]["label"]
