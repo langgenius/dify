@@ -59,7 +59,7 @@ class CodeNode(BaseNode[CodeNodeData]):
             )
 
             # Transform result
-            result = self._transform_result(result, self.node_data.outputs)
+            result = self._transform_result(result=result, output_schema=self.node_data.outputs)
         except (CodeExecutionError, CodeNodeError) as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e), error_type=type(e).__name__
@@ -116,14 +116,12 @@ class CodeNode(BaseNode[CodeNodeData]):
         return value
 
     def _transform_result(
-        self, result: dict, output_schema: Optional[dict[str, CodeNodeData.Output]], prefix: str = "", depth: int = 1
-    ) -> dict:
-        """
-        Transform result
-        :param result: result
-        :param output_schema: output schema
-        :return:
-        """
+        self,
+        result: Mapping[str, Any],
+        output_schema: Optional[dict[str, CodeNodeData.Output]],
+        prefix: str = "",
+        depth: int = 1,
+    ):
         if depth > dify_config.CODE_MAX_DEPTH:
             raise DepthLimitError(f"Depth limit ${dify_config.CODE_MAX_DEPTH} reached, object too deep.")
 
