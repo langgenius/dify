@@ -151,7 +151,12 @@ class MessageService:
 
     @classmethod
     def create_feedback(
-        cls, app_model: App, message_id: str, user: Optional[Union[Account, EndUser]], rating: Optional[str]
+        cls,
+        app_model: App,
+        message_id: str,
+        user: Optional[Union[Account, EndUser]],
+        rating: Optional[str],
+        content: Optional[str],
     ) -> MessageFeedback:
         if not user:
             raise ValueError("user cannot be None")
@@ -164,6 +169,7 @@ class MessageService:
             db.session.delete(feedback)
         elif rating and feedback:
             feedback.rating = rating
+            feedback.content = content
         elif not rating and not feedback:
             raise ValueError("rating cannot be None when feedback not exists")
         else:
@@ -172,6 +178,7 @@ class MessageService:
                 conversation_id=message.conversation_id,
                 message_id=message.id,
                 rating=rating,
+                content=content,
                 from_source=("user" if isinstance(user, EndUser) else "admin"),
                 from_end_user_id=(user.id if isinstance(user, EndUser) else None),
                 from_account_id=(user.id if isinstance(user, Account) else None),
