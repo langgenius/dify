@@ -19,11 +19,13 @@ from core.tools.errors import ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiToolProviderController
 from core.tools.provider.builtin._positions import BuiltinToolProviderSort
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
+from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
 from core.tools.tool.api_tool import ApiTool
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool.tool import Tool
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ToolConfigurationManager, ToolParameterConfigurationManager
+from core.workflow.nodes.tool.entities import ToolEntity
 from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
@@ -113,6 +115,7 @@ class ToolManager:
 
         :return: the tool
         """
+        controller: Union[BuiltinToolProviderController, ApiToolProviderController, WorkflowToolProviderController]
         if provider_type == "builtin":
             builtin_tool = cls.get_builtin_tool(provider_id, tool_name)
 
@@ -187,8 +190,13 @@ class ToolManager:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
             controller = ToolTransformService.workflow_provider_to_controller(db_provider=workflow_provider)
+            controller_tools: Optional[list[Tool]] = controller.get_tools(
+                user_id="", tenant_id=workflow_provider.tenant_id
+            )
+            if controller_tools is None or len(controller_tools) == 0:
+                raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
-            return controller.get_tools(user_id=None, tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
+            return controller_tools[0].fork_tool_runtime(
                 runtime={
                     "tenant_id": tenant_id,
                     "credentials": {},
@@ -215,7 +223,7 @@ class ToolManager:
 
         if parameter_rule.type == ToolParameter.ToolParameterType.SELECT:
             # check if tool_parameter_config in options
-            options = [x.value for x in parameter_rule.options]
+            options = [x.value for x in parameter_rule.options or []]
             if parameter_value is not None and parameter_value not in options:
                 raise ValueError(
                     f"tool parameter {parameter_rule.name} value {parameter_value} not in options {options}"
@@ -267,6 +275,8 @@ class ToolManager:
             identity_id=f"AGENT.{app_id}",
         )
         runtime_parameters = encryption_manager.decrypt_tool_parameters(runtime_parameters)
+        if tool_entity.runtime is None or tool_entity.runtime.runtime_parameters is None:
+            raise ValueError("runtime not found or runtime parameters not found")
 
         tool_entity.runtime.runtime_parameters.update(runtime_parameters)
         return tool_entity
@@ -311,6 +321,9 @@ class ToolManager:
 
         if runtime_parameters:
             runtime_parameters = encryption_manager.decrypt_tool_parameters(runtime_parameters)
+
+        if tool_entity.runtime is None or tool_entity.runtime.runtime_parameters is None:
+            raise ValueError("runtime not found or runtime parameters not found")
 
         tool_entity.runtime.runtime_parameters.update(runtime_parameters)
         return tool_entity
@@ -381,11 +394,15 @@ class ToolManager:
                         ),
                         parent_type=BuiltinToolProviderController,
                     )
-                    provider: BuiltinToolProviderController = provider_class()
-                    cls._builtin_providers[provider.identity.name] = provider
-                    for tool in provider.get_tools():
+                    provider_controller: BuiltinToolProviderController = provider_class()
+                    if provider_controller.identity is None:
+                        continue
+                    cls._builtin_providers[provider_controller.identity.name] = provider_controller
+                    for tool in provider_controller.get_tools() or []:
+                        if tool.identity is None:
+                            continue
                         cls._builtin_tools_labels[tool.identity.name] = tool.identity.label
-                    yield provider
+                    yield provider_controller
 
                 except Exception as e:
                     logger.exception(f"load builtin provider {provider}")

@@ -160,7 +160,7 @@ class WorkflowToolProviderController(ToolProviderController):
             label=db_provider.label,
         )
 
-    def get_tools(self, user_id: str, tenant_id: str) -> Optional[list[Tool]]:
+    def get_tools(self, user_id: str = "", tenant_id: str = "") -> Optional[list[Tool]]:
         """
         fetch tools from database
 
@@ -182,12 +182,14 @@ class WorkflowToolProviderController(ToolProviderController):
 
         if not db_providers:
             return []
+        if not db_providers.app:
+            raise ValueError("app not found")
 
         self.tools = [self._get_db_provider_tool(db_providers, db_providers.app)]
 
         return self.tools
 
-    def get_tool(self, tool_name: str) -> Optional[WorkflowTool]:
+    def get_tool(self, tool_name: str) -> Optional[Tool]:
         """
         get tool by name
 
@@ -198,6 +200,8 @@ class WorkflowToolProviderController(ToolProviderController):
             return None
 
         for tool in self.tools:
+            if tool.identity is None:
+                continue
             if tool.identity.name == tool_name:
                 return tool
 

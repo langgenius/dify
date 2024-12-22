@@ -5,7 +5,7 @@ import queue
 import re
 import threading
 from collections.abc import Iterable
-from typing import Optional
+from typing import Optional, cast
 
 from core.app.entities.queue_entities import (
     MessageQueueMessage,
@@ -94,10 +94,12 @@ class AppGeneratorTTSPublisher:
                         future_queue.put(futures_result)
                     break
                 elif isinstance(message.event, QueueAgentMessageEvent | QueueLLMChunkEvent):
-                    self.msg_text += message.event.chunk.delta.message.content
+                    self.msg_text += cast(str, message.event.chunk.delta.message.content)
                 elif isinstance(message.event, QueueTextChunkEvent):
                     self.msg_text += message.event.text
                 elif isinstance(message.event, QueueNodeSucceededEvent):
+                    if message.event.outputs is None:
+                        continue
                     self.msg_text += message.event.outputs.get("output", "")
                 self.last_message = message
                 sentence_arr, text_tmp = self._extract_sentence(self.msg_text)

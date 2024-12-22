@@ -738,20 +738,20 @@ class GraphEngine:
                                             variable_value=variable_value,
                                         )
 
-                                # add parallel info to run result metadata
-                                if parallel_id and parallel_start_node_id:
-                                    if not run_result.metadata:
-                                        run_result.metadata = {}
+                                # When setting metadata, convert to dict first
+                                if not run_result.metadata:
+                                    run_result.metadata = {}
 
-                                    run_result.metadata[NodeRunMetadataKey.PARALLEL_ID] = parallel_id
-                                    run_result.metadata[NodeRunMetadataKey.PARALLEL_START_NODE_ID] = (
-                                        parallel_start_node_id
-                                    )
+                                if parallel_id and parallel_start_node_id:
+                                    metadata_dict = dict(run_result.metadata)
+                                    metadata_dict[NodeRunMetadataKey.PARALLEL_ID] = parallel_id
+                                    metadata_dict[NodeRunMetadataKey.PARALLEL_START_NODE_ID] = parallel_start_node_id
                                     if parent_parallel_id and parent_parallel_start_node_id:
-                                        run_result.metadata[NodeRunMetadataKey.PARENT_PARALLEL_ID] = parent_parallel_id
-                                        run_result.metadata[NodeRunMetadataKey.PARENT_PARALLEL_START_NODE_ID] = (
+                                        metadata_dict[NodeRunMetadataKey.PARENT_PARALLEL_ID] = parent_parallel_id
+                                        metadata_dict[NodeRunMetadataKey.PARENT_PARALLEL_START_NODE_ID] = (
                                             parent_parallel_start_node_id
                                         )
+                                    run_result.metadata = metadata_dict
 
                                 yield NodeRunSucceededEvent(
                                     id=node_instance.id,
@@ -875,8 +875,8 @@ class GraphEngine:
         variable_pool.add([node_instance.node_id, "error_message"], error_result.error)
         variable_pool.add([node_instance.node_id, "error_type"], error_result.error_type)
         # add error message to handle_exceptions
-        handle_exceptions.append(error_result.error)
-        node_error_args = {
+        handle_exceptions.append(error_result.error or "")
+        node_error_args: dict[str, Any] = {
             "status": WorkflowNodeExecutionStatus.EXCEPTION,
             "error": error_result.error,
             "inputs": error_result.inputs,

@@ -206,7 +206,7 @@ class TidbOnQdrantVector(BaseVector):
                         batch_metadatas,
                         Field.CONTENT_KEY.value,
                         Field.METADATA_KEY.value,
-                        group_id,
+                        group_id or "",
                         Field.GROUP_KEY.value,
                     ),
                 )

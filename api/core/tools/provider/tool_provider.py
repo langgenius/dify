@@ -38,7 +38,7 @@ class ToolProviderController(BaseModel, ABC):
         pass
 
     @abstractmethod
-    def get_tool(self, tool_name: str) -> Tool:
+    def get_tool(self, tool_name: str) -> Optional[Tool]:
         """
         returns a tool that the provider can provide
 
