@@ -45,6 +45,7 @@ class ToolNode(BaseNode[ToolNodeData]):
         # get tool runtime
         try:
             from core.tools.tool_manager import ToolManager
+
             tool_runtime = ToolManager.get_workflow_tool_runtime(
                 self.tenant_id, self.app_id, self.node_id, self.node_data, self.invoke_from
             )
