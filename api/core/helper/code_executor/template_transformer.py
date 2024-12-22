@@ -32,7 +32,7 @@ class TemplateTransformer(ABC):
         return result.group(1)
 
     @classmethod
-    def transform_response(cls, response: str):
+    def transform_response(cls, response: str) -> dict:
         """
         Transform response to dict
         :param response: response

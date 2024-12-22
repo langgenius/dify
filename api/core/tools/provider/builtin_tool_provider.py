@@ -88,7 +88,7 @@ class BuiltinToolProviderController(ToolProviderController):
 
         return self.credentials_schema.copy()
 
-    def get_tools(self) -> Optional[list[Tool]]:
+    def get_tools(self, user_id: str = "", tenant_id: str = "") -> Optional[list[Tool]]:
         """
         returns a list of tools that the provider can provide
 

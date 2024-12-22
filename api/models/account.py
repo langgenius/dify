@@ -1,7 +1,7 @@
 import enum
 import json
 
-from flask_login import UserMixin
+from flask_login import UserMixin  # type: ignore
 from sqlalchemy import func
 
 from .engine import db

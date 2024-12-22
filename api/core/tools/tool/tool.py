@@ -242,12 +242,15 @@ class Tool(BaseModel, ABC):
     ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         pass
 
-    def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any]) -> None:
+    def validate_credentials(
+        self, credentials: dict[str, Any], parameters: dict[str, Any], format_only: bool = False
+    ) -> str | None:
         """
         validate the credentials
 
         :param credentials: the credentials
         :param parameters: the parameters
+        :param format_only: only return the formatted
         """
         pass
 

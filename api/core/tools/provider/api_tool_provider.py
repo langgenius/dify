@@ -1,3 +1,5 @@
+from typing import Optional
+
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
@@ -119,7 +121,7 @@ class ApiToolProviderController(ToolProviderController):
 
         return self.tools
 
-    def get_tools(self, user_id: str, tenant_id: str) -> list[ApiTool]:
+    def get_tools(self, user_id: str = "", tenant_id: str = "") -> Optional[list[Tool]]:
         """
         fetch tools from database
 
@@ -129,6 +131,8 @@ class ApiToolProviderController(ToolProviderController):
         """
         if self.tools is not None:
             return self.tools
+        if self.identity is None:
+            return None
 
         tools: list[Tool] = []
 
@@ -149,7 +153,7 @@ class ApiToolProviderController(ToolProviderController):
         self.tools = tools
         return tools
 
-    def get_tool(self, tool_name: str) -> ApiTool:
+    def get_tool(self, tool_name: str) -> Tool:
         """
         get tool by name
 
@@ -159,7 +163,9 @@ class ApiToolProviderController(ToolProviderController):
         if self.tools is None:
             self.get_tools()
 
-        for tool in self.tools:
+        for tool in self.tools or []:
+            if tool.identity is None:
+                continue
             if tool.identity.name == tool_name:
                 return tool
 

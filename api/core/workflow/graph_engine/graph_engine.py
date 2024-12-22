@@ -40,6 +40,7 @@ from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntime
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
+from core.workflow.nodes.answer.base_stream_processor import StreamProcessor
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.base.entities import BaseNodeData
 from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
@@ -140,7 +141,8 @@ class GraphEngine:
     def run(self) -> Generator[GraphEngineEvent, None, None]:
         # trigger graph run start event
         yield GraphRunStartedEvent()
-        handle_exceptions = []
+        handle_exceptions: list[str] = []
+        stream_processor: StreamProcessor
 
         try:
             if self.init_params.workflow_type == WorkflowType.CHAT:
@@ -364,6 +366,9 @@ class GraphEngine:
                             continue
 
                         edge = cast(GraphEdge, sub_edge_mappings[0])
+                        if edge.run_condition is None:
+                            logger.warning(f"Edge {edge.target_node_id} run condition is None")
+                            continue
 
                         result = ConditionManager.get_condition_handler(
                             init_params=self.init_params,
@@ -649,7 +654,7 @@ class GraphEngine:
                                         node_type=node_instance.node_type,
                                         node_data=node_instance.node_data,
                                         route_node_state=route_node_state,
-                                        error=run_result.error,
+                                        error=run_result.error or "System Error",
                                         retry_index=retries,
                                         parallel_id=parallel_id,
                                         parallel_start_node_id=parallel_start_node_id,

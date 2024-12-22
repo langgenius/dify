@@ -9,6 +9,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.api_entities import UserTool, UserToolProvider
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
+from core.tools.tool.tool import Tool
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from extensions.ext_database import db
@@ -203,10 +204,11 @@ class WorkflowToolManageService:
                 provider_controller=tool, labels=labels.get(tool.provider_id, [])
             )
             ToolTransformService.repack_provider(user_tool_provider)
+            to_user_tool: Optional[list[Tool]] = tool.get_tools(user_id, tenant_id)
+            if to_user_tool is None or len(to_user_tool) == 0:
+                continue
             user_tool_provider.tools = [
-                ToolTransformService.tool_to_user_tool(
-                    tool.get_tools(user_id, tenant_id)[0], labels=labels.get(tool.provider_id, [])
-                )
+                ToolTransformService.tool_to_user_tool(to_user_tool[0], labels=labels.get(tool.provider_id, []))
             ]
             result.append(user_tool_provider)
 
@@ -255,6 +257,10 @@ class WorkflowToolManageService:
 
         tool = ToolTransformService.workflow_provider_to_controller(db_tool)
 
+        to_user_tool: Optional[list[Tool]] = tool.get_tools(user_id, tenant_id)
+        if to_user_tool is None or len(to_user_tool) == 0:
+            raise ValueError(f"Tool {workflow_tool_id} not found")
+
         return {
             "name": db_tool.name,
             "label": db_tool.label,
@@ -264,7 +270,7 @@ class WorkflowToolManageService:
             "description": db_tool.description,
             "parameters": jsonable_encoder(db_tool.parameter_configurations),
             "tool": ToolTransformService.tool_to_user_tool(
-                tool.get_tools(user_id, tenant_id)[0], labels=ToolLabelManager.get_tool_labels(tool)
+                to_user_tool[0], labels=ToolLabelManager.get_tool_labels(tool)
             ),
             "synced": workflow_app.workflow.version == db_tool.version if workflow_app.workflow else False,
             "privacy_policy": db_tool.privacy_policy,
@@ -296,6 +302,9 @@ class WorkflowToolManageService:
             raise ValueError(f"App {db_tool.app_id} not found")
 
         tool = ToolTransformService.workflow_provider_to_controller(db_tool)
+        to_user_tool: Optional[list[Tool]] = tool.get_tools(user_id, tenant_id)
+        if to_user_tool is None or len(to_user_tool) == 0:
+            raise ValueError(f"Tool {workflow_app_id} not found")
 
         return {
             "name": db_tool.name,
@@ -306,7 +315,7 @@ class WorkflowToolManageService:
             "description": db_tool.description,
             "parameters": jsonable_encoder(db_tool.parameter_configurations),
             "tool": ToolTransformService.tool_to_user_tool(
-                tool.get_tools(user_id, tenant_id)[0], labels=ToolLabelManager.get_tool_labels(tool)
+                to_user_tool[0], labels=ToolLabelManager.get_tool_labels(tool)
             ),
             "synced": workflow_app.workflow.version == db_tool.version if workflow_app.workflow else False,
             "privacy_policy": db_tool.privacy_policy,
@@ -331,9 +340,8 @@ class WorkflowToolManageService:
             raise ValueError(f"Tool {workflow_tool_id} not found")
 
         tool = ToolTransformService.workflow_provider_to_controller(db_tool)
+        to_user_tool: Optional[list[Tool]] = tool.get_tools(user_id, tenant_id)
+        if to_user_tool is None or len(to_user_tool) == 0:
+            raise ValueError(f"Tool {workflow_tool_id} not found")
 
-        return [
-            ToolTransformService.tool_to_user_tool(
-                tool.get_tools(user_id, tenant_id)[0], labels=ToolLabelManager.get_tool_labels(tool)
-            )
-        ]
+        return [ToolTransformService.tool_to_user_tool(to_user_tool[0], labels=ToolLabelManager.get_tool_labels(tool))]

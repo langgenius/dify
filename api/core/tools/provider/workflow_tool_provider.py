@@ -11,6 +11,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.provider.tool_provider import ToolProviderController
+from core.tools.tool.tool import Tool
 from core.tools.tool.workflow_tool import WorkflowTool
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from extensions.ext_database import db
@@ -159,7 +160,7 @@ class WorkflowToolProviderController(ToolProviderController):
             label=db_provider.label,
         )
 
-    def get_tools(self, user_id: str, tenant_id: str) -> list[WorkflowTool]:
+    def get_tools(self, user_id: str, tenant_id: str) -> Optional[list[Tool]]:
         """
         fetch tools from database
 
@@ -170,7 +171,7 @@ class WorkflowToolProviderController(ToolProviderController):
         if self.tools is not None:
             return self.tools
 
-        db_providers: WorkflowToolProvider = (
+        db_providers: Optional[WorkflowToolProvider] = (
             db.session.query(WorkflowToolProvider)
             .filter(
                 WorkflowToolProvider.tenant_id == tenant_id,

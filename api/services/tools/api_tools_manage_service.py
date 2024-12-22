@@ -456,7 +456,7 @@ class ApiToolManageService:
 
             tools = provider_controller.get_tools(user_id=user_id, tenant_id=tenant_id)
 
-            for tool in tools:
+            for tool in tools or []:
                 user_provider.tools.append(
                     ToolTransformService.tool_to_user_tool(
                         tenant_id=tenant_id, tool=tool, credentials=user_provider.original_credentials, labels=labels

@@ -63,6 +63,8 @@ class ApiTool(Tool):
 
     def assembling_request(self, parameters: dict[str, Any]) -> dict[str, Any]:
         headers = {}
+        if self.runtime is None:
+            raise ValueError("runtime is required")
         credentials = self.runtime.credentials or {}
 
         if "auth_type" not in credentials:
@@ -90,7 +92,7 @@ class ApiTool(Tool):
 
             headers[api_key_header] = credentials["api_key_value"]
 
-        needed_parameters = [parameter for parameter in self.api_bundle.parameters if parameter.required]
+        needed_parameters = [parameter for parameter in (self.api_bundle.parameters or []) if parameter.required]
         for parameter in needed_parameters:
             if parameter.required and parameter.name not in parameters:
                 raise ToolParameterValidationError(f"Missing required parameter {parameter.name}")
@@ -139,7 +141,8 @@ class ApiTool(Tool):
 
         params = {}
         path_params = {}
-        body = {}
+        # FIXME: body should be a dict[str, Any] but it changed a lot in this function
+        body: Any = {}
         cookies = {}
         files = []
 
