@@ -367,9 +367,13 @@ class TraceTask:
     def conversation_trace(self, **kwargs):
         return kwargs
 
-    def workflow_trace(self, workflow_run: Optional[WorkflowRun], conversation_id, user_id):
+    def workflow_trace(self, workflow_run: WorkflowRun | None, conversation_id, user_id):
         if not workflow_run:
-            return {}
+            raise ValueError("Workflow run not found")
+
+        db.session.merge(workflow_run)
+        db.sessoin.refresh(workflow_run)
+
         workflow_id = workflow_run.workflow_id
         tenant_id = workflow_run.tenant_id
         workflow_run_id = workflow_run.id

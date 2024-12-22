@@ -340,7 +340,10 @@ class AppDslService:
     ) -> App:
         """Create a new app or update an existing one."""
         app_data = data.get("app", {})
-        app_mode = AppMode(app_data["mode"])
+        app_mode = app_data.get("mode")
+        if not app_mode:
+            raise ValueError("loss app mode")
+        app_mode = AppMode(app_mode)
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
