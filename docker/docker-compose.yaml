@@ -27,7 +27,7 @@ x-shared-env: &shared-api-worker-env
   # 日志文件备份数量
   LOG_FILE_BACKUP_COUNT: ${LOG_FILE_BACKUP_COUNT:-5}
   # 日志日期格式
-  LOG_DATEFORMAT: ${LOG_DATEFORMAT:-"%Y-%m-%d %H:%M:%S"}
+  LOG_DATEFORMAT: ${LOG_DATEFORMAT:-%Y-%m-%d %H:%M:%S}
   # 日志时区
   LOG_TZ: ${LOG_TZ:-UTC}
   # 调试模式
@@ -41,9 +41,9 @@ x-shared-env: &shared-api-worker-env
   # 部署环境
   DEPLOY_ENV: ${DEPLOY_ENV:-PRODUCTION}
   # 更新检查URL
-  CHECK_UPDATE_URL: ${CHECK_UPDATE_URL:-"https://updates.dify.ai"}
+  CHECK_UPDATE_URL: ${CHECK_UPDATE_URL:-https://updates.dify.ai}
   # OpenAI API基础URL
-  OPENAI_API_BASE: ${OPENAI_API_BASE:-"https://api.openai.com/v1"}
+  OPENAI_API_BASE: ${OPENAI_API_BASE:-https://api.openai.com/v1}
   # 是否启用迁移
   MIGRATION_ENABLED: ${MIGRATION_ENABLED:-true}
   # 文件访问超时时间(秒)
@@ -135,7 +135,7 @@ x-shared-env: &shared-api-worker-env
   # Redis集群密码
   REDIS_CLUSTERS_PASSWORD: ${REDIS_CLUSTERS_PASSWORD:-}
   # Celery消息代理URL
-  CELERY_BROKER_URL: ${CELERY_BROKER_URL:-"redis://:difyai123456@redis:6379/1"}
+  CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://:difyai123456@redis:6379/1}
   # 是否使用代理SSL
   BROKER_USE_SSL: ${BROKER_USE_SSL:-false}
   # 是否使用Celery哨兵
@@ -173,7 +173,7 @@ x-shared-env: &shared-api-worker-env
   # Azure Blob容器名称
   AZURE_BLOB_CONTAINER_NAME: ${AZURE_BLOB_CONTAINER_NAME:-difyai-container}
   # Azure Blob账户URL
-  AZURE_BLOB_ACCOUNT_URL: ${AZURE_BLOB_ACCOUNT_URL:-"https://<your_account_name>.blob.core.windows.net"}
+  AZURE_BLOB_ACCOUNT_URL: ${AZURE_BLOB_ACCOUNT_URL:-https://<your_account_name>.blob.core.windows.net}
   # Google Storage存储桶名称
   GOOGLE_STORAGE_BUCKET_NAME: ${GOOGLE_STORAGE_BUCKET_NAME:-your-bucket-name}
   # Google Storage服务账户JSON Base64
@@ -185,7 +185,7 @@ x-shared-env: &shared-api-worker-env
   # 阿里云OSS密钥
   ALIYUN_OSS_SECRET_KEY: ${ALIYUN_OSS_SECRET_KEY:-your-secret-key}
   # 阿里云OSS端点
-  ALIYUN_OSS_ENDPOINT: ${ALIYUN_OSS_ENDPOINT:-"https://oss-ap-southeast-1-internal.aliyuncs.com"}
+  ALIYUN_OSS_ENDPOINT: ${ALIYUN_OSS_ENDPOINT:-https://oss-ap-southeast-1-internal.aliyuncs.com}
   # 阿里云OSS区域
   ALIYUN_OSS_REGION: ${ALIYUN_OSS_REGION:-ap-southeast-1}
   # 阿里云OSS认证版本
@@ -203,7 +203,7 @@ x-shared-env: &shared-api-worker-env
   # 腾讯云COS方案
   TENCENT_COS_SCHEME: ${TENCENT_COS_SCHEME:-your-scheme}
   # Oracle Cloud端点
-  OCI_ENDPOINT: ${OCI_ENDPOINT:-"https://objectstorage.us-ashburn-1.oraclecloud.com"}
+  OCI_ENDPOINT: ${OCI_ENDPOINT:-https://objectstorage.us-ashburn-1.oraclecloud.com}
   # Oracle Cloud存储桶名称
   OCI_BUCKET_NAME: ${OCI_BUCKET_NAME:-your-bucket-name}
   # Oracle Cloud访问密钥
@@ -247,11 +247,11 @@ x-shared-env: &shared-api-worker-env
   # 向量存储类型
   VECTOR_STORE: ${VECTOR_STORE:-weaviate}
   # Weaviate端点
-  WEAVIATE_ENDPOINT: ${WEAVIATE_ENDPOINT:-"http://weaviate:8080"}
+  WEAVIATE_ENDPOINT: ${WEAVIATE_ENDPOINT:-http://weaviate:8080}
   # Weaviate API密钥
   WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
   # Qdrant URL
-  QDRANT_URL: ${QDRANT_URL:-"http://qdrant:6333"}
+  QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
   # Qdrant API密钥
   QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
   # Qdrant客户端超时时间
@@ -261,7 +261,7 @@ x-shared-env: &shared-api-worker-env
   # Qdrant GRPC端口
   QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
   # Milvus URI
-  MILVUS_URI: ${MILVUS_URI:-"http://127.0.0.1:19530"}
+  MILVUS_URI: ${MILVUS_URI:-http://127.0.0.1:19530}
   # Milvus令牌
   MILVUS_TOKEN: ${MILVUS_TOKEN:-}
   # Milvus用户名
@@ -281,7 +281,7 @@ x-shared-env: &shared-api-worker-env
   # MyScale FTS参数
   MYSCALE_FTS_PARAMS: ${MYSCALE_FTS_PARAMS:-}
   # Couchbase连接字符串
-  COUCHBASE_CONNECTION_STRING: ${COUCHBASE_CONNECTION_STRING:-"couchbase://couchbase-server"}
+  COUCHBASE_CONNECTION_STRING: ${COUCHBASE_CONNECTION_STRING:-couchbase://couchbase-server}
   # Couchbase用户名
   COUCHBASE_USER: ${COUCHBASE_USER:-Administrator}
   # Couchbase密码
@@ -349,7 +349,7 @@ x-shared-env: &shared-api-worker-env
   # TiDB向量数据库
   TIDB_VECTOR_DATABASE: ${TIDB_VECTOR_DATABASE:-dify}
   # TiDB on Qdrant URL
-  TIDB_ON_QDRANT_URL: ${TIDB_ON_QDRANT_URL:-"http://127.0.0.1"}
+  TIDB_ON_QDRANT_URL: ${TIDB_ON_QDRANT_URL:-http://127.0.0.1}
   # TiDB on Qdrant API密钥
   TIDB_ON_QDRANT_API_KEY: ${TIDB_ON_QDRANT_API_KEY:-dify}
   # TiDB on Qdrant客户端超时时间
@@ -363,9 +363,9 @@ x-shared-env: &shared-api-worker-env
   # TiDB私钥
   TIDB_PRIVATE_KEY: ${TIDB_PRIVATE_KEY:-dify}
   # TiDB API URL
-  TIDB_API_URL: ${TIDB_API_URL:-"http://127.0.0.1"}
+  TIDB_API_URL: ${TIDB_API_URL:-http://127.0.0.1}
   # TiDB IAM API URL
-  TIDB_IAM_API_URL: ${TIDB_IAM_API_URL:-"http://127.0.0.1"}
+  TIDB_IAM_API_URL: ${TIDB_IAM_API_URL:-http://127.0.0.1}
   # TiDB区域
   TIDB_REGION: ${TIDB_REGION:-regions/aws-us-east-1}
   # TiDB项目ID
@@ -415,7 +415,7 @@ x-shared-env: &shared-api-worker-env
   # 是否启用OpenSearch安全
   OPENSEARCH_SECURE: ${OPENSEARCH_SECURE:-true}
   # 腾讯向量数据库URL
-  TENCENT_VECTOR_DB_URL: ${TENCENT_VECTOR_DB_URL:-"http://127.0.0.1"}
+  TENCENT_VECTOR_DB_URL: ${TENCENT_VECTOR_DB_URL:-http://127.0.0.1}
   # 腾讯向量数据库API密钥
   TENCENT_VECTOR_DB_API_KEY: ${TENCENT_VECTOR_DB_API_KEY:-dify}
   # 腾讯向量数据库超时时间
@@ -439,7 +439,7 @@ x-shared-env: &shared-api-worker-env
   # Kibana端口
   KIBANA_PORT: ${KIBANA_PORT:-5601}
   # 百度向量数据库端点
-  BAIDU_VECTOR_DB_ENDPOINT: ${BAIDU_VECTOR_DB_ENDPOINT:-"http://127.0.0.1:5287"}
+  BAIDU_VECTOR_DB_ENDPOINT: ${BAIDU_VECTOR_DB_ENDPOINT:-http://127.0.0.1:5287}
   # 百度向量数据库连接超时时间(毫秒)
   BAIDU_VECTOR_DB_CONNECTION_TIMEOUT_MS: ${BAIDU_VECTOR_DB_CONNECTION_TIMEOUT_MS:-30000}
   # 百度向量数据库账户
@@ -467,7 +467,7 @@ x-shared-env: &shared-api-worker-env
   # VikingDB套接字超时时间
   VIKINGDB_SOCKET_TIMEOUT: ${VIKINGDB_SOCKET_TIMEOUT:-30}
   # Lindorm数据库URL
-  LINDORM_URL: ${LINDORM_URL:-"http://lindorm:30070"}
+  LINDORM_URL: ${LINDORM_URL:-http://lindorm:30070}
   # Lindorm用户名
   LINDORM_USERNAME: ${LINDORM_USERNAME:-lindorm}
   # Lindorm密码
@@ -487,7 +487,7 @@ x-shared-env: &shared-api-worker-env
   # OceanBase内存限制
   OCEANBASE_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
   # Upstash向量数据库URL
-  UPSTASH_VECTOR_URL: ${UPSTASH_VECTOR_URL:-"https://xxx-vector.upstash.io"}
+  UPSTASH_VECTOR_URL: ${UPSTASH_VECTOR_URL:-https://xxx-vector.upstash.io}
   # Upstash向量数据库令牌
   UPSTASH_VECTOR_TOKEN: ${UPSTASH_VECTOR_TOKEN:-dify}
   # 上传文件大小限制(MB)
@@ -537,7 +537,7 @@ x-shared-env: &shared-api-worker-env
   # 默认发件人邮箱
   MAIL_DEFAULT_SEND_FROM: ${MAIL_DEFAULT_SEND_FROM:-}
   # Resend API URL
-  RESEND_API_URL: ${RESEND_API_URL:-"https://api.resend.com"}
+  RESEND_API_URL: ${RESEND_API_URL:-https://api.resend.com}
   # Resend API密钥
   RESEND_API_KEY: ${RESEND_API_KEY:-your-resend-api-key}
   # SMTP服务器
@@ -673,9 +673,9 @@ x-shared-env: &shared-api-worker-env
   # MinIO密钥
   MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
   # ETCD端点
-  ETCD_ENDPOINTS: ${ETCD_ENDPOINTS:-"etcd:2379"}
+  ETCD_ENDPOINTS: ${ETCD_ENDPOINTS:-etcd:2379}
   # MinIO地址
-  MINIO_ADDRESS: ${MINIO_ADDRESS:-"minio:9000"}
+  MINIO_ADDRESS: ${MINIO_ADDRESS:-minio:9000}
   # 是否启用Milvus授权
   MILVUS_AUTHORIZATION_ENABLED: ${MILVUS_AUTHORIZATION_ENABLED:-true}
   # PGVector PostgreSQL用户名
@@ -717,7 +717,7 @@ x-shared-env: &shared-api-worker-env
   # Nginx SSL证书密钥文件名
   NGINX_SSL_CERT_KEY_FILENAME: ${NGINX_SSL_CERT_KEY_FILENAME:-dify.key}
   # Nginx SSL协议
-  NGINX_SSL_PROTOCOLS: ${NGINX_SSL_PROTOCOLS:-"TLSv1.1 TLSv1.2 TLSv1.3"}
+  NGINX_SSL_PROTOCOLS: ${NGINX_SSL_PROTOCOLS:-TLSv1.1 TLSv1.2 TLSv1.3}
   # Nginx工作进程数
   NGINX_WORKER_PROCESSES: ${NGINX_WORKER_PROCESSES:-auto}
   # Nginx客户端最大请求体大小
@@ -745,7 +745,7 @@ x-shared-env: &shared-api-worker-env
   # SSRF沙箱主机
   SSRF_SANDBOX_HOST: ${SSRF_SANDBOX_HOST:-sandbox}
   # Docker Compose配置文件
-  COMPOSE_PROFILES: ${COMPOSE_PROFILES:-"${VECTOR_STORE:-weaviate}"}
+  COMPOSE_PROFILES: ${COMPOSE_PROFILES:-${VECTOR_STORE:-weaviate}}
   # 暴露Nginx HTTP端口
   EXPOSE_NGINX_PORT: ${EXPOSE_NGINX_PORT:-80}
   # 暴露Nginx HTTPS端口
