@@ -55,8 +55,9 @@ class AppListApi(Resource):
             location="args",
             required=False,
         )
-        parser.add_argument("is_created_by_me", type=inputs.boolean, location="args", required=False)
+        parser.add_argument("name", type=str, location="args", required=False)
         parser.add_argument("tag_ids", type=uuid_list, location="args", required=False)
+        parser.add_argument("is_created_by_me", type=inputs.boolean, location="args", required=False)
 
         args = parser.parse_args()
 
