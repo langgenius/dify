@@ -17,20 +17,20 @@ type ColorMap = {
 }
 
 const BACKGROUND_MAP: ColorMap = {
-  green: 'bg-[#31C48D]',
-  orange: 'bg-[#FF5A1F]',
-  red: 'bg-[#F04438]',
-  blue: 'bg-[#36BFFA]',
+  green: 'bg-components-badge-status-light-success-bg',
+  orange: 'bg-components-badge-status-light-warning-bg',
+  red: 'bg-components-badge-status-light-error-bg',
+  blue: 'bg-components-badge-status-light-normal-bg',
   yellow: 'bg-[#FDB022]',
-  gray: 'bg-[#D0D5DD]',
+  gray: 'bg-components-badge-status-light-disabled-bg',
 }
 const BORDER_MAP: ColorMap = {
-  green: 'border-[#0E9F6E]',
-  orange: 'border-[#D03801]',
-  red: 'border-[#D92D20]',
-  blue: 'border-[#0BA5EC]',
+  green: 'border-components-badge-status-light-success-border-inner',
+  orange: 'border-components-badge-status-light-warning-border-inner',
+  red: 'border-components-badge-status-light-error-border-inner',
+  blue: 'border-components-badge-status-light-normal-border-inner',
   yellow: 'border-[#F79009]',
-  gray: 'border-[#98A2B3]',
+  gray: 'border-components-badge-status-light-disabled-border-inner',
 }
 const SHADOW_MAP: ColorMap = {
   green: 'shadow-[0_0_5px_-3px_rgba(14,159,110,0.1),0.5px_0.5px_3px_rgba(14,159,110,0.3),inset_1.5px_1.5px_0px_rgba(255,255,255,0.2)]',
