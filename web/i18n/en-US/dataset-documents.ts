@@ -40,7 +40,7 @@ const translation = {
     },
     status: {
       queuing: 'Queuing',
-      indexing: 'Indexing...',
+      indexing: 'Indexing',
       paused: 'Paused',
       error: 'Error',
       available: 'Available',

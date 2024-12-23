@@ -51,7 +51,7 @@ const EmbeddingSkeleton = () => {
       <div className='absolute top-0 left-0 w-full h-full bg-dataset-chunk-list-mask-bg z-20' />
       {[...Array(5)].map((_, index) => {
         return (
-          <div key={index} className='w-full px-16'>
+          <div key={index} className='w-full px-11'>
             <CardSkelton />
             {index !== 9 && <div className='w-full px-3'>
               <Divider type='horizontal' className='bg-divider-subtle my-1' />

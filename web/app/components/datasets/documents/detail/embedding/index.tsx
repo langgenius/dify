@@ -215,6 +215,12 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId: localDatasetId, documentId: localDocumentId }) as Promise<CommonResponse>)
     if (!e) {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      // if the embedding is resumed from paused, we need to start the query status
+      if (isEmbeddingPaused) {
+        isStopQuery.current = false
+        startQueryStatus()
+        detailUpdate()
+      }
       setIndexingStatusDetail(null)
     }
     else {
@@ -225,7 +231,7 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
   return (
     <>
       <div className='py-12 px-16 flex flex-col gap-y-2'>
-        <div className='flex items-center gap-x-1'>
+        <div className='flex items-center gap-x-1 h-6'>
           {isEmbedding && <RiLoader2Line className='h-4 w-4 text-text-secondary animate-spin' />}
           <span className='grow text-text-secondary system-md-semibold-uppercase'>
             {isEmbedding && t('datasetDocuments.embedding.processing')}
@@ -276,7 +282,7 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
         </div>
         <div className={'w-full flex items-center'}>
           <span className='text-text-secondary system-xs-medium'>
-            {`${t('datasetDocuments.embedding.segments')} ${indexingStatusDetail?.completed_segments}/${indexingStatusDetail?.total_segments} · ${percent}%`}
+            {`${t('datasetDocuments.embedding.segments')} ${indexingStatusDetail?.completed_segments || '--'}/${indexingStatusDetail?.total_segments || '--'} · ${percent}%`}
           </span>
         </div>
         <RuleDetail sourceData={ruleDetail} indexingType={indexingType} retrievalMethod={retrievalMethod} />
