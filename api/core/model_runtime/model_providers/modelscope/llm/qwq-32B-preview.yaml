@@ -2,10 +2,6 @@ model: Qwen/QwQ-32B-Preview
 label:
   en_US: Qwen/QwQ-32B-Preview
 model_type: llm
-features:
-  - agent-thought
-  - tool-call
-  - stream-tool-call
 model_properties:
   mode: chat
   context_size: 32768
