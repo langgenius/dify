@@ -328,9 +328,9 @@ class Executor:
             elif self.node_data.body.type == "raw-text":
                 if len(self.node_data.body.data) != 1:
                     raise RequestBodyError("raw-text body type should have exactly one item")
-                body = self.node_data.body.data[0].value
-        if body:
-            raw += f"Content-Length: {len(body)}\r\n"
+                body_string = self.node_data.body.data[0].value
+        if body_string:
+            raw += f"Content-Length: {len(body_string)}\r\n"
         raw += "\r\n"  # Empty line between headers and body
         raw += body_string
 

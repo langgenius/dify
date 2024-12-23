@@ -77,7 +77,8 @@ class OAuthCallback(Resource):
             token = oauth_provider.get_access_token(code)
             user_info = oauth_provider.get_user_info(token)
         except requests.exceptions.RequestException as e:
-            logging.exception(f"An error occurred during the OAuth process with {provider}: {e.response.text}")
+            error_text = e.response.text if e.response else str(e)
+            logging.exception(f"An error occurred during the OAuth process with {provider}: {error_text}")
             return {"error": "OAuth process failed"}, 400
 
         if invite_token and RegisterService.is_valid_invite_token(invite_token):

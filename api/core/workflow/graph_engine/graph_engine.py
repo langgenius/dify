@@ -658,7 +658,7 @@ class GraphEngine:
                                         parallel_start_node_id=parallel_start_node_id,
                                         parent_parallel_id=parent_parallel_id,
                                         parent_parallel_start_node_id=parent_parallel_start_node_id,
-                                        error=run_result.error,
+                                        error=run_result.error or "Unknown error",
                                         retry_index=retries,
                                         start_at=retry_start_at,
                                     )

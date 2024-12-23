@@ -4,7 +4,7 @@ import uuid
 from collections.abc import Mapping
 from datetime import datetime
 from enum import Enum, StrEnum
-from typing import TYPE_CHECKING, Any, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 import sqlalchemy as sa
 from flask import request
@@ -1545,7 +1545,7 @@ class MessageAgentThought(db.Model):  # type: ignore[name-defined]
     @property
     def files(self) -> list:
         if self.message_files:
-            return cast(list, json.loads(self.message_files))
+            return cast(list[Any], json.loads(self.message_files))
         else:
             return []
 

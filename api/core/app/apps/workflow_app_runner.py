@@ -267,7 +267,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     inputs=inputs,
                     process_data=process_data,
                     outputs=outputs,
-                    execution_metadata=execution_metadata,
+                    execution_metadata=dict(execution_metadata) if execution_metadata else None,
                     in_iteration_id=event.in_iteration_id,
                 )
             )
