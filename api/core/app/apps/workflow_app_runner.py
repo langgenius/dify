@@ -211,7 +211,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     parent_parallel_id=event.parent_parallel_id,
                     parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                     start_at=event.start_at,
-                    node_run_index=event.node_run_index,
+                    node_run_index=event.route_node_state.index,
                     predecessor_node_id=event.predecessor_node_id,
                     in_iteration_id=event.in_iteration_id,
                     parallel_mode_run_id=event.parallel_mode_run_id,

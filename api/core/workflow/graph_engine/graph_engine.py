@@ -641,7 +641,6 @@ class GraphEngine:
                                     run_result.status = WorkflowNodeExecutionStatus.SUCCEEDED
                                 if node_instance.should_retry and retries < max_retries:
                                     retries += 1
-                                    self.graph_runtime_state.node_run_steps += 1
                                     route_node_state.node_run_result = run_result
                                     yield NodeRunRetryEvent(
                                         id=node_instance.id,
@@ -657,7 +656,6 @@ class GraphEngine:
                                         error=run_result.error,
                                         retry_index=retries,
                                         start_at=retry_start_at,
-                                        node_run_index=self.graph_runtime_state.node_run_steps,
                                     )
                                     time.sleep(retry_interval)
                                     continue
