@@ -27,6 +27,7 @@ def init_app(app: DifyApp):
             ignore_errors=[
                 HTTPException,
                 ValueError,
+                FileNotFoundError,
                 openai.APIStatusError,
                 InvokeRateLimitError,
                 parse_error.defaultErrorResponse,
