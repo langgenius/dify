@@ -68,7 +68,7 @@ class AwsS3Storage(BaseStorage):
         except ClientError as ex:
             if ex.response["Error"]["Code"] == "NoSuchKey":
                 raise FileNotFoundError("file not found")
-            elif 'reached max retries' in str(ex):
+            elif "reached max retries" in str(ex):
                 raise ValueError("please do not request the same file too frequently")
             else:
                 raise
