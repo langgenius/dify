@@ -40,6 +40,9 @@ jobs:
 
       - name: Install dependencies
         run: poetry install -C api --with dev
+      
+      - name: Run mypy
+        run: poetry run -C api mypy ./api --config-file=./api/mypy.ini
 
       - name: Check dependencies in pyproject.toml
         run: poetry run -C api bash dev/pytest/pytest_artifacts.sh
