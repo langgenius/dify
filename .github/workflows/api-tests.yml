@@ -58,9 +58,9 @@ jobs:
         run: poetry run -C api bash dev/pytest/pytest_tools.sh
 
       - name: Run mypy
-        run:
+        run: |
           pushd api
-          poetry run -C api mypy ./api --config-file=./api/mypy.ini
+          poetry run -C api mypy .
           popd
 
       - name: Set up dotenvs
