@@ -2,7 +2,7 @@ import json
 import logging
 
 from flask import abort, request
-from flask_restful import Resource, marshal_with, reqparse
+from flask_restful import Resource, marshal_with, reqparse, inputs
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -455,15 +455,16 @@ class PublishedAllWorkflowApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-        args = self.parser.parse_args()
-        page = args['page']
-        limit = args['limit']
-
+        parser = reqparse.RequestParser()
+        parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
+        parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
+        args = parser.parse_args()
+        page = args.get('page')
+        limit = args.get('limit')
         workflow_service = WorkflowService()
         workflows, has_more = workflow_service.get_all_published_workflow(
             app_model=app_model,
-            page=page,
-            limit=limit
+            args=args
         )
 
         return {
