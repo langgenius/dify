@@ -7,7 +7,7 @@ import type { VersionHistory } from '@/types/workflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { fetchPublishedAllWorkflow } from '@/service/workflow'
 import Loading from '@/app/components/base/loading'
-import InfiniteScroll from '@/app/components/base/infinite-scroll'
+import Button from '@/app/components/base/button'
 
 const limit = 10
 
@@ -18,9 +18,8 @@ const VersionHistoryModal = () => {
   const appDetail = useAppStore.getState().appDetail
   
   const {
-    data,
+    data: versionHistory,
     isLoading,
-    mutate,
   } = useSWR(
     `/apps/${appDetail?.id}/workflows/publish/all?page=${page}&limit=${limit}`,
     fetchPublishedAllWorkflow
@@ -33,26 +32,22 @@ const VersionHistoryModal = () => {
     }
   }
 
-  const loadMore = useCallback(() => {
-    if (data?.has_more) {
-      setPage(prev => prev + 1)
+  const handleNextPage = () => {
+    if (versionHistory?.has_more) {
+      setPage(page => page + 1)
     }
-  }, [data?.has_more])
+  }
 
   return (
-    <div className='w-[240px] bg-white rounded-2xl border-[0.5px] border-gray-200 shadow-xl p-2'>
-      <InfiniteScroll
-        className="max-h-[400px] overflow-auto"
-        hasMore={!!data?.has_more}
-        loadMore={loadMore}
-      >
+    <div className='w-[336px] bg-white rounded-2xl border-[0.5px] border-gray-200 shadow-xl p-2'>
+      <div className="max-h-[400px] overflow-auto">
         {isLoading && page === 1 ? (
           <div className='flex items-center justify-center h-10'>
             <Loading/>
           </div>
         ) : (
           <>
-            {data?.items.map(item => (
+            {versionHistory?.items?.map(item => (
               <VersionHistoryItem
                 key={item.version}
                 item={item}
@@ -65,9 +60,24 @@ const VersionHistoryModal = () => {
                 <Loading/>
               </div>
             )}
+            {!isLoading && versionHistory?.has_more && (
+              <div className='flex items-center justify-center h-10 mt-2'>
+                <Button
+                  className='text-sm'
+                  onClick={handleNextPage}
+                >
+                  加载更多
+                </Button>
+              </div>
+            )}
+            {!isLoading && !versionHistory?.items?.length && (
+              <div className='flex items-center justify-center h-10 text-gray-500'>
+                暂无历史版本
+              </div>
+            )}
           </>
         )}
-      </InfiniteScroll>
+      </div>
     </div>
   )
 }

@@ -25,7 +25,7 @@ from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_service import WorkflowService
 
-from api.fields.workflow_fields import workflow_pagination_fields
+from fields.workflow_fields import workflow_pagination_fields
 
 logger = logging.getLogger(__name__)
 

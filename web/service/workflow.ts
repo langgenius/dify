@@ -1,12 +1,12 @@
 import type { Fetcher } from 'swr'
 import { get, post } from './base'
 import type { CommonResponse } from '@/models/common'
-import type {
-  ChatRunHistoryResponse,
-  ConversationVariableResponse,
-  FetchWorkflowDraftResponse,
-  NodesDefaultConfigsResponse,
-  WorkflowRunHistoryResponse,
+import {
+    ChatRunHistoryResponse,
+    ConversationVariableResponse, FetchWorkflowDraftPageResponse,
+    FetchWorkflowDraftResponse,
+    NodesDefaultConfigsResponse,
+    WorkflowRunHistoryResponse,
 } from '@/types/workflow'
 import type { BlockEnum } from '@/app/components/workflow/types'
 
@@ -46,8 +46,8 @@ export const fetchPublishedWorkflow: Fetcher<FetchWorkflowDraftResponse, string>
   return get<FetchWorkflowDraftResponse>(url)
 }
 
-export const fetchPublishedAllWorkflow: Fetcher<FetchWorkflowDraftResponse[], string> = (url) => {
-  return get<FetchWorkflowDraftResponse[]>(url)
+export const fetchPublishedAllWorkflow: Fetcher<FetchWorkflowDraftPageResponse, string> = (url) => {
+  return get<FetchWorkflowDraftPageResponse>(url)
 }
 
 export const stopWorkflowRun = (url: string) => {

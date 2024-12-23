@@ -84,6 +84,12 @@ export type FetchWorkflowDraftResponse = {
 
 export type VersionHistory = FetchWorkflowDraftResponse
 
+export type FetchWorkflowDraftPageResponse = {
+    items: VersionHistory[]
+    has_more: boolean
+    page: number
+}
+
 export type NodeTracingListResponse = {
   data: NodeTracing[]
 }
