@@ -11,8 +11,7 @@ from controllers.console import api
 from libs.login import login_required
 from libs.oauth_data_source import NotionOAuth
 
-from ..setup import setup_required
-from ..wraps import account_initialization_required
+from ..wraps import account_initialization_required, setup_required
 
 
 def get_oauth_providers():
@@ -35,7 +34,6 @@ class OAuthDataSource(Resource):
         OAUTH_DATASOURCE_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_DATASOURCE_PROVIDERS.get(provider)
-            print(vars(oauth_provider))
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
         if dify_config.NOTION_INTEGRATION_TYPE == "internal":

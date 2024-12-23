@@ -34,7 +34,7 @@ const LogAnnotation: FC<Props> = ({
 
   if (!appDetail) {
     return (
-      <div className='flex h-full items-center justify-center bg-white'>
+      <div className='flex h-full items-center justify-center bg-background-body'>
         <Loading />
       </div>
     )
@@ -52,7 +52,7 @@ const LogAnnotation: FC<Props> = ({
           options={options}
         />
       )}
-      <div className={cn('grow', appDetail.mode !== 'workflow' && 'mt-3')}>
+      <div className={cn('grow h-0', appDetail.mode !== 'workflow' && 'mt-3')}>
         {pageType === PageType.log && appDetail.mode !== 'workflow' && (<Log appDetail={appDetail} />)}
         {pageType === PageType.annotation && (<Annotation appDetail={appDetail} />)}
         {pageType === PageType.log && appDetail.mode === 'workflow' && (<WorkflowLog appDetail={appDetail} />)}

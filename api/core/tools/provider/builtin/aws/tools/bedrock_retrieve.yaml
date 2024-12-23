@@ -1,0 +1,87 @@
+identity:
+  name: bedrock_retrieve
+  author: AWS
+  label:
+    en_US: Bedrock Retrieve
+    zh_Hans: Bedrock检索
+    pt_BR: Bedrock Retrieve
+  icon: icon.svg
+
+description:
+  human:
+    en_US: A tool for retrieving relevant information from Amazon Bedrock Knowledge Base. You can find deploy instructions on Github Repo - https://github.com/aws-samples/dify-aws-tool
+    zh_Hans: Amazon Bedrock知识库检索工具, 请参考 Github Repo - https://github.com/aws-samples/dify-aws-tool上的部署说明
+    pt_BR: A tool for retrieving relevant information from Amazon Bedrock Knowledge Base.
+  llm: A tool for retrieving relevant information from Amazon Bedrock Knowledge Base. You can find deploy instructions on Github Repo - https://github.com/aws-samples/dify-aws-tool
+
+parameters:
+  - name: knowledge_base_id
+    type: string
+    required: true
+    label:
+      en_US: Bedrock Knowledge Base ID
+      zh_Hans: Bedrock知识库ID
+      pt_BR: Bedrock Knowledge Base ID
+    human_description:
+      en_US: ID of the Bedrock Knowledge Base to retrieve from
+      zh_Hans: 用于检索的Bedrock知识库ID
+      pt_BR: ID of the Bedrock Knowledge Base to retrieve from
+    llm_description: ID of the Bedrock Knowledge Base to retrieve from
+    form: form
+
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+      pt_BR: Query string
+    human_description:
+      en_US: The search query to retrieve relevant information
+      zh_Hans: 用于检索相关信息的查询语句
+      pt_BR: The search query to retrieve relevant information
+    llm_description: The search query to retrieve relevant information
+    form: llm
+
+  - name: topk
+    type: number
+    required: false
+    form: form
+    label:
+      en_US: Limit for results count
+      zh_Hans: 返回结果数量限制
+      pt_BR: Limit for results count
+    human_description:
+      en_US: Maximum number of results to return
+      zh_Hans: 最大返回结果数量
+      pt_BR: Maximum number of results to return
+    min: 1
+    max: 10
+    default: 5
+
+  - name: aws_region
+    type: string
+    required: false
+    label:
+      en_US: AWS Region
+      zh_Hans: AWS 区域
+      pt_BR: AWS Region
+    human_description:
+      en_US: AWS region where the Bedrock Knowledge Base is located
+      zh_Hans: Bedrock知识库所在的AWS区域
+      pt_BR: AWS region where the Bedrock Knowledge Base is located
+    llm_description: AWS region where the Bedrock Knowledge Base is located
+    form: form
+
+  - name: metadata_filter
+    type: string
+    required: false
+    label:
+      en_US: Metadata Filter
+      zh_Hans: 元数据过滤器
+      pt_BR: Metadata Filter
+    human_description:
+      en_US: 'JSON formatted filter conditions for metadata (e.g., {"greaterThan": {"key: "aaa", "value": 10}})'
+      zh_Hans: '元数据的JSON格式过滤条件（例如，{{"greaterThan": {"key: "aaa", "value": 10}}）'
+      pt_BR: 'JSON formatted filter conditions for metadata (e.g., {"greaterThan": {"key: "aaa", "value": 10}})'
+    form: form

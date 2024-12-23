@@ -250,7 +250,7 @@ class StepfunLargeLanguageModel(OAIAPICompatLargeLanguageModel):
                 # ignore sse comments
                 if chunk.startswith(":"):
                     continue
-                decoded_chunk = chunk.strip().lstrip("data: ").lstrip()
+                decoded_chunk = chunk.strip().removeprefix("data: ")
                 chunk_json = None
                 try:
                     chunk_json = json.loads(decoded_chunk)

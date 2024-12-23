@@ -204,6 +204,7 @@ const translation = {
     inviteTeamMember: 'टीम सदस्य जोड़ें',
     inviteTeamMemberTip:
       'वे साइन इन करने के बाद सीधे आपकी टीम डेटा तक पहुंच सकते हैं।',
+    emailNotSetup: 'ईमेल सर्वर सेट नहीं है, इसलिए आमंत्रण ईमेल नहीं भेजे जा सकते। कृपया उपयोगकर्ताओं को आमंत्रण के बाद जारी किए जाने वाले आमंत्रण लिंक के बारे में सूचित करें。',
     email: 'ईमेल',
     emailInvalid: 'अवैध ईमेल प्रारूप',
     emailPlaceholder: 'कृपया ईमेल दर्ज करें',
@@ -612,6 +613,13 @@ const translation = {
     pasteFileLink: 'फ़ाइल लिंक पेस्ट करें',
     fileExtensionNotSupport: 'फ़ाइल एक्सटेंशन समर्थित नहीं है',
     uploadFromComputer: 'स्थानीय अपलोड',
+  },
+  license: {
+    expiring: 'एक दिन में समाप्त हो रहा है',
+    expiring_plural: '{{गिनती}} दिनों में समाप्त हो रहा है',
+  },
+  pagination: {
+    perPage: 'प्रति पृष्ठ आइटम',
   },
 }
 

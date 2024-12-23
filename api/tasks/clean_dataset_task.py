@@ -5,6 +5,7 @@ import click
 from celery import shared_task
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.dataset import (
@@ -67,6 +68,17 @@ def clean_dataset_task(
                 db.session.delete(document)
 
             for segment in segments:
+                image_upload_file_ids = get_image_upload_file_ids(segment.content)
+                for upload_file_id in image_upload_file_ids:
+                    image_file = db.session.query(UploadFile).filter(UploadFile.id == upload_file_id).first()
+                    try:
+                        storage.delete(image_file.key)
+                    except Exception:
+                        logging.exception(
+                            "Delete image_files failed when storage deleted, \
+                                          image_upload_file_is: {}".format(upload_file_id)
+                        )
+                    db.session.delete(image_file)
                 db.session.delete(segment)
 
         db.session.query(DatasetProcessRule).filter(DatasetProcessRule.dataset_id == dataset_id).delete()

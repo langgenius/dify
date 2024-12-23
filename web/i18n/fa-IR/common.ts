@@ -199,6 +199,7 @@ const translation = {
     datasetOperatorTip: 'فقط می‌تواند پایگاه دانش را مدیریت کند',
     inviteTeamMember: 'افزودن عضو تیم',
     inviteTeamMemberTip: 'آنها می‌توانند پس از ورود به سیستم، مستقیماً به داده‌های تیم شما دسترسی پیدا کنند.',
+    emailNotSetup: 'سرور ایمیل راه‌اندازی نشده است، بنابراین ایمیل‌های دعوت نمی‌توانند ارسال شوند. لطفاً کاربران را از لینک دعوت که پس از دعوت صادر خواهد شد مطلع کنید。',
     email: 'ایمیل',
     emailInvalid: 'فرمت ایمیل نامعتبر است',
     emailPlaceholder: 'لطفاً ایمیل‌ها را وارد کنید',
@@ -590,6 +591,13 @@ const translation = {
     uploadFromComputerUploadError: 'آپلود فایل انجام نشد، لطفا دوباره آپلود کنید.',
     pasteFileLink: 'پیوند فایل را جایگذاری کنید',
     uploadFromComputerLimit: 'آپلود فایل نمی تواند از {{size}} تجاوز کند',
+  },
+  license: {
+    expiring_plural: 'انقضا در {{count}} روز',
+    expiring: 'انقضا در یک روز',
+  },
+  pagination: {
+    perPage: 'موارد در هر صفحه',
   },
 }
 

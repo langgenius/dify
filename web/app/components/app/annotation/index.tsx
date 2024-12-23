@@ -2,19 +2,19 @@
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pagination } from 'react-headless-pagination'
 import { useDebounce } from 'ahooks'
-import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
+import { RiEqualizer2Line } from '@remixicon/react'
 import Toast from '../../base/toast'
 import Filter from './filter'
 import type { QueryParam } from './filter'
 import List from './list'
 import EmptyElement from './empty-element'
 import HeaderOpts from './header-opts'
-import s from './style.module.css'
 import { AnnotationEnableStatus, type AnnotationItem, type AnnotationItemBasic, JobStatus } from './type'
 import ViewAnnotationModal from './view-annotation-modal'
-import cn from '@/utils/classnames'
+import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
+import ActionButton from '@/app/components/base/action-button'
+import Pagination from '@/app/components/base/pagination'
 import Switch from '@/app/components/base/switch'
 import { addAnnotation, delAnnotation, fetchAnnotationConfig as doFetchAnnotationConfig, editAnnotation, fetchAnnotationList, queryAnnotationJobStatus, updateAnnotationScore, updateAnnotationStatus } from '@/service/annotation'
 import Loading from '@/app/components/base/loading'
@@ -24,8 +24,8 @@ import type { AnnotationReplyConfig } from '@/models/debug'
 import { sleep } from '@/utils'
 import { useProviderContext } from '@/context/provider-context'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
-import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import type { App } from '@/types/app'
+import cn from '@/utils/classnames'
 
 type Props = {
   appDetail: App
@@ -69,9 +69,10 @@ const Annotation: FC<Props> = ({
   const [queryParams, setQueryParams] = useState<QueryParam>({})
   const [currPage, setCurrPage] = React.useState<number>(0)
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
+  const [limit, setLimit] = React.useState<number>(APP_PAGE_LIMIT)
   const query = {
     page: currPage + 1,
-    limit: APP_PAGE_LIMIT,
+    limit,
     keyword: debouncedQueryParams.keyword || '',
   }
 
@@ -158,8 +159,9 @@ const Annotation: FC<Props> = ({
           <div className='flex items-center space-x-2'>
             {isChatApp && (
               <>
-                <div className={cn(!annotationConfig?.enabled && 'pr-2', 'flex items-center h-7 rounded-lg border border-gray-200 pl-2 space-x-1')}>
-                  <div className='leading-[18px] text-[13px] font-medium text-gray-900'>{t('appAnnotation.name')}</div>
+                <div className={cn(!annotationConfig?.enabled && 'pr-2', 'flex items-center h-7 rounded-lg bg-components-panel-bg-blur border border-components-panel-border pl-2 space-x-1')}>
+                  <MessageFast className='w-4 h-4 text-util-colors-indigo-indigo-600' />
+                  <div className='system-sm-medium text-text-primary'>{t('appAnnotation.name')}</div>
                   <Switch
                     key={controlRefreshSwitch}
                     defaultValue={annotationConfig?.enabled}
@@ -186,22 +188,14 @@ const Annotation: FC<Props> = ({
                   ></Switch>
                   {annotationConfig?.enabled && (
                     <div className='flex items-center pl-1.5'>
-                      <div className='shrink-0 mr-1 w-[1px] h-3.5 bg-gray-200'></div>
-                      <div
-                        className={`
-                      shrink-0  h-7 w-7 flex items-center justify-center
-                      text-xs text-gray-700 font-medium 
-                    `}
-                        onClick={() => { setIsShowEdit(true) }}
-                      >
-                        <div className='flex h-6 w-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-200'>
-                          <Settings04 className='w-4 h-4' />
-                        </div>
-                      </div>
+                      <div className='shrink-0 mr-1 w-[1px] h-3.5 bg-divider-subtle'></div>
+                      <ActionButton onClick={() => setIsShowEdit(true)}>
+                        <RiEqualizer2Line className='w-4 h-4 text-text-tertiary' />
+                      </ActionButton>
                     </div>
                   )}
                 </div>
-                <div className='shrink-0 mx-3 w-[1px] h-3.5 bg-gray-200'></div>
+                <div className='shrink-0 mx-3 w-[1px] h-3.5 bg-divider-regular'></div>
               </>
             )}
 
@@ -228,35 +222,12 @@ const Annotation: FC<Props> = ({
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)
           ? <Pagination
-            className="flex items-center w-full h-10 text-sm select-none mt-8"
-            currentPage={currPage}
-            edgePageCount={2}
-            middlePagesSiblingCount={1}
-            setCurrentPage={setCurrPage}
-            totalPages={Math.ceil(total / APP_PAGE_LIMIT)}
-            truncableClassName="w-8 px-0.5 text-center"
-            truncableText="..."
-          >
-            <Pagination.PrevButton
-              disabled={currPage === 0}
-              className={`flex items-center mr-2 text-gray-500  focus:outline-none ${currPage === 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-gray-600 dark:hover:text-gray-200'}`} >
-              <ArrowLeftIcon className="mr-3 h-3 w-3" />
-              {t('appLog.table.pagination.previous')}
-            </Pagination.PrevButton>
-            <div className={`flex items-center justify-center flex-grow ${s.pagination}`}>
-              <Pagination.PageButton
-                activeClassName="bg-primary-50 dark:bg-opacity-0 text-primary-600 dark:text-white"
-                className="flex items-center justify-center h-8 w-8 rounded-full cursor-pointer"
-                inactiveClassName="text-gray-500"
-              />
-            </div>
-            <Pagination.NextButton
-              disabled={currPage === Math.ceil(total / APP_PAGE_LIMIT) - 1}
-              className={`flex items-center mr-2 text-gray-500 focus:outline-none ${currPage === Math.ceil(total / APP_PAGE_LIMIT) - 1 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-gray-600 dark:hover:text-gray-200'}`} >
-              {t('appLog.table.pagination.next')}
-              <ArrowRightIcon className="ml-3 h-3 w-3" />
-            </Pagination.NextButton>
-          </Pagination>
+            current={currPage}
+            onChange={setCurrPage}
+            total={total}
+            limit={limit}
+            onLimitChange={setLimit}
+          />
           : null}
 
         {isShowViewModal && (

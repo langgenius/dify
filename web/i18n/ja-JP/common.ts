@@ -199,6 +199,7 @@ const translation = {
     datasetOperatorTip: 'ナレッジベースのみを管理できる',
     inviteTeamMember: 'チームメンバーを招待する',
     inviteTeamMemberTip: '彼らはサインイン後、直接あなた様のチームデータにアクセスできます。',
+    emailNotSetup: 'メールサーバーがセットアップされていないので、招待メールを送信することはできません。代わりに招待後に発行される招待リンクをユーザーに通知してください。',
     email: 'メール',
     emailInvalid: '無効なメール形式',
     emailPlaceholder: 'メールを入力してください',
@@ -590,6 +591,13 @@ const translation = {
     uploadFromComputerReadError: 'ファイルの読み取りに失敗しました。もう一度やり直してください。',
     fileExtensionNotSupport: 'ファイル拡張子はサポートされていません',
     pasteFileLinkInvalid: '無効なファイルリンク',
+  },
+  license: {
+    expiring_plural: '有効期限 {{count}} 日',
+    expiring: '1日で有効期限が切れます',
+  },
+  pagination: {
+    perPage: 'ページあたりのアイテム数',
   },
 }
 

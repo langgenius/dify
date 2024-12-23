@@ -28,6 +28,7 @@ export type InputProps = {
   destructive?: boolean
   wrapperClassName?: string
   styleCss?: CSSProperties
+  unit?: string
 } & React.InputHTMLAttributes<HTMLInputElement> & VariantProps<typeof inputVariants>
 
 const Input = ({
@@ -43,6 +44,7 @@ const Input = ({
   value,
   placeholder,
   onChange,
+  unit,
   ...props
 }: InputProps) => {
   const { t } = useTranslation()
@@ -64,7 +66,9 @@ const Input = ({
           destructive && 'bg-components-input-bg-destructive border-components-input-border-destructive text-components-input-text-filled hover:bg-components-input-bg-destructive hover:border-components-input-border-destructive focus:bg-components-input-bg-destructive focus:border-components-input-border-destructive',
           className,
         )}
-        placeholder={placeholder ?? (showLeftIcon ? t('common.operation.search') ?? '' : t('common.placeholder.input'))}
+        placeholder={placeholder ?? (showLeftIcon
+          ? (t('common.operation.search') || '')
+          : (t('common.placeholder.input') || ''))}
         value={value}
         onChange={onChange}
         disabled={disabled}
@@ -78,6 +82,13 @@ const Input = ({
       {destructive && (
         <RiErrorWarningLine className='absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-destructive-secondary' />
       )}
+      {
+        unit && (
+          <div className='absolute right-2 top-1/2 -translate-y-1/2 system-sm-regular text-text-tertiary'>
+            {unit}
+          </div>
+        )
+      }
     </div>
   )
 }

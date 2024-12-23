@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pandas as pd
 from flask import request
@@ -11,11 +11,11 @@ import services
 from controllers.console import api
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import InvalidActionError, NoFileUploadedError, TooManyFilesError
-from controllers.console.setup import setup_required
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_knowledge_limit_check,
     cloud_edition_billing_resource_check,
+    setup_required,
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
@@ -188,7 +188,7 @@ class DatasetDocumentSegmentApi(Resource):
                 raise InvalidActionError("Segment is already disabled.")
 
             segment.enabled = False
-            segment.disabled_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            segment.disabled_at = datetime.now(UTC).replace(tzinfo=None)
             segment.disabled_by = current_user.id
             db.session.commit()
 

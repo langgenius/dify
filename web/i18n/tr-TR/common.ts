@@ -199,6 +199,7 @@ const translation = {
     datasetOperatorTip: 'Sadece bilgi tabanını yönetebilir',
     inviteTeamMember: 'Takım Üyesi Ekle',
     inviteTeamMemberTip: 'Giriş yaptıktan sonra takım verilerinize doğrudan erişebilirler.',
+    emailNotSetup: 'E-posta sunucusu kurulu değil, bu nedenle davet e-postaları gönderilemiyor. Lütfen kullanıcıları davetten sonra verilecek davet bağlantısı hakkında bilgilendirin.',
     email: 'E-posta',
     emailInvalid: 'Geçersiz E-posta Formatı',
     emailPlaceholder: 'Lütfen e-postaları girin',
@@ -590,6 +591,13 @@ const translation = {
     pasteFileLinkInputPlaceholder: 'URL\'yi giriniz...',
     pasteFileLinkInvalid: 'Geçersiz dosya bağlantısı',
     fileExtensionNotSupport: 'Dosya uzantısı desteklenmiyor',
+  },
+  license: {
+    expiring_plural: '{{count}} gün içinde sona eriyor',
+    expiring: 'Bir günde sona eriyor',
+  },
+  pagination: {
+    perPage: 'Sayfa başına öğe sayısı',
   },
 }
 

@@ -70,7 +70,7 @@ class NotionOAuth(OAuthDataSource):
         if data_source_binding:
             data_source_binding.source_info = source_info
             data_source_binding.disabled = False
-            data_source_binding.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            data_source_binding.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             db.session.commit()
         else:
             new_data_source_binding = DataSourceOauthBinding(
@@ -106,7 +106,7 @@ class NotionOAuth(OAuthDataSource):
         if data_source_binding:
             data_source_binding.source_info = source_info
             data_source_binding.disabled = False
-            data_source_binding.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            data_source_binding.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             db.session.commit()
         else:
             new_data_source_binding = DataSourceOauthBinding(
@@ -141,7 +141,7 @@ class NotionOAuth(OAuthDataSource):
             }
             data_source_binding.source_info = new_source_info
             data_source_binding.disabled = False
-            data_source_binding.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            data_source_binding.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             db.session.commit()
         else:
             raise ValueError("Data source binding not found")
@@ -221,15 +221,29 @@ class NotionOAuth(OAuthDataSource):
         return pages
 
     def notion_page_search(self, access_token: str):
-        data = {"filter": {"value": "page", "property": "object"}}
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {access_token}",
-            "Notion-Version": "2022-06-28",
-        }
-        response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
-        response_json = response.json()
-        results = response_json.get("results", [])
+        results = []
+        next_cursor = None
+        has_more = True
+
+        while has_more:
+            data = {
+                "filter": {"value": "page", "property": "object"},
+                **({"start_cursor": next_cursor} if next_cursor else {}),
+            }
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {access_token}",
+                "Notion-Version": "2022-06-28",
+            }
+
+            response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
+            response_json = response.json()
+
+            results.extend(response_json.get("results", []))
+
+            has_more = response_json.get("has_more", False)
+            next_cursor = response_json.get("next_cursor", None)
+
         return results
 
     def notion_block_parent_page_id(self, access_token: str, block_id: str):
@@ -239,6 +253,8 @@ class NotionOAuth(OAuthDataSource):
         }
         response = requests.get(url=f"{self._NOTION_BLOCK_SEARCH}/{block_id}", headers=headers)
         response_json = response.json()
+        if response.status_code != 200:
+            raise ValueError(f"Error fetching block parent page ID: {response_json.message}")
         parent = response_json["parent"]
         parent_type = parent["type"]
         if parent_type == "block_id":
@@ -260,13 +276,26 @@ class NotionOAuth(OAuthDataSource):
         return "workspace"
 
     def notion_database_search(self, access_token: str):
-        data = {"filter": {"value": "database", "property": "object"}}
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {access_token}",
-            "Notion-Version": "2022-06-28",
-        }
-        response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
-        response_json = response.json()
-        results = response_json.get("results", [])
+        results = []
+        next_cursor = None
+        has_more = True
+
+        while has_more:
+            data = {
+                "filter": {"value": "database", "property": "object"},
+                **({"start_cursor": next_cursor} if next_cursor else {}),
+            }
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {access_token}",
+                "Notion-Version": "2022-06-28",
+            }
+            response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
+            response_json = response.json()
+
+            results.extend(response_json.get("results", []))
+
+            has_more = response_json.get("has_more", False)
+            next_cursor = response_json.get("next_cursor", None)
+
         return results

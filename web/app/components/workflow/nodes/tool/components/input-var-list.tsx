@@ -46,6 +46,8 @@ const InputVarList: FC<Props> = ({
   const paramType = (type: string) => {
     if (type === FormTypeEnum.textNumber)
       return 'Number'
+    else if (type === FormTypeEnum.file)
+      return 'File'
     else if (type === FormTypeEnum.files)
       return 'Files'
     else if (type === FormTypeEnum.select)
@@ -59,16 +61,8 @@ const InputVarList: FC<Props> = ({
       const newValue = produce(value, (draft: ToolVarInputs) => {
         const target = draft[variable]
         if (target) {
-          if (!isSupportConstantValue || varKindType === VarKindType.variable) {
-            if (isSupportConstantValue)
-              target.type = VarKindType.variable
-
-            target.value = varValue as ValueSelector
-          }
-          else {
-            target.type = VarKindType.constant
-            target.value = varValue as string
-          }
+          target.type = varKindType
+          target.value = varValue
         }
         else {
           draft[variable] = {
@@ -168,10 +162,11 @@ const InputVarList: FC<Props> = ({
                   readonly={readOnly}
                   isShowNodeName
                   nodeId={nodeId}
-                  value={varInput?.type === VarKindType.constant ? (varInput?.value || '') : (varInput?.value || [])}
+                  value={varInput?.type === VarKindType.constant ? (varInput?.value ?? '') : (varInput?.value ?? [])}
                   onChange={handleNotMixedTypeChange(variable)}
                   onOpen={handleOpen(index)}
-                  defaultVarKindType={varInput?.type}
+                  defaultVarKindType={varInput?.type || (isNumber ? VarKindType.constant : VarKindType.variable)}
+                  isSupportConstantValue={isSupportConstantValue}
                   filterVar={isNumber ? filterVar : undefined}
                   availableVars={isSelect ? availableVars : undefined}
                   schema={schema}

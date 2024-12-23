@@ -199,6 +199,7 @@ const translation = {
     datasetOperatorTip: 'Solo puede administrar la base de conocimiento',
     inviteTeamMember: 'Agregar miembro del equipo',
     inviteTeamMemberTip: 'Pueden acceder a tus datos del equipo directamente después de iniciar sesión.',
+    emailNotSetup: 'El servidor de correo no está configurado, por lo que no se pueden enviar correos de invitación. En su lugar, notifique a los usuarios el enlace de invitación que se emitirá después de la invitación.',
     email: 'Correo electrónico',
     emailInvalid: 'Formato de correo electrónico inválido',
     emailPlaceholder: 'Por favor ingresa correos electrónicos',
@@ -590,6 +591,13 @@ const translation = {
     fileExtensionNotSupport: 'Extensión de archivo no compatible',
     pasteFileLinkInputPlaceholder: 'Introduzca la URL...',
     uploadFromComputerLimit: 'El archivo de carga no puede exceder {{size}}',
+  },
+  license: {
+    expiring: 'Caduca en un día',
+    expiring_plural: 'Caducando en {{count}} días',
+  },
+  pagination: {
+    perPage: 'Elementos por página',
   },
 }
 

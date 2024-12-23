@@ -20,6 +20,7 @@ import { InputVarType, type NodePanelProps } from '@/app/components/workflow/typ
 import Tooltip from '@/app/components/base/tooltip'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import { VarType } from '@/app/components/workflow/types'
+import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 const i18nCommonPrefix = 'workflow.common'
@@ -67,8 +68,8 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
   const model = inputs.model
 
   return (
-    <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+    <div className='pt-2'>
+      <div className='px-4 space-y-4'>
         <Field
           title={t(`${i18nCommonPrefix}.model`)}
         >
@@ -157,38 +158,33 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           nodesOutputVars={availableVars}
           availableNodes={availableNodesWithParent}
         />
-        <Field
-          title={t(`${i18nPrefix}.advancedSetting`)}
-          supportFold
-        >
-          <>
-
-            {/* Memory */}
-            {isChatMode && (
-              <div className='mt-4'>
-                <MemoryConfig
-                  readonly={readOnly}
-                  config={{ data: inputs.memory }}
-                  onChange={handleMemoryChange}
-                  canSetRoleName={isCompletionModel}
-                />
-              </div>
-            )}
-            {isSupportFunctionCall && (
-              <div className='mt-2'>
-                <ReasoningModePicker
-                  type={inputs.reasoning_mode}
-                  onChange={handleReasoningModeChange}
-                />
-              </div>
-            )}
-          </>
-        </Field>
-
       </div>
+      <FieldCollapse title={t(`${i18nPrefix}.advancedSetting`)}>
+        <>
+          {/* Memory */}
+          {isChatMode && (
+            <div className='mt-4'>
+              <MemoryConfig
+                readonly={readOnly}
+                config={{ data: inputs.memory }}
+                onChange={handleMemoryChange}
+                canSetRoleName={isCompletionModel}
+              />
+            </div>
+          )}
+          {isSupportFunctionCall && (
+            <div className='mt-2'>
+              <ReasoningModePicker
+                type={inputs.reasoning_mode}
+                onChange={handleReasoningModeChange}
+              />
+            </div>
+          )}
+        </>
+      </FieldCollapse>
       {inputs.parameters?.length > 0 && (<>
         <Split />
-        <div className='px-4 pt-4 pb-2'>
+        <div>
           <OutputVars>
             <>
               {inputs.parameters.map((param, index) => (

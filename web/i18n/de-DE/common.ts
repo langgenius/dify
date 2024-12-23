@@ -191,6 +191,7 @@ const translation = {
     editorTip: 'Kann Apps erstellen & bearbeiten',
     inviteTeamMember: 'Teammitglied hinzufügen',
     inviteTeamMemberTip: 'Sie können direkt nach der Anmeldung auf Ihre Teamdaten zugreifen.',
+    emailNotSetup: 'E-Mail-Server ist nicht eingerichtet, daher können keine Einladungs-E-Mails versendet werden. Bitte informieren Sie die Benutzer über den Einladungslink, der nach der Einladung ausgestellt wird.',
     email: 'E-Mail',
     emailInvalid: 'Ungültiges E-Mail-Format',
     emailPlaceholder: 'Bitte E-Mails eingeben',
@@ -590,6 +591,13 @@ const translation = {
     uploadFromComputerLimit: 'Datei hochladen darf {{size}} nicht überschreiten',
     uploadFromComputerReadError: 'Lesen der Datei fehlgeschlagen, bitte versuchen Sie es erneut.',
     fileExtensionNotSupport: 'Dateiendung nicht bedient',
+  },
+  license: {
+    expiring: 'Läuft an einem Tag ab',
+    expiring_plural: 'Läuft in {{count}} Tagen ab',
+  },
+  pagination: {
+    perPage: 'Artikel pro Seite',
   },
 }
 

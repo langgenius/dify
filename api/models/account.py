@@ -2,13 +2,13 @@ import enum
 import json
 
 from flask_login import UserMixin
+from sqlalchemy import func
 
-from extensions.ext_database import db
-
+from .engine import db
 from .types import StringUUID
 
 
-class AccountStatus(str, enum.Enum):
+class AccountStatus(enum.StrEnum):
     PENDING = "pending"
     UNINITIALIZED = "uninitialized"
     ACTIVE = "active"
@@ -31,11 +31,11 @@ class Account(UserMixin, db.Model):
     timezone = db.Column(db.String(255))
     last_login_at = db.Column(db.DateTime)
     last_login_ip = db.Column(db.String(255))
-    last_active_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    last_active_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     status = db.Column(db.String(16), nullable=False, server_default=db.text("'active'::character varying"))
     initialized_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def is_password_set(self):
@@ -56,8 +56,8 @@ class Account(UserMixin, db.Model):
         self._current_tenant = tenant
 
     @property
-    def current_tenant_id(self):
-        return self._current_tenant.id
+    def current_tenant_id(self) -> str | None:
+        return self._current_tenant.id if self._current_tenant else None
 
     @current_tenant_id.setter
     def current_tenant_id(self, value: str):
@@ -99,14 +99,13 @@ class Account(UserMixin, db.Model):
             return db.session.query(Account).filter(Account.id == account_integrate.account_id).one_or_none()
         return None
 
-    def get_integrates(self) -> list[db.Model]:
-        ai = db.Model
-        return db.session.query(ai).filter(ai.account_id == self.id).all()
-
-    # check current_user.current_tenant.current_role in ['admin', 'owner']
     @property
     def is_admin_or_owner(self):
         return TenantAccountRole.is_privileged_role(self._current_tenant.current_role)
+
+    @property
+    def is_admin(self):
+        return TenantAccountRole.is_admin_role(self._current_tenant.current_role)
 
     @property
     def is_editor(self):
@@ -121,12 +120,12 @@ class Account(UserMixin, db.Model):
         return self._current_tenant.current_role == TenantAccountRole.DATASET_OPERATOR
 
 
-class TenantStatus(str, enum.Enum):
+class TenantStatus(enum.StrEnum):
     NORMAL = "normal"
     ARCHIVE = "archive"
 
 
-class TenantAccountRole(str, enum.Enum):
+class TenantAccountRole(enum.StrEnum):
     OWNER = "owner"
     ADMIN = "admin"
     EDITOR = "editor"
@@ -146,6 +145,10 @@ class TenantAccountRole(str, enum.Enum):
     @staticmethod
     def is_privileged_role(role: str) -> bool:
         return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}
+
+    @staticmethod
+    def is_admin_role(role: str) -> bool:
+        return role and role == TenantAccountRole.ADMIN
 
     @staticmethod
     def is_non_owner_role(role: str) -> bool:
@@ -180,8 +183,8 @@ class Tenant(db.Model):
     plan = db.Column(db.String(255), nullable=False, server_default=db.text("'basic'::character varying"))
     status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
     custom_config = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     def get_accounts(self) -> list[Account]:
         return (
@@ -221,8 +224,8 @@ class TenantAccountJoin(db.Model):
     current = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     role = db.Column(db.String(16), nullable=False, server_default="normal")
     invited_by = db.Column(StringUUID, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class AccountIntegrate(db.Model):
@@ -238,8 +241,8 @@ class AccountIntegrate(db.Model):
     provider = db.Column(db.String(16), nullable=False)
     open_id = db.Column(db.String(255), nullable=False)
     encrypted_token = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class InvitationCode(db.Model):
@@ -258,4 +261,4 @@ class InvitationCode(db.Model):
     used_by_tenant_id = db.Column(StringUUID)
     used_by_account_id = db.Column(StringUUID)
     deprecated_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())

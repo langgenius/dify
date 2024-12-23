@@ -24,12 +24,12 @@ parameters:
       zh_Hans: 负面提示词
     llm_description: Negative prompt, you should describe the image you don't want to generate as a list of words as possible as detailed, the prompt must be written in English.
     form: llm
-  - name: image
-    type: file
+  - name: images
+    type: files
     label:
-      en_US: Input Image
+      en_US: Input Images
       zh_Hans: 输入的图片
-    llm_description: The input image, used to transfer to the comfyui workflow to generate another image.
+    llm_description: The input images, used to transfer to the comfyui workflow to generate another image.
     form: llm
   - name: workflow_json
     type: string
@@ -39,4 +39,25 @@ parameters:
     human_description:
       en_US: exported from ComfyUI workflow
       zh_Hans: 从ComfyUI的工作流中导出
+    form: form
+  - name: image_ids
+    type: string
+    label:
+      en_US: Image Node ID List
+      zh_Hans: 图片节点ID列表
+    placeholder:
+      en_US: Use commas to separate multiple node ID
+      zh_Hans: 多个节点ID时使用半角逗号分隔
+    human_description:
+      en_US: When the workflow has multiple image nodes, enter the ID list of these nodes, and the images will be passed to ComfyUI in the order of the list.
+      zh_Hans: 当工作流有多个图片节点时，输入这些节点的ID列表，图片将按列表顺序传给ComfyUI
+    form: form
+  - name: seed_id
+    type: string
+    label:
+      en_US: Seed Node Id
+      zh_Hans: 种子节点ID
+    human_description:
+      en_US: If you need to generate different images each time, you need to enter the ID of the seed node.
+      zh_Hans: 如果需要每次生成时使用不同的种子，需要输入包含种子的节点的ID
     form: form

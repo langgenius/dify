@@ -8,6 +8,7 @@ import {
   RiCheckboxCircleFill,
   RiErrorWarningLine,
   RiLoader2Line,
+  RiRestartFill,
 } from '@remixicon/react'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
@@ -18,7 +19,9 @@ import StatusContainer from '@/app/components/workflow/run/status-container'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import Button from '@/app/components/base/button'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import type { NodeTracing } from '@/types/workflow'
+import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
+import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
+import { hasRetryNode } from '@/app/components/workflow/utils'
 
 type Props = {
   className?: string
@@ -26,9 +29,11 @@ type Props = {
   inMessage?: boolean
   hideInfo?: boolean
   hideProcessDetail?: boolean
-  onShowIterationDetail?: (detail: NodeTracing[][]) => void
+  onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
+  onShowRetryDetail?: (detail: NodeTracing[]) => void
   notShowIterationNav?: boolean
   justShowIterationNavArrow?: boolean
+  justShowRetryNavArrow?: boolean
 }
 
 const NodePanel: FC<Props> = ({
@@ -38,6 +43,7 @@ const NodePanel: FC<Props> = ({
   hideInfo = false,
   hideProcessDetail,
   onShowIterationDetail,
+  onShowRetryDetail,
   notShowIterationNav,
   justShowIterationNavArrow,
 }) => {
@@ -72,16 +78,31 @@ const NodePanel: FC<Props> = ({
 
     return iteration_length
   }
+  const getErrorCount = (details: NodeTracing[][] | undefined) => {
+    if (!details || details.length === 0)
+      return 0
 
+    return details.reduce((acc, iteration) => {
+      if (iteration.some(item => item.status === 'failed'))
+        acc++
+      return acc
+    }, 0)
+  }
   useEffect(() => {
     setCollapseState(!nodeInfo.expand)
   }, [nodeInfo.expand, setCollapseState])
 
   const isIterationNode = nodeInfo.node_type === BlockEnum.Iteration
+  const isRetryNode = hasRetryNode(nodeInfo.node_type) && nodeInfo.retryDetail
   const handleOnShowIterationDetail = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     e.nativeEvent.stopImmediatePropagation()
-    onShowIterationDetail?.(nodeInfo.details || [])
+    onShowIterationDetail?.(nodeInfo.details || [], nodeInfo?.iterDurationMap || nodeInfo.execution_metadata?.iteration_duration_map || {})
+  }
+  const handleOnShowRetryDetail = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    e.nativeEvent.stopImmediatePropagation()
+    onShowRetryDetail?.(nodeInfo.retryDetail || [])
   }
   return (
     <div className={cn('px-2 py-1', className)}>
@@ -119,6 +140,9 @@ const NodePanel: FC<Props> = ({
           {nodeInfo.status === 'stopped' && (
             <RiAlertFill className={cn('shrink-0 ml-2 w-4 h-4 text-text-warning-secondary', inMessage && 'w-3.5 h-3.5')} />
           )}
+          {nodeInfo.status === 'exception' && (
+            <RiAlertFill className={cn('shrink-0 ml-2 w-4 h-4 text-text-warning-secondary', inMessage && 'w-3.5 h-3.5')} />
+          )}
           {nodeInfo.status === 'running' && (
             <div className='shrink-0 flex items-center text-text-accent text-[13px] leading-[16px] font-medium'>
               <span className='mr-2 text-xs font-normal'>Running</span>
@@ -136,7 +160,12 @@ const NodePanel: FC<Props> = ({
                   onClick={handleOnShowIterationDetail}
                 >
                   <Iteration className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
-                  <div className='flex-1 text-left system-sm-medium text-components-button-tertiary-text'>{t('workflow.nodes.iteration.iteration', { count: getCount(nodeInfo.details?.length, nodeInfo.metadata?.iterator_length) })}</div>
+                  <div className='flex-1 text-left system-sm-medium text-components-button-tertiary-text'>{t('workflow.nodes.iteration.iteration', { count: getCount(nodeInfo.details?.length, nodeInfo.metadata?.iterator_length) })}{getErrorCount(nodeInfo.details) > 0 && (
+                    <>
+                      {t('workflow.nodes.iteration.comma')}
+                      {t('workflow.nodes.iteration.error', { count: getErrorCount(nodeInfo.details) })}
+                    </>
+                  )}</div>
                   {justShowIterationNavArrow
                     ? (
                       <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
@@ -151,13 +180,43 @@ const NodePanel: FC<Props> = ({
                 <Split className='mt-2' />
               </div>
             )}
-            <div className={cn('px-[10px]', hideInfo && '!px-2 !py-0.5')}>
-              {nodeInfo.status === 'stopped' && (
+            {isRetryNode && (
+              <Button
+                className='flex items-center justify-between mb-1 w-full'
+                variant='tertiary'
+                onClick={handleOnShowRetryDetail}
+              >
+                <div className='flex items-center'>
+                  <RiRestartFill className='mr-0.5 w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
+                  {t('workflow.nodes.common.retry.retries', { num: nodeInfo.retryDetail?.length })}
+                </div>
+                <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
+              </Button>
+            )}
+            <div className={cn('mb-1', hideInfo && '!px-2 !py-0.5')}>
+              {(nodeInfo.status === 'stopped') && (
                 <StatusContainer status='stopped'>
                   {t('workflow.tracing.stopBy', { user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}
                 </StatusContainer>
               )}
+              {(nodeInfo.status === 'exception') && (
+                <StatusContainer status='stopped'>
+                  {nodeInfo.error}
+                  <a
+                    href='https://docs.dify.ai/guides/workflow/error-handling/error-type'
+                    target='_blank'
+                    className='text-text-accent'
+                  >
+                    {t('workflow.common.learnMore')}
+                  </a>
+                </StatusContainer>
+              )}
               {nodeInfo.status === 'failed' && (
+                <StatusContainer status='failed'>
+                  {nodeInfo.error}
+                </StatusContainer>
+              )}
+              {nodeInfo.status === 'retry' && (
                 <StatusContainer status='failed'>
                   {nodeInfo.error}
                 </StatusContainer>
@@ -193,6 +252,7 @@ const NodePanel: FC<Props> = ({
                   language={CodeLanguage.json}
                   value={nodeInfo.outputs}
                   isJSONStringifyBeauty
+                  tip={<ErrorHandleTip type={nodeInfo.execution_metadata?.error_strategy} />}
                 />
               </div>
             )}

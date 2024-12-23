@@ -29,4 +29,5 @@ export type FileEntity = {
   uploadedId?: string
   base64Url?: string
   url?: string
+  isRemote?: boolean
 }

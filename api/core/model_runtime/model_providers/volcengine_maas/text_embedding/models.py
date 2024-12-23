@@ -12,6 +12,7 @@ class ModelConfig(BaseModel):
 
 ModelConfigs = {
     "Doubao-embedding": ModelConfig(properties=ModelProperties(context_size=4096, max_chunks=32)),
+    "Doubao-embedding-large": ModelConfig(properties=ModelProperties(context_size=4096, max_chunks=32)),
 }
 
 
@@ -21,8 +22,8 @@ def get_model_config(credentials: dict) -> ModelConfig:
     if not model_configs:
         return ModelConfig(
             properties=ModelProperties(
-                context_size=int(credentials.get("context_size", 0)),
-                max_chunks=int(credentials.get("max_chunks", 0)),
+                context_size=int(credentials.get("context_size", 4096)),
+                max_chunks=int(credentials.get("max_chunks", 1)),
             )
         )
     return model_configs

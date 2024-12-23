@@ -85,7 +85,7 @@ message_detail_fields = {
 }
 
 feedback_stat_fields = {"like": fields.Integer, "dislike": fields.Integer}
-
+status_count_fields = {"success": fields.Integer, "failed": fields.Integer, "partial_success": fields.Integer}
 model_config_fields = {
     "opening_statement": fields.String,
     "suggested_questions": fields.Raw,
@@ -121,6 +121,7 @@ conversation_fields = {
     "from_account_name": fields.String,
     "read_at": TimestampField,
     "created_at": TimestampField,
+    "updated_at": TimestampField,
     "annotation": fields.Nested(annotation_fields, allow_null=True),
     "model_config": fields.Nested(simple_model_config_fields),
     "user_feedback_stats": fields.Nested(feedback_stat_fields),
@@ -165,6 +166,7 @@ conversation_with_summary_fields = {
     "message_count": fields.Integer,
     "user_feedback_stats": fields.Nested(feedback_stat_fields),
     "admin_feedback_stats": fields.Nested(feedback_stat_fields),
+    "status_count": fields.Nested(status_count_fields),
 }
 
 conversation_with_summary_pagination_fields = {
@@ -182,6 +184,7 @@ conversation_detail_fields = {
     "from_end_user_id": fields.String,
     "from_account_id": fields.String,
     "created_at": TimestampField,
+    "updated_at": TimestampField,
     "annotated": fields.Boolean,
     "introduction": fields.String,
     "model_config": fields.Nested(model_config_fields),
@@ -197,6 +200,11 @@ simple_conversation_fields = {
     "status": fields.String,
     "introduction": fields.String,
     "created_at": TimestampField,
+    "updated_at": TimestampField,
+}
+
+conversation_delete_fields = {
+    "result": fields.String,
 }
 
 conversation_infinite_scroll_pagination_fields = {

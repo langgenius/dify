@@ -65,11 +65,16 @@ class CacheEmbedding(Embeddings):
                     for vector in embedding_result.embeddings:
                         try:
                             normalized_embedding = (vector / np.linalg.norm(vector)).tolist()
+                            # stackoverflow best way: https://stackoverflow.com/questions/20319813/how-to-check-list-containing-nan
+                            if np.isnan(normalized_embedding).any():
+                                # for issue #11827  float values are not json compliant
+                                logger.warning(f"Normalized embedding is nan: {normalized_embedding}")
+                                continue
                             embedding_queue_embeddings.append(normalized_embedding)
                         except IntegrityError:
                             db.session.rollback()
                         except Exception as e:
-                            logging.exception("Failed transform embedding: %s", e)
+                            logging.exception("Failed transform embedding")
                 cache_embeddings = []
                 try:
                     for i, embedding in zip(embedding_queue_indices, embedding_queue_embeddings):
@@ -89,7 +94,7 @@ class CacheEmbedding(Embeddings):
                     db.session.rollback()
             except Exception as ex:
                 db.session.rollback()
-                logger.error("Failed to embed documents: %s", ex)
+                logger.exception("Failed to embed documents: %s")
                 raise ex
 
         return text_embeddings
@@ -102,7 +107,8 @@ class CacheEmbedding(Embeddings):
         embedding = redis_client.get(embedding_cache_key)
         if embedding:
             redis_client.expire(embedding_cache_key, 600)
-            return list(np.frombuffer(base64.b64decode(embedding), dtype="float"))
+            decoded_embedding = np.frombuffer(base64.b64decode(embedding), dtype="float")
+            return [float(x) for x in decoded_embedding]
         try:
             embedding_result = self._model_instance.invoke_text_embedding(
                 texts=[text], user=self._user, input_type=EmbeddingInputType.QUERY
@@ -110,9 +116,11 @@ class CacheEmbedding(Embeddings):
 
             embedding_results = embedding_result.embeddings[0]
             embedding_results = (embedding_results / np.linalg.norm(embedding_results)).tolist()
+            if np.isnan(embedding_results).any():
+                raise ValueError("Normalized embedding is nan please try again")
         except Exception as ex:
             if dify_config.DEBUG:
-                logging.exception(f"Failed to embed query text: {ex}")
+                logging.exception(f"Failed to embed query text '{text[:10]}...({len(text)} chars)'")
             raise ex
 
         try:
@@ -126,7 +134,7 @@ class CacheEmbedding(Embeddings):
             redis_client.setex(embedding_cache_key, 600, encoded_str)
         except Exception as ex:
             if dify_config.DEBUG:
-                logging.exception("Failed to add embedding to redis %s", ex)
+                logging.exception(f"Failed to add embedding to redis for the text '{text[:10]}...({len(text)} chars)'")
             raise ex
 
         return embedding_results

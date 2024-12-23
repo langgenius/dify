@@ -13,7 +13,7 @@ const EditingTitle = () => {
   const isSyncingWorkflowDraft = useStore(s => s.isSyncingWorkflowDraft)
 
   return (
-    <div className='flex items-center h-[18px] text-xs text-gray-500'>
+    <div className='flex items-center h-[18px] system-xs-regular text-text-tertiary'>
       {
         !!draftUpdatedAt && (
           <>

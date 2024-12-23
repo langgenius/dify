@@ -172,7 +172,7 @@ const ConfigContent: FC<Props> = ({
       return false
 
     return datasetConfigs.reranking_enable
-  }, [canManuallyToggleRerank, datasetConfigs.reranking_enable])
+  }, [canManuallyToggleRerank, datasetConfigs.reranking_enable, isRerankDefaultModelValid])
 
   const handleDisabledSwitchClick = useCallback(() => {
     if (!currentRerankModel && !showRerankModel)
@@ -266,7 +266,7 @@ const ConfigContent: FC<Props> = ({
               <div className='mt-2'>
                 <div className='flex items-center'>
                   {
-                    selectedDatasetsMode.allEconomic && (
+                    selectedDatasetsMode.allEconomic && !selectedDatasetsMode.mixtureInternalAndExternal && (
                       <div
                         className='flex items-center'
                         onClick={handleDisabledSwitchClick}

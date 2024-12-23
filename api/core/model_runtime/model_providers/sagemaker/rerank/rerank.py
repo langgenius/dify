@@ -113,7 +113,7 @@ class SageMakerRerankModel(RerankModel):
             return RerankResult(model=model, docs=rerank_documents)
 
         except Exception as e:
-            logger.exception(f"Exception {e}, line : {line}")
+            logger.exception(f"Failed to invoke rerank model, model: {model}")
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """

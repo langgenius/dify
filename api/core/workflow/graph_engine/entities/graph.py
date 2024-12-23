@@ -4,6 +4,7 @@ from typing import Any, Optional, cast
 
 from pydantic import BaseModel, Field
 
+from configs import dify_config
 from core.workflow.graph_engine.entities.run_condition import RunCondition
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.answer.answer_stream_generate_router import AnswerStreamGeneratorRouter
@@ -64,13 +65,21 @@ class Graph(BaseModel):
         edge_configs = graph_config.get("edges")
         if edge_configs is None:
             edge_configs = []
+        # node configs
+        node_configs = graph_config.get("nodes")
+        if not node_configs:
+            raise ValueError("Graph must have at least one node")
 
         edge_configs = cast(list, edge_configs)
+        node_configs = cast(list, node_configs)
 
         # reorganize edges mapping
         edge_mapping: dict[str, list[GraphEdge]] = {}
         reverse_edge_mapping: dict[str, list[GraphEdge]] = {}
         target_edge_ids = set()
+        fail_branch_source_node_id = [
+            node["id"] for node in node_configs if node["data"].get("error_strategy") == "fail-branch"
+        ]
         for edge_config in edge_configs:
             source_node_id = edge_config.get("source")
             if not source_node_id:
@@ -90,8 +99,16 @@ class Graph(BaseModel):
 
             # parse run condition
             run_condition = None
-            if edge_config.get("sourceHandle") and edge_config.get("sourceHandle") != "source":
-                run_condition = RunCondition(type="branch_identify", branch_identify=edge_config.get("sourceHandle"))
+            if edge_config.get("sourceHandle"):
+                if (
+                    edge_config.get("source") in fail_branch_source_node_id
+                    and edge_config.get("sourceHandle") != "fail-branch"
+                ):
+                    run_condition = RunCondition(type="branch_identify", branch_identify="success-branch")
+                elif edge_config.get("sourceHandle") != "source":
+                    run_condition = RunCondition(
+                        type="branch_identify", branch_identify=edge_config.get("sourceHandle")
+                    )
 
             graph_edge = GraphEdge(
                 source_node_id=source_node_id, target_node_id=target_node_id, run_condition=run_condition
@@ -99,13 +116,6 @@ class Graph(BaseModel):
 
             edge_mapping[source_node_id].append(graph_edge)
             reverse_edge_mapping[target_node_id].append(graph_edge)
-
-        # node configs
-        node_configs = graph_config.get("nodes")
-        if not node_configs:
-            raise ValueError("Graph must have at least one node")
-
-        node_configs = cast(list, node_configs)
 
         # fetch nodes that have no predecessor node
         root_node_configs = []
@@ -161,7 +171,9 @@ class Graph(BaseModel):
         for parallel in parallel_mapping.values():
             if parallel.parent_parallel_id:
                 cls._check_exceed_parallel_limit(
-                    parallel_mapping=parallel_mapping, level_limit=3, parent_parallel_id=parallel.parent_parallel_id
+                    parallel_mapping=parallel_mapping,
+                    level_limit=dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
+                    parent_parallel_id=parallel.parent_parallel_id,
                 )
 
         # init answer stream generate routes

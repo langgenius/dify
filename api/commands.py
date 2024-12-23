@@ -259,7 +259,7 @@ def migrate_knowledge_vector_database():
     skipped_count = 0
     total_count = 0
     vector_type = dify_config.VECTOR_STORE
-    upper_colletion_vector_types = {
+    upper_collection_vector_types = {
         VectorType.MILVUS,
         VectorType.PGVECTOR,
         VectorType.RELYT,
@@ -267,7 +267,7 @@ def migrate_knowledge_vector_database():
         VectorType.ORACLE,
         VectorType.ELASTICSEARCH,
     }
-    lower_colletion_vector_types = {
+    lower_collection_vector_types = {
         VectorType.ANALYTICDB,
         VectorType.CHROMA,
         VectorType.MYSCALE,
@@ -278,6 +278,8 @@ def migrate_knowledge_vector_database():
         VectorType.BAIDU,
         VectorType.VIKINGDB,
         VectorType.UPSTASH,
+        VectorType.COUCHBASE,
+        VectorType.OCEANBASE,
     }
     page = 1
     while True:
@@ -305,7 +307,7 @@ def migrate_knowledge_vector_database():
                         continue
                 collection_name = ""
                 dataset_id = dataset.id
-                if vector_type in upper_colletion_vector_types:
+                if vector_type in upper_collection_vector_types:
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                 elif vector_type == VectorType.QDRANT:
                     if dataset.collection_binding_id:
@@ -321,7 +323,7 @@ def migrate_knowledge_vector_database():
                     else:
                         collection_name = Dataset.gen_collection_name_by_id(dataset_id)
 
-                elif vector_type in lower_colletion_vector_types:
+                elif vector_type in lower_collection_vector_types:
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
                 else:
                     raise ValueError(f"Vector store {vector_type} is not supported.")
@@ -553,7 +555,8 @@ def create_tenant(email: str, language: Optional[str] = None, name: Optional[str
     if language not in languages:
         language = "en-US"
 
-    name = name.strip()
+    # Validates name encoding for non-Latin characters.
+    name = name.strip().encode("utf-8").decode("utf-8") if name else None
 
     # generate random password
     new_password = secrets.token_urlsafe(16)
@@ -587,7 +590,7 @@ def upgrade_db():
             click.echo(click.style("Database migration successful!", fg="green"))
 
         except Exception as e:
-            logging.exception(f"Database migration failed: {e}")
+            logging.exception("Failed to execute database migration")
         finally:
             lock.release()
     else:
@@ -631,22 +634,10 @@ where sites.id is null limit 1000"""
                 except Exception as e:
                     failed_app_ids.append(app_id)
                     click.echo(click.style("Failed to fix missing site for app {}".format(app_id), fg="red"))
-                    logging.exception(f"Fix app related site missing issue failed, error: {e}")
+                    logging.exception(f"Failed to fix app related site missing issue, app_id: {app_id}")
                     continue
 
             if not processed_count:
                 break
 
     click.echo(click.style("Fix for missing app-related sites completed successfully!", fg="green"))
-
-
-def register_commands(app):
-    app.cli.add_command(reset_password)
-    app.cli.add_command(reset_email)
-    app.cli.add_command(reset_encrypt_key_pair)
-    app.cli.add_command(vdb_migrate)
-    app.cli.add_command(convert_to_agent_apps)
-    app.cli.add_command(add_qdrant_doc_id_index)
-    app.cli.add_command(create_tenant)
-    app.cli.add_command(upgrade_db)
-    app.cli.add_command(fix_app_site_missing)

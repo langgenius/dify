@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Optional
 
 import requests
@@ -52,7 +52,6 @@ class OAuthLogin(Resource):
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
-            print(vars(oauth_provider))
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
 
@@ -77,7 +76,7 @@ class OAuthCallback(Resource):
         try:
             token = oauth_provider.get_access_token(code)
             user_info = oauth_provider.get_user_info(token)
-        except requests.exceptions.HTTPError as e:
+        except requests.exceptions.RequestException as e:
             logging.exception(f"An error occurred during the OAuth process with {provider}: {e.response.text}")
             return {"error": "OAuth process failed"}, 400
 
@@ -106,7 +105,7 @@ class OAuthCallback(Resource):
 
         if account.status == AccountStatus.PENDING.value:
             account.status = AccountStatus.ACTIVE.value
-            account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            account.initialized_at = datetime.now(UTC).replace(tzinfo=None)
             db.session.commit()
 
         try:

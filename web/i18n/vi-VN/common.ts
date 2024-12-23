@@ -191,6 +191,7 @@ const translation = {
     editorTip: 'Có thể xây dựng ứng dụng, không thể quản lý cài đặt nhóm',
     inviteTeamMember: 'Mời thành viên nhóm',
     inviteTeamMemberTip: 'Sau khi đăng nhập, họ có thể truy cập trực tiếp vào dữ liệu nhóm của bạn.',
+    emailNotSetup: 'Máy chủ email chưa được thiết lập, vì vậy không thể gửi email mời. Vui lòng thông báo cho người dùng về liên kết mời sẽ được phát hành sau khi mời.',
     email: 'Email',
     emailInvalid: 'Định dạng Email không hợp lệ',
     emailPlaceholder: 'Vui lòng nhập email',
@@ -590,6 +591,13 @@ const translation = {
     pasteFileLinkInvalid: 'Liên kết tệp không hợp lệ',
     uploadFromComputerUploadError: 'Tải lên tệp không thành công, vui lòng tải lên lại.',
     uploadFromComputerReadError: 'Đọc tệp không thành công, vui lòng thử lại.',
+  },
+  license: {
+    expiring_plural: 'Hết hạn sau {{count}} ngày',
+    expiring: 'Hết hạn trong một ngày',
+  },
+  pagination: {
+    perPage: 'Mục trên mỗi trang',
   },
 }
 

@@ -173,7 +173,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     const conversationInputs: Record<string, any> = {}
 
     inputsForms.forEach((item: any) => {
-      conversationInputs[item.variable] = item.default || ''
+      conversationInputs[item.variable] = item.default || null
     })
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])

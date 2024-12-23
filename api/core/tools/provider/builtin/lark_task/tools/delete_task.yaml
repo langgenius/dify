@@ -1,0 +1,24 @@
+identity:
+  name: delete_task
+  author: Doug Lea
+  label:
+    en_US: Delete Lark Task
+    zh_Hans: 删除 Lark 任务
+description:
+  human:
+    en_US: Delete Lark Task
+    zh_Hans: 删除 Lark 任务
+  llm: A tool for deleting tasks in Lark.(删除 Lark 任务)
+parameters:
+  - name: task_guid
+    type: string
+    required: true
+    label:
+      en_US: Task GUID
+      zh_Hans: 任务 GUID
+    human_description:
+      en_US: |
+        The GUID of the task to be deleted, supports passing either the Task ID or the Task link URL. Example of Task ID: 8b5425ec-9f2a-43bd-a3ab-01912f50282b; Example of Task link URL: https://applink.larksuite.com/client/todo/detail?guid=1b066afa-96de-406c-90a3-dfd30159a571&suite_entity_num=t100805
+      zh_Hans: 要删除的任务的 GUID，支持传任务 ID 和任务链接 URL。任务 ID 示例：8b5425ec-9f2a-43bd-a3ab-01912f50282b；任务链接 URL 示例：https://applink.larksuite.com/client/todo/detail?guid=1b066afa-96de-406c-90a3-dfd30159a571&suite_entity_num=t100805
+    llm_description: 要删除的任务的 GUID，支持传任务 ID 和任务链接 URL。任务 ID 示例：8b5425ec-9f2a-43bd-a3ab-01912f50282b；任务链接 URL 示例：https://applink.larksuite.com/client/todo/detail?guid=1b066afa-96de-406c-90a3-dfd30159a571&suite_entity_num=t100805
+    form: llm

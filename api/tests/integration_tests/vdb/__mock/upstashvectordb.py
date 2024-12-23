@@ -1,4 +1,5 @@
 import os
+from collections import UserDict
 from typing import Optional
 
 import pytest
@@ -50,7 +51,7 @@ class MockIndex:
         return AttrDict({"dimension": 1024})
 
 
-class AttrDict(dict):
+class AttrDict(UserDict):
     def __getattr__(self, item):
         return self.get(item)
 

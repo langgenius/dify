@@ -5,6 +5,7 @@ import RemoveEffectVarConfirm from '../_base/components/remove-effect-var-confir
 import useConfig from './use-config'
 import type { CodeNodeType } from './types'
 import { CodeLanguage } from './types'
+import { extractFunctionParams, extractReturnType } from './code-parser'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import OutputVarList from '@/app/components/workflow/nodes/_base/components/variable/output-var-list'
 import AddButton from '@/app/components/base/button/add-button'
@@ -12,10 +13,9 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import { type NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
-
 const i18nPrefix = 'workflow.nodes.code'
 
 const codeLanguages = [
@@ -38,6 +38,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
     readOnly,
     inputs,
     outputKeyOrders,
+    handleCodeAndVarsChange,
     handleVarListChange,
     handleAddVariable,
     handleRemoveVariable,
@@ -61,6 +62,18 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
     setInputVarValues,
   } = useConfig(id, data)
 
+  const handleGeneratedCode = (value: string) => {
+    const params = extractFunctionParams(value, inputs.code_language)
+    const codeNewInput = params.map((p) => {
+      return {
+        variable: p,
+        value_selector: [],
+      }
+    })
+    const returnTypes = extractReturnType(value, inputs.code_language)
+    handleCodeAndVarsChange(value, codeNewInput, returnTypes)
+  }
+
   return (
     <div className='mt-2'>
       <div className='px-4 pb-4 space-y-4'>
@@ -76,6 +89,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
             list={inputs.variables}
             onChange={handleVarListChange}
             filterVar={filterVar}
+            isSupportFileVar={false}
           />
         </Field>
         <Split />
@@ -92,6 +106,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
           language={inputs.code_language}
           value={inputs.code}
           onChange={handleCodeChange}
+          onGenerated={handleGeneratedCode}
           showCodeGenerator={true}
         />
       </div>

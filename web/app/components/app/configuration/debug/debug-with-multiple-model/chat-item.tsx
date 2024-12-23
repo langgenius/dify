@@ -29,6 +29,7 @@ import { useAppContext } from '@/context/app-context'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
+import { getLastAnswer } from '@/app/components/base/chat/utils'
 
 type ChatItemProps = {
   modelAndParameter: ModelAndParameter
@@ -101,7 +102,7 @@ const ChatItem: FC<ChatItemProps> = ({
       query: message,
       inputs,
       model_config: configData,
-      parent_message_id: chatListRef.current.at(-1)?.id || null,
+      parent_message_id: getLastAnswer(chatListRef.current)?.id || null,
     }
 
     if ((config.file_upload as any).enabled && files?.length && supportVision)

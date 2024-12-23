@@ -6,10 +6,10 @@ import string
 import subprocess
 import time
 import uuid
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
@@ -31,9 +31,12 @@ class AppIconUrlField(fields.Raw):
         if obj is None:
             return None
 
-        from models.model import IconType
+        from models.model import App, IconType, Site
 
-        if obj.icon_type == IconType.IMAGE.value:
+        if isinstance(obj, dict) and "app" in obj:
+            obj = obj["app"]
+
+        if isinstance(obj, App | Site) and obj.icon_type == IconType.IMAGE.value:
             return file_helpers.get_signed_file_url(obj.icon)
         return None
 
@@ -165,11 +168,11 @@ def generate_string(n):
 
 def extract_remote_ip(request) -> str:
     if request.headers.get("CF-Connecting-IP"):
-        return request.headers.get("Cf-Connecting-Ip")
+        return cast(str, request.headers.get("Cf-Connecting-Ip"))
     elif request.headers.getlist("X-Forwarded-For"):
-        return request.headers.getlist("X-Forwarded-For")[0]
+        return cast(str, request.headers.getlist("X-Forwarded-For")[0])
     else:
-        return request.remote_addr
+        return cast(str, request.remote_addr)
 
 
 def generate_text_hash(text: str) -> str:
@@ -177,7 +180,9 @@ def generate_text_hash(text: str) -> str:
     return sha256(hash_text.encode()).hexdigest()
 
 
-def compact_generate_response(response: Union[dict, RateLimitGenerator]) -> Response:
+def compact_generate_response(
+    response: Union[Mapping[str, Any], RateLimitGenerator, Generator[str, None, None]],
+) -> Response:
     if isinstance(response, dict):
         return Response(response=json.dumps(response), status=200, mimetype="application/json")
     else:
@@ -216,12 +221,14 @@ class TokenManager:
             token_data.update(additional_data)
 
         expiry_minutes = dify_config.model_dump().get(f"{token_type.upper()}_TOKEN_EXPIRY_MINUTES")
+        if expiry_minutes is None:
+            raise ValueError(f"Expiry minutes for {token_type} token is not set")
         token_key = cls._get_token_key(token, token_type)
         expiry_time = int(expiry_minutes * 60)
         redis_client.setex(token_key, expiry_time, json.dumps(token_data))
 
         if account_id:
-            cls._set_current_token_for_account(account.id, token, token_type, expiry_minutes)
+            cls._set_current_token_for_account(account_id, token, token_type, expiry_minutes)
 
         return token
 

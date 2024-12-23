@@ -169,7 +169,7 @@ const translation = {
     deleteConfirmTip: '확인하려면 등록된 이메일에서 다음 내용을 로 보내주세요 ',
     myAccount: '내 계정',
     studio: '디파이 스튜디오',
-    account: '계좌',
+    account: '계정',
   },
   members: {
     team: '팀',
@@ -187,6 +187,7 @@ const translation = {
     editorTip: '앱 빌드만 가능하고 팀 설정 관리 불가능',
     inviteTeamMember: '팀 멤버 초대',
     inviteTeamMemberTip: '로그인 후에 바로 팀 데이터에 액세스할 수 있습니다.',
+    emailNotSetup: '이메일 서버가 설정되지 않아 초대 이메일을 보낼 수 없습니다. 대신 초대 후 발급되는 초대 링크를 사용자에게 알려주세요.',
     email: '이메일',
     emailInvalid: '유효하지 않은 이메일 형식',
     emailPlaceholder: '이메일 입력',
@@ -586,6 +587,13 @@ const translation = {
     fileExtensionNotSupport: '지원되지 않는 파일 확장자',
     uploadFromComputerLimit: '업로드 파일은 {{size}}를 초과할 수 없습니다.',
     uploadFromComputerUploadError: '파일 업로드에 실패했습니다. 다시 업로드하십시오.',
+  },
+  license: {
+    expiring_plural: '{{count}}일 후에 만료',
+    expiring: '하루 후에 만료',
+  },
+  pagination: {
+    perPage: '페이지당 항목 수',
   },
 }
 

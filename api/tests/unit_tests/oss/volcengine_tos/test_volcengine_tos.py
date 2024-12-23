@@ -1,5 +1,3 @@
-from collections.abc import Generator
-
 import pytest
 from tos import TosClientV2
 

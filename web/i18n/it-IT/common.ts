@@ -208,6 +208,7 @@ const translation = {
     inviteTeamMember: 'Aggiungi membro del team',
     inviteTeamMemberTip:
       'Potranno accedere ai dati del tuo team direttamente dopo aver effettuato l\'accesso.',
+    emailNotSetup: 'Il server email non è configurato, quindi non è possibile inviare email di invito. Si prega di notificare agli utenti il link di invito che verrà emesso dopo l\'invito.',
     email: 'Email',
     emailInvalid: 'Formato Email non valido',
     emailPlaceholder: 'Per favore inserisci le email',
@@ -621,6 +622,13 @@ const translation = {
     uploadFromComputerUploadError: 'Caricamento del file non riuscito, carica di nuovo.',
     pasteFileLink: 'Incolla il collegamento del file',
     uploadFromComputerReadError: 'Lettura del file non riuscita, riprovare.',
+  },
+  license: {
+    expiring_plural: 'Scadenza tra {{count}} giorni',
+    expiring: 'Scadenza in un giorno',
+  },
+  pagination: {
+    perPage: 'Articoli per pagina',
   },
 }
 
