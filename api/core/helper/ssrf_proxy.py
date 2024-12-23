@@ -45,6 +45,7 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
         )
 
     retries = 0
+    stream = kwargs.pop("stream", False)
     while retries <= max_retries:
         try:
             if dify_config.SSRF_PROXY_ALL_URL:
@@ -64,11 +65,12 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
 
         except httpx.RequestError as e:
             logging.warning(f"Request to URL {url} failed on attempt {retries + 1}: {e}")
+            if max_retries == 0:
+                raise
 
         retries += 1
         if retries <= max_retries:
             time.sleep(BACKOFF_FACTOR * (2 ** (retries - 1)))
-
     raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
 
 

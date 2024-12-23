@@ -216,6 +216,11 @@ const NodePanel: FC<Props> = ({
                   {nodeInfo.error}
                 </StatusContainer>
               )}
+              {nodeInfo.status === 'retry' && (
+                <StatusContainer status='failed'>
+                  {nodeInfo.error}
+                </StatusContainer>
+              )}
             </div>
             {nodeInfo.inputs && (
               <div className={cn('mb-1')}>

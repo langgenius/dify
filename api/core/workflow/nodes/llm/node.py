@@ -860,14 +860,16 @@ class LLMNode(BaseNode[LLMNodeData]):
     ) -> Sequence[PromptMessage]:
         prompt_messages: list[PromptMessage] = []
         for message in messages:
-            contents: list[PromptMessageContent] = []
             if message.edition_type == "jinja2":
                 result_text = _render_jinja2_message(
                     template=message.jinja2_text or "",
                     jinjia2_variables=jinja2_variables,
                     variable_pool=variable_pool,
                 )
-                contents.append(TextPromptMessageContent(data=result_text))
+                prompt_message = _combine_message_content_with_role(
+                    contents=[TextPromptMessageContent(data=result_text)], role=message.role
+                )
+                prompt_messages.append(prompt_message)
             else:
                 # Get segment group from basic message
                 if context:
@@ -877,6 +879,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 segment_group = variable_pool.convert_template(template)
 
                 # Process segments for images
+                file_contents = []
                 for segment in segment_group.value:
                     if isinstance(segment, ArrayFileSegment):
                         for file in segment.value:
@@ -884,20 +887,27 @@ class LLMNode(BaseNode[LLMNodeData]):
                                 file_content = file_manager.to_prompt_message_content(
                                     file, image_detail_config=vision_detail_config
                                 )
-                                contents.append(file_content)
+                                file_contents.append(file_content)
                     elif isinstance(segment, FileSegment):
                         file = segment.value
                         if file.type in {FileType.IMAGE, FileType.VIDEO, FileType.AUDIO, FileType.DOCUMENT}:
                             file_content = file_manager.to_prompt_message_content(
                                 file, image_detail_config=vision_detail_config
                             )
-                            contents.append(file_content)
-                    else:
-                        plain_text = segment.markdown.strip()
-                        if plain_text:
-                            contents.append(TextPromptMessageContent(data=plain_text))
-            prompt_message = _combine_message_content_with_role(contents=contents, role=message.role)
-            prompt_messages.append(prompt_message)
+                            file_contents.append(file_content)
+
+                # Create message with text from all segments
+                plain_text = segment_group.text
+                if plain_text:
+                    prompt_message = _combine_message_content_with_role(
+                        contents=[TextPromptMessageContent(data=plain_text)], role=message.role
+                    )
+                    prompt_messages.append(prompt_message)
+
+                if file_contents:
+                    # Create message with image contents
+                    prompt_message = _combine_message_content_with_role(contents=file_contents, role=message.role)
+                    prompt_messages.append(prompt_message)
 
         return prompt_messages
 
