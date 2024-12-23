@@ -21,9 +21,11 @@ import {
   TitleInput,
 } from './components/title-description-input'
 import ErrorHandleOnPanel from './components/error-handle/error-handle-on-panel'
+import RetryOnPanel from './components/retry/retry-on-panel'
 import { useResizePanel } from './hooks/use-resize-panel'
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
 import {
   WorkflowHistoryEvent,
   useAvailableBlocks,
@@ -38,6 +40,7 @@ import {
 import {
   canRunBySingle,
   hasErrorHandleNode,
+  hasRetryNode,
 } from '@/app/components/workflow/utils'
 import Tooltip from '@/app/components/base/tooltip'
 import type { Node } from '@/app/components/workflow/types'
@@ -168,6 +171,15 @@ const BasePanel: FC<BasePanelProps> = ({
         <div>
           {cloneElement(children, { id, data })}
         </div>
+        <Split />
+        {
+          hasRetryNode(data.type) && (
+            <RetryOnPanel
+              id={id}
+              data={data}
+            />
+          )
+        }
         {
           hasErrorHandleNode(data.type) && (
             <ErrorHandleOnPanel

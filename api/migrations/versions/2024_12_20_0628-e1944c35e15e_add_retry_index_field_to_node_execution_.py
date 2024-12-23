@@ -1,8 +1,8 @@
-"""add retry_index field to node-execution  model
+"""add retry_index field to node-execution model
 
-Revision ID: 348cb0a93d53
-Revises: cf8f4fc45278
-Create Date: 2024-12-16 01:23:13.093432
+Revision ID: e1944c35e15e
+Revises: 11b07f66c737
+Create Date: 2024-12-20 06:28:30.287197
 
 """
 from alembic import op
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '348cb0a93d53'
-down_revision = 'cf8f4fc45278'
+revision = 'e1944c35e15e'
+down_revision = '11b07f66c737'
 branch_labels = None
 depends_on = None
 
