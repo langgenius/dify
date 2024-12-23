@@ -45,7 +45,7 @@ class AppService:
         elif args["mode"] == "channel":
             filters.append(App.mode == AppMode.CHANNEL.value)
 
-        if args.get("isCreatedByMe", False):
+        if args.get("is_created_by_me", False):
             filters.append(App.created_by == user_id)
         if args.get("name"):
             name = args["name"][:30]
