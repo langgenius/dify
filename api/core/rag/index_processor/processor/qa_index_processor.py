@@ -35,6 +35,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         return text_docs
 
     def transform(self, documents: list[Document], **kwargs) -> list[Document]:
+        preview = kwargs.get("preview")
         process_rule = kwargs.get("process_rule")
         rules = Rule(**process_rule.get("rules"))
         splitter = self._get_splitter(
@@ -67,24 +68,31 @@ class QAIndexProcessor(BaseIndexProcessor):
                     document_node.page_content = remove_leading_symbols(page_content)
                     split_documents.append(document_node)
             all_documents.extend(split_documents)
-        for i in range(0, len(all_documents), 10):
-            threads = []
-            sub_documents = all_documents[i : i + 10]
-            for doc in sub_documents:
-                document_format_thread = threading.Thread(
-                    target=self._format_qa_document,
-                    kwargs={
-                        "flask_app": current_app._get_current_object(),
-                        "tenant_id": kwargs.get("tenant_id"),
-                        "document_node": doc,
-                        "all_qa_documents": all_qa_documents,
-                        "document_language": kwargs.get("doc_language", "English"),
-                    },
-                )
-                threads.append(document_format_thread)
-                document_format_thread.start()
-            for thread in threads:
-                thread.join()
+        if preview:
+            self._format_qa_document(current_app._get_current_object(), 
+                                     kwargs.get("tenant_id"), 
+                                     all_documents[0], 
+                                     all_qa_documents, 
+                                     kwargs.get("doc_language", "English"))
+        else:
+            for i in range(0, len(all_documents), 10):
+                threads = []
+                sub_documents = all_documents[i : i + 10]
+                for doc in sub_documents:
+                    document_format_thread = threading.Thread(
+                        target=self._format_qa_document,
+                        kwargs={
+                            "flask_app": current_app._get_current_object(),
+                            "tenant_id": kwargs.get("tenant_id"),
+                            "document_node": doc,
+                            "all_qa_documents": all_qa_documents,
+                            "document_language": kwargs.get("doc_language", "English"),
+                        },
+                    )
+                    threads.append(document_format_thread)
+                    document_format_thread.start()
+                for thread in threads:
+                    thread.join()
         return all_qa_documents
 
     def format_by_template(self, file: FileStorage, **kwargs) -> list[Document]:
