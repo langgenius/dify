@@ -127,6 +127,7 @@ const translation = {
     reset: '重置',
     indexMode: '索引方式',
     qualified: '高质量',
+    highQualityTip: '使用高质量模式进行嵌入后，无法切换回经济模式。',
     recommend: '推荐',
     qualifiedTip: '调用嵌入模型处理文档以实现更精确的检索，可以帮助LLM生成高质量的答案。',
     warning: '请先完成模型供应商的 API KEY 设置。.',
