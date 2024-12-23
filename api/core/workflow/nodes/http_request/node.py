@@ -136,6 +136,8 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
             data = node_data.body.data
             match body_type:
                 case "binary":
+                    if len(data) != 1:
+                        raise RequestBodyError("invalid body data, should have only one item")
                     selector = data[0].file
                     selectors.append(VariableSelector(variable="#" + ".".join(selector) + "#", value_selector=selector))
                 case "json" | "raw-text":
