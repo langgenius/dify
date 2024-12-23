@@ -31,7 +31,7 @@ const RetryOnNode = ({
   }, [data._runningStatus, showSelectedBorder])
   const showDefault = !isRunning && !isSuccessful && !isException && !isFailed
 
-  if (!retry_config)
+  if (!retry_config?.retry_enabled)
     return null
 
   return (
@@ -74,7 +74,7 @@ const RetryOnNode = ({
           }
         </div>
         {
-          !showDefault && (
+          !showDefault && !!data._retryIndex && (
             <div>
               {data._retryIndex}/{data.retry_config?.max_retries}
             </div>
