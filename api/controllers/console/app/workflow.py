@@ -2,7 +2,7 @@ import json
 import logging
 
 from flask import abort, request
-from flask_restful import Resource, marshal_with, reqparse, inputs
+from flask_restful import Resource, inputs, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -14,7 +14,7 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from factories import variable_factory
-from fields.workflow_fields import workflow_fields
+from fields.workflow_fields import workflow_fields, workflow_pagination_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
 from libs.helper import TimestampField, uuid_value
@@ -24,8 +24,6 @@ from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_service import WorkflowService
-
-from fields.workflow_fields import workflow_pagination_fields
 
 logger = logging.getLogger(__name__)
 
