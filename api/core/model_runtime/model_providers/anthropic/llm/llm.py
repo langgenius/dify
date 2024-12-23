@@ -531,7 +531,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                                     "source": {
                                         "type": "base64",
                                         "media_type": message_content.mime_type,
-                                        "data": message_content.data,
+                                        "data": message_content.base64_data,
                                     },
                                 }
                                 sub_messages.append(sub_message_dict)

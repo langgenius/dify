@@ -171,11 +171,11 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
             yield WorkflowAppStreamResponse(workflow_run_id=workflow_run_id, stream_response=stream_response)
 
-    def _listen_audio_msg(self, publisher, task_id: str):
+    def _listen_audio_msg(self, publisher: AppGeneratorTTSPublisher | None, task_id: str):
         if not publisher:
             return None
-        audio_msg: AudioTrunk = publisher.check_and_get_audio()
-        if audio_msg and audio_msg.status != "finish":
+        audio_msg = publisher.check_and_get_audio()
+        if audio_msg and isinstance(audio_msg, AudioTrunk) and audio_msg.status != "finish":
             return MessageAudioStreamResponse(audio=audio_msg.audio, task_id=task_id)
         return None
 
@@ -196,7 +196,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
         for response in self._process_stream_response(tts_publisher=tts_publisher, trace_manager=trace_manager):
             while True:
-                audio_response = self._listen_audio_msg(tts_publisher, task_id=task_id)
+                audio_response = self._listen_audio_msg(publisher=tts_publisher, task_id=task_id)
                 if audio_response:
                     yield audio_response
                 else:
@@ -421,7 +421,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
                 # only publish tts message at text chunk streaming
                 if tts_publisher:
-                    tts_publisher.publish(message=queue_message)
+                    tts_publisher.publish(queue_message)
 
                 self._task_state.answer += delta_text
                 yield self._text_chunk_to_stream_response(

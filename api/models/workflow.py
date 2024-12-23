@@ -103,12 +103,13 @@ class Workflow(db.Model):
     graph: Mapped[str] = mapped_column(sa.Text)
     _features: Mapped[str] = mapped_column("features", sa.TEXT)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
-    )
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by: Mapped[Optional[str]] = mapped_column(StringUUID)
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, default=datetime.now(tz=UTC), server_onupdate=func.current_timestamp()
+        db.DateTime,
+        nullable=False,
+        default=datetime.now(UTC).replace(tzinfo=None),
+        server_onupdate=func.current_timestamp(),
     )
     _environment_variables: Mapped[str] = mapped_column(
         "environment_variables", db.Text, nullable=False, server_default="{}"
@@ -406,7 +407,7 @@ class WorkflowRun(db.Model):
     total_steps = db.Column(db.Integer, server_default=db.text("0"))
     created_by_role = db.Column(db.String(255), nullable=False)  # account, end_user
     created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     finished_at = db.Column(db.DateTime)
     exceptions_count = db.Column(db.Integer, server_default=db.text("0"))
 
@@ -636,7 +637,7 @@ class WorkflowNodeExecution(db.Model):
     error = db.Column(db.Text)
     elapsed_time = db.Column(db.Float, nullable=False, server_default=db.text("0"))
     execution_metadata = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(StringUUID, nullable=False)
     finished_at = db.Column(db.DateTime)
@@ -754,7 +755,7 @@ class WorkflowAppLog(db.Model):
     created_from = db.Column(db.String(255), nullable=False)
     created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def workflow_run(self):
@@ -780,7 +781,7 @@ class ConversationVariable(db.Model):
     conversation_id: Mapped[str] = db.Column(StringUUID, nullable=False, primary_key=True)
     app_id: Mapped[str] = db.Column(StringUUID, nullable=False, index=True)
     data = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, index=True, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, index=True, server_default=func.current_timestamp())
     updated_at = db.Column(
         db.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )

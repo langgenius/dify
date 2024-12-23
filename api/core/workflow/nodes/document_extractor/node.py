@@ -1,6 +1,7 @@
 import csv
 import io
 import json
+import logging
 import os
 import tempfile
 
@@ -21,6 +22,8 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import DocumentExtractorNodeData
 from .exc import DocumentExtractorError, FileDownloadError, TextExtractionError, UnsupportedFileTypeError
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
@@ -177,10 +180,43 @@ def _extract_text_from_pdf(file_content: bytes) -> str:
 
 
 def _extract_text_from_doc(file_content: bytes) -> str:
+    """
+    Extract text from a DOC/DOCX file.
+    For now support only paragraph and table add more if needed
+    """
     try:
         doc_file = io.BytesIO(file_content)
         doc = docx.Document(doc_file)
-        return "\n".join([paragraph.text for paragraph in doc.paragraphs])
+        text = []
+        # Process paragraphs
+        for paragraph in doc.paragraphs:
+            if paragraph.text.strip():
+                text.append(paragraph.text)
+
+        # Process tables
+        for table in doc.tables:
+            # Table header
+            try:
+                # table maybe cause errors so ignore it.
+                if len(table.rows) > 0 and table.rows[0].cells is not None:
+                    # Check if any cell in the table has text
+                    has_content = False
+                    for row in table.rows:
+                        if any(cell.text.strip() for cell in row.cells):
+                            has_content = True
+                            break
+
+                    if has_content:
+                        markdown_table = "| " + " | ".join(cell.text for cell in table.rows[0].cells) + " |\n"
+                        markdown_table += "| " + " | ".join(["---"] * len(table.rows[0].cells)) + " |\n"
+                        for row in table.rows[1:]:
+                            markdown_table += "| " + " | ".join(cell.text for cell in row.cells) + " |\n"
+                        text.append(markdown_table)
+            except Exception as e:
+                logger.warning(f"Failed to extract table from DOC/DOCX: {e}")
+                continue
+
+        return "\n".join(text)
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from DOC/DOCX: {str(e)}") from e
 
