@@ -2,7 +2,7 @@
 Like Tweet Tool for liking/unliking tweets
 """
 
-from typing import Any, Dict, List, Union
+from typing import Any, Union
 
 import tweepy
 
@@ -12,8 +12,8 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 class LikeTweetTool(BuiltinTool):
     def _invoke(
-        self, user_id: str, tool_parameters: Dict[str, Any]
-    ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+        self, user_id: str, tool_parameters: dict[str, Any]
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
         Like or unlike a tweet
 

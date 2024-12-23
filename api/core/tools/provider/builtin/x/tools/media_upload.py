@@ -3,7 +3,7 @@ Media Upload Tool for X (Twitter)
 """
 
 import io
-from typing import Any, Dict, List, Union
+from typing import Any, Union
 
 import tweepy
 
@@ -14,7 +14,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class MediaUploadTool(BuiltinTool):
-    def _get_twitter_api_v1(self, credentials: Dict[str, str]) -> tweepy.API:
+    def _get_twitter_api_v1(self, credentials: dict[str, str]) -> tweepy.API:
         """
         Get Twitter API v1.1 connection for media upload
         """
@@ -33,8 +33,8 @@ class MediaUploadTool(BuiltinTool):
         return file_type in [FileType.IMAGE, FileType.VIDEO]
 
     def _invoke(
-        self, user_id: str, tool_parameters: Dict[str, Any]
-    ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+        self, user_id: str, tool_parameters: dict[str, Any]
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
         Upload media to Twitter
         """

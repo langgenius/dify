@@ -31,7 +31,7 @@ class GetUserTimelineTool(BuiltinTool):
         """
         tweet_dict = {}
         # Convert Tweet object to dictionary
-        for field in tweet.data.keys():
+        for field in tweet.data:
             value = tweet.data[field]
             # Skip None values
             if value is None:
@@ -166,7 +166,7 @@ class GetUserTimelineTool(BuiltinTool):
 
                 # Convert user data
                 user_dict = {}
-                for field in user_data.keys():
+                for field in user_data:
                     value = user_data[field]
                     if value is None:
                         continue
