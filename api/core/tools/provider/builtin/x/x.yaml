@@ -1,0 +1,63 @@
+identity:
+  author: Yash Parmar
+  name: x
+  label:
+    en_US: X (Twitter)
+    zh_Hans: X (Twitter)
+  description:
+    en_US: X (formerly Twitter) API integration for posting, searching, and managing tweets
+    zh_Hans: X (前身为Twitter) API集成，用于发布、搜索和管理推文
+  icon: icon.svg
+  tags:
+    - social
+    - productivity
+credentials_for_provider:
+  bearer_token:
+    type: secret-input
+    required: true
+    label:
+      en_US: Bearer Token
+      zh_Hans: Bearer Token
+    placeholder:
+      en_US: Enter your X Bearer Token
+      zh_Hans: 输入您的 X Bearer Token
+    help:
+      en_US: Get your Bearer Token from X Developer Portal
+      zh_Hans: 从 X 开发者门户获取您的 Bearer Token
+    url: https://developer.x.com/en/portal/dashboard
+  consumer_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Consumer Key (API Key)
+      zh_Hans: Consumer Key (API Key)
+    placeholder:
+      en_US: Enter your X Consumer Key
+      zh_Hans: 输入您的 X Consumer Key
+  consumer_secret:
+    type: secret-input
+    required: true
+    label:
+      en_US: Consumer Secret
+      zh_Hans: Consumer Secret
+    placeholder:
+      en_US: Enter your X Consumer Secret
+      zh_Hans: 输入您的 X Consumer Secret
+  access_token:
+    type: secret-input
+    required: true
+    label:
+      en_US: Access Token
+      zh_Hans: Access Token
+    placeholder:
+      en_US: Enter your X Access Token
+      zh_Hans: 输入您的 X Access Token
+  access_token_secret:
+    type: secret-input
+    required: true
+    label:
+      en_US: Access Token Secret
+      zh_Hans: Access Token Secret
+    placeholder:
+      en_US: Enter your X Access Token Secret
+      zh_Hans: 输入您的 X Access Token Secret

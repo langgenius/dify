@@ -1,0 +1,37 @@
+identity:
+  name: media_upload
+  author: Yash Parmar
+  label:
+    en_US: Upload Media
+    zh_Hans: 上传媒体
+  icon: icon.svg
+
+description:
+  human:
+    en_US: Upload media (images, videos, GIFs) to X (Twitter) for use in tweets
+    zh_Hans: 上传媒体（图片、视频、GIF）到 X (Twitter) 以在推文中使用
+  llm: A tool for uploading media files (images, videos, GIFs) to X (Twitter). Returns a media ID that can be used when creating tweets.
+
+parameters:
+  - name: media_file
+    type: file
+    required: true
+    label:
+      en_US: Media File
+      zh_Hans: 媒体文件
+    human_description:
+      en_US: The media file to upload (supported formats - images JPG, PNG, GIF; videos MP4)
+      zh_Hans: 要上传的媒体文件（支持的格式 - 图片：JPG、PNG、GIF；视频：MP4）
+    llm_description: The media file to be uploaded. Supports images (JPG, PNG, GIF) and videos (MP4).
+    form: llm
+  - name: alt_text
+    type: string
+    required: false
+    label:
+      en_US: Alt Text
+      zh_Hans: 替代文本
+    human_description:
+      en_US: Alternative text description of the media for accessibility
+      zh_Hans: 媒体的替代文本描述，用于无障碍访问
+    llm_description: Alternative text description of the media content for accessibility purposes
+    form: llm

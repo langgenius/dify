@@ -1,0 +1,47 @@
+identity:
+  name: like_tweet
+  author: Yash Parmar
+  label:
+    en_US: Like/Unlike Tweet
+    zh_Hans: 点赞/取消点赞推文
+  icon: icon.svg
+
+description:
+  human:
+    en_US: Like or unlike a tweet on X (Twitter)
+    zh_Hans: 在 X (Twitter) 上点赞或取消点赞推文
+  llm: A tool for liking or unliking tweets on X (Twitter). Requires tweet ID and action (like/unlike).
+
+parameters:
+  - name: tweet_id
+    type: string
+    required: true
+    label:
+      en_US: Tweet ID
+      zh_Hans: 推文ID
+    human_description:
+      en_US: The ID of the tweet to like or unlike
+      zh_Hans: 要点赞或取消点赞的推文ID
+    llm_description: The unique identifier of the tweet to like or unlike
+    form: llm
+
+  - name: action
+    type: select
+    required: true
+    options:
+      - value: like
+        label:
+          en_US: Like
+          zh_Hans: 点赞
+      - value: unlike
+        label:
+          en_US: Unlike
+          zh_Hans: 取消点赞
+    label:
+      en_US: Action
+      zh_Hans: 操作
+    human_description:
+      en_US: Choose whether to like or unlike the tweet
+      zh_Hans: 选择点赞或取消点赞推文
+    llm_description: Select the action to perform - either like or unlike the specified tweet
+    form: llm
