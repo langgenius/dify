@@ -867,7 +867,8 @@ class LLMNode(BaseNode[LLMNodeData]):
                     variable_pool=variable_pool,
                 )
                 prompt_message = _combine_message_content_with_role(
-                    contents=[TextPromptMessageContent(data=result_text)], role=message.role)
+                    contents=[TextPromptMessageContent(data=result_text)], role=message.role
+                )
                 prompt_messages.append(prompt_message)
             else:
                 # Get segment group from basic message
