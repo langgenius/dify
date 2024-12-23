@@ -28,7 +28,6 @@ if TYPE_CHECKING:
     from .workflow import Workflow
 
 
-
 class DifySetup(db.Model):  # type: ignore[name-defined]
     __tablename__ = "dify_setups"
     __table_args__ = (db.PrimaryKeyConstraint("version", name="dify_setup_pkey"),)
