@@ -88,7 +88,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                 <Menu.Items
                   className="
                     absolute right-0 mt-1.5 w-60 max-w-80
-                    divide-y divide-gray-100 origin-top-right rounded-lg bg-components-panel-bg-blur
+                    divide-y divide-divider-subtle origin-top-right rounded-lg bg-components-panel-bg-blur
                     shadow-lg
                   "
                 >

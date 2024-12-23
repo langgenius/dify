@@ -16,7 +16,7 @@ const Avatar = ({
   className,
   textClassName,
 }: AvatarProps) => {
-  const avatarClassName = 'shrink-0 flex items-center rounded-full bg-background-default-subtle border border-components-main-nav-nav-user-border'
+  const avatarClassName = 'shrink-0 flex items-center rounded-full bg-primary-600'
   const style = { width: `${size}px`, height: `${size}px`, fontSize: `${size}px`, lineHeight: `${size}px` }
   const [imgError, setImgError] = useState(false)
 
