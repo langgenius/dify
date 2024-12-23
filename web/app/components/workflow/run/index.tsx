@@ -94,10 +94,24 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
     const updateSequentialModeGroup = (index: number, item: NodeTracing, iterationNode: NodeTracing) => {
       const { details } = iterationNode
       if (details) {
-        if (!details[index])
+        if (!details[index]) {
           details[index] = [item]
-        else
-          details[index].push(item)
+        }
+        else {
+          if (item.status === 'retry') {
+            const retryNode = details[index].find(node => node.node_id === item.node_id)
+
+            if (retryNode) {
+              if (retryNode?.retryDetail)
+                retryNode.retryDetail.push(item)
+              else
+                retryNode.retryDetail = [item]
+            }
+          }
+          else {
+            details[index].push(item)
+          }
+        }
       }
 
       if (item.status === 'failed') {

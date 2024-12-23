@@ -11,6 +11,7 @@ import {
 import { ArrowNarrowLeft } from '../../base/icons/src/vender/line/arrows'
 import { NodeRunningStatus } from '../types'
 import TracingPanel from './tracing-panel'
+import RetryResultPanel from './retry-result-panel'
 import { Iteration } from '@/app/components/base/icons/src/vender/workflow'
 import cn from '@/utils/classnames'
 import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
@@ -41,8 +42,8 @@ const IterationResultPanel: FC<Props> = ({
     }))
   }, [])
   const countIterDuration = (iteration: NodeTracing[], iterDurationMap: IterationDurationMap): string => {
-    const IterRunIndex = iteration[0].execution_metadata.iteration_index as number
-    const iterRunId = iteration[0].execution_metadata.parallel_mode_run_id
+    const IterRunIndex = iteration[0]?.execution_metadata?.iteration_index as number
+    const iterRunId = iteration[0]?.execution_metadata?.parallel_mode_run_id
     const iterItem = iterDurationMap[iterRunId || IterRunIndex]
     const duration = iterItem
     return `${(duration && duration > 0.01) ? duration.toFixed(2) : 0.01}s`
@@ -73,6 +74,10 @@ const IterationResultPanel: FC<Props> = ({
         />
       </>
     )
+  }
+  const [retryRunResult, setRetryRunResult] = useState<Record<string, NodeTracing[]> | undefined>()
+  const handleRetryDetail = (v: number, detail?: NodeTracing[]) => {
+    setRetryRunResult({ ...retryRunResult, [v]: detail })
   }
 
   const main = (
@@ -116,15 +121,28 @@ const IterationResultPanel: FC<Props> = ({
             {expandedIterations[index] && <div
               className="flex-grow h-px bg-divider-subtle"
             ></div>}
-            <div className={cn(
-              'overflow-hidden transition-all duration-200',
-              expandedIterations[index] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0',
-            )}>
-              <TracingPanel
-                list={iteration}
-                className='bg-background-section-burn'
-              />
-            </div>
+            {
+              !retryRunResult?.[index] && (
+                <div className={cn(
+                  'overflow-hidden transition-all duration-200',
+                  expandedIterations[index] ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0',
+                )}>
+                  <TracingPanel
+                    list={iteration}
+                    className='bg-background-section-burn'
+                    onShowRetryDetail={v => handleRetryDetail(index, v)}
+                  />
+                </div>
+              )
+            }
+            {
+              retryRunResult?.[index] && (
+                <RetryResultPanel
+                  list={retryRunResult[index]}
+                  onBack={() => handleRetryDetail(index, undefined)}
+                />
+              )
+            }
           </div>
         ))}
       </div>
