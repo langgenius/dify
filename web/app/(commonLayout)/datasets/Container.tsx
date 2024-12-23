@@ -17,7 +17,6 @@ import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import Button from '@/app/components/base/button'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
-import SearchInput from '@/app/components/base/search-input'
 
 // Services
 import { fetchDatasetApiBaseUrl } from '@/service/datasets'
@@ -29,6 +28,7 @@ import { useAppContext } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
 // eslint-disable-next-line import/order
 import { useQuery } from '@tanstack/react-query'
+import Input from '@/app/components/base/input'
 
 const Container = () => {
   const { t } = useTranslation()
@@ -81,17 +81,24 @@ const Container = () => {
   }, [currentWorkspace, router])
 
   return (
-    <div ref={containerRef} className='grow relative flex flex-col bg-gray-100 overflow-y-auto'>
-      <div className='sticky top-0 flex justify-between pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2'>
+    <div ref={containerRef} className='grow relative flex flex-col bg-background-body overflow-y-auto'>
+      <div className='sticky top-0 flex justify-between pt-4 px-12 pb-2 leading-[56px] bg-background-body z-10 flex-wrap gap-y-2'>
         <TabSliderNew
           value={activeTab}
           onChange={newActiveTab => setActiveTab(newActiveTab)}
           options={options}
         />
         {activeTab === 'dataset' && (
-          <div className='flex items-center gap-2'>
+          <div className='flex items-center justify-center gap-2'>
             <TagFilter type='knowledge' value={tagFilterValue} onChange={handleTagsChange} />
-            <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
+            <Input
+              showLeftIcon
+              showClearIcon
+              wrapperClassName='w-[200px]'
+              value={keywords}
+              onChange={e => handleKeywordsChange(e.target.value)}
+              onClear={() => handleKeywordsChange('')}
+            />
             <div className="w-[1px] h-4 bg-divider-regular" />
             <Button
               className='gap-0.5 shadows-shadow-xs'
