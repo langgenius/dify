@@ -60,7 +60,6 @@ class AnswerStreamProcessor(StreamProcessor):
 
                     del self.current_stream_chunk_generating_node_ids[event.route_node_state.node_id]
 
-                # remove unreachable nodes
                 self._remove_unreachable_nodes(event)
 
                 # generate stream outputs

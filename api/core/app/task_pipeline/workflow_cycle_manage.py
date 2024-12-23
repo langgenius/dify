@@ -438,6 +438,16 @@ class WorkflowCycleManage:
         elapsed_time = (finished_at - created_at).total_seconds()
         inputs = WorkflowEntry.handle_special_values(event.inputs)
         outputs = WorkflowEntry.handle_special_values(event.outputs)
+        origin_metadata = {
+            NodeRunMetadataKey.ITERATION_ID: event.in_iteration_id,
+            NodeRunMetadataKey.PARALLEL_MODE_RUN_ID: event.parallel_mode_run_id,
+        }
+        merged_metadata = (
+            {**jsonable_encoder(event.execution_metadata), **origin_metadata}
+            if event.execution_metadata is not None
+            else origin_metadata
+        )
+        execution_metadata = json.dumps(merged_metadata)
 
         workflow_node_execution = WorkflowNodeExecution()
         workflow_node_execution.tenant_id = workflow_run.tenant_id
@@ -445,6 +455,7 @@ class WorkflowCycleManage:
         workflow_node_execution.workflow_id = workflow_run.workflow_id
         workflow_node_execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value
         workflow_node_execution.workflow_run_id = workflow_run.id
+        workflow_node_execution.predecessor_node_id = event.predecessor_node_id
         workflow_node_execution.node_execution_id = event.node_execution_id
         workflow_node_execution.node_id = event.node_id
         workflow_node_execution.node_type = event.node_type.value
@@ -458,12 +469,8 @@ class WorkflowCycleManage:
         workflow_node_execution.error = event.error
         workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
         workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
-        workflow_node_execution.execution_metadata = json.dumps(
-            {
-                NodeRunMetadataKey.ITERATION_ID: event.in_iteration_id,
-            }
-        )
-        workflow_node_execution.index = event.start_index
+        workflow_node_execution.execution_metadata = execution_metadata
+        workflow_node_execution.index = event.node_run_index
 
         db.session.add(workflow_node_execution)
         db.session.commit()

@@ -4,7 +4,7 @@ import uuid
 from collections.abc import Mapping
 from datetime import datetime
 from enum import Enum, StrEnum
-from typing import TYPE_CHECKING, Any, Literal, Optional, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 import sqlalchemy as sa
 from flask import request
@@ -25,7 +25,8 @@ from .engine import db
 from .types import StringUUID
 
 if TYPE_CHECKING:
-    from models.workflow import Workflow
+    from .workflow import Workflow
+
 
 
 class DifySetup(db.Model):  # type: ignore[name-defined]

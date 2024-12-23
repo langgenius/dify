@@ -67,7 +67,9 @@ class AwsS3Storage(BaseStorage):
             yield from response["Body"].iter_chunks()
         except ClientError as ex:
             if ex.response["Error"]["Code"] == "NoSuchKey":
-                raise FileNotFoundError("File not found")
+                raise FileNotFoundError("file not found")
+            elif "reached max retries" in str(ex):
+                raise ValueError("please do not request the same file too frequently")
             else:
                 raise
 

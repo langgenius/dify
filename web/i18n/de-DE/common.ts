@@ -191,6 +191,7 @@ const translation = {
     editorTip: 'Kann Apps erstellen & bearbeiten',
     inviteTeamMember: 'Teammitglied hinzufügen',
     inviteTeamMemberTip: 'Sie können direkt nach der Anmeldung auf Ihre Teamdaten zugreifen.',
+    emailNotSetup: 'E-Mail-Server ist nicht eingerichtet, daher können keine Einladungs-E-Mails versendet werden. Bitte informieren Sie die Benutzer über den Einladungslink, der nach der Einladung ausgestellt wird.',
     email: 'E-Mail',
     emailInvalid: 'Ungültiges E-Mail-Format',
     emailPlaceholder: 'Bitte E-Mails eingeben',
