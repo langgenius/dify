@@ -7,7 +7,7 @@ import subprocess
 import time
 import uuid
 from collections.abc import Generator, Mapping
-from datetime import date, datetime
+from datetime import datetime
 from datetime import timezone as tz
 from hashlib import sha256
 from typing import Any, Optional, Union, cast
@@ -301,43 +301,3 @@ class RateLimiter:
 
 def get_current_datetime():
     return datetime.now(tz.utc).replace(tzinfo=None)
-
-
-def to_json(obj):
-    """
-    Convert a Python object to a compact JSON string.
-
-    Supports basic types, datetime, UUID, SQLAlchemy models, and nested structures.
-
-    Args:
-        obj: The object to convert.
-
-    Returns:
-        A compact JSON string representation of the object.
-    """
-    def serialize(obj, seen=None):
-        if seen is None:
-            seen = set()  # Track seen objects to prevent recursion
-
-        if id(obj) in seen:
-            return None  # Avoid circular references
-
-        seen.add(id(obj))
-
-        if isinstance(obj, (datetime, date)):
-            return obj.isoformat()  # Convert datetime and date to ISO 8601 string
-        elif isinstance(obj, uuid.UUID):
-            return str(obj)  # Convert UUID to string
-        elif isinstance(obj, (int, float, str, bool, type(None))):
-            return obj  # Leave basic types unchanged
-        elif isinstance(obj, dict):
-            return {key: serialize(value, seen) for key, value in obj.items() if value is not None}  # Exclude None values
-        elif isinstance(obj, list):
-            return [serialize(item, seen) for item in obj]  # Recursively serialize lists
-        else:
-            try:
-                return str(obj)  # Fallback to string for unsupported types
-            except Exception:
-                return None  # Return None if serialization fails
-
-    return json.dumps(serialize(obj), separators=(',', ':'))

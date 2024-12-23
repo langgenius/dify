@@ -4,7 +4,7 @@ import time
 import click
 from celery import shared_task
 from extensions.ext_database import db
-from libs.helper import to_json
+from flask import jsonify
 from models.account import (Account, AccountDeletionLogDetail,
                             TenantAccountJoin, TenantAccountJoinRole)
 from services.account_deletion_log_service import AccountDeletionLogService
@@ -84,7 +84,7 @@ def _handle_owner_tenant_deletion(ta: TenantAccountJoin):
     account_deletion_log_detail = AccountDeletionLogDetail()
     account_deletion_log_detail.account_id = ta.account_id
     account_deletion_log_detail.tenant_id = tenant_id
-    account_deletion_log_detail.snapshot = to_json({
+    account_deletion_log_detail.snapshot = jsonify({
         "tenant_account_join_info": ta,
         "dismissed_members": members_to_dismiss
     })
@@ -102,7 +102,7 @@ def _remove_account_from_tenant(ta, email):
     account_deletion_log_detail = AccountDeletionLogDetail()
     account_deletion_log_detail.account_id = ta.account_id
     account_deletion_log_detail.tenant_id = tenant_id
-    account_deletion_log_detail.snapshot = to_json({
+    account_deletion_log_detail.snapshot = jsonify({
         "tenant_account_join_info": ta
     })
     account_deletion_log_detail.role = ta.role
