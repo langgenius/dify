@@ -189,6 +189,17 @@ class WorkflowBasedAppRunner(AppRunner):
         elif isinstance(event, GraphRunFailedEvent):
             self._publish_event(QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count))
         elif isinstance(event, NodeRunRetryEvent):
+            node_run_result = event.route_node_state.node_run_result
+            if node_run_result:
+                inputs = node_run_result.inputs
+                process_data = node_run_result.process_data
+                outputs = node_run_result.outputs
+                execution_metadata = node_run_result.metadata
+            else:
+                inputs = {}
+                process_data = {}
+                outputs = {}
+                execution_metadata = {}
             self._publish_event(
                 QueueNodeRetryEvent(
                     node_execution_id=event.id,
@@ -204,19 +215,11 @@ class WorkflowBasedAppRunner(AppRunner):
                     predecessor_node_id=event.predecessor_node_id,
                     in_iteration_id=event.in_iteration_id,
                     parallel_mode_run_id=event.parallel_mode_run_id,
-                    inputs=event.route_node_state.node_run_result.inputs
-                    if event.route_node_state.node_run_result
-                    else {},
-                    process_data=event.route_node_state.node_run_result.process_data
-                    if event.route_node_state.node_run_result
-                    else {},
-                    outputs=event.route_node_state.node_run_result.outputs
-                    if event.route_node_state.node_run_result
-                    else {},
+                    inputs=inputs,
+                    process_data=process_data,
+                    outputs=outputs,
                     error=event.error,
-                    execution_metadata=event.route_node_state.node_run_result.metadata
-                    if event.route_node_state.node_run_result
-                    else {},
+                    execution_metadata=execution_metadata,
                     retry_index=event.retry_index,
                 )
             )
@@ -239,6 +242,17 @@ class WorkflowBasedAppRunner(AppRunner):
                 )
             )
         elif isinstance(event, NodeRunSucceededEvent):
+            node_run_result = event.route_node_state.node_run_result
+            if node_run_result:
+                inputs = node_run_result.inputs
+                process_data = node_run_result.process_data
+                outputs = node_run_result.outputs
+                execution_metadata = node_run_result.metadata
+            else:
+                inputs = {}
+                process_data = {}
+                outputs = {}
+                execution_metadata = {}
             self._publish_event(
                 QueueNodeSucceededEvent(
                     node_execution_id=event.id,
@@ -250,18 +264,10 @@ class WorkflowBasedAppRunner(AppRunner):
                     parent_parallel_id=event.parent_parallel_id,
                     parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                     start_at=event.route_node_state.start_at,
-                    inputs=event.route_node_state.node_run_result.inputs
-                    if event.route_node_state.node_run_result
-                    else {},
-                    process_data=event.route_node_state.node_run_result.process_data
-                    if event.route_node_state.node_run_result
-                    else {},
-                    outputs=event.route_node_state.node_run_result.outputs
-                    if event.route_node_state.node_run_result
-                    else {},
-                    execution_metadata=event.route_node_state.node_run_result.metadata
-                    if event.route_node_state.node_run_result
-                    else {},
+                    inputs=inputs,
+                    process_data=process_data,
+                    outputs=outputs,
+                    execution_metadata=execution_metadata,
                     in_iteration_id=event.in_iteration_id,
                 )
             )
