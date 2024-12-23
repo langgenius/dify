@@ -34,6 +34,9 @@ const RetryOnNode = ({
   if (!retry_config?.retry_enabled)
     return null
 
+  if (!data._retryIndex)
+    return null
+
   return (
     <div className='px-3'>
       <div className={cn(
