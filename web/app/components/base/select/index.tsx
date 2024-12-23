@@ -249,7 +249,7 @@ const SimpleSelect: FC<ISelectProps> = ({
                   key={item.value}
                   className={({ active }) =>
                     classNames(
-                      `relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-state-base-hover text-text-secondary ${active ? 'bg-state-base-hover' : ''}`,
+                      'relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-state-base-hover text-text-secondary',
                       optionClassName,
                     )
                   }
