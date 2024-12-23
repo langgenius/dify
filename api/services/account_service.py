@@ -844,6 +844,8 @@ class RegisterService:
     ) -> Account:
         db.session.begin_nested()
         """Register account"""
+        if AccountDeletionLogService.email_in_freeze(email):
+            raise AccountRegisterError("Email is in freeze.")
         try:
             account = AccountService.create_account(
                 email=email,
