@@ -99,11 +99,6 @@ class Account(UserMixin, db.Model):
             return db.session.query(Account).filter(Account.id == account_integrate.account_id).one_or_none()
         return None
 
-    def get_integrates(self) -> list[db.Model]:
-        ai = db.Model
-        return db.session.query(ai).filter(ai.account_id == self.id).all()
-
-    # check current_user.current_tenant.current_role in ['admin', 'owner']
     @property
     def is_admin_or_owner(self):
         return TenantAccountRole.is_privileged_role(self._current_tenant.current_role)
