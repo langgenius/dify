@@ -183,6 +183,7 @@ const translation = {
     searchAllTemplate: 'Pesquisar todos os modelos...',
     byCategories: 'POR CATEGORIAS',
   },
+  showMyCreatedAppsOnly: 'Mostrar apenas meus aplicativos criados',
 }
 
 export default translation

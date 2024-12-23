@@ -138,7 +138,7 @@ const Apps = () => {
         <div className='flex items-center gap-2'>
           <CheckboxWithLabel
             className='mr-2'
-            label="Show only apps I created"
+            label={t('app.showMyCreatedAppsOnly')}
             isChecked={isCreatedByMe}
             onChange={() => setIsCreatedByMe(!isCreatedByMe)}
           />

@@ -168,6 +168,7 @@ const translation = {
       removeConfirmTitle: 'Remove {{key}} configuration?',
       removeConfirmContent: 'The current configuration is in use, removing it will turn off the Tracing feature.',
     },
+    showMyCreatedAppsOnly: 'Show my created apps only',
   },
 }
 
