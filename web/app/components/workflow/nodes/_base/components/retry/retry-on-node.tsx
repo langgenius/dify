@@ -74,7 +74,7 @@ const RetryOnNode = ({
           }
         </div>
         {
-          !showDefault && (
+          !showDefault && !!data._retryIndex && (
             <div>
               {data._retryIndex}/{data.retry_config?.max_retries}
             </div>
