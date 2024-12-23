@@ -860,14 +860,15 @@ class LLMNode(BaseNode[LLMNodeData]):
     ) -> Sequence[PromptMessage]:
         prompt_messages: list[PromptMessage] = []
         for message in messages:
-            contents: list[PromptMessageContent] = []
             if message.edition_type == "jinja2":
                 result_text = _render_jinja2_message(
                     template=message.jinja2_text or "",
                     jinjia2_variables=jinja2_variables,
                     variable_pool=variable_pool,
                 )
-                contents.append(TextPromptMessageContent(data=result_text))
+                prompt_message = _combine_message_content_with_role(
+                    contents=[TextPromptMessageContent(data=result_text)], role=message.role)
+                prompt_messages.append(prompt_message)
             else:
                 # Get segment group from basic message
                 if context:
