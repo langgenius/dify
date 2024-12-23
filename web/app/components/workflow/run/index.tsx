@@ -78,11 +78,24 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
 
       const groupMap = nodeGroupMap.get(iterationNode.node_id)!
 
-      if (!groupMap.has(runId))
+      if (!groupMap.has(runId)) {
         groupMap.set(runId, [item])
+      }
+      else {
+        if (item.status === 'retry') {
+          const retryNode = groupMap.get(runId)!.find(node => node.node_id === item.node_id)
 
-      else
-        groupMap.get(runId)!.push(item)
+          if (retryNode) {
+            if (retryNode?.retryDetail)
+              retryNode.retryDetail.push(item)
+            else
+              retryNode.retryDetail = [item]
+          }
+        }
+        else {
+          groupMap.get(runId)!.push(item)
+        }
+      }
 
       if (item.status === 'failed') {
         iterationNode.status = 'failed'
