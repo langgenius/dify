@@ -25,6 +25,8 @@ from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_service import WorkflowService
 
+from api.fields.workflow_fields import workflow_pagination_fields
+
 logger = logging.getLogger(__name__)
 
 
@@ -441,16 +443,11 @@ class WorkflowConfigApi(Resource):
 
 
 class PublishedAllWorkflowApi(Resource):
-    def __init__(self):
-        self.parser = reqparse.RequestParser()
-        self.parser.add_argument('page', type=int, default=1, location='args')
-        self.parser.add_argument('page_size', type=int, default=10, location='args')
-
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_fields)
+    @marshal_with(workflow_pagination_fields)
     def get(self, app_model: App):
         """
         Get published workflows
@@ -470,7 +467,7 @@ class PublishedAllWorkflowApi(Resource):
         )
 
         return {
-            'data': workflows,
+            'items': workflows,
             'page': page,
             'limit': limit,
             'has_more': has_more
