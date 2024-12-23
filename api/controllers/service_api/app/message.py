@@ -104,10 +104,11 @@ class MessageFeedbackApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
+        parser.add_argument("content", type=str, location="json")
         args = parser.parse_args()
 
         try:
-            MessageService.create_feedback(app_model, message_id, end_user, args["rating"])
+            MessageService.create_feedback(app_model, message_id, end_user, args["rating"], args["content"])
         except services.errors.message.MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 

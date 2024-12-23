@@ -759,6 +759,20 @@ const translation = {
         title: 'Ravnanje z napakami',
         tip: 'Strategija ravnanja z izjemami, ki se sproži, ko vozlišče naleti na izjemo.',
       },
+      retry: {
+        retryOnFailure: 'Ponovni poskus ob neuspehu',
+        retryInterval: 'Interval ponovnega poskusa',
+        retrying: 'Ponovnim...',
+        retry: 'Ponoviti',
+        retryFailedTimes: '{{times}} ponovni poskusi niso uspeli',
+        retries: '{{num}} Poskusov',
+        times: 'Krat',
+        retryTimes: 'Ponovni poskus {{times}}-krat ob neuspehu',
+        retryFailed: 'Ponovni poskus ni uspel',
+        retrySuccessful: 'Ponovni poskus je bil uspešen',
+        maxRetries: 'Največ ponovnih poskusov',
+        ms: 'Ms',
+      },
     },
     start: {
       outputVars: {

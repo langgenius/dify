@@ -125,7 +125,7 @@ const translation = {
   switchStart: 'Start switch',
   openInExplore: 'Open in Explore',
   typeSelector: {
-    all: 'ALL Types',
+    all: 'All Types ',
     chatbot: 'Chatbot',
     agent: 'Agent',
     workflow: 'Workflow',

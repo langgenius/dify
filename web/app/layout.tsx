@@ -34,7 +34,7 @@ const LocaleLayout = ({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
       <body
-        className="h-full select-auto"
+        className="h-full select-auto color-scheme"
         data-api-prefix={process.env.NEXT_PUBLIC_API_PREFIX}
         data-pubic-api-prefix={process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX}
         data-marketplace-api-prefix={process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX}

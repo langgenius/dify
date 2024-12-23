@@ -210,7 +210,7 @@ class ApiTool(Tool):
             )
             return response
         else:
-            raise ValueError(f"Invalid http method {self.method}")
+            raise ValueError(f"Invalid http method {method}")
 
     def _convert_body_property_any_of(
         self, property: dict[str, Any], value: Any, any_of: list[dict[str, Any]], max_recursive=10

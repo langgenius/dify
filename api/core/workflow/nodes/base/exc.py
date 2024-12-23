@@ -1,4 +1,4 @@
-class BaseNodeError(Exception):
+class BaseNodeError(ValueError):
     """Base class for node errors."""
 
     pass

@@ -231,11 +231,15 @@ class DatasetService:
 
         DatasetService.check_dataset_permission(dataset, user)
         if dataset.provider == "external":
-            dataset.retrieval_model = data.get("external_retrieval_model", None)
+            external_retrieval_model = data.get("external_retrieval_model", None)
+            if external_retrieval_model:
+                dataset.retrieval_model = external_retrieval_model
             dataset.name = data.get("name", dataset.name)
             dataset.description = data.get("description", "")
+            permission = data.get("permission")
+            if permission:
+                dataset.permission = permission
             external_knowledge_id = data.get("external_knowledge_id", None)
-            dataset.permission = data.get("permission")
             db.session.add(dataset)
             if not external_knowledge_id:
                 raise ValueError("External knowledge id is required.")

@@ -148,24 +148,25 @@ export default function AccountSetting({
       show
       onClose={onCancel}
     >
-      <div className='mx-auto max-w-[1048px] h-[100vh] flex'>
-        <div className='w-[44px] sm:w-[224px] pl-4 pr-6 border-r border-divider-burn flex flex-col'>
-          <div className='mt-6 mb-8 px-3 py-2 text-text-primary title-2xl-semi-bold'>{t('common.userProfile.settings')}</div>
+      <div className='flex'>
+        <div className='w-[44px] sm:w-[200px] px-[1px] py-4 sm:p-4 border border-divider-burn shrink-0 sm:shrink-1 flex flex-col items-center sm:items-start'>
+          <div className='mb-8 ml-0 sm:ml-2 sm:text-base title-2xl-semi-bold text-text-primary'>{t('common.userProfile.settings')}</div>
           <div className='w-full'>
             {
               menuItems.map(menuItem => (
                 <div key={menuItem.key} className='mb-2'>
                   {!isCurrentWorkspaceDatasetOperator && (
-                    <div className='py-2 pl-3 pb-1 mb-0.5 text-text-tertiary system-xs-medium-uppercase'>{menuItem.name}</div>
+                    <div className='px-2 mb-[6px] sm:text-xs system-xs-medium-uppercase text-text-tertiary'>{menuItem.name}</div>
                   )}
                   <div>
                     {
                       menuItem.items.map(item => (
                         <div
                           key={item.key}
-                          className={cn(
-                            'flex items-center mb-0.5 p-1 pl-3 h-[37px] text-sm cursor-pointer rounded-lg',
-                            activeMenu === item.key ? 'bg-state-base-active text-components-menu-item-text-active system-sm-semibold' : 'text-components-menu-item-text system-sm-medium')}
+                          className={`
+                            flex items-center h-[37px] mb-[2px] text-sm cursor-pointer rounded-lg
+                            ${activeMenu === item.key ? 'system-sm-semibold text-components-menu-item-text-active bg-state-base-active' : 'system-sm-medium text-components-menu-item-text'}
+                          `}
                           title={item.name}
                           onClick={() => setActiveMenu(item.key)}
                         >
@@ -180,17 +181,19 @@ export default function AccountSetting({
             }
           </div>
         </div>
-        <div className='relative flex w-[824px]'>
-          <div className='absolute top-6 -right-11 flex flex-col items-center z-[9999]'>
-            <Button
-              variant='tertiary'
-              size='large'
-              className='px-2'
-              onClick={onCancel}
-            >
-              <RiCloseLine className='w-5 h-5' />
-            </Button>
-            <div className='mt-1 text-text-tertiary system-2xs-medium-uppercase'>ESC</div>
+        <div ref={scrollRef} className='relative w-[824px] h-[720px] pb-4 overflow-y-auto'>
+          <div className={cn('sticky top-0 px-6 py-4 flex items-center h-14 mb-4 bg-components-panel-bg title-2xl-semi-bold text-text-primary z-20', scrolled && scrolledClassName)}>
+            <div className='shrink-0'>{activeItem?.name}</div>
+            {
+              activeItem?.description && (
+                <div className='shrink-0 ml-2 text-xs text-gray-600'>{activeItem?.description}</div>
+              )
+            }
+            <div className='grow flex justify-end'>
+              <div className='z-[10] flex items-center justify-center -mr-4 p-2 cursor-pointer rounded-[10px] hover:bg-components-button-tertiary-bg' onClick={onCancel}>
+                <RiCloseLine className='w-5 h-5 text-components-button-tertiary-text' />
+              </div>
+            </div>
           </div>
           <div ref={scrollRef} className='w-full pb-4 bg-components-panel-bg overflow-y-auto'>
             <div className={cn('sticky top-0 mx-8 pt-[27px] pb-2 mb-[18px] flex items-center bg-components-panel-bg z-20', scrolled && 'border-b border-divider-regular')}>

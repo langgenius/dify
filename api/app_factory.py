@@ -1,5 +1,4 @@
 import logging
-import os
 import time
 
 from configs import dify_config
@@ -16,15 +15,6 @@ def create_flask_app_with_configs() -> DifyApp:
     """
     dify_app = DifyApp(__name__)
     dify_app.config.from_mapping(dify_config.model_dump())
-
-    # populate configs into system environment variables
-    for key, value in dify_app.config.items():
-        if isinstance(value, str):
-            os.environ[key] = value
-        elif isinstance(value, int | float | bool):
-            os.environ[key] = str(value)
-        elif value is None:
-            os.environ[key] = ""
 
     return dify_app
 
@@ -98,3 +88,14 @@ def initialize_extensions(app: DifyApp):
         end_time = time.perf_counter()
         if dify_config.DEBUG:
             logging.info(f"Loaded {short_name} ({round((end_time - start_time) * 1000, 2)} ms)")
+
+
+def create_migrations_app():
+    app = create_flask_app_with_configs()
+    from extensions import ext_database, ext_migrate
+
+    # Initialize only required extensions
+    ext_database.init_app(app)
+    ext_migrate.init_app(app)
+
+    return app

@@ -64,6 +64,12 @@ const WorkflowProcessItem = ({
     setShowMessageLogModal(true)
   }, [item, setCurrentLogItem, setCurrentLogModalActiveTab, setShowMessageLogModal])
 
+  const showRetryDetail = useCallback(() => {
+    setCurrentLogItem(item)
+    setCurrentLogModalActiveTab('TRACING')
+    setShowMessageLogModal(true)
+  }, [item, setCurrentLogItem, setCurrentLogModalActiveTab, setShowMessageLogModal])
+
   return (
     <div
       className={cn(
@@ -105,6 +111,7 @@ const WorkflowProcessItem = ({
               <TracingPanel
                 list={data.tracing}
                 onShowIterationDetail={showIterationDetail}
+                onShowRetryDetail={showRetryDetail}
                 hideNodeInfo={hideInfo}
                 hideNodeProcessDetail={hideProcessDetail}
               />
