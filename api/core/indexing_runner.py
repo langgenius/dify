@@ -274,6 +274,7 @@ class IndexingRunner:
                     model_type=ModelType.TEXT_EMBEDDING,
                 )
         preview_texts = []
+
         total_segments = 0
         index_type = doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
@@ -289,14 +290,21 @@ class IndexingRunner:
                 process_rule=processing_rule.to_dict(),
                 tenant_id=current_user.current_tenant_id,
                 doc_language=doc_language,
+                preview=True
             )
             total_segments += len(documents)
             for document in documents:
                 if len(preview_texts) < 10:
-                    preview_detail = PreviewDetail(content=document.page_content)
-                    if document.children:
-                        preview_detail.child_chunks = [child.page_content for child in document.children]
-                    preview_texts.append(preview_detail)
+                    if doc_form and doc_form == "qa_model":
+                        preview_detail = QAPreviewDetail(question=document.page_content, 
+                                                         answer=document.metadata.get("answer")
+                                                         )
+                        preview_texts.append(preview_detail)
+                    else:
+                        preview_detail = PreviewDetail(content=document.page_content)
+                        if document.children:
+                            preview_detail.child_chunks = [child.page_content for child in document.children]
+                        preview_texts.append(preview_detail)
 
                 # delete image files and related db records
                 image_upload_file_ids = get_image_upload_file_ids(document.page_content)
@@ -312,16 +320,9 @@ class IndexingRunner:
                     db.session.delete(image_file)
 
         if doc_form and doc_form == "qa_model":
-            if len(preview_texts) > 0:
-                # qa model document
-                response = LLMGenerator.generate_qa_document(
-                    current_user.current_tenant_id, preview_texts[0].content, doc_language
-                )
-                document_qa_list = self.format_split_text(response)
-
-                return IndexingEstimate(
-                    total_segments=total_segments * 20, qa_preview=document_qa_list, preview=preview_texts
-                )
+            return IndexingEstimate(
+                total_segments=total_segments * 20, qa_preview=preview_texts, preview=[]
+            )
         return IndexingEstimate(total_segments=total_segments, preview=preview_texts)
 
     def _extract(
