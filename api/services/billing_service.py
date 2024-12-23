@@ -73,6 +73,6 @@ class BillingService:
 
     @classmethod
     def unsubscripbe_tenant_customer(cls, tenant_id: str):
-        """ Delete related customer in billing service. Used when tenant is deleted."""
+        """Delete related customer in billing service. Used when tenant is deleted."""
         params = {"tenant_id": tenant_id}
         return cls._send_request("DELETE", "/subscription", params=params)

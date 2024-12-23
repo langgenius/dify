@@ -269,9 +269,7 @@ class InvitationCode(db.Model):  # type: ignore[name-defined]
 
 class AccountDeletionLog(db.Model):
     __tablename__ = "account_deletion_logs"
-    __table_args__ = (
-        db.PrimaryKeyConstraint("id", name="account_deletion_log_pkey"),
-    )
+    __table_args__ = (db.PrimaryKeyConstraint("id", name="account_deletion_log_pkey"),)
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     email = db.Column(db.String(255), nullable=False)
@@ -285,9 +283,7 @@ class AccountDeletionLog(db.Model):
 
 class AccountDeletionLogDetail(db.Model):
     __tablename__ = "account_deletion_log_details"
-    __table_args__ = (
-        db.PrimaryKeyConstraint("id", name="account_deletion_log_detail_pkey"),
-    )
+    __table_args__ = (db.PrimaryKeyConstraint("id", name="account_deletion_log_detail_pkey"),)
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     account_id = db.Column(StringUUID, nullable=False)

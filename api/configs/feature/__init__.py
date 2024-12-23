@@ -1,10 +1,18 @@
 from typing import Annotated, Literal, Optional
 
-from configs.feature.hosted_service import HostedServiceConfig
-from pydantic import (AliasChoices, Field, HttpUrl, NegativeInt,
-                      NonNegativeInt, PositiveFloat, PositiveInt,
-                      computed_field)
+from pydantic import (
+    AliasChoices,
+    Field,
+    HttpUrl,
+    NegativeInt,
+    NonNegativeInt,
+    PositiveFloat,
+    PositiveInt,
+    computed_field,
+)
 from pydantic_settings import BaseSettings
+
+from configs.feature.hosted_service import HostedServiceConfig
 
 
 class SecurityConfig(BaseSettings):

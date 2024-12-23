@@ -244,7 +244,6 @@ class AccountIntegrateApi(Resource):
 
 
 class AccountDeleteVerifyApi(Resource):
-
     @setup_required
     @login_required
     @account_initialization_required
@@ -261,7 +260,6 @@ class AccountDeleteVerifyApi(Resource):
 
 
 class AccountDeleteApi(Resource):
-
     @setup_required
     @login_required
     @account_initialization_required

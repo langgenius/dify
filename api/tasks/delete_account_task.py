@@ -4,10 +4,10 @@ import time
 
 import click
 from celery import shared_task
+
 from extensions.ext_database import db
 from libs.helper import serialize_sqlalchemy
-from models.account import (Account, AccountDeletionLogDetail,
-                            TenantAccountJoin, TenantAccountJoinRole)
+from models.account import Account, AccountDeletionLogDetail, TenantAccountJoin, TenantAccountJoinRole
 from services.account_deletion_log_service import AccountDeletionLogService
 from services.billing_service import BillingService
 from tasks.mail_account_deletion_task import send_deletion_success_task
@@ -37,15 +37,13 @@ def delete_account_task(account_id, reason: str):
         )
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Failed to delete account {account.email}: {e}.")
+        logging.exception(f"Failed to delete account {account.email}.")
         raise
 
 
 def _process_account_deletion(account, reason):
     # Fetch all tenant-account associations
-    tenant_account_joins = db.session.query(TenantAccountJoin).filter(
-        TenantAccountJoin.account_id == account.id
-    ).all()
+    tenant_account_joins = db.session.query(TenantAccountJoin).filter(TenantAccountJoin.account_id == account.id).all()
 
     for ta in tenant_account_joins:
         if ta.role == TenantAccountJoinRole.OWNER.value:
@@ -53,9 +51,7 @@ def _process_account_deletion(account, reason):
         else:
             _remove_account_from_tenant(ta, account.email)
 
-    account_deletion_log = AccountDeletionLogService.create_account_deletion_log(
-        account, reason
-    )
+    account_deletion_log = AccountDeletionLogService.create_account_deletion_log(account, reason)
     db.session.add(account_deletion_log)
     db.session.delete(account)
     logger.info(f"Account {account.email} successfully deleted.")
@@ -66,9 +62,7 @@ def _handle_owner_tenant_deletion(ta: TenantAccountJoin):
     tenant_id = ta.tenant_id
 
     # Dismiss all tenant members
-    members_to_dismiss = db.session.query(TenantAccountJoin).filter(
-        TenantAccountJoin.tenant_id == tenant_id
-    ).all()
+    members_to_dismiss = db.session.query(TenantAccountJoin).filter(TenantAccountJoin.tenant_id == tenant_id).all()
     for member in members_to_dismiss:
         db.session.delete(member)
     logger.info(f"Dismissed {len(members_to_dismiss)} members from tenant {tenant_id}.")
@@ -78,17 +72,20 @@ def _handle_owner_tenant_deletion(ta: TenantAccountJoin):
         BillingService.unsubscripbe_tenant_customer(tenant_id)
         logger.info(f"Subscription for tenant {tenant_id} deleted successfully.")
     except Exception as e:
-        logger.error(f"Failed to delete subscription for tenant {tenant_id}: {e}.")
+        logger.exception(f"Failed to delete subscription for tenant {tenant_id}.")
         raise
 
     # create account deletion log detail
     account_deletion_log_detail = AccountDeletionLogDetail()
     account_deletion_log_detail.account_id = ta.account_id
     account_deletion_log_detail.tenant_id = tenant_id
-    account_deletion_log_detail.snapshot = json.dumps({
-        "tenant_account_join_info": serialize_sqlalchemy(ta),
-        "dismissed_members": [serialize_sqlalchemy(member) for member in members_to_dismiss]
-    }, separators=(",", ":"))
+    account_deletion_log_detail.snapshot = json.dumps(
+        {
+            "tenant_account_join_info": serialize_sqlalchemy(ta),
+            "dismissed_members": [serialize_sqlalchemy(member) for member in members_to_dismiss],
+        },
+        separators=(",", ":"),
+    )
     account_deletion_log_detail.role = ta.role
     db.session.add(account_deletion_log_detail)
 
@@ -103,8 +100,11 @@ def _remove_account_from_tenant(ta, email):
     account_deletion_log_detail = AccountDeletionLogDetail()
     account_deletion_log_detail.account_id = ta.account_id
     account_deletion_log_detail.tenant_id = tenant_id
-    account_deletion_log_detail.snapshot = json.dumps({
-        "tenant_account_join_info": serialize_sqlalchemy(ta),
-    }, separators=(",", ":"))
+    account_deletion_log_detail.snapshot = json.dumps(
+        {
+            "tenant_account_join_info": serialize_sqlalchemy(ta),
+        },
+        separators=(",", ":"),
+    )
     account_deletion_log_detail.role = ta.role
     db.session.add(account_deletion_log_detail)

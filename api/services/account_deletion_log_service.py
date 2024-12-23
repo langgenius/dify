@@ -1,4 +1,3 @@
-
 import json
 from datetime import timedelta
 
@@ -22,10 +21,12 @@ class AccountDeletionLogService:
 
     @staticmethod
     def email_in_freeze(email):
-        log = db.session.query(AccountDeletionLog) \
-            .filter(AccountDeletionLog.email == email) \
-            .order_by(AccountDeletionLog.created_at.desc()) \
+        log = (
+            db.session.query(AccountDeletionLog)
+            .filter(AccountDeletionLog.email == email)
+            .order_by(AccountDeletionLog.created_at.desc())
             .first()
+        )
 
         if not log:
             return False
