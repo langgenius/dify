@@ -53,7 +53,10 @@ class ToolProviderController(BaseModel, ABC):
         :param tool_name: the name of the tool, defined in `get_tools`
         :return: list of parameters
         """
-        tool = next(filter(lambda x: x.identity.name == tool_name if x.identity else False, self.get_tools()), None)
+        tools = self.get_tools()
+        if tools is None:
+            raise ToolNotFoundError(f"tool {tool_name} not found")
+        tool = next((t for t in tools if t.identity and t.identity.name == tool_name), None)
         if tool is None:
             raise ToolNotFoundError(f"tool {tool_name} not found")
         return tool.parameters or []

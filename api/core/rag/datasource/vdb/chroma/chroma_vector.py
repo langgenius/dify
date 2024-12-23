@@ -71,11 +71,13 @@ class ChromaVector(BaseVector):
         metadatas = [d.metadata for d in documents]
 
         collection = self._client.get_or_create_collection(self._collection_name)
-        collection.upsert(ids=uuids, documents=texts, embeddings=embeddings, metadatas=metadatas)
+        # FIXME: chromadb using numpy array, fix the type error later
+        collection.upsert(ids=uuids, documents=texts, embeddings=embeddings, metadatas=metadatas)  # type: ignore
 
     def delete_by_metadata_field(self, key: str, value: str):
         collection = self._client.get_or_create_collection(self._collection_name)
-        collection.delete(where={key: {"$eq": value}})
+        # FIXME: fix the type error later
+        collection.delete(where={key: {"$eq": value}})  # type: ignore
 
     def delete(self):
         self._client.delete_collection(self._collection_name)

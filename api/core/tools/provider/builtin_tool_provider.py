@@ -96,14 +96,14 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self._get_builtin_tools()
 
-    def get_tool(self, tool_name: str) -> Tool:
+    def get_tool(self, tool_name: str) -> Optional[Tool]:
         """
         returns the tool that the provider can provide
         """
         tools = self.get_tools()
         if tools is None:
             raise ValueError("tools not found")
-        return next(filter(lambda x: x.identity.name == tool_name if x.identity else False, tools), None)
+        return next((t for t in tools if t.identity and t.identity.name == tool_name), None)
 
     def get_parameters(self, tool_name: str) -> list[ToolParameter]:
         """
@@ -112,10 +112,13 @@ class BuiltinToolProviderController(ToolProviderController):
         :param tool_name: the name of the tool, defined in `get_tools`
         :return: list of parameters
         """
-        tool = next(filter(lambda x: x.identity.name == tool_name, self.get_tools()), None)
+        tools = self.get_tools()
+        if tools is None:
+            raise ToolNotFoundError(f"tool {tool_name} not found")
+        tool = next((t for t in tools if t.identity and t.identity.name == tool_name), None)
         if tool is None:
             raise ToolNotFoundError(f"tool {tool_name} not found")
-        return tool.parameters
+        return tool.parameters or []
 
     @property
     def need_credentials(self) -> bool:

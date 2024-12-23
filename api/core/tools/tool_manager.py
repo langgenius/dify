@@ -15,10 +15,11 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.api_entities import UserToolProvider, UserToolProviderTypeLiteral
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ApiProviderAuthType, ToolInvokeFrom, ToolParameter
-from core.tools.errors import ToolProviderNotFoundError
+from core.tools.errors import ToolNotFoundError, ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiToolProviderController
 from core.tools.provider.builtin._positions import BuiltinToolProviderSort
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
+from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
 from core.tools.tool.api_tool import ApiTool
 from core.tools.tool.builtin_tool import BuiltinTool
@@ -37,7 +38,7 @@ class ToolManager:
     _builtin_provider_lock = Lock()
     _builtin_providers: dict[str, BuiltinToolProviderController] = {}
     _builtin_providers_loaded = False
-    _builtin_tools_labels: dict[str, list[str]] = {}
+    _builtin_tools_labels: dict[str, Union[I18nObject, None]] = {}
 
     @classmethod
     def get_builtin_provider(cls, provider: str) -> BuiltinToolProviderController:
@@ -68,6 +69,8 @@ class ToolManager:
         """
         provider_controller = cls.get_builtin_provider(provider)
         tool = provider_controller.get_tool(tool_name)
+        if tool is None:
+            raise ToolNotFoundError(f"tool {tool_name} not found")
 
         return tool
 
@@ -339,6 +342,8 @@ class ToolManager:
         """
         # get provider
         provider_controller = cls.get_builtin_provider(provider)
+        if provider_controller.identity is None:
+            raise ToolProviderNotFoundError(f"builtin provider {provider} not found")
 
         absolute_path = path.join(
             path.dirname(path.realpath(__file__)),
@@ -466,6 +471,8 @@ class ToolManager:
             # append builtin providers
             for provider in builtin_providers:
                 # handle include, exclude
+                if provider.identity is None:
+                    continue
                 if is_filtered(
                     include_set=cast(set[str], dify_config.POSITION_TOOL_INCLUDES_SET),
                     exclude_set=cast(set[str], dify_config.POSITION_TOOL_EXCLUDES_SET),
@@ -512,7 +519,7 @@ class ToolManager:
                 db.session.query(WorkflowToolProvider).filter(WorkflowToolProvider.tenant_id == tenant_id).all()
             )
 
-            workflow_provider_controllers = []
+            workflow_provider_controllers: list[WorkflowToolProviderController] = []
             for provider in workflow_providers:
                 try:
                     workflow_provider_controllers.append(
@@ -522,7 +529,9 @@ class ToolManager:
                     # app has been deleted
                     pass
 
-            labels = ToolLabelManager.get_tools_labels(workflow_provider_controllers)
+            labels = ToolLabelManager.get_tools_labels(
+                [cast(ToolProviderController, controller) for controller in workflow_provider_controllers]
+            )
 
             for provider_controller in workflow_provider_controllers:
                 user_provider = ToolTransformService.workflow_provider_to_user_provider(

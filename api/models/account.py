@@ -43,7 +43,8 @@ class Account(UserMixin, db.Model):  # type: ignore[name-defined]
 
     @property
     def current_tenant(self):
-        return self._current_tenant
+        # FIXME: fix the type error later, because the type is important maybe cause some bugs
+        return self._current_tenant  # type: ignore
 
     @current_tenant.setter
     def current_tenant(self, value: "Tenant"):
@@ -52,7 +53,8 @@ class Account(UserMixin, db.Model):  # type: ignore[name-defined]
         if ta:
             tenant.current_role = ta.role
         else:
-            tenant = None
+            # FIXME: fix the type error later, because the type is important maybe cause some bugs
+            tenant = None  # type: ignore
         self._current_tenant = tenant
 
     @property
@@ -98,10 +100,6 @@ class Account(UserMixin, db.Model):  # type: ignore[name-defined]
         if account_integrate:
             return db.session.query(Account).filter(Account.id == account_integrate.account_id).one_or_none()
         return None
-
-    def get_integrates(self):
-        ai = db.Model
-        return db.session.query(ai).filter(ai.account_id == self.id).all()
 
     # check current_user.current_tenant.current_role in ['admin', 'owner']
     @property

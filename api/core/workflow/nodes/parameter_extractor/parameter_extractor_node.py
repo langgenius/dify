@@ -63,7 +63,8 @@ class ParameterExtractorNode(LLMNode):
     Parameter Extractor Node.
     """
 
-    _node_data_cls = ParameterExtractorNodeData
+    # FIXME: figure out why here is different from super class
+    _node_data_cls = ParameterExtractorNodeData  # type: ignore
     _node_type = NodeType.PARAMETER_EXTRACTOR
 
     _model_instance: Optional[ModelInstance] = None
@@ -252,6 +253,9 @@ class ParameterExtractorNode(LLMNode):
 
         # deduct quota
         self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
+
+        if text is None:
+            text = ""
 
         return text, usage, tool_call
 
@@ -773,7 +777,7 @@ class ParameterExtractorNode(LLMNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: ParameterExtractorNodeData,
+        node_data: ParameterExtractorNodeData,  # type: ignore
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -782,6 +786,7 @@ class ParameterExtractorNode(LLMNode):
         :param node_data: node data
         :return:
         """
+        # FIXME: fix the type error later
         variable_mapping: dict[str, Sequence[str]] = {"query": node_data.query}
 
         if node_data.instruction:

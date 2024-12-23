@@ -160,7 +160,7 @@ class TidbOnQdrantVector(BaseVector):
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
-        metadatas = [d.metadata for d in documents]
+        metadatas = [d.metadata for d in documents if d.metadata is not None]
 
         added_ids = []
         for batch_ids, points in self._generate_rest_batches(texts, embeddings, metadatas, uuids, 64, self._group_id):
@@ -337,18 +337,20 @@ class TidbOnQdrantVector(BaseVector):
         )
         docs = []
         for result in results:
+            if result.payload is None:
+                continue
             metadata = result.payload.get(Field.METADATA_KEY.value) or {}
             # duplicate check score threshold
             score_threshold = kwargs.get("score_threshold") or 0.0
             if result.score > score_threshold:
                 metadata["score"] = result.score
                 doc = Document(
-                    page_content=result.payload.get(Field.CONTENT_KEY.value),
+                    page_content=result.payload.get(Field.CONTENT_KEY.value, ""),
                     metadata=metadata,
                 )
                 docs.append(doc)
         # Sort the documents by score in descending order
-        docs = sorted(docs, key=lambda x: x.metadata["score"], reverse=True)
+        docs = sorted(docs, key=lambda x: x.metadata["score"] if x.metadata is not None else 0, reverse=True)
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
@@ -469,7 +471,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
             config=TidbOnQdrantConfig(
                 endpoint=dify_config.TIDB_ON_QDRANT_URL or "",
                 api_key=TIDB_ON_QDRANT_API_KEY,
-                root_path=config.root_path,
+                root_path=str(config.root_path),
                 timeout=dify_config.TIDB_ON_QDRANT_CLIENT_TIMEOUT,
                 grpc_port=dify_config.TIDB_ON_QDRANT_GRPC_PORT,
                 prefer_grpc=dify_config.TIDB_ON_QDRANT_GRPC_ENABLED,
