@@ -147,6 +147,9 @@ class AnswerStreamGeneratorRouter:
         reverse_edges = reverse_edge_mapping.get(current_node_id, [])
         for edge in reverse_edges:
             source_node_id = edge.source_node_id
+            # found sometimes source_node_id is not in node_id_config_mapping, temporary fix by skip it
+            if source_node_id not in node_id_config_mapping:
+                continue
             source_node_type = node_id_config_mapping[source_node_id].get("data", {}).get("type")
             source_node_data = node_id_config_mapping[source_node_id].get("data", {})
             if (
