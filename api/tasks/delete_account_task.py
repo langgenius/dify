@@ -5,13 +5,12 @@ import time
 import click
 from celery import shared_task
 from extensions.ext_database import db
+from libs.helper import serialize_sqlalchemy
 from models.account import (Account, AccountDeletionLogDetail,
                             TenantAccountJoin, TenantAccountJoinRole)
 from services.account_deletion_log_service import AccountDeletionLogService
 from services.billing_service import BillingService
 from tasks.mail_account_deletion_task import send_deletion_success_task
-
-from api.libs.helper import serialize_sqlalchemy
 
 logger = logging.getLogger(__name__)
 
