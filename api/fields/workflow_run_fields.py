@@ -116,11 +116,6 @@ workflow_run_node_execution_fields = {
     "finished_at": TimestampField,
 }
 
-single_step_node_execution_fields = {
-    **workflow_run_node_execution_fields,
-    "retry_events": fields.List(fields.Nested(retry_event_field)),
-}
-
 workflow_run_node_execution_list_fields = {
     "data": fields.List(fields.Nested(workflow_run_node_execution_fields)),
 }
