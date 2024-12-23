@@ -457,21 +457,12 @@ class PublishedAllWorkflowApi(Resource):
         parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
         parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
         args = parser.parse_args()
-        page = args.get('page')
-        limit = args.get('limit')
+        page = args.get("page")
+        limit = args.get("limit")
         workflow_service = WorkflowService()
-        workflows, has_more = workflow_service.get_all_published_workflow(
-            app_model=app_model,
-            page=page,
-            limit=limit
-        )
+        workflows, has_more = workflow_service.get_all_published_workflow(app_model=app_model, page=page, limit=limit)
 
-        return {
-            'items': workflows,
-            'page': page,
-            'limit': limit,
-            'has_more': has_more
-        }
+        return {"items": workflows, "page": page, "limit": limit, "has_more": has_more}
 
 
 api.add_resource(DraftWorkflowApi, "/apps/<uuid:app_id>/workflows/draft")
