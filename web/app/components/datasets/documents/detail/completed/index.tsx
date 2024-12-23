@@ -16,6 +16,7 @@ import ChildSegmentList from './child-segment-list'
 import NewChildSegment from './new-child-segment'
 import FullScreenDrawer from './common/full-screen-drawer'
 import ChildSegmentDetail from './child-segment-detail'
+import StatusItem from './status-item'
 import Pagination from '@/app/components/base/pagination'
 import cn from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
@@ -122,6 +123,11 @@ const Completed: FC<ICompletedProps> = ({
   const segmentListRef = useRef<HTMLDivElement>(null)
   const childSegmentListRef = useRef<HTMLDivElement>(null)
   const needScrollToBottom = useRef(false)
+  const statusList = useRef<Item[]>([
+    { value: 'all', name: t('datasetDocuments.list.index.all') },
+    { value: 0, name: t('datasetDocuments.list.status.disabled') },
+    { value: 1, name: t('datasetDocuments.list.status.enabled') },
+  ])
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchValue(inputValue)
@@ -536,14 +542,14 @@ const Completed: FC<ICompletedProps> = ({
         <div className={'system-sm-semibold-uppercase pl-5 text-text-secondary flex-1'}>{totalText}</div>
         <SimpleSelect
           onSelect={onChangeStatus}
-          items={[
-            { value: 'all', name: t('datasetDocuments.list.index.all') },
-            { value: 0, name: t('datasetDocuments.list.status.disabled') },
-            { value: 1, name: t('datasetDocuments.list.status.enabled') },
-          ]}
+          items={statusList.current}
           defaultValue={'all'}
           className={s.select}
-          wrapperClassName='h-fit w-[100px] mr-2' />
+          wrapperClassName='h-fit mr-2'
+          optionWrapClassName='w-[160px]'
+          optionClassName='p-0'
+          renderOption={({ item, selected }) => <StatusItem item={item} selected={selected} />}
+        />
         <Input
           showLeftIcon
           showClearIcon
