@@ -1,15 +1,17 @@
+import json
 import logging
 import time
 
 import click
 from celery import shared_task
 from extensions.ext_database import db
-from flask import jsonify
 from models.account import (Account, AccountDeletionLogDetail,
                             TenantAccountJoin, TenantAccountJoinRole)
 from services.account_deletion_log_service import AccountDeletionLogService
 from services.billing_service import BillingService
 from tasks.mail_account_deletion_task import send_deletion_success_task
+
+from api.libs.helper import serialize_sqlalchemy
 
 logger = logging.getLogger(__name__)
 
@@ -84,10 +86,10 @@ def _handle_owner_tenant_deletion(ta: TenantAccountJoin):
     account_deletion_log_detail = AccountDeletionLogDetail()
     account_deletion_log_detail.account_id = ta.account_id
     account_deletion_log_detail.tenant_id = tenant_id
-    account_deletion_log_detail.snapshot = jsonify({
-        "tenant_account_join_info": ta,
-        "dismissed_members": members_to_dismiss
-    })
+    account_deletion_log_detail.snapshot = json.dumps({
+        "tenant_account_join_info": serialize_sqlalchemy(ta),
+        "dismissed_members": [serialize_sqlalchemy(member) for member in members_to_dismiss]
+    }, separators=(",", ":"))
     account_deletion_log_detail.role = ta.role
     db.session.add(account_deletion_log_detail)
 
@@ -102,8 +104,8 @@ def _remove_account_from_tenant(ta, email):
     account_deletion_log_detail = AccountDeletionLogDetail()
     account_deletion_log_detail.account_id = ta.account_id
     account_deletion_log_detail.tenant_id = tenant_id
-    account_deletion_log_detail.snapshot = jsonify({
-        "tenant_account_join_info": ta
-    })
+    account_deletion_log_detail.snapshot = json.dumps({
+        "tenant_account_join_info": serialize_sqlalchemy(ta),
+    }, separators=(",", ":"))
     account_deletion_log_detail.role = ta.role
     db.session.add(account_deletion_log_detail)

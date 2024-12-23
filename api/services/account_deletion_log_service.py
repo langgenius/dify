@@ -1,10 +1,10 @@
 
+import json
 from datetime import timedelta
 
 from configs import dify_config
 from extensions.ext_database import db
-from flask import jsonify
-from libs.helper import get_current_datetime
+from libs.helper import get_current_datetime, serialize_sqlalchemy
 from models.account import Account, AccountDeletionLog
 
 
@@ -15,7 +15,7 @@ class AccountDeletionLogService:
         account_deletion_log.email = account.email
         account_deletion_log.reason = reason
         account_deletion_log.account_id = account.id
-        account_deletion_log.snapshot = jsonify(account)
+        account_deletion_log.snapshot = json.dumps(serialize_sqlalchemy(account), separators=(",", ":"))
         account_deletion_log.updated_at = get_current_datetime()
 
         return account_deletion_log

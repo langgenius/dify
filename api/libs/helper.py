@@ -301,3 +301,20 @@ class RateLimiter:
 
 def get_current_datetime():
     return datetime.now(tz.utc).replace(tzinfo=None)
+
+
+def serialize_sqlalchemy(obj):
+    """
+    Serializes an SQLAlchemy object into a JSON string.
+    """
+    data = {}
+    for column in obj.__table__.columns:
+        value = getattr(obj, column.name)
+        if isinstance(value, datetime):
+            data[column.name] = value.isoformat()  # ISO 8601 format for datetime
+        elif isinstance(value, uuid.UUID):
+            data[column.name] = str(value)  # String representation for UUID
+        else:
+            data[column.name] = value
+
+    return json.dumps(data, separators=(",", ":"))
