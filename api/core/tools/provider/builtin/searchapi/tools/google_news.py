@@ -90,7 +90,7 @@ class GoogleNewsTool(BuiltinTool):
         gl = tool_parameters.get("gl", "us")
         hl = tool_parameters.get("hl", "en")
         location = tool_parameters.get("location")
-        time_period = tool_parameters.get("time_period","last_month")
+        time_period = tool_parameters.get("time_period", "last_month")
 
         api_key = self.runtime.credentials["searchapi_api_key"]
         result = SearchAPI(api_key).run(
