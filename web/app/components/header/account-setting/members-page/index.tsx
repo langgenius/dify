@@ -34,7 +34,7 @@ const MembersPage = () => {
   }
   const { locale } = useContext(I18n)
 
-  const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager } = useAppContext()
+  const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager, systemFeatures } = useAppContext()
   const { data, mutate } = useSWR({ url: '/workspaces/current/members' }, fetchMembers)
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
   const [invitationResults, setInvitationResults] = useState<InvitationResult[]>([])
@@ -122,6 +122,7 @@ const MembersPage = () => {
       {
         inviteModalVisible && (
           <InviteModal
+            isEmailSetup={systemFeatures.is_email_setup}
             onCancel={() => setInviteModalVisible(false)}
             onSend={(invitationResults) => {
               setInvitedModalVisible(true)
