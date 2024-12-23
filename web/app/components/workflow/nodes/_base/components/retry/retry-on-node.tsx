@@ -31,7 +31,7 @@ const RetryOnNode = ({
   }, [data._runningStatus, showSelectedBorder])
   const showDefault = !isRunning && !isSuccessful && !isException && !isFailed
 
-  if (!retry_config)
+  if (!retry_config?.retry_enabled)
     return null
 
   return (
