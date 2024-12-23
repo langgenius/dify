@@ -445,6 +445,7 @@ class WorkflowCycleManage:
         workflow_node_execution.workflow_id = workflow_run.workflow_id
         workflow_node_execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value
         workflow_node_execution.workflow_run_id = workflow_run.id
+        workflow_node_execution.predecessor_node_id = event.predecessor_node_id
         workflow_node_execution.node_execution_id = event.node_execution_id
         workflow_node_execution.node_id = event.node_id
         workflow_node_execution.node_type = event.node_type.value
@@ -461,9 +462,11 @@ class WorkflowCycleManage:
         workflow_node_execution.execution_metadata = json.dumps(
             {
                 NodeRunMetadataKey.ITERATION_ID: event.in_iteration_id,
+                NodeRunMetadataKey.PARALLEL_MODE_RUN_ID: event.parallel_mode_run_id,
+                NodeRunMetadataKey.ITERATION_ID: event.in_iteration_id,
             }
         )
-        workflow_node_execution.index = event.start_index
+        workflow_node_execution.index = event.node_run_index
 
         db.session.add(workflow_node_execution)
         db.session.commit()
