@@ -155,7 +155,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             else:
                 continue
 
-        raise Exception("Queue listening stopped unexpectedly.")
+        raise ValueError("queue listening stopped unexpectedly.")
 
     def _to_stream_response(
         self, generator: Generator[StreamResponse, None, None]
