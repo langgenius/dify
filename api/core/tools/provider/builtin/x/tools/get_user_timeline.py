@@ -1,6 +1,7 @@
 """
 Get User Timeline Tool for X (Twitter)
 """
+
 from datetime import datetime
 from typing import Any, Union
 
@@ -41,20 +42,16 @@ class GetUserTimelineTool(BuiltinTool):
                 tweet_dict[field] = value.isoformat()
             else:
                 tweet_dict[field] = value
-            
+
         # Handle media attachments
         if "attachments" in tweet_dict and "media_keys" in tweet_dict["attachments"]:
             media_keys = tweet_dict["attachments"]["media_keys"]
             tweet_dict["media"] = []
-            
+
             for media_key in media_keys:
-                media_info = {
-                    "media_key": media_key,
-                    "type": None,
-                    "url": None
-                }
+                media_info = {"media_key": media_key, "type": None, "url": None}
                 tweet_dict["media"].append(media_info)
-                
+
         return tweet_dict
 
     def _invoke(
@@ -66,9 +63,7 @@ class GetUserTimelineTool(BuiltinTool):
         try:
             username = tool_parameters.get("username", "").strip().lstrip("@")
             if not username:
-                return ToolInvokeMessage(
-                    message="Username is required", status="error"
-                )
+                return ToolInvokeMessage(message="Username is required", status="error")
 
             max_results = self._validate_max_results(tool_parameters.get("max_results"))
 
@@ -135,9 +130,7 @@ class GetUserTimelineTool(BuiltinTool):
                     username=username,
                 )
                 if not user_response.data:
-                    return ToolInvokeMessage(
-                        message=f"User @{username} not found", status="error"
-                    )
+                    return ToolInvokeMessage(message=f"User @{username} not found", status="error")
 
                 user_data = user_response.data
                 # Get user's tweets
@@ -147,9 +140,7 @@ class GetUserTimelineTool(BuiltinTool):
                     tweet_fields=tweet_fields,
                     user_fields=user_fields,
                     media_fields=media_fields,
-                    exclude=[
-                        "retweets"
-                    ],  # Exclude retweets to get more original content
+                    exclude=["retweets"],  # Exclude retweets to get more original content
                 )
 
                 print(tweets_response.data)
@@ -183,11 +174,7 @@ class GetUserTimelineTool(BuiltinTool):
                     }
                 )
             except tweepy.TweepyException as te:
-                return ToolInvokeMessage(
-                    message=f"Twitter API error: {str(te)}", status="error"
-                )
+                return ToolInvokeMessage(message=f"Twitter API error: {str(te)}", status="error")
 
         except Exception as e:
-            return ToolInvokeMessage(
-                message=f"Error retrieving user timeline: {str(e)}", status="error"
-            )
+            return ToolInvokeMessage(message=f"Error retrieving user timeline: {str(e)}", status="error")

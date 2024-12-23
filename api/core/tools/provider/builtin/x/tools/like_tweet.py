@@ -61,11 +61,7 @@ class LikeTweetTool(BuiltinTool):
                 )
 
             except tweepy.TweepyException as te:
-                return ToolInvokeMessage(
-                    message=f"Twitter API error: {str(te)}", status="error"
-                )
+                return ToolInvokeMessage(message=f"Twitter API error: {str(te)}", status="error")
 
         except Exception as e:
-            return ToolInvokeMessage(
-                message=f"Error performing {action} action: {str(e)}", status="error"
-            )
+            return ToolInvokeMessage(message=f"Error performing {action} action: {str(e)}", status="error")

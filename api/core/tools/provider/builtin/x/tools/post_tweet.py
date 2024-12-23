@@ -25,9 +25,7 @@ class PostTweetTool(BuiltinTool):
             return []
         return [item.strip() for item in value.split(",") if item.strip()]
 
-    def _validate_poll_options(
-        self, options_str: Optional[str], duration: Optional[float]
-    ) -> tuple[list[str], int]:
+    def _validate_poll_options(self, options_str: Optional[str], duration: Optional[float]) -> tuple[list[str], int]:
         """Validate poll options and duration"""
         options = self._parse_comma_separated_list(options_str)
 
@@ -35,9 +33,7 @@ class PostTweetTool(BuiltinTool):
             raise ValueError("Poll must have between 2 and 4 options")
 
         try:
-            duration_int = (
-                int(duration) if duration is not None else 1440
-            )  # Default 24 hours
+            duration_int = int(duration) if duration is not None else 1440  # Default 24 hours
         except (ValueError, TypeError):
             raise ValueError("Poll duration must be a valid number")
 
@@ -77,9 +73,7 @@ class PostTweetTool(BuiltinTool):
             poll_options_str = tool_parameters.get("poll_options")
             poll_duration = tool_parameters.get("poll_duration_minutes")
             if poll_options_str:
-                poll_options, poll_duration = self._validate_poll_options(
-                    poll_options_str, poll_duration
-                )
+                poll_options, poll_duration = self._validate_poll_options(poll_options_str, poll_duration)
             else:
                 poll_options, poll_duration = [], None
 
@@ -114,14 +108,8 @@ class PostTweetTool(BuiltinTool):
             )
 
         except ValueError as ve:
-            return ToolInvokeMessage(
-                message=f"Validation error: {str(ve)}", status="error"
-            )
+            return ToolInvokeMessage(message=f"Validation error: {str(ve)}", status="error")
         except tweepy.TweepyException as te:
-            return ToolInvokeMessage(
-                message=f"Twitter API error: {str(te)}", status="error"
-            )
+            return ToolInvokeMessage(message=f"Twitter API error: {str(te)}", status="error")
         except Exception as e:
-            return ToolInvokeMessage(
-                message=f"Unexpected error: {str(e)}", status="error"
-            )
+            return ToolInvokeMessage(message=f"Unexpected error: {str(e)}", status="error")

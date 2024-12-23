@@ -42,9 +42,7 @@ class MediaUploadTool(BuiltinTool):
             # Get file from parameters
             media_file = tool_parameters.get("media_file")
             if not media_file:
-                return ToolInvokeMessage(
-                    message="No media file provided", status="error"
-                )
+                return ToolInvokeMessage(message="No media file provided", status="error")
 
             # Validate file type
             if not self._validate_file_type(media_file.type):
@@ -60,22 +58,18 @@ class MediaUploadTool(BuiltinTool):
                 # Download file content
                 file_content = download(media_file)
                 if not file_content:
-                    return ToolInvokeMessage(
-                        message="Failed to download media file", status="error"
-                    )
+                    return ToolInvokeMessage(message="Failed to download media file", status="error")
 
                 # Upload media
                 media = api.media_upload(
                     filename=media_file.filename or "media",  # Use original filename if available
-                    file=io.BytesIO(file_content)
+                    file=io.BytesIO(file_content),
                 )
 
                 # Set alt text if provided
                 alt_text = tool_parameters.get("alt_text")
                 if alt_text and media.media_id:
-                    api.create_media_metadata(
-                        media_id=media.media_id, alt_text=alt_text
-                    )
+                    api.create_media_metadata(media_id=media.media_id, alt_text=alt_text)
 
                 response_data = {
                     "media_id": str(media.media_id),
@@ -87,11 +81,7 @@ class MediaUploadTool(BuiltinTool):
                 return self.create_json_message(response_data)
 
             except tweepy.TweepyException as te:
-                return ToolInvokeMessage(
-                    message=f"Twitter API error: {str(te)}", status="error"
-                )
+                return ToolInvokeMessage(message=f"Twitter API error: {str(te)}", status="error")
 
         except Exception as e:
-            return ToolInvokeMessage(
-                message=f"Error uploading media: {str(e)}", status="error"
-            )
+            return ToolInvokeMessage(message=f"Error uploading media: {str(e)}", status="error")
