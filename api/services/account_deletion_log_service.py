@@ -3,16 +3,18 @@ from datetime import timedelta
 
 from configs import dify_config
 from extensions.ext_database import db
-from libs.helper import get_current_datetime
-from models.account import AccountDeletionLog
+from libs.helper import get_current_datetime, to_json
+from models.account import Account, AccountDeletionLog
 
 
 class AccountDeletionLogService:
     @staticmethod
-    def create_account_deletion_log(email, reason):
+    def create_account_deletion_log(account: Account, reason):
         account_deletion_log = AccountDeletionLog()
-        account_deletion_log.email = email
+        account_deletion_log.email = account.email
         account_deletion_log.reason = reason
+        account_deletion_log.account_id = account.id
+        account_deletion_log.snapshot = to_json(account)
         account_deletion_log.updated_at = get_current_datetime()
 
         return account_deletion_log

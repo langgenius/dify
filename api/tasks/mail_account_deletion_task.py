@@ -25,16 +25,16 @@ def send_deletion_success_task(language, to):
     try:
         if language == "zh-Hans":
             html_content = render_template(
-                "delete_account_mail_template_zh-CN.html",
+                "delete_account_success_template_zh-CN.html",
                 to=to,
-                # TODO: Add more template variables
+                email=to,
             )
             mail.send(to=to, subject="Dify 账户删除成功", html=html_content)
         else:
             html_content = render_template(
-                "delete_account_mail_template_en-US.html",
+                "delete_account_success_template_en-US.html",
                 to=to,
-                # TODO: Add more template variables
+                email=to,
             )
             mail.send(to=to, subject="Dify Account Deleted", html=html_content)
 
@@ -42,43 +42,6 @@ def send_deletion_success_task(language, to):
         logging.info(
             click.style(
                 "Send account deletion success email to {}: latency: {}".format(to, end_at - start_at), fg="green"
-            )
-        )
-    except Exception:
-        logging.exception("Send account deletion success email to {} failed".format(to))
-
-
-@shared_task(queue="mail")
-def send_deletion_fail_task(language, to):
-    """Send email to user regarding account deletion."""
-    if not mail.is_inited():
-        return
-
-    logging.info(
-        click.style(f"Start send account deletion success email to {to}", fg="green")
-    )
-    start_at = time.perf_counter()
-
-    try:
-        if language == "zh-Hans":
-            html_content = render_template(
-                "delete_account_fail_mail_template_zh-CN.html",
-                to=to,
-                # TODO: Add more template variables
-            )
-            mail.send(to=to, subject="Dify 账户删除失败", html=html_content)
-        else:
-            html_content = render_template(
-                "delete_account_fail_mail_template_en-US.html",
-                to=to,
-                # TODO: Add more template variables
-            )
-            mail.send(to=to, subject="Dify Account Deletion Failed", html=html_content)
-
-        end_at = time.perf_counter()
-        logging.info(
-            click.style(
-                "Send account deletion failed email to {}: latency: {}".format(to, end_at - start_at), fg="green"
             )
         )
     except Exception:
@@ -104,18 +67,18 @@ def send_account_deletion_verification_code(language, to, code):
     try:
         if language == "zh-Hans":
             html_content = render_template(
-                "delete_account_verification_code_mail_template_zh-CN.html",
+                "delete_account_code_email_template_zh-CN.html",
                 to=to,
                 code=code
             )
-            mail.send(to=to, subject="Dify 删除账户验证码", html=html_content)
+            mail.send(to=to, subject="Dify 的删除账户验证码", html=html_content)
         else:
             html_content = render_template(
-                "delete_account_verification_code_mail_template_en-US.html",
+                "delete_account_code_email_en-US.html",
                 to=to,
                 code=code
             )
-            mail.send(to=to, subject="Dify Account Deletion Verification Code", html=html_content)
+            mail.send(to=to, subject="Delete Your Dify Account", html=html_content)
 
         end_at = time.perf_counter()
         logging.info(
