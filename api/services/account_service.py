@@ -793,6 +793,7 @@ class RegisterService:
         language: Optional[str] = None,
         status: Optional[AccountStatus] = None,
         is_setup: Optional[bool] = False,
+        create_workspace_required: Optional[bool] = True,
     ) -> Account:
         db.session.begin_nested()
         """Register account"""
@@ -810,7 +811,7 @@ class RegisterService:
             if open_id is not None or provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
 
-            if FeatureService.get_system_features().is_allow_create_workspace:
+            if FeatureService.get_system_features().is_allow_create_workspace and create_workspace_required:
                 tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
                 TenantService.create_tenant_member(tenant, account, role="owner")
                 account.current_tenant = tenant
