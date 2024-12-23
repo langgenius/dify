@@ -4,7 +4,7 @@ import uuid
 from collections.abc import Mapping
 from datetime import datetime
 from enum import Enum, StrEnum
-from typing import Any, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 import sqlalchemy as sa
 from flask import request
@@ -23,6 +23,9 @@ from models.workflow import WorkflowRunStatus
 from .account import Account, Tenant
 from .engine import db
 from .types import StringUUID
+
+if TYPE_CHECKING:
+    from .workflow import Workflow
 
 
 class DifySetup(db.Model):

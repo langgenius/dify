@@ -23,6 +23,7 @@ from .exc import (
     FileFetchError,
     HttpRequestNodeError,
     InvalidHttpMethodError,
+    RequestBodyError,
     ResponseSizeError,
 )
 
@@ -143,13 +144,19 @@ class Executor:
                 case "none":
                     self.content = ""
                 case "raw-text":
+                    if len(data) != 1:
+                        raise RequestBodyError("raw-text body type should have exactly one item")
                     self.content = self.variable_pool.convert_template(data[0].value).text
                 case "json":
+                    if len(data) != 1:
+                        raise RequestBodyError("json body type should have exactly one item")
                     json_string = self.variable_pool.convert_template(data[0].value).text
                     json_object = json.loads(json_string, strict=False)
                     self.json = json_object
                     # self.json = self._parse_object_contains_variables(json_object)
                 case "binary":
+                    if len(data) != 1:
+                        raise RequestBodyError("binary body type should have exactly one item")
                     file_selector = data[0].file
                     file_variable = self.variable_pool.get_file(file_selector)
                     if file_variable is None:
@@ -249,9 +256,7 @@ class Executor:
         # request_args = {k: v for k, v in request_args.items() if v is not None}
         try:
             response = getattr(ssrf_proxy, self.method)(**request_args)
-        except httpx.RequestError as e:
-            raise HttpRequestNodeError(str(e))
-        except ssrf_proxy.MaxRetriesExceededError as e:
+        except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
             raise HttpRequestNodeError(str(e))
         return response
 
@@ -319,6 +324,8 @@ class Executor:
             elif self.json:
                 body = json.dumps(self.json)
             elif self.node_data.body.type == "raw-text":
+                if len(self.node_data.body.data) != 1:
+                    raise RequestBodyError("raw-text body type should have exactly one item")
                 body = self.node_data.body.data[0].value
         if body:
             raw += f"Content-Length: {len(body)}\r\n"
