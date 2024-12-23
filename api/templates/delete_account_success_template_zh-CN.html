@@ -33,9 +33,10 @@
         line-height: 28.8px;
       }
       .description {
-        font-size: 13px;
-        line-height: 16px;
-        color: #676f83;
+        color: #354052;
+        font-weight: 400;
+        line-height: 20px;
+        font-size: 14px;
         margin-top: 12px;
       }
       .code-content {
@@ -55,6 +56,12 @@
         color: #676f83;
         font-size: 13px;
       }
+      .email{
+        color: #354052;
+        font-weight: 600;
+        line-height: 20px;
+        font-size: 14px;
+      }
     </style>
   </head>
   <body>
@@ -64,7 +71,7 @@
         <img src="https://cloud.dify.ai/logo/logo-site.png" alt="Dify Logo" />
       </div>
         <p class="title">您的账户已删除</p>
-      <p class="description">您最近删除了您的 <span>{{email}}</span> Dify 账户。该操作已完成，账户现已删除。请注意，您将不再能够访问此账户中曾经加入的所有工作区。</p>
+      <p class="description">您最近删除了您的 Dify 账户 <span class="email">{{email}}</span>。系统已完成处理，现在此账户已被删除。请注意，您不再有权访问此帐户曾经所在的所有空间。</p>
     </div>
   </body>
 </html>

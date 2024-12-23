@@ -33,10 +33,10 @@
         line-height: 28.8px;
       }
       .description {
-        font-size: 13px;
-        line-height: 16px;
-        color: #676f83;
-        margin-top: 12px;
+        color: #354052;
+        font-weight: 400;
+        line-height: 20px;
+        font-size: 14px;
       }
       .code-content {
         padding: 16px 32px;
@@ -55,6 +55,12 @@
         color: #676f83;
         font-size: 13px;
       }
+      .email{
+        color: #354052;
+        font-weight: 600;
+        line-height: 20px;
+        font-size: 14px;
+      }
     </style>
   </head>
   <body>
@@ -64,7 +70,7 @@
         <img src="https://cloud.dify.ai/logo/logo-site.png" alt="Dify Logo" />
       </div>
         <p class="title">Your account has finished deleting</p>
-      <p class="description">You recently deleted your <span>{{email}}</span> Dify account. It's done processing and is now deleted. As a reminder, you no longer have access to all the workspaces you used to be in with this account. </p>
+      <p class="description">You recently deleted your <span class="email">{{email}}</span> Dify account. It's done processing and is now deleted. As a reminder, you no longer have access to all the workspaces you used to be in with this account. </p>
     </div>
   </body>
 </html>
