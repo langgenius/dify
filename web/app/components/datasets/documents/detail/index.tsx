@@ -196,6 +196,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
                   clearProcessStatus={resetProcessStatus}
                   showNewSegmentModal={showNewSegmentModal}
                   showBatchModal={showBatchModal}
+                  embedding={embedding}
                 />
                 <Divider type='vertical' className='!bg-divider-regular !h-[14px] !mx-3' />
               </>
@@ -244,11 +245,14 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           {isDetailLoading
             ? <Loading type='app' />
             : <div className={cn('h-full w-full flex flex-col',
-              embedding ? 'px-6 py-3 sm:py-12 sm:px-16' : 'relative pt-3 pr-11',
-              isFullDocMode ? 'pl-11 pt-4' : 'pl-5',
+              embedding ? '' : isFullDocMode ? 'relative pt-4 pr-11 pl-11' : 'relative pt-3 pr-11 pl-5',
             )}>
               {embedding
-                ? <Embedding detail={documentDetail} detailUpdate={detailMutate} />
+                ? <Embedding
+                  detailUpdate={detailMutate}
+                  indexingType={dataset?.indexing_technique}
+                  retrievalMethod={dataset?.retrieval_model_dict?.search_method}
+                />
                 : <Completed
                   embeddingAvailable={embeddingAvailable}
                   showNewSegmentModal={newSegmentModalVisible}

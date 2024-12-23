@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
@@ -17,6 +17,7 @@ export type ISegmentAddProps = {
   clearProcessStatus: () => void
   showNewSegmentModal: () => void
   showBatchModal: () => void
+  embedding: boolean
 }
 
 export enum ProcessStatus {
@@ -31,8 +32,14 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
   clearProcessStatus,
   showNewSegmentModal,
   showBatchModal,
+  embedding,
 }) => {
   const { t } = useTranslation()
+  const textColor = useMemo(() => {
+    return embedding
+      ? 'text-components-button-secondary-accent-text-disabled'
+      : 'text-components-button-secondary-accent-text'
+  }, [embedding])
 
   if (importStatus) {
     return (
@@ -75,41 +82,51 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
   }
 
   return (
-    <div className='flex items-center rounded-lg border-[0.5px] border-components-button-secondary-border
-      bg-components-button-secondary-bg shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] relative z-20'>
-      <div
-        className='inline-flex items-center px-2.5 py-2 rounded-l-lg border-r-[1px] border-r-divider-subtle cursor-pointer hover:bg-state-base-hover'
+    <div className={cn(
+      'flex items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] relative z-20',
+      embedding && 'border-components-button-secondary-border-disabled bg-components-button-secondary-bg-disabled',
+    )}>
+      <button
+        type='button'
+        className={`inline-flex items-center px-2.5 py-2 rounded-l-lg border-r-[1px] border-r-divider-subtle
+          hover:bg-state-base-hover disabled:cursor-not-allowed disabled:hover:bg-transparent`}
         onClick={showNewSegmentModal}
+        disabled={embedding}
       >
-        <RiAddLine className='w-4 h-4 text-components-button-secondary-accent-text' />
-        <span className='text-components-button-secondary-accent-text text-[13px] leading-[16px] font-medium capitalize px-0.5 ml-0.5'>
+        <RiAddLine className={cn('w-4 h-4', textColor)} />
+        <span className={cn('text-[13px] leading-[16px] font-medium capitalize px-0.5 ml-0.5', textColor)}>
           {t('datasetDocuments.list.action.addButton')}
         </span>
-      </div>
+      </button>
       <Popover
         position='br'
         manualClose
         trigger='click'
         htmlContent={
           <div className='w-full p-1'>
-            <div
-              className='py-1.5 px-2 flex items-center hover:bg-state-base-hover rounded-lg cursor-pointer text-text-secondary system-md-regular'
+            <button
+              type='button'
+              className='w-full py-1.5 px-2 flex items-center hover:bg-state-base-hover rounded-lg text-text-secondary system-md-regular'
               onClick={showBatchModal}
             >
               {t('datasetDocuments.list.action.batchAdd')}
-            </div>
+            </button>
           </div>
         }
         btnElement={
-          <div className='flex justify-center items-center'>
-            <RiArrowDownSLine className='w-4 h-4 text-components-button-secondary-accent-text'/>
+          <div className='flex justify-center items-center' >
+            <RiArrowDownSLine className={cn('w-4 h-4', textColor)}/>
           </div>
         }
-        btnClassName={open => cn('!p-2 !border-0 !rounded-l-none !rounded-r-lg !hover:bg-state-base-hover shadow-xs shadow-shadow-3 backdrop-blur-[5px]',
-          open ? '!bg-state-base-hover' : '')}
+        btnClassName={open => cn(
+          `!p-2 !border-0 !rounded-l-none !rounded-r-lg !hover:bg-state-base-hover backdrop-blur-[5px]
+          disabled:cursor-not-allowed disabled:bg-transparent disabled:hover:bg-transparent`,
+          open ? '!bg-state-base-hover' : '',
+        )}
         popupClassName='!min-w-[128px] !bg-components-panel-bg-blur !rounded-xl border-[0.5px] !ring-0
           border-components-panel-border !shadow-xl !shadow-shadow-shadow-5 backdrop-blur-[5px]'
         className='min-w-[128px] h-fit'
+        disabled={embedding}
       />
     </div>
   )

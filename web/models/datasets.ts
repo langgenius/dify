@@ -1,6 +1,7 @@
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
 import type { AppIconType, AppMode, RetrievalConfig } from '@/types/app'
 import type { Tag } from '@/app/components/base/tag-management/constant'
+import type { IndexingType } from '@/app/components/datasets/create/step-two'
 
 export enum DataSourceType {
   FILE = 'upload_file',
@@ -24,7 +25,7 @@ export type DataSet = {
   description: string
   permission: DatasetPermission
   data_source_type: DataSourceType
-  indexing_technique: 'high_quality' | 'economy'
+  indexing_technique: IndexingType
   created_by: string
   updated_by: string
   updated_at: number

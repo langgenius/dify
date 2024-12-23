@@ -120,6 +120,10 @@ export const StatusItem: FC<{
     onOperate(operationName)
   }, { wait: 500 })
 
+  const embedding = useMemo(() => {
+    return ['queuing', 'indexing', 'paused'].includes(localStatus)
+  }, [localStatus])
+
   return <div className={
     cn('flex items-center',
       reverse ? 'flex-row-reverse' : '',
@@ -141,7 +145,7 @@ export const StatusItem: FC<{
             <Switch
               defaultValue={archived ? false : enabled}
               onChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')}
-              disabled={archived}
+              disabled={embedding || archived}
               size='md'
             />
           </Tooltip>
