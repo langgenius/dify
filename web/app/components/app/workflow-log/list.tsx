@@ -63,6 +63,14 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         </div>
       )
     }
+    if (status === 'partial-succeeded') {
+      return (
+        <div className='inline-flex items-center gap-1 system-xs-semibold-uppercase'>
+          <Indicator color={'green'} />
+          <span className='text-util-colors-green-green-600'>Partial Success</span>
+        </div>
+      )
+    }
   }
 
   const onCloseDrawer = () => {

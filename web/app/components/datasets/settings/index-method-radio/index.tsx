@@ -30,7 +30,7 @@ const IndexMethodRadio = ({
   const { t } = useTranslation()
   const economyDomRef = useRef<HTMLDivElement>(null)
   const isHoveringEconomy = useHover(economyDomRef)
-  const isEconomyDisabled = docForm === ChunkingMode.parentChild || currentValue === IndexingType.QUALIFIED
+  const isEconomyDisabled = currentValue === IndexingType.QUALIFIED
   const options = [
     {
       key: 'high_quality',
@@ -51,7 +51,6 @@ const IndexMethodRadio = ({
 
   return (
     <div className={classNames('flex justify-between w-full gap-2')}>
-
       {
         options.map((option) => {
           const isParentChild = docForm === ChunkingMode.parentChild
@@ -73,6 +72,8 @@ const IndexMethodRadio = ({
                   onSwitched={() => {
                     if (isParentChild && option.key === IndexingType.ECONOMICAL)
                       return
+                    if (isEconomyDisabled && option.key === IndexingType.ECONOMICAL)
+                      return
                     if (!disable)
                       onChange(option.key as DataSet['indexing_technique'])
                   } }
@@ -85,11 +86,11 @@ const IndexMethodRadio = ({
                   title={option.text}
                   description={option.desc}
                   ref={option.key === 'economy' ? economyDomRef : undefined}
-                  className={classNames(isEconomyDisabled && 'cursor-not-allowed')}
+                  className={classNames((isEconomyDisabled && option.key === 'economy') && 'cursor-not-allowed')}
                 >
                 </OptionCard>
               </PortalToFollowElemTrigger>
-              <PortalToFollowElemContent>
+              <PortalToFollowElemContent style={{ zIndex: 60 }}>
                 <div className='p-3 bg-components-tooltip-bg border-components-panel-border text-xs font-medium text-text-secondary rounded-lg shadow-lg'>
                   {t('datasetSettings.form.indexMethodChangeToEconomyDisabledTip')}
                 </div>

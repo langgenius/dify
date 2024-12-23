@@ -4,6 +4,7 @@ from typing import Any, Optional, cast
 
 from pydantic import BaseModel, Field
 
+from configs import dify_config
 from core.workflow.graph_engine.entities.run_condition import RunCondition
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.answer.answer_stream_generate_router import AnswerStreamGeneratorRouter
@@ -170,7 +171,9 @@ class Graph(BaseModel):
         for parallel in parallel_mapping.values():
             if parallel.parent_parallel_id:
                 cls._check_exceed_parallel_limit(
-                    parallel_mapping=parallel_mapping, level_limit=3, parent_parallel_id=parallel.parent_parallel_id
+                    parallel_mapping=parallel_mapping,
+                    level_limit=dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
+                    parent_parallel_id=parallel.parent_parallel_id,
                 )
 
         # init answer stream generate routes

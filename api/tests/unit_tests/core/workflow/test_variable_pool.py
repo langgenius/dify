@@ -19,6 +19,7 @@ def file():
         related_id="test_related_id",
         remote_url="test_url",
         filename="test_file.txt",
+        storage_key="",
     )
 
 

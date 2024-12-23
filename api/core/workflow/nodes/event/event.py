@@ -1,7 +1,10 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.entities.node_entities import NodeRunResult
+from models.workflow import WorkflowNodeExecutionStatus
 
 
 class RunCompletedEvent(BaseModel):
@@ -26,3 +29,25 @@ class ModelInvokeCompletedEvent(BaseModel):
     text: str
     usage: LLMUsage
     finish_reason: str | None = None
+
+
+class RunRetryEvent(BaseModel):
+    """Node Run Retry event"""
+
+    error: str = Field(..., description="error")
+    retry_index: int = Field(..., description="Retry attempt number")
+    start_at: datetime = Field(..., description="Retry start time")
+
+
+class SingleStepRetryEvent(BaseModel):
+    """Single step retry event"""
+
+    status: str = WorkflowNodeExecutionStatus.RETRY.value
+
+    inputs: dict | None = Field(..., description="input")
+    error: str = Field(..., description="error")
+    outputs: dict = Field(..., description="output")
+    retry_index: int = Field(..., description="Retry attempt number")
+    error: str = Field(..., description="error")
+    elapsed_time: float = Field(..., description="elapsed time")
+    execution_metadata: dict | None = Field(..., description="execution metadata")

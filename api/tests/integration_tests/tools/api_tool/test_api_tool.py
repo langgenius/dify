@@ -34,9 +34,9 @@ def test_api_tool(setup_http_mock):
     response = tool.do_http_request(tool.api_bundle.server_url, tool.api_bundle.method, headers, parameters)
 
     assert response.status_code == 200
-    assert "/p_param" == response.request.url.path
-    assert b"query_param=q_param" == response.request.url.query
-    assert "h_param" == response.request.headers.get("header_param")
-    assert "application/json" == response.request.headers.get("content-type")
-    assert "cookie_param=c_param" == response.request.headers.get("cookie")
+    assert response.request.url.path == "/p_param"
+    assert response.request.url.query == b"query_param=q_param"
+    assert response.request.headers.get("header_param") == "h_param"
+    assert response.request.headers.get("content-type") == "application/json"
+    assert response.request.headers.get("cookie") == "cookie_param=c_param"
     assert "b_param" in response.content.decode()

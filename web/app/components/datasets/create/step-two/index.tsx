@@ -41,7 +41,7 @@ import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/componen
 import Toast from '@/app/components/base/toast'
 import type { NotionPage } from '@/models/common'
 import { DataSourceProvider } from '@/models/common'
-import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType, RerankingModeEnum } from '@/models/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -413,8 +413,12 @@ const StepTwo = ({
       }
       const postRetrievalConfig = ensureRerankModelSelected({
         rerankDefaultModel: rerankDefaultModel!,
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        retrievalConfig,
+        retrievalConfig: {
+          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          ...retrievalConfig,
+          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          reranking_enable: retrievalConfig.reranking_mode === RerankingModeEnum.RerankingModel,
+        },
         indexMethod: indexMethod as string,
       })
       params = {
@@ -590,8 +594,8 @@ const StepTwo = ({
       <div className={cn('relative h-full w-1/2 py-6 overflow-y-auto', isMobile ? 'px-4' : 'px-12')}>
         <div className={'system-md-semibold mb-1'}>{t('datasetCreation.stepTwo.segmentation')}</div>
         {((isInUpload && [ChunkingMode.text, ChunkingMode.qa].includes(currentDataset!.doc_form))
-        || isUploadInEmptyDataset
-        || isInInit)
+          || isUploadInEmptyDataset
+          || isInInit)
           && <OptionCard
             className='bg-background-section mb-2'
             title={t('datasetCreation.stepTwo.general')}
@@ -924,7 +928,7 @@ const StepTwo = ({
           <div className='mt-2 h-10 p-2 flex items-center gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border overflow-hidden bg-components-panel-bg-blur backdrop-blur-[5px] shadow-xs'>
             <div className='absolute top-0 left-0 right-0 bottom-0 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)] opacity-40'></div>
             <div className='p-1'>
-              <AlertTriangle className='size-4 text-text-warning-secondary'/>
+              <AlertTriangle className='size-4 text-text-warning-secondary' />
             </div>
             <span className='system-xs-medium'>{t('datasetCreation.stepTwo.highQualityTip')}</span>
           </div>
