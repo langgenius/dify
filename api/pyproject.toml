@@ -84,6 +84,7 @@ tencentcloud-sdk-python-hunyuan = "~3.0.1158"
 tiktoken = "~0.8.0"
 tokenizers = "~0.15.0"
 transformers = "~4.35.0"
+tweepy = "~4.14.0"
 unstructured = { version = "~0.16.1", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"] }
 validators = "0.21.0"
 volcengine-python-sdk = {extras = ["ark"], version = "~1.0.98"}
@@ -99,7 +100,6 @@ zhipuai = "~2.1.5"
 # Related transparent dependencies with pinned version
 # required by main implementations
 ############################################################
-tweepy = "~4.14.0"
 [tool.poetry.group.indirect.dependencies]
 kaleido = "0.2.1"
 rank-bm25 = "~0.2.2"
