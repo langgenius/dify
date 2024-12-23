@@ -464,7 +464,8 @@ class PublishedAllWorkflowApi(Resource):
         workflow_service = WorkflowService()
         workflows, has_more = workflow_service.get_all_published_workflow(
             app_model=app_model,
-            args=args
+            page=page,
+            limit=limit
         )
 
         return {
