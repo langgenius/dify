@@ -1,6 +1,7 @@
 import os
 
 import requests
+from tenacity import retry, stop_before_delay, wait_fixed
 
 from extensions.ext_database import db
 from models.account import TenantAccountJoin, TenantAccountRole
@@ -38,12 +39,16 @@ class BillingService:
         params = {"prefilled_email": prefilled_email, "tenant_id": tenant_id}
         return cls._send_request("GET", "/invoices", params=params)
 
+    @retry(wait=wait_fixed(2), stop=stop_before_delay(10), reraise=True)
     @classmethod
     def _send_request(cls, method, endpoint, json=None, params=None):
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
 
         url = f"{cls.base_url}{endpoint}"
-        response = requests.request(method, url, json=json, params=params, headers=headers)
+        try:
+            response = requests.request(method, url, json=json, params=params, headers=headers)
+        except requests.exceptions.RequestException as e:
+            raise ValueError(f"Failed to connect to billing service: {e}")
 
         return response.json()
 
