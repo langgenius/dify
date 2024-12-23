@@ -557,7 +557,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                 </div>
               </td>
               <td>
-                <div className='group flex items-center justify-between'>
+                <div className={'group flex items-center justify-between mr-6 hover:mr-0'}>
                   <span className={cn(s.tdValue, 'flex items-center')}>
                     {doc?.data_source_type === DataSourceType.NOTION && <NotionIcon className='inline-flex -mt-[3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />
                     }
