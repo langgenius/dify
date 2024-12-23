@@ -34,7 +34,7 @@ const RetryOnNode = ({
   if (!retry_config?.retry_enabled)
     return null
 
-  if (!data._retryIndex)
+  if (!showDefault && !data._retryIndex)
     return null
 
   return (
