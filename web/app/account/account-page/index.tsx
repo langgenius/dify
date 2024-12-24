@@ -181,7 +181,7 @@ export default function AccountPage() {
             wrapperClassName='mt-2'
           />
         )}
-        {!IS_CE_EDITION && <Button className='mt-2 text-components-button-destructive-secondary-text' onClick={() => setShowDeleteAccountModal(true)}>{t('common.account.delete')}</Button>}
+        {IS_CE_EDITION && <Button className='mt-2 text-components-button-destructive-secondary-text' onClick={() => setShowDeleteAccountModal(true)}>{t('common.account.delete')}</Button>}
       </div>
       {
         editNameModalVisible && (

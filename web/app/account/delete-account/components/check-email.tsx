@@ -14,19 +14,17 @@ export default function CheckEmail(props: DeleteAccountProps) {
   const { t } = useTranslation()
   const { userProfile } = useAppContext()
   const [userInputEmail, setUserInputEmail] = useState('')
-  return <div className='flex flex-col gap-4'>
-    <div className='text-text-destructive body-md-medium'>
+  return <>
+    <div className='pt-1 pb-2 text-text-destructive body-md-medium'>
       {t('common.account.deleteTip')}
     </div>
-    <label className='system-sm-semibold text-text-secondary'>{t('common.account.deleteLabel')}</label>
-    <div>
-      <Input placeholder={t('common.account.deletePlaceholder') as string} onChange={(e) => {
-        setUserInputEmail(e.target.value)
-      }} />
-    </div>
-    <div className='w-full flex flex-col gap-2 pb-6'>
+    <label className='mt-3 mb-1 h-6 flex items-center system-sm-semibold text-text-secondary'>{t('common.account.deleteLabel')}</label>
+    <Input placeholder={t('common.account.deletePlaceholder') as string} onChange={(e) => {
+      setUserInputEmail(e.target.value)
+    }} />
+    <div className='w-full flex flex-col mt-3 gap-2'>
       <Button className='w-full' disabled={userInputEmail !== userProfile.email} variant='primary' onClick={props.onConfirm}>{t('common.account.sendVerificationButton')}</Button>
       <Button className='w-full' onClick={props.onCancel}>{t('common.operation.cancel')}</Button>
     </div>
-  </div>
+  </>
 }

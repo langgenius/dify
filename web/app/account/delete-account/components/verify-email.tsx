@@ -25,20 +25,18 @@ export default function VerifyEmail(props: DeleteAccountProps) {
 
   }, [])
 
-  return <div className='flex flex-col gap-4'>
-    <div className='text-text-destructive body-md-medium'>
+  return <>
+    <div className='pt-1 pb-2 text-text-destructive body-md-medium'>
       {t('common.account.deleteTip')}
     </div>
-    <label className='system-sm-semibold text-text-secondary'>{t('common.account.verificationLabel')}</label>
-    <div>
-      <Input minLength={6} maxLength={6} placeholder={t('common.account.verificationPlaceholder') as string} onChange={(e) => {
-        setVerificationCode(e.target.value)
-      }} />
-    </div>
-    <div className='w-full flex flex-col gap-2 pb-6'>
+    <label className='mt-3 mb-1 h-6 flex items-center system-sm-semibold text-text-secondary'>{t('common.account.verificationLabel')}</label>
+    <Input minLength={6} maxLength={6} placeholder={t('common.account.verificationPlaceholder') as string} onChange={(e) => {
+      setVerificationCode(e.target.value)
+    }} />
+    <div className='w-full flex flex-col mt-3 gap-2'>
       <Button className='w-full' disabled={shouldButtonDisabled} variant='warning' onClick={props.onConfirm}>{t('common.account.permanentlyDeleteButton')}</Button>
       <Button className='w-full' onClick={props.onCancel}>{t('common.operation.cancel')}</Button>
       <Countdown onResend={resendVerifyCode} />
     </div>
-  </div>
+  </>
 }
