@@ -40,7 +40,6 @@ import Tooltip from '@/app/components/base/tooltip'
 import { CopyIcon } from '@/app/components/base/copy-icon'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
-import { correctProvider } from '@/utils'
 import cn from '@/utils/classnames'
 
 dayjs.extend(utc)
@@ -80,6 +79,9 @@ const HandThumbIconWithCount: FC<{ count: number; iconType: 'up' | 'down' }> = (
 }
 
 const statusTdRender = (statusCount: StatusCount) => {
+  if (!statusCount)
+    return null
+
   if (statusCount.partial_success + statusCount.failed === 0) {
     return (
       <div className='inline-flex items-center gap-1 system-xs-semibold-uppercase'>
