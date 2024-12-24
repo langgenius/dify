@@ -130,7 +130,7 @@ const ZoomInOut: FC = () => {
         crossAxis: -2,
       }}
     >
-      <PortalToFollowElemTrigger asChild onClick={handleTrigger}>
+      <PortalToFollowElemTrigger asChild>
         <div className={`
           p-0.5 h-9 cursor-pointer text-[13px] text-gray-500 font-medium rounded-lg bg-white shadow-lg border-[0.5px] border-gray-100
           ${workflowReadOnly && '!cursor-not-allowed opacity-50'}
@@ -144,8 +144,11 @@ const ZoomInOut: FC = () => {
               shortcuts={['ctrl', '-']}
             >
               <div
-                className='flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer hover:bg-black/5'
+                className={`flex items-center justify-center w-8 h-8 rounded-lg ${zoom <= 0.25 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
                 onClick={(e) => {
+                  if (zoom <= 0.25)
+                    return
+
                   e.stopPropagation()
                   zoomOut()
                 }}
@@ -153,14 +156,17 @@ const ZoomInOut: FC = () => {
                 <RiZoomOutLine className='w-4 h-4' />
               </div>
             </TipPopup>
-            <div className='w-[34px]'>{parseFloat(`${zoom * 100}`).toFixed(0)}%</div>
+            <div onClick={handleTrigger} className='w-[34px] select-none'>{parseFloat(`${zoom * 100}`).toFixed(0)}%</div>
             <TipPopup
               title={t('workflow.operator.zoomIn')}
               shortcuts={['ctrl', '+']}
             >
               <div
-                className='flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer hover:bg-black/5'
+                className={`flex items-center justify-center w-8 h-8 rounded-lg ${zoom >= 2 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
                 onClick={(e) => {
+                  if (zoom >= 2)
+                    return
+
                   e.stopPropagation()
                   zoomIn()
                 }}
