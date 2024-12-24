@@ -90,5 +90,5 @@ class FileVariable(FileSegment, Variable):
     pass
 
 
-class ArrayFileVariable(ArrayFileSegment, Variable):
+class ArrayFileVariable(ArrayFileSegment, ArrayVariable):
     pass
