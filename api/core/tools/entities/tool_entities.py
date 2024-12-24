@@ -246,7 +246,7 @@ class ToolParameter(BaseModel):
         # FIXME fix the type error
         if options:
             options = [
-                ToolParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option))
+                ToolParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option))  # type: ignore
                 for option in options  # type: ignore
             ]
         return cls(
