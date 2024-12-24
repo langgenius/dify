@@ -320,6 +320,7 @@ const translation = {
     mode: '分段模式',
     segmentLength: '最大分段长度',
     textCleaning: '文本预定义与清洗',
+    textProcessingRules: '文本处理规则',
     segments: '段落',
     highQuality: '高质量模式',
     economy: '经济模式',
