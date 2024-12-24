@@ -72,21 +72,11 @@ const Form: FC<FormProps> = ({
     onChange({ ...value, [key]: val, ...shouldClearVariable })
   }
 
-  const handleModelChanged = useCallback((key: string, model: { provider: string; modelId: string; mode?: string }) => {
+  const handleModelChanged = useCallback((key: string, model: any) => {
     const newValue = {
       ...value[key],
-      provider: model.provider,
-      model: model.modelId,
-      mode: model.mode,
+      ...model,
       type: FormTypeEnum.modelSelector,
-    }
-    onChange({ ...value, [key]: newValue })
-  }, [onChange, value])
-
-  const handleCompletionParamsChange = useCallback((key: string, newParams: Record<string, any>) => {
-    const newValue = {
-      ...value[key],
-      completion_params: newParams,
     }
     onChange({ ...value, [key]: newValue })
   }, [onChange, value])
@@ -302,12 +292,8 @@ const Form: FC<FormProps> = ({
             popupClassName='!w-[387px]'
             isAdvancedMode
             isInWorkflow
-            provider={value[variable]?.provider}
-            modelId={value[variable]?.model}
-            mode={value[variable]?.mode}
-            completionParams={value[variable]?.completion_params}
+            value={value[variable]}
             setModel={model => handleModelChanged(variable, model)}
-            onCompletionParamsChange={params => handleCompletionParamsChange(variable, params)}
             readonly={readonly}
             scope={scope}
           />
