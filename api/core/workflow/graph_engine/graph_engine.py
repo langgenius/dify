@@ -612,8 +612,8 @@ class GraphEngine:
         max_retries = node_instance.node_data.retry_config.max_retries
         retry_interval = node_instance.node_data.retry_config.retry_interval_seconds
         retries = 0
-        shoudl_continue_retry = True
-        while shoudl_continue_retry and retries <= max_retries:
+        should_continue_retry = True
+        while should_continue_retry and retries <= max_retries:
             try:
                 # run node
                 retry_start_at = datetime.now(UTC).replace(tzinfo=None)
@@ -692,7 +692,7 @@ class GraphEngine:
                                         parent_parallel_id=parent_parallel_id,
                                         parent_parallel_start_node_id=parent_parallel_start_node_id,
                                     )
-                                    shoudl_continue_retry = False
+                                    should_continue_retry = False
                                 else:
                                     yield NodeRunFailedEvent(
                                         error=route_node_state.failed_reason or "Unknown error.",
@@ -706,7 +706,7 @@ class GraphEngine:
                                         parent_parallel_id=parent_parallel_id,
                                         parent_parallel_start_node_id=parent_parallel_start_node_id,
                                     )
-                                shoudl_continue_retry = False
+                                should_continue_retry = False
                             elif run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
                                 if node_instance.should_continue_on_error and self.graph.edge_mapping.get(
                                     node_instance.node_id
@@ -758,7 +758,7 @@ class GraphEngine:
                                     parent_parallel_id=parent_parallel_id,
                                     parent_parallel_start_node_id=parent_parallel_start_node_id,
                                 )
-                                shoudl_continue_retry = False
+                                should_continue_retry = False
 
                             break
                         elif isinstance(item, RunStreamChunkEvent):
