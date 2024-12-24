@@ -54,36 +54,37 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
 
     logging.info(click.style("Start sync website document: {}".format(document_id), fg="green"))
     document = db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
+    if not document:
+        logging.info(click.style("Document not found: {}".format(document_id), fg="yellow"))
+        return
     try:
-        if document:
-            # clean old data
-            index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
+        # clean old data
+        index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
 
-            segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
-            if segments:
-                index_node_ids = [segment.index_node_id for segment in segments]
-                # delete from vector index
-                index_processor.clean(dataset, index_node_ids)
+        segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
+        if segments:
+            index_node_ids = [segment.index_node_id for segment in segments]
+            # delete from vector index
+            index_processor.clean(dataset, index_node_ids)
 
-                for segment in segments:
-                    db.session.delete(segment)
-                db.session.commit()
-
-            document.indexing_status = "parsing"
-            document.processing_started_at = datetime.datetime.utcnow()
-            db.session.add(document)
+            for segment in segments:
+                db.session.delete(segment)
             db.session.commit()
 
-            indexing_runner = IndexingRunner()
-            indexing_runner.run([document])
-            redis_client.delete(sync_indexing_cache_key)
+        document.indexing_status = "parsing"
+        document.processing_started_at = datetime.datetime.utcnow()
+        db.session.add(document)
+        db.session.commit()
+
+        indexing_runner = IndexingRunner()
+        indexing_runner.run([document])
+        redis_client.delete(sync_indexing_cache_key)
     except Exception as ex:
-        if document:
-            document.indexing_status = "error"
-            document.error = str(ex)
-            document.stopped_at = datetime.datetime.utcnow()
-            db.session.add(document)
-            db.session.commit()
+        document.indexing_status = "error"
+        document.error = str(ex)
+        document.stopped_at = datetime.datetime.utcnow()
+        db.session.add(document)
+        db.session.commit()
         logging.info(click.style(str(ex), fg="yellow"))
         redis_client.delete(sync_indexing_cache_key)
         pass
