@@ -147,6 +147,8 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
                     planning_strategy=planning_strategy,
                 )
         elif node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE.value:
+            if node_data.multiple_retrieval_config is None:
+                raise ValueError("multiple_retrieval_config is required")
             if node_data.multiple_retrieval_config.reranking_mode == "reranking_model":
                 if node_data.multiple_retrieval_config.reranking_model:
                     reranking_model = {
@@ -157,6 +159,8 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
                     reranking_model = None
                 weights = None
             elif node_data.multiple_retrieval_config.reranking_mode == "weighted_score":
+                if node_data.multiple_retrieval_config.weights is None:
+                    raise ValueError("weights is required")
                 reranking_model = None
                 vector_setting = node_data.multiple_retrieval_config.weights.vector_setting
                 weights = {
@@ -180,7 +184,9 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
                 available_datasets=available_datasets,
                 query=query,
                 top_k=node_data.multiple_retrieval_config.top_k,
-                score_threshold=node_data.multiple_retrieval_config.score_threshold,
+                score_threshold=node_data.multiple_retrieval_config.score_threshold
+                if node_data.multiple_retrieval_config.score_threshold is not None
+                else 0.0,
                 reranking_mode=node_data.multiple_retrieval_config.reranking_mode,
                 reranking_model=reranking_model,
                 weights=weights,
@@ -205,7 +211,7 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
                 "content": item.page_content,
             }
             retrieval_resource_list.append(source)
-        document_score_list = {}
+        document_score_list: dict[str, float] = {}
         # deal with dify documents
         if dify_documents:
             document_score_list = {}
@@ -260,7 +266,9 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
                         retrieval_resource_list.append(source)
         if retrieval_resource_list:
             retrieval_resource_list = sorted(
-                retrieval_resource_list, key=lambda x: x.get("metadata").get("score") or 0.0, reverse=True
+                retrieval_resource_list,
+                key=lambda x: x["metadata"]["score"] if x["metadata"].get("score") is not None else 0.0,
+                reverse=True,
             )
             position = 1
             for item in retrieval_resource_list:
@@ -295,6 +303,8 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
         :param node_data: node data
         :return:
         """
+        if node_data.single_retrieval_config is None:
+            raise ValueError("single_retrieval_config is required")
         model_name = node_data.single_retrieval_config.model.name
         provider_name = node_data.single_retrieval_config.model.provider
 

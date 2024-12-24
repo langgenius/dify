@@ -2,7 +2,7 @@ import logging
 from collections.abc import Generator
 from typing import Optional
 
-from volcenginesdkarkruntime.types.chat import ChatCompletion, ChatCompletionChunk
+from volcenginesdkarkruntime.types.chat import ChatCompletion, ChatCompletionChunk  # type: ignore
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta

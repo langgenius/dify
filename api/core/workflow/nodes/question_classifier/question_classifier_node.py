@@ -1,6 +1,6 @@
 import json
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import Any, Optional, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -34,12 +34,9 @@ from .template_prompts import (
     QUESTION_CLASSIFIER_USER_PROMPT_3,
 )
 
-if TYPE_CHECKING:
-    from core.file import File
-
 
 class QuestionClassifierNode(LLMNode):
-    _node_data_cls = QuestionClassifierNodeData
+    _node_data_cls = QuestionClassifierNodeData  # type: ignore
     _node_type = NodeType.QUESTION_CLASSIFIER
 
     def _run(self):
@@ -61,7 +58,7 @@ class QuestionClassifierNode(LLMNode):
         node_data.instruction = node_data.instruction or ""
         node_data.instruction = variable_pool.convert_template(node_data.instruction).text
 
-        files: Sequence[File] = (
+        files = (
             self._fetch_files(
                 selector=node_data.vision.configs.variable_selector,
             )
@@ -168,7 +165,7 @@ class QuestionClassifierNode(LLMNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: QuestionClassifierNodeData,
+        node_data: Any,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -177,6 +174,7 @@ class QuestionClassifierNode(LLMNode):
         :param node_data: node data
         :return:
         """
+        node_data = cast(QuestionClassifierNodeData, node_data)
         variable_mapping = {"query": node_data.query_variable_selector}
         variable_selectors = []
         if node_data.instruction:

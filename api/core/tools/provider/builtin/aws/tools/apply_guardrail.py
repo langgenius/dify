@@ -2,8 +2,8 @@ import json
 import logging
 from typing import Any, Union
 
-import boto3
-from botocore.exceptions import BotoCoreError
+import boto3  # type: ignore
+from botocore.exceptions import BotoCoreError  # type: ignore
 from pydantic import BaseModel, Field
 
 from core.tools.entities.tool_entities import ToolInvokeMessage

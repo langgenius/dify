@@ -24,7 +24,7 @@ class GiteeAIEmbeddingModel(OAICompatEmbeddingModel):
         super().validate_credentials(model, credentials)
 
     @staticmethod
-    def _add_custom_parameters(credentials: dict, model: str) -> None:
+    def _add_custom_parameters(credentials: dict, model: Optional[str]) -> None:
         if model is None:
             model = "bge-m3"
 

@@ -49,6 +49,7 @@ class BaseIndexProcessor(ABC):
         """
         Get the NodeParser object according to the processing rule.
         """
+        character_splitter: TextSplitter
         if processing_rule["mode"] == "custom":
             # The user-defined segmentation rule
             rules = processing_rule["rules"]

@@ -5,14 +5,14 @@ import uuid
 from datetime import timedelta
 from typing import Any
 
-from couchbase import search
-from couchbase.auth import PasswordAuthenticator
-from couchbase.cluster import Cluster
-from couchbase.management.search import SearchIndex
+from couchbase import search  # type: ignore
+from couchbase.auth import PasswordAuthenticator  # type: ignore
+from couchbase.cluster import Cluster  # type: ignore
+from couchbase.management.search import SearchIndex  # type: ignore
 
 # needed for options -- cluster, timeout, SQL++ (N1QL) query, etc.
-from couchbase.options import ClusterOptions, SearchOptions
-from couchbase.vector_search import VectorQuery, VectorSearch
+from couchbase.options import ClusterOptions, SearchOptions  # type: ignore
+from couchbase.vector_search import VectorQuery, VectorSearch  # type: ignore
 from flask import current_app
 from pydantic import BaseModel, model_validator
 
@@ -231,7 +231,7 @@ class CouchbaseVector(BaseVector):
         # Pass the id as a parameter to the query
         result = self._cluster.query(query, named_parameters={"doc_id": id}).execute()
         for row in result:
-            return row["count"] > 0
+            return bool(row["count"] > 0)
         return False  # Return False if no rows are returned
 
     def delete_by_ids(self, ids: list[str]) -> None:
@@ -369,10 +369,10 @@ class CouchbaseVectorFactory(AbstractVectorFactory):
         return CouchbaseVector(
             collection_name=collection_name,
             config=CouchbaseConfig(
-                connection_string=config.get("COUCHBASE_CONNECTION_STRING"),
-                user=config.get("COUCHBASE_USER"),
-                password=config.get("COUCHBASE_PASSWORD"),
-                bucket_name=config.get("COUCHBASE_BUCKET_NAME"),
-                scope_name=config.get("COUCHBASE_SCOPE_NAME"),
+                connection_string=config.get("COUCHBASE_CONNECTION_STRING", ""),
+                user=config.get("COUCHBASE_USER", ""),
+                password=config.get("COUCHBASE_PASSWORD", ""),
+                bucket_name=config.get("COUCHBASE_BUCKET_NAME", ""),
+                scope_name=config.get("COUCHBASE_SCOPE_NAME", ""),
             ),
         )

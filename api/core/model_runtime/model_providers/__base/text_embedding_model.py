@@ -89,7 +89,8 @@ class TextEmbeddingModel(AIModel):
         model_schema = self.get_model_schema(model, credentials)
 
         if model_schema and ModelPropertyKey.CONTEXT_SIZE in model_schema.model_properties:
-            return model_schema.model_properties[ModelPropertyKey.CONTEXT_SIZE]
+            content_size: int = model_schema.model_properties[ModelPropertyKey.CONTEXT_SIZE]
+            return content_size
 
         return 1000
 
@@ -104,6 +105,7 @@ class TextEmbeddingModel(AIModel):
         model_schema = self.get_model_schema(model, credentials)
 
         if model_schema and ModelPropertyKey.MAX_CHUNKS in model_schema.model_properties:
-            return model_schema.model_properties[ModelPropertyKey.MAX_CHUNKS]
+            max_chunks: int = model_schema.model_properties[ModelPropertyKey.MAX_CHUNKS]
+            return max_chunks
 
         return 1

@@ -68,20 +68,20 @@ class WorkflowTool(Tool):
         if data.get("error"):
             raise Exception(data.get("error"))
 
-        result = []
+        r = []
 
         outputs = data.get("outputs")
         if outputs == None:
             outputs = {}
         else:
-            outputs, files = self._extract_files(outputs)
-            for file in files:
-                result.append(self.create_file_message(file))
+            outputs, extracted_files = self._extract_files(outputs)
+            for f in extracted_files:
+                r.append(self.create_file_message(f))
 
-        result.append(self.create_text_message(json.dumps(outputs, ensure_ascii=False)))
-        result.append(self.create_json_message(outputs))
+        r.append(self.create_text_message(json.dumps(outputs, ensure_ascii=False)))
+        r.append(self.create_json_message(outputs))
 
-        return result
+        return r
 
     def _get_user(self, user_id: str) -> Union[EndUser, Account]:
         """

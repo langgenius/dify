@@ -30,6 +30,9 @@ class UnstructuredEpubExtractor(BaseExtractor):
         if self._api_url:
             from unstructured.partition.api import partition_via_api
 
+            if self._api_key is None:
+                raise ValueError("api_key is required")
+
             elements = partition_via_api(filename=self._file_path, api_url=self._api_url, api_key=self._api_key)
         else:
             from unstructured.partition.epub import partition_epub

@@ -244,18 +244,19 @@ class ToolParameter(BaseModel):
         """
         # convert options to ToolParameterOption
         if options:
-            options = [
+            options_tool_parametor = [
                 ToolParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option)) for option in options
             ]
         return cls(
             name=name,
             label=I18nObject(en_US="", zh_Hans=""),
             human_description=I18nObject(en_US="", zh_Hans=""),
+            placeholder=None,
             type=type,
             form=cls.ToolParameterForm.LLM,
             llm_description=llm_description,
             required=required,
-            options=options,
+            options=options_tool_parametor,
         )
 
 
@@ -331,7 +332,7 @@ class ToolProviderCredentials(BaseModel):
             "default": self.default,
             "options": self.options,
             "help": self.help.to_dict() if self.help else None,
-            "label": self.label.to_dict(),
+            "label": self.label.to_dict() if self.label else None,
             "url": self.url,
             "placeholder": self.placeholder.to_dict() if self.placeholder else None,
         }
@@ -374,7 +375,10 @@ class ToolRuntimeVariablePool(BaseModel):
                 pool[index] = ToolRuntimeImageVariable(**variable)
         super().__init__(**data)
 
-    def dict(self) -> dict:
+    def dict(self) -> dict:  # type: ignore
+        """
+        FIXME: just ignore the type check for now
+        """
         return {
             "conversation_id": self.conversation_id,
             "user_id": self.user_id,

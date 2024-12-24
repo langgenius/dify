@@ -1,7 +1,7 @@
 import logging
 import uuid
 from enum import StrEnum
-from typing import Optional
+from typing import Optional, cast
 from uuid import uuid4
 
 import yaml
@@ -103,7 +103,7 @@ class AppDslService:
             raise ValueError(f"Invalid import_mode: {import_mode}")
 
         # Get YAML content
-        content = ""
+        content: bytes | str = b""
         if mode == ImportMode.YAML_URL:
             if not yaml_url:
                 return Import(
@@ -136,7 +136,7 @@ class AppDslService:
                     )
 
                 try:
-                    content = content.decode("utf-8")
+                    content = cast(bytes, content).decode("utf-8")
                 except UnicodeDecodeError as e:
                     return Import(
                         id=import_id,
@@ -362,6 +362,9 @@ class AppDslService:
             app.icon_background = icon_background or app_data.get("icon_background", app.icon_background)
             app.updated_by = account.id
         else:
+            if account.current_tenant_id is None:
+                raise ValueError("Current tenant is not set")
+
             # Create new app
             app = App()
             app.id = str(uuid4())

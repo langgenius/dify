@@ -1,3 +1,5 @@
+from typing import Optional
+
 from core.moderation.factory import ModerationFactory, ModerationOutputsResult
 from extensions.ext_database import db
 from models.model import App, AppModelConfig
@@ -5,7 +7,7 @@ from models.model import App, AppModelConfig
 
 class ModerationService:
     def moderation_for_outputs(self, app_id: str, app_model: App, text: str) -> ModerationOutputsResult:
-        app_model_config: AppModelConfig = None
+        app_model_config: Optional[AppModelConfig] = None
 
         app_model_config = (
             db.session.query(AppModelConfig).filter(AppModelConfig.id == app_model.app_model_config_id).first()

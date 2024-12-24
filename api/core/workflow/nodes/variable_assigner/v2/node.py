@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, cast
 
 from core.variables import SegmentType, Variable
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
@@ -29,7 +29,7 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
 
     def _run(self) -> NodeRunResult:
         inputs = self.node_data.model_dump()
-        process_data = {}
+        process_data: dict[str, Any] = {}
         # NOTE: This node has no outputs
         updated_variables: list[Variable] = []
 
@@ -119,7 +119,7 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
                 else:
                     conversation_id = conversation_id.value
                 common_helpers.update_conversation_variable(
-                    conversation_id=conversation_id,
+                    conversation_id=cast(str, conversation_id),
                     variable=variable,
                 )
 
