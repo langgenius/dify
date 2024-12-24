@@ -737,10 +737,10 @@ class DocumentService:
                 elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
                     notion_info_list = knowledge_config.data_source.info_list.notion_info_list
                     for notion_info in notion_info_list:
-                        count = count + len(notion_info["pages"])
+                        count = count + len(notion_info.pages)
                 elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
                     website_info = knowledge_config.data_source.info_list.website_info_list
-                    count = len(website_info["urls"])
+                    count = len(website_info.urls)
                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
                 if count > batch_upload_limit:
                     raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
@@ -898,7 +898,7 @@ class DocumentService:
                                 data_source_info = {
                                     "notion_workspace_id": workspace_id,
                                     "notion_page_id": page.page_id,
-                                    "notion_page_icon": page.page_icon,
+                                    "notion_page_icon": page.page_icon.model_dump(),
                                     "type": page.type,
                                 }
                                 document = DocumentService.build_document(
@@ -1141,7 +1141,7 @@ class DocumentService:
             elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
                 notion_info_list = knowledge_config.data_source.info_list.notion_info_list
                 for notion_info in notion_info_list:
-                    count = count + len(notion_info["pages"])
+                    count = count + len(notion_info.pages)
             elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
                 website_info = knowledge_config.data_source.info_list.website_info_list
                 count = len(website_info.urls)
