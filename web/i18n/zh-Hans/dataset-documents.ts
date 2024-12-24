@@ -319,8 +319,7 @@ const translation = {
     docName: '预处理文档',
     mode: '分段模式',
     segmentLength: '最大分段长度',
-    textCleaning: '文本预定义与清洗',
-    textProcessingRules: '文本处理规则',
+    textCleaning: '文本预处理规则',
     segments: '段落',
     highQuality: '高质量模式',
     economy: '经济模式',
@@ -332,6 +331,8 @@ const translation = {
     custom: '自定义',
     hierarchical: '父子分段',
     previewTip: '段落预览将在嵌入完成后可用',
+    parentMaxTokens: '父 {{count}}',
+    childMaxTokens: '子 {{count}}',
   },
   segment: {
     paragraphs: '段落',
