@@ -1088,8 +1088,14 @@ const StepTwo = ({
           mainClassName='space-y-6'
         >
           {currentDocForm === ChunkingMode.qa && estimate?.qa_preview && (
-            estimate?.qa_preview.map(item => (
-              <QAPreview key={item.question} qa={item} />
+            estimate?.qa_preview.map((item, index) => (
+              <ChunkContainer
+                key={item.question}
+                label={`Chunk-${index + 1}`}
+                characterCount={item.question.length + item.answer.length}
+              >
+                <QAPreview qa={item} />
+              </ChunkContainer>
             ))
           )}
           {currentDocForm === ChunkingMode.text && estimate?.preview && (

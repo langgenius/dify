@@ -104,7 +104,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       return (
         <>
           <div className='flex gap-x-1'>
-            <div className='w-4 mr-2 text-[13px] font-medium leading-[20px] text-text-tertiary'>Q</div>
+            <div className='w-4 text-[13px] font-medium leading-[20px] text-text-tertiary shrink-0'>Q</div>
             <div
               className={cn('text-text-secondary body-md-regular',
                 isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
@@ -113,7 +113,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
             </div>
           </div>
           <div className='flex gap-x-1'>
-            <div className='w-4 mr-2 text-[13px] font-medium leading-[20px] text-text-tertiary'>A</div>
+            <div className='w-4 text-[13px] font-medium leading-[20px] text-text-tertiary shrink-0'>A</div>
             <div className={cn('text-text-secondary body-md-regular',
               isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
             )}>
