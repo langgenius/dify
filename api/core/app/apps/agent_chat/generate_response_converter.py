@@ -51,9 +51,9 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
         return response
 
     @classmethod
-    def convert_stream_full_response(
+    def convert_stream_full_response(  # type: ignore[override]
         cls,
-        stream_response: Generator[ChatbotAppStreamResponse, None, None],  # type: ignore[override]
+        stream_response: Generator[ChatbotAppStreamResponse, None, None],
     ) -> Generator[str, None, None]:
         """
         Convert stream full response.
@@ -83,9 +83,9 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
             yield json.dumps(response_chunk)
 
     @classmethod
-    def convert_stream_simple_response(
+    def convert_stream_simple_response(  # type: ignore[override]
         cls,
-        stream_response: Generator[ChatbotAppStreamResponse, None, None],  # type: ignore[override]
+        stream_response: Generator[ChatbotAppStreamResponse, None, None],
     ) -> Generator[str, None, None]:
         """
         Convert stream simple response.
