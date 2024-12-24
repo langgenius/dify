@@ -1,5 +1,5 @@
-from collections.abc import Generator
-from typing import Any, Sequence, cast
+from collections.abc import Generator, Sequence
+from typing import Any, cast
 
 from core.agent.plugin_entities import AgentStrategyParameter
 from core.plugin.manager.exc import PluginDaemonClientSideError

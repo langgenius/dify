@@ -1,4 +1,5 @@
-from typing import Any, Generator, Optional, Sequence
+from collections.abc import Generator, Sequence
+from typing import Any, Optional
 
 from core.agent.entities import AgentInvokeMessage
 from core.agent.plugin_entities import AgentStrategyEntity, AgentStrategyParameter
