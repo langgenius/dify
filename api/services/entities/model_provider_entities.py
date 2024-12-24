@@ -152,7 +152,8 @@ class ModelWithProviderEntityResponse(ModelWithProviderEntity):
     Model with provider entity.
     """
 
-    provider: SimpleModelProviderEntity
+    #FIXME type error ignore here
+    provider: SimpleProviderEntityResponse  # type: ignore
 
     def __init__(self, model: ModelWithProviderEntity) -> None:
         super().__init__(**model.model_dump())
