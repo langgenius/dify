@@ -1,4 +1,5 @@
-from typing import Optional, cast
+from collections.abc import Mapping
+from typing import Any, Optional, cast
 
 from core.extension.extensible import ExtensionModule
 from extensions.ext_code_based_extension import code_based_extension
@@ -26,7 +27,7 @@ class ExternalDataToolFactory:
         # FIXME mypy issue here, figure out how to fix it
         extension_class.validate_config(tenant_id, config)  # type: ignore
 
-    def query(self, inputs: dict, query: Optional[str] = None) -> str:
+    def query(self, inputs: Mapping[str, Any], query: Optional[str] = None) -> str:
         """
         Query the external data tool.
 

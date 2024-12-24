@@ -342,10 +342,10 @@ class AppRunner:
         app_id: str,
         tenant_id: str,
         app_generate_entity: AppGenerateEntity,
-        inputs: dict[str, Any],
+        inputs: Mapping[str, Any],
         query: str | None = None,
         message_id: str,
-    ) -> tuple[bool, dict, str]:
+    ) -> tuple[bool, Mapping[str, Any], str]:
         """
         Process sensitive_word_avoidance.
         :param app_id: app id
@@ -401,9 +401,9 @@ class AppRunner:
         tenant_id: str,
         app_id: str,
         external_data_tools: list[ExternalDataVariableEntity],
-        inputs: dict,
+        inputs: Mapping[str, Any],
         query: str,
-    ) -> dict:
+    ) -> Mapping[str, Any]:
         """
         Fill in variable inputs from external data tools if exists.
 

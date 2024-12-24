@@ -113,10 +113,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             task_id=str(uuid.uuid4()),
             app_config=app_config,
             file_upload_config=file_extra_config,
-            inputs=dict(
-                self._prepare_user_inputs(
-                    user_inputs=dict(inputs), variables=app_config.variables, tenant_id=app_model.tenant_id
-                )
+            inputs=self._prepare_user_inputs(
+                user_inputs=dict(inputs), variables=app_config.variables, tenant_id=app_model.tenant_id
             ),
             files=list(system_files),
             user_id=user.id,

@@ -1,7 +1,7 @@
 import json
 from abc import ABC, abstractmethod
-from collections.abc import Generator
-from typing import Optional
+from collections.abc import Generator, Mapping
+from typing import Any, Optional
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.entities import AgentScratchpadUnit
@@ -37,7 +37,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self,
         message: Message,
         query: str,
-        inputs: dict[str, str],
+        inputs: Mapping[str, str],
     ) -> Generator:
         """
         Run Cot agent application
@@ -58,7 +58,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         # init instruction
         inputs = inputs or {}
         instruction = app_config.prompt_template.simple_prompt_template
-        self._instruction = self._fill_in_inputs_from_external_data_tools(instruction or "", inputs)
+        self._instruction = self._fill_in_inputs_from_external_data_tools(instruction=instruction or "", inputs=inputs)
 
         iteration_step = 1
         max_iteration_steps = min(app_config.agent.max_iteration if app_config.agent else 5, 5) + 1
@@ -335,7 +335,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         """
         return AgentScratchpadUnit.Action(action_name=action["action"], action_input=action["action_input"])
 
-    def _fill_in_inputs_from_external_data_tools(self, instruction: str, inputs: dict) -> str:
+    def _fill_in_inputs_from_external_data_tools(self, instruction: str, inputs: Mapping[str, Any]) -> str:
         """
         fill in inputs from external data tools
         """

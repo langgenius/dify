@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Mapping
 from typing import Any, cast
 
 from sqlalchemy import select
@@ -178,7 +179,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self,
         app_record: App,
         app_generate_entity: AdvancedChatAppGenerateEntity,
-        inputs: dict[str, Any],
+        inputs: Mapping[str, Any],
         query: str,
         message_id: str,
     ) -> bool:
