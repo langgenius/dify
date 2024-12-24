@@ -1,6 +1,6 @@
 import time
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -265,14 +265,12 @@ class AppRunner:
         :param agent: agent
         :return:
         """
-        if not stream:
-            self._handle_invoke_result_direct(
-                invoke_result=cast(LLMResult, invoke_result), queue_manager=queue_manager, agent=agent
-            )
+        if not stream and isinstance(invoke_result, LLMResult):
+            self._handle_invoke_result_direct(invoke_result=invoke_result, queue_manager=queue_manager, agent=agent)
+        elif stream and isinstance(invoke_result, Generator):
+            self._handle_invoke_result_stream(invoke_result=invoke_result, queue_manager=queue_manager, agent=agent)
         else:
-            self._handle_invoke_result_stream(
-                invoke_result=cast(Generator[Any, None, None], invoke_result), queue_manager=queue_manager, agent=agent
-            )
+            raise NotImplementedError(f"unsupported invoke result type: {type(invoke_result)}")
 
     def _handle_invoke_result_direct(
         self, invoke_result: LLMResult, queue_manager: AppQueueManager, agent: bool
