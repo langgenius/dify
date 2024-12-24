@@ -197,6 +197,7 @@ const translation = {
     datasetOperatorTip: '只能管理知识库',
     inviteTeamMember: '添加团队成员',
     inviteTeamMemberTip: '对方在登录后可以访问你的团队数据。',
+    emailNotSetup: '由于邮件服务器未设置，无法发送邀请邮件。请将邀请后生成的邀请链接通知用户。',
     email: '邮箱',
     emailInvalid: '邮箱格式无效',
     emailPlaceholder: '输入邮箱',

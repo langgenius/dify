@@ -70,7 +70,7 @@ class MessageFeedbackApi(InstalledAppResource):
         args = parser.parse_args()
 
         try:
-            MessageService.create_feedback(app_model, message_id, current_user, args["rating"])
+            MessageService.create_feedback(app_model, message_id, current_user, args["rating"], args["content"])
         except services.errors.message.MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 

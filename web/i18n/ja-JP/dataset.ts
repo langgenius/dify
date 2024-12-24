@@ -53,7 +53,7 @@ const translation = {
     semantic_search: 'ベクトル検索',
     full_text_search: 'フルテキスト検索',
     hybrid_search: 'ハイブリッド検索',
-    invertedIndex: '逆さま',
+    invertedIndex: '転置',
   },
   mixtureHighQualityAndEconomicTip: '高品質なナレッジベースと経済的なナレッジベースを混在させるには、Rerankモデルを構成する必要がある。',
   inconsistentEmbeddingModelTip: '選択されたナレッジベースが一貫性のない埋め込みモデルで構成されている場合、Rerankモデルの構成が必要です。',

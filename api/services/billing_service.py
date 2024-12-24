@@ -1,6 +1,7 @@
 import os
 
-import requests
+import httpx
+from tenacity import retry, retry_if_not_exception_type, stop_before_delay, wait_fixed
 
 from extensions.ext_database import db
 from models.account import TenantAccountJoin, TenantAccountRole
@@ -39,11 +40,17 @@ class BillingService:
         return cls._send_request("GET", "/invoices", params=params)
 
     @classmethod
+    @retry(
+        wait=wait_fixed(2),
+        stop=stop_before_delay(10),
+        retry=retry_if_not_exception_type(httpx.RequestError),
+        reraise=True,
+    )
     def _send_request(cls, method, endpoint, json=None, params=None):
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
 
         url = f"{cls.base_url}{endpoint}"
-        response = requests.request(method, url, json=json, params=params, headers=headers)
+        response = httpx.request(method, url, json=json, params=params, headers=headers)
 
         return response.json()
 

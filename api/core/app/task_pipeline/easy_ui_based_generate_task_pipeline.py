@@ -201,11 +201,11 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
                     stream_response=stream_response,
                 )
 
-    def _listen_audio_msg(self, publisher, task_id: str):
+    def _listen_audio_msg(self, publisher: AppGeneratorTTSPublisher | None, task_id: str):
         if publisher is None:
             return None
-        audio_msg: AudioTrunk = publisher.check_and_get_audio()
-        if audio_msg and audio_msg.status != "finish":
+        audio_msg = publisher.check_and_get_audio()
+        if audio_msg and isinstance(audio_msg, AudioTrunk) and audio_msg.status != "finish":
             # audio_str = audio_msg.audio.decode('utf-8', errors='ignore')
             return MessageAudioStreamResponse(audio=audio_msg.audio, task_id=task_id)
         return None

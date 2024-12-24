@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from typing import Union
 
 from flask import Flask
@@ -9,23 +9,30 @@ from dify_app import DifyApp
 from extensions.storage.base_storage import BaseStorage
 from extensions.storage.storage_type import StorageType
 
+logger = logging.getLogger(__name__)
+
 
 class Storage:
-    def __init__(self):
-        self.storage_runner = None
-
     def init_app(self, app: Flask):
         storage_factory = self.get_storage_factory(dify_config.STORAGE_TYPE)
         with app.app_context():
             self.storage_runner = storage_factory()
 
     @staticmethod
-    def get_storage_factory(storage_type: str) -> type[BaseStorage]:
+    def get_storage_factory(storage_type: str) -> Callable[[], BaseStorage]:
         match storage_type:
             case StorageType.S3:
                 from extensions.storage.aws_s3_storage import AwsS3Storage
 
                 return AwsS3Storage
+            case StorageType.OPENDAL:
+                from extensions.storage.opendal_storage import OpenDALStorage
+
+                return lambda: OpenDALStorage(dify_config.OPENDAL_SCHEME)
+            case StorageType.LOCAL:
+                from extensions.storage.opendal_storage import OpenDALStorage
+
+                return lambda: OpenDALStorage(scheme="fs", root=dify_config.STORAGE_LOCAL_PATH)
             case StorageType.AZURE_BLOB:
                 from extensions.storage.azure_blob_storage import AzureBlobStorage
 
@@ -62,16 +69,14 @@ class Storage:
                 from extensions.storage.supabase_storage import SupabaseStorage
 
                 return SupabaseStorage
-            case StorageType.LOCAL | _:
-                from extensions.storage.local_fs_storage import LocalFsStorage
-
-                return LocalFsStorage
+            case _:
+                raise ValueError(f"unsupported storage type {storage_type}")
 
     def save(self, filename, data):
         try:
             self.storage_runner.save(filename, data)
         except Exception as e:
-            logging.exception(f"Failed to save file {filename}")
+            logger.exception(f"Failed to save file {filename}")
             raise e
 
     def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
@@ -81,42 +86,42 @@ class Storage:
             else:
                 return self.load_once(filename)
         except Exception as e:
-            logging.exception(f"Failed to load file {filename}")
+            logger.exception(f"Failed to load file {filename}")
             raise e
 
     def load_once(self, filename: str) -> bytes:
         try:
             return self.storage_runner.load_once(filename)
         except Exception as e:
-            logging.exception(f"Failed to load_once file {filename}")
+            logger.exception(f"Failed to load_once file {filename}")
             raise e
 
     def load_stream(self, filename: str) -> Generator:
         try:
             return self.storage_runner.load_stream(filename)
         except Exception as e:
-            logging.exception(f"Failed to load_stream file {filename}")
+            logger.exception(f"Failed to load_stream file {filename}")
             raise e
 
     def download(self, filename, target_filepath):
         try:
             self.storage_runner.download(filename, target_filepath)
         except Exception as e:
-            logging.exception(f"Failed to download file {filename}")
+            logger.exception(f"Failed to download file {filename}")
             raise e
 
     def exists(self, filename):
         try:
             return self.storage_runner.exists(filename)
         except Exception as e:
-            logging.exception(f"Failed to check file exists {filename}")
+            logger.exception(f"Failed to check file exists {filename}")
             raise e
 
     def delete(self, filename):
         try:
             return self.storage_runner.delete(filename)
         except Exception as e:
-            logging.exception(f"Failed to delete file {filename}")
+            logger.exception(f"Failed to delete file {filename}")
             raise e
 
 

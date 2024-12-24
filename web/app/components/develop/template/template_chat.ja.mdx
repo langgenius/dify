@@ -408,6 +408,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='user' type='string' key='user'>
         ユーザー識別子、開発者のルールで定義され、アプリケーション内で一意でなければなりません。
       </Property>
+      <Property name='content' type='string' key='content'>
+        メッセージのフィードバックです。
+      </Property>
     </Properties>
 
     ### 応答
@@ -415,7 +418,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="リクエスト" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
+    <CodeGroup title="リクエスト" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123",\n    "content": "message feedback information"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \
@@ -423,7 +426,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     --header 'Content-Type: application/json' \
     --data-raw '{
         "rating": "like",
-        "user": "abc-123"
+        "user": "abc-123",
+        "content": "message feedback information"
     }'
     ```
 
@@ -708,7 +712,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="リクエスト" tag="GET" label="/conversations" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20'`}>
+    <CodeGroup title="リクエスト" tag="GET" label="/conversations" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \\\n --header 'Authorization: Bearer {api_key}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \

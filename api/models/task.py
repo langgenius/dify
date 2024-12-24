@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from celery import states
 
-from extensions.ext_database import db
+from .engine import db
 
 
 class CeleryTask(db.Model):

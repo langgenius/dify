@@ -210,7 +210,7 @@ class ApiTool(Tool):
             )
             return response
         else:
-            raise ValueError(f"Invalid http method {self.method}")
+            raise ValueError(f"Invalid http method {method}")
 
     def _convert_body_property_any_of(
         self, property: dict[str, Any], value: Any, any_of: list[dict[str, Any]], max_recursive=10
@@ -270,9 +270,6 @@ class ApiTool(Tool):
                 elif property["type"] == "object" or property["type"] == "array":
                     if isinstance(value, str):
                         try:
-                            # an array str like '[1,2]' also can convert to list [1,2] through json.loads
-                            # json not support single quote, but we can support it
-                            value = value.replace("'", '"')
                             return json.loads(value)
                         except ValueError:
                             return value

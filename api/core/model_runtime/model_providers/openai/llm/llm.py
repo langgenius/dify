@@ -421,7 +421,11 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
         # text completion model
         response = client.completions.create(
-            prompt=prompt_messages[0].content, model=model, stream=stream, **model_parameters, **extra_model_kwargs
+            prompt=prompt_messages[0].content,
+            model=model,
+            stream=stream,
+            **model_parameters,
+            **extra_model_kwargs,
         )
 
         if stream:
@@ -593,6 +597,8 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 model_parameters["response_format"] = {"type": "json_schema", "json_schema": schema}
             else:
                 model_parameters["response_format"] = {"type": response_format}
+        elif "json_schema" in model_parameters:
+            del model_parameters["json_schema"]
 
         extra_model_kwargs = {}
 
@@ -920,10 +926,12 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                         }
                         sub_messages.append(sub_message_dict)
                     elif isinstance(message_content, AudioPromptMessageContent):
+                        data_split = message_content.data.split(";base64,")
+                        base64_data = data_split[1]
                         sub_message_dict = {
                             "type": "input_audio",
                             "input_audio": {
-                                "data": message_content.data,
+                                "data": base64_data,
                                 "format": message_content.format,
                             },
                         }

@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import React, { Fragment, useEffect, useState } from 'react'
 import { Combobox, Listbox, Transition } from '@headlessui/react'
-import { CheckIcon, ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/20/solid'
+import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/20/solid'
+import { RiCheckLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import classNames from '@/utils/classnames'
 import {
@@ -152,7 +153,7 @@ const Select: FC<ISelectProps> = ({
                                 'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
                               )}
                             >
-                              <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                              <RiCheckLine className="h-4 w-4" aria-hidden="true" />
                             </span>
                           )}
                         </>
@@ -210,7 +211,7 @@ const SimpleSelect: FC<ISelectProps> = ({
       <div className={classNames('group/simple-select relative h-9', wrapperClassName)}>
         {renderTrigger && <Listbox.Button className='w-full'>{renderTrigger(selectedItem)}</Listbox.Button>}
         {!renderTrigger && (
-          <Listbox.Button className={classNames(`flex items-center w-full h-full rounded-lg border-0 bg-gray-100 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover/simple-select:bg-state-base-hover-alt ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`, className)}>
+          <Listbox.Button className={classNames(`flex items-center w-full h-full rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-state-base-hover-alt group-hover/simple-select:bg-state-base-hover-alt ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`, className)}>
             <span className={classNames('block truncate text-left system-sm-regular text-components-input-text-filled', !selectedItem?.name && 'text-components-input-text-placeholder')}>{selectedItem?.name ?? localPlaceholder}</span>
             <span className="absolute inset-y-0 right-0 flex items-center pr-2">
               {(selectedItem && !notClearable)
@@ -243,13 +244,13 @@ const SimpleSelect: FC<ISelectProps> = ({
             leaveTo="opacity-0"
           >
 
-            <Listbox.Options className={classNames('absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm', optionWrapClassName)}>
+            <Listbox.Options className={classNames('absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-components-panel-bg-blur py-1 text-base shadow-lg border-components-panel-border border-[0.5px] focus:outline-none sm:text-sm', optionWrapClassName)}>
               {items.map((item: Item) => (
                 <Listbox.Option
                   key={item.value}
                   className={({ active }) =>
                     classNames(
-                      `relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-gray-100 text-gray-700 ${active ? 'bg-gray-100' : ''}`,
+                      'relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-state-base-hover text-text-secondary',
                       optionClassName,
                     )
                   }
@@ -265,10 +266,10 @@ const SimpleSelect: FC<ISelectProps> = ({
                           {selected && !hideChecked && (
                             <span
                               className={classNames(
-                                'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
+                                'absolute inset-y-0 right-0 flex items-center pr-4 text-text-accent',
                               )}
                             >
-                              <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                              <RiCheckLine className="h-4 w-4" aria-hidden="true" />
                             </span>
                           )}
                         </>)}
@@ -369,7 +370,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
                 {item.name}
               </span>
               {!hideChecked && item.value === value && (
-                <CheckIcon className='shrink-0 h-4 w-4 text-text-accent' />
+                <RiCheckLine className='shrink-0 h-4 w-4 text-text-accent' />
               )}
             </div>
           ))}

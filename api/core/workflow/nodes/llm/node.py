@@ -145,8 +145,8 @@ class LLMNode(BaseNode[LLMNodeData]):
                     query = query_variable.text
 
             prompt_messages, stop = self._fetch_prompt_messages(
-                user_query=query,
-                user_files=files,
+                sys_query=query,
+                sys_files=files,
                 context=context,
                 memory=memory,
                 model_config=model_config,
@@ -193,6 +193,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                     error=str(e),
                     inputs=node_inputs,
                     process_data=process_data,
+                    error_type=type(e).__name__,
                 )
             )
             return
@@ -544,8 +545,8 @@ class LLMNode(BaseNode[LLMNodeData]):
     def _fetch_prompt_messages(
         self,
         *,
-        user_query: str | None = None,
-        user_files: Sequence["File"],
+        sys_query: str | None = None,
+        sys_files: Sequence["File"],
         context: str | None = None,
         memory: TokenBufferMemory | None = None,
         model_config: ModelConfigWithCredentialsEntity,
@@ -561,7 +562,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         if isinstance(prompt_template, list):
             # For chat model
             prompt_messages.extend(
-                _handle_list_messages(
+                self._handle_list_messages(
                     messages=prompt_template,
                     context=context,
                     jinja2_variables=jinja2_variables,
@@ -580,14 +581,14 @@ class LLMNode(BaseNode[LLMNodeData]):
             prompt_messages.extend(memory_messages)
 
             # Add current query to the prompt messages
-            if user_query:
+            if sys_query:
                 message = LLMNodeChatModelMessage(
-                    text=user_query,
+                    text=sys_query,
                     role=PromptMessageRole.USER,
                     edition_type="basic",
                 )
                 prompt_messages.extend(
-                    _handle_list_messages(
+                    self._handle_list_messages(
                         messages=[message],
                         context="",
                         jinja2_variables=[],
@@ -615,24 +616,46 @@ class LLMNode(BaseNode[LLMNodeData]):
             )
             # Insert histories into the prompt
             prompt_content = prompt_messages[0].content
-            if "#histories#" in prompt_content:
-                prompt_content = prompt_content.replace("#histories#", memory_text)
+            # For issue #11247 - Check if prompt content is a string or a list
+            prompt_content_type = type(prompt_content)
+            if prompt_content_type == str:
+                if "#histories#" in prompt_content:
+                    prompt_content = prompt_content.replace("#histories#", memory_text)
+                else:
+                    prompt_content = memory_text + "\n" + prompt_content
+                prompt_messages[0].content = prompt_content
+            elif prompt_content_type == list:
+                for content_item in prompt_content:
+                    if content_item.type == PromptMessageContentType.TEXT:
+                        if "#histories#" in content_item.data:
+                            content_item.data = content_item.data.replace("#histories#", memory_text)
+                        else:
+                            content_item.data = memory_text + "\n" + content_item.data
             else:
-                prompt_content = memory_text + "\n" + prompt_content
-            prompt_messages[0].content = prompt_content
+                raise ValueError("Invalid prompt content type")
 
             # Add current query to the prompt message
-            if user_query:
-                prompt_content = prompt_messages[0].content.replace("#sys.query#", user_query)
-                prompt_messages[0].content = prompt_content
+            if sys_query:
+                if prompt_content_type == str:
+                    prompt_content = prompt_messages[0].content.replace("#sys.query#", sys_query)
+                    prompt_messages[0].content = prompt_content
+                elif prompt_content_type == list:
+                    for content_item in prompt_content:
+                        if content_item.type == PromptMessageContentType.TEXT:
+                            content_item.data = sys_query + "\n" + content_item.data
+                else:
+                    raise ValueError("Invalid prompt content type")
         else:
             raise TemplateTypeNotSupportError(type_name=str(type(prompt_template)))
 
-        if vision_enabled and user_files:
+        # The sys_files will be deprecated later
+        if vision_enabled and sys_files:
             file_prompts = []
-            for file in user_files:
+            for file in sys_files:
                 file_prompt = file_manager.to_prompt_message_content(file, image_detail_config=vision_detail)
                 file_prompts.append(file_prompt)
+            # If last prompt is a user prompt, add files into its contents,
+            # otherwise append a new user prompt
             if (
                 len(prompt_messages) > 0
                 and isinstance(prompt_messages[-1], UserPromptMessage)
@@ -642,7 +665,7 @@ class LLMNode(BaseNode[LLMNodeData]):
             else:
                 prompt_messages.append(UserPromptMessage(content=file_prompts))
 
-        # Filter prompt messages
+        # Remove empty messages and filter unsupported content
         filtered_prompt_messages = []
         for prompt_message in prompt_messages:
             if isinstance(prompt_message.content, list):
@@ -826,6 +849,68 @@ class LLMNode(BaseNode[LLMNodeData]):
             },
         }
 
+    def _handle_list_messages(
+        self,
+        *,
+        messages: Sequence[LLMNodeChatModelMessage],
+        context: Optional[str],
+        jinja2_variables: Sequence[VariableSelector],
+        variable_pool: VariablePool,
+        vision_detail_config: ImagePromptMessageContent.DETAIL,
+    ) -> Sequence[PromptMessage]:
+        prompt_messages: list[PromptMessage] = []
+        for message in messages:
+            if message.edition_type == "jinja2":
+                result_text = _render_jinja2_message(
+                    template=message.jinja2_text or "",
+                    jinjia2_variables=jinja2_variables,
+                    variable_pool=variable_pool,
+                )
+                prompt_message = _combine_message_content_with_role(
+                    contents=[TextPromptMessageContent(data=result_text)], role=message.role
+                )
+                prompt_messages.append(prompt_message)
+            else:
+                # Get segment group from basic message
+                if context:
+                    template = message.text.replace("{#context#}", context)
+                else:
+                    template = message.text
+                segment_group = variable_pool.convert_template(template)
+
+                # Process segments for images
+                file_contents = []
+                for segment in segment_group.value:
+                    if isinstance(segment, ArrayFileSegment):
+                        for file in segment.value:
+                            if file.type in {FileType.IMAGE, FileType.VIDEO, FileType.AUDIO, FileType.DOCUMENT}:
+                                file_content = file_manager.to_prompt_message_content(
+                                    file, image_detail_config=vision_detail_config
+                                )
+                                file_contents.append(file_content)
+                    elif isinstance(segment, FileSegment):
+                        file = segment.value
+                        if file.type in {FileType.IMAGE, FileType.VIDEO, FileType.AUDIO, FileType.DOCUMENT}:
+                            file_content = file_manager.to_prompt_message_content(
+                                file, image_detail_config=vision_detail_config
+                            )
+                            file_contents.append(file_content)
+
+                # Create message with text from all segments
+                plain_text = segment_group.text
+                if plain_text:
+                    prompt_message = _combine_message_content_with_role(
+                        contents=[TextPromptMessageContent(data=plain_text)], role=message.role
+                    )
+                    prompt_messages.append(prompt_message)
+
+                if file_contents:
+                    # Create message with image contents
+                    prompt_message = _combine_message_content_with_role(contents=file_contents, role=message.role)
+                    prompt_messages.append(prompt_message)
+
+        return prompt_messages
+
 
 def _combine_message_content_with_role(*, contents: Sequence[PromptMessageContent], role: PromptMessageRole):
     match role:
@@ -858,68 +943,6 @@ def _render_jinja2_message(
     )
     result_text = code_execute_resp["result"]
     return result_text
-
-
-def _handle_list_messages(
-    *,
-    messages: Sequence[LLMNodeChatModelMessage],
-    context: Optional[str],
-    jinja2_variables: Sequence[VariableSelector],
-    variable_pool: VariablePool,
-    vision_detail_config: ImagePromptMessageContent.DETAIL,
-) -> Sequence[PromptMessage]:
-    prompt_messages = []
-    for message in messages:
-        if message.edition_type == "jinja2":
-            result_text = _render_jinja2_message(
-                template=message.jinja2_text or "",
-                jinjia2_variables=jinja2_variables,
-                variable_pool=variable_pool,
-            )
-            prompt_message = _combine_message_content_with_role(
-                contents=[TextPromptMessageContent(data=result_text)], role=message.role
-            )
-            prompt_messages.append(prompt_message)
-        else:
-            # Get segment group from basic message
-            if context:
-                template = message.text.replace("{#context#}", context)
-            else:
-                template = message.text
-            segment_group = variable_pool.convert_template(template)
-
-            # Process segments for images
-            file_contents = []
-            for segment in segment_group.value:
-                if isinstance(segment, ArrayFileSegment):
-                    for file in segment.value:
-                        if file.type in {FileType.IMAGE, FileType.VIDEO, FileType.AUDIO, FileType.DOCUMENT}:
-                            file_content = file_manager.to_prompt_message_content(
-                                file, image_detail_config=vision_detail_config
-                            )
-                            file_contents.append(file_content)
-                if isinstance(segment, FileSegment):
-                    file = segment.value
-                    if file.type in {FileType.IMAGE, FileType.VIDEO, FileType.AUDIO, FileType.DOCUMENT}:
-                        file_content = file_manager.to_prompt_message_content(
-                            file, image_detail_config=vision_detail_config
-                        )
-                        file_contents.append(file_content)
-
-            # Create message with text from all segments
-            plain_text = segment_group.text
-            if plain_text:
-                prompt_message = _combine_message_content_with_role(
-                    contents=[TextPromptMessageContent(data=plain_text)], role=message.role
-                )
-                prompt_messages.append(prompt_message)
-
-            if file_contents:
-                # Create message with image contents
-                prompt_message = _combine_message_content_with_role(contents=file_contents, role=message.role)
-                prompt_messages.append(prompt_message)
-
-    return prompt_messages
 
 
 def _calculate_rest_token(

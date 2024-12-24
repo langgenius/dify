@@ -346,6 +346,9 @@ The text generation application offers non-session support and is ideal for tran
       <Property name='user' type='string' key='user'>
         User identifier, defined by the developer's rules, must be unique within the application.
       </Property>
+      <Property name='content' type='string' key='content'>
+        The specific content of message feedback.
+      </Property>
     </Properties>
 
     ### Response
@@ -353,7 +356,7 @@ The text generation application offers non-session support and is ideal for tran
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123",\n    "content": "message feedback information"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \
@@ -361,7 +364,8 @@ The text generation application offers non-session support and is ideal for tran
     --header 'Content-Type: application/json' \
     --data-raw '{
         "rating": "like",
-        "user": "abc-123"
+        "user": "abc-123",
+        "content": "message feedback information"
     }'
     ```
 

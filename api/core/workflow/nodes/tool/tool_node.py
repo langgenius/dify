@@ -1,5 +1,6 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -56,6 +57,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                     NodeRunMetadataKey.TOOL_INFO: tool_info,
                 },
                 error=f"Failed to get tool runtime: {str(e)}",
+                error_type=type(e).__name__,
             )
 
         # get parameters
@@ -89,6 +91,17 @@ class ToolNode(BaseNode[ToolNodeData]):
                     NodeRunMetadataKey.TOOL_INFO: tool_info,
                 },
                 error=f"Failed to invoke tool: {str(e)}",
+                error_type=type(e).__name__,
+            )
+        except Exception as e:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=parameters_for_log,
+                metadata={
+                    NodeRunMetadataKey.TOOL_INFO: tool_info,
+                },
+                error=f"Failed to invoke tool: {str(e)}",
+                error_type="UnknownError",
             )
 
         # convert tool messages
@@ -219,6 +232,10 @@ class ToolNode(BaseNode[ToolNodeData]):
                 url = str(response.message)
                 transfer_method = FileTransferMethod.TOOL_FILE
                 tool_file_id = url.split("/")[-1].split(".")[0]
+                try:
+                    UUID(tool_file_id)
+                except ValueError:
+                    raise ToolFileError(f"cannot extract tool file id from url {url}")
                 with Session(db.engine) as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)

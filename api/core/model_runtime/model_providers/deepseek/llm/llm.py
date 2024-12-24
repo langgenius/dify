@@ -24,6 +24,9 @@ class DeepseekLargeLanguageModel(OAIAPICompatLargeLanguageModel):
         user: Optional[str] = None,
     ) -> Union[LLMResult, Generator]:
         self._add_custom_parameters(credentials)
+        # {"response_format": "xx"} need convert to {"response_format": {"type": "xx"}}
+        if "response_format" in model_parameters:
+            model_parameters["response_format"] = {"type": model_parameters.get("response_format")}
         return super()._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:

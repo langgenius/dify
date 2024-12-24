@@ -30,6 +30,7 @@ import {
 } from '@/app/components/base/file-uploader/utils'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { getThreadMessages } from '@/app/components/base/chat/utils'
+import type { NodeTracing } from '@/types/workflow'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -410,6 +411,28 @@ export const useChat = (
             parentId: params.parent_message_id,
           })
         },
+        onNodeRetry: ({ data }) => {
+          if (data.iteration_id)
+            return
+
+          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {
+            if (!item.execution_metadata?.parallel_id)
+              return item.node_id === data.node_id
+            return item.node_id === data.node_id && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id)
+          })
+          if (responseItem.workflowProcess!.tracing[currentIndex].retryDetail)
+            responseItem.workflowProcess!.tracing[currentIndex].retryDetail?.push(data as NodeTracing)
+          else
+            responseItem.workflowProcess!.tracing[currentIndex].retryDetail = [data as NodeTracing]
+
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
+        },
         onNodeFinished: ({ data }) => {
           if (data.iteration_id)
             return
@@ -422,6 +445,9 @@ export const useChat = (
           responseItem.workflowProcess!.tracing[currentIndex] = {
             ...(responseItem.workflowProcess!.tracing[currentIndex]?.extras
               ? { extras: responseItem.workflowProcess!.tracing[currentIndex].extras }
+              : {}),
+            ...(responseItem.workflowProcess!.tracing[currentIndex]?.retryDetail
+              ? { retryDetail: responseItem.workflowProcess!.tracing[currentIndex].retryDetail }
               : {}),
             ...data,
           } as any

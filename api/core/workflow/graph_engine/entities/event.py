@@ -33,6 +33,12 @@ class GraphRunSucceededEvent(BaseGraphEvent):
 
 class GraphRunFailedEvent(BaseGraphEvent):
     error: str = Field(..., description="failed reason")
+    exceptions_count: int = Field(description="exception count", default=0)
+
+
+class GraphRunPartialSucceededEvent(BaseGraphEvent):
+    exceptions_count: int = Field(..., description="exception count")
+    outputs: Optional[dict[str, Any]] = None
 
 
 ###########################################
@@ -83,8 +89,18 @@ class NodeRunFailedEvent(BaseNodeEvent):
     error: str = Field(..., description="error")
 
 
+class NodeRunExceptionEvent(BaseNodeEvent):
+    error: str = Field(..., description="error")
+
+
 class NodeInIterationFailedEvent(BaseNodeEvent):
     error: str = Field(..., description="error")
+
+
+class NodeRunRetryEvent(NodeRunStartedEvent):
+    error: str = Field(..., description="error")
+    retry_index: int = Field(..., description="which retry attempt is about to be performed")
+    start_at: datetime = Field(..., description="retry start time")
 
 
 ###########################################
