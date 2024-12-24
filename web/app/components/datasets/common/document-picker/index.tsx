@@ -101,7 +101,7 @@ const DocumentPicker: FC<Props> = ({
                 list={documentsList.map(d => ({
                   id: d.id,
                   name: d.name,
-                  extension: d.data_source_detail_dict?.upload_file.extension || '',
+                  extension: d.data_source_detail_dict?.upload_file?.extension || '',
                 }))}
                 onChange={handleChange}
               />
