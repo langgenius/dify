@@ -235,7 +235,29 @@ const formatItem = (
     }
 
     case BlockEnum.Tool: {
-      res.vars = TOOL_OUTPUT_STRUCT
+      const {
+        output_schema,
+      } = data as ToolNodeType
+      if (!output_schema) {
+        res.vars = TOOL_OUTPUT_STRUCT
+      }
+      else {
+        const outputSchema: any[] = []
+        Object.keys(output_schema.properties).forEach((outputKey) => {
+          const output = output_schema.properties[outputKey]
+          outputSchema.push({
+            variable: outputKey,
+            type: output.type === 'array'
+              ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]`
+              : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}`,
+            description: output.description,
+          })
+        })
+        res.vars = [
+          ...TOOL_OUTPUT_STRUCT,
+          ...outputSchema,
+        ]
+      }
       break
     }
 

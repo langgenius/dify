@@ -27,4 +27,5 @@ export type ToolDefaultValue = {
   title: string
   is_team_authorization: boolean
   params: Record<string, any>
+  output_schema: Record<string, any>
 }
