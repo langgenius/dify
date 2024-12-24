@@ -42,7 +42,7 @@ export const AgentStrategySelector = (props: AgentStrategySelectorProps) => {
   const [viewType, setViewType] = useState<ViewType>(ViewType.flat)
   // TODO: should be replaced by real data
   const isExternalInstalled = true
-  return <PortalToFollowElem open={open} onOpenChange={setOpen} placement='bottom' offset={0}>
+  return <PortalToFollowElem open={open} onOpenChange={setOpen} placement='bottom'>
     <PortalToFollowElemTrigger className='w-full'>
       <div className='py-2 pl-3 pr-2 flex items-center rounded-lg bg-components-input-bg-normal w-full hover:bg-state-base-hover-alt' onClick={() => setOpen(true)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
