@@ -660,13 +660,14 @@ const StepTwo = ({
                   {IS_CE_EDITION && <>
                     <div className='flex items-center'>
                       <Checkbox
-                        checked={docForm === ChunkingMode.qa}
+                        checked={currentDocForm === ChunkingMode.qa}
                         onCheck={() => {
                           if (docForm === ChunkingMode.qa)
                             handleChangeDocform(ChunkingMode.text)
                           else
                             handleChangeDocform(ChunkingMode.qa)
                         }}
+                        disabled={!!currentDataset?.doc_form}
                       />
                       <div className='flex items-center gap-1'>
                         <label className="ml-2 system-sm-regular cursor-pointer text-text-secondary">
