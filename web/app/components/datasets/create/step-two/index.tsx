@@ -658,32 +658,32 @@ const StepTwo = ({
                     </div>
                   ))}
                   {IS_CE_EDITION && <>
-                    <div className='flex items-center'>
-                      <Checkbox
-                        checked={currentDocForm === ChunkingMode.qa}
-                        onCheck={() => {
-                          if (docForm === ChunkingMode.qa)
-                            handleChangeDocform(ChunkingMode.text)
-                          else
-                            handleChangeDocform(ChunkingMode.qa)
-                        }}
-                        disabled={!!currentDataset?.doc_form}
-                      />
-                      <div className='flex items-center gap-1'>
+                    <Divider type='horizontal' className='my-4 bg-divider-subtle' />
+                    <div className='flex items-center py-0.5'>
+                      <div className='flex items-center' onClick={() => {
+                        if (currentDataset?.doc_form)
+                          return
+                        if (docForm === ChunkingMode.qa)
+                          handleChangeDocform(ChunkingMode.text)
+                        else
+                          handleChangeDocform(ChunkingMode.qa)
+                      }}>
+                        <Checkbox
+                          checked={currentDocForm === ChunkingMode.qa}
+                          disabled={!!currentDataset?.doc_form}
+                        />
                         <label className="ml-2 system-sm-regular cursor-pointer text-text-secondary">
                           {t('datasetCreation.stepTwo.useQALanguage')}
                         </label>
-                        <div className='z-50 relative'>
-                          <LanguageSelect
-                            currentLanguage={docLanguage || locale}
-                            onSelect={setDocLanguage}
-                            disabled={isLanguageSelectDisabled}
-                          />
-                        </div>
-                        <Tooltip popupContent={t('datasetCreation.stepTwo.QATip')} />
                       </div>
+                      <LanguageSelect
+                        currentLanguage={docLanguage || locale}
+                        onSelect={setDocLanguage}
+                        disabled={currentDocForm !== ChunkingMode.qa}
+                      />
+                      <Tooltip popupContent={t('datasetCreation.stepTwo.QATip')} />
                     </div>
-                    {docForm === ChunkingMode.qa && (
+                    {currentDocForm === ChunkingMode.qa && (
                       <div
                         style={{
                           background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.1) 0%, rgba(255, 255, 255, 0.00) 100%)',
