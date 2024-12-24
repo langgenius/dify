@@ -464,8 +464,8 @@ class AppDslService:
             )
         else:
             cls._append_model_config_export_data(export_data, app_model)
-        dsl_data: str = yaml.dump(export_data, allow_unicode=True)
-        return dsl_data
+
+        return yaml.dump(export_data, allow_unicode=True)
 
     @classmethod
     def _append_workflow_export_data(cls, *, export_data: dict, app_model: App, include_secret: bool) -> None:
