@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   RiSearchLine,
 } from '@remixicon/react'
@@ -8,6 +8,7 @@ import type {
   Model,
   ModelItem,
 } from '../declarations'
+import { ModelFeatureEnum } from '../declarations'
 import { useLanguage } from '../hooks'
 import PopupItem from './popup-item'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
@@ -16,27 +17,39 @@ type PopupProps = {
   defaultModel?: DefaultModel
   modelList: Model[]
   onSelect: (provider: string, model: ModelItem) => void
+  scopeFeatures?: string[]
 }
 const Popup: FC<PopupProps> = ({
   defaultModel,
   modelList,
   onSelect,
+  scopeFeatures = [],
 }) => {
   const language = useLanguage()
   const [searchText, setSearchText] = useState('')
 
-  const filteredModelList = modelList.map((model) => {
-    const filteredModels = model.models.filter((modelItem) => {
-      if (modelItem.label[language] !== undefined)
-        return modelItem.label[language].toLowerCase().includes(searchText.toLowerCase())
-
-      return Object.values(modelItem.label).some(label =>
-        label.toLowerCase().includes(searchText.toLowerCase()),
-      )
-    })
-
-    return { ...model, models: filteredModels }
-  }).filter(model => model.models.length > 0)
+  const filteredModelList = useMemo(() => {
+    return modelList.map((model) => {
+      const filteredModels = model.models
+        .filter((modelItem) => {
+          if (modelItem.label[language] !== undefined)
+            return modelItem.label[language].toLowerCase().includes(searchText.toLowerCase())
+          return Object.values(modelItem.label).some(label =>
+            label.toLowerCase().includes(searchText.toLowerCase()),
+          )
+        })
+        .filter((modelItem) => {
+          if (scopeFeatures.length === 0)
+            return true
+          return scopeFeatures.every((feature) => {
+            if (feature === ModelFeatureEnum.toolCall)
+              return modelItem.features?.some(featureItem => featureItem === ModelFeatureEnum.toolCall || featureItem === ModelFeatureEnum.multiToolCall)
+            return modelItem.features?.some(featureItem => featureItem === feature)
+          })
+        })
+      return { ...model, models: filteredModels }
+    }).filter(model => model.models.length > 0)
+  }, [language, modelList, scopeFeatures, searchText])
 
   return (
     <div className='w-[320px] max-h-[480px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg overflow-y-auto'>

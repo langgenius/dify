@@ -58,6 +58,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const { isAPIKeySet } = useProviderContext()
   const [open, setOpen] = useState(false)
   const scopeArray = scope.split('&')
+  const scopeFeatures = scopeArray.slice(1) || []
 
   const { data: textGenerationList } = useModelList(ModelTypeEnum.textGeneration)
   const { data: textEmbeddingList } = useModelList(ModelTypeEnum.textEmbedding)
@@ -175,10 +176,11 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 <ModelSelector
                   defaultModel={(provider || modelId) ? { provider, model: modelId } : undefined}
                   modelList={scopedModelList}
+                  scopeFeatures={scopeFeatures}
                   onSelect={handleChangeModel}
                 />
               </div>
-              {(currentModel?.model_type === ModelTypeEnum.textGeneration || currentModel.model_type === ModelTypeEnum.tts) && (
+              {(currentModel?.model_type === ModelTypeEnum.textGeneration || currentModel?.model_type === ModelTypeEnum.tts) && (
                 <div className='my-3 h-[1px] bg-divider-subtle' />
               )}
               {currentModel?.model_type === ModelTypeEnum.textGeneration && (
