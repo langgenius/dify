@@ -31,6 +31,8 @@ const translation = {
     manageInTools: '도구에서 관리',
     emptyTitle: '사용 가능한 워크플로우 도구 없음',
     emptyTip: '"워크플로우 -> 도구로 등록하기"로 이동',
+    emptyTipCustom: '사용자 지정 도구 만들기',
+    emptyTitleCustom: '사용 가능한 사용자 지정 도구가 없습니다.',
   },
   createTool: {
     title: '커스텀 도구 만들기',

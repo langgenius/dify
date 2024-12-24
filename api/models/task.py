@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
 
-from celery import states
+from celery import states  # type: ignore
 
-from extensions.ext_database import db
 from models.base import Base
+from .engine import db
 
 
 class CeleryTask(Base):

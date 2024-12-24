@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-from core.entities.model_entities import ModelStatus, ProviderModelWithStatusEntity
+from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, ProviderModelWithStatusEntity
 from core.model_runtime.entities.model_entities import ModelType, ParameterRule
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.provider_manager import ProviderManager
@@ -98,20 +98,12 @@ class ModelProviderService:
     def get_provider_credentials(self, tenant_id: str, provider: str) -> Optional[dict]:
         """
         get provider credentials.
-
-        :param tenant_id:
-        :param provider:
-        :return:
         """
-        # Get all provider configurations of the current workspace
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
-
-        # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
 
-        # Get provider custom credentials from workspace
         return provider_configuration.get_custom_credentials(obfuscated=True)
 
     def provider_credentials_validate(self, tenant_id: str, provider: str, credentials: dict) -> None:
@@ -282,7 +274,7 @@ class ModelProviderService:
         models = provider_configurations.get_models(model_type=ModelType.value_of(model_type))
 
         # Group models by provider
-        provider_models = {}
+        provider_models: dict[str, list[ModelWithProviderEntity]] = {}
         for model in models:
             if model.provider.provider not in provider_models:
                 provider_models[model.provider.provider] = []

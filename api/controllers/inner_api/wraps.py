@@ -45,16 +45,14 @@ def enterprise_inner_api_user_auth(view):
         if " " in user_id:
             user_id = user_id.split(" ")[1]
 
-        inner_api_key = request.headers.get("X-Inner-Api-Key")
-        if not inner_api_key:
-            raise ValueError("inner api key not found")
+        inner_api_key = request.headers.get("X-Inner-Api-Key", "")
 
         data_to_sign = f"DIFY {user_id}"
 
         signature = hmac_new(inner_api_key.encode("utf-8"), data_to_sign.encode("utf-8"), sha1)
-        signature = b64encode(signature.digest()).decode("utf-8")
+        signature_base64 = b64encode(signature.digest()).decode("utf-8")
 
-        if signature != token:
+        if signature_base64 != token:
             return view(*args, **kwargs)
 
         kwargs["user"] = db.session.query(EndUser).filter(EndUser.id == user_id).first()

@@ -4,7 +4,7 @@ import time
 import uuid
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 from sqlalchemy import func
 
 from core.indexing_runner import IndexingRunner
@@ -106,6 +106,6 @@ def batch_create_segment_to_index_task(
         logging.info(
             click.style("Segment batch created job: {} latency: {}".format(job_id, end_at - start_at), fg="green")
         )
-    except Exception as e:
+    except Exception:
         logging.exception("Segments batch created index failed")
         redis_client.setex(indexing_cache_key, 600, "error")

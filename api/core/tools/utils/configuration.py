@@ -101,7 +101,7 @@ class ProviderConfigEncrypter(BaseModel):
                             continue
 
                         data[field_name] = encrypter.decrypt_token(self.tenant_id, data[field_name])
-                    except:
+                    except Exception:
                         pass
 
         cache.set(data)
@@ -221,6 +221,9 @@ class ToolParameterConfigurationManager:
 
         return a deep copy of parameters with decrypted values
         """
+        if self.tool_runtime is None or self.tool_runtime.identity is None:
+            raise ValueError("tool_runtime is required")
+
         cache = ToolParameterCache(
             tenant_id=self.tenant_id,
             provider=f"{self.provider_type.value}.{self.provider_name}",
@@ -245,7 +248,7 @@ class ToolParameterConfigurationManager:
                     try:
                         has_secret_input = True
                         parameters[parameter.name] = encrypter.decrypt_token(self.tenant_id, parameters[parameter.name])
-                    except:
+                    except Exception:
                         pass
 
         if has_secret_input:

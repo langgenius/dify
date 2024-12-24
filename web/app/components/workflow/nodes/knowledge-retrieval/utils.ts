@@ -129,9 +129,6 @@ export const getMultipleRetrievalConfig = (
     reranking_enable: ((allInternal && allEconomic) || allExternal) ? reranking_enable : true,
   }
 
-  if (!rerankModelIsValid)
-    result.reranking_model = undefined
-
   const setDefaultWeights = () => {
     result.weights = {
       vector_setting: {
@@ -198,7 +195,6 @@ export const getMultipleRetrievalConfig = (
         setDefaultWeights()
       }
     }
-
     if (reranking_mode === RerankingModeEnum.RerankingModel && !rerankModelIsValid && shouldSetWeightDefaultValue) {
       result.reranking_mode = RerankingModeEnum.WeightedScore
       setDefaultWeights()

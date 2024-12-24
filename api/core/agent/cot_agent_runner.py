@@ -1,7 +1,8 @@
 import json
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping, Sequence
-from typing import Optional, Union
+from typing import Optional
+from typing import Any
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.entities import AgentScratchpadUnit
@@ -37,8 +38,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self,
         message: Message,
         query: str,
-        inputs: dict[str, str],
-    ) -> Union[Generator, LLMResult]:
+        inputs: Mapping[str, str],
+    ) -> Generator:
         """
         Run Cot agent application
         """
@@ -63,7 +64,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self._instruction = self._fill_in_inputs_from_external_data_tools(instruction, inputs)
 
         iteration_step = 1
-        max_iteration_steps = min(app_config.agent.max_iteration, 5) + 1
+        max_iteration_steps = min(app_config.agent.max_iteration if app_config.agent else 5, 5) + 1
 
         # convert tools into ModelRuntime Tool format
         tool_instances, prompt_messages_tools = self._init_prompt_tools()
@@ -94,7 +95,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 # the last iteration, remove all tools
                 self._prompt_messages_tools = []
 
-            message_file_ids = []
+            message_file_ids: list[str] = []
 
             agent_thought = self.create_agent_thought(
                 message_id=message.id, message="", tool_name="", tool_input="", messages_ids=message_file_ids
@@ -109,7 +110,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             prompt_messages = self._organize_prompt_messages()
             self.recalc_llm_max_tokens(self.model_config, prompt_messages)
             # invoke model
-            chunks: Generator[LLMResultChunk, None, None] = model_instance.invoke_llm(
+            chunks = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=app_generate_entity.model_conf.parameters,
                 tools=[],
@@ -161,7 +162,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
             # get llm usage
             if "usage" in usage_dict:
-                increase_usage(llm_usage, usage_dict["usage"])
+                if usage_dict["usage"] is not None:
+                    increase_usage(llm_usage, usage_dict["usage"])
             else:
                 usage_dict["usage"] = LLMUsage.empty_usage()
 
@@ -170,7 +172,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 tool_name=scratchpad.action.action_name if scratchpad.action else "",
                 tool_input={scratchpad.action.action_name: scratchpad.action.action_input} if scratchpad.action else {},
                 tool_invoke_meta={},
-                thought=scratchpad.thought,
+                thought=scratchpad.thought or "",
                 observation="",
                 answer=scratchpad.agent_response or "",
                 messages_ids=[],
@@ -213,7 +215,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                         agent_thought=agent_thought,
                         tool_name=scratchpad.action.action_name,
                         tool_input={scratchpad.action.action_name: scratchpad.action.action_input},
-                        thought=scratchpad.thought,
+                        thought=scratchpad.thought or "",
                         observation={scratchpad.action.action_name: tool_invoke_response},
                         tool_invoke_meta={scratchpad.action.action_name: tool_invoke_meta.to_dict()},
                         answer=scratchpad.agent_response,
@@ -251,7 +253,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             answer=final_answer,
             messages_ids=[],
         )
-
         # publish end event
         self.queue_manager.publish(
             QueueMessageEndEvent(
@@ -325,14 +326,14 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         """
         return AgentScratchpadUnit.Action(action_name=action["action"], action_input=action["action_input"])
 
-    def _fill_in_inputs_from_external_data_tools(self, instruction: str, inputs: dict) -> str:
+    def _fill_in_inputs_from_external_data_tools(self, instruction: str, inputs: Mapping[str, Any]) -> str:
         """
         fill in inputs from external data tools
         """
         for key, value in inputs.items():
             try:
                 instruction = instruction.replace(f"{{{{{key}}}}}", str(value))
-            except Exception as e:
+            except Exception:
                 continue
 
         return instruction
@@ -403,6 +404,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 if current_scratchpad:
                     assert isinstance(message.content, str)
                     current_scratchpad.observation = message.content
+                else:
+                    raise NotImplementedError("expected str type")
             elif isinstance(message, UserPromptMessage):
                 if scratchpads:
                     result.append(AssistantPromptMessage(content=self._format_assistant_message(scratchpads)))

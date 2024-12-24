@@ -94,6 +94,7 @@ class DatasetRetrieverTool(Tool):
                 llm_description="Query for the dataset to be used to retrieve the dataset.",
                 required=True,
                 default="",
+                placeholder=I18nObject(en_US="", zh_Hans=""),
             ),
         ]
 
@@ -112,7 +113,9 @@ class DatasetRetrieverTool(Tool):
             result = self.retrieval_tool._run(query=query)
             yield self.create_text_message(text=result)
 
-    def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any]) -> None:
+    def validate_credentials(
+        self, credentials: dict[str, Any], parameters: dict[str, Any], format_only: bool = False
+    ) -> str | None:
         """
         validate the credentials for dataset retriever tool
         """

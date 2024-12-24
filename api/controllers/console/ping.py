@@ -1,4 +1,4 @@
-from flask_restful import Resource
+from flask_restful import Resource  # type: ignore
 
 from controllers.console import api
 

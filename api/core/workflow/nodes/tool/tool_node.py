@@ -9,7 +9,6 @@ from core.file import File, FileTransferMethod, FileType
 from core.plugin.manager.exc import PluginDaemonClientSideError
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.tool_engine import ToolEngine
-from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.variables.segments import ArrayAnySegment
 from core.variables.variables import ArrayAnyVariable
@@ -58,6 +57,8 @@ class ToolNode(BaseNode[ToolNodeData]):
 
         # get tool runtime
         try:
+            from core.tools.tool_manager import ToolManager
+
             tool_runtime = ToolManager.get_workflow_tool_runtime(
                 self.tenant_id, self.app_id, self.node_id, self.node_data, self.invoke_from
             )
@@ -145,7 +146,7 @@ class ToolNode(BaseNode[ToolNodeData]):
         """
         tool_parameters_dictionary = {parameter.name: parameter for parameter in tool_parameters}
 
-        result = {}
+        result: dict[str, Any] = {}
         for parameter_name in node_data.tool_parameters:
             parameter = tool_parameters_dictionary.get(parameter_name)
             if not parameter:

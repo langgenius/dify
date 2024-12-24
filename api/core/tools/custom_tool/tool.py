@@ -40,6 +40,8 @@ class ApiTool(Tool):
         :param meta: the meta data of a tool call processing, tenant_id is required
         :return: the new tool
         """
+        if self.api_bundle is None:
+            raise ValueError("api_bundle is required")
         return self.__class__(
             entity=self.entity,
             api_bundle=self.api_bundle.model_copy(),
@@ -67,10 +69,12 @@ class ApiTool(Tool):
         return ToolProviderType.API
 
     def assembling_request(self, parameters: dict[str, Any]) -> dict[str, Any]:
-        if self.runtime == None:
+        if self.runtime is None:
             raise ToolProviderCredentialValidationError("runtime not initialized")
 
         headers = {}
+        if self.runtime is None:
+            raise ValueError("runtime is required")
         credentials = self.runtime.credentials or {}
 
         if "auth_type" not in credentials:
@@ -121,9 +125,9 @@ class ApiTool(Tool):
                 response = response.json()
                 try:
                     return json.dumps(response, ensure_ascii=False)
-                except Exception as e:
+                except Exception:
                     return json.dumps(response)
-            except Exception as e:
+            except Exception:
                 return response.text
         else:
             raise ValueError(f"Invalid response type {type(response)}")
@@ -147,7 +151,8 @@ class ApiTool(Tool):
 
         params = {}
         path_params = {}
-        body = {}
+        # FIXME: body should be a dict[str, Any] but it changed a lot in this function
+        body: Any = {}
         cookies = {}
         files = []
 
@@ -208,7 +213,7 @@ class ApiTool(Tool):
                 body = body
 
         if method in {"get", "head", "post", "put", "delete", "patch"}:
-            response = getattr(ssrf_proxy, method)(
+            response: httpx.Response = getattr(ssrf_proxy, method)(
                 url,
                 params=params,
                 headers=headers,
@@ -291,7 +296,7 @@ class ApiTool(Tool):
                     raise ValueError(f"Invalid type {property['type']} for property {property}")
             elif "anyOf" in property and isinstance(property["anyOf"], list):
                 return self._convert_body_property_any_of(property, value, property["anyOf"])
-        except ValueError as e:
+        except ValueError:
             return value
 
     def _invoke(
@@ -305,6 +310,7 @@ class ApiTool(Tool):
         """
         invoke http request
         """
+        response: httpx.Response | str = ""
         # assemble request
         headers = self.assembling_request(tool_parameters)
 

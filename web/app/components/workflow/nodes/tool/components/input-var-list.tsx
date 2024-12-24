@@ -61,20 +61,12 @@ const InputVarList: FC<Props> = ({
       const newValue = produce(value, (draft: ToolVarInputs) => {
         const target = draft[variable]
         if (target) {
-          if (!isSupportConstantValue || varKindType === VarKindType.variable) {
-            if (isSupportConstantValue)
-              target.type = VarKindType.variable
-
-            target.value = varValue as ValueSelector
-          }
-          else {
-            target.type = VarKindType.constant
-            target.value = varValue as string
-          }
+          target.type = varKindType
+          target.value = varValue
         }
         else {
           draft[variable] = {
-            type: VarKindType.variable,
+            type: varKindType,
             value: varValue,
           }
         }
@@ -170,10 +162,10 @@ const InputVarList: FC<Props> = ({
                   readonly={readOnly}
                   isShowNodeName
                   nodeId={nodeId}
-                  value={varInput?.type === VarKindType.constant ? (varInput?.value || '') : (varInput?.value || [])}
+                  value={varInput?.type === VarKindType.constant ? (varInput?.value ?? '') : (varInput?.value ?? [])}
                   onChange={handleNotMixedTypeChange(variable)}
                   onOpen={handleOpen(index)}
-                  defaultVarKindType={isNumber ? VarKindType.constant : VarKindType.variable}
+                  defaultVarKindType={varInput?.type || (isNumber ? VarKindType.constant : VarKindType.variable)}
                   isSupportConstantValue={isSupportConstantValue}
                   filterVar={isNumber ? filterVar : undefined}
                   availableVars={isSelect ? availableVars : undefined}

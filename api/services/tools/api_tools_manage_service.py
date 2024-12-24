@@ -1,5 +1,7 @@
 import json
 import logging
+from collections.abc import Mapping
+from typing import Any, cast
 
 from httpx import get
 
@@ -27,12 +29,12 @@ logger = logging.getLogger(__name__)
 
 class ApiToolManageService:
     @staticmethod
-    def parser_api_schema(schema: str) -> list[ApiToolBundle]:
+    def parser_api_schema(schema: str) -> Mapping[str, Any]:
         """
         parse api schema to tool bundle
         """
         try:
-            warnings = {}
+            warnings: dict[str, str] = {}
             try:
                 tool_bundles, schema_type = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(schema, warning=warnings)
             except Exception as e:
@@ -67,13 +69,16 @@ class ApiToolManageService:
                 ),
             ]
 
-            return jsonable_encoder(
-                {
-                    "schema_type": schema_type,
-                    "parameters_schema": tool_bundles,
-                    "credentials_schema": credentials_schema,
-                    "warning": warnings,
-                }
+            return cast(
+                Mapping,
+                jsonable_encoder(
+                    {
+                        "schema_type": schema_type,
+                        "parameters_schema": tool_bundles,
+                        "credentials_schema": credentials_schema,
+                        "warning": warnings,
+                    }
+                ),
             )
         except Exception as e:
             raise ValueError(f"invalid schema: {str(e)}")
@@ -125,7 +130,7 @@ class ApiToolManageService:
             raise ValueError(f"provider {provider_name} already exists")
 
         # parse openapi to tool bundle
-        extra_info = {}
+        extra_info: dict[str, str] = {}
         # extra info like description will be set here
         tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
 
@@ -196,7 +201,7 @@ class ApiToolManageService:
 
             # try to parse schema, avoid SSRF attack
             ApiToolManageService.parser_api_schema(schema)
-        except Exception as e:
+        except Exception:
             logger.exception("parse api schema error")
             raise ValueError("invalid schema, please check the url you provided")
 
@@ -265,9 +270,8 @@ class ApiToolManageService:
 
         if provider is None:
             raise ValueError(f"api provider {provider_name} does not exists")
-
         # parse openapi to tool bundle
-        extra_info = {}
+        extra_info: dict[str, str] = {}
         # extra info like description will be set here
         tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
 
@@ -368,7 +372,7 @@ class ApiToolManageService:
 
         try:
             tool_bundles, _ = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(schema)
-        except Exception as e:
+        except Exception:
             raise ValueError("invalid schema")
 
         # get tool bundle
@@ -467,7 +471,7 @@ class ApiToolManageService:
 
             tools = provider_controller.get_tools(tenant_id=tenant_id)
 
-            for tool in tools:
+            for tool in tools or []:
                 user_provider.tools.append(
                     ToolTransformService.convert_tool_entity_to_api_entity(
                         tenant_id=tenant_id, tool=tool, credentials=user_provider.original_credentials, labels=labels

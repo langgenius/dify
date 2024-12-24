@@ -1,4 +1,4 @@
-from flask_restful import marshal_with
+from flask_restful import marshal_with  # type: ignore
 
 from controllers.common import fields
 from controllers.common import helpers as controller_helpers

@@ -1,7 +1,6 @@
 import json
 import logging
 import uuid
-from collections.abc import Mapping, Sequence
 from typing import Optional, Union, cast
 
 from core.agent.entities import AgentEntity, AgentToolEntity
@@ -49,6 +48,7 @@ logger = logging.getLogger(__name__)
 class BaseAgentRunner(AppRunner):
     def __init__(
         self,
+        *,
         tenant_id: str,
         application_generate_entity: AgentChatAppGenerateEntity,
         conversation: Conversation,
@@ -109,7 +109,7 @@ class BaseAgentRunner(AppRunner):
         features = model_schema.features if model_schema and model_schema.features else []
         self.stream_tool_call = ModelFeature.STREAM_TOOL_CALL in features
         self.files = application_generate_entity.files if ModelFeature.VISION in features else []
-        self.query = None
+        self.query: Optional[str] = ""
         self._current_thoughts: list[PromptMessage] = []
 
     def _repack_app_generate_entity(
@@ -158,7 +158,7 @@ class BaseAgentRunner(AppRunner):
                 continue
             enum = []
             if parameter.type == ToolParameter.ToolParameterType.SELECT:
-                enum = [option.value for option in parameter.options]
+                enum = [option.value for option in parameter.options] if parameter.options else []
 
             message_tool.parameters["properties"][parameter.name] = {
                 "type": parameter_type,
@@ -203,7 +203,7 @@ class BaseAgentRunner(AppRunner):
 
         return prompt_tool
 
-    def _init_prompt_tools(self) -> tuple[Mapping[str, Tool], Sequence[PromptMessageTool]]:
+    def _init_prompt_tools(self) -> tuple[dict[str, Tool], list[PromptMessageTool]]:
         """
         Init tools
         """
@@ -251,7 +251,7 @@ class BaseAgentRunner(AppRunner):
                 continue
             enum = []
             if parameter.type == ToolParameter.ToolParameterType.SELECT:
-                enum = [option.value for option in parameter.options]
+                enum = [option.value for option in parameter.options] if parameter.options else []
 
             prompt_tool.parameters["properties"][parameter.name] = {
                 "type": parameter_type,
@@ -401,7 +401,7 @@ class BaseAgentRunner(AppRunner):
         """
         Organize agent history
         """
-        result = []
+        result: list[PromptMessage] = []
         # check if there is a system message in the beginning of the conversation
         for prompt_message in prompt_messages:
             if isinstance(prompt_message, SystemPromptMessage):

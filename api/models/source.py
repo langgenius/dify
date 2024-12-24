@@ -1,14 +1,16 @@
 import json
 
+from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB
 
-from extensions.ext_database import db
 from models.base import Base
 
+
+from .engine import db
 from .types import StringUUID
 
 
-class DataSourceOauthBinding(Base):
+class DataSourceOauthBinding(db.Model):  # type: ignore[name-defined]
     __tablename__ = "data_source_oauth_bindings"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="source_binding_pkey"),
@@ -21,8 +23,8 @@ class DataSourceOauthBinding(Base):
     access_token = db.Column(db.String(255), nullable=False)
     provider = db.Column(db.String(255), nullable=False)
     source_info = db.Column(JSONB, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     disabled = db.Column(db.Boolean, nullable=True, server_default=db.text("false"))
 
 
@@ -39,8 +41,8 @@ class DataSourceApiKeyAuthBinding(Base):
     category = db.Column(db.String(255), nullable=False)
     provider = db.Column(db.String(255), nullable=False)
     credentials = db.Column(db.Text, nullable=True)  # JSON
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     disabled = db.Column(db.Boolean, nullable=True, server_default=db.text("false"))
 
     def to_dict(self):

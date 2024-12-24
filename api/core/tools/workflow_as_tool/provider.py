@@ -18,6 +18,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderIdentity,
     ToolProviderType,
 )
+from core.tools.tool.tool import Tool
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
@@ -130,6 +131,7 @@ class WorkflowToolProviderController(ToolProviderController):
                         llm_description=parameter.description,
                         required=variable.required,
                         options=options,
+                        placeholder=I18nObject(en_US="", zh_Hans=""),
                     )
                 )
             elif features.file_upload:
@@ -142,6 +144,7 @@ class WorkflowToolProviderController(ToolProviderController):
                         llm_description=parameter.description,
                         required=False,
                         form=parameter.form,
+                        placeholder=I18nObject(en_US="", zh_Hans=""),
                     )
                 )
             else:
@@ -198,6 +201,8 @@ class WorkflowToolProviderController(ToolProviderController):
 
         if not db_providers:
             return []
+        if not db_providers.app:
+            raise ValueError("app not found")
 
         app = db_providers.app
         if not app:
@@ -207,7 +212,7 @@ class WorkflowToolProviderController(ToolProviderController):
 
         return self.tools
 
-    def get_tool(self, tool_name: str) -> Optional[WorkflowTool]:
+    def get_tool(self, tool_name: str) -> Optional[Tool]:
         """
         get tool by name
 

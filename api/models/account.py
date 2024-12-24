@@ -4,9 +4,10 @@ import json
 from flask_login import UserMixin
 from sqlalchemy.orm import Mapped, mapped_column
 
-from extensions.ext_database import db
 from models.base import Base
+from sqlalchemy import func
 
+from .engine import db
 from .types import StringUUID
 
 
@@ -33,11 +34,11 @@ class Account(UserMixin, Base):
     timezone = db.Column(db.String(255))
     last_login_at = db.Column(db.DateTime)
     last_login_ip = db.Column(db.String(255))
-    last_active_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    last_active_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     status = db.Column(db.String(16), nullable=False, server_default=db.text("'active'::character varying"))
     initialized_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def is_password_set(self):
@@ -45,7 +46,8 @@ class Account(UserMixin, Base):
 
     @property
     def current_tenant(self):
-        return self._current_tenant
+        # FIXME: fix the type error later, because the type is important maybe cause some bugs
+        return self._current_tenant  # type: ignore
 
     @current_tenant.setter
     def current_tenant(self, value: "Tenant"):
@@ -78,7 +80,7 @@ class Account(UserMixin, Base):
                 tenant.current_role = ta.role
             else:
                 tenant = None
-        except:
+        except Exception:
             tenant = None
 
         self._current_tenant = tenant
@@ -92,7 +94,7 @@ class Account(UserMixin, Base):
         return AccountStatus(status_str)
 
     @classmethod
-    def get_by_openid(cls, provider: str, open_id: str) -> db.Model:
+    def get_by_openid(cls, provider: str, open_id: str):
         account_integrate = (
             db.session.query(AccountIntegrate)
             .filter(AccountIntegrate.provider == provider, AccountIntegrate.open_id == open_id)
@@ -189,7 +191,7 @@ class TenantAccountRole(enum.StrEnum):
         }
 
 
-class Tenant(db.Model):
+class Tenant(db.Model):  # type: ignore[name-defined]
     __tablename__ = "tenants"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="tenant_pkey"),)
 
@@ -199,8 +201,8 @@ class Tenant(db.Model):
     plan = db.Column(db.String(255), nullable=False, server_default=db.text("'basic'::character varying"))
     status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
     custom_config = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     def get_accounts(self) -> list[Account]:
         return (
@@ -225,7 +227,7 @@ class TenantAccountJoinRole(enum.Enum):
     DATASET_OPERATOR = "dataset_operator"
 
 
-class TenantAccountJoin(db.Model):
+class TenantAccountJoin(db.Model):  # type: ignore[name-defined]
     __tablename__ = "tenant_account_joins"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tenant_account_join_pkey"),
@@ -240,11 +242,11 @@ class TenantAccountJoin(db.Model):
     current = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     role = db.Column(db.String(16), nullable=False, server_default="normal")
     invited_by = db.Column(StringUUID, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class AccountIntegrate(db.Model):
+class AccountIntegrate(db.Model):  # type: ignore[name-defined]
     __tablename__ = "account_integrates"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="account_integrate_pkey"),
@@ -257,11 +259,11 @@ class AccountIntegrate(db.Model):
     provider = db.Column(db.String(16), nullable=False)
     open_id = db.Column(db.String(255), nullable=False)
     encrypted_token = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class InvitationCode(db.Model):
+class InvitationCode(db.Model):  # type: ignore[name-defined]
     __tablename__ = "invitation_codes"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="invitation_code_pkey"),

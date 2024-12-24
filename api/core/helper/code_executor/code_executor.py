@@ -38,7 +38,7 @@ class CodeLanguage(StrEnum):
 
 
 class CodeExecutor:
-    dependencies_cache = {}
+    dependencies_cache: dict[str, str] = {}
     dependencies_cache_lock = Lock()
 
     code_template_transformers: dict[CodeLanguage, type[TemplateTransformer]] = {
@@ -103,22 +103,22 @@ class CodeExecutor:
             )
 
         try:
-            response = response.json()
+            response_data = response.json()
         except:
             raise CodeExecutionError("Failed to parse response")
 
-        if (code := response.get("code")) != 0:
-            raise CodeExecutionError(f"Got error code: {code}. Got error msg: {response.get('message')}")
+        if (code := response_data.get("code")) != 0:
+            raise CodeExecutionError(f"Got error code: {code}. Got error msg: {response_data.get('message')}")
 
-        response = CodeExecutionResponse(**response)
+        response_code = CodeExecutionResponse(**response_data)
 
-        if response.data.error:
-            raise CodeExecutionError(response.data.error)
+        if response_code.data.error:
+            raise CodeExecutionError(response_code.data.error)
 
-        return response.data.stdout or ""
+        return response_code.data.stdout or ""
 
     @classmethod
-    def execute_workflow_code_template(cls, language: CodeLanguage, code: str, inputs: Mapping[str, Any]) -> dict:
+    def execute_workflow_code_template(cls, language: CodeLanguage, code: str, inputs: Mapping[str, Any]):
         """
         Execute code
         :param language: code language

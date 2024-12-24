@@ -1,11 +1,12 @@
 import json
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 from sqlalchemy import or_
 
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
@@ -32,7 +33,7 @@ class WorkflowToolManageService:
         label: str,
         icon: dict,
         description: str,
-        parameters: Mapping[str, Any],
+        parameters: list[Mapping[str, Any]],
         privacy_policy: str = "",
         labels: list[str] | None = None,
     ) -> dict:
@@ -98,7 +99,7 @@ class WorkflowToolManageService:
         label: str,
         icon: dict,
         description: str,
-        parameters: list[dict],
+        parameters: list[Mapping[str, Any]],
         privacy_policy: str = "",
         labels: list[str] | None = None,
     ) -> dict:
@@ -190,11 +191,11 @@ class WorkflowToolManageService:
         for provider in db_tools:
             try:
                 tools.append(ToolTransformService.workflow_provider_to_controller(provider))
-            except:
+            except Exception:
                 # skip deleted tools
                 pass
 
-        labels = ToolLabelManager.get_tools_labels(tools)
+        labels = ToolLabelManager.get_tools_labels([t for t in tools if isinstance(t, ToolProviderController)])
 
         result = []
 
@@ -284,6 +285,9 @@ class WorkflowToolManageService:
             raise ValueError("Workflow not found")
 
         tool = ToolTransformService.workflow_provider_to_controller(db_tool)
+        to_user_tool: Optional[list[ToolApiEntity]] = tool.get_tools(tenant_id)
+        if to_user_tool is None or len(to_user_tool) == 0:
+            raise ValueError(f"Tool {db_tool.id} not found")
 
         return {
             "name": db_tool.name,
@@ -321,6 +325,9 @@ class WorkflowToolManageService:
             raise ValueError(f"Tool {workflow_tool_id} not found")
 
         tool = ToolTransformService.workflow_provider_to_controller(db_tool)
+        to_user_tool: Optional[list[ToolApiEntity]] = tool.get_tools(user_id, tenant_id)
+        if to_user_tool is None or len(to_user_tool) == 0:
+            raise ValueError(f"Tool {workflow_tool_id} not found")
 
         return [
             ToolTransformService.convert_tool_entity_to_api_entity(

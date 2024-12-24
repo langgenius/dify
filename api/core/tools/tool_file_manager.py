@@ -8,6 +8,8 @@ from mimetypes import guess_extension, guess_type
 from typing import Optional, Union
 from uuid import uuid4
 
+import httpx
+
 from configs import dify_config
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
@@ -96,9 +98,8 @@ class ToolFileManager:
             response = ssrf_proxy.get(file_url)
             response.raise_for_status()
             blob = response.content
-        except Exception as e:
-            logger.exception(f"Failed to download file from {file_url}")
-            raise
+        except httpx.TimeoutException:
+            raise ValueError(f"timeout when downloading file from {file_url}")
 
         mimetype = guess_type(file_url)[0] or "octet/stream"
         extension = guess_extension(mimetype) or ".bin"
@@ -217,6 +218,6 @@ class ToolFileManager:
 
 
 # init tool_file_parser
-from core.file.tool_file_parser import tool_file_manager
+from core.file.tool_file_parser import tool_file_manager  # noqa: E402
 
 tool_file_manager["manager"] = ToolFileManager

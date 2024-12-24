@@ -28,10 +28,10 @@ const AppCard = ({
         <div className='relative shrink-0'>
           <AppIcon
             size='large'
-            iconType={app.app.icon_type}
-            icon={app.app.icon}
-            background={app.app.icon_background}
-            imageUrl={app.app.icon_url}
+            iconType={appBasicInfo.icon_type}
+            icon={appBasicInfo.icon}
+            background={appBasicInfo.icon_background}
+            imageUrl={appBasicInfo.icon_url}
           />
           <span className='absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm'>
             {appBasicInfo.mode === 'advanced-chat' && (

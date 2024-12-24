@@ -1,6 +1,8 @@
-from extensions.ext_database import db
 from models.base import Base
+from sqlalchemy import func
+from sqlalchemy.orm import Mapped, mapped_column
 
+from .engine import db
 from .model import Message
 from .types import StringUUID
 
@@ -17,7 +19,7 @@ class SavedMessage(Base):
     message_id = db.Column(StringUUID, nullable=False)
     created_by_role = db.Column(db.String(255), nullable=False, server_default=db.text("'end_user'::character varying"))
     created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def message(self):
@@ -33,7 +35,7 @@ class PinnedConversation(Base):
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
-    conversation_id = db.Column(StringUUID, nullable=False)
+    conversation_id: Mapped[str] = mapped_column(StringUUID)
     created_by_role = db.Column(db.String(255), nullable=False, server_default=db.text("'end_user'::character varying"))
     created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())

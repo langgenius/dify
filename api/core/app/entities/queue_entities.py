@@ -45,6 +45,7 @@ class QueueEvent(StrEnum):
     ERROR = "error"
     PING = "ping"
     STOP = "stop"
+    RETRY = "retry"
 
 
 class AppQueueEvent(BaseModel):
@@ -86,9 +87,9 @@ class QueueIterationStartEvent(AppQueueEvent):
     start_at: datetime
 
     node_run_index: int
-    inputs: Optional[dict[str, Any]] = None
+    inputs: Optional[Mapping[str, Any]] = None
     predecessor_node_id: Optional[str] = None
-    metadata: Optional[dict[str, Any]] = None
+    metadata: Optional[Mapping[str, Any]] = None
 
 
 class QueueIterationNextEvent(AppQueueEvent):
@@ -140,9 +141,9 @@ class QueueIterationCompletedEvent(AppQueueEvent):
     start_at: datetime
 
     node_run_index: int
-    inputs: Optional[dict[str, Any]] = None
-    outputs: Optional[dict[str, Any]] = None
-    metadata: Optional[dict[str, Any]] = None
+    inputs: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    metadata: Optional[Mapping[str, Any]] = None
     steps: int = 0
 
     error: Optional[str] = None
@@ -305,10 +306,10 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     start_at: datetime
 
-    inputs: Optional[dict[str, Any]] = None
-    process_data: Optional[dict[str, Any]] = None
-    outputs: Optional[dict[str, Any]] = None
-    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
+    inputs: Optional[Mapping[str, Any]] = None
+    process_data: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
 
     error: Optional[str] = None
     """single iteration duration map"""
@@ -328,6 +329,20 @@ class QueueAgentLogEvent(AppQueueEvent):
     error: str | None
     status: str
     data: Mapping[str, Any]
+
+
+class QueueNodeRetryEvent(QueueNodeStartedEvent):
+    """QueueNodeRetryEvent entity"""
+
+    event: QueueEvent = QueueEvent.RETRY
+
+    inputs: Optional[Mapping[str, Any]] = None
+    process_data: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
+
+    error: str
+    retry_index: int  # retry index
 
 
 class QueueNodeInIterationFailedEvent(AppQueueEvent):
@@ -353,10 +368,10 @@ class QueueNodeInIterationFailedEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     start_at: datetime
 
-    inputs: Optional[dict[str, Any]] = None
-    process_data: Optional[dict[str, Any]] = None
-    outputs: Optional[dict[str, Any]] = None
-    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
+    inputs: Optional[Mapping[str, Any]] = None
+    process_data: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
 
     error: str
 
@@ -384,10 +399,10 @@ class QueueNodeExceptionEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     start_at: datetime
 
-    inputs: Optional[dict[str, Any]] = None
-    process_data: Optional[dict[str, Any]] = None
-    outputs: Optional[dict[str, Any]] = None
-    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
+    inputs: Optional[Mapping[str, Any]] = None
+    process_data: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
 
     error: str
 
@@ -415,10 +430,10 @@ class QueueNodeFailedEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     start_at: datetime
 
-    inputs: Optional[dict[str, Any]] = None
-    process_data: Optional[dict[str, Any]] = None
-    outputs: Optional[dict[str, Any]] = None
-    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
+    inputs: Optional[Mapping[str, Any]] = None
+    process_data: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
+    execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
 
     error: str
 
