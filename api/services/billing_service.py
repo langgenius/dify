@@ -72,7 +72,16 @@ class BillingService:
             raise ValueError("Only team owner or team admin can perform this action")
 
     @classmethod
-    def unsubscripbe_tenant_customer(cls, tenant_id: str):
-        """Delete related customer in billing service. Used when tenant is deleted."""
-        params = {"tenant_id": tenant_id}
-        return cls._send_request("DELETE", "/subscription", params=params)
+    def delete_account(cls, account_id: str, reason: str):
+        """Delete account."""
+        params = {"account_id": account_id, "reason": reason}
+        return cls._send_request("DELETE", "/account", params=params)
+
+    @classmethod
+    def is_email_in_freeze(cls, email: str) -> bool:
+        params = {"email": email}
+        try:
+            response = cls._send_request("GET", "/account/in-freeze", params=params)
+            return response["data"]
+        except Exception:
+            return False

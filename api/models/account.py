@@ -265,31 +265,3 @@ class InvitationCode(db.Model):  # type: ignore[name-defined]
     used_by_account_id = db.Column(StringUUID)
     deprecated_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-
-
-class AccountDeletionLog(db.Model):
-    __tablename__ = "account_deletion_logs"
-    __table_args__ = (db.PrimaryKeyConstraint("id", name="account_deletion_log_pkey"),)
-
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    email = db.Column(db.String(255), nullable=False)
-    reason = db.Column(db.Text, nullable=True)
-    account_id = db.Column(StringUUID, nullable=False)
-    snapshot = db.Column(db.Text, nullable=False)
-
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-
-
-class AccountDeletionLogDetail(db.Model):
-    __tablename__ = "account_deletion_log_details"
-    __table_args__ = (db.PrimaryKeyConstraint("id", name="account_deletion_log_detail_pkey"),)
-
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    account_id = db.Column(StringUUID, nullable=False)
-    tenant_id = db.Column(StringUUID, nullable=False)
-    role = db.Column(db.String(16), nullable=False)
-    snapshot = db.Column(db.Text, nullable=False)
-
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
