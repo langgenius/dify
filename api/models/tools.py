@@ -1,5 +1,5 @@
 import json
-from typing import Optional
+from typing import Any, Optional
 
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey, func
@@ -282,8 +282,8 @@ class ToolConversationVariables(db.Model):  # type: ignore[name-defined]
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def variables(self) -> dict:
-        return dict(json.loads(self.variables_str))
+    def variables(self) -> Any:
+        return json.loads(self.variables_str)
 
 
 class ToolFile(db.Model):  # type: ignore[name-defined]
