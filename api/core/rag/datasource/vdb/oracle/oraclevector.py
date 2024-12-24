@@ -6,10 +6,8 @@ from contextlib import contextmanager
 from typing import Any
 
 import jieba.posseg as pseg
-import nltk
 import numpy
 import oracledb
-from nltk.corpus import stopwords
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
@@ -202,6 +200,10 @@ class OracleVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
+        # lazy import
+        import nltk
+        from nltk.corpus import stopwords
+
         top_k = kwargs.get("top_k", 5)
         # just not implement fetch by score_threshold now, may be later
         score_threshold = float(kwargs.get("score_threshold") or 0.0)

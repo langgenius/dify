@@ -1,12 +1,14 @@
 from flask_login import current_user
 from flask_restful import marshal_with, reqparse
 from flask_restful.inputs import int_range
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.console import api
 from controllers.console.explore.error import NotChatAppError
 from controllers.console.explore.wraps import InstalledAppResource
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.ext_database import db
 from fields.conversation_fields import conversation_infinite_scroll_pagination_fields, simple_conversation_fields
 from libs.helper import uuid_value
 from models.model import AppMode
@@ -34,14 +36,16 @@ class ConversationListApi(InstalledAppResource):
             pinned = True if args["pinned"] == "true" else False
 
         try:
-            return WebConversationService.pagination_by_last_id(
-                app_model=app_model,
-                user=current_user,
-                last_id=args["last_id"],
-                limit=args["limit"],
-                invoke_from=InvokeFrom.EXPLORE,
-                pinned=pinned,
-            )
+            with Session(db.engine) as session:
+                return WebConversationService.pagination_by_last_id(
+                    session=session,
+                    app_model=app_model,
+                    user=current_user,
+                    last_id=args["last_id"],
+                    limit=args["limit"],
+                    invoke_from=InvokeFrom.EXPLORE,
+                    pinned=pinned,
+                )
         except LastConversationNotExistsError:
             raise NotFound("Last Conversation Not Exists.")
 

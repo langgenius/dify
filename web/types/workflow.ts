@@ -52,10 +52,12 @@ export type NodeTracing = {
   extras?: any
   expand?: boolean // for UI
   details?: NodeTracing[][] // iteration detail
+  retryDetail?: NodeTracing[] // retry detail
   parallel_id?: string
   parallel_start_node_id?: string
   parent_parallel_id?: string
   parent_parallel_start_node_id?: string
+  retry_index?: number
 }
 
 export type FetchWorkflowDraftResponse = {
@@ -178,6 +180,7 @@ export type NodeFinishedResponse = {
     }
     created_at: number
     files?: FileResponse[]
+    retry_index?: number
   }
 }
 
@@ -333,3 +336,7 @@ export type ConversationVariableResponse = {
 }
 
 export type IterationDurationMap = Record<string, number>
+
+export type WorkflowConfigResponse = {
+  parallel_depth_limit: number
+}

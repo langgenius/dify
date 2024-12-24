@@ -191,6 +191,7 @@ const translation = {
     editorTip: '能夠建立並編輯應用程式，不能管理團隊設定',
     inviteTeamMember: '新增團隊成員',
     inviteTeamMemberTip: '對方在登入後可以訪問你的團隊資料。',
+    emailNotSetup: '由於郵件伺服器未設置，無法發送邀請郵件。請將邀請後生成的邀請連結通知用戶。',
     email: '郵箱',
     emailInvalid: '郵箱格式無效',
     emailPlaceholder: '輸入郵箱',

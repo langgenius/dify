@@ -1,5 +1,6 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -231,6 +232,10 @@ class ToolNode(BaseNode[ToolNodeData]):
                 url = str(response.message)
                 transfer_method = FileTransferMethod.TOOL_FILE
                 tool_file_id = url.split("/")[-1].split(".")[0]
+                try:
+                    UUID(tool_file_id)
+                except ValueError:
+                    raise ToolFileError(f"cannot extract tool file id from url {url}")
                 with Session(db.engine) as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
