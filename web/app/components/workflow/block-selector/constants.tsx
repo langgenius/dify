@@ -84,6 +84,11 @@ export const BLOCKS: Block[] = [
     type: BlockEnum.ListFilter,
     title: 'List Filter',
   },
+  {
+    classification: BlockClassificationEnum.Default,
+    type: BlockEnum.Agent,
+    title: 'Agent',
+  },
 ]
 
 export const BLOCK_CLASSIFICATIONS: string[] = [

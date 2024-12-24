@@ -236,6 +236,7 @@ const translation = {
     'parameter-extractor': '参数提取器',
     'document-extractor': '文档提取器',
     'list-operator': '列表操作',
+    'agent': 'Agent',
   },
   blocksAbout: {
     'start': '定义一个 workflow 流程启动的初始参数',
@@ -255,6 +256,7 @@ const translation = {
     'parameter-extractor': '利用 LLM 从自然语言内推理提取出结构化参数，用于后置的工具调用或 HTTP 请求。',
     'document-extractor': '用于将用户上传的文档解析为 LLM 便于理解的文本内容。',
     'list-operator': '用于过滤或排序数组内容。',
+    'agent': 'TODO: Agent',
   },
   operator: {
     zoomIn: '放大',

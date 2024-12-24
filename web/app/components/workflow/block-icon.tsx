@@ -53,6 +53,8 @@ const getIcon = (type: BlockEnum, className: string) => {
     [BlockEnum.ParameterExtractor]: <ParameterExtractor className={className} />,
     [BlockEnum.DocExtractor]: <DocsExtractor className={className} />,
     [BlockEnum.ListFilter]: <ListFilter className={className} />,
+    // TODO: add icon for Agent
+    [BlockEnum.Agent]: <VariableX className={className} />,
   }[type]
 }
 const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
@@ -73,6 +75,7 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.ParameterExtractor]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.DocExtractor]: 'bg-util-colors-green-green-500',
   [BlockEnum.ListFilter]: 'bg-util-colors-cyan-cyan-500',
+  [BlockEnum.Agent]: 'bg-util-colors-indigo-indigo-500',
 }
 const BlockIcon: FC<BlockIconProps> = ({
   type,

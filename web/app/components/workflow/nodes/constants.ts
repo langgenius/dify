@@ -34,6 +34,8 @@ import DocExtractorNode from './document-extractor/node'
 import DocExtractorPanel from './document-extractor/panel'
 import ListFilterNode from './list-operator/node'
 import ListFilterPanel from './list-operator/panel'
+import AgentNode from './agent/node'
+import AgentPanel from './agent/panel'
 
 export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Start]: StartNode,
@@ -54,6 +56,7 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Iteration]: IterationNode,
   [BlockEnum.DocExtractor]: DocExtractorNode,
   [BlockEnum.ListFilter]: ListFilterNode,
+  [BlockEnum.Agent]: AgentNode,
 }
 
 export const PanelComponentMap: Record<string, ComponentType<any>> = {
@@ -75,6 +78,7 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Iteration]: IterationPanel,
   [BlockEnum.DocExtractor]: DocExtractorPanel,
   [BlockEnum.ListFilter]: ListFilterPanel,
+  [BlockEnum.Agent]: AgentPanel,
 }
 
 export const CUSTOM_NODE_TYPE = 'custom'

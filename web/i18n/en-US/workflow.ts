@@ -236,6 +236,7 @@ const translation = {
     'parameter-extractor': 'Parameter Extractor',
     'document-extractor': 'Doc Extractor',
     'list-operator': 'List Operator',
+    'agent': 'Agent',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
@@ -255,6 +256,7 @@ const translation = {
     'parameter-extractor': 'Use LLM to extract structured parameters from natural language for tool invocations or HTTP requests.',
     'document-extractor': 'Used to parse uploaded documents into text content that is easily understandable by LLM.',
     'list-operator': 'Used to filter or sort array content.',
+    'agent': 'TODO: add text here',
   },
   operator: {
     zoomIn: 'Zoom In',

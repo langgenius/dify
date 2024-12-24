@@ -1,10 +1,10 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import React from 'react'
 
-interface Props {
+type Props = {
   title: string
-  content: string | JSX.Element
+  content: ReactNode
 }
 
 const InfoPanel: FC<Props> = ({

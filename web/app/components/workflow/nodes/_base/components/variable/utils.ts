@@ -293,6 +293,11 @@ const formatItem = (
       break
     }
 
+    case BlockEnum.Agent: {
+      res.vars = []
+      break
+    }
+
     case 'env': {
       res.vars = data.envList.map((env: EnvironmentVariable) => {
         return {
