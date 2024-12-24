@@ -924,7 +924,7 @@ const StepTwo = ({
               </PortalToFollowElem>
             </>)}
         </div>
-        {indexType === IndexingType.QUALIFIED && (
+        {!hasSetIndexType && indexType === IndexingType.QUALIFIED && (
           <div className='mt-2 h-10 p-2 flex items-center gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border overflow-hidden bg-components-panel-bg-blur backdrop-blur-[5px] shadow-xs'>
             <div className='absolute top-0 left-0 right-0 bottom-0 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)] opacity-40'></div>
             <div className='p-1'>
