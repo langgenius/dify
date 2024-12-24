@@ -157,13 +157,13 @@ class MessageService:
         user: Optional[Union[Account, EndUser]],
         rating: Optional[str],
         content: Optional[str],
-    ) -> MessageFeedback:
+    ):
         if not user:
             raise ValueError("user cannot be None")
 
         message = cls.get_message(app_model=app_model, user=user, message_id=message_id)
 
-        feedback: MessageFeedback = message.user_feedback if isinstance(user, EndUser) else message.admin_feedback
+        feedback = message.user_feedback if isinstance(user, EndUser) else message.admin_feedback
 
         if not rating and feedback:
             db.session.delete(feedback)
