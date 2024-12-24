@@ -1,7 +1,7 @@
 import json
 from abc import ABC, abstractmethod
 from collections.abc import Generator
-from typing import Optional, cast
+from typing import Optional
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.entities import AgentScratchpadUnit
@@ -391,9 +391,11 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         for message in self.history_prompt_messages:
             if isinstance(message, AssistantPromptMessage):
                 if not current_scratchpad:
+                    if not isinstance(message.content, str | None):
+                        raise NotImplementedError("expected str type")
                     current_scratchpad = AgentScratchpadUnit(
-                        agent_response=cast(str, message.content),
-                        thought=cast(str, message.content) or "I am thinking about how to help you",
+                        agent_response=message.content,
+                        thought=message.content or "I am thinking about how to help you",
                         action_str="",
                         action=None,
                         observation=None,
