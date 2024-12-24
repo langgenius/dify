@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, Optional, cast
 
-from api.services.billing_service import BillingService
+from services.billing_service import BillingService
 from pydantic import BaseModel
 from sqlalchemy import func
 from werkzeug.exceptions import Unauthorized
