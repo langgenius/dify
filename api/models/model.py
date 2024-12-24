@@ -86,7 +86,7 @@ class App(db.Model):  # type: ignore[name-defined]
     is_public = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     is_universal = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     tracing = db.Column(db.Text, nullable=True)
-    max_active_requests = db.Column(db.Integer, nullable=True)
+    max_active_requests: Mapped[Optional[int]] = mapped_column(nullable=True)
     created_by = db.Column(StringUUID, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = db.Column(StringUUID, nullable=True)
