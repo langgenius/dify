@@ -594,8 +594,6 @@ class ToolManager:
             # append builtin providers
             for provider in builtin_providers:
                 # handle include, exclude
-                if provider.identity is None:
-                    continue
                 if is_filtered(
                     include_set=cast(set[str], dify_config.POSITION_TOOL_INCLUDES_SET),
                     exclude_set=cast(set[str], dify_config.POSITION_TOOL_EXCLUDES_SET),

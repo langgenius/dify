@@ -6,6 +6,7 @@ from pydantic import Field
 from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.plugin.entities.parameters import PluginParameterOption
+from core.tools.__base.tool import Tool
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -18,7 +19,6 @@ from core.tools.entities.tool_entities import (
     ToolProviderIdentity,
     ToolProviderType,
 )
-from core.tools.tool.tool import Tool
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
