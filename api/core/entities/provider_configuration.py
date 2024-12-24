@@ -153,7 +153,7 @@ class ProviderConfiguration(BaseModel):
         """
         return self.custom_configuration.provider is not None or len(self.custom_configuration.models) > 0
 
-    def get_custom_credentials(self, obfuscated: bool = False) -> Optional[dict]:
+    def get_custom_credentials(self, obfuscated: bool = False):
         """
         Get custom credentials.
 

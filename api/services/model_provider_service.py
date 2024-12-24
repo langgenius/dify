@@ -2,7 +2,7 @@ import logging
 import mimetypes
 import os
 from pathlib import Path
-from typing import Any, Optional, cast
+from typing import Optional, cast
 
 import requests
 from flask import current_app
@@ -100,7 +100,7 @@ class ModelProviderService:
             ModelWithProviderEntityResponse(model) for model in provider_configurations.get_models(provider=provider)
         ]
 
-    def get_provider_credentials(self, tenant_id: str, provider: str) -> dict[Any, Any]:
+    def get_provider_credentials(self, tenant_id: str, provider: str):
         """
         get provider credentials.
         """
@@ -109,7 +109,7 @@ class ModelProviderService:
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
 
-        return dict(provider_configuration.get_custom_credentials(obfuscated=True))
+        return provider_configuration.get_custom_credentials(obfuscated=True)
 
     def provider_credentials_validate(self, tenant_id: str, provider: str, credentials: dict) -> None:
         """
