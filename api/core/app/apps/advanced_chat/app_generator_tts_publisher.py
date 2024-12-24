@@ -5,7 +5,7 @@ import queue
 import re
 import threading
 from collections.abc import Iterable
-from typing import Optional, cast
+from typing import Optional
 
 from core.app.entities.queue_entities import (
     MessageQueueMessage,
@@ -16,6 +16,7 @@ from core.app.entities.queue_entities import (
     WorkflowQueueMessage,
 )
 from core.model_manager import ModelInstance, ModelManager
+from core.model_runtime.entities.message_entities import TextPromptMessageContent
 from core.model_runtime.entities.model_entities import ModelType
 
 
@@ -94,7 +95,16 @@ class AppGeneratorTTSPublisher:
                         future_queue.put(futures_result)
                     break
                 elif isinstance(message.event, QueueAgentMessageEvent | QueueLLMChunkEvent):
-                    self.msg_text += cast(str, message.event.chunk.delta.message.content)
+                    message_content = message.event.chunk.delta.message.content
+                    if not message_content:
+                        continue
+                    if isinstance(message_content, str):
+                        self.msg_text += message_content
+                    elif isinstance(message_content, list):
+                        for content in message_content:
+                            if not isinstance(content, TextPromptMessageContent):
+                                continue
+                            self.msg_text += content.data
                 elif isinstance(message.event, QueueTextChunkEvent):
                     self.msg_text += message.event.text
                 elif isinstance(message.event, QueueNodeSucceededEvent):
