@@ -1,6 +1,7 @@
 import json
 import logging
-from typing import Optional, cast
+from collections.abc import Mapping
+from typing import Any, Optional, cast
 
 from httpx import get
 
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 class ApiToolManageService:
     @staticmethod
-    def parser_api_schema(schema: str) -> list[ApiToolBundle]:
+    def parser_api_schema(schema: str) -> Mapping[str, Any]:
         """
         parse api schema to tool bundle
         """
@@ -69,7 +70,7 @@ class ApiToolManageService:
             ]
 
             return cast(
-                list[ApiToolBundle],
+                Mapping,
                 jsonable_encoder(
                     {
                         "schema_type": schema_type,
