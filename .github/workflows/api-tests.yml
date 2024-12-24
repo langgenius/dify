@@ -59,7 +59,7 @@ jobs:
       - name: Run mypy
         run: |
           pushd api
-          poetry run mypy --install-types --non-interactive .
+          poetry run python -m mypy --install-types --non-interactive .
           popd
 
       - name: Set up dotenvs
