@@ -882,7 +882,7 @@ class DocumentService:
                             exist_page_ids.append(data_source_info["notion_page_id"])
                             exist_document[data_source_info["notion_page_id"]] = document.id
                     for notion_info in notion_info_list:
-                        workspace_id = notion_info["workspace_id"]
+                        workspace_id = notion_info.workspace_id
                         data_source_binding = DataSourceOauthBinding.query.filter(
                             db.and_(
                                 DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
@@ -893,13 +893,13 @@ class DocumentService:
                         ).first()
                         if not data_source_binding:
                             raise ValueError("Data source binding not found.")
-                        for page in notion_info["pages"]:
-                            if page["page_id"] not in exist_page_ids:
+                        for page in notion_info.pages:
+                            if page.page_id not in exist_page_ids:
                                 data_source_info = {
                                     "notion_workspace_id": workspace_id,
-                                    "notion_page_id": page["page_id"],
-                                    "notion_page_icon": page["page_icon"],
-                                    "type": page["type"],
+                                    "notion_page_id": page.page_id,
+                                    "notion_page_icon": page.page_icon,
+                                    "type": page.type,
                                 }
                                 document = DocumentService.build_document(
                                     dataset,
@@ -911,7 +911,7 @@ class DocumentService:
                                     created_from,
                                     position,
                                     account,
-                                    page["page_name"],
+                                    page.page_name,
                                     batch,
                                 )
                                 db.session.add(document)
@@ -920,7 +920,7 @@ class DocumentService:
                                 documents.append(document)
                                 position += 1
                             else:
-                                exist_document.pop(page["page_id"])
+                                exist_document.pop(page.page_id)
                     # delete not selected documents
                     if len(exist_document) > 0:
                         clean_notion_document_task.delay(list(exist_document.values()), dataset.id)

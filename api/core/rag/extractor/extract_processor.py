@@ -131,11 +131,7 @@ class ExtractProcessor:
                         extractor = UnstructuredEpubExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     else:
                         # txt
-                        extractor = (
-                            UnstructuredTextExtractor(file_path, unstructured_api_url)
-                            if is_automatic
-                            else TextExtractor(file_path, autodetect_encoding=True)
-                        )
+                        extractor = TextExtractor(file_path, autodetect_encoding=True)
                 else:
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)

@@ -19,7 +19,8 @@ class ParentMode(str, Enum):
 class NotionPage(BaseModel):
     page_id: str
     page_name: str
-    page_icon: str
+    page_icon: Optional[str]
+    type: str
 
 
 class NotionInfo(BaseModel):
@@ -31,7 +32,7 @@ class WebsiteInfo(BaseModel):
     provider: str
     job_id: str
     urls: list[str]
-    only_main_content: bool
+    only_main_content: bool = True
 
 
 class FileInfo(BaseModel):
