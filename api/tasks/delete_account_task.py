@@ -1,6 +1,7 @@
 import logging
 
 from celery import shared_task
+
 from extensions.ext_database import db
 from models.account import Account
 from services.billing_service import BillingService
@@ -14,7 +15,7 @@ def delete_account_task(account_id, reason: str):
     try:
         BillingService.delete_account(account_id, reason)
     except Exception as e:
-        logger.error(f"Failed to delete account {account_id} from billing service: {e}")
+        logger.exception(f"Failed to delete account {account_id} from billing service.")
         raise
 
     account = db.session.query(Account).filter(Account.id == account_id).first()
