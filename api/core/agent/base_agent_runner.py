@@ -52,6 +52,7 @@ logger = logging.getLogger(__name__)
 class BaseAgentRunner(AppRunner):
     def __init__(
         self,
+        *,
         tenant_id: str,
         application_generate_entity: AgentChatAppGenerateEntity,
         conversation: Conversation,
@@ -65,7 +66,7 @@ class BaseAgentRunner(AppRunner):
         prompt_messages: Optional[list[PromptMessage]] = None,
         variables_pool: Optional[ToolRuntimeVariablePool] = None,
         db_variables: Optional[ToolConversationVariables] = None,
-        model_instance: ModelInstance | None = None,
+        model_instance: ModelInstance,
     ) -> None:
         self.tenant_id = tenant_id
         self.application_generate_entity = application_generate_entity
@@ -111,8 +112,6 @@ class BaseAgentRunner(AppRunner):
         db.session.close()
 
         # check if model supports stream tool call
-        # FIXME confirm here, model_instance is not None
-        assert model_instance is not None
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
         model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
         features = model_schema.features if model_schema and model_schema.features else []

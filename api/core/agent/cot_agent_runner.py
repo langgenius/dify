@@ -82,8 +82,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 llm_usage.total_price += usage.total_price
 
         model_instance = self.model_instance
-        if not model_instance:
-            raise ValueError("failed to get model instance")
 
         while function_call_state and iteration_step <= max_iteration_steps:
             # continue to run until there is not any tool call

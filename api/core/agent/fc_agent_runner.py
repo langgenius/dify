@@ -69,7 +69,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 llm_usage.total_price += usage.total_price
 
         model_instance = self.model_instance
-        assert model_instance is not None
 
         while function_call_state and iteration_step <= max_iteration_steps:
             function_call_state = False
