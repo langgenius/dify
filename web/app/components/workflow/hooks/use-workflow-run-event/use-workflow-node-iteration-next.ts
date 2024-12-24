@@ -40,7 +40,7 @@ export const useWorkflowNodeIterationNext = () => {
       setIterTimes(iterTimes + 1)
     })
     setNodes(newNodes)
-  }, [])
+  }, [workflowStore, store])
 
   return {
     handleWorkflowNodeIterationNext,

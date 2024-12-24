@@ -18,7 +18,7 @@ export const useWorkflowFailed = () => {
         status: WorkflowRunningStatus.Failed,
       }
     }))
-  }, [])
+  }, [workflowStore])
 
   return {
     handleWorkflowFailed,

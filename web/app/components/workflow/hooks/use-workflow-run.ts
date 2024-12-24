@@ -242,19 +242,19 @@ export const useWorkflowRun = () => {
         onTextReplace: (params) => {
           handleWorkflowTextReplace(params)
         },
-        onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
+        onTTSChunk: (messageId: string, audio: string) => {
           if (!audio || audio === '')
             return
           player.playAudioWithAudio(audio, true)
           AudioPlayerManager.getInstance().resetMsgId(messageId)
         },
-        onTTSEnd: (messageId: string, audio: string, audioType?: string) => {
+        onTTSEnd: (messageId: string, audio: string) => {
           player.playAudioWithAudio(audio, false)
         },
         ...restCallback,
       },
     )
-  }, [store, reactflow, workflowStore, doSyncWorkflowDraft])
+  }, [store, workflowStore, doSyncWorkflowDraft, handleWorkflowStarted, handleWorkflowFinished, handleWorkflowFailed, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeRetry, handleWorkflowTextChunk, handleWorkflowTextReplace, pathname])
 
   const handleStopRun = useCallback((taskId: string) => {
     const appId = useAppStore.getState().appDetail?.id

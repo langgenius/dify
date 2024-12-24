@@ -113,7 +113,7 @@ export const useWorkflowNodeStarted = () => {
       })
       setEdges(newEdges)
     }
-  }, [])
+  }, [workflowStore, store, reactflow])
 
   return {
     handleWorkflowNodeStarted,

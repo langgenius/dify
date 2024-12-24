@@ -15,7 +15,7 @@ export const useWorkflowTextReplace = () => {
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
       draft.resultText = text
     }))
-  }, [])
+  }, [workflowStore])
 
   return {
     handleWorkflowTextReplace,

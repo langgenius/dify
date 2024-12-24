@@ -145,7 +145,7 @@ export const useWorkflowNodeFinished = () => {
       })
       setEdges(newEdges)
     }
-  }, [])
+  }, [workflowStore, store])
 
   return {
     handleWorkflowNodeFinished,

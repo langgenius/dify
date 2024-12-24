@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import produce from 'immer'
-import type { 
+import type {
   NodeFinishedResponse,
   NodeTracing,
 } from '@/types/workflow'
@@ -90,7 +90,7 @@ export const useWorkflowNodeRetry = () => {
       currentNode.data._retryIndex = data.retry_index
     })
     setNodes(newNodes)
-  }, [])
+  }, [workflowStore, store])
 
   return {
     handleWorkflowNodeRetry,

@@ -12,7 +12,6 @@ export const useWorkflowNodeIterationFinished = () => {
 
   const handleWorkflowNodeIterationFinished = useCallback((params: IterationFinishedResponse) => {
     const { data } = params
-    
     const {
       workflowRunningData,
       setWorkflowRunningData,
@@ -23,6 +22,7 @@ export const useWorkflowNodeIterationFinished = () => {
       setNodes,
     } = store.getState()
     const nodes = getNodes()
+
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
       const tracing = draft.tracing!
       const currIterationNode = tracing.find(trace => trace.node_id === data.node_id)
@@ -40,7 +40,7 @@ export const useWorkflowNodeIterationFinished = () => {
       currentNode.data._runningStatus = data.status
     })
     setNodes(newNodes)
-  }, [])
+  }, [workflowStore, store])
 
   return {
     handleWorkflowNodeIterationFinished,

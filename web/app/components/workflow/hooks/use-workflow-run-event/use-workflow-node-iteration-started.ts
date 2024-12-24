@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { 
+import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
@@ -79,7 +79,7 @@ export const useWorkflowNodeIterationStarted = () => {
       })
     })
     setEdges(newEdges)
-  }, [])
+  }, [workflowStore, store, reactflow])
 
   return {
     handleWorkflowNodeIterationStarted,

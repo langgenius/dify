@@ -17,7 +17,7 @@ export const useWorkflowTextChunk = () => {
       draft.resultTabActive = true
       draft.resultText += text
     }))
-  }, [])
+  }, [workflowStore])
 
   return {
     handleWorkflowTextChunk,

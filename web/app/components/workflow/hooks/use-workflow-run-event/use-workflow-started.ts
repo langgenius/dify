@@ -50,7 +50,7 @@ export const useWorkflowStarted = () => {
       })
     })
     setEdges(newEdges)
-  }, [])
+  }, [workflowStore, store])
 
   return {
     handleWorkflowStarted,

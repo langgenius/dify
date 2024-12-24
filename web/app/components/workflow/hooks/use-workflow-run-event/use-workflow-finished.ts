@@ -27,7 +27,7 @@ export const useWorkflowFinished = () => {
         draft.resultText = data.outputs[Object.keys(data.outputs)[0]]
       }
     }))
-  }, [])
+  }, [workflowStore])
 
   return {
     handleWorkflowFinished,
