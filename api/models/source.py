@@ -5,7 +5,6 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from models.base import Base
 
-
 from .engine import db
 from .types import StringUUID
 

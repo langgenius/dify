@@ -218,6 +218,6 @@ class ToolFileManager:
 
 
 # init tool_file_parser
-from core.file.tool_file_parser import tool_file_manager  # noqa: E402
+from core.file.tool_file_parser import tool_file_manager
 
 tool_file_manager["manager"] = ToolFileManager

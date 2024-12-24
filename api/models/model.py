@@ -14,15 +14,13 @@ if TYPE_CHECKING:
     from models.workflow import Workflow
 
 from enum import StrEnum
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin
 from sqlalchemy import Float, Index, PrimaryKeyConstraint, func, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
-from typing import TYPE_CHECKING, cast
-
 
 from configs import dify_config
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType

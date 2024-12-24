@@ -1,6 +1,8 @@
 from enum import Enum
-from models.base import Base
+
 from sqlalchemy import func
+
+from models.base import Base
 
 from .engine import db
 from .types import StringUUID

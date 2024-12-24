@@ -1,8 +1,7 @@
 import json
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping, Sequence
-from typing import Optional
-from typing import Any
+from typing import Any, Optional
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.entities import AgentScratchpadUnit

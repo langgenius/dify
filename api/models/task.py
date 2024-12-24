@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from celery import states  # type: ignore
 
 from models.base import Base
+
 from .engine import db
 
 

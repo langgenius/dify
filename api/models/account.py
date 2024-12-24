@@ -2,10 +2,10 @@ import enum
 import json
 
 from flask_login import UserMixin
+from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base
-from sqlalchemy import func
 
 from .engine import db
 from .types import StringUUID
