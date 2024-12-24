@@ -7,7 +7,6 @@ from configs import dify_config
 from core.entities.model_entities import (
     ModelWithProviderEntity,
     ProviderModelWithStatusEntity,
-    SimpleModelProviderEntity,
 )
 from core.entities.provider_entities import QuotaConfiguration
 from core.model_runtime.entities.common_entities import I18nObject
@@ -152,7 +151,7 @@ class ModelWithProviderEntityResponse(ModelWithProviderEntity):
     Model with provider entity.
     """
 
-    #FIXME type error ignore here
+    # FIXME type error ignore here
     provider: SimpleProviderEntityResponse  # type: ignore
 
     def __init__(self, model: ModelWithProviderEntity) -> None:
