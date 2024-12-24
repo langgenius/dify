@@ -1,7 +1,8 @@
 import base64
 import enum
+from collections.abc import Mapping
 from enum import Enum
-from typing import Any, Mapping, Optional, Union
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator
 

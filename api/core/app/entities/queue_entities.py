@@ -1,6 +1,7 @@
+from collections.abc import Mapping
 from datetime import datetime
 from enum import Enum, StrEnum
-from typing import Any, Mapping, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 

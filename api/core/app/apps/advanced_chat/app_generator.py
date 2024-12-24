@@ -2,8 +2,8 @@ import contextvars
 import logging
 import threading
 import uuid
-from collections.abc import Generator
-from typing import Any, Literal, Mapping, Optional, Union, overload
+from collections.abc import Generator, Mapping
+from typing import Any, Literal, Optional, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
