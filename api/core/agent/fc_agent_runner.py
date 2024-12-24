@@ -2,7 +2,7 @@ import json
 import logging
 from collections.abc import Generator
 from copy import deepcopy
-from typing import Any, Optional, Union, cast
+from typing import Any, Optional, Union
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
@@ -107,9 +107,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             current_llm_usage = None
 
-            if self.stream_tool_call:
+            if self.stream_tool_call and isinstance(chunks, Generator):
                 is_first_chunk = True
-                for chunk in cast(Generator[LLMResultChunk, None, None], chunks):
+                for chunk in chunks:
                     if is_first_chunk:
                         self.queue_manager.publish(
                             QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
@@ -140,8 +140,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         current_llm_usage = chunk.delta.usage
 
                     yield chunk
-            else:
-                result: LLMResult = cast(LLMResult, chunks)
+            elif not self.stream_tool_call and isinstance(chunks, LLMResult):
+                result = chunks
                 # check if there is any tool call
                 if self.check_blocking_tool_calls(result):
                     function_call_state = True
@@ -183,6 +183,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         usage=result.usage,
                     ),
                 )
+            else:
+                raise RuntimeError(f"invalid chunks type: {type(chunks)}")
 
             assistant_message = AssistantPromptMessage(content="", tool_calls=[])
             if tool_calls:
