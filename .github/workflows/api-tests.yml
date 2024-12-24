@@ -59,7 +59,7 @@ jobs:
       - name: Run mypy
         run: |
           pushd api
-          poetry run -C api python -m mypy .
+          poetry run python -m mypy .
           popd
 
       - name: Set up dotenvs
