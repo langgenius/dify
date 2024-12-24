@@ -58,6 +58,8 @@ from models.workflow import (
     WorkflowRunStatus,
 )
 
+from .exc import WorkflowNodeExecutionNotFoundError, WorkflowRunNotFoundError
+
 
 class WorkflowCycleManage:
     _application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity]
@@ -898,7 +900,7 @@ class WorkflowCycleManage:
         workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_run_id).first()
 
         if not workflow_run:
-            raise Exception(f"Workflow run not found: {workflow_run_id}")
+            raise WorkflowRunNotFoundError(workflow_run_id)
 
         return workflow_run
 
@@ -911,6 +913,6 @@ class WorkflowCycleManage:
         workflow_node_execution = self._wip_workflow_node_executions.get(node_execution_id)
 
         if not workflow_node_execution:
-            raise Exception(f"Workflow node execution not found: {node_execution_id}")
+            raise WorkflowNodeExecutionNotFoundError(node_execution_id)
 
         return workflow_node_execution

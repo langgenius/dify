@@ -177,7 +177,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
             else:
                 continue
 
-        raise Exception("Queue listening stopped unexpectedly.")
+        raise RuntimeError("queue listening stopped unexpectedly.")
 
     def _to_stream_response(
         self, generator: Generator[StreamResponse, None, None]
