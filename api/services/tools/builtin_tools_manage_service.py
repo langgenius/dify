@@ -1,7 +1,6 @@
 import json
 import logging
 from pathlib import Path
-from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -212,8 +211,8 @@ class BuiltinToolManageService:
             try:
                 # handle include, exclude
                 if is_filtered(
-                    include_set=cast(set[str], dify_config.POSITION_TOOL_INCLUDES_SET),
-                    exclude_set=cast(set[str], dify_config.POSITION_TOOL_EXCLUDES_SET),
+                    include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
+                    exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
                     data=provider_controller,
                     name_func=lambda x: x.identity.name,
                 ):

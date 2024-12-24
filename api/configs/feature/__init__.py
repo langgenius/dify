@@ -729,11 +729,11 @@ class PositionConfig(BaseSettings):
     def POSITION_TOOL_PINS_LIST(self) -> list[str]:
         return [item.strip() for item in self.POSITION_TOOL_PINS.split(",") if item.strip() != ""]
 
-    @computed_field
+    @property
     def POSITION_TOOL_INCLUDES_SET(self) -> set[str]:
         return {item.strip() for item in self.POSITION_TOOL_INCLUDES.split(",") if item.strip() != ""}
 
-    @computed_field
+    @property
     def POSITION_TOOL_EXCLUDES_SET(self) -> set[str]:
         return {item.strip() for item in self.POSITION_TOOL_EXCLUDES.split(",") if item.strip() != ""}
 
