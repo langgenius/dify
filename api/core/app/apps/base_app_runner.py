@@ -1,5 +1,5 @@
 import time
-from collections.abc import Generator
+from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
@@ -36,8 +36,8 @@ class AppRunner:
         app_record: App,
         model_config: ModelConfigWithCredentialsEntity,
         prompt_template_entity: PromptTemplateEntity,
-        inputs: dict[str, str],
-        files: list["File"],
+        inputs: Mapping[str, str],
+        files: Sequence["File"],
         query: Optional[str] = None,
     ) -> int:
         """
@@ -136,8 +136,8 @@ class AppRunner:
         app_record: App,
         model_config: ModelConfigWithCredentialsEntity,
         prompt_template_entity: PromptTemplateEntity,
-        inputs: dict[str, str],
-        files: list["File"],
+        inputs: Mapping[str, str],
+        files: Sequence["File"],
         query: Optional[str] = None,
         context: Optional[str] = None,
         memory: Optional[TokenBufferMemory] = None,

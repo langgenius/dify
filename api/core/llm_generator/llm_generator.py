@@ -212,6 +212,8 @@ class LLMGenerator:
 
             rule_config["prompt"] = cast(str, prompt_content.message.content)
 
+            if not isinstance(prompt_content.message.content, str):
+                raise NotImplementedError("prompt content is not a string")
             parameter_generate_prompt = parameter_template.format(
                 inputs={
                     "INPUT_TEXT": prompt_content.message.content,

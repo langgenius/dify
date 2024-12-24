@@ -52,8 +52,8 @@ class CompletionAppRunner(AppRunner):
             app_record=app_record,
             model_config=application_generate_entity.model_conf,
             prompt_template_entity=app_config.prompt_template,
-            inputs=dict(inputs),
-            files=list(files),
+            inputs=inputs,
+            files=files,
             query=query,
         )
 
@@ -63,8 +63,8 @@ class CompletionAppRunner(AppRunner):
             app_record=app_record,
             model_config=application_generate_entity.model_conf,
             prompt_template_entity=app_config.prompt_template,
-            inputs=dict(inputs),
-            files=list(files),
+            inputs=inputs,
+            files=files,
             query=query,
         )
 
@@ -137,7 +137,7 @@ class CompletionAppRunner(AppRunner):
             model_config=application_generate_entity.model_conf,
             prompt_template_entity=app_config.prompt_template,
             inputs=inputs,
-            files=list(files),
+            files=files,
             query=query,
             context=context,
         )

@@ -1,6 +1,7 @@
 import enum
 import json
 import os
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, cast
 
 from core.app.app_config.entities import PromptTemplateEntity
@@ -53,9 +54,9 @@ class SimplePromptTransform(PromptTransform):
         self,
         app_mode: AppMode,
         prompt_template_entity: PromptTemplateEntity,
-        inputs: dict,
+        inputs: Mapping[str, str],
         query: str,
-        files: list["File"],
+        files: Sequence["File"],
         context: Optional[str],
         memory: Optional[TokenBufferMemory],
         model_config: ModelConfigWithCredentialsEntity,
@@ -171,7 +172,7 @@ class SimplePromptTransform(PromptTransform):
         inputs: dict,
         query: str,
         context: Optional[str],
-        files: list["File"],
+        files: Sequence["File"],
         memory: Optional[TokenBufferMemory],
         model_config: ModelConfigWithCredentialsEntity,
     ) -> tuple[list[PromptMessage], Optional[list[str]]]:
@@ -216,7 +217,7 @@ class SimplePromptTransform(PromptTransform):
         inputs: dict,
         query: str,
         context: Optional[str],
-        files: list["File"],
+        files: Sequence["File"],
         memory: Optional[TokenBufferMemory],
         model_config: ModelConfigWithCredentialsEntity,
     ) -> tuple[list[PromptMessage], Optional[list[str]]]:
@@ -263,7 +264,7 @@ class SimplePromptTransform(PromptTransform):
 
         return [self.get_last_user_message(prompt, files)], stops
 
-    def get_last_user_message(self, prompt: str, files: list["File"]) -> UserPromptMessage:
+    def get_last_user_message(self, prompt: str, files: Sequence["File"]) -> UserPromptMessage:
         if files:
             prompt_message_contents: list[PromptMessageContent] = []
             prompt_message_contents.append(TextPromptMessageContent(data=prompt))
