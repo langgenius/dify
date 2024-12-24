@@ -2,7 +2,7 @@ from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import Optional, Union
 
-from sqlalchemy import Select, asc, desc, func, or_, select
+from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -72,9 +72,7 @@ class ConversationService:
                 sort_direction=sort_direction,
                 reference_conversation=current_page_last_conversation,
             )
-            count_stmt: Select[tuple[int]] | Select[tuple[Conversation]]
-            count_stmt = stmt.where(rest_filter_condition)
-            count_stmt = select(func.count()).select_from(count_stmt.subquery())
+            count_stmt = select(func.count()).select_from(stmt.where(rest_filter_condition).subquery())
             rest_count = session.scalar(count_stmt) or 0
             if rest_count > 0:
                 has_more = True
