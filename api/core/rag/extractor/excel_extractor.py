@@ -4,7 +4,7 @@ import os
 from typing import Optional, cast
 
 import pandas as pd
-from openpyxl import load_workbook  # type: ignore
+from openpyxl import load_workbook
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -60,8 +60,8 @@ class ExcelExtractor(BaseExtractor):
 
         elif file_extension == ".xls":
             excel_file = pd.ExcelFile(self._file_path, engine="xlrd")
-            for sheet_name in excel_file.sheet_names:
-                df = excel_file.parse(sheet_name=sheet_name)
+            for excel_sheet_name in excel_file.sheet_names:
+                df = excel_file.parse(sheet_name=excel_sheet_name)
                 df.dropna(how="all", inplace=True)
 
                 for _, row in df.iterrows():
