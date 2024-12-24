@@ -1,9 +1,12 @@
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator
 
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.event import GraphEngineEvent, NodeRunSucceededEvent
 from core.workflow.graph_engine.entities.graph import Graph
+
+logger = logging.getLogger(__name__)
 
 
 class StreamProcessor(ABC):
@@ -31,13 +34,22 @@ class StreamProcessor(ABC):
         if run_result.edge_source_handle:
             reachable_node_ids = []
             unreachable_first_node_ids = []
+            if finished_node_id not in self.graph.edge_mapping:
+                logger.warning(f"node {finished_node_id} has no edge mapping")
+                return
             for edge in self.graph.edge_mapping[finished_node_id]:
                 if (
                     edge.run_condition
                     and edge.run_condition.branch_identify
                     and run_result.edge_source_handle == edge.run_condition.branch_identify
                 ):
-                    reachable_node_ids.extend(self._fetch_node_ids_in_reachable_branch(edge.target_node_id))
+                    # remove unreachable nodes
+                    # FIXME: because of the code branch can combine directly, so for answer node
+                    # we remove the node maybe shortcut the answer node, so comment this code for now
+                    # there is not effect on the answer node and the workflow, when we have a better solution
+                    # we can open this code. Issues: #11542 #9560 #10638 #10564
+
+                    # reachable_node_ids.extend(self._fetch_node_ids_in_reachable_branch(edge.target_node_id))
                     continue
                 else:
                     unreachable_first_node_ids.append(edge.target_node_id)

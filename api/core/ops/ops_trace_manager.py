@@ -360,7 +360,7 @@ class TraceTask:
             raise ValueError("Workflow run not found")
 
         db.session.merge(workflow_run)
-        db.sessoin.refresh(workflow_run)
+        db.session.refresh(workflow_run)
 
         workflow_id = workflow_run.workflow_id
         tenant_id = workflow_run.tenant_id

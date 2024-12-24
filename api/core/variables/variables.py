@@ -10,6 +10,7 @@ from .segments import (
     ArrayFileSegment,
     ArrayNumberSegment,
     ArrayObjectSegment,
+    ArraySegment,
     ArrayStringSegment,
     FileSegment,
     FloatSegment,
@@ -52,19 +53,23 @@ class ObjectVariable(ObjectSegment, Variable):
     pass
 
 
-class ArrayAnyVariable(ArrayAnySegment, Variable):
+class ArrayVariable(ArraySegment, Variable):
     pass
 
 
-class ArrayStringVariable(ArrayStringSegment, Variable):
+class ArrayAnyVariable(ArrayAnySegment, ArrayVariable):
     pass
 
 
-class ArrayNumberVariable(ArrayNumberSegment, Variable):
+class ArrayStringVariable(ArrayStringSegment, ArrayVariable):
     pass
 
 
-class ArrayObjectVariable(ArrayObjectSegment, Variable):
+class ArrayNumberVariable(ArrayNumberSegment, ArrayVariable):
+    pass
+
+
+class ArrayObjectVariable(ArrayObjectSegment, ArrayVariable):
     pass
 
 
