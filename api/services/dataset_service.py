@@ -898,7 +898,7 @@ class DocumentService:
                                 data_source_info = {
                                     "notion_workspace_id": workspace_id,
                                     "notion_page_id": page.page_id,
-                                    "notion_page_icon": page.page_icon.model_dump(),
+                                    "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,
                                     "type": page.type,
                                 }
                                 document = DocumentService.build_document(
