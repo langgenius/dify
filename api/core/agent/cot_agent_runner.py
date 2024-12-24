@@ -409,8 +409,12 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     except:
                         pass
             elif isinstance(message, ToolPromptMessage):
-                if current_scratchpad:
-                    current_scratchpad.observation = cast(str, message.content)
+                if not current_scratchpad:
+                    continue
+                if isinstance(message.content, str):
+                    current_scratchpad.observation = message.content
+                else:
+                    raise NotImplementedError("expected str type")
             elif isinstance(message, UserPromptMessage):
                 if scratchpads:
                     result.append(AssistantPromptMessage(content=self._format_assistant_message(scratchpads)))
