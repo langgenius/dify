@@ -1,8 +1,13 @@
 import json
-from typing import Optional, cast
+from typing import Optional
 
 from core.agent.cot_agent_runner import CotAgentRunner
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
 from core.model_runtime.utils.encoders import jsonable_encoder
 
 
@@ -37,8 +42,13 @@ class CotCompletionAgentRunner(CotAgentRunner):
             if isinstance(message, UserPromptMessage):
                 historic_prompt += f"Question: {message.content}\n\n"
             elif isinstance(message, AssistantPromptMessage):
-                if message.content is not None:
-                    historic_prompt += cast(str, message.content) + "\n\n"
+                if isinstance(message.content, str):
+                    historic_prompt += message.content + "\n\n"
+                elif isinstance(message.content, list):
+                    for content in message.content:
+                        if not isinstance(content, TextPromptMessageContent):
+                            continue
+                        historic_prompt += content.data
 
         return historic_prompt
 
