@@ -16,10 +16,16 @@ class ParentMode(str, Enum):
     PARAGRAPH = "paragraph"
 
 
+class NotionIcon(BaseModel):
+    type: str
+    url: Optional[str] = None
+    emoji: Optional[str] = None
+
+
 class NotionPage(BaseModel):
     page_id: str
     page_name: str
-    page_icon: Optional[str]
+    page_icon: Optional[NotionIcon] = None
     type: str
 
 
