@@ -40,7 +40,7 @@ jobs:
 
       - name: Install dependencies
         run: poetry install -C api --with dev
- 
+
       - name: Check dependencies in pyproject.toml
         run: poetry run -C api bash dev/pytest/pytest_artifacts.sh
 
