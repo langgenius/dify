@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import { BlockEnum } from '../types'
 import OutputPanel from './output-panel'
 import ResultPanel from './result-panel'
 import TracingPanel from './tracing-panel'
@@ -17,7 +16,7 @@ import { fetchRunDetail, fetchTracingList } from '@/service/log'
 import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import { useStore as useAppStore } from '@/app/components/app/store'
-
+import formatNodeList from './utils/format-to-tracing-node-list'
 export type RunProps = {
   hideResult?: boolean
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
@@ -59,118 +58,6 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
       })
     }
   }, [notify, getResultCallback])
-
-  const formatNodeList = useCallback((list: NodeTracing[]) => {
-    const allItems = [...list].reverse()
-    const result: NodeTracing[] = []
-    const nodeGroupMap = new Map<string, Map<string, NodeTracing[]>>()
-
-    const processIterationNode = (item: NodeTracing) => {
-      result.push({
-        ...item,
-        details: [],
-      })
-    }
-
-    const updateParallelModeGroup = (runId: string, item: NodeTracing, iterationNode: NodeTracing) => {
-      if (!nodeGroupMap.has(iterationNode.node_id))
-        nodeGroupMap.set(iterationNode.node_id, new Map())
-
-      const groupMap = nodeGroupMap.get(iterationNode.node_id)!
-
-      if (!groupMap.has(runId)) {
-        groupMap.set(runId, [item])
-      }
-      else {
-        if (item.status === 'retry') {
-          const retryNode = groupMap.get(runId)!.find(node => node.node_id === item.node_id)
-
-          if (retryNode) {
-            if (retryNode?.retryDetail)
-              retryNode.retryDetail.push(item)
-            else
-              retryNode.retryDetail = [item]
-          }
-        }
-        else {
-          groupMap.get(runId)!.push(item)
-        }
-      }
-
-      if (item.status === 'failed') {
-        iterationNode.status = 'failed'
-        iterationNode.error = item.error
-      }
-
-      iterationNode.details = Array.from(groupMap.values())
-    }
-    const updateSequentialModeGroup = (index: number, item: NodeTracing, iterationNode: NodeTracing) => {
-      const { details } = iterationNode
-      if (details) {
-        if (!details[index]) {
-          details[index] = [item]
-        }
-        else {
-          if (item.status === 'retry') {
-            const retryNode = details[index].find(node => node.node_id === item.node_id)
-
-            if (retryNode) {
-              if (retryNode?.retryDetail)
-                retryNode.retryDetail.push(item)
-              else
-                retryNode.retryDetail = [item]
-            }
-          }
-          else {
-            details[index].push(item)
-          }
-        }
-      }
-
-      if (item.status === 'failed') {
-        iterationNode.status = 'failed'
-        iterationNode.error = item.error
-      }
-    }
-    const processNonIterationNode = (item: NodeTracing) => {
-      const { execution_metadata } = item
-      if (!execution_metadata?.iteration_id) {
-        if (item.status === 'retry') {
-          const retryNode = result.find(node => node.node_id === item.node_id)
-
-          if (retryNode) {
-            if (retryNode?.retryDetail)
-              retryNode.retryDetail.push(item)
-            else
-              retryNode.retryDetail = [item]
-          }
-
-          return
-        }
-        result.push(item)
-        return
-      }
-
-      const iterationNode = result.find(node => node.node_id === execution_metadata.iteration_id)
-      if (!iterationNode || !Array.isArray(iterationNode.details))
-        return
-
-      const { parallel_mode_run_id, iteration_index = 0 } = execution_metadata
-
-      if (parallel_mode_run_id)
-        updateParallelModeGroup(parallel_mode_run_id, item, iterationNode)
-      else
-        updateSequentialModeGroup(iteration_index, item, iterationNode)
-    }
-
-    allItems.forEach((item) => {
-      item.node_type === BlockEnum.Iteration
-        ? processIterationNode(item)
-        : processNonIterationNode(item)
-    })
-
-    return result
-  }, [])
 
   const getTracingList = useCallback(async (appID: string, runID: string) => {
     try {
