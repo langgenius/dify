@@ -4,7 +4,7 @@ from enum import StrEnum
 from typing import Optional, cast
 from uuid import uuid4
 
-import yaml  # type: ignore
+import yaml
 from packaging import version
 from pydantic import BaseModel
 from sqlalchemy import select
