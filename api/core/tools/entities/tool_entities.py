@@ -243,9 +243,11 @@ class ToolParameter(BaseModel):
         :param options: the options of the parameter
         """
         # convert options to ToolParameterOption
+        # FIXME fix the type error
         if options:
-            options_tool_parametor = [
-                ToolParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option)) for option in options
+            options = [
+                ToolParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option))
+                for option in options  # type: ignore
             ]
         return cls(
             name=name,
@@ -256,7 +258,7 @@ class ToolParameter(BaseModel):
             form=cls.ToolParameterForm.LLM,
             llm_description=llm_description,
             required=required,
-            options=options_tool_parametor,
+            options=options,  # type: ignore
         )
 
 
