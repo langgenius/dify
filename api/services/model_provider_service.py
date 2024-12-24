@@ -168,7 +168,7 @@ class ModelProviderService:
         # Remove custom provider credentials.
         provider_configuration.delete_custom_credentials()
 
-    def get_model_credentials(self, tenant_id: str, provider: str, model_type: str, model: str) -> dict:
+    def get_model_credentials(self, tenant_id: str, provider: str, model_type: str, model: str):
         """
         get model credentials.
 
@@ -187,10 +187,8 @@ class ModelProviderService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Get model custom credentials from ProviderModel if exists
-        return dict(
-            provider_configuration.get_custom_model_credentials(
-                model_type=ModelType.value_of(model_type), model=model, obfuscated=True
-            )
+        return provider_configuration.get_custom_model_credentials(
+            model_type=ModelType.value_of(model_type), model=model, obfuscated=True
         )
 
     def model_credentials_validate(
