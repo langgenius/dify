@@ -144,7 +144,8 @@ class PluginService:
 
         try:
             manager.fetch_plugin_manifest(tenant_id, new_plugin_unique_identifier)
-            # already downloaded, skip
+            # already downloaded, skip, and record install event
+            marketplace.record_install_plugin_event(new_plugin_unique_identifier)
         except Exception:
             # plugin not installed, download and upload pkg
             pkg = download_plugin_pkg(new_plugin_unique_identifier)
