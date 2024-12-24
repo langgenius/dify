@@ -283,7 +283,7 @@ class ApiBasedToolSchemaParser:
             api = openai_plugin["api"]
             api_url = api["url"]
             api_type = api["type"]
-        except:
+        except JSONDecodeError:
             raise ToolProviderNotFoundError("Invalid openai plugin json.")
 
         if api_type != "openapi":
