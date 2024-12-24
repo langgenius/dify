@@ -96,8 +96,8 @@ const formatToTracingNodeList = (list: NodeTracing[]) => {
       : processNonIterationNode(result, iterationGroupMap, item)
   })
 
-  console.log(allItems)
-  console.log(result)
+  // console.log(allItems)
+  // console.log(result)
 
   return result
 }
