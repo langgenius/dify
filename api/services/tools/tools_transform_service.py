@@ -275,10 +275,7 @@ class ToolTransformService:
                 author=tool.identity.author,
                 name=tool.identity.name,
                 label=tool.identity.label,
-                description=I18nObject(
-                    en_US=tool.description.human if tool.description else "",
-                    zh_Hans=tool.description.human if tool.description else "",
-                ),
+                description=tool.description.human if tool.description else "",  # type: ignore
                 parameters=current_parameters,
                 labels=labels,
             )

@@ -561,8 +561,13 @@ def create_tenant(email: str, language: Optional[str] = None, name: Optional[str
     new_password = secrets.token_urlsafe(16)
 
     # register account
-    account = RegisterService.register(email=email, name=account_name, password=new_password, language=language)
-
+    account = RegisterService.register(
+        email=email,
+        name=account_name,
+        password=new_password,
+        language=language,
+        create_workspace_required=False,
+    )
     TenantService.create_owner_tenant_if_not_exist(account, name)
 
     click.echo(
