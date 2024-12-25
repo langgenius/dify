@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, cast
 
 from core.variables import SegmentType, Variable
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
@@ -29,7 +29,7 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
 
     def _run(self) -> NodeRunResult:
         inputs = self.node_data.model_dump()
-        process_data = {}
+        process_data: dict[str, Any] = {}
         # NOTE: This node has no outputs
         updated_variables: list[Variable] = []
 
@@ -45,7 +45,7 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
 
                 # Check if operation is supported
                 if not helpers.is_operation_supported(variable_type=variable.value_type, operation=item.operation):
-                    raise OperationNotSupportedError(operation=item.operation, varialbe_type=variable.value_type)
+                    raise OperationNotSupportedError(operation=item.operation, variable_type=variable.value_type)
 
                 # Check if variable input is supported
                 if item.input_type == InputType.VARIABLE and not helpers.is_variable_input_supported(
@@ -119,7 +119,7 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
                 else:
                     conversation_id = conversation_id.value
                 common_helpers.update_conversation_variable(
-                    conversation_id=conversation_id,
+                    conversation_id=cast(str, conversation_id),
                     variable=variable,
                 )
 
@@ -156,4 +156,4 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
             case Operation.DIVIDE:
                 return variable.value / value
             case _:
-                raise OperationNotSupportedError(operation=operation, varialbe_type=variable.value_type)
+                raise OperationNotSupportedError(operation=operation, variable_type=variable.value_type)

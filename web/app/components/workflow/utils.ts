@@ -19,9 +19,15 @@ import type {
   ToolWithProvider,
   ValueSelector,
 } from './types'
-import { BlockEnum, ErrorHandleMode } from './types'
+import {
+  BlockEnum,
+  ErrorHandleMode,
+  NodeRunningStatus,
+} from './types'
 import {
   CUSTOM_NODE,
+  DEFAULT_RETRY_INTERVAL,
+  DEFAULT_RETRY_MAX,
   ITERATION_CHILDREN_Z_INDEX,
   ITERATION_NODE_Z_INDEX,
   NODE_WIDTH_X_OFFSET,
@@ -273,6 +279,14 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       iterationNodeData.is_parallel = iterationNodeData.is_parallel || false
       iterationNodeData.parallel_nums = iterationNodeData.parallel_nums || 10
       iterationNodeData.error_handle_mode = iterationNodeData.error_handle_mode || ErrorHandleMode.Terminated
+    }
+
+    if (node.data.type === BlockEnum.HttpRequest && !node.data.retry_config) {
+      node.data.retry_config = {
+        retry_enabled: true,
+        max_retries: DEFAULT_RETRY_MAX,
+        retry_interval: DEFAULT_RETRY_INTERVAL,
+      }
     }
 
     return node
@@ -545,6 +559,7 @@ export const isMac = () => {
 const specialKeysNameMap: Record<string, string | undefined> = {
   ctrl: '⌘',
   alt: '⌥',
+  shift: '⇧',
 }
 
 export const getKeyboardKeyNameBySystem = (key: string) => {
@@ -760,4 +775,39 @@ export const getParallelInfo = (nodes: Node[], edges: Edge[], parentNodeId?: str
     parallelList,
     hasAbnormalEdges,
   }
+}
+
+export const hasErrorHandleNode = (nodeType?: BlockEnum) => {
+  return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code
+}
+
+export const getEdgeColor = (nodeRunningStatus?: NodeRunningStatus, isFailBranch?: boolean) => {
+  if (nodeRunningStatus === NodeRunningStatus.Succeeded)
+    return 'var(--color-workflow-link-line-success-handle)'
+
+  if (nodeRunningStatus === NodeRunningStatus.Failed)
+    return 'var(--color-workflow-link-line-error-handle)'
+
+  if (nodeRunningStatus === NodeRunningStatus.Exception)
+    return 'var(--color-workflow-link-line-failure-handle)'
+
+  if (nodeRunningStatus === NodeRunningStatus.Running) {
+    if (isFailBranch)
+      return 'var(--color-workflow-link-line-failure-handle)'
+
+    return 'var(--color-workflow-link-line-handle)'
+  }
+
+  return 'var(--color-workflow-link-line-normal)'
+}
+
+export const isExceptionVariable = (variable: string, nodeType?: BlockEnum) => {
+  if ((variable === 'error_message' || variable === 'error_type') && hasErrorHandleNode(nodeType))
+    return true
+
+  return false
+}
+
+export const hasRetryNode = (nodeType?: BlockEnum) => {
+  return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code
 }

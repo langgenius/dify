@@ -6,10 +6,10 @@ import re
 import threading
 import time
 import uuid
-from typing import Optional, cast
+from typing import Any, Optional, cast
 
 from flask import current_app
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from configs import dify_config
@@ -63,6 +63,8 @@ class IndexingRunner:
                     .filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
                     .first()
                 )
+                if not processing_rule:
+                    raise ValueError("no process rule found")
                 index_type = dataset_document.doc_form
                 index_processor = IndexProcessorFactory(index_type).init_index_processor()
                 # extract
@@ -124,6 +126,8 @@ class IndexingRunner:
                 .filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
                 .first()
             )
+            if not processing_rule:
+                raise ValueError("no process rule found")
 
             index_type = dataset_document.doc_form
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
@@ -296,7 +300,7 @@ class IndexingRunner:
             for document in documents:
                 if len(preview_texts) < 10:
                     if doc_form and doc_form == "qa_model":
-                        preview_detail = QAPreviewDetail(question=document.page_content, 
+                        preview_detail = QAPreviewDetail(question=document.page_content,
                                                          answer=document.metadata.get("answer")
                                                          )
                         preview_texts.append(preview_detail)
@@ -311,7 +315,8 @@ class IndexingRunner:
                 for upload_file_id in image_upload_file_ids:
                     image_file = db.session.query(UploadFile).filter(UploadFile.id == upload_file_id).first()
                     try:
-                        storage.delete(image_file.key)
+                        if image_file:
+                            storage.delete(image_file.key)
                     except Exception:
                         logging.exception(
                             "Delete image_files failed while indexing_estimate, \
@@ -400,8 +405,9 @@ class IndexingRunner:
         # replace doc id to document model id
         text_docs = cast(list[Document], text_docs)
         for text_doc in text_docs:
-            text_doc.metadata["document_id"] = dataset_document.id
-            text_doc.metadata["dataset_id"] = dataset_document.dataset_id
+            if text_doc.metadata is not None:
+                text_doc.metadata["document_id"] = dataset_document.id
+                text_doc.metadata["dataset_id"] = dataset_document.dataset_id
 
         return text_docs
 
@@ -443,9 +449,10 @@ class IndexingRunner:
             )
         else:
             # Automatic segmentation
+            automatic_rules: dict[str, Any] = dict(DatasetProcessRule.AUTOMATIC_RULES["segmentation"])
             character_splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
-                chunk_size=DatasetProcessRule.AUTOMATIC_RULES["segmentation"]["max_tokens"],
-                chunk_overlap=DatasetProcessRule.AUTOMATIC_RULES["segmentation"]["chunk_overlap"],
+                chunk_size=automatic_rules["max_tokens"],
+                chunk_overlap=automatic_rules["chunk_overlap"],
                 separators=["\n\n", "。", ". ", " ", ""],
                 embedding_model_instance=embedding_model_instance,
             )
@@ -458,7 +465,7 @@ class IndexingRunner:
         """
         Split the text documents into nodes.
         """
-        all_documents = []
+        all_documents: list[Document] = []
         for text_doc in text_docs:
             # document clean
             document_text = self._document_clean(text_doc.page_content, processing_rule)
@@ -471,11 +478,11 @@ class IndexingRunner:
             for document in documents:
                 if document.page_content is None or not document.page_content.strip():
                     continue
-                doc_id = str(uuid.uuid4())
-                hash = helper.generate_text_hash(document.page_content)
-
-                document.metadata["doc_id"] = doc_id
-                document.metadata["doc_hash"] = hash
+                if document.metadata is not None:
+                    doc_id = str(uuid.uuid4())
+                    hash = helper.generate_text_hash(document.page_content)
+                    document.metadata["doc_id"] = doc_id
+                    document.metadata["doc_hash"] = hash
 
                 split_documents.append(document)
 
@@ -543,7 +550,7 @@ class IndexingRunner:
                     futures.append(
                         executor.submit(
                             self._process_chunk,
-                            current_app._get_current_object(),
+                            current_app._get_current_object(),  # type: ignore
                             index_processor,
                             chunk_documents,
                             dataset,

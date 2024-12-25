@@ -1,9 +1,9 @@
 import json
 import logging
 from datetime import UTC, datetime
-from typing import cast
+from typing import Optional, cast
 
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 from flask_sqlalchemy.pagination import Pagination
 
 from configs import dify_config
@@ -83,7 +83,7 @@ class AppService:
             # get default model instance
             try:
                 model_instance = model_manager.get_default_model_instance(
-                    tenant_id=account.current_tenant_id, model_type=ModelType.LLM
+                    tenant_id=account.current_tenant_id or "", model_type=ModelType.LLM
                 )
             except (ProviderTokenNotInitError, LLMBadRequestError):
                 model_instance = None
@@ -100,6 +100,8 @@ class AppService:
                 else:
                     llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
                     model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+                    if model_schema is None:
+                        raise ValueError(f"model schema not found for model {model_instance.model}")
 
                     default_model_dict = {
                         "provider": model_instance.provider,
@@ -109,7 +111,7 @@ class AppService:
                     }
             else:
                 provider, model = model_manager.get_default_provider_model_name(
-                    tenant_id=account.current_tenant_id, model_type=ModelType.LLM
+                    tenant_id=account.current_tenant_id or "", model_type=ModelType.LLM
                 )
                 default_model_config["model"]["provider"] = provider
                 default_model_config["model"]["name"] = model
@@ -314,7 +316,7 @@ class AppService:
         """
         app_mode = AppMode.value_of(app_model.mode)
 
-        meta = {"tool_icons": {}}
+        meta: dict = {"tool_icons": {}}
 
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
@@ -336,7 +338,7 @@ class AppService:
                         }
                     )
         else:
-            app_model_config: AppModelConfig = app_model.app_model_config
+            app_model_config: Optional[AppModelConfig] = app_model.app_model_config
 
             if not app_model_config:
                 return meta
@@ -352,16 +354,18 @@ class AppService:
             keys = list(tool.keys())
             if len(keys) >= 4:
                 # current tool standard
-                provider_type = tool.get("provider_type")
-                provider_id = tool.get("provider_id")
-                tool_name = tool.get("tool_name")
+                provider_type = tool.get("provider_type", "")
+                provider_id = tool.get("provider_id", "")
+                tool_name = tool.get("tool_name", "")
                 if provider_type == "builtin":
                     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
                 elif provider_type == "api":
                     try:
-                        provider: ApiToolProvider = (
+                        provider: Optional[ApiToolProvider] = (
                             db.session.query(ApiToolProvider).filter(ApiToolProvider.id == provider_id).first()
                         )
+                        if provider is None:
+                            raise ValueError(f"provider not found for tool {tool_name}")
                         meta["tool_icons"][tool_name] = json.loads(provider.icon)
                     except:
                         meta["tool_icons"][tool_name] = {"background": "#252525", "content": "\ud83d\ude01"}

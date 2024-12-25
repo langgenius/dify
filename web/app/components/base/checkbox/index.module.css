@@ -1,11 +1,7 @@
-.wrapper {
-  border-color: #d0d5dd;
-}
-
-.checked {
-  background: #155eef url(./assets/check.svg) center center no-repeat;
+.mixed {
+  background: var(--color-components-checkbox-bg) url(./assets/mixed.svg) center center no-repeat;
   background-size: 12px 12px;
-  border-color: #155eef;
+  border: none;
 }
 
 .checked.disabled {

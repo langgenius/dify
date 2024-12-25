@@ -71,7 +71,20 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
 
         except KnowledgeRetrievalNodeError as e:
             logger.warning("Error when running knowledge retrieval node")
-            return NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e))
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=variables,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+        # Temporary handle all exceptions from DatasetRetrieval class here.
+        except Exception as e:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=variables,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
 
     def _fetch_dataset_retriever(self, node_data: KnowledgeRetrievalNodeData, query: str) -> list[dict[str, Any]]:
         available_datasets = []
@@ -135,6 +148,8 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
                     planning_strategy=planning_strategy,
                 )
         elif node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE.value:
+            if node_data.multiple_retrieval_config is None:
+                raise ValueError("multiple_retrieval_config is required")
             if node_data.multiple_retrieval_config.reranking_mode == "reranking_model":
                 if node_data.multiple_retrieval_config.reranking_model:
                     reranking_model = {
@@ -145,6 +160,8 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
                     reranking_model = None
                 weights = None
             elif node_data.multiple_retrieval_config.reranking_mode == "weighted_score":
+                if node_data.multiple_retrieval_config.weights is None:
+                    raise ValueError("weights is required")
                 reranking_model = None
                 vector_setting = node_data.multiple_retrieval_config.weights.vector_setting
                 weights = {
@@ -161,18 +178,20 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
                 reranking_model = None
                 weights = None
             all_documents = dataset_retrieval.multiple_retrieve(
-                self.app_id,
-                self.tenant_id,
-                self.user_id,
-                self.user_from.value,
-                available_datasets,
-                query,
-                node_data.multiple_retrieval_config.top_k,
-                node_data.multiple_retrieval_config.score_threshold,
-                node_data.multiple_retrieval_config.reranking_mode,
-                reranking_model,
-                weights,
-                node_data.multiple_retrieval_config.reranking_enable,
+                app_id=self.app_id,
+                tenant_id=self.tenant_id,
+                user_id=self.user_id,
+                user_from=self.user_from.value,
+                available_datasets=available_datasets,
+                query=query,
+                top_k=node_data.multiple_retrieval_config.top_k,
+                score_threshold=node_data.multiple_retrieval_config.score_threshold
+                if node_data.multiple_retrieval_config.score_threshold is not None
+                else 0.0,
+                reranking_mode=node_data.multiple_retrieval_config.reranking_mode,
+                reranking_model=reranking_model,
+                weights=weights,
+                reranking_enable=node_data.multiple_retrieval_config.reranking_enable,
             )
         dify_documents = [item for item in all_documents if item.provider == "dify"]
         external_documents = [item for item in all_documents if item.provider == "external"]
@@ -231,7 +250,9 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
                         retrieval_resource_list.append(source)
         if retrieval_resource_list:
             retrieval_resource_list = sorted(
-                retrieval_resource_list, key=lambda x: x.get("metadata").get("score") or 0.0, reverse=True
+                retrieval_resource_list,
+                key=lambda x: x["metadata"]["score"] if x["metadata"].get("score") is not None else 0.0,
+                reverse=True,
             )
             for position, item in enumerate(retrieval_resource_list, start=1):
                 item["metadata"]["position"] = position
@@ -264,6 +285,8 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
         :param node_data: node data
         :return:
         """
+        if node_data.single_retrieval_config is None:
+            raise ValueError("single_retrieval_config is required")
         model_name = node_data.single_retrieval_config.model.name
         provider_name = node_data.single_retrieval_config.model.provider
 

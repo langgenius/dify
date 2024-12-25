@@ -1,4 +1,4 @@
-from flask_restful import fields, marshal_with
+from flask_restful import fields, marshal_with  # type: ignore
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config

@@ -57,6 +57,7 @@ def test_filter_files_by_type(list_operator_node):
             tenant_id="tenant1",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related1",
+            storage_key="",
         ),
         File(
             filename="document1.pdf",
@@ -64,6 +65,7 @@ def test_filter_files_by_type(list_operator_node):
             tenant_id="tenant1",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related2",
+            storage_key="",
         ),
         File(
             filename="image2.png",
@@ -71,6 +73,7 @@ def test_filter_files_by_type(list_operator_node):
             tenant_id="tenant1",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related3",
+            storage_key="",
         ),
         File(
             filename="audio1.mp3",
@@ -78,6 +81,7 @@ def test_filter_files_by_type(list_operator_node):
             tenant_id="tenant1",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related4",
+            storage_key="",
         ),
     ]
     variable = ArrayFileSegment(value=files)
@@ -130,6 +134,7 @@ def test_get_file_extract_string_func():
         mime_type="text/plain",
         remote_url="https://example.com/test_file.txt",
         related_id="test_related_id",
+        storage_key="",
     )
 
     # Test each case
@@ -150,6 +155,7 @@ def test_get_file_extract_string_func():
         mime_type=None,
         remote_url=None,
         related_id="test_related_id",
+        storage_key="",
     )
 
     assert _get_file_extract_string_func(key="name")(empty_file) == ""

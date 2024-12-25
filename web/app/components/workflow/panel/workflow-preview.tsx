@@ -25,6 +25,7 @@ import {
 import { SimpleBtn } from '../../app/text-generate/item'
 import Toast from '../../base/toast'
 import IterationResultPanel from '../run/iteration-result-panel'
+import RetryResultPanel from '../run/retry-result-panel'
 import InputsPanel from './inputs-panel'
 import cn from '@/utils/classnames'
 import Loading from '@/app/components/base/loading'
@@ -48,15 +49,20 @@ const WorkflowPreview = () => {
   }, [showDebugAndPreviewPanel, showInputsPanel])
 
   useEffect(() => {
-    if ((workflowRunningData?.result.status === WorkflowRunningStatus.Succeeded || workflowRunningData?.result.status === WorkflowRunningStatus.Failed) && !workflowRunningData.resultText)
+    if ((workflowRunningData?.result.status === WorkflowRunningStatus.Succeeded || workflowRunningData?.result.status === WorkflowRunningStatus.Failed) && !workflowRunningData.resultText && !workflowRunningData.result.files?.length)
       switchTab('DETAIL')
   }, [workflowRunningData])
 
   const [iterationRunResult, setIterationRunResult] = useState<NodeTracing[][]>([])
+  const [retryRunResult, setRetryRunResult] = useState<NodeTracing[]>([])
   const [iterDurationMap, setIterDurationMap] = useState<IterationDurationMap>({})
   const [isShowIterationDetail, {
     setTrue: doShowIterationDetail,
     setFalse: doHideIterationDetail,
+  }] = useBoolean(false)
+  const [isShowRetryDetail, {
+    setTrue: doShowRetryDetail,
+    setFalse: doHideRetryDetail,
   }] = useBoolean(false)
 
   const handleShowIterationDetail = useCallback((detail: NodeTracing[][], iterationDurationMap: IterationDurationMap) => {
@@ -64,6 +70,11 @@ const WorkflowPreview = () => {
     setIterationRunResult(detail)
     doShowIterationDetail()
   }, [doShowIterationDetail])
+
+  const handleRetryDetail = useCallback((detail: NodeTracing[]) => {
+    setRetryRunResult(detail)
+    doShowRetryDetail()
+  }, [doShowRetryDetail])
 
   if (isShowIterationDetail) {
     return (
@@ -193,6 +204,7 @@ const WorkflowPreview = () => {
                     created_at={workflowRunningData?.result?.created_at}
                     created_by={(workflowRunningData?.result?.created_by as any)?.name}
                     steps={workflowRunningData?.result?.total_steps}
+                    exceptionCounts={workflowRunningData?.result?.exceptions_count}
                   />
                 )}
                 {currentTab === 'DETAIL' && !workflowRunningData?.result && (
@@ -200,11 +212,12 @@ const WorkflowPreview = () => {
                     <Loading />
                   </div>
                 )}
-                {currentTab === 'TRACING' && (
+                {currentTab === 'TRACING' && !isShowRetryDetail && (
                   <TracingPanel
                     className='bg-background-section-burn'
                     list={workflowRunningData?.tracing || []}
                     onShowIterationDetail={handleShowIterationDetail}
+                    onShowRetryDetail={handleRetryDetail}
                   />
                 )}
                 {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
@@ -212,7 +225,14 @@ const WorkflowPreview = () => {
                     <Loading />
                   </div>
                 )}
-
+                {
+                  currentTab === 'TRACING' && isShowRetryDetail && (
+                    <RetryResultPanel
+                      list={retryRunResult}
+                      onBack={doHideRetryDetail}
+                    />
+                  )
+                }
               </div>
             </>
           )}

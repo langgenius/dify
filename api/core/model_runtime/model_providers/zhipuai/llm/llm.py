@@ -1,9 +1,9 @@
 from collections.abc import Generator
 from typing import Optional, Union
 
-from zhipuai import ZhipuAI
-from zhipuai.types.chat.chat_completion import Completion
-from zhipuai.types.chat.chat_completion_chunk import ChatCompletionChunk
+from zhipuai import ZhipuAI  # type: ignore
+from zhipuai.types.chat.chat_completion import Completion  # type: ignore
+from zhipuai.types.chat.chat_completion_chunk import ChatCompletionChunk  # type: ignore
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
@@ -144,7 +144,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
             if copy_prompt_message.role in {PromptMessageRole.USER, PromptMessageRole.SYSTEM, PromptMessageRole.TOOL}:
                 if isinstance(copy_prompt_message.content, list):
                     # check if model is 'glm-4v'
-                    if model not in {"glm-4v", "glm-4v-plus"}:
+                    if not model.startswith("glm-4v"):
                         # not support list message
                         continue
                     # get image and
@@ -188,7 +188,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
             else:
                 model_parameters["tools"] = [web_search_params]
 
-        if model in {"glm-4v", "glm-4v-plus"}:
+        if model.startswith("glm-4v"):
             params = self._construct_glm_4v_parameter(model, new_prompt_messages, model_parameters)
         else:
             params = {"model": model, "messages": [], **model_parameters}
@@ -412,6 +412,8 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         human_prompt = "\n\nHuman:"
         ai_prompt = "\n\nAssistant:"
         content = message.content
+        if isinstance(content, list):
+            content = "".join(c.data for c in content if c.type == PromptMessageContentType.TEXT)
 
         if isinstance(message, UserPromptMessage):
             message_text = f"{human_prompt} {content}"

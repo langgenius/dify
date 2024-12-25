@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Any
 
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
@@ -24,7 +25,7 @@ class HitTestingService:
         dataset: Dataset,
         query: str,
         account: Account,
-        retrieval_model: dict,
+        retrieval_model: Any,  # FIXME drop this any
         external_retrieval_model: dict,
         limit: int = 10,
     ) -> dict:
@@ -102,7 +103,7 @@ class HitTestingService:
         db.session.add(dataset_query)
         db.session.commit()
 
-        return cls.compact_external_retrieve_response(dataset, query, all_documents)
+        return dict(cls.compact_external_retrieve_response(dataset, query, all_documents))
 
     @classmethod
     def compact_retrieve_response(cls, query: str, documents: list[Document]):
@@ -116,7 +117,7 @@ class HitTestingService:
         }
 
     @classmethod
-    def compact_external_retrieve_response(cls, dataset: Dataset, query: str, documents: list):
+    def compact_external_retrieve_response(cls, dataset: Dataset, query: str, documents: list) -> dict[Any, Any]:
         records = []
         if dataset.provider == "external":
             for document in documents:
@@ -128,11 +129,10 @@ class HitTestingService:
                 }
                 records.append(record)
             return {
-                "query": {
-                    "content": query,
-                },
+                "query": {"content": query},
                 "records": records,
             }
+        return {"query": {"content": query}, "records": []}
 
     @classmethod
     def hit_testing_args_check(cls, args):

@@ -6,7 +6,7 @@ import time
 import uuid
 from typing import Any, Optional
 
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 from sqlalchemy import func
 from werkzeug.exceptions import NotFound
 
@@ -198,8 +198,9 @@ class DatasetService:
         return dataset
 
     @staticmethod
-    def get_dataset(dataset_id) -> Dataset:
-        return Dataset.query.filter_by(id=dataset_id).first()
+    def get_dataset(dataset_id) -> Optional[Dataset]:
+        dataset: Optional[Dataset] = Dataset.query.filter_by(id=dataset_id).first()
+        return dataset
 
     @staticmethod
     def check_dataset_model_setting(dataset):
@@ -240,14 +241,20 @@ class DatasetService:
     @staticmethod
     def update_dataset(dataset_id, data, user):
         dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise ValueError("Dataset not found")
 
         DatasetService.check_dataset_permission(dataset, user)
         if dataset.provider == "external":
-            dataset.retrieval_model = data.get("external_retrieval_model", None)
+            external_retrieval_model = data.get("external_retrieval_model", None)
+            if external_retrieval_model:
+                dataset.retrieval_model = external_retrieval_model
             dataset.name = data.get("name", dataset.name)
             dataset.description = data.get("description", "")
+            permission = data.get("permission")
+            if permission:
+                dataset.permission = permission
             external_knowledge_id = data.get("external_knowledge_id", None)
-            dataset.permission = data.get("permission")
             db.session.add(dataset)
             if not external_knowledge_id:
                 raise ValueError("External knowledge id is required.")
@@ -379,7 +386,13 @@ class DatasetService:
                 raise NoPermissionError("You do not have permission to access this dataset.")
 
     @staticmethod
-    def check_dataset_operator_permission(user: Account = None, dataset: Dataset = None):
+    def check_dataset_operator_permission(user: Optional[Account] = None, dataset: Optional[Dataset] = None):
+        if not dataset:
+            raise ValueError("Dataset not found")
+
+        if not user:
+            raise ValueError("User not found")
+
         if dataset.permission == DatasetPermissionEnum.ONLY_ME:
             if dataset.created_by != user.id:
                 raise NoPermissionError("You do not have permission to access this dataset.")
@@ -802,6 +815,11 @@ class DocumentService:
                         rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
                         created_by=account.id,
                     )
+                else:
+                    logging.warn(
+                        f"Invalid process rule mode: {process_rule['mode']}, can not find dataset process rule"
+                    )
+                    return
                 db.session.add(dataset_process_rule)
                 db.session.commit()
             lock_name = "add_document_lock_dataset_id_{}".format(dataset.id)
@@ -1046,9 +1064,10 @@ class DocumentService:
                     rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
                     created_by=account.id,
                 )
-            db.session.add(dataset_process_rule)
-            db.session.commit()
-            document.dataset_process_rule_id = dataset_process_rule.id
+            if dataset_process_rule is not None:
+                db.session.add(dataset_process_rule)
+                db.session.commit()
+                document.dataset_process_rule_id = dataset_process_rule.id
         # update document data source
         if document_data.data_source:
             file_name = ""
@@ -1668,8 +1687,8 @@ class SegmentService:
             segment.status = "error"
             segment.error = str(e)
             db.session.commit()
-        segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment.id).first()
-        return segment
+        new_segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment.id).first()
+        return new_segment
 
     @classmethod
     def delete_segment(cls, segment: DocumentSegment, document: Document, dataset: Dataset):
@@ -1981,6 +2000,8 @@ class DatasetCollectionBindingService:
             .order_by(DatasetCollectionBinding.created_at)
             .first()
         )
+        if not dataset_collection_binding:
+            raise ValueError("Dataset collection binding not found")
 
         return dataset_collection_binding
 

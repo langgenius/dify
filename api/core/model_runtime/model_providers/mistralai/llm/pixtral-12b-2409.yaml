@@ -5,6 +5,7 @@ label:
 model_type: llm
 features:
   - agent-thought
+  - vision
 model_properties:
   mode: chat
   context_size: 128000
@@ -21,7 +22,7 @@ parameter_rules:
     max: 1
   - name: max_tokens
     use_template: max_tokens
-    default: 1024
+    default: 8192
     min: 1
     max: 8192
   - name: safe_prompt

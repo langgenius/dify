@@ -1,4 +1,5 @@
 import mimetypes
+import uuid
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, cast
 
@@ -64,7 +65,7 @@ def build_from_mapping(
     if not build_func:
         raise ValueError(f"Invalid file transfer method: {transfer_method}")
 
-    file = build_func(
+    file: File = build_func(
         mapping=mapping,
         tenant_id=tenant_id,
         transfer_method=transfer_method,
@@ -72,7 +73,7 @@ def build_from_mapping(
 
     if config and not _is_file_valid_with_config(
         input_file_type=mapping.get("type", FileType.CUSTOM),
-        file_extension=file.extension,
+        file_extension=file.extension or "",
         file_transfer_method=file.transfer_method,
         config=config,
     ):
@@ -116,8 +117,16 @@ def _build_from_local_file(
     tenant_id: str,
     transfer_method: FileTransferMethod,
 ) -> File:
+    upload_file_id = mapping.get("upload_file_id")
+    if not upload_file_id:
+        raise ValueError("Invalid upload file id")
+    # check if upload_file_id is a valid uuid
+    try:
+        uuid.UUID(upload_file_id)
+    except ValueError:
+        raise ValueError("Invalid upload file id format")
     stmt = select(UploadFile).where(
-        UploadFile.id == mapping.get("upload_file_id"),
+        UploadFile.id == upload_file_id,
         UploadFile.tenant_id == tenant_id,
     )
 
@@ -139,6 +148,7 @@ def _build_from_local_file(
         remote_url=row.source_url,
         related_id=mapping.get("upload_file_id"),
         size=row.size,
+        storage_key=row.key,
     )
 
 
@@ -168,6 +178,7 @@ def _build_from_remote_url(
         mime_type=mime_type,
         extension=extension,
         size=file_size,
+        storage_key="",
     )
 
 
@@ -220,6 +231,7 @@ def _build_from_tool_file(
         extension=extension,
         mime_type=tool_file.mimetype,
         size=tool_file.size,
+        storage_key=tool_file.file_key,
     )
 
 
@@ -275,6 +287,7 @@ def _get_file_type_by_extension(extension: str) -> FileType | None:
         return FileType.AUDIO
     elif extension in DOCUMENT_EXTENSIONS:
         return FileType.DOCUMENT
+    return None
 
 
 def _get_file_type_by_mimetype(mime_type: str) -> FileType | None:

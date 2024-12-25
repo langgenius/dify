@@ -1,9 +1,10 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field, PositiveInt
+from pydantic import Field, PositiveInt
+from pydantic_settings import BaseSettings
 
 
-class AnalyticdbConfig(BaseModel):
+class AnalyticdbConfig(BaseSettings):
     """
     Configuration for connecting to Alibaba Cloud AnalyticDB for PostgreSQL.
     Refer to the following documentation for details on obtaining credentials:

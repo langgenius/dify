@@ -35,7 +35,7 @@ class RetrievalService:
         top_k: int,
         score_threshold: Optional[float] = 0.0,
         reranking_model: Optional[dict] = None,
-        reranking_mode: Optional[str] = "reranking_model",
+        reranking_mode: str = "reranking_model",
         weights: Optional[dict] = None,
     ):
         if not query:
@@ -46,15 +46,15 @@ class RetrievalService:
 
         if not dataset or dataset.available_document_count == 0 or dataset.available_segment_count == 0:
             return []
-        all_documents = []
-        threads = []
-        exceptions = []
+        all_documents: list[Document] = []
+        threads: list[threading.Thread] = []
+        exceptions: list[str] = []
         # retrieval_model source with keyword
         if retrieval_method == "keyword_search":
             keyword_thread = threading.Thread(
                 target=RetrievalService.keyword_search,
                 kwargs={
-                    "flask_app": current_app._get_current_object(),
+                    "flask_app": current_app._get_current_object(),  # type: ignore
                     "dataset_id": dataset_id,
                     "query": query,
                     "top_k": top_k,
@@ -69,7 +69,7 @@ class RetrievalService:
             embedding_thread = threading.Thread(
                 target=RetrievalService.embedding_search,
                 kwargs={
-                    "flask_app": current_app._get_current_object(),
+                    "flask_app": current_app._get_current_object(),  # type: ignore
                     "dataset_id": dataset_id,
                     "query": query,
                     "top_k": top_k,
@@ -88,7 +88,7 @@ class RetrievalService:
             full_text_index_thread = threading.Thread(
                 target=RetrievalService.full_text_index_search,
                 kwargs={
-                    "flask_app": current_app._get_current_object(),
+                    "flask_app": current_app._get_current_object(),  # type: ignore
                     "dataset_id": dataset_id,
                     "query": query,
                     "retrieval_method": retrieval_method,
@@ -107,7 +107,7 @@ class RetrievalService:
 
         if exceptions:
             exception_message = ";\n".join(exceptions)
-            raise Exception(exception_message)
+            raise ValueError(exception_message)
 
         if retrieval_method == RetrievalMethod.HYBRID_SEARCH.value:
             data_post_processor = DataPostProcessor(
@@ -128,7 +128,7 @@ class RetrievalService:
         if not dataset:
             return []
         all_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
-            dataset.tenant_id, dataset_id, query, external_retrieval_model
+            dataset.tenant_id, dataset_id, query, external_retrieval_model or {}
         )
         return all_documents
 
@@ -139,6 +139,8 @@ class RetrievalService:
         with flask_app.app_context():
             try:
                 dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+                if not dataset:
+                    raise ValueError("dataset not found")
 
                 keyword = Keyword(dataset=dataset)
 
@@ -163,6 +165,8 @@ class RetrievalService:
         with flask_app.app_context():
             try:
                 dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+                if not dataset:
+                    raise ValueError("dataset not found")
 
                 vector = Vector(dataset=dataset)
 
@@ -213,6 +217,8 @@ class RetrievalService:
         with flask_app.app_context():
             try:
                 dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+                if not dataset:
+                    raise ValueError("dataset not found")
 
                 vector_processor = Vector(
                     dataset=dataset,

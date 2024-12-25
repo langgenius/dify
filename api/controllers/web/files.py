@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import marshal_with
+from flask_restful import marshal_with  # type: ignore
 
 import services
 from controllers.common.errors import FilenameNotExistsError
@@ -33,7 +33,7 @@ class FileApi(WebApiResource):
                 content=file.read(),
                 mimetype=file.mimetype,
                 user=end_user,
-                source=source,
+                source="datasets" if source == "datasets" else None,
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)

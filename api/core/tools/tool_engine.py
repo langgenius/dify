@@ -3,7 +3,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 from datetime import UTC, datetime
 from mimetypes import guess_type
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 from yarl import URL
 
@@ -46,7 +46,7 @@ class ToolEngine:
         invoke_from: InvokeFrom,
         agent_tool_callback: DifyAgentCallbackHandler,
         trace_manager: Optional[TraceQueueManager] = None,
-    ) -> tuple[str, list[tuple[MessageFile, bool]], ToolInvokeMeta]:
+    ) -> tuple[str, list[tuple[MessageFile, str]], ToolInvokeMeta]:
         """
         Agent invokes the tool with the given arguments.
         """
@@ -69,6 +69,8 @@ class ToolEngine:
                     raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
 
         # invoke the tool
+        if tool.identity is None:
+            raise ValueError("tool identity is not set")
         try:
             # hit the callback handler
             agent_tool_callback.on_tool_start(tool_name=tool.identity.name, tool_inputs=tool_parameters)
@@ -111,7 +113,7 @@ class ToolEngine:
             error_response = f"tool invoke error: {e}"
             agent_tool_callback.on_tool_error(e)
         except ToolEngineInvokeError as e:
-            meta = e.args[0]
+            meta = e.meta
             error_response = f"tool invoke error: {meta.error}"
             agent_tool_callback.on_tool_error(e)
             return error_response, [], meta
@@ -163,6 +165,8 @@ class ToolEngine:
         """
         Invoke the tool with the given arguments.
         """
+        if tool.identity is None:
+            raise ValueError("tool identity is not set")
         started_at = datetime.now(UTC)
         meta = ToolInvokeMeta(
             time_cost=0.0,
@@ -171,7 +175,7 @@ class ToolEngine:
                 "tool_name": tool.identity.name,
                 "tool_provider": tool.identity.provider,
                 "tool_provider_type": tool.tool_provider_type().value,
-                "tool_parameters": deepcopy(tool.runtime.runtime_parameters),
+                "tool_parameters": deepcopy(tool.runtime.runtime_parameters) if tool.runtime else {},
                 "tool_icon": tool.identity.icon,
             },
         )
@@ -194,9 +198,9 @@ class ToolEngine:
         result = ""
         for response in tool_response:
             if response.type == ToolInvokeMessage.MessageType.TEXT:
-                result += response.message
+                result += str(response.message) if response.message is not None else ""
             elif response.type == ToolInvokeMessage.MessageType.LINK:
-                result += f"result link: {response.message}. please tell user to check it."
+                result += f"result link: {response.message!r}. please tell user to check it."
             elif response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
                 result += (
                     "image has been created and sent to user already, you do not need to create it,"
@@ -205,7 +209,7 @@ class ToolEngine:
             elif response.type == ToolInvokeMessage.MessageType.JSON:
                 result += f"tool response: {json.dumps(response.message, ensure_ascii=False)}."
             else:
-                result += f"tool response: {response.message}."
+                result += f"tool response: {response.message!r}."
 
         return result
 
@@ -223,7 +227,7 @@ class ToolEngine:
                     mimetype = response.meta.get("mime_type")
                 else:
                     try:
-                        url = URL(response.message)
+                        url = URL(cast(str, response.message))
                         extension = url.suffix
                         guess_type_result, _ = guess_type(f"a{extension}")
                         if guess_type_result:
@@ -237,7 +241,7 @@ class ToolEngine:
                 result.append(
                     ToolInvokeMessageBinary(
                         mimetype=response.meta.get("mime_type", "image/jpeg"),
-                        url=response.message,
+                        url=cast(str, response.message),
                         save_as=response.save_as,
                     )
                 )
@@ -245,7 +249,7 @@ class ToolEngine:
                 result.append(
                     ToolInvokeMessageBinary(
                         mimetype=response.meta.get("mime_type", "octet/stream"),
-                        url=response.message,
+                        url=cast(str, response.message),
                         save_as=response.save_as,
                     )
                 )
@@ -257,7 +261,7 @@ class ToolEngine:
                             mimetype=response.meta.get("mime_type", "octet/stream")
                             if response.meta
                             else "octet/stream",
-                            url=response.message,
+                            url=cast(str, response.message),
                             save_as=response.save_as,
                         )
                     )

@@ -1,9 +1,14 @@
+from typing import Optional
+
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ToolCredentialsOption,
+    ToolDescription,
+    ToolIdentity,
     ToolProviderCredentials,
+    ToolProviderIdentity,
     ToolProviderType,
 )
 from core.tools.provider.tool_provider import ToolProviderController
@@ -64,21 +69,18 @@ class ApiToolProviderController(ToolProviderController):
             pass
         else:
             raise ValueError(f"invalid auth type {auth_type}")
-
-        user_name = db_provider.user.name if db_provider.user_id else ""
-
+        user_name = db_provider.user.name if db_provider.user_id and db_provider.user is not None else ""
         return ApiToolProviderController(
-            **{
-                "identity": {
-                    "author": user_name,
-                    "name": db_provider.name,
-                    "label": {"en_US": db_provider.name, "zh_Hans": db_provider.name},
-                    "description": {"en_US": db_provider.description, "zh_Hans": db_provider.description},
-                    "icon": db_provider.icon,
-                },
-                "credentials_schema": credentials_schema,
-                "provider_id": db_provider.id or "",
-            }
+            identity=ToolProviderIdentity(
+                author=user_name,
+                name=db_provider.name,
+                label=I18nObject(en_US=db_provider.name, zh_Hans=db_provider.name),
+                description=I18nObject(en_US=db_provider.description, zh_Hans=db_provider.description),
+                icon=db_provider.icon,
+            ),
+            credentials_schema=credentials_schema,
+            provider_id=db_provider.id or "",
+            tools=None,
         )
 
     @property
@@ -93,24 +95,22 @@ class ApiToolProviderController(ToolProviderController):
         :return: the tool
         """
         return ApiTool(
-            **{
-                "api_bundle": tool_bundle,
-                "identity": {
-                    "author": tool_bundle.author,
-                    "name": tool_bundle.operation_id,
-                    "label": {"en_US": tool_bundle.operation_id, "zh_Hans": tool_bundle.operation_id},
-                    "icon": self.identity.icon,
-                    "provider": self.provider_id,
-                },
-                "description": {
-                    "human": {"en_US": tool_bundle.summary or "", "zh_Hans": tool_bundle.summary or ""},
-                    "llm": tool_bundle.summary or "",
-                },
-                "parameters": tool_bundle.parameters or [],
-            }
+            api_bundle=tool_bundle,
+            identity=ToolIdentity(
+                author=tool_bundle.author,
+                name=tool_bundle.operation_id or "",
+                label=I18nObject(en_US=tool_bundle.operation_id, zh_Hans=tool_bundle.operation_id),
+                icon=self.identity.icon if self.identity else None,
+                provider=self.provider_id,
+            ),
+            description=ToolDescription(
+                human=I18nObject(en_US=tool_bundle.summary or "", zh_Hans=tool_bundle.summary or ""),
+                llm=tool_bundle.summary or "",
+            ),
+            parameters=tool_bundle.parameters or [],
         )
 
-    def load_bundled_tools(self, tools: list[ApiToolBundle]) -> list[ApiTool]:
+    def load_bundled_tools(self, tools: list[ApiToolBundle]) -> list[Tool]:
         """
         load bundled tools
 
@@ -121,7 +121,7 @@ class ApiToolProviderController(ToolProviderController):
 
         return self.tools
 
-    def get_tools(self, user_id: str, tenant_id: str) -> list[ApiTool]:
+    def get_tools(self, user_id: str = "", tenant_id: str = "") -> Optional[list[Tool]]:
         """
         fetch tools from database
 
@@ -131,6 +131,8 @@ class ApiToolProviderController(ToolProviderController):
         """
         if self.tools is not None:
             return self.tools
+        if self.identity is None:
+            return None
 
         tools: list[Tool] = []
 
@@ -151,7 +153,7 @@ class ApiToolProviderController(ToolProviderController):
         self.tools = tools
         return tools
 
-    def get_tool(self, tool_name: str) -> ApiTool:
+    def get_tool(self, tool_name: str) -> Tool:
         """
         get tool by name
 
@@ -161,7 +163,9 @@ class ApiToolProviderController(ToolProviderController):
         if self.tools is None:
             self.get_tools()
 
-        for tool in self.tools:
+        for tool in self.tools or []:
+            if tool.identity is None:
+                continue
             if tool.identity.name == tool_name:
                 return tool
 

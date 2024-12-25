@@ -24,6 +24,12 @@ BACKOFF_FACTOR = 0.5
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
 
 
+class MaxRetriesExceededError(ValueError):
+    """Raised when the maximum number of retries is exceeded."""
+
+    pass
+
+
 def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     if "allow_redirects" in kwargs:
         allow_redirects = kwargs.pop("allow_redirects")
@@ -59,12 +65,13 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
 
         except httpx.RequestError as e:
             logging.warning(f"Request to URL {url} failed on attempt {retries + 1}: {e}")
+            if max_retries == 0:
+                raise
 
         retries += 1
         if retries <= max_retries:
             time.sleep(BACKOFF_FACTOR * (2 ** (retries - 1)))
-
-    raise Exception(f"Reached maximum retries ({max_retries}) for URL {url}")
+    raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
 
 
 def get(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):

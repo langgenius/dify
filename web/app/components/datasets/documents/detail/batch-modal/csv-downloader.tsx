@@ -7,7 +7,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
-import { DocForm } from '@/models/datasets'
+import { ChunkingMode } from '@/models/datasets'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n/language'
 
@@ -32,18 +32,18 @@ const CSV_TEMPLATE_CN = [
   ['内容 2'],
 ]
 
-const CSVDownload: FC<{ docForm: DocForm }> = ({ docForm }) => {
+const CSVDownload: FC<{ docForm: ChunkingMode }> = ({ docForm }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
   const { CSVDownloader, Type } = useCSVDownloader()
 
   const getTemplate = () => {
     if (locale === LanguagesSupported[1]) {
-      if (docForm === DocForm.QA)
+      if (docForm === ChunkingMode.qa)
         return CSV_TEMPLATE_QA_CN
       return CSV_TEMPLATE_CN
     }
-    if (docForm === DocForm.QA)
+    if (docForm === ChunkingMode.qa)
       return CSV_TEMPLATE_QA_EN
     return CSV_TEMPLATE_EN
   }
@@ -52,7 +52,7 @@ const CSVDownload: FC<{ docForm: DocForm }> = ({ docForm }) => {
     <div className='mt-6'>
       <div className='text-sm text-gray-900 font-medium'>{t('share.generation.csvStructureTitle')}</div>
       <div className='mt-2 max-h-[500px] overflow-auto'>
-        {docForm === DocForm.QA && (
+        {docForm === ChunkingMode.qa && (
           <table className='table-fixed w-full border-separate border-spacing-0 border border-gray-200 rounded-lg text-xs'>
             <thead className='text-gray-500'>
               <tr>
@@ -72,7 +72,7 @@ const CSVDownload: FC<{ docForm: DocForm }> = ({ docForm }) => {
             </tbody>
           </table>
         )}
-        {docForm === DocForm.TEXT && (
+        {docForm === ChunkingMode.text && (
           <table className='table-fixed w-full border-separate border-spacing-0 border border-gray-200 rounded-lg text-xs'>
             <thead className='text-gray-500'>
               <tr>
@@ -97,7 +97,7 @@ const CSVDownload: FC<{ docForm: DocForm }> = ({ docForm }) => {
         bom={true}
         data={getTemplate()}
       >
-        <div className='flex items-center h-[18px] space-x-1 text-[#155EEF] text-xs font-medium'>
+        <div className='flex items-center h-[18px] space-x-1 text-text-accent text-xs font-medium'>
           <DownloadIcon className='w-3 h-3 mr-1' />
           {t('datasetDocuments.list.batchModal.template')}
         </div>

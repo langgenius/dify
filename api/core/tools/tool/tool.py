@@ -91,7 +91,7 @@ class Tool(BaseModel, ABC):
         :return: the tool provider type
         """
 
-    def load_variables(self, variables: ToolRuntimeVariablePool):
+    def load_variables(self, variables: ToolRuntimeVariablePool | None) -> None:
         """
         load variables from database
 
@@ -105,6 +105,8 @@ class Tool(BaseModel, ABC):
         """
         if not self.variables:
             return
+        if self.identity is None:
+            return
 
         self.variables.set_file(self.identity.name, variable_name, image_key)
 
@@ -113,6 +115,8 @@ class Tool(BaseModel, ABC):
         set a text variable
         """
         if not self.variables:
+            return
+        if self.identity is None:
             return
 
         self.variables.set_text(self.identity.name, variable_name, text)
@@ -200,7 +204,11 @@ class Tool(BaseModel, ABC):
     def invoke(self, user_id: str, tool_parameters: Mapping[str, Any]) -> list[ToolInvokeMessage]:
         # update tool_parameters
         # TODO: Fix type error.
+        if self.runtime is None:
+            return []
         if self.runtime.runtime_parameters:
+            # Convert Mapping to dict before updating
+            tool_parameters = dict(tool_parameters)
             tool_parameters.update(self.runtime.runtime_parameters)
 
         # try parse tool parameters into the correct type
@@ -214,6 +222,12 @@ class Tool(BaseModel, ABC):
         if not isinstance(result, list):
             result = [result]
 
+        if not all(isinstance(message, ToolInvokeMessage) for message in result):
+            raise ValueError(
+                f"Invalid return type from {self.__class__.__name__}._invoke method. "
+                "Expected ToolInvokeMessage or list of ToolInvokeMessage."
+            )
+
         return result
 
     def _transform_tool_parameters_type(self, tool_parameters: Mapping[str, Any]) -> dict[str, Any]:
@@ -221,7 +235,7 @@ class Tool(BaseModel, ABC):
         Transform tool parameters type
         """
         # Temp fix for the issue that the tool parameters will be converted to empty while validating the credentials
-        result = deepcopy(tool_parameters)
+        result: dict[str, Any] = deepcopy(dict(tool_parameters))
         for parameter in self.parameters or []:
             if parameter.name in tool_parameters:
                 result[parameter.name] = parameter.type.cast_value(tool_parameters[parameter.name])
@@ -234,12 +248,15 @@ class Tool(BaseModel, ABC):
     ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         pass
 
-    def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any]) -> None:
+    def validate_credentials(
+        self, credentials: dict[str, Any], parameters: dict[str, Any], format_only: bool = False
+    ) -> str | None:
         """
         validate the credentials
 
         :param credentials: the credentials
         :param parameters: the parameters
+        :param format_only: only return the formatted
         """
         pass
 
