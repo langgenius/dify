@@ -16,7 +16,7 @@ import { fetchRunDetail, fetchTracingList } from '@/service/log'
 import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import formatNodeList from './utils/format-to-tracing-node-list'
+import formatNodeList from './utils/format-log'
 export type RunProps = {
   hideResult?: boolean
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'

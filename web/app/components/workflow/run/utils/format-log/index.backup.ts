@@ -1,5 +1,5 @@
 import type { NodeTracing } from '@/types/workflow'
-import { BlockEnum } from '../../types'
+import { BlockEnum } from '../../../types'
 
 type IterationNodeId = string
 type RunIndex = string

@@ -234,7 +234,7 @@ export const simpleIterationData = {
       created_by_end_user: null,
       finished_at: 1735023511,
     },
-  ].reverse(),
+  ],
   output: [
     {
       id: '36c9860a-39e6-4107-b750-655b07895f47',

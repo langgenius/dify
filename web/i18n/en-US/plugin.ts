@@ -51,6 +51,7 @@ const translation = {
       remove: 'Remove',
     },
     actionNum: '{{num}} {{action}} INCLUDED',
+    strategyNum: '{{num}} {{strategy}} INCLUDED',
     endpoints: 'Endpoints',
     endpointsTip: 'This plugin provides specific functionalities via endpoints, and you can configure multiple endpoint sets for current workspace.',
     endpointsDocLink: 'View the document',
