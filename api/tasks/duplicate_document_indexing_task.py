@@ -3,7 +3,7 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 
 from configs import dify_config
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
@@ -26,6 +26,8 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
     start_at = time.perf_counter()
 
     dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+    if dataset is None:
+        raise ValueError("Dataset not found")
 
     # check document limit
     features = FeatureService.get_features(dataset.tenant_id)

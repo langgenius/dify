@@ -54,7 +54,10 @@ class TidbOnQdrantConfig(BaseModel):
         if self.endpoint and self.endpoint.startswith("path:"):
             path = self.endpoint.replace("path:", "")
             if not os.path.isabs(path):
-                path = os.path.join(self.root_path, path)
+                if self.root_path:
+                    path = os.path.join(self.root_path, path)
+                else:
+                    raise ValueError("root_path is required")
 
             return {"path": path}
         else:
@@ -157,7 +160,7 @@ class TidbOnQdrantVector(BaseVector):
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
-        metadatas = [d.metadata for d in documents]
+        metadatas = [d.metadata for d in documents if d.metadata is not None]
 
         added_ids = []
         for batch_ids, points in self._generate_rest_batches(texts, embeddings, metadatas, uuids, 64, self._group_id):
@@ -203,7 +206,7 @@ class TidbOnQdrantVector(BaseVector):
                         batch_metadatas,
                         Field.CONTENT_KEY.value,
                         Field.METADATA_KEY.value,
-                        group_id,
+                        group_id or "",
                         Field.GROUP_KEY.value,
                     ),
                 )
@@ -334,18 +337,20 @@ class TidbOnQdrantVector(BaseVector):
         )
         docs = []
         for result in results:
+            if result.payload is None:
+                continue
             metadata = result.payload.get(Field.METADATA_KEY.value) or {}
             # duplicate check score threshold
             score_threshold = kwargs.get("score_threshold") or 0.0
             if result.score > score_threshold:
                 metadata["score"] = result.score
                 doc = Document(
-                    page_content=result.payload.get(Field.CONTENT_KEY.value),
+                    page_content=result.payload.get(Field.CONTENT_KEY.value, ""),
                     metadata=metadata,
                 )
                 docs.append(doc)
         # Sort the documents by score in descending order
-        docs = sorted(docs, key=lambda x: x.metadata["score"], reverse=True)
+        docs = sorted(docs, key=lambda x: x.metadata["score"] if x.metadata is not None else 0, reverse=True)
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
@@ -427,12 +432,12 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
 
                     else:
                         new_cluster = TidbService.create_tidb_serverless_cluster(
-                            dify_config.TIDB_PROJECT_ID,
-                            dify_config.TIDB_API_URL,
-                            dify_config.TIDB_IAM_API_URL,
-                            dify_config.TIDB_PUBLIC_KEY,
-                            dify_config.TIDB_PRIVATE_KEY,
-                            dify_config.TIDB_REGION,
+                            dify_config.TIDB_PROJECT_ID or "",
+                            dify_config.TIDB_API_URL or "",
+                            dify_config.TIDB_IAM_API_URL or "",
+                            dify_config.TIDB_PUBLIC_KEY or "",
+                            dify_config.TIDB_PRIVATE_KEY or "",
+                            dify_config.TIDB_REGION or "",
                         )
                         new_tidb_auth_binding = TidbAuthBinding(
                             cluster_id=new_cluster["cluster_id"],
@@ -464,9 +469,9 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
             collection_name=collection_name,
             group_id=dataset.id,
             config=TidbOnQdrantConfig(
-                endpoint=dify_config.TIDB_ON_QDRANT_URL,
+                endpoint=dify_config.TIDB_ON_QDRANT_URL or "",
                 api_key=TIDB_ON_QDRANT_API_KEY,
-                root_path=config.root_path,
+                root_path=str(config.root_path),
                 timeout=dify_config.TIDB_ON_QDRANT_CLIENT_TIMEOUT,
                 grpc_port=dify_config.TIDB_ON_QDRANT_GRPC_PORT,
                 prefer_grpc=dify_config.TIDB_ON_QDRANT_GRPC_ENABLED,

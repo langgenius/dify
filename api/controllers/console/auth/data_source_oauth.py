@@ -2,8 +2,8 @@ import logging
 
 import requests
 from flask import current_app, redirect, request
-from flask_login import current_user
-from flask_restful import Resource
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource  # type: ignore
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -17,8 +17,8 @@ from ..wraps import account_initialization_required, setup_required
 def get_oauth_providers():
     with current_app.app_context():
         notion_oauth = NotionOAuth(
-            client_id=dify_config.NOTION_CLIENT_ID,
-            client_secret=dify_config.NOTION_CLIENT_SECRET,
+            client_id=dify_config.NOTION_CLIENT_ID or "",
+            client_secret=dify_config.NOTION_CLIENT_SECRET or "",
             redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/data-source/callback/notion",
         )
 

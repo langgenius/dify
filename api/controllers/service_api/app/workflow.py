@@ -1,7 +1,7 @@
 import logging
 
-from flask_restful import Resource, fields, marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
+from flask_restful.inputs import int_range  # type: ignore
 from werkzeug.exceptions import InternalServerError
 
 from controllers.service_api import api

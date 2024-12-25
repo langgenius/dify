@@ -64,7 +64,7 @@ def build_from_mapping(
     if not build_func:
         raise ValueError(f"Invalid file transfer method: {transfer_method}")
 
-    file = build_func(
+    file: File = build_func(
         mapping=mapping,
         tenant_id=tenant_id,
         transfer_method=transfer_method,
@@ -72,7 +72,7 @@ def build_from_mapping(
 
     if config and not _is_file_valid_with_config(
         input_file_type=mapping.get("type", FileType.CUSTOM),
-        file_extension=file.extension,
+        file_extension=file.extension or "",
         file_transfer_method=file.transfer_method,
         config=config,
     ):
@@ -116,8 +116,11 @@ def _build_from_local_file(
     tenant_id: str,
     transfer_method: FileTransferMethod,
 ) -> File:
+    upload_file_id = mapping.get("upload_file_id")
+    if not upload_file_id:
+        raise ValueError("Invalid upload file id")
     stmt = select(UploadFile).where(
-        UploadFile.id == mapping.get("upload_file_id"),
+        UploadFile.id == upload_file_id,
         UploadFile.tenant_id == tenant_id,
     )
 
@@ -278,6 +281,7 @@ def _get_file_type_by_extension(extension: str) -> FileType | None:
         return FileType.AUDIO
     elif extension in DOCUMENT_EXTENSIONS:
         return FileType.DOCUMENT
+    return None
 
 
 def _get_file_type_by_mimetype(mime_type: str) -> FileType | None:

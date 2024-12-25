@@ -18,7 +18,6 @@ export type CreateAppCardProps = {
   onSuccess?: () => void
 }
 
-// eslint-disable-next-line react/display-name
 const CreateAppCard = forwardRef<HTMLDivElement, CreateAppCardProps>(({ className, onSuccess }, ref) => {
   const { t } = useTranslation()
   const { onPlanInfoChanged } = useProviderContext()
@@ -44,24 +43,22 @@ const CreateAppCard = forwardRef<HTMLDivElement, CreateAppCardProps>(({ classNam
     >
       <div className='grow p-2 rounded-t-xl'>
         <div className='px-6 pt-2 pb-1 text-xs font-medium leading-[18px] text-text-tertiary'>{t('app.createApp')}</div>
-        <div className='flex items-center mb-1 px-6 py-[7px] rounded-lg text-[13px] font-medium leading-[18px] text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-state-base-hover' onClick={() => setShowNewAppModal(true)}>
+        <button className='w-full flex items-center mb-1 px-6 py-[7px] rounded-lg text-[13px] font-medium leading-[18px] text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-state-base-hover' onClick={() => setShowNewAppModal(true)}>
           <FilePlus01 className='shrink-0 mr-2 w-4 h-4' />
           {t('app.newApp.startFromBlank')}
-        </div>
-        <div className='flex items-center px-6 py-[7px] rounded-lg text-[13px] font-medium leading-[18px] text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-state-base-hover' onClick={() => setShowNewAppTemplateDialog(true)}>
+        </button>
+        <button className='w-full flex items-center px-6 py-[7px] rounded-lg text-[13px] font-medium leading-[18px] text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-state-base-hover' onClick={() => setShowNewAppTemplateDialog(true)}>
           <FilePlus02 className='shrink-0 mr-2 w-4 h-4' />
           {t('app.newApp.startFromTemplate')}
-        </div>
-      </div>
-      <div
-        className='p-2 border-t-[0.5px] border-components-card-border rounded-b-xl'
-        onClick={() => setShowCreateFromDSLModal(true)}
-      >
-        <div className='flex items-center px-6 py-[7px] rounded-lg text-[13px] font-medium leading-[18px] text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-state-base-hover'>
+        </button>
+        <button
+          onClick={() => setShowCreateFromDSLModal(true)}
+          className='w-full flex items-center px-6 py-[7px] rounded-lg text-[13px] font-medium leading-[18px] text-text-tertiary cursor-pointer hover:text-text-secondary hover:bg-state-base-hover'>
           <FileArrow01 className='shrink-0 mr-2 w-4 h-4' />
           {t('app.importDSL')}
-        </div>
+        </button>
       </div>
+
       <CreateAppModal
         show={showNewAppModal}
         onClose={() => setShowNewAppModal(false)}
@@ -108,4 +105,6 @@ const CreateAppCard = forwardRef<HTMLDivElement, CreateAppCardProps>(({ classNam
   )
 })
 
+CreateAppCard.displayName = 'CreateAppCard'
 export default CreateAppCard
+export { CreateAppCard }

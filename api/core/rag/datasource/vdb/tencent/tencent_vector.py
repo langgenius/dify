@@ -2,10 +2,10 @@ import json
 from typing import Any, Optional
 
 from pydantic import BaseModel
-from tcvectordb import VectorDBClient
-from tcvectordb.model import document, enum
-from tcvectordb.model import index as vdb_index
-from tcvectordb.model.document import Filter
+from tcvectordb import VectorDBClient  # type: ignore
+from tcvectordb.model import document, enum  # type: ignore
+from tcvectordb.model import index as vdb_index  # type: ignore
+from tcvectordb.model.document import Filter  # type: ignore
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -25,8 +25,8 @@ class TencentConfig(BaseModel):
     database: Optional[str]
     index_type: str = "HNSW"
     metric_type: str = "L2"
-    shard: int = (1,)
-    replicas: int = (2,)
+    shard: int = 1
+    replicas: int = 2
 
     def to_tencent_params(self):
         return {"url": self.url, "username": self.username, "key": self.api_key, "timeout": self.timeout}
@@ -120,15 +120,15 @@ class TencentVector(BaseVector):
         metadatas = [doc.metadata for doc in documents]
         total_count = len(embeddings)
         docs = []
-        for id in range(0, total_count):
+        for i in range(0, total_count):
             if metadatas is None:
                 continue
-            metadata = json.dumps(metadatas[id])
+            metadata = metadatas[i] or {}
             doc = document.Document(
-                id=metadatas[id]["doc_id"],
-                vector=embeddings[id],
-                text=texts[id],
-                metadata=metadata,
+                id=metadata.get("doc_id"),
+                vector=embeddings[i],
+                text=texts[i],
+                metadata=json.dumps(metadata),
             )
             docs.append(doc)
         self._db.collection(self._collection_name).upsert(docs, self._client_config.timeout)
@@ -159,8 +159,8 @@ class TencentVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return []
 
-    def _get_search_res(self, res, score_threshold):
-        docs = []
+    def _get_search_res(self, res: list | None, score_threshold: float) -> list[Document]:
+        docs: list[Document] = []
         if res is None or len(res) == 0:
             return docs
 
@@ -193,7 +193,7 @@ class TencentVectorFactory(AbstractVectorFactory):
         return TencentVector(
             collection_name=collection_name,
             config=TencentConfig(
-                url=dify_config.TENCENT_VECTOR_DB_URL,
+                url=dify_config.TENCENT_VECTOR_DB_URL or "",
                 api_key=dify_config.TENCENT_VECTOR_DB_API_KEY,
                 timeout=dify_config.TENCENT_VECTOR_DB_TIMEOUT,
                 username=dify_config.TENCENT_VECTOR_DB_USERNAME,

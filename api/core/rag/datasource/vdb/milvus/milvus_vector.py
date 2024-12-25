@@ -3,8 +3,8 @@ import logging
 from typing import Any, Optional
 
 from pydantic import BaseModel, model_validator
-from pymilvus import MilvusClient, MilvusException
-from pymilvus.milvus_client import IndexParams
+from pymilvus import MilvusClient, MilvusException  # type: ignore
+from pymilvus.milvus_client import IndexParams  # type: ignore
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -54,14 +54,14 @@ class MilvusVector(BaseVector):
         self._client_config = config
         self._client = self._init_client(config)
         self._consistency_level = "Session"
-        self._fields = []
+        self._fields: list[str] = []
 
     def get_type(self) -> str:
         return VectorType.MILVUS
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         index_params = {"metric_type": "IP", "index_type": "HNSW", "params": {"M": 8, "efConstruction": 64}}
-        metadatas = [d.metadata for d in texts]
+        metadatas = [d.metadata if d.metadata is not None else {} for d in texts]
         self.create_collection(embeddings, metadatas, index_params)
         self.add_texts(texts, embeddings)
 
@@ -161,8 +161,8 @@ class MilvusVector(BaseVector):
                 return
             # Grab the existing collection if it exists
             if not self._client.has_collection(self._collection_name):
-                from pymilvus import CollectionSchema, DataType, FieldSchema
-                from pymilvus.orm.types import infer_dtype_bydata
+                from pymilvus import CollectionSchema, DataType, FieldSchema  # type: ignore
+                from pymilvus.orm.types import infer_dtype_bydata  # type: ignore
 
                 # Determine embedding dim
                 dim = len(embeddings[0])
@@ -217,10 +217,10 @@ class MilvusVectorFactory(AbstractVectorFactory):
         return MilvusVector(
             collection_name=collection_name,
             config=MilvusConfig(
-                uri=dify_config.MILVUS_URI,
-                token=dify_config.MILVUS_TOKEN,
-                user=dify_config.MILVUS_USER,
-                password=dify_config.MILVUS_PASSWORD,
-                database=dify_config.MILVUS_DATABASE,
+                uri=dify_config.MILVUS_URI or "",
+                token=dify_config.MILVUS_TOKEN or "",
+                user=dify_config.MILVUS_USER or "",
+                password=dify_config.MILVUS_PASSWORD or "",
+                database=dify_config.MILVUS_DATABASE or "",
             ),
         )

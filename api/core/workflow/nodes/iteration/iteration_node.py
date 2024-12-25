@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Optional, cast
 from flask import Flask, current_app
 
 from configs import dify_config
-from core.variables import IntegerVariable
+from core.variables import ArrayVariable, IntegerVariable, NoneVariable
 from core.workflow.entities.node_entities import (
     NodeRunMetadataKey,
     NodeRunResult,
@@ -75,12 +75,15 @@ class IterationNode(BaseNode[IterationNodeData]):
         """
         Run the node.
         """
-        iterator_list_segment = self.graph_runtime_state.variable_pool.get(self.node_data.iterator_selector)
+        variable = self.graph_runtime_state.variable_pool.get(self.node_data.iterator_selector)
 
-        if not iterator_list_segment:
-            raise IteratorVariableNotFoundError(f"Iterator variable {self.node_data.iterator_selector} not found")
+        if not variable:
+            raise IteratorVariableNotFoundError(f"iterator variable {self.node_data.iterator_selector} not found")
 
-        if len(iterator_list_segment.value) == 0:
+        if not isinstance(variable, ArrayVariable) and not isinstance(variable, NoneVariable):
+            raise InvalidIteratorValueError(f"invalid iterator value: {variable}, please provide a list.")
+
+        if isinstance(variable, NoneVariable) or len(variable.value) == 0:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -89,7 +92,7 @@ class IterationNode(BaseNode[IterationNodeData]):
             )
             return
 
-        iterator_list_value = iterator_list_segment.to_object()
+        iterator_list_value = variable.to_object()
 
         if not isinstance(iterator_list_value, list):
             raise InvalidIteratorValueError(f"Invalid iterator value: {iterator_list_value}, please provide a list.")
@@ -358,13 +361,16 @@ class IterationNode(BaseNode[IterationNodeData]):
             metadata = event.route_node_state.node_run_result.metadata
             if not metadata:
                 metadata = {}
-
             if NodeRunMetadataKey.ITERATION_ID not in metadata:
-                metadata[NodeRunMetadataKey.ITERATION_ID] = self.node_id
-                if self.node_data.is_parallel:
-                    metadata[NodeRunMetadataKey.PARALLEL_MODE_RUN_ID] = parallel_mode_run_id
-                else:
-                    metadata[NodeRunMetadataKey.ITERATION_INDEX] = iter_run_index
+                metadata = {
+                    **metadata,
+                    NodeRunMetadataKey.ITERATION_ID: self.node_id,
+                    NodeRunMetadataKey.PARALLEL_MODE_RUN_ID
+                    if self.node_data.is_parallel
+                    else NodeRunMetadataKey.ITERATION_INDEX: parallel_mode_run_id
+                    if self.node_data.is_parallel
+                    else iter_run_index,
+                }
                 event.route_node_state.node_run_result.metadata = metadata
         return event
 

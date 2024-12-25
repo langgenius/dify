@@ -1,4 +1,4 @@
-from replicate.exceptions import ModelError, ReplicateError
+from replicate.exceptions import ModelError, ReplicateError  # type: ignore
 
 from core.model_runtime.errors.invoke import InvokeBadRequestError, InvokeError
 

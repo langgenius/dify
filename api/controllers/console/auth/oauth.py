@@ -4,7 +4,7 @@ from typing import Optional
 
 import requests
 from flask import current_app, redirect, request
-from flask_restful import Resource
+from flask_restful import Resource  # type: ignore
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
@@ -76,8 +76,9 @@ class OAuthCallback(Resource):
         try:
             token = oauth_provider.get_access_token(code)
             user_info = oauth_provider.get_user_info(token)
-        except requests.exceptions.HTTPError as e:
-            logging.exception(f"An error occurred during the OAuth process with {provider}: {e.response.text}")
+        except requests.exceptions.RequestException as e:
+            error_text = e.response.text if e.response else str(e)
+            logging.exception(f"An error occurred during the OAuth process with {provider}: {error_text}")
             return {"error": "OAuth process failed"}, 400
 
         if invite_token and RegisterService.is_valid_invite_token(invite_token):
@@ -129,7 +130,7 @@ class OAuthCallback(Resource):
 
 
 def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> Optional[Account]:
-    account = Account.get_by_openid(provider, user_info.id)
+    account: Optional[Account] = Account.get_by_openid(provider, user_info.id)
 
     if not account:
         account = Account.query.filter_by(email=user_info.email).first()
