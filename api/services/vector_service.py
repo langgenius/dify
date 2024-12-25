@@ -29,6 +29,8 @@ class VectorService:
                     .filter(DatasetProcessRule.id == document.dataset_process_rule_id)
                     .first()
                 )
+                if not processing_rule:
+                    raise ValueError("No processing rule found.")
                 # get embedding model instance
                 if dataset.indexing_technique == "high_quality":
                     # check embedding model setting
@@ -98,7 +100,7 @@ class VectorService:
     def generate_child_chunks(
         cls,
         segment: DocumentSegment,
-        dataset_document: Document,
+        dataset_document: DatasetDocument,
         dataset: Dataset,
         embedding_model_instance: ModelInstance,
         processing_rule: DatasetProcessRule,
@@ -130,7 +132,7 @@ class VectorService:
             doc_language=dataset_document.doc_language,
         )
         # save child chunks
-        if len(documents) > 0 and len(documents[0].children) > 0:
+        if documents and documents[0].children:
             index_processor.load(dataset, documents)
 
             for position, child_chunk in enumerate(documents[0].children, start=1):

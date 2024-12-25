@@ -37,12 +37,16 @@ class QAIndexProcessor(BaseIndexProcessor):
     def transform(self, documents: list[Document], **kwargs) -> list[Document]:
         preview = kwargs.get("preview")
         process_rule = kwargs.get("process_rule")
+        if not process_rule:
+            raise ValueError("No process rule found.")
+        if not process_rule.get("rules"):
+            raise ValueError("No rules found in process rule.")
         rules = Rule(**process_rule.get("rules"))
         splitter = self._get_splitter(
             processing_rule_mode=process_rule.get("mode"),
-            max_tokens=rules.segmentation.max_tokens,
-            chunk_overlap=rules.segmentation.chunk_overlap,
-            separator=rules.segmentation.separator,
+            max_tokens=rules.segmentation.max_tokens if rules.segmentation else 0,
+            chunk_overlap=rules.segmentation.chunk_overlap if rules.segmentation else 0,
+            separator=rules.segmentation.separator if rules.segmentation else "",
             embedding_model_instance=kwargs.get("embedding_model_instance"),
         )
 
@@ -71,8 +75,8 @@ class QAIndexProcessor(BaseIndexProcessor):
             all_documents.extend(split_documents)
         if preview:
             self._format_qa_document(
-                current_app._get_current_object(),
-                kwargs.get("tenant_id"),
+                current_app._get_current_object(),  # type: ignore
+                kwargs.get("tenant_id"),  # type: ignore
                 all_documents[0],
                 all_qa_documents,
                 kwargs.get("doc_language", "English"),
@@ -85,8 +89,8 @@ class QAIndexProcessor(BaseIndexProcessor):
                     document_format_thread = threading.Thread(
                         target=self._format_qa_document,
                         kwargs={
-                            "flask_app": current_app._get_current_object(),
-                            "tenant_id": kwargs.get("tenant_id"),
+                            "flask_app": current_app._get_current_object(),  # type: ignore
+                            "tenant_id": kwargs.get("tenant_id"),  # type: ignore
                             "document_node": doc,
                             "all_qa_documents": all_qa_documents,
                             "document_language": kwargs.get("doc_language", "English"),

@@ -276,7 +276,7 @@ class IndexingRunner:
                     tenant_id=tenant_id,
                     model_type=ModelType.TEXT_EMBEDDING,
                 )
-        preview_texts = []
+        preview_texts = []  # type: ignore
 
         total_segments = 0
         index_type = doc_form
@@ -300,13 +300,13 @@ class IndexingRunner:
                 if len(preview_texts) < 10:
                     if doc_form and doc_form == "qa_model":
                         preview_detail = QAPreviewDetail(
-                            question=document.page_content, answer=document.metadata.get("answer")
+                            question=document.page_content, answer=document.metadata.get("answer") or ""
                         )
                         preview_texts.append(preview_detail)
                     else:
-                        preview_detail = PreviewDetail(content=document.page_content)
+                        preview_detail = PreviewDetail(content=document.page_content)  # type: ignore
                         if document.children:
-                            preview_detail.child_chunks = [child.page_content for child in document.children]
+                            preview_detail.child_chunks = [child.page_content for child in document.children]  # type: ignore
                         preview_texts.append(preview_detail)
 
                 # delete image files and related db records
@@ -325,7 +325,7 @@ class IndexingRunner:
 
         if doc_form and doc_form == "qa_model":
             return IndexingEstimate(total_segments=total_segments * 20, qa_preview=preview_texts, preview=[])
-        return IndexingEstimate(total_segments=total_segments, preview=preview_texts)
+        return IndexingEstimate(total_segments=total_segments, preview=preview_texts)  # type: ignore
 
     def _extract(
         self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict
@@ -454,7 +454,7 @@ class IndexingRunner:
                 embedding_model_instance=embedding_model_instance,
             )
 
-        return character_splitter
+        return character_splitter  # type: ignore
 
     def _split_to_documents_for_estimate(
         self, text_docs: list[Document], splitter: TextSplitter, processing_rule: DatasetProcessRule
@@ -535,7 +535,7 @@ class IndexingRunner:
             # create keyword index
             create_keyword_thread = threading.Thread(
                 target=self._process_keyword_index,
-                args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),
+                args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),  # type: ignore
             )
             create_keyword_thread.start()
 
