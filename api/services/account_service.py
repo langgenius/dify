@@ -262,12 +262,12 @@ class AccountService:
 
     @classmethod
     def send_account_deletion_verification_email(cls, account: Account, code: str):
+        language, email = account.interface_language, account.email
         if cls.email_code_account_deletion_rate_limiter.is_rate_limited(email):
             from controllers.console.auth.error import EmailCodeAccountDeletionRateLimitExceededError
 
             raise EmailCodeAccountDeletionRateLimitExceededError()
 
-        language, email = account.interface_language, account.email
         send_account_deletion_verification_code.delay(language=language, to=email, code=code)
 
         cls.email_code_account_deletion_rate_limiter.increment_rate_limit(email)

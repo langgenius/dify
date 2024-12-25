@@ -82,6 +82,6 @@ class BillingService:
         params = {"email": email}
         try:
             response = cls._send_request("GET", "/account/in-freeze", params=params)
-            return response["data"]
+            return bool(response.get("data", False))
         except Exception:
             return False
