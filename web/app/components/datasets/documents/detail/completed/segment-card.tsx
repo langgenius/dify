@@ -80,6 +80,10 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     return mode === 'hierarchical'
   }, [mode])
 
+  const isParagraphMode = useMemo(() => {
+    return mode === 'hierarchical' && parentMode === 'paragraph'
+  }, [mode, parentMode])
+
   const isFullDocMode = useMemo(() => {
     return mode === 'hierarchical' && parentMode === 'full-doc'
   }, [mode, parentMode])
@@ -249,7 +253,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
           : null
       }
       {
-        child_chunks.length > 0
+        isParagraphMode && child_chunks.length > 0
           && <ChildSegmentList
             parentChunkId={id}
             childChunks={child_chunks}
