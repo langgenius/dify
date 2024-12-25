@@ -57,4 +57,4 @@ def send_document_clean_notify_task():
             click.style("Send document clean notify mail succeeded: latency: {}".format(end_at - start_at), fg="green")
         )
     except Exception:
-        logging.exception("Send invite member mail to {} failed".format(to))
+        logging.exception("Send invite member mail to failed")
