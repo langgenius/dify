@@ -3,9 +3,6 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import Image from 'next/image'
-import ProgressIndicator from '../../create/assets/progress-indicator.svg'
-import Reranking from '../../create/assets/rerank.svg'
 import cn from '@/utils/classnames'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
@@ -23,7 +20,6 @@ import {
 } from '@/models/datasets'
 import WeightedScore from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import Toast from '@/app/components/base/toast'
-import RadioCard from '@/app/components/base/radio-card'
 
 type Props = {
   type: RETRIEVE_METHOD
@@ -120,7 +116,7 @@ const RetrievalParamConfig: FC<Props> = ({
     <div>
       {!isEconomical && !isHybridSearch && (
         <div>
-          <div className='flex items-center space-x-2 mb-2'>
+          <div className='flex h-8 items-center text-[13px] font-medium text-gray-900 space-x-2'>
             {canToggleRerankModalEnable && (
               <div
                 className='flex items-center'
@@ -140,7 +136,7 @@ const RetrievalParamConfig: FC<Props> = ({
               </div>
             )}
             <div className='flex items-center'>
-              <span className='mr-0.5 system-sm-semibold text-text-secondary'>{t('common.modelProvider.rerankModel.key')}</span>
+              <span className='mr-0.5'>{t('common.modelProvider.rerankModel.key')}</span>
               <Tooltip
                 popupContent={
                   <div className="w-[200px]">{t('common.modelProvider.rerankModel.tip')}</div>
@@ -167,7 +163,7 @@ const RetrievalParamConfig: FC<Props> = ({
       )}
       {
         !isHybridSearch && (
-          <div className={cn(!isEconomical && 'mt-4', 'flex space-between space-x-4')}>
+          <div className={cn(!isEconomical && 'mt-4', 'flex space-between space-x-6')}>
             <TopKItem
               className='grow'
               value={value.top_k}
@@ -205,22 +201,24 @@ const RetrievalParamConfig: FC<Props> = ({
       {
         isHybridSearch && (
           <>
-            <div className='flex gap-2 mb-4'>
+            <div className='flex items-center justify-between'>
               {
                 rerankingModeOptions.map(option => (
-                  <RadioCard
+                  <div
                     key={option.value}
-                    isChosen={value.reranking_mode === option.value}
-                    onChosen={() => handleChangeRerankMode(option.value)}
-                    icon={<Image src={
-                      option.value === RerankingModeEnum.WeightedScore
-                        ? ProgressIndicator
-                        : Reranking
-                    } alt=''/>}
-                    title={option.label}
-                    description={option.tips}
-                    className='flex-1'
-                  />
+                    className={cn(
+                      'flex items-center justify-center mb-4 w-[calc((100%-8px)/2)] h-8 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg cursor-pointer system-sm-medium text-text-secondary',
+                      value.reranking_mode === RerankingModeEnum.WeightedScore && option.value === RerankingModeEnum.WeightedScore && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
+                      value.reranking_mode !== RerankingModeEnum.WeightedScore && option.value !== RerankingModeEnum.WeightedScore && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
+                    )}
+                    onClick={() => handleChangeRerankMode(option.value)}
+                  >
+                    <div className='truncate'>{option.label}</div>
+                    <Tooltip
+                      popupContent={<div className='w-[200px]'>{option.tips}</div>}
+                      triggerClassName='ml-0.5 w-3.5 h-3.5'
+                    />
+                  </div>
                 ))
               }
             </div>

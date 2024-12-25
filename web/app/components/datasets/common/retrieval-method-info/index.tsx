@@ -2,11 +2,12 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import Image from 'next/image'
-import { retrievalIcon } from '../../create/icons'
 import type { RetrievalConfig } from '@/types/app'
 import { RETRIEVE_METHOD } from '@/types/app'
 import RadioCard from '@/app/components/base/radio-card'
+import { HighPriority } from '@/app/components/base/icons/src/vender/solid/arrows'
+import { PatternRecognition, Semantic } from '@/app/components/base/icons/src/vender/solid/development'
+import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
 
 type Props = {
   value: RetrievalConfig
@@ -14,12 +15,11 @@ type Props = {
 
 export const getIcon = (type: RETRIEVE_METHOD) => {
   return ({
-    [RETRIEVE_METHOD.semantic]: retrievalIcon.vector,
-    [RETRIEVE_METHOD.fullText]: retrievalIcon.fullText,
-    [RETRIEVE_METHOD.hybrid]: retrievalIcon.hybrid,
-    [RETRIEVE_METHOD.invertedIndex]: retrievalIcon.vector,
-    [RETRIEVE_METHOD.keywordSearch]: retrievalIcon.vector,
-  })[type] || retrievalIcon.vector
+    [RETRIEVE_METHOD.semantic]: Semantic,
+    [RETRIEVE_METHOD.fullText]: FileSearch02,
+    [RETRIEVE_METHOD.hybrid]: PatternRecognition,
+    [RETRIEVE_METHOD.invertedIndex]: HighPriority,
+  })[type] || FileSearch02
 }
 
 const EconomicalRetrievalMethodConfig: FC<Props> = ({
@@ -28,11 +28,11 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const type = value.search_method
-  const icon = <Image className='size-3.5 text-util-colors-purple-purple-600' src={getIcon(type)} alt='' />
+  const Icon = getIcon(type)
   return (
     <div className='space-y-2'>
       <RadioCard
-        icon={icon}
+        icon={<Icon className='w-4 h-4 text-[#7839EE]' />}
         title={t(`dataset.retrieval.${type}.title`)}
         description={t(`dataset.retrieval.${type}.description`)}
         noRadio

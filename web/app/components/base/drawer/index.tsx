@@ -19,7 +19,6 @@ export type IDrawerProps = {
   onClose: () => void
   onCancel?: () => void
   onOk?: () => void
-  unmount?: boolean
 }
 
 export default function Drawer({
@@ -36,12 +35,11 @@ export default function Drawer({
   onClose,
   onCancel,
   onOk,
-  unmount = false,
 }: IDrawerProps) {
   const { t } = useTranslation()
   return (
     <Dialog
-      unmount={unmount}
+      unmount={false}
       open={isOpen}
       onClose={() => !clickOutsideNotOpen && onClose()}
       className="fixed z-30 inset-0 overflow-y-auto"

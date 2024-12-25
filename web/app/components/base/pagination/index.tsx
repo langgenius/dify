@@ -8,7 +8,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import cn from '@/utils/classnames'
 
-export type Props = {
+type Props = {
   className?: string
   current: number
   onChange: (cur: number) => void

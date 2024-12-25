@@ -14,7 +14,24 @@
   border-radius: 6px;
   overflow: hidden;
 }
-
+.sourceItem.error {
+  background: #FEE4E2;
+}
+.sourceItem.success {
+  background: #D1FADF;
+}
+.progressbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: #B2CCFF;
+}
+.sourceItem .info {
+  display: flex;
+  align-items: center;
+  z-index: 1;
+}
 .sourceItem .info .name {
   font-weight: 500;
   font-size: 12px;
@@ -38,6 +55,13 @@
   color: #05603A;
 }
 
+
+.cost {
+  @apply flex justify-between items-center text-xs text-gray-700;
+}
+.embeddingStatus {
+  @apply flex items-center justify-between text-gray-900 font-medium text-sm mr-2;
+}
 .commonIcon {
   @apply w-3 h-3 mr-1 inline-block align-middle;
 }
@@ -57,33 +81,35 @@
   @apply text-xs font-medium;
 }
 
-.unknownFileIcon {
+.fileIcon {
+  @apply w-4 h-4 mr-1 bg-center bg-no-repeat;
   background-image: url(../assets/unknown.svg);
+  background-size: 16px;
 }
-.csv {
+.fileIcon.csv {
   background-image: url(../assets/csv.svg);
 }
-.docx {
+.fileIcon.docx {
   background-image: url(../assets/docx.svg);
 }
-.xlsx,
-.xls {
+.fileIcon.xlsx,
+.fileIcon.xls {
   background-image: url(../assets/xlsx.svg);
 }
-.pdf {
+.fileIcon.pdf {
   background-image: url(../assets/pdf.svg);
 }
-.html,
-.htm {
+.fileIcon.html,
+.fileIcon.htm {
   background-image: url(../assets/html.svg);
 }
-.md,
-.markdown {
+.fileIcon.md,
+.fileIcon.markdown {
   background-image: url(../assets/md.svg);
 }
-.txt {
+.fileIcon.txt {
   background-image: url(../assets/txt.svg);
 }
-.json {
+.fileIcon.json {
   background-image: url(../assets/json.svg);
 }
