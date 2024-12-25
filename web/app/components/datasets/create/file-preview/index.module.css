@@ -1,6 +1,6 @@
 .filePreview {
     @apply flex flex-col border-l border-gray-200 shrink-0;
-    width: 528px;
+    width: 100%;
     background-color: #fcfcfd;
   }
   
@@ -48,5 +48,6 @@
   }
   .fileContent {
     white-space: pre-line;
+    word-break: break-all;
   }
   

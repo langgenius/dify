@@ -42,6 +42,11 @@ const translation = {
     zoomOut: '缩小',
     zoomIn: '放大',
     openInNewTab: '在新标签页打开',
+    saveAndRegenerate: '保存并重新生成子分段',
+    close: '关闭',
+    view: '查看',
+    viewMore: '查看更多',
+    regenerate: '重新生成',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',
@@ -475,9 +480,10 @@ const translation = {
     documents: '文档',
     hitTesting: '召回测试',
     settings: '设置',
-    emptyTip: ' 知识库尚未关联，请前往应用程序或插件完成关联。',
+    emptyTip: '此知识尚未集成到任何应用程序中。请参阅文档以获取指导。',
     viewDoc: '查看文档',
     relatedApp: '个关联应用',
+    noRelatedApp: '无关联应用',
   },
   voiceInput: {
     speaking: '现在讲...',
