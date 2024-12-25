@@ -8,7 +8,6 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, Optional, cast
 
-from services.billing_service import BillingService
 from pydantic import BaseModel
 from sqlalchemy import func
 from werkzeug.exceptions import Unauthorized
@@ -33,6 +32,7 @@ from models.account import (
     TenantStatus,
 )
 from models.model import DifySetup
+from services.billing_service import BillingService
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
@@ -209,7 +209,9 @@ class AccountService:
             raise AccountNotFound()
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
-            raise AccountRegisterError("Email is in freeze.")
+            raise AccountRegisterError(
+                "Unable to re-register the account because the deletion occurred less than 30 days ago"
+            )
 
         account = Account()
         account.email = email
@@ -853,7 +855,9 @@ class RegisterService:
         db.session.begin_nested()
         """Register account"""
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
-            raise AccountRegisterError("Email is in freeze.")
+            raise AccountRegisterError(
+                "Unable to re-register the account because the deletion occurred less than 30 days ago"
+            )
         try:
             account = AccountService.create_account(
                 email=email,
