@@ -117,7 +117,7 @@ class App(db.Model):  # type: ignore[name-defined]
         return None
 
     @property
-    def workflow(self) -> Optional[Workflow]:
+    def workflow(self) -> Optional["Workflow"]:
         if self.workflow_id:
             from .workflow import Workflow
 
