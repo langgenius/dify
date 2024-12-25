@@ -1079,10 +1079,14 @@ const StepTwo = ({
                   }
                 />
               }
-              <Badge text={t(
-                'datasetCreation.stepTwo.previewChunkCount', {
-                  count: estimate?.total_segments || 0,
-                }) as string} />
+              {
+                currentDocForm !== ChunkingMode.qa
+                  && <Badge text={t(
+                    'datasetCreation.stepTwo.previewChunkCount', {
+                      count: estimate?.total_segments || 0,
+                    }) as string}
+                  />
+              }
             </div>
           </PreviewHeader>}
           className={cn('flex shrink-0 w-1/2 p-4 pr-0 relative h-full', isMobile && 'w-full max-w-[524px]')}
