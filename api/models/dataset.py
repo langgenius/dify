@@ -231,8 +231,6 @@ class DatasetProcessRule(db.Model):
             "dataset_id": self.dataset_id,
             "mode": self.mode,
             "rules": self.rules_dict,
-            "created_by": self.created_by,
-            "created_at": self.created_at,
         }
 
     @property
