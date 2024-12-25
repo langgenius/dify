@@ -51,6 +51,7 @@ const translation = {
       remove: '移除',
     },
     actionNum: '包含 {{num}} 个 {{action}}',
+    strategyNum: '包含 {{num}} 个 {{strategy}}',
     endpoints: 'API 端点',
     endpointsTip: '此插件通过 API 端点提供特定功能，您可以为当前工作区配置多个 API 端点集。',
     endpointsDocLink: '查看文档',

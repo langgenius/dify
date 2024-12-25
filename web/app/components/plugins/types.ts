@@ -69,8 +69,9 @@ export type PluginDeclaration = {
   verified: boolean
   endpoint: PluginEndpointDeclaration
   tool: PluginToolDeclaration
-  model: any // TODO
+  model: any
   tags: string[]
+  agent_strategy: any
 }
 
 export type PluginManifestInMarket = {
@@ -373,4 +374,48 @@ export type VersionProps = {
   hasInstalled: boolean
   installedVersion?: string
   toInstallVersion: string
+}
+
+export type StrategyParamItem = {
+  name: string
+  label: Record<Locale, string>
+  placeholder: Record<Locale, string>
+  type: string
+  scope: string
+  required: boolean
+  default: any
+  options: any[]
+}
+
+export type StrategyDetail = {
+  identity: {
+    author: string
+    name: string
+    icon: string
+    label: Record<Locale, string>
+    provider: string
+  },
+  parameters: StrategyParamItem[]
+  description: Record<Locale, string>
+  output_schema: Record<string, any>
+}
+
+export type StrategyDeclaration = {
+  identity: {
+    author: string
+    name: string
+    description: Record<Locale, string>
+    icon: string
+    label: Record<Locale, string>
+    tags: string[]
+  },
+  plugin_id: string
+  strategies: StrategyDetail[]
+}
+
+export type StrategyPluginDetail = {
+  provider: string
+  plugin_unique_identifier: string
+  plugin_id: string
+  declaration: StrategyDeclaration
 }
