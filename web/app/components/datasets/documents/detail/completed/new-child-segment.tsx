@@ -83,7 +83,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
 
     setLoading(true)
     await addChildSegment({ datasetId, documentId, segmentId: chunkId, body: params }, {
-      onSuccess(data) {
+      onSuccess(res) {
         notify({
           type: 'success',
           message: t('datasetDocuments.segment.childChunkAdded'),
@@ -98,7 +98,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
           }, 3000)
         }
         else {
-          onSave(data.data)
+          onSave(res.data)
         }
       },
       onSettled() {

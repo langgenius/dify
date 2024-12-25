@@ -1,11 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import React, { useMemo, useState } from 'react'
-import useSWR from 'swr'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import { omit } from 'lodash-es'
 import { RiArrowLeftLine, RiLayoutRight2Line } from '@remixicon/react'
 import { OperationAction, StatusItem } from '../list'
 import DocumentPicker from '../../common/document-picker'
@@ -18,14 +16,14 @@ import style from './style.module.css'
 import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
-import type { MetadataType } from '@/service/datasets'
-import { checkSegmentBatchImportProgress, fetchDocumentDetail, segmentBatchImport } from '@/service/datasets'
 import { ToastContext } from '@/app/components/base/toast'
 import type { ChunkingMode, ParentMode, ProcessMode } from '@/models/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { LayoutRight2LineMod } from '@/app/components/base/icons/src/public/knowledge'
+import { useCheckSegmentBatchImportProgress, useSegmentBatchImport } from '@/service/knowledge/use-segment'
+import { useDocumentDetail, useDocumentMetadata } from '@/service/knowledge/use-document'
 
 type DocumentContextValue = {
   datasetId?: string
@@ -95,49 +93,52 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   const showBatchModal = () => setBatchModalVisible(true)
   const hideBatchModal = () => setBatchModalVisible(false)
   const resetProcessStatus = () => setImportStatus('')
+
+  const { mutateAsync: checkSegmentBatchImportProgress } = useCheckSegmentBatchImportProgress()
   const checkProcess = async (jobID: string) => {
-    try {
-      const res = await checkSegmentBatchImportProgress({ jobID })
-      setImportStatus(res.job_status)
-      if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
-        setTimeout(() => checkProcess(res.job_id), 2500)
-      if (res.job_status === ProcessStatus.ERROR)
-        notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}` })
-    }
-    catch (e: any) {
-      notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
-    }
+    await checkSegmentBatchImportProgress({ jobID }, {
+      onSuccess: (res) => {
+        setImportStatus(res.job_status)
+        if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
+          setTimeout(() => checkProcess(res.job_id), 2500)
+        if (res.job_status === ProcessStatus.ERROR)
+          notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}` })
+      },
+      onError: (e) => {
+        notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
+      },
+    })
   }
+
+  const { mutateAsync: segmentBatchImport } = useSegmentBatchImport()
   const runBatch = async (csv: File) => {
     const formData = new FormData()
     formData.append('file', csv)
-    try {
-      const res = await segmentBatchImport({
-        url: `/datasets/${datasetId}/documents/${documentId}/segments/batch_import`,
-        body: formData,
-      })
-      setImportStatus(res.job_status)
-      checkProcess(res.job_id)
-    }
-    catch (e: any) {
-      notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
-    }
+    await segmentBatchImport({
+      url: `/datasets/${datasetId}/documents/${documentId}/segments/batch_import`,
+      body: formData,
+    }, {
+      onSuccess: (res) => {
+        setImportStatus(res.job_status)
+        checkProcess(res.job_id)
+      },
+      onError: (e) => {
+        notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
+      },
+    })
   }
 
-  const { data: documentDetail, error, mutate: detailMutate } = useSWR({
-    action: 'fetchDocumentDetail',
+  const { data: documentDetail, error, refetch: detailMutate } = useDocumentDetail({
     datasetId,
     documentId,
-    params: { metadata: 'without' as MetadataType },
-  }, apiParams => fetchDocumentDetail(omit(apiParams, 'action')))
+    params: { metadata: 'without' },
+  })
 
-  const { data: documentMetadata, error: metadataErr, mutate: metadataMutate } = useSWR({
-    action: 'fetchDocumentDetail',
+  const { data: documentMetadata, error: metadataErr, refetch: metadataMutate } = useDocumentMetadata({
     datasetId,
     documentId,
-    params: { metadata: 'only' as MetadataType },
-  }, apiParams => fetchDocumentDetail(omit(apiParams, 'action')),
-  )
+    params: { metadata: 'only' },
+  })
 
   const backToPrev = () => {
     router.push(`/datasets/${datasetId}/documents`)
@@ -156,12 +157,12 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   }
 
   const mode = useMemo(() => {
-    return documentDetail?.dataset_process_rule?.mode
-  }, [documentDetail?.dataset_process_rule])
+    return documentDetail?.document_process_rule?.mode
+  }, [documentDetail?.document_process_rule])
 
   const parentMode = useMemo(() => {
-    return documentDetail?.dataset_process_rule?.rules?.parent_mode
-  }, [documentDetail?.dataset_process_rule])
+    return documentDetail?.document_process_rule?.rules?.parent_mode
+  }, [documentDetail?.document_process_rule])
 
   const isFullDocMode = useMemo(() => {
     return mode === 'hierarchical' && parentMode === 'full-doc'

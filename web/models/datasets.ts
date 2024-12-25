@@ -353,7 +353,7 @@ export type NotionPage = {
 }
 
 export type ProcessRule = {
-  mode: ChildChunkType | 'hierarchical'
+  mode: ProcessMode
   rules: Rules
 }
 
@@ -391,6 +391,7 @@ export type FullDocumentDetail = SimpleDocumentDetail & {
   doc_metadata?: DocMetadata | null
   segment_count: number
   dataset_process_rule: PrecessRule
+  document_process_rule: ProcessRule
   [key: string]: any
 }
 
@@ -655,4 +656,9 @@ export type UpdateDocumentBatchParams = {
   datasetId: string
   documentId?: string
   documentIds?: string[] | string
+}
+
+export type BatchImportResponse = {
+  job_id: string
+  job_status: string
 }

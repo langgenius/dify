@@ -303,20 +303,20 @@ const Completed: FC<ICompletedProps> = ({
 
     eventEmitter?.emit('update-segment')
     await updateSegment({ datasetId, documentId, segmentId, body: params }, {
-      onSuccess(data) {
+      onSuccess(res) {
         notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
         if (!needRegenerate)
           onCloseSegmentDetail()
         for (const seg of segments) {
           if (seg.id === segmentId) {
-            seg.answer = data.data.answer
-            seg.content = data.data.content
-            seg.keywords = data.data.keywords
-            seg.word_count = data.data.word_count
-            seg.hit_count = data.data.hit_count
-            seg.enabled = data.data.enabled
-            seg.updated_at = data.data.updated_at
-            seg.child_chunks = data.data.child_chunks
+            seg.answer = res.data.answer
+            seg.content = res.data.content
+            seg.keywords = res.data.keywords
+            seg.word_count = res.data.word_count
+            seg.hit_count = res.data.hit_count
+            seg.enabled = res.data.enabled
+            seg.updated_at = res.data.updated_at
+            seg.child_chunks = res.data.child_chunks
           }
         }
         setSegments([...segments])
@@ -477,41 +477,42 @@ const Completed: FC<ICompletedProps> = ({
 
     params.content = content
 
-    try {
-      eventEmitter?.emit('update-child-segment')
-      const res = await updateChildSegment({ datasetId, documentId, segmentId, childChunkId, body: params })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      onCloseChildSegmentDetail()
-      if (parentMode === 'paragraph') {
-        for (const seg of segments) {
-          if (seg.id === segmentId) {
-            for (const childSeg of seg.child_chunks!) {
-              if (childSeg.id === childChunkId) {
-                childSeg.content = res.data.content
-                childSeg.type = res.data.type
-                childSeg.word_count = res.data.word_count
-                childSeg.updated_at = res.data.updated_at
+    eventEmitter?.emit('update-child-segment')
+    await updateChildSegment({ datasetId, documentId, segmentId, childChunkId, body: params }, {
+      onSuccess: (res) => {
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        onCloseChildSegmentDetail()
+        if (parentMode === 'paragraph') {
+          for (const seg of segments) {
+            if (seg.id === segmentId) {
+              for (const childSeg of seg.child_chunks!) {
+                if (childSeg.id === childChunkId) {
+                  childSeg.content = res.data.content
+                  childSeg.type = res.data.type
+                  childSeg.word_count = res.data.word_count
+                  childSeg.updated_at = res.data.updated_at
+                }
               }
             }
           }
+          setSegments([...segments])
         }
-        setSegments([...segments])
-      }
-      else {
-        for (const childSeg of childSegments) {
-          if (childSeg.id === childChunkId) {
-            childSeg.content = res.data.content
-            childSeg.type = res.data.type
-            childSeg.word_count = res.data.word_count
-            childSeg.updated_at = res.data.updated_at
+        else {
+          for (const childSeg of childSegments) {
+            if (childSeg.id === childChunkId) {
+              childSeg.content = res.data.content
+              childSeg.type = res.data.type
+              childSeg.word_count = res.data.word_count
+              childSeg.updated_at = res.data.updated_at
+            }
           }
+          setChildSegments([...childSegments])
         }
-        setChildSegments([...childSegments])
-      }
-    }
-    finally {
-      eventEmitter?.emit('update-child-segment-done')
-    }
+      },
+      onSettled: () => {
+        eventEmitter?.emit('update-child-segment-done')
+      },
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segments, childSegments, datasetId, documentId, parentMode])
 
