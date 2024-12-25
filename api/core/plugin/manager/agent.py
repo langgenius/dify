@@ -48,6 +48,10 @@ class PluginAgentManager(BasePluginManager):
         agent_provider_id = GenericProviderID(provider)
 
         def transformer(json_response: dict[str, Any]) -> dict:
+            # skip if error occurs
+            if json_response.get("data") is None or json_response.get("data", {}).get("declaration") is None:
+                return json_response
+
             for strategy in json_response.get("data", {}).get("declaration", {}).get("strategies", []):
                 strategy["identity"]["provider"] = agent_provider_id.provider_name
 
