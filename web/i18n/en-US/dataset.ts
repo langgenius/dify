@@ -5,8 +5,8 @@ const translation = {
     parentChild: 'Parent-child',
   },
   parentMode: {
-    paragraph: 'paragraph',
-    fullDoc: 'full-doc',
+    paragraph: 'Paragraph',
+    fullDoc: 'Full-doc',
   },
   externalTag: 'External',
   externalAPI: 'External API',
