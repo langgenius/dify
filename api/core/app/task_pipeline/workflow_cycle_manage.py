@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from typing import Any, Optional, Union, cast
 from uuid import uuid4
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
@@ -63,27 +64,34 @@ from .exc import WorkflowNodeExecutionNotFoundError, WorkflowRunNotFoundError
 
 class WorkflowCycleManage:
     _application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity]
-    _workflow: Workflow
-    _user: Union[Account, EndUser]
     _task_state: WorkflowTaskState
     _workflow_system_variables: dict[SystemVariableKey, Any]
     _wip_workflow_node_executions: dict[str, WorkflowNodeExecution]
 
-    def _handle_workflow_run_start(self) -> WorkflowRun:
-        max_sequence = (
-            db.session.query(db.func.max(WorkflowRun.sequence_number))
-            .filter(WorkflowRun.tenant_id == self._workflow.tenant_id)
-            .filter(WorkflowRun.app_id == self._workflow.app_id)
-            .scalar()
-            or 0
+    def _handle_workflow_run_start(
+        self,
+        *,
+        session: Session,
+        workflow_id: str,
+        user_id: str,
+        created_by_role: CreatedByRole,
+    ) -> WorkflowRun:
+        workflow_stmt = select(Workflow).where(Workflow.id == workflow_id)
+        workflow = session.scalar(workflow_stmt)
+        if not workflow:
+            raise ValueError(f"Workflow not found: {workflow_id}")
+
+        max_sequence_stmt = select(func.max(WorkflowRun.sequence_number)).where(
+            WorkflowRun.tenant_id == workflow.tenant_id,
+            WorkflowRun.app_id == workflow.app_id,
         )
+        max_sequence = session.scalar(max_sequence_stmt) or 0
         new_sequence_number = max_sequence + 1
 
         inputs = {**self._application_generate_entity.inputs}
         for key, value in (self._workflow_system_variables or {}).items():
             if key.value == "conversation":
                 continue
-
             inputs[f"sys.{key.value}"] = value
 
         triggered_from = (
@@ -96,33 +104,32 @@ class WorkflowCycleManage:
         inputs = dict(WorkflowEntry.handle_special_values(inputs) or {})
 
         # init workflow run
-        with Session(db.engine, expire_on_commit=False) as session:
-            workflow_run = WorkflowRun()
-            system_id = self._workflow_system_variables[SystemVariableKey.WORKFLOW_RUN_ID]
-            workflow_run.id = system_id or str(uuid4())
-            workflow_run.tenant_id = self._workflow.tenant_id
-            workflow_run.app_id = self._workflow.app_id
-            workflow_run.sequence_number = new_sequence_number
-            workflow_run.workflow_id = self._workflow.id
-            workflow_run.type = self._workflow.type
-            workflow_run.triggered_from = triggered_from.value
-            workflow_run.version = self._workflow.version
-            workflow_run.graph = self._workflow.graph
-            workflow_run.inputs = json.dumps(inputs)
-            workflow_run.status = WorkflowRunStatus.RUNNING
-            workflow_run.created_by_role = (
-                CreatedByRole.ACCOUNT if isinstance(self._user, Account) else CreatedByRole.END_USER
-            )
-            workflow_run.created_by = self._user.id
-            workflow_run.created_at = datetime.now(UTC).replace(tzinfo=None)
+        workflow_run_id = str(self._workflow_system_variables.get(SystemVariableKey.WORKFLOW_RUN_ID, uuid4()))
 
-            session.add(workflow_run)
-            session.commit()
+        workflow_run = WorkflowRun()
+        workflow_run.id = workflow_run_id
+        workflow_run.tenant_id = workflow.tenant_id
+        workflow_run.app_id = workflow.app_id
+        workflow_run.sequence_number = new_sequence_number
+        workflow_run.workflow_id = workflow.id
+        workflow_run.type = workflow.type
+        workflow_run.triggered_from = triggered_from.value
+        workflow_run.version = workflow.version
+        workflow_run.graph = workflow.graph
+        workflow_run.inputs = json.dumps(inputs)
+        workflow_run.status = WorkflowRunStatus.RUNNING
+        workflow_run.created_by_role = created_by_role
+        workflow_run.created_by = user_id
+        workflow_run.created_at = datetime.now(UTC).replace(tzinfo=None)
+
+        session.add(workflow_run)
 
         return workflow_run
 
     def _handle_workflow_run_success(
         self,
+        *,
+        session: Session,
         workflow_run: WorkflowRun,
         start_at: float,
         total_tokens: int,
@@ -141,7 +148,7 @@ class WorkflowCycleManage:
         :param conversation_id: conversation id
         :return:
         """
-        workflow_run = self._refetch_workflow_run(workflow_run.id)
+        workflow_run = self._refetch_workflow_run(session=session, workflow_run_id=workflow_run.id)
 
         outputs = WorkflowEntry.handle_special_values(outputs)
 
@@ -151,9 +158,6 @@ class WorkflowCycleManage:
         workflow_run.total_tokens = total_tokens
         workflow_run.total_steps = total_steps
         workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
-
-        db.session.commit()
-        db.session.refresh(workflow_run)
 
         if trace_manager:
             trace_manager.add_trace_task(
@@ -165,12 +169,12 @@ class WorkflowCycleManage:
                 )
             )
 
-        db.session.close()
-
         return workflow_run
 
     def _handle_workflow_run_partial_success(
         self,
+        *,
+        session: Session,
         workflow_run: WorkflowRun,
         start_at: float,
         total_tokens: int,
@@ -190,7 +194,7 @@ class WorkflowCycleManage:
         :param conversation_id: conversation id
         :return:
         """
-        workflow_run = self._refetch_workflow_run(workflow_run.id)
+        workflow_run = self._refetch_workflow_run(session=session, workflow_run_id=workflow_run.id)
 
         outputs = WorkflowEntry.handle_special_values(dict(outputs) if outputs else None)
 
@@ -201,8 +205,6 @@ class WorkflowCycleManage:
         workflow_run.total_steps = total_steps
         workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
         workflow_run.exceptions_count = exceptions_count
-        db.session.commit()
-        db.session.refresh(workflow_run)
 
         if trace_manager:
             trace_manager.add_trace_task(
@@ -214,12 +216,12 @@ class WorkflowCycleManage:
                 )
             )
 
-        db.session.close()
-
         return workflow_run
 
     def _handle_workflow_run_failed(
         self,
+        *,
+        session: Session,
         workflow_run: WorkflowRun,
         start_at: float,
         total_tokens: int,
@@ -240,7 +242,7 @@ class WorkflowCycleManage:
         :param error: error message
         :return:
         """
-        workflow_run = self._refetch_workflow_run(workflow_run.id)
+        workflow_run = self._refetch_workflow_run(session=session, workflow_run_id=workflow_run.id)
 
         workflow_run.status = status.value
         workflow_run.error = error
@@ -249,20 +251,17 @@ class WorkflowCycleManage:
         workflow_run.total_steps = total_steps
         workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
         workflow_run.exceptions_count = exceptions_count
-        db.session.commit()
 
-        running_workflow_node_executions = (
-            db.session.query(WorkflowNodeExecution)
-            .filter(
-                WorkflowNodeExecution.tenant_id == workflow_run.tenant_id,
-                WorkflowNodeExecution.app_id == workflow_run.app_id,
-                WorkflowNodeExecution.workflow_id == workflow_run.workflow_id,
-                WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
-                WorkflowNodeExecution.workflow_run_id == workflow_run.id,
-                WorkflowNodeExecution.status == WorkflowNodeExecutionStatus.RUNNING.value,
-            )
-            .all()
+        stmt = select(WorkflowNodeExecution).where(
+            WorkflowNodeExecution.tenant_id == workflow_run.tenant_id,
+            WorkflowNodeExecution.app_id == workflow_run.app_id,
+            WorkflowNodeExecution.workflow_id == workflow_run.workflow_id,
+            WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            WorkflowNodeExecution.workflow_run_id == workflow_run.id,
+            WorkflowNodeExecution.status == WorkflowNodeExecutionStatus.RUNNING.value,
         )
+
+        running_workflow_node_executions = session.scalars(stmt).all()
 
         for workflow_node_execution in running_workflow_node_executions:
             workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
@@ -271,13 +270,6 @@ class WorkflowCycleManage:
             workflow_node_execution.elapsed_time = (
                 workflow_node_execution.finished_at - workflow_node_execution.created_at
             ).total_seconds()
-            db.session.commit()
-
-        db.session.close()
-
-        # with Session(db.engine, expire_on_commit=False) as session:
-        #     session.add(workflow_run)
-        #     session.refresh(workflow_run)
 
         if trace_manager:
             trace_manager.add_trace_task(
@@ -485,14 +477,14 @@ class WorkflowCycleManage:
     #################################################
 
     def _workflow_start_to_stream_response(
-        self, task_id: str, workflow_run: WorkflowRun
+        self,
+        *,
+        session: Session,
+        task_id: str,
+        workflow_run: WorkflowRun,
     ) -> WorkflowStartStreamResponse:
-        """
-        Workflow start to stream response.
-        :param task_id: task id
-        :param workflow_run: workflow run
-        :return:
-        """
+        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
+        _ = session
         return WorkflowStartStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_run.id,
@@ -506,36 +498,32 @@ class WorkflowCycleManage:
         )
 
     def _workflow_finish_to_stream_response(
-        self, task_id: str, workflow_run: WorkflowRun
+        self,
+        *,
+        session: Session,
+        task_id: str,
+        workflow_run: WorkflowRun,
     ) -> WorkflowFinishStreamResponse:
-        """
-        Workflow finish to stream response.
-        :param task_id: task id
-        :param workflow_run: workflow run
-        :return:
-        """
-        # Attach WorkflowRun to an active session so "created_by_role" can be accessed.
-        workflow_run = db.session.merge(workflow_run)
-
-        # Refresh to ensure any expired attributes are fully loaded
-        db.session.refresh(workflow_run)
-
         created_by = None
-        if workflow_run.created_by_role == CreatedByRole.ACCOUNT.value:
-            created_by_account = workflow_run.created_by_account
-            if created_by_account:
+        if workflow_run.created_by_role == CreatedByRole.ACCOUNT:
+            stmt = select(Account).where(Account.id == workflow_run.created_by)
+            account = session.scalar(stmt)
+            if account:
                 created_by = {
-                    "id": created_by_account.id,
-                    "name": created_by_account.name,
-                    "email": created_by_account.email,
+                    "id": account.id,
+                    "name": account.name,
+                    "email": account.email,
+                }
+        elif workflow_run.created_by_role == CreatedByRole.END_USER:
+            stmt = select(EndUser).where(EndUser.id == workflow_run.created_by)
+            end_user = session.scalar(stmt)
+            if end_user:
+                created_by = {
+                    "id": end_user.id,
+                    "user": end_user.session_id,
                 }
         else:
-            created_by_end_user = workflow_run.created_by_end_user
-            if created_by_end_user:
-                created_by = {
-                    "id": created_by_end_user.id,
-                    "user": created_by_end_user.session_id,
-                }
+            raise NotImplementedError(f"unknown created_by_role: {workflow_run.created_by_role}")
 
         return WorkflowFinishStreamResponse(
             task_id=task_id,
@@ -895,14 +883,14 @@ class WorkflowCycleManage:
 
         return None
 
-    def _refetch_workflow_run(self, workflow_run_id: str) -> WorkflowRun:
+    def _refetch_workflow_run(self, *, session: Session, workflow_run_id: str) -> WorkflowRun:
         """
         Refetch workflow run
         :param workflow_run_id: workflow run id
         :return:
         """
-        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_run_id).first()
-
+        stmt = select(WorkflowRun).where(WorkflowRun.id == workflow_run_id)
+        workflow_run = session.scalar(stmt)
         if not workflow_run:
             raise WorkflowRunNotFoundError(workflow_run_id)
 

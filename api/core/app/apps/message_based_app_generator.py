@@ -70,7 +70,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             queue_manager=queue_manager,
             conversation=conversation,
             message=message,
-            user=user,
             stream=stream,
         )
 
