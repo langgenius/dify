@@ -9,6 +9,20 @@ import type {
 import type { TransferMethod } from '@/types/app'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 
+export type AgentLogItem = {
+  node_execution_id: string,
+  id: string,
+  parent_id?: string,
+  label: string,
+  data: object, // debug data
+  error?: string,
+  status: string,
+}
+
+export type AgentLogItemWithChildren = AgentLogItem & {
+  children: AgentLogItemWithChildren[]
+}
+
 export type NodeTracing = {
   id: string
   index: number
@@ -36,6 +50,7 @@ export type NodeTracing = {
     parallel_mode_run_id?: string
     iteration_duration_map?: IterationDurationMap
     error_strategy?: ErrorHandleTypeEnum
+    agent_log?: AgentLogItem[]
   }
   metadata: {
     iterator_length: number
@@ -53,6 +68,7 @@ export type NodeTracing = {
   expand?: boolean // for UI
   details?: NodeTracing[][] // iteration detail
   retryDetail?: NodeTracing[] // retry detail
+  agentLog?: AgentLogItemWithChildren[]
   parallel_id?: string
   parallel_start_node_id?: string
   parent_parallel_id?: string
