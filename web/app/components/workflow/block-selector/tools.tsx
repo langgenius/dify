@@ -12,6 +12,7 @@ import Empty from '@/app/components/tools/add-tool-modal/empty'
 import { useGetLanguage } from '@/context/i18n'
 import ToolListTreeView from './tool/tool-list-tree-view/list'
 import ToolListFlatView from './tool/tool-list-flat-view/list'
+import classNames from '@/utils/classnames'
 
 type ToolsProps = {
   showWorkflowEmpty: boolean
@@ -19,6 +20,8 @@ type ToolsProps = {
   tools: ToolWithProvider[]
   viewType: ViewType
   hasSearchText: boolean
+  className?: string
+  indexBarClassName?: string
 }
 const Blocks = ({
   showWorkflowEmpty,
@@ -26,6 +29,8 @@ const Blocks = ({
   tools,
   viewType,
   hasSearchText,
+  className,
+  indexBarClassName,
 }: ToolsProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -75,7 +80,7 @@ const Blocks = ({
   const toolRefs = useRef({})
 
   return (
-    <div className='p-1 max-w-[320px]'>
+    <div className={classNames('p-1 max-w-[320px]', className)}>
       {
         !tools.length && !showWorkflowEmpty && (
           <div className='flex items-center px-3 h-[22px] text-xs font-medium text-text-tertiary'>{t('workflow.tabs.noResult')}</div>
@@ -103,7 +108,7 @@ const Blocks = ({
         )
       )}
 
-      {isShowLetterIndex && <IndexBar letters={letters} itemRefs={toolRefs} />}
+      {isShowLetterIndex && <IndexBar letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
     </div>
   )
 }
