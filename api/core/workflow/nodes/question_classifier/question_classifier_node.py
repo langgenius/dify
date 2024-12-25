@@ -1,4 +1,4 @@
-import json
+﻿import json
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
@@ -33,7 +33,7 @@ from .template_prompts import (
     QUESTION_CLASSIFIER_USER_PROMPT_2,
     QUESTION_CLASSIFIER_USER_PROMPT_3,
 )
-
+from core.file import File
 
 class QuestionClassifierNode(LLMNode):
     _node_data_cls = QuestionClassifierNodeData  # type: ignore
@@ -46,6 +46,13 @@ class QuestionClassifierNode(LLMNode):
         # extract variables
         variable = variable_pool.get(node_data.query_variable_selector) if node_data.query_variable_selector else None
         query = variable.value if variable else None
+        if query:
+            if isinstance(query, (int, float, complex, bool)):
+                query = str(query)
+            elif isinstance(query, File):
+                query = json.dumps(query.to_dict())
+            if not isinstance(query, str):
+                query = json.dumps(query)
         variables = {"query": query}
         # fetch model config
         model_instance, model_config = self._fetch_model_config(node_data.model)
