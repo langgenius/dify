@@ -147,7 +147,7 @@ class ToolParameter(BaseModel):
         FILES = "files"
 
         # deprecated, should not use.
-        SYSTEM_FILES = "systme-files"
+        SYSTEM_FILES = "system-files"
 
         def as_normal_type(self):
             if self in {
