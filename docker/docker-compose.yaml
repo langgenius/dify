@@ -22,7 +22,7 @@ x-shared-env: &shared-api-worker-env
   SECRET_KEY: ${SECRET_KEY:-sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U}
   INIT_PASSWORD: ${INIT_PASSWORD:-}
   DEPLOY_ENV: ${DEPLOY_ENV:-PRODUCTION}
-  CHECK_UPDATE_URL: ${CHECK_UPDATE_URL:-"https://updates.dify.ai"}
+  CHECK_UPDATE_URL: ${CHECK_UPDATE_URL:-https://updates.dify.ai}
   OPENAI_API_BASE: ${OPENAI_API_BASE:-"https://api.openai.com/v1"}
   MIGRATION_ENABLED: ${MIGRATION_ENABLED:-true}
   FILES_ACCESS_TIMEOUT: ${FILES_ACCESS_TIMEOUT:-300}
