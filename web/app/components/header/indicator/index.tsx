@@ -7,7 +7,7 @@ export type IndicatorProps = {
   className?: string
 }
 
-export type ColorMap = {
+type ColorMap = {
   green: string
   orange: string
   red: string
@@ -21,7 +21,7 @@ const BACKGROUND_MAP: ColorMap = {
   orange: 'bg-components-badge-status-light-warning-bg',
   red: 'bg-components-badge-status-light-error-bg',
   blue: 'bg-components-badge-status-light-normal-bg',
-  yellow: 'bg-components-badge-status-light-warning-bg',
+  yellow: 'bg-[#FDB022]',
   gray: 'bg-components-badge-status-light-disabled-bg',
 }
 const BORDER_MAP: ColorMap = {
@@ -29,16 +29,16 @@ const BORDER_MAP: ColorMap = {
   orange: 'border-components-badge-status-light-warning-border-inner',
   red: 'border-components-badge-status-light-error-border-inner',
   blue: 'border-components-badge-status-light-normal-border-inner',
-  yellow: 'border-components-badge-status-light-warning-border-inner',
+  yellow: 'border-[#F79009]',
   gray: 'border-components-badge-status-light-disabled-border-inner',
 }
 const SHADOW_MAP: ColorMap = {
-  green: 'shadow-status-indicator-green-shadow',
-  orange: 'shadow-status-indicator-warning-shadow',
-  red: 'shadow-status-indicator-red-shadow',
-  blue: 'shadow-status-indicator-blue-shadow',
-  yellow: 'shadow-status-indicator-warning-shadow',
-  gray: 'shadow-status-indicator-gray-shadow',
+  green: 'shadow-[0_0_5px_-3px_rgba(14,159,110,0.1),0.5px_0.5px_3px_rgba(14,159,110,0.3),inset_1.5px_1.5px_0px_rgba(255,255,255,0.2)]',
+  orange: 'shadow-[0_0_5px_-3px_rgba(255,90,31,0.2),0.5px_0.5px_3px_rgba(255, 90, 31, 0.3), inset_1.5px_1.5px_0_rgba(255, 255, 255, 0.2)]',
+  red: 'shadow-[0_0_5px_-3px_rgba(249,112,102,0.1),0.5px_0.5px_3px_rgba(249, 112, 102, 0.2), inset_1.5px_1.5px_0_rgba(255, 255, 255, 0.4)]',
+  blue: 'shadow-[0_0_5px_-3px_rgba(208, 213, 221, 0.1),0.5px_0.5px_3px_rgba(208, 213, 221, 0.3), inset_1.5px_1.5px_0_rgba(255, 255, 255, 0.2)]',
+  yellow: 'shadow-[0_0_5px_-3px_rgba(253, 176, 34, 0.1),0.5px_0.5px_3px_rgba(253, 176, 34, 0.3), inset_1.5px_1.5px_0_rgba(255, 255, 255, 0.2)]',
+  gray: 'shadow-[0_0_5px_-3px_rgba(208, 213, 221, 0.1),0.5px_0.5px_3px_rgba(208, 213, 221, 0.3), inset_1.5px_1.5px_0_rgba(255, 255, 255, 0.2)]',
 }
 
 export default function Indicator({

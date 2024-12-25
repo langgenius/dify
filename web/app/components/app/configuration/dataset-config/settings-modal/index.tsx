@@ -12,7 +12,7 @@ import Divider from '@/app/components/base/divider'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { type DataSet, RerankingModeEnum } from '@/models/datasets'
+import type { DataSet } from '@/models/datasets'
 import { useToastContext } from '@/app/components/base/toast'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useAppContext } from '@/context/app-context'
@@ -111,10 +111,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
     }
     const postRetrievalConfig = ensureRerankModelSelected({
       rerankDefaultModel: rerankDefaultModel!,
-      retrievalConfig: {
-        ...retrievalConfig,
-        reranking_enable: retrievalConfig.reranking_mode === RerankingModeEnum.RerankingModel,
-      },
+      retrievalConfig,
       indexMethod,
     })
     try {
@@ -258,8 +255,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 disable={!localeCurrentDataset?.embedding_available}
                 value={indexMethod}
                 onChange={v => setIndexMethod(v!)}
-                docForm={currentDataset.doc_form}
-                currentValue={currentDataset.indexing_technique}
+                itemClassName='sm:!w-[280px]'
               />
             </div>
           </div>
@@ -291,7 +287,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         {/* Retrieval Method Config */}
         {currentDataset?.provider === 'external'
           ? <>
-            <div className={rowClass}><Divider /></div>
+            <div className={rowClass}><Divider/></div>
             <div className={rowClass}>
               <div className={labelClass}>
                 <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.retrievalSetting.title')}</div>
@@ -304,7 +300,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 isInRetrievalSetting={true}
               />
             </div>
-            <div className={rowClass}><Divider /></div>
+            <div className={rowClass}><Divider/></div>
             <div className={rowClass}>
               <div className={labelClass}>
                 <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.externalKnowledgeAPI')}</div>
@@ -330,7 +326,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 </div>
               </div>
             </div>
-            <div className={rowClass}><Divider /></div>
+            <div className={rowClass}><Divider/></div>
           </>
           : <div className={rowClass}>
             <div className={cn(labelClass, 'w-auto min-w-[168px]')}>
