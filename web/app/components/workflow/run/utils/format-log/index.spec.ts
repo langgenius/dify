@@ -1,8 +1,10 @@
 import formatToTracingNodeList from '.'
-import { simpleIterationData } from '../spec-test-data'
+import { simpleIterationData } from './iteration/data'
+import { simpleRetryData } from './retry/data'
 
 describe('format api data to tracing panel data', () => {
-  test('iteration should put nodes in details', () => {
-    expect(formatToTracingNodeList(simpleIterationData.in as any)).toEqual(simpleIterationData.output)
+  test('integration', () => {
+    expect(formatToTracingNodeList(simpleIterationData.in.reverse() as any)).toEqual(simpleIterationData.expect)
+    expect(formatToTracingNodeList(simpleRetryData.in.reverse() as any)).toEqual(simpleRetryData.expect)
   })
 })
