@@ -331,8 +331,8 @@ const translation = {
     custom: '自定义',
     hierarchical: '父子分段',
     previewTip: '段落预览将在嵌入完成后可用',
-    parentMaxTokens: '父 {{count}}',
-    childMaxTokens: '子 {{count}}',
+    parentMaxTokens: '父',
+    childMaxTokens: '子',
   },
   segment: {
     paragraphs: '段落',
