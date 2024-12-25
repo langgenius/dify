@@ -35,7 +35,7 @@ const DatasetInfo: FC<Props> = ({
             {name}
           </div>
           <div className='mt-1 text-text-tertiary system-2xs-medium-uppercase'>{isExternal ? t('dataset.externalTag') : t('dataset.localDocs')}</div>
-          <div className='my-3  system-xs-regular text-text-tertiary'>{description}</div>
+          <div className='my-3  system-xs-regular text-text-tertiary first-letter:capitalize'>{description}</div>
         </div>
       )}
       {extraInfo}
