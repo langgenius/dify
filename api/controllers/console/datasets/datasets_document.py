@@ -603,7 +603,8 @@ class DocumentDetailApi(DocumentResource):
         if metadata == "only":
             response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata}
         elif metadata == "without":
-            process_rules = DatasetService.get_process_rules(dataset_id)
+            dataset_process_rules = DatasetService.get_process_rules(dataset_id)
+            document_process_rules = document.dataset_process_rule.to_dict()
             data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,
@@ -611,7 +612,8 @@ class DocumentDetailApi(DocumentResource):
                 "data_source_type": document.data_source_type,
                 "data_source_info": data_source_info,
                 "dataset_process_rule_id": document.dataset_process_rule_id,
-                "dataset_process_rule": process_rules,
+                "dataset_process_rule": dataset_process_rules,
+                "document_process_rule": document_process_rules,
                 "name": document.name,
                 "created_from": document.created_from,
                 "created_by": document.created_by,
@@ -634,7 +636,8 @@ class DocumentDetailApi(DocumentResource):
                 "doc_language": document.doc_language,
             }
         else:
-            process_rules = DatasetService.get_process_rules(dataset_id)
+            dataset_process_rules = DatasetService.get_process_rules(dataset_id)
+            document_process_rules = document.dataset_process_rule.to_dict()
             data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,
@@ -642,7 +645,8 @@ class DocumentDetailApi(DocumentResource):
                 "data_source_type": document.data_source_type,
                 "data_source_info": data_source_info,
                 "dataset_process_rule_id": document.dataset_process_rule_id,
-                "dataset_process_rule": process_rules,
+                "dataset_process_rule": dataset_process_rules,
+                "document_process_rule": document_process_rules,
                 "name": document.name,
                 "created_from": document.created_from,
                 "created_by": document.created_by,
