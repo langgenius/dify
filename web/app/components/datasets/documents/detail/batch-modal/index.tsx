@@ -7,11 +7,11 @@ import CSVUploader from './csv-uploader'
 import CSVDownloader from './csv-downloader'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import type { ChunkingMode } from '@/models/datasets'
+import type { DocForm } from '@/models/datasets'
 
 export type IBatchModalProps = {
   isShow: boolean
-  docForm: ChunkingMode
+  docForm: DocForm
   onCancel: () => void
   onConfirm: (file: File) => void
 }

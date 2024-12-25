@@ -2,13 +2,12 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import Image from 'next/image'
 import RetrievalParamConfig from '../retrieval-param-config'
-import { OptionCard } from '../../create/step-two/option-card'
-import Effect from '../../create/assets/option-card-effect-purple.svg'
-import { retrievalIcon } from '../../create/icons'
 import type { RetrievalConfig } from '@/types/app'
 import { RETRIEVE_METHOD } from '@/types/app'
+import RadioCard from '@/app/components/base/radio-card'
+import { PatternRecognition, Semantic } from '@/app/components/base/icons/src/vender/solid/development'
+import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
 import { useProviderContext } from '@/context/provider-context'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -17,7 +16,6 @@ import {
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
-import Badge from '@/app/components/base/badge'
 
 type Props = {
   value: RetrievalConfig
@@ -58,72 +56,67 @@ const RetrievalMethodConfig: FC<Props> = ({
   return (
     <div className='space-y-2'>
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
-        <OptionCard icon={<Image className='w-4 h-4' src={retrievalIcon.vector} alt='' />}
+        <RadioCard
+          icon={<Semantic className='w-4 h-4 text-[#7839EE]' />}
           title={t('dataset.retrieval.semantic_search.title')}
           description={t('dataset.retrieval.semantic_search.description')}
-          isActive={
-            value.search_method === RETRIEVE_METHOD.semantic
-          }
-          onSwitched={() => onChange({
+          isChosen={value.search_method === RETRIEVE_METHOD.semantic}
+          onChosen={() => onChange({
             ...value,
             search_method: RETRIEVE_METHOD.semantic,
           })}
-          effectImg={Effect.src}
-          activeHeaderClassName='bg-dataset-option-card-purple-gradient'
-        >
-          <RetrievalParamConfig
-            type={RETRIEVE_METHOD.semantic}
-            value={value}
-            onChange={onChange}
-          />
-        </OptionCard>
+          chosenConfig={
+            <RetrievalParamConfig
+              type={RETRIEVE_METHOD.semantic}
+              value={value}
+              onChange={onChange}
+            />
+          }
+        />
       )}
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
-        <OptionCard icon={<Image className='w-4 h-4' src={retrievalIcon.fullText} alt='' />}
+        <RadioCard
+          icon={<FileSearch02 className='w-4 h-4 text-[#7839EE]' />}
           title={t('dataset.retrieval.full_text_search.title')}
           description={t('dataset.retrieval.full_text_search.description')}
-          isActive={
-            value.search_method === RETRIEVE_METHOD.fullText
-          }
-          onSwitched={() => onChange({
+          isChosen={value.search_method === RETRIEVE_METHOD.fullText}
+          onChosen={() => onChange({
             ...value,
             search_method: RETRIEVE_METHOD.fullText,
           })}
-          effectImg={Effect.src}
-          activeHeaderClassName='bg-dataset-option-card-purple-gradient'
-        >
-          <RetrievalParamConfig
-            type={RETRIEVE_METHOD.fullText}
-            value={value}
-            onChange={onChange}
-          />
-        </OptionCard>
+          chosenConfig={
+            <RetrievalParamConfig
+              type={RETRIEVE_METHOD.fullText}
+              value={value}
+              onChange={onChange}
+            />
+          }
+        />
       )}
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
-        <OptionCard icon={<Image className='w-4 h-4' src={retrievalIcon.hybrid} alt='' />}
+        <RadioCard
+          icon={<PatternRecognition className='w-4 h-4 text-[#7839EE]' />}
           title={
             <div className='flex items-center space-x-1'>
               <div>{t('dataset.retrieval.hybrid_search.title')}</div>
-              <Badge text={t('dataset.retrieval.hybrid_search.recommend')!} className='border-text-accent-secondary text-text-accent-secondary ml-1 h-[18px]' uppercase />
+              <div className='flex h-full items-center px-1.5 rounded-md border border-[#E0EAFF] text-xs font-medium text-[#444CE7]'>{t('dataset.retrieval.hybrid_search.recommend')}</div>
             </div>
           }
-          description={t('dataset.retrieval.hybrid_search.description')} isActive={
-            value.search_method === RETRIEVE_METHOD.hybrid
-          }
-          onSwitched={() => onChange({
+          description={t('dataset.retrieval.hybrid_search.description')}
+          isChosen={value.search_method === RETRIEVE_METHOD.hybrid}
+          onChosen={() => onChange({
             ...value,
             search_method: RETRIEVE_METHOD.hybrid,
             reranking_enable: true,
           })}
-          effectImg={Effect.src}
-          activeHeaderClassName='bg-dataset-option-card-purple-gradient'
-        >
-          <RetrievalParamConfig
-            type={RETRIEVE_METHOD.hybrid}
-            value={value}
-            onChange={onChange}
-          />
-        </OptionCard>
+          chosenConfig={
+            <RetrievalParamConfig
+              type={RETRIEVE_METHOD.hybrid}
+              value={value}
+              onChange={onChange}
+            />
+          }
+        />
       )}
     </div>
   )

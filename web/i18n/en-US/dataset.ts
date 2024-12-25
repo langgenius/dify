@@ -1,13 +1,5 @@
 const translation = {
   knowledge: 'Knowledge',
-  chunkingMode: {
-    general: 'General',
-    parentChild: 'Parent-child',
-  },
-  parentMode: {
-    paragraph: 'Paragraph',
-    fullDoc: 'Full-doc',
-  },
   externalTag: 'External',
   externalAPI: 'External API',
   externalAPIPanelTitle: 'External Knowledge API',
@@ -20,7 +12,6 @@ const translation = {
   learnHowToWriteGoodKnowledgeDescription: 'Learn how to write a good knowledge description',
   externalAPIPanelDescription: 'The external knowledge API is used to connect to a knowledge base outside of Dify and retrieve knowledge from that knowledge base.',
   externalAPIPanelDocumentation: 'Learn how to create an External Knowledge API',
-  localDocs: 'Local Docs',
   documentCount: ' docs',
   wordCount: ' k words',
   appCount: ' linked apps',
@@ -124,10 +115,8 @@ const translation = {
     change: 'Change',
     changeRetrievalMethod: 'Change retrieval method',
   },
-  docsFailedNotice: 'documents indexed failed',
+  docsFailedNotice: 'documents failed to be indexed',
   retry: 'Retry',
-  documentsDisabled: '{{num}} documents disabled - inactive for over 30 days',
-  enable: 'Enable',
   indexingTechnique: {
     high_quality: 'HQ',
     economy: 'ECO',
@@ -157,15 +146,6 @@ const translation = {
   nTo1RetrievalLegacy: 'N-to-1 retrieval will be officially deprecated from September. It is recommended to use the latest Multi-path retrieval to obtain better results. ',
   nTo1RetrievalLegacyLink: 'Learn more',
   nTo1RetrievalLegacyLinkText: ' N-to-1 retrieval will be officially deprecated in September.',
-  batchAction: {
-    selected: 'Selected',
-    enable: 'Enable',
-    disable: 'Disable',
-    archive: 'Archive',
-    delete: 'Delete',
-    cancel: 'Cancel',
-  },
-  preprocessDocument: '{{num}} Preprocess Documents',
 }
 
 export default translation

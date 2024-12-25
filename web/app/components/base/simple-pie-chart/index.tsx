@@ -10,11 +10,10 @@ export type SimplePieChartProps = {
   fill?: string
   stroke?: string
   size?: number
-  animationDuration?: number
   className?: string
 }
 
-const SimplePieChart = ({ percentage = 80, fill = '#fdb022', stroke = '#f79009', size = 12, animationDuration, className }: SimplePieChartProps) => {
+const SimplePieChart = ({ percentage = 80, fill = '#fdb022', stroke = '#f79009', size = 12, className }: SimplePieChartProps) => {
   const option: EChartsOption = useMemo(() => ({
     series: [
       {
@@ -35,7 +34,7 @@ const SimplePieChart = ({ percentage = 80, fill = '#fdb022', stroke = '#f79009',
       {
         type: 'pie',
         radius: '83%',
-        animationDuration: animationDuration ?? 600,
+        animationDuration: 600,
         data: [
           { value: percentage, itemStyle: { color: fill } },
           { value: 100 - percentage, itemStyle: { color: '#fff' } },
@@ -49,7 +48,7 @@ const SimplePieChart = ({ percentage = 80, fill = '#fdb022', stroke = '#f79009',
         cursor: 'default',
       },
     ],
-  }), [stroke, fill, percentage, animationDuration])
+  }), [stroke, fill, percentage])
 
   return (
     <ReactECharts

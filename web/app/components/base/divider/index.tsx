@@ -22,7 +22,7 @@ const dividerVariants = cva('',
   },
 )
 
-export type DividerProps = {
+type DividerProps = {
   className?: string
   style?: CSSProperties
 } & VariantProps<typeof dividerVariants>
