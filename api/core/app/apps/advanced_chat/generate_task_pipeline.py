@@ -2,6 +2,7 @@ import json
 import logging
 import time
 from collections.abc import Generator, Mapping
+from threading import Thread
 from typing import Any, Optional, Union
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
@@ -64,6 +65,7 @@ from models.enums import CreatedByRole
 from models.workflow import (
     Workflow,
     WorkflowNodeExecution,
+    WorkflowRun,
     WorkflowRunStatus,
 )
 
@@ -81,6 +83,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
     _user: Union[Account, EndUser]
     _workflow_system_variables: dict[SystemVariableKey, Any]
     _wip_workflow_node_executions: dict[str, WorkflowNodeExecution]
+    _conversation_name_generate_thread: Optional[Thread] = None
 
     def __init__(
         self,
@@ -131,7 +134,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         self._conversation_name_generate_thread = None
         self._recorded_files: list[Mapping[str, Any]] = []
 
-    def process(self):
+    def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
         """
         Process generate task pipeline.
         :return:
@@ -262,8 +265,8 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         :return:
         """
         # init fake graph runtime state
-        graph_runtime_state = None
-        workflow_run = None
+        graph_runtime_state: Optional[GraphRuntimeState] = None
+        workflow_run: Optional[WorkflowRun] = None
 
         for queue_message in self._queue_manager.listen():
             event = queue_message.event
@@ -315,14 +318,14 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
                 workflow_node_execution = self._handle_node_execution_start(workflow_run=workflow_run, event=event)
 
-                response = self._workflow_node_start_to_stream_response(
+                response_start = self._workflow_node_start_to_stream_response(
                     event=event,
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution,
                 )
 
-                if response:
-                    yield response
+                if response_start:
+                    yield response_start
             elif isinstance(event, QueueNodeSucceededEvent):
                 workflow_node_execution = self._handle_workflow_node_execution_success(event)
 
@@ -330,18 +333,18 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 if event.node_type in [NodeType.ANSWER, NodeType.END]:
                     self._recorded_files.extend(self._fetch_files_from_node_outputs(event.outputs or {}))
 
-                response = self._workflow_node_finish_to_stream_response(
+                response_finish = self._workflow_node_finish_to_stream_response(
                     event=event,
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution,
                 )
 
-                if response:
-                    yield response
+                if response_finish:
+                    yield response_finish
             elif isinstance(event, QueueNodeFailedEvent | QueueNodeInIterationFailedEvent | QueueNodeExceptionEvent):
                 workflow_node_execution = self._handle_workflow_node_execution_failed(event)
 
-                response = self._workflow_node_finish_to_stream_response(
+                response_finish = self._workflow_node_finish_to_stream_response(
                     event=event,
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution,
@@ -609,7 +612,10 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 del extras["metadata"]["annotation_reply"]
 
         return MessageEndStreamResponse(
-            task_id=self._application_generate_entity.task_id, id=self._message.id, files=self._recorded_files, **extras
+            task_id=self._application_generate_entity.task_id,
+            id=self._message.id,
+            files=self._recorded_files,
+            metadata=extras.get("metadata", {}),
         )
 
     def _handle_output_moderation_chunk(self, text: str) -> bool:

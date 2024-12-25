@@ -29,14 +29,15 @@ class UnstructuredPPTXExtractor(BaseExtractor):
             from unstructured.partition.pptx import partition_pptx
 
             elements = partition_pptx(filename=self._file_path)
-        text_by_page = {}
+        text_by_page: dict[int, str] = {}
         for element in elements:
             page = element.metadata.page_number
             text = element.text
-            if page in text_by_page:
-                text_by_page[page] += "\n" + text
-            else:
-                text_by_page[page] = text
+            if page is not None:
+                if page in text_by_page:
+                    text_by_page[page] += "\n" + text
+                else:
+                    text_by_page[page] = text
 
         combined_texts = list(text_by_page.values())
         documents = []

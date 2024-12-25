@@ -3,8 +3,8 @@ from decimal import Decimal
 
 import pytz
 from flask import jsonify
-from flask_login import current_user
-from flask_restful import Resource, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, reqparse  # type: ignore
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model

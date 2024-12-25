@@ -3,8 +3,8 @@ import uuid
 from contextlib import contextmanager
 from typing import Any
 
-import psycopg2.extras
-import psycopg2.pool
+import psycopg2.extras  # type: ignore
+import psycopg2.pool  # type: ignore
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
@@ -98,16 +98,17 @@ class PGVector(BaseVector):
         values = []
         pks = []
         for i, doc in enumerate(documents):
-            doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
-            pks.append(doc_id)
-            values.append(
-                (
-                    doc_id,
-                    doc.page_content,
-                    json.dumps(doc.metadata),
-                    embeddings[i],
+            if doc.metadata is not None:
+                doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
+                pks.append(doc_id)
+                values.append(
+                    (
+                        doc_id,
+                        doc.page_content,
+                        json.dumps(doc.metadata),
+                        embeddings[i],
+                    )
                 )
-            )
         with self._get_cursor() as cur:
             psycopg2.extras.execute_values(
                 cur, f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES %s", values
@@ -216,11 +217,11 @@ class PGVectorFactory(AbstractVectorFactory):
         return PGVector(
             collection_name=collection_name,
             config=PGVectorConfig(
-                host=dify_config.PGVECTOR_HOST,
+                host=dify_config.PGVECTOR_HOST or "localhost",
                 port=dify_config.PGVECTOR_PORT,
-                user=dify_config.PGVECTOR_USER,
-                password=dify_config.PGVECTOR_PASSWORD,
-                database=dify_config.PGVECTOR_DATABASE,
+                user=dify_config.PGVECTOR_USER or "postgres",
+                password=dify_config.PGVECTOR_PASSWORD or "",
+                database=dify_config.PGVECTOR_DATABASE or "postgres",
                 min_connection=dify_config.PGVECTOR_MIN_CONNECTION,
                 max_connection=dify_config.PGVECTOR_MAX_CONNECTION,
             ),

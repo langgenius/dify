@@ -93,7 +93,8 @@ class OpenAIModerationModel(_CommonOpenAI, ModerationModel):
         model_schema = self.get_model_schema(model, credentials)
 
         if model_schema and ModelPropertyKey.MAX_CHARACTERS_PER_CHUNK in model_schema.model_properties:
-            return model_schema.model_properties[ModelPropertyKey.MAX_CHARACTERS_PER_CHUNK]
+            max_characters_per_chunk: int = model_schema.model_properties[ModelPropertyKey.MAX_CHARACTERS_PER_CHUNK]
+            return max_characters_per_chunk
 
         return 2000
 
@@ -108,6 +109,7 @@ class OpenAIModerationModel(_CommonOpenAI, ModerationModel):
         model_schema = self.get_model_schema(model, credentials)
 
         if model_schema and ModelPropertyKey.MAX_CHUNKS in model_schema.model_properties:
-            return model_schema.model_properties[ModelPropertyKey.MAX_CHUNKS]
+            max_chunks: int = model_schema.model_properties[ModelPropertyKey.MAX_CHUNKS]
+            return max_chunks
 
         return 1

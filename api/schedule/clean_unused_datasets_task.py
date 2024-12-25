@@ -52,8 +52,7 @@ def clean_unused_datasets_task():
 
             # Main query with join and filter
             datasets = (
-                db.session.query(Dataset)
-                .outerjoin(document_subquery_new, Dataset.id == document_subquery_new.c.dataset_id)
+                Dataset.query.outerjoin(document_subquery_new, Dataset.id == document_subquery_new.c.dataset_id)
                 .outerjoin(document_subquery_old, Dataset.id == document_subquery_old.c.dataset_id)
                 .filter(
                     Dataset.created_at < plan_sandbox_clean_day,
@@ -120,8 +119,7 @@ def clean_unused_datasets_task():
 
             # Main query with join and filter
             datasets = (
-                db.session.query(Dataset)
-                .outerjoin(document_subquery_new, Dataset.id == document_subquery_new.c.dataset_id)
+                Dataset.query.outerjoin(document_subquery_new, Dataset.id == document_subquery_new.c.dataset_id)
                 .outerjoin(document_subquery_old, Dataset.id == document_subquery_old.c.dataset_id)
                 .filter(
                     Dataset.created_at < plan_pro_clean_day,

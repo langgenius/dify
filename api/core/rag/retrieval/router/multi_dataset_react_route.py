@@ -1,9 +1,9 @@
 from collections.abc import Generator, Sequence
-from typing import Union
+from typing import Union, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
@@ -92,6 +92,7 @@ class ReactMultiDatasetRouter:
         suffix: str = SUFFIX,
         format_instructions: str = FORMAT_INSTRUCTIONS,
     ) -> Union[str, None]:
+        prompt: Union[list[ChatModelMessage], CompletionModelPromptTemplate]
         if model_config.mode == "chat":
             prompt = self.create_chat_prompt(
                 query=query,
@@ -149,12 +150,15 @@ class ReactMultiDatasetRouter:
         :param stop: stop
         :return:
         """
-        invoke_result = model_instance.invoke_llm(
-            prompt_messages=prompt_messages,
-            model_parameters=completion_param,
-            stop=stop,
-            stream=True,
-            user=user_id,
+        invoke_result = cast(
+            Generator[LLMResult, None, None],
+            model_instance.invoke_llm(
+                prompt_messages=prompt_messages,
+                model_parameters=completion_param,
+                stop=stop,
+                stream=True,
+                user=user_id,
+            ),
         )
 
         # handle invoke result
@@ -172,7 +176,7 @@ class ReactMultiDatasetRouter:
         :return:
         """
         model = None
-        prompt_messages = []
+        prompt_messages: list[PromptMessage] = []
         full_text = ""
         usage = None
         for result in invoke_result:

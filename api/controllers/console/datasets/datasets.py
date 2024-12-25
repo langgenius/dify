@@ -1,7 +1,7 @@
-import flask_restful
+import flask_restful  # type: ignore
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource, marshal, marshal_with, reqparse
+from flask_login import current_user  # type: ignore  # type: ignore
+from flask_restful import Resource, marshal, marshal_with, reqparse  # type: ignore
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services

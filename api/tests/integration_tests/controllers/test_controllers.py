@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from app_fixture import app, mock_user
+from app_fixture import mock_user  # type: ignore
 
 
 def test_post_requires_login(app):

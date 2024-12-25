@@ -33,6 +33,7 @@ class OAICompatSpeech2TextModel(_CommonOaiApiCompat, Speech2TextModel):
             headers["Authorization"] = f"Bearer {api_key}"
 
         endpoint_url = credentials.get("endpoint_url")
+        assert endpoint_url is not None, "endpoint_url is required in credentials"
         if not endpoint_url.endswith("/"):
             endpoint_url += "/"
         endpoint_url = urljoin(endpoint_url, "audio/transcriptions")

@@ -83,6 +83,9 @@ class DatasetDocumentStore:
             if not isinstance(doc, Document):
                 raise ValueError("doc must be a Document")
 
+            if doc.metadata is None:
+                raise ValueError("doc.metadata must be a dict")
+
             segment_document = self.get_document_segment(doc_id=doc.metadata["doc_id"])
 
             # NOTE: doc could already exist in the store, but we overwrite it
@@ -179,10 +182,10 @@ class DatasetDocumentStore:
 
         if document_segment is None:
             return None
+        data: Optional[str] = document_segment.index_node_hash
+        return data
 
-        return document_segment.index_node_hash
-
-    def get_document_segment(self, doc_id: str) -> DocumentSegment:
+    def get_document_segment(self, doc_id: str) -> Optional[DocumentSegment]:
         document_segment = (
             db.session.query(DocumentSegment)
             .filter(DocumentSegment.dataset_id == self._dataset.id, DocumentSegment.index_node_id == doc_id)

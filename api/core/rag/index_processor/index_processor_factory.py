@@ -9,7 +9,7 @@ from core.rag.index_processor.processor.qa_index_processor import QAIndexProcess
 class IndexProcessorFactory:
     """IndexProcessorInit."""
 
-    def __init__(self, index_type: str):
+    def __init__(self, index_type: str | None):
         self._index_type = index_type
 
     def init_index_processor(self) -> BaseIndexProcessor:

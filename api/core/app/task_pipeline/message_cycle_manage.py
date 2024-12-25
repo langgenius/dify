@@ -128,7 +128,7 @@ class MessageCycleManage:
         """
         message_file = db.session.query(MessageFile).filter(MessageFile.id == event.message_file_id).first()
 
-        if message_file:
+        if message_file and message_file.url is not None:
             # get tool file id
             tool_file_id = message_file.url.split("/")[-1]
             # trim extension

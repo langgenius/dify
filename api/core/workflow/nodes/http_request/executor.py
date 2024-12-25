@@ -107,9 +107,9 @@ class Executor:
             if not (key := key.strip()):
                 continue
 
-            value = value[0].strip() if value else ""
+            value_str = value[0].strip() if value else ""
             result.append(
-                (self.variable_pool.convert_template(key).text, self.variable_pool.convert_template(value).text)
+                (self.variable_pool.convert_template(key).text, self.variable_pool.convert_template(value_str).text)
             )
 
         self.params = result
@@ -182,9 +182,10 @@ class Executor:
                         self.variable_pool.convert_template(item.key).text: item.file
                         for item in filter(lambda item: item.type == "file", data)
                     }
+                    files: dict[str, Any] = {}
                     files = {k: self.variable_pool.get_file(selector) for k, selector in file_selectors.items()}
                     files = {k: v for k, v in files.items() if v is not None}
-                    files = {k: variable.value for k, variable in files.items()}
+                    files = {k: variable.value for k, variable in files.items() if variable is not None}
                     files = {
                         k: (v.filename, file_manager.download(v), v.mime_type or "application/octet-stream")
                         for k, v in files.items()
@@ -258,7 +259,8 @@ class Executor:
             response = getattr(ssrf_proxy, self.method)(**request_args)
         except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
             raise HttpRequestNodeError(str(e))
-        return response
+        # FIXME: fix type ignore, this maybe httpx type issue
+        return response  # type: ignore
 
     def invoke(self) -> Response:
         # assemble headers
@@ -300,37 +302,37 @@ class Executor:
                     continue
             raw += f"{k}: {v}\r\n"
 
-        body = ""
+        body_string = ""
         if self.files:
             for k, v in self.files.items():
-                body += f"--{boundary}\r\n"
-                body += f'Content-Disposition: form-data; name="{k}"\r\n\r\n'
-                body += f"{v[1]}\r\n"
-            body += f"--{boundary}--\r\n"
+                body_string += f"--{boundary}\r\n"
+                body_string += f'Content-Disposition: form-data; name="{k}"\r\n\r\n'
+                body_string += f"{v[1]}\r\n"
+            body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
             if self.content:
                 if isinstance(self.content, str):
-                    body = self.content
+                    body_string = self.content
                 elif isinstance(self.content, bytes):
-                    body = self.content.decode("utf-8", errors="replace")
+                    body_string = self.content.decode("utf-8", errors="replace")
             elif self.data and self.node_data.body.type == "x-www-form-urlencoded":
-                body = urlencode(self.data)
+                body_string = urlencode(self.data)
             elif self.data and self.node_data.body.type == "form-data":
                 for key, value in self.data.items():
-                    body += f"--{boundary}\r\n"
-                    body += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
-                    body += f"{value}\r\n"
-                body += f"--{boundary}--\r\n"
+                    body_string += f"--{boundary}\r\n"
+                    body_string += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
+                    body_string += f"{value}\r\n"
+                body_string += f"--{boundary}--\r\n"
             elif self.json:
-                body = json.dumps(self.json)
+                body_string = json.dumps(self.json)
             elif self.node_data.body.type == "raw-text":
                 if len(self.node_data.body.data) != 1:
                     raise RequestBodyError("raw-text body type should have exactly one item")
-                body = self.node_data.body.data[0].value
-        if body:
-            raw += f"Content-Length: {len(body)}\r\n"
+                body_string = self.node_data.body.data[0].value
+        if body_string:
+            raw += f"Content-Length: {len(body_string)}\r\n"
         raw += "\r\n"  # Empty line between headers and body
-        raw += body
+        raw += body_string
 
         return raw
 

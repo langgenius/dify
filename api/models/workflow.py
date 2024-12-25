@@ -2,7 +2,7 @@ import json
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from enum import Enum, StrEnum
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import sqlalchemy as sa
 from sqlalchemy import func
@@ -19,6 +19,9 @@ from models.enums import CreatedByRole
 from .account import Account
 from .engine import db
 from .types import StringUUID
+
+if TYPE_CHECKING:
+    from models.model import AppMode, Message
 
 
 class WorkflowType(Enum):
@@ -56,7 +59,7 @@ class WorkflowType(Enum):
         return cls.WORKFLOW if app_mode == AppMode.WORKFLOW else cls.CHAT
 
 
-class Workflow(db.Model):
+class Workflow(db.Model):  # type: ignore[name-defined]
     """
     Workflow, for `Workflow App` and `Chat App workflow mode`.
 
@@ -182,7 +185,7 @@ class Workflow(db.Model):
         self._features = value
 
     @property
-    def features_dict(self) -> Mapping[str, Any]:
+    def features_dict(self) -> dict[str, Any]:
         return json.loads(self.features) if self.features else {}
 
     def user_input_form(self, to_old_structure: bool = False) -> list:
@@ -199,7 +202,7 @@ class Workflow(db.Model):
             return []
 
         # get user_input_form from start node
-        variables = start_node.get("data", {}).get("variables", [])
+        variables: list[Any] = start_node.get("data", {}).get("variables", [])
 
         if to_old_structure:
             old_structure_variables = []
@@ -344,7 +347,7 @@ class WorkflowRunStatus(StrEnum):
         raise ValueError(f"invalid workflow run status value {value}")
 
 
-class WorkflowRun(db.Model):
+class WorkflowRun(db.Model):  # type: ignore[name-defined]
     """
     Workflow Run
 
@@ -546,7 +549,7 @@ class WorkflowNodeExecutionStatus(Enum):
         raise ValueError(f"invalid workflow node execution status value {value}")
 
 
-class WorkflowNodeExecution(db.Model):
+class WorkflowNodeExecution(db.Model):  # type: ignore[name-defined]
     """
     Workflow Node Execution
 
@@ -712,7 +715,7 @@ class WorkflowAppLogCreatedFrom(Enum):
         raise ValueError(f"invalid workflow app log created from value {value}")
 
 
-class WorkflowAppLog(db.Model):
+class WorkflowAppLog(db.Model):  # type: ignore[name-defined]
     """
     Workflow App execution log, excluding workflow debugging records.
 
@@ -774,7 +777,7 @@ class WorkflowAppLog(db.Model):
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatedByRole.END_USER else None
 
 
-class ConversationVariable(db.Model):
+class ConversationVariable(db.Model):  # type: ignore[name-defined]
     __tablename__ = "workflow_conversation_variables"
 
     id: Mapped[str] = db.Column(StringUUID, primary_key=True)
