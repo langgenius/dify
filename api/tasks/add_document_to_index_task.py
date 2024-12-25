@@ -11,7 +11,7 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from core.rag.models.document import ChildDocument, Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.dataset import Document as DatasetDocument
+from models.dataset import DatasetAutoDisableLog, Document as DatasetDocument
 from models.dataset import DocumentSegment
 
 
@@ -80,6 +80,12 @@ def add_document_to_index_task(dataset_document_id: str):
         index_type = dataset.doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
         index_processor.load(dataset, documents)
+
+        # delete auto disable log
+        db.session.query(DatasetAutoDisableLog).filter(
+            DatasetAutoDisableLog.document_id == dataset_document.id
+        ).delete()
+        db.session.commit()
 
         end_at = time.perf_counter()
         logging.info(

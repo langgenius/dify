@@ -396,6 +396,12 @@ class Document(db.Model):
             .scalar()
         )
 
+    @property
+    def process_rule_dict(self):
+        if self.dataset_process_rule_id:
+            return self.dataset_process_rule.to_dict()
+        return None
+
     def to_dict(self):
         return {
             "id": self.id,
