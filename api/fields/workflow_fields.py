@@ -64,7 +64,7 @@ workflow_partial_fields = {
 }
 
 workflow_pagination_fields = {
-    "data": fields.List(fields.Nested(workflow_fields), attribute="data"),
+    "items": fields.List(fields.Nested(workflow_fields), attribute="items"),
     "page": fields.Integer,
     "limit": fields.Integer(attribute="limit"),
     "has_more": fields.Boolean(attribute="has_more"),
