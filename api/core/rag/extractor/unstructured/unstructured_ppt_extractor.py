@@ -27,9 +27,11 @@ class UnstructuredPPTExtractor(BaseExtractor):
             elements = partition_via_api(filename=self._file_path, api_url=self._api_url, api_key=self._api_key)
         else:
             raise NotImplementedError("Unstructured API Url is not configured")
-        text_by_page = {}
+        text_by_page: dict[int, str] = {}
         for element in elements:
             page = element.metadata.page_number
+            if page is None:
+                continue
             text = element.text
             if page in text_by_page:
                 text_by_page[page] += "\n" + text

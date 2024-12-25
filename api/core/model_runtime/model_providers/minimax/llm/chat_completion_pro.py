@@ -41,7 +41,7 @@ class MinimaxChatCompletionPro:
 
         url = f"https://api.minimax.chat/v1/text/chatcompletion_pro?GroupId={group_id}"
 
-        extra_kwargs = {}
+        extra_kwargs: dict[str, Any] = {}
 
         if "max_tokens" in model_parameters and type(model_parameters["max_tokens"]) == int:
             extra_kwargs["tokens_to_generate"] = model_parameters["max_tokens"]
@@ -122,19 +122,19 @@ class MinimaxChatCompletionPro:
         """
         handle chat generate response
         """
-        response = response.json()
-        if "base_resp" in response and response["base_resp"]["status_code"] != 0:
-            code = response["base_resp"]["status_code"]
-            msg = response["base_resp"]["status_msg"]
+        response_data = response.json()
+        if "base_resp" in response_data and response_data["base_resp"]["status_code"] != 0:
+            code = response_data["base_resp"]["status_code"]
+            msg = response_data["base_resp"]["status_msg"]
             self._handle_error(code, msg)
 
-        message = MinimaxMessage(content=response["reply"], role=MinimaxMessage.Role.ASSISTANT.value)
+        message = MinimaxMessage(content=response_data["reply"], role=MinimaxMessage.Role.ASSISTANT.value)
         message.usage = {
             "prompt_tokens": 0,
-            "completion_tokens": response["usage"]["total_tokens"],
-            "total_tokens": response["usage"]["total_tokens"],
+            "completion_tokens": response_data["usage"]["total_tokens"],
+            "total_tokens": response_data["usage"]["total_tokens"],
         }
-        message.stop_reason = response["choices"][0]["finish_reason"]
+        message.stop_reason = response_data["choices"][0]["finish_reason"]
         return message
 
     def _handle_stream_chat_generate_response(self, response: Response) -> Generator[MinimaxMessage, None, None]:
@@ -144,10 +144,10 @@ class MinimaxChatCompletionPro:
         for line in response.iter_lines():
             if not line:
                 continue
-            line: str = line.decode("utf-8")
-            if line.startswith("data: "):
-                line = line[6:].strip()
-            data = loads(line)
+            line_str: str = line.decode("utf-8")
+            if line_str.startswith("data: "):
+                line_str = line_str[6:].strip()
+            data = loads(line_str)
 
             if "base_resp" in data and data["base_resp"]["status_code"] != 0:
                 code = data["base_resp"]["status_code"]

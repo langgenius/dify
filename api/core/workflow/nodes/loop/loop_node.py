@@ -14,8 +14,8 @@ class LoopNode(BaseNode[LoopNodeData]):
     _node_data_cls = LoopNodeData
     _node_type = NodeType.LOOP
 
-    def _run(self) -> LoopState:
-        return super()._run()
+    def _run(self) -> LoopState:  # type: ignore
+        return super()._run()  # type: ignore
 
     @classmethod
     def get_conditions(cls, node_config: dict[str, Any]) -> list[Condition]:
@@ -28,7 +28,7 @@ class LoopNode(BaseNode[LoopNodeData]):
 
         # TODO waiting for implementation
         return [
-            Condition(
+            Condition(  # type: ignore
                 variable_selector=[node_id, "index"],
                 comparison_operator="≤",
                 value_type="value_selector",

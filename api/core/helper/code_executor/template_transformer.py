@@ -29,8 +29,7 @@ class TemplateTransformer(ABC):
         result = re.search(rf"{cls._result_tag}(.*){cls._result_tag}", response, re.DOTALL)
         if not result:
             raise ValueError("Failed to parse result")
-        result = result.group(1)
-        return result
+        return result.group(1)
 
     @classmethod
     def transform_response(cls, response: str) -> Mapping[str, Any]:

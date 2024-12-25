@@ -42,6 +42,6 @@ class RunRetryEvent(BaseModel):
 class SingleStepRetryEvent(NodeRunResult):
     """Single step retry event"""
 
-    status: str = WorkflowNodeExecutionStatus.RETRY.value
+    status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.RETRY
 
     elapsed_time: float = Field(..., description="elapsed time")

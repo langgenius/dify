@@ -4,7 +4,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from numpy import ndarray
-from pgvecto_rs.sqlalchemy import VECTOR
+from pgvecto_rs.sqlalchemy import VECTOR  # type: ignore
 from pydantic import BaseModel, model_validator
 from sqlalchemy import Float, String, create_engine, insert, select, text
 from sqlalchemy import text as sql_text
@@ -58,7 +58,7 @@ class PGVectoRS(BaseVector):
         with Session(self._client) as session:
             session.execute(text("CREATE EXTENSION IF NOT EXISTS vectors"))
             session.commit()
-        self._fields = []
+        self._fields: list[str] = []
 
         class _Table(CollectionORM):
             __tablename__ = collection_name
@@ -222,11 +222,11 @@ class PGVectoRSFactory(AbstractVectorFactory):
         return PGVectoRS(
             collection_name=collection_name,
             config=PgvectoRSConfig(
-                host=dify_config.PGVECTO_RS_HOST,
-                port=dify_config.PGVECTO_RS_PORT,
-                user=dify_config.PGVECTO_RS_USER,
-                password=dify_config.PGVECTO_RS_PASSWORD,
-                database=dify_config.PGVECTO_RS_DATABASE,
+                host=dify_config.PGVECTO_RS_HOST or "localhost",
+                port=dify_config.PGVECTO_RS_PORT or 5432,
+                user=dify_config.PGVECTO_RS_USER or "postgres",
+                password=dify_config.PGVECTO_RS_PASSWORD or "",
+                database=dify_config.PGVECTO_RS_DATABASE or "postgres",
             ),
             dim=dim,
         )

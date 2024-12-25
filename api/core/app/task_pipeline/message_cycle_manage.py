@@ -36,7 +36,7 @@ class MessageCycleManage:
     ]
     _task_state: Union[EasyUITaskState, WorkflowTaskState]
 
-    def _generate_conversation_name(self, conversation: Conversation, query: str) -> Optional[Thread]:
+    def _generate_conversation_name(self, *, conversation_id: str, query: str) -> Optional[Thread]:
         """
         Generate conversation name.
         :param conversation: conversation
@@ -56,7 +56,7 @@ class MessageCycleManage:
                 target=self._generate_conversation_name_worker,
                 kwargs={
                     "flask_app": current_app._get_current_object(),  # type: ignore
-                    "conversation_id": conversation.id,
+                    "conversation_id": conversation_id,
                     "query": query,
                 },
             )
@@ -128,7 +128,7 @@ class MessageCycleManage:
         """
         message_file = db.session.query(MessageFile).filter(MessageFile.id == event.message_file_id).first()
 
-        if message_file:
+        if message_file and message_file.url is not None:
             # get tool file id
             tool_file_id = message_file.url.split("/")[-1]
             # trim extension

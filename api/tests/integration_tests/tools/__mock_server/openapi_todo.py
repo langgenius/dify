@@ -1,5 +1,5 @@
 from flask import Flask, request
-from flask_restful import Api, Resource
+from flask_restful import Api, Resource  # type: ignore
 
 app = Flask(__name__)
 api = Api(app)

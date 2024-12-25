@@ -1,9 +1,9 @@
 from collections.abc import Generator
 from typing import Optional, Union
 
-from replicate import Client as ReplicateClient
-from replicate.exceptions import ReplicateError
-from replicate.prediction import Prediction
+from replicate import Client as ReplicateClient  # type: ignore
+from replicate.exceptions import ReplicateError  # type: ignore
+from replicate.prediction import Prediction  # type: ignore
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta

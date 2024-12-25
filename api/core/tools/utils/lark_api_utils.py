@@ -1,5 +1,5 @@
 import json
-from typing import Optional
+from typing import Any, Optional, cast
 
 import httpx
 
@@ -62,12 +62,10 @@ class LarkRequest:
     def tenant_access_token(self) -> str:
         feishu_tenant_access_token = f"tools:{self.app_id}:feishu_tenant_access_token"
         if redis_client.exists(feishu_tenant_access_token):
-            return redis_client.get(feishu_tenant_access_token).decode()
-        res = self.get_tenant_access_token(self.app_id, self.app_secret)
+            return str(redis_client.get(feishu_tenant_access_token).decode())
+        res: dict[str, str] = self.get_tenant_access_token(self.app_id, self.app_secret)
         redis_client.setex(feishu_tenant_access_token, res.get("expire"), res.get("tenant_access_token"))
-        if "tenant_access_token" in res:
-            return res.get("tenant_access_token")
-        return ""
+        return res.get("tenant_access_token", "")
 
     def _send_request(
         self,
@@ -91,7 +89,7 @@ class LarkRequest:
     def get_tenant_access_token(self, app_id: str, app_secret: str) -> dict:
         url = f"{self.API_BASE_URL}/access_token/get_tenant_access_token"
         payload = {"app_id": app_id, "app_secret": app_secret}
-        res = self._send_request(url, require_token=False, payload=payload)
+        res: dict = self._send_request(url, require_token=False, payload=payload)
         return res
 
     def create_document(self, title: str, content: str, folder_token: str) -> dict:
@@ -101,15 +99,16 @@ class LarkRequest:
             "content": content,
             "folder_token": folder_token,
         }
-        res = self._send_request(url, payload=payload)
+        res: dict = self._send_request(url, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def write_document(self, document_id: str, content: str, position: str = "end") -> dict:
         url = f"{self.API_BASE_URL}/document/write_document"
         payload = {"document_id": document_id, "content": content, "position": position}
-        res = self._send_request(url, payload=payload)
+        res: dict = self._send_request(url, payload=payload)
         return res
 
     def get_document_content(self, document_id: str, mode: str = "markdown", lang: str = "0") -> str | dict:
@@ -119,9 +118,9 @@ class LarkRequest:
             "lang": lang,
         }
         url = f"{self.API_BASE_URL}/document/get_document_content"
-        res = self._send_request(url, method="GET", params=params)
+        res: dict = self._send_request(url, method="GET", params=params)
         if "data" in res:
-            return res.get("data").get("content")
+            return cast(dict, res.get("data", {}).get("content"))
         return ""
 
     def list_document_blocks(
@@ -134,9 +133,10 @@ class LarkRequest:
             "page_token": page_token,
         }
         url = f"{self.API_BASE_URL}/document/list_document_blocks"
-        res = self._send_request(url, method="GET", params=params)
+        res: dict = self._send_request(url, method="GET", params=params)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def send_bot_message(self, receive_id_type: str, receive_id: str, msg_type: str, content: str) -> dict:
@@ -149,9 +149,10 @@ class LarkRequest:
             "msg_type": msg_type,
             "content": content.strip('"').replace(r"\"", '"').replace(r"\\", "\\"),
         }
-        res = self._send_request(url, params=params, payload=payload)
+        res: dict = self._send_request(url, params=params, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def send_webhook_message(self, webhook: str, msg_type: str, content: str) -> dict:
@@ -161,7 +162,7 @@ class LarkRequest:
             "msg_type": msg_type,
             "content": content.strip('"').replace(r"\"", '"').replace(r"\\", "\\"),
         }
-        res = self._send_request(url, require_token=False, payload=payload)
+        res: dict = self._send_request(url, require_token=False, payload=payload)
         return res
 
     def get_chat_messages(
@@ -182,9 +183,10 @@ class LarkRequest:
             "page_token": page_token,
             "page_size": page_size,
         }
-        res = self._send_request(url, method="GET", params=params)
+        res: dict = self._send_request(url, method="GET", params=params)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def get_thread_messages(
@@ -197,9 +199,10 @@ class LarkRequest:
             "page_token": page_token,
             "page_size": page_size,
         }
-        res = self._send_request(url, method="GET", params=params)
+        res: dict = self._send_request(url, method="GET", params=params)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def create_task(self, summary: str, start_time: str, end_time: str, completed_time: str, description: str) -> dict:
@@ -211,9 +214,10 @@ class LarkRequest:
             "completed_at": completed_time,
             "description": description,
         }
-        res = self._send_request(url, payload=payload)
+        res: dict = self._send_request(url, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def update_task(
@@ -228,9 +232,10 @@ class LarkRequest:
             "completed_time": completed_time,
             "description": description,
         }
-        res = self._send_request(url, method="PATCH", payload=payload)
+        res: dict = self._send_request(url, method="PATCH", payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def delete_task(self, task_guid: str) -> dict:
@@ -238,9 +243,10 @@ class LarkRequest:
         payload = {
             "task_guid": task_guid,
         }
-        res = self._send_request(url, method="DELETE", payload=payload)
+        res: dict = self._send_request(url, method="DELETE", payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def add_members(self, task_guid: str, member_phone_or_email: str, member_role: str) -> dict:
@@ -250,9 +256,10 @@ class LarkRequest:
             "member_phone_or_email": member_phone_or_email,
             "member_role": member_role,
         }
-        res = self._send_request(url, payload=payload)
+        res: dict = self._send_request(url, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def get_wiki_nodes(self, space_id: str, parent_node_token: str, page_token: str, page_size: int = 20) -> dict:
@@ -263,9 +270,10 @@ class LarkRequest:
             "page_token": page_token,
             "page_size": page_size,
         }
-        res = self._send_request(url, payload=payload)
+        res: dict = self._send_request(url, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def get_primary_calendar(self, user_id_type: str = "open_id") -> dict:
@@ -273,9 +281,10 @@ class LarkRequest:
         params = {
             "user_id_type": user_id_type,
         }
-        res = self._send_request(url, method="GET", params=params)
+        res: dict = self._send_request(url, method="GET", params=params)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def create_event(
@@ -298,9 +307,10 @@ class LarkRequest:
             "auto_record": auto_record,
             "attendee_ability": attendee_ability,
         }
-        res = self._send_request(url, payload=payload)
+        res: dict = self._send_request(url, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def update_event(
@@ -314,7 +324,7 @@ class LarkRequest:
         auto_record: bool,
     ) -> dict:
         url = f"{self.API_BASE_URL}/calendar/update_event/{event_id}"
-        payload = {}
+        payload: dict[str, Any] = {}
         if summary:
             payload["summary"] = summary
         if description:
@@ -327,7 +337,7 @@ class LarkRequest:
             payload["need_notification"] = need_notification
         if auto_record:
             payload["auto_record"] = auto_record
-        res = self._send_request(url, method="PATCH", payload=payload)
+        res: dict = self._send_request(url, method="PATCH", payload=payload)
         return res
 
     def delete_event(self, event_id: str, need_notification: bool = True) -> dict:
@@ -335,7 +345,7 @@ class LarkRequest:
         params = {
             "need_notification": need_notification,
         }
-        res = self._send_request(url, method="DELETE", params=params)
+        res: dict = self._send_request(url, method="DELETE", params=params)
         return res
 
     def list_events(self, start_time: str, end_time: str, page_token: str, page_size: int = 50) -> dict:
@@ -346,9 +356,10 @@ class LarkRequest:
             "page_token": page_token,
             "page_size": page_size,
         }
-        res = self._send_request(url, method="GET", params=params)
+        res: dict = self._send_request(url, method="GET", params=params)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def search_events(
@@ -369,9 +380,10 @@ class LarkRequest:
             "user_id_type": user_id_type,
             "page_size": page_size,
         }
-        res = self._send_request(url, payload=payload)
+        res: dict = self._send_request(url, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def add_event_attendees(self, event_id: str, attendee_phone_or_email: str, need_notification: bool = True) -> dict:
@@ -381,9 +393,10 @@ class LarkRequest:
             "attendee_phone_or_email": attendee_phone_or_email,
             "need_notification": need_notification,
         }
-        res = self._send_request(url, payload=payload)
+        res: dict = self._send_request(url, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def create_spreadsheet(
@@ -396,9 +409,10 @@ class LarkRequest:
             "title": title,
             "folder_token": folder_token,
         }
-        res = self._send_request(url, payload=payload)
+        res: dict = self._send_request(url, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def get_spreadsheet(
@@ -411,9 +425,10 @@ class LarkRequest:
             "spreadsheet_token": spreadsheet_token,
             "user_id_type": user_id_type,
         }
-        res = self._send_request(url, method="GET", params=params)
+        res: dict = self._send_request(url, method="GET", params=params)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def list_spreadsheet_sheets(
@@ -424,9 +439,10 @@ class LarkRequest:
         params = {
             "spreadsheet_token": spreadsheet_token,
         }
-        res = self._send_request(url, method="GET", params=params)
+        res: dict = self._send_request(url, method="GET", params=params)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def add_rows(
@@ -445,9 +461,10 @@ class LarkRequest:
             "length": length,
             "values": values,
         }
-        res = self._send_request(url, payload=payload)
+        res: dict = self._send_request(url, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def add_cols(
@@ -466,9 +483,10 @@ class LarkRequest:
             "length": length,
             "values": values,
         }
-        res = self._send_request(url, payload=payload)
+        res: dict = self._send_request(url, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def read_rows(
@@ -489,9 +507,10 @@ class LarkRequest:
             "num_rows": num_rows,
             "user_id_type": user_id_type,
         }
-        res = self._send_request(url, method="GET", params=params)
+        res: dict = self._send_request(url, method="GET", params=params)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def read_cols(
@@ -512,9 +531,10 @@ class LarkRequest:
             "num_cols": num_cols,
             "user_id_type": user_id_type,
         }
-        res = self._send_request(url, method="GET", params=params)
+        res: dict = self._send_request(url, method="GET", params=params)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def read_table(
@@ -535,9 +555,10 @@ class LarkRequest:
             "query": query,
             "user_id_type": user_id_type,
         }
-        res = self._send_request(url, method="GET", params=params)
+        res: dict = self._send_request(url, method="GET", params=params)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def create_base(
@@ -550,9 +571,10 @@ class LarkRequest:
             "name": name,
             "folder_token": folder_token,
         }
-        res = self._send_request(url, payload=payload)
+        res: dict = self._send_request(url, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def add_records(
@@ -573,9 +595,10 @@ class LarkRequest:
         payload = {
             "records": self.convert_add_records(records),
         }
-        res = self._send_request(url, params=params, payload=payload)
+        res: dict = self._send_request(url, params=params, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def update_records(
@@ -596,9 +619,10 @@ class LarkRequest:
         payload = {
             "records": self.convert_update_records(records),
         }
-        res = self._send_request(url, params=params, payload=payload)
+        res: dict = self._send_request(url, params=params, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def delete_records(
@@ -624,9 +648,10 @@ class LarkRequest:
         payload = {
             "records": record_id_list,
         }
-        res = self._send_request(url, params=params, payload=payload)
+        res: dict = self._send_request(url, params=params, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def search_record(
@@ -678,7 +703,7 @@ class LarkRequest:
             except json.JSONDecodeError:
                 raise ValueError("The input string is not valid JSON")
 
-        payload = {}
+        payload: dict[str, Any] = {}
 
         if view_id:
             payload["view_id"] = view_id
@@ -690,9 +715,10 @@ class LarkRequest:
             payload["filter"] = filter_dict
         if automatic_fields:
             payload["automatic_fields"] = automatic_fields
-        res = self._send_request(url, params=params, payload=payload)
+        res: dict = self._send_request(url, params=params, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def get_base_info(
@@ -703,9 +729,10 @@ class LarkRequest:
         params = {
             "app_token": app_token,
         }
-        res = self._send_request(url, method="GET", params=params)
+        res: dict = self._send_request(url, method="GET", params=params)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def create_table(
@@ -732,9 +759,10 @@ class LarkRequest:
         }
         if default_view_name:
             payload["default_view_name"] = default_view_name
-        res = self._send_request(url, params=params, payload=payload)
+        res: dict = self._send_request(url, params=params, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def delete_tables(
@@ -767,9 +795,10 @@ class LarkRequest:
             "table_ids": table_id_list,
             "table_names": table_name_list,
         }
-        res = self._send_request(url, params=params, payload=payload)
+        res: dict = self._send_request(url, params=params, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def list_tables(
@@ -784,9 +813,10 @@ class LarkRequest:
             "page_token": page_token,
             "page_size": page_size,
         }
-        res = self._send_request(url, method="GET", params=params)
+        res: dict = self._send_request(url, method="GET", params=params)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res
 
     def read_records(
@@ -814,7 +844,8 @@ class LarkRequest:
             "record_ids": record_id_list,
             "user_id_type": user_id_type,
         }
-        res = self._send_request(url, method="POST", params=params, payload=payload)
+        res: dict = self._send_request(url, method="POST", params=params, payload=payload)
         if "data" in res:
-            return res.get("data")
+            data: dict = res.get("data", {})
+            return data
         return res

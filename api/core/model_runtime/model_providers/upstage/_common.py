@@ -1,5 +1,3 @@
-from collections.abc import Mapping
-
 import openai
 from httpx import Timeout
 
@@ -14,7 +12,7 @@ from core.model_runtime.errors.invoke import (
 
 
 class _CommonUpstage:
-    def _to_credential_kwargs(self, credentials: Mapping) -> dict:
+    def _to_credential_kwargs(self, credentials: dict) -> dict:
         """
         Transform credentials to kwargs for model instance
 

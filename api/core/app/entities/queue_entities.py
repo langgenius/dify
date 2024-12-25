@@ -308,7 +308,7 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     inputs: Optional[Mapping[str, Any]] = None
     process_data: Optional[Mapping[str, Any]] = None
     outputs: Optional[Mapping[str, Any]] = None
-    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
+    execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
 
     error: Optional[str] = None
     """single iteration duration map"""

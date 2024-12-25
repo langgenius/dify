@@ -1,8 +1,9 @@
 import datetime
 import uuid
+from typing import cast
 
 import pandas as pd
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 from sqlalchemy import or_
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
@@ -71,7 +72,7 @@ class AppAnnotationService:
                 app_id,
                 annotation_setting.collection_binding_id,
             )
-        return annotation
+        return cast(MessageAnnotation, annotation)
 
     @classmethod
     def enable_app_annotation(cls, args: dict, app_id: str) -> dict:
@@ -124,8 +125,7 @@ class AppAnnotationService:
             raise NotFound("App not found")
         if keyword:
             annotations = (
-                db.session.query(MessageAnnotation)
-                .filter(MessageAnnotation.app_id == app_id)
+                MessageAnnotation.query.filter(MessageAnnotation.app_id == app_id)
                 .filter(
                     or_(
                         MessageAnnotation.question.ilike("%{}%".format(keyword)),
@@ -137,8 +137,7 @@ class AppAnnotationService:
             )
         else:
             annotations = (
-                db.session.query(MessageAnnotation)
-                .filter(MessageAnnotation.app_id == app_id)
+                MessageAnnotation.query.filter(MessageAnnotation.app_id == app_id)
                 .order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
                 .paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
             )
@@ -327,8 +326,7 @@ class AppAnnotationService:
             raise NotFound("Annotation not found")
 
         annotation_hit_histories = (
-            db.session.query(AppAnnotationHitHistory)
-            .filter(
+            AppAnnotationHitHistory.query.filter(
                 AppAnnotationHitHistory.app_id == app_id,
                 AppAnnotationHitHistory.annotation_id == annotation_id,
             )
