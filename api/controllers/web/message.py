@@ -108,7 +108,7 @@ class MessageFeedbackApi(WebApiResource):
         args = parser.parse_args()
 
         try:
-            MessageService.create_feedback(app_model, message_id, end_user, args["rating"], args["content"])
+            MessageService.create_feedback(app_model, message_id, end_user, args.get("rating"), args.get("content"))
         except services.errors.message.MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
