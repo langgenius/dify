@@ -4,7 +4,6 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Optional, cast
 
-from core import workflow
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.model_runtime.utils.encoders import jsonable_encoder
