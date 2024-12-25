@@ -11,15 +11,16 @@ import ViewTypeSelect, { ViewType } from '../../../block-selector/view-type-sele
 import SearchInput from '@/app/components/base/search-input'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
 import Tools from '../../../block-selector/tools'
+import { useTranslation } from 'react-i18next'
 
 const ExternalNotInstallWarn = () => {
-  // TODO: add i18n label
+  const { t } = useTranslation()
   return <Tooltip
     popupContent={<div className='space-y-1 text-xs'>
-      <h3 className='text-text-primary font-semibold'>This plugin is not installed</h3>
-      <p className='text-text-secondary tracking-tight'>This plugin is installed from GitHub. Please go to Plugins to reinstall</p>
+      <h3 className='text-text-primary font-semibold'>{t('workflow.nodes.agent.pluginNotInstalled')}</h3>
+      <p className='text-text-secondary tracking-tight'>{t('workflow.nodes.agent.pluginNotInstalledDesc')}</p>
       <p>
-        <Link href={'/plugins'} className='text-text-accent tracking-tight'>Link to Plugins</Link>
+        <Link href={'/plugins'} className='text-text-accent tracking-tight'>{t('workflow.nodes.agent.linkToPlugin')}</Link>
       </p>
     </div>}
     needsDelay

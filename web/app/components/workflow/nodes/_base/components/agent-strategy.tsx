@@ -4,7 +4,7 @@ import ListEmpty from '@/app/components/base/list-empty'
 import { AgentStrategySelector } from './agent-strategy-selector'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
-import InputVarList from '../../tool/components/input-var-list'
+import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 
 export type Strategy = {
   agent_strategy_provider_name: string
@@ -19,26 +19,24 @@ export type AgentStrategyProps = {
   formSchema: CredentialFormSchema[]
   formValue: ToolVarInputs
   onFormValueChange: (value: ToolVarInputs) => void
-  /**
-   * @description use for get available vars
-   */
-  nodeId: string
 }
 
 export const AgentStrategy = (props: AgentStrategyProps) => {
-  const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange, nodeId } = props
+  const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange } = props
   const { t } = useTranslation()
   return <div className='space-y-2'>
     <AgentStrategySelector value={strategy} onChange={onStrategyChange} />
     {
       strategy
         ? <div>
-          <InputVarList
-            readOnly={false}
-            nodeId={nodeId}
-            schema={formSchema}
+          <Form
+            formSchemas={formSchema}
             value={formValue}
             onChange={onFormValueChange}
+            validating={false}
+            showOnVariableMap={{}}
+            isEditMode={true}
+            fieldLabelClassName='uppercase'
           />
         </div>
         // TODO: list empty need a icon
