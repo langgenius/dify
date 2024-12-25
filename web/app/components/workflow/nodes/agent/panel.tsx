@@ -289,7 +289,6 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
           ...inputs,
           agent_parameters: value,
         })}
-        nodeId={props.id}
       />
     </Field>
     <Field title={'tools'} className='px-4'>

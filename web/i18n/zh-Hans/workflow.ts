@@ -703,6 +703,13 @@ const translation = {
         configureTipDesc: '配置完成后，此节点将自动加载剩余配置。策略将影响多步工具推理的机制。',
       },
       learnMore: '了解更多',
+      pluginNotInstalled: '插件未安装',
+      pluginNotInstalledDesc: '此插件是从 GitHub 安装的。请转到插件重新安装',
+      linkToPlugin: '转到插件',
+      pluginInstaller: {
+        install: '安装',
+        installing: '安装中',
+      },
     },
   },
   tracing: {
