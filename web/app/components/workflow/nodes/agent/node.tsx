@@ -6,18 +6,20 @@ import ModelSelector from '@/app/components/header/account-setting/model-provide
 import { Group, GroupLabel } from '../_base/components/group'
 import { ToolIcon } from './components/tool-icon'
 import useConfig from './use-config'
+import { useTranslation } from 'react-i18next'
 
 const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
   const { inputs } = useConfig(props.id, props.data)
+  const { t } = useTranslation()
   return <div className='mb-1 px-3 py-1 space-y-1'>
     {inputs.agent_strategy_name
       ? <SettingItem label='Strategy' status='error' tooltip='ReAct is not installed'>
         {inputs.agent_strategy_name}
       </SettingItem>
-      : <SettingItem label='Agentic strategy Not Set' />}
+      : <SettingItem label={t('workflow.nodes.agent.strategyNotSet')} />}
     <Group
       label={<GroupLabel className='mt-1'>
-        Model
+        {t('workflow.nodes.agent.model')}
       </GroupLabel>}
     >
       <ModelSelector
@@ -34,7 +36,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
       />
     </Group>
     <Group label={<GroupLabel className='mt-1'>
-      Toolbox
+      {t('workflow.nodes.agent.toolbox')}
     </GroupLabel>}>
       <div className='grid grid-cols-10 gap-0.5'>
         <ToolIcon src='/logo/logo.png' />

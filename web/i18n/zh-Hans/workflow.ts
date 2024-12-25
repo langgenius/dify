@@ -699,8 +699,10 @@ const translation = {
     },
     agent: {
       strategy: {
+        label: 'Agent 策略',
         configureTip: '请配置 Agent 策略。',
         configureTipDesc: '配置完成后，此节点将自动加载剩余配置。策略将影响多步工具推理的机制。',
+        selectTip: '选择 Agent 策略',
       },
       learnMore: '了解更多',
       pluginNotInstalled: '插件未安装',
@@ -710,6 +712,9 @@ const translation = {
         install: '安装',
         installing: '安装中',
       },
+      model: '模型',
+      toolbox: '工具箱',
+      strategyNotSet: '代理策略未设置',
     },
   },
   tracing: {
