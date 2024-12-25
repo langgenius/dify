@@ -31,6 +31,11 @@ const format = (list: NodeTracing[]): NodeTracing[] => {
     .map((item) => {
       if (item.node_type === BlockEnum.Iteration) {
         const childrenNodes = list.filter(child => child.execution_metadata?.iteration_id === item.node_id)
+        const error = childrenNodes.find(child => child.status === 'failed')
+        if (error) {
+          item.status = 'failed'
+          item.error = error.error
+        }
         return addChildrenToIterationNode(item, childrenNodes)
       }
 

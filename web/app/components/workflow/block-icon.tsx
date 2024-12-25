@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import { memo } from 'react'
 import { BlockEnum } from './types'
 import {
+  Agent,
   Answer,
   Assigner,
   Code,
@@ -53,8 +54,7 @@ const getIcon = (type: BlockEnum, className: string) => {
     [BlockEnum.ParameterExtractor]: <ParameterExtractor className={className} />,
     [BlockEnum.DocExtractor]: <DocsExtractor className={className} />,
     [BlockEnum.ListFilter]: <ListFilter className={className} />,
-    // TODO: add icon for Agent
-    [BlockEnum.Agent]: <VariableX className={className} />,
+    [BlockEnum.Agent]: <Agent className={className} />,
   }[type]
 }
 const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {

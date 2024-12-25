@@ -17,6 +17,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   return {
     readOnly,
     inputs,
+    setInputs,
     handleVarListChange,
     handleAddVariable,
   }

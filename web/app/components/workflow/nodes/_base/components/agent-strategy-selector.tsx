@@ -48,6 +48,7 @@ export const AgentStrategySelector = (props: AgentStrategySelectorProps) => {
   }, [query, list.data])
   // TODO: should be replaced by real data
   const isExternalInstalled = true
+  const { t } = useTranslation()
   return <PortalToFollowElem open={open} onOpenChange={setOpen} placement='bottom'>
     <PortalToFollowElemTrigger className='w-full'>
       <div className='py-2 pl-3 pr-2 flex items-center rounded-lg bg-components-input-bg-normal w-full hover:bg-state-base-hover-alt select-none' onClick={() => setOpen(o => !o)}>
@@ -64,7 +65,7 @@ export const AgentStrategySelector = (props: AgentStrategySelectorProps) => {
         <p
           className={classNames(value ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder', 'text-xs px-1')}
         >
-          {value?.agent_strategy_name || 'Select agentic strategy'}
+          {value?.agent_strategy_name || t('workflow.nodes.agent.strategy.selectTip')}
         </p>
         {value && <div className='ml-auto flex items-center gap-1'>
           <InstallPluginButton onClick={e => e.stopPropagation()} size={'small'} />

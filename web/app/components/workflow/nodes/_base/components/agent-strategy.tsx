@@ -5,6 +5,7 @@ import { AgentStrategySelector } from './agent-strategy-selector'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
+import { Agent } from '@/app/components/base/icons/src/vender/workflow'
 
 export type Strategy = {
   agent_strategy_provider_name: string
@@ -39,8 +40,8 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
             fieldLabelClassName='uppercase'
           />
         </div>
-        // TODO: list empty need a icon
         : <ListEmpty
+          icon={<Agent className='w-5 h-5 shrink-0 text-text-accent' />}
           title={t('workflow.nodes.agent.strategy.configureTip')}
           description={<div className='text-text-tertiary text-xs'>
             {t('workflow.nodes.agent.strategy.configureTipDesc')} <br />

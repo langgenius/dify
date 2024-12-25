@@ -699,8 +699,11 @@ const translation = {
     },
     agent: {
       strategy: {
+        label: 'Agentic Strategy',
+        shortLabel: 'Strategy',
         configureTip: 'Please configure agentic strategy.',
         configureTipDesc: 'After configuring the agentic strategy, this node will automatically load the remaining configurations. The strategy will affect the mechanism of multi-step tool reasoning. ',
+        selectTip: 'Select agentic strategy',
       },
       learnMore: 'Learn more',
       pluginNotInstalled: 'This plugin is not installed',
@@ -710,6 +713,15 @@ const translation = {
         install: 'Install',
         installing: 'Installing',
       },
+      model: 'model',
+      toolbox: 'toolbox',
+      strategyNotSet: 'Agentic strategy Not Set',
+      tools: 'Tools',
+      maxIterations: 'Max Iterations',
+      modelNotInstallTooltip: 'This model is not installed',
+      toolNotInstallTooltip: '{{tool}} is not installed',
+      toolNotAuthorizedTooltip: '{{tool}} Not Authorized',
+      strategyNotInstallTooltip: '{{strategy}} is not installed',
     },
   },
   tracing: {
