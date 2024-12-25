@@ -3,17 +3,16 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
 import OutputPanel from './output-panel'
 import ResultPanel from './result-panel'
 import TracingPanel from './tracing-panel'
-import IterationResultPanel from './iteration-result-panel'
-import RetryResultPanel from './retry-result-panel'
+import SpecialResultPanel from './special-result-panel'
+import { useLogs } from './hooks'
 import cn from '@/utils/classnames'
 import { ToastContext } from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
 import { fetchRunDetail, fetchTracingList } from '@/service/log'
-import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
+import type { NodeTracing } from '@/types/workflow'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import formatNodeList from './utils/format-log'
@@ -106,41 +105,18 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
     adjustResultHeight()
   }, [loading])
 
-  const [iterationRunResult, setIterationRunResult] = useState<NodeTracing[][]>([])
-  const [iterDurationMap, setIterDurationMap] = useState<IterationDurationMap>({})
-  const [retryRunResult, setRetryRunResult] = useState<NodeTracing[]>([])
-  const [isShowIterationDetail, {
-    setTrue: doShowIterationDetail,
-    setFalse: doHideIterationDetail,
-  }] = useBoolean(false)
-  const [isShowRetryDetail, {
-    setTrue: doShowRetryDetail,
-    setFalse: doHideRetryDetail,
-  }] = useBoolean(false)
-
-  const handleShowIterationDetail = useCallback((detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => {
-    setIterationRunResult(detail)
-    doShowIterationDetail()
-    setIterDurationMap(iterDurationMap)
-  }, [doShowIterationDetail, setIterationRunResult, setIterDurationMap])
-
-  const handleShowRetryDetail = useCallback((detail: NodeTracing[]) => {
-    setRetryRunResult(detail)
-    doShowRetryDetail()
-  }, [doShowRetryDetail, setRetryRunResult])
-
-  if (isShowIterationDetail) {
-    return (
-      <div className='grow relative flex flex-col'>
-        <IterationResultPanel
-          list={iterationRunResult}
-          onHide={doHideIterationDetail}
-          onBack={doHideIterationDetail}
-          iterDurationMap={iterDurationMap}
-        />
-      </div>
-    )
-  }
+  const {
+    showRetryDetail,
+    setShowRetryDetailFalse,
+    retryResultList,
+    handleShowRetryResultList,
+    showIteratingDetail,
+    setShowIteratingDetailFalse,
+    iterationResultList,
+    iterationResultDurationMap,
+    handleShowIterationResultList,
+    showSpecialResultPanel,
+  } = useLogs()
 
   return (
     <div className='grow relative flex flex-col'>
@@ -198,19 +174,25 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
             exceptionCounts={runDetail.exceptions_count}
           />
         )}
-        {!loading && currentTab === 'TRACING' && !isShowRetryDetail && (
+        {!loading && currentTab === 'TRACING' && !showSpecialResultPanel && (
           <TracingPanel
             className='bg-background-section-burn'
             list={list}
-            onShowIterationDetail={handleShowIterationDetail}
-            onShowRetryDetail={handleShowRetryDetail}
+            onShowIterationDetail={handleShowIterationResultList}
+            onShowRetryDetail={handleShowRetryResultList}
           />
         )}
         {
-          !loading && currentTab === 'TRACING' && isShowRetryDetail && (
-            <RetryResultPanel
-              list={retryRunResult}
-              onBack={doHideRetryDetail}
+          !loading && currentTab === 'TRACING' && showSpecialResultPanel && (
+            <SpecialResultPanel
+              showRetryDetail={showRetryDetail}
+              setShowRetryDetailFalse={setShowRetryDetailFalse}
+              retryResultList={retryResultList}
+
+              showIteratingDetail={showIteratingDetail}
+              setShowIteratingDetailFalse={setShowIteratingDetailFalse}
+              iterationResultList={iterationResultList}
+              iterationResultDurationMap={iterationResultDurationMap}
             />
           )
         }
