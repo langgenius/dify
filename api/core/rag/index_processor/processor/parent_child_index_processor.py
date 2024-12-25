@@ -123,9 +123,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 vector.delete()
 
                 if delete_child_chunks:
-                    db.session.query(ChildChunk).filter(
-                        ChildChunk.dataset_id == dataset.id
-                    ).delete()
+                    db.session.query(ChildChunk).filter(ChildChunk.dataset_id == dataset.id).delete()
                     db.session.commit()
 
     def retrieve(

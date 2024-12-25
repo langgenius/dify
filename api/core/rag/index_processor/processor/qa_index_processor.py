@@ -70,11 +70,13 @@ class QAIndexProcessor(BaseIndexProcessor):
                     split_documents.append(document_node)
             all_documents.extend(split_documents)
         if preview:
-            self._format_qa_document(current_app._get_current_object(),
-                                     kwargs.get("tenant_id"),
-                                     all_documents[0],
-                                     all_qa_documents,
-                                     kwargs.get("doc_language", "English"))
+            self._format_qa_document(
+                current_app._get_current_object(),
+                kwargs.get("tenant_id"),
+                all_documents[0],
+                all_qa_documents,
+                kwargs.get("doc_language", "English"),
+            )
         else:
             for i in range(0, len(all_documents), 10):
                 threads = []

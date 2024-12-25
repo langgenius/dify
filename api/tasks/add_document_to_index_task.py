@@ -11,8 +11,8 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from core.rag.models.document import ChildDocument, Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.dataset import DatasetAutoDisableLog, Document as DatasetDocument
-from models.dataset import DocumentSegment
+from models.dataset import DatasetAutoDisableLog, DocumentSegment
+from models.dataset import Document as DatasetDocument
 
 
 @shared_task(queue="dataset")

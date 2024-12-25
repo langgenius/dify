@@ -571,9 +571,12 @@ class DocumentSegment(db.Model):  # type: ignore[name-defined]
         if process_rule.mode == "hierarchical":
             rules = Rule(**process_rule.rules_dict)
             if rules.parent_mode and rules.parent_mode != ParentMode.FULL_DOC:
-                child_chunks = db.session.query(ChildChunk).filter(
-                    ChildChunk.segment_id == self.id
-                ).order_by(ChildChunk.position.asc()).all()
+                child_chunks = (
+                    db.session.query(ChildChunk)
+                    .filter(ChildChunk.segment_id == self.id)
+                    .order_by(ChildChunk.position.asc())
+                    .all()
+                )
                 return child_chunks or []
             else:
                 return []

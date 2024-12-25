@@ -15,7 +15,6 @@ from sqlalchemy.orm.exc import ObjectDeletedError
 from configs import dify_config
 from core.entities.knowledge_entities import IndexingEstimate, PreviewDetail, QAPreviewDetail
 from core.errors.error import ProviderTokenNotInitError
-from core.llm_generator.llm_generator import LLMGenerator
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.cleaner.clean_processor import CleanProcessor
@@ -294,15 +293,15 @@ class IndexingRunner:
                 process_rule=processing_rule.to_dict(),
                 tenant_id=current_user.current_tenant_id,
                 doc_language=doc_language,
-                preview=True
+                preview=True,
             )
             total_segments += len(documents)
             for document in documents:
                 if len(preview_texts) < 10:
                     if doc_form and doc_form == "qa_model":
-                        preview_detail = QAPreviewDetail(question=document.page_content,
-                                                         answer=document.metadata.get("answer")
-                                                         )
+                        preview_detail = QAPreviewDetail(
+                            question=document.page_content, answer=document.metadata.get("answer")
+                        )
                         preview_texts.append(preview_detail)
                     else:
                         preview_detail = PreviewDetail(content=document.page_content)
@@ -325,9 +324,7 @@ class IndexingRunner:
                     db.session.delete(image_file)
 
         if doc_form and doc_form == "qa_model":
-            return IndexingEstimate(
-                total_segments=total_segments * 20, qa_preview=preview_texts, preview=[]
-            )
+            return IndexingEstimate(total_segments=total_segments * 20, qa_preview=preview_texts, preview=[])
         return IndexingEstimate(total_segments=total_segments, preview=preview_texts)
 
     def _extract(
