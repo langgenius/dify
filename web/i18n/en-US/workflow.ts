@@ -256,7 +256,7 @@ const translation = {
     'parameter-extractor': 'Use LLM to extract structured parameters from natural language for tool invocations or HTTP requests.',
     'document-extractor': 'Used to parse uploaded documents into text content that is easily understandable by LLM.',
     'list-operator': 'Used to filter or sort array content.',
-    'agent': 'TODO: add text here',
+    'agent': 'Invoking large language models to answer questions or process natural language',
   },
   operator: {
     zoomIn: 'Zoom In',
@@ -696,6 +696,13 @@ const translation = {
         first_record: 'First record',
         last_record: 'Last record',
       },
+    },
+    agent: {
+      strategy: {
+        configureTip: 'Please configure agentic strategy.',
+        configureTipDesc: 'After configuring the agentic strategy, this node will automatically load the remaining configurations. The strategy will affect the mechanism of multi-step tool reasoning. ',
+      },
+      learnMore: 'Learn more',
     },
   },
   tracing: {

@@ -256,7 +256,7 @@ const translation = {
     'parameter-extractor': '利用 LLM 从自然语言内推理提取出结构化参数，用于后置的工具调用或 HTTP 请求。',
     'document-extractor': '用于将用户上传的文档解析为 LLM 便于理解的文本内容。',
     'list-operator': '用于过滤或排序数组内容。',
-    'agent': 'TODO: Agent',
+    'agent': '调用大型语言模型回答问题或处理自然语言',
   },
   operator: {
     zoomIn: '放大',
@@ -696,6 +696,13 @@ const translation = {
         first_record: '第一条记录',
         last_record: '最后一条记录',
       },
+    },
+    agent: {
+      strategy: {
+        configureTip: '请配置 Agent 策略。',
+        configureTipDesc: '配置完成后，此节点将自动加载剩余配置。策略将影响多步工具推理的机制。',
+      },
+      learnMore: '了解更多',
     },
   },
   tracing: {
