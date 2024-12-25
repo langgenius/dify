@@ -628,7 +628,7 @@ class DocumentSegment(db.Model):  # type: ignore[name-defined]
         return text
 
 
-class ChildChunk(db.Model):
+class ChildChunk(db.Model):  # type: ignore[name-defined]
     __tablename__ = "child_chunks"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="child_chunk_pkey"),
@@ -910,7 +910,7 @@ class ExternalKnowledgeBindings(db.Model):  # type: ignore[name-defined]
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class DatasetAutoDisableLog(db.Model):
+class DatasetAutoDisableLog(db.Model):  # type: ignore[name-defined]
     __tablename__ = "dataset_auto_disable_logs"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="dataset_auto_disable_log_pkey"),
