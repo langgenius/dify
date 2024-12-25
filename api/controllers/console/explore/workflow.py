@@ -1,9 +1,8 @@
 import logging
 
-from flask_restful import reqparse
+from flask_restful import reqparse  # type: ignore
 from werkzeug.exceptions import InternalServerError
 
-from controllers.console import api
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -73,9 +72,3 @@ class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
 
         return {"result": "success"}
-
-
-api.add_resource(InstalledAppWorkflowRunApi, "/installed-apps/<uuid:installed_app_id>/workflows/run")
-api.add_resource(
-    InstalledAppWorkflowTaskStopApi, "/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop"
-)

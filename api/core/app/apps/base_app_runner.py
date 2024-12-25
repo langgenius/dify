@@ -1,5 +1,5 @@
 import time
-from collections.abc import Generator, Mapping
+from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
@@ -36,8 +36,8 @@ class AppRunner:
         app_record: App,
         model_config: ModelConfigWithCredentialsEntity,
         prompt_template_entity: PromptTemplateEntity,
-        inputs: dict[str, str],
-        files: list["File"],
+        inputs: Mapping[str, str],
+        files: Sequence["File"],
         query: Optional[str] = None,
     ) -> int:
         """
@@ -64,7 +64,7 @@ class AppRunner:
             ):
                 max_tokens = (
                     model_config.parameters.get(parameter_rule.name)
-                    or model_config.parameters.get(parameter_rule.use_template)
+                    or model_config.parameters.get(parameter_rule.use_template or "")
                 ) or 0
 
         if model_context_tokens is None:
@@ -85,7 +85,7 @@ class AppRunner:
 
         prompt_tokens = model_instance.get_llm_num_tokens(prompt_messages)
 
-        rest_tokens = model_context_tokens - max_tokens - prompt_tokens
+        rest_tokens: int = model_context_tokens - max_tokens - prompt_tokens
         if rest_tokens < 0:
             raise InvokeBadRequestError(
                 "Query or prefix prompt is too long, you can reduce the prefix prompt, "
@@ -111,7 +111,7 @@ class AppRunner:
             ):
                 max_tokens = (
                     model_config.parameters.get(parameter_rule.name)
-                    or model_config.parameters.get(parameter_rule.use_template)
+                    or model_config.parameters.get(parameter_rule.use_template or "")
                 ) or 0
 
         if model_context_tokens is None:
@@ -136,8 +136,8 @@ class AppRunner:
         app_record: App,
         model_config: ModelConfigWithCredentialsEntity,
         prompt_template_entity: PromptTemplateEntity,
-        inputs: dict[str, str],
-        files: list["File"],
+        inputs: Mapping[str, str],
+        files: Sequence["File"],
         query: Optional[str] = None,
         context: Optional[str] = None,
         memory: Optional[TokenBufferMemory] = None,
@@ -156,6 +156,7 @@ class AppRunner:
         """
         # get prompt without memory and context
         if prompt_template_entity.prompt_type == PromptTemplateEntity.PromptType.SIMPLE:
+            prompt_transform: Union[SimplePromptTransform, AdvancedPromptTransform]
             prompt_transform = SimplePromptTransform()
             prompt_messages, stop = prompt_transform.get_prompt(
                 app_mode=AppMode.value_of(app_record.mode),
@@ -171,8 +172,11 @@ class AppRunner:
             memory_config = MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False))
 
             model_mode = ModelMode.value_of(model_config.mode)
+            prompt_template: Union[CompletionModelPromptTemplate, list[ChatModelMessage]]
             if model_mode == ModelMode.COMPLETION:
                 advanced_completion_prompt_template = prompt_template_entity.advanced_completion_prompt_template
+                if not advanced_completion_prompt_template:
+                    raise InvokeBadRequestError("Advanced completion prompt template is required.")
                 prompt_template = CompletionModelPromptTemplate(text=advanced_completion_prompt_template.prompt)
 
                 if advanced_completion_prompt_template.role_prefix:
@@ -181,6 +185,8 @@ class AppRunner:
                         assistant=advanced_completion_prompt_template.role_prefix.assistant,
                     )
             else:
+                if not prompt_template_entity.advanced_chat_prompt_template:
+                    raise InvokeBadRequestError("Advanced chat prompt template is required.")
                 prompt_template = []
                 for message in prompt_template_entity.advanced_chat_prompt_template.messages:
                     prompt_template.append(ChatModelMessage(text=message.text, role=message.role))
@@ -246,7 +252,7 @@ class AppRunner:
 
     def _handle_invoke_result(
         self,
-        invoke_result: Union[LLMResult, Generator],
+        invoke_result: Union[LLMResult, Generator[Any, None, None]],
         queue_manager: AppQueueManager,
         stream: bool,
         agent: bool = False,
@@ -259,10 +265,12 @@ class AppRunner:
         :param agent: agent
         :return:
         """
-        if not stream:
+        if not stream and isinstance(invoke_result, LLMResult):
             self._handle_invoke_result_direct(invoke_result=invoke_result, queue_manager=queue_manager, agent=agent)
-        else:
+        elif stream and isinstance(invoke_result, Generator):
             self._handle_invoke_result_stream(invoke_result=invoke_result, queue_manager=queue_manager, agent=agent)
+        else:
+            raise NotImplementedError(f"unsupported invoke result type: {type(invoke_result)}")
 
     def _handle_invoke_result_direct(
         self, invoke_result: LLMResult, queue_manager: AppQueueManager, agent: bool
@@ -291,8 +299,8 @@ class AppRunner:
         :param agent: agent
         :return:
         """
-        model = None
-        prompt_messages = []
+        model: str = ""
+        prompt_messages: list[PromptMessage] = []
         text = ""
         usage = None
         for result in invoke_result:
@@ -328,13 +336,14 @@ class AppRunner:
 
     def moderation_for_inputs(
         self,
+        *,
         app_id: str,
         tenant_id: str,
         app_generate_entity: AppGenerateEntity,
         inputs: Mapping[str, Any],
-        query: str,
+        query: str | None = None,
         message_id: str,
-    ) -> tuple[bool, dict, str]:
+    ) -> tuple[bool, Mapping[str, Any], str]:
         """
         Process sensitive_word_avoidance.
         :param app_id: app id
@@ -350,7 +359,7 @@ class AppRunner:
             app_id=app_id,
             tenant_id=tenant_id,
             app_config=app_generate_entity.app_config,
-            inputs=inputs,
+            inputs=dict(inputs),
             query=query or "",
             message_id=message_id,
             trace_manager=app_generate_entity.trace_manager,
@@ -390,9 +399,9 @@ class AppRunner:
         tenant_id: str,
         app_id: str,
         external_data_tools: list[ExternalDataVariableEntity],
-        inputs: dict,
+        inputs: Mapping[str, Any],
         query: str,
-    ) -> dict:
+    ) -> Mapping[str, Any]:
         """
         Fill in variable inputs from external data tools if exists.
 

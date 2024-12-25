@@ -60,6 +60,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
             - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
             - `video` ('MP4', 'MOV', 'MPEG', 'MPGA')
+            - `custom` (他のファイルタイプ)
           - `transfer_method` (string) 転送方法、画像URLの場合は`remote_url` / ファイルアップロードの場合は`local_file`
           - `url` (string) 画像URL（転送方法が`remote_url`の場合）
           - `upload_file_id` (string) アップロードされたファイルID、事前にファイルアップロードAPIを通じて取得する必要があります（転送方法が`local_file`の場合）
@@ -238,84 +239,81 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </CodeGroup>
     <CodeGroup title="ファイルアップロードのサンプルコード">
       ```json {{ title: 'ファイルアップロードのサンプルコード' }}
-      {
-        import requests
-        import json
+      import requests
+      import json
 
-        def upload_file(file_path, user):
-            upload_url = "https://api.dify.ai/v1/files/upload"
-            headers = {
-                "Authorization": "Bearer app-xxxxxxxx",
-            }
-            
-            try:
-                print("ファイルをアップロードしています...")
-                with open(file_path, 'rb') as file:
-                    files = {
-                        'file': (file_path, file, 'text/plain')  # ファイルが適切な MIME タイプでアップロードされていることを確認してください
-                    }
-                    data = {
-                        "user": user,
-                        "type": "TXT"  # ファイルタイプをTXTに設定します
-                    }
-                    
-                    response = requests.post(upload_url, headers=headers, files=files, data=data)
-                    if response.status_code == 201:  # 201 は作成が成功したことを意味します
-                        print("ファイルが正常にアップロードされました")
-                        return response.json().get("id")  # アップロードされたファイルIDを取得する
-                    else:
-                        print(f"ファイルのアップロードに失敗しました。ステータス コード: {response.status_code}")
-                        return None
-            except Exception as e:
-                print(f"エラーが発生しました: {str(e)}")
-                return None
+      def upload_file(file_path, user):
+          upload_url = "https://api.dify.ai/v1/files/upload"
+          headers = {
+              "Authorization": "Bearer app-xxxxxxxx",
+          }
+          
+          try:
+              print("ファイルをアップロードしています...")
+              with open(file_path, 'rb') as file:
+                  files = {
+                      'file': (file_path, file, 'text/plain')  # ファイルが適切な MIME タイプでアップロードされていることを確認してください
+                  }
+                  data = {
+                      "user": user,
+                      "type": "TXT"  # ファイルタイプをTXTに設定します
+                  }
+                  
+                  response = requests.post(upload_url, headers=headers, files=files, data=data)
+                  if response.status_code == 201:  # 201 は作成が成功したことを意味します
+                      print("ファイルが正常にアップロードされました")
+                      return response.json().get("id")  # アップロードされたファイルIDを取得する
+                  else:
+                      print(f"ファイルのアップロードに失敗しました。ステータス コード: {response.status_code}")
+                      return None
+          except Exception as e:
+              print(f"エラーが発生しました: {str(e)}")
+              return None
 
-        def run_workflow(file_id, user, response_mode="blocking"):
-            workflow_url = "https://api.dify.ai/v1/workflows/run"
-            headers = {
-                "Authorization": "Bearer app-xxxxxxxxx",
-                "Content-Type": "application/json"
-            }
+      def run_workflow(file_id, user, response_mode="blocking"):
+          workflow_url = "https://api.dify.ai/v1/workflows/run"
+          headers = {
+              "Authorization": "Bearer app-xxxxxxxxx",
+              "Content-Type": "application/json"
+          }
 
-            data = {
-                "inputs": {
-                    "orig_mail": {
-                        "transfer_method": "local_file",
-                        "upload_file_id": file_id,
-                        "type": "document"
-                    }
-                },
-                "response_mode": response_mode,
-                "user": user
-            }
+          data = {
+              "inputs": {
+                  "orig_mail": {
+                      "transfer_method": "local_file",
+                      "upload_file_id": file_id,
+                      "type": "document"
+                  }
+              },
+              "response_mode": response_mode,
+              "user": user
+          }
 
-            try:
-                print("ワークフローを実行...")
-                response = requests.post(workflow_url, headers=headers, json=data)
-                if response.status_code == 200:
-                    print("ワークフローが正常に実行されました")
-                    return response.json()
-                else:
-                    print(f"ワークフローの実行がステータス コードで失敗しました: {response.status_code}")
-                    return {"status": "error", "message": f"Failed to execute workflow, status code: {response.status_code}"}
-            except Exception as e:
-                print(f"エラーが発生しました: {str(e)}")
-                return {"status": "error", "message": str(e)}
+          try:
+              print("ワークフローを実行...")
+              response = requests.post(workflow_url, headers=headers, json=data)
+              if response.status_code == 200:
+                  print("ワークフローが正常に実行されました")
+                  return response.json()
+              else:
+                  print(f"ワークフローの実行がステータス コードで失敗しました: {response.status_code}")
+                  return {"status": "error", "message": f"Failed to execute workflow, status code: {response.status_code}"}
+          except Exception as e:
+              print(f"エラーが発生しました: {str(e)}")
+              return {"status": "error", "message": str(e)}
 
-        # 使用例
-        file_path = "{your_file_path}"
-        user = "difyuser"
+      # 使用例
+      file_path = "{your_file_path}"
+      user = "difyuser"
 
-        # ファイルをアップロードする
-        file_id = upload_file(file_path, user)
-        if file_id:
-            # ファイルは正常にアップロードされました。ワークフローの実行を続行します
-            result = run_workflow(file_id, user)
-            print(result)
-        else:
-            print("ファイルのアップロードに失敗し、ワークフローを実行できません")
-
-      }
+      # ファイルをアップロードする
+      file_id = upload_file(file_path, user)
+      if file_id:
+          # ファイルは正常にアップロードされました。ワークフローの実行を続行します
+          result = run_workflow(file_id, user)
+          print(result)
+      else:
+          print("ファイルのアップロードに失敗し、ワークフローを実行できません")
       ```
     </CodeGroup>
   </Col>

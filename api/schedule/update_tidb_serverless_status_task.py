@@ -36,13 +36,14 @@ def update_clusters(tidb_serverless_list: list[TidbAuthBinding]):
         # batch 20
         for i in range(0, len(tidb_serverless_list), 20):
             items = tidb_serverless_list[i : i + 20]
+            # TODO: maybe we can set the default value for the following parameters in the config file
             TidbService.batch_update_tidb_serverless_cluster_status(
-                items,
-                dify_config.TIDB_PROJECT_ID,
-                dify_config.TIDB_API_URL,
-                dify_config.TIDB_IAM_API_URL,
-                dify_config.TIDB_PUBLIC_KEY,
-                dify_config.TIDB_PRIVATE_KEY,
+                tidb_serverless_list=items,
+                project_id=dify_config.TIDB_PROJECT_ID or "",
+                api_url=dify_config.TIDB_API_URL or "",
+                iam_url=dify_config.TIDB_IAM_API_URL or "",
+                public_key=dify_config.TIDB_PUBLIC_KEY or "",
+                private_key=dify_config.TIDB_PRIVATE_KEY or "",
             )
     except Exception as e:
         click.echo(click.style(f"Error: {e}", fg="red"))

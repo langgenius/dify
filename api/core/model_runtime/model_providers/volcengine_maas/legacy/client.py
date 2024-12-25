@@ -68,7 +68,12 @@ class MaaSClient(MaasService):
                 content = []
                 for message_content in message.content:
                     if message_content.type == PromptMessageContentType.TEXT:
-                        raise ValueError("Content object type only support image_url")
+                        content.append(
+                            {
+                                "type": "text",
+                                "text": message_content.data,
+                            }
+                        )
                     elif message_content.type == PromptMessageContentType.IMAGE:
                         message_content = cast(ImagePromptMessageContent, message_content)
                         image_data = re.sub(r"^data:image\/[a-zA-Z]+;base64,", "", message_content.data)

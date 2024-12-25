@@ -1,8 +1,9 @@
 import json
+from collections.abc import Mapping
 
 from models.model import AppMode
 
-default_app_templates = {
+default_app_templates: Mapping[AppMode, Mapping] = {
     # workflow default mode
     AppMode.WORKFLOW: {
         "app": {

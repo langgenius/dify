@@ -14,6 +14,8 @@ import Loading from '@/app/components/base/loading'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
+import { useRetryDetailShowInSingleRun } from '@/app/components/workflow/nodes/_base/components/retry/hooks'
+import { useToolIcon } from '@/app/components/workflow/hooks'
 
 const i18nPrefix = 'workflow.nodes.tool'
 
@@ -48,6 +50,11 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     handleStop,
     runResult,
   } = useConfig(id, data)
+  const toolIcon = useToolIcon(data)
+  const {
+    retryDetails,
+    handleRetryDetailsChange,
+  } = useRetryDetailShowInSingleRun()
 
   if (isLoading) {
     return <div className='flex h-[200px] items-center justify-center'>
@@ -56,10 +63,10 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
   }
 
   return (
-    <div className='mt-2'>
+    <div className='pt-2'>
       {!readOnly && isShowAuthBtn && (
         <>
-          <div className='px-4 pb-3'>
+          <div className='px-4'>
             <Button
               variant='primary'
               className='w-full'
@@ -71,7 +78,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
         </>
       )}
       {!isShowAuthBtn && <>
-        <div className='px-4 pb-4 space-y-4'>
+        <div className='px-4 space-y-4'>
           {toolInputVarSchema.length > 0 && (
             <Field
               title={t(`${i18nPrefix}.inputVars`)}
@@ -118,7 +125,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
         />
       )}
 
-      <div className='px-4 pt-4 pb-2'>
+      <div>
         <OutputVars>
           <>
             <VarItem
@@ -143,12 +150,16 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
       {isShowSingleRun && (
         <BeforeRunForm
           nodeName={inputs.title}
+          nodeType={inputs.type}
+          toolIcon={toolIcon}
           onHide={hideSingleRun}
           forms={singleRunForms}
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}
-          result={<ResultPanel {...runResult} showSteps={false} />}
+          retryDetails={retryDetails}
+          onRetryDetailBack={handleRetryDetailsChange}
+          result={<ResultPanel {...runResult} showSteps={false} onShowRetryDetail={handleRetryDetailsChange} />}
         />
       )}
     </div>

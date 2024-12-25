@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import requests
 
@@ -78,6 +78,7 @@ class NotionExtractor(BaseExtractor):
 
     def _get_notion_database_data(self, database_id: str, query_dict: dict[str, Any] = {}) -> list[Document]:
         """Get all the pages from a Notion database."""
+        assert self._notion_access_token is not None, "Notion access token is required"
         res = requests.post(
             DATABASE_URL_TMPL.format(database_id=database_id),
             headers={
@@ -96,6 +97,7 @@ class NotionExtractor(BaseExtractor):
         for result in data["results"]:
             properties = result["properties"]
             data = {}
+            value: Any
             for property_name, property_value in properties.items():
                 type = property_value["type"]
                 if type == "multi_select":
@@ -130,6 +132,7 @@ class NotionExtractor(BaseExtractor):
         return [Document(page_content="\n".join(database_content))]
 
     def _get_notion_block_data(self, page_id: str) -> list[str]:
+        assert self._notion_access_token is not None, "Notion access token is required"
         result_lines_arr = []
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=page_id)
@@ -184,6 +187,7 @@ class NotionExtractor(BaseExtractor):
 
     def _read_block(self, block_id: str, num_tabs: int = 0) -> str:
         """Read a block."""
+        assert self._notion_access_token is not None, "Notion access token is required"
         result_lines_arr = []
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=block_id)
@@ -242,6 +246,7 @@ class NotionExtractor(BaseExtractor):
 
     def _read_table_rows(self, block_id: str) -> str:
         """Read table rows."""
+        assert self._notion_access_token is not None, "Notion access token is required"
         done = False
         result_lines_arr = []
         start_cursor = None
@@ -296,7 +301,7 @@ class NotionExtractor(BaseExtractor):
         result_lines = "\n".join(result_lines_arr)
         return result_lines
 
-    def update_last_edited_time(self, document_model: DocumentModel):
+    def update_last_edited_time(self, document_model: Optional[DocumentModel]):
         if not document_model:
             return
 
@@ -309,6 +314,7 @@ class NotionExtractor(BaseExtractor):
         db.session.commit()
 
     def get_notion_last_edited_time(self) -> str:
+        assert self._notion_access_token is not None, "Notion access token is required"
         obj_id = self._notion_obj_id
         page_type = self._notion_page_type
         if page_type == "database":
@@ -330,7 +336,7 @@ class NotionExtractor(BaseExtractor):
         )
 
         data = res.json()
-        return data["last_edited_time"]
+        return cast(str, data["last_edited_time"])
 
     @classmethod
     def _get_access_token(cls, tenant_id: str, notion_workspace_id: str) -> str:
@@ -349,4 +355,4 @@ class NotionExtractor(BaseExtractor):
                 f"and notion workspace {notion_workspace_id}"
             )
 
-        return data_source_binding.access_token
+        return cast(str, data_source_binding.access_token)

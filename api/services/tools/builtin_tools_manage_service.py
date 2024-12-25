@@ -2,6 +2,9 @@ import json
 import logging
 from pathlib import Path
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from configs import dify_config
 from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -32,7 +35,7 @@ class BuiltinToolManageService:
             tenant_id=tenant_id, provider_controller=provider_controller
         )
         # check if user has added the provider
-        builtin_provider: BuiltinToolProvider = (
+        builtin_provider = (
             db.session.query(BuiltinToolProvider)
             .filter(
                 BuiltinToolProvider.tenant_id == tenant_id,
@@ -47,8 +50,8 @@ class BuiltinToolManageService:
             credentials = builtin_provider.credentials
             credentials = tool_provider_configurations.decrypt_tool_credentials(credentials)
 
-        result = []
-        for tool in tools:
+        result: list[UserTool] = []
+        for tool in tools or []:
             result.append(
                 ToolTransformService.tool_to_user_tool(
                     tool=tool,
@@ -71,19 +74,18 @@ class BuiltinToolManageService:
         return jsonable_encoder([v for _, v in (provider.credentials_schema or {}).items()])
 
     @staticmethod
-    def update_builtin_tool_provider(user_id: str, tenant_id: str, provider_name: str, credentials: dict):
+    def update_builtin_tool_provider(
+        session: Session, user_id: str, tenant_id: str, provider_name: str, credentials: dict
+    ):
         """
         update builtin tool provider
         """
         # get if the provider exists
-        provider: BuiltinToolProvider = (
-            db.session.query(BuiltinToolProvider)
-            .filter(
-                BuiltinToolProvider.tenant_id == tenant_id,
-                BuiltinToolProvider.provider == provider_name,
-            )
-            .first()
+        stmt = select(BuiltinToolProvider).where(
+            BuiltinToolProvider.tenant_id == tenant_id,
+            BuiltinToolProvider.provider == provider_name,
         )
+        provider = session.scalar(stmt)
 
         try:
             # get provider
@@ -115,13 +117,10 @@ class BuiltinToolManageService:
                 encrypted_credentials=json.dumps(credentials),
             )
 
-            db.session.add(provider)
-            db.session.commit()
+            session.add(provider)
 
         else:
             provider.encrypted_credentials = json.dumps(credentials)
-            db.session.add(provider)
-            db.session.commit()
 
             # delete cache
             tool_configuration.delete_tool_credentials_cache()
@@ -129,15 +128,15 @@ class BuiltinToolManageService:
         return {"result": "success"}
 
     @staticmethod
-    def get_builtin_tool_provider_credentials(user_id: str, tenant_id: str, provider: str):
+    def get_builtin_tool_provider_credentials(tenant_id: str, provider_name: str):
         """
         get builtin tool provider credentials
         """
-        provider: BuiltinToolProvider = (
+        provider = (
             db.session.query(BuiltinToolProvider)
             .filter(
                 BuiltinToolProvider.tenant_id == tenant_id,
-                BuiltinToolProvider.provider == provider,
+                BuiltinToolProvider.provider == provider_name,
             )
             .first()
         )
@@ -156,7 +155,7 @@ class BuiltinToolManageService:
         """
         delete tool provider
         """
-        provider: BuiltinToolProvider = (
+        provider = (
             db.session.query(BuiltinToolProvider)
             .filter(
                 BuiltinToolProvider.tenant_id == tenant_id,
@@ -218,6 +217,8 @@ class BuiltinToolManageService:
                     name_func=lambda x: x.identity.name,
                 ):
                     continue
+                if provider_controller.identity is None:
+                    continue
 
                 # convert provider controller to user provider
                 user_builtin_provider = ToolTransformService.builtin_provider_to_user_provider(
@@ -230,7 +231,7 @@ class BuiltinToolManageService:
                 ToolTransformService.repack_provider(user_builtin_provider)
 
                 tools = provider_controller.get_tools()
-                for tool in tools:
+                for tool in tools or []:
                     user_builtin_provider.tools.append(
                         ToolTransformService.tool_to_user_tool(
                             tenant_id=tenant_id,

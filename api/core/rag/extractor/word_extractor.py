@@ -89,6 +89,8 @@ class WordExtractor(BaseExtractor):
                     response = ssrf_proxy.get(url)
                     if response.status_code == 200:
                         image_ext = mimetypes.guess_extension(response.headers["Content-Type"])
+                        if image_ext is None:
+                            continue
                         file_uuid = str(uuid.uuid4())
                         file_key = "image_files/" + self.tenant_id + "/" + file_uuid + "." + image_ext
                         mime_type, _ = mimetypes.guess_type(file_key)
@@ -97,6 +99,8 @@ class WordExtractor(BaseExtractor):
                         continue
                 else:
                     image_ext = rel.target_ref.split(".")[-1]
+                    if image_ext is None:
+                        continue
                     # user uuid as file name
                     file_uuid = str(uuid.uuid4())
                     file_key = "image_files/" + self.tenant_id + "/" + file_uuid + "." + image_ext
@@ -226,6 +230,8 @@ class WordExtractor(BaseExtractor):
                             if x_child is None:
                                 continue
                             if x.tag.endswith("instrText"):
+                                if x.text is None:
+                                    continue
                                 for i in url_pattern.findall(x.text):
                                     hyperlinks_url = str(i)
                     except Exception as e:

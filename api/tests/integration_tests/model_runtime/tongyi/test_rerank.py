@@ -1,6 +1,6 @@
 import os
 
-import dashscope
+import dashscope  # type: ignore
 import pytest
 
 from core.model_runtime.entities.rerank_entities import RerankResult

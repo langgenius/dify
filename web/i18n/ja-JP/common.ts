@@ -199,6 +199,7 @@ const translation = {
     datasetOperatorTip: 'ナレッジベースのみを管理できる',
     inviteTeamMember: 'チームメンバーを招待する',
     inviteTeamMemberTip: '彼らはサインイン後、直接あなた様のチームデータにアクセスできます。',
+    emailNotSetup: 'メールサーバーがセットアップされていないので、招待メールを送信することはできません。代わりに招待後に発行される招待リンクをユーザーに通知してください。',
     email: 'メール',
     emailInvalid: '無効なメール形式',
     emailPlaceholder: 'メールを入力してください',
