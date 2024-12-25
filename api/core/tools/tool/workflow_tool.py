@@ -198,7 +198,7 @@ class WorkflowTool(Tool):
                         item["tool_file_id"] = item.get("related_id")
                         file = build_from_mapping(
                             mapping=item,
-                            tenant_id=str(cast(Tool.Runtime, self.runtime).tenant_id), 
+                            tenant_id=str(cast(Tool.Runtime, self.runtime).tenant_id),
                         )
                         files.append(file)
             elif isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
