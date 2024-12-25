@@ -2,6 +2,7 @@
 import { useTranslation } from 'react-i18next'
 import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useDeleteAccountFeedback } from '../state'
 import Button from '@/app/components/base/button'
 import CustomDialog from '@/app/components/base/dialog'
 import Textarea from '@/app/components/base/textarea'
@@ -17,6 +18,7 @@ export default function FeedBack(props: DeleteAccountProps) {
   const { t } = useTranslation()
   const router = useRouter()
   const [userFeedback, setUserFeedback] = useState('')
+  const { isPending, mutateAsync: sendFeedback } = useDeleteAccountFeedback()
 
   const handleSuccess = useCallback(async () => {
     try {
@@ -24,9 +26,8 @@ export default function FeedBack(props: DeleteAccountProps) {
         url: '/logout',
         params: {},
       })
-
-      if (localStorage?.getItem('console_token'))
-        localStorage.removeItem('console_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('console_token')
       router.push('/signin')
       Toast.notify({ type: 'info', message: t('common.account.deleteSuccessTip') })
     }
@@ -35,11 +36,12 @@ export default function FeedBack(props: DeleteAccountProps) {
 
   const handleSubmit = useCallback(async () => {
     try {
+      await sendFeedback({ feedback: userFeedback })
       props.onConfirm()
-      handleSuccess()
+      await handleSuccess()
     }
     catch (error) { console.error(error) }
-  }, [handleSuccess, props])
+  }, [handleSuccess, userFeedback, sendFeedback, props])
 
   const handleSkip = useCallback(() => {
     props.onCancel()
@@ -57,7 +59,7 @@ export default function FeedBack(props: DeleteAccountProps) {
       setUserFeedback(e.target.value)
     }} />
     <div className='w-full flex flex-col mt-3 gap-2'>
-      <Button className='w-full' variant='primary' onClick={handleSubmit}>{t('common.operation.submit')}</Button>
+      <Button className='w-full' loading={isPending} variant='primary' onClick={handleSubmit}>{t('common.operation.submit')}</Button>
       <Button className='w-full' onClick={handleSkip}>{t('common.operation.skip')}</Button>
     </div>
   </CustomDialog>
