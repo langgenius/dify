@@ -274,7 +274,7 @@ class AccountDeleteApi(Resource):
         args = parser.parse_args()
 
         if not AccountService.verify_account_deletion_code(args["token"], args["code"]):
-            return {"result": "fail", "error": "Verification code is invalid."}, 400
+            raise ValueError("Invalid verification code.")
 
         AccountService.delete_account(account, args["reason"])
 

@@ -75,7 +75,7 @@ class BillingService:
     def delete_account(cls, account_id: str, reason: str):
         """Delete account."""
         params = {"account_id": account_id, "reason": reason}
-        return cls._send_request("DELETE", "/account", params=params)
+        return cls._send_request("DELETE", "/account/", params=params)
 
     @classmethod
     def is_email_in_freeze(cls, email: str) -> bool:
