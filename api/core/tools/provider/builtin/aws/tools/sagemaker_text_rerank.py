@@ -2,7 +2,7 @@ import json
 import operator
 from typing import Any, Union
 
-import boto3
+import boto3  # type: ignore
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
@@ -10,8 +10,8 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 class SageMakerReRankTool(BuiltinTool):
     sagemaker_client: Any = None
-    sagemaker_endpoint: str = None
-    topk: int = None
+    sagemaker_endpoint: str | None = None
+    topk: int | None = None
 
     def _sagemaker_rerank(self, query_input: str, docs: list[str], rerank_endpoint: str):
         inputs = [query_input] * len(docs)

@@ -2,10 +2,10 @@ import io
 import logging
 from typing import Any, Union
 
-from qrcode.constants import ERROR_CORRECT_H, ERROR_CORRECT_L, ERROR_CORRECT_M, ERROR_CORRECT_Q
-from qrcode.image.base import BaseImage
-from qrcode.image.pure import PyPNGImage
-from qrcode.main import QRCode
+from qrcode.constants import ERROR_CORRECT_H, ERROR_CORRECT_L, ERROR_CORRECT_M, ERROR_CORRECT_Q  # type: ignore
+from qrcode.image.base import BaseImage  # type: ignore
+from qrcode.image.pure import PyPNGImage  # type: ignore
+from qrcode.main import QRCode  # type: ignore
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool

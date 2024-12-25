@@ -50,8 +50,8 @@ class BuiltinToolManageService:
             credentials = builtin_provider.credentials
             credentials = tool_provider_configurations.decrypt_tool_credentials(credentials)
 
-        result = []
-        for tool in tools:
+        result: list[UserTool] = []
+        for tool in tools or []:
             result.append(
                 ToolTransformService.tool_to_user_tool(
                     tool=tool,
@@ -217,6 +217,8 @@ class BuiltinToolManageService:
                     name_func=lambda x: x.identity.name,
                 ):
                     continue
+                if provider_controller.identity is None:
+                    continue
 
                 # convert provider controller to user provider
                 user_builtin_provider = ToolTransformService.builtin_provider_to_user_provider(
@@ -229,7 +231,7 @@ class BuiltinToolManageService:
                 ToolTransformService.repack_provider(user_builtin_provider)
 
                 tools = provider_controller.get_tools()
-                for tool in tools:
+                for tool in tools or []:
                     user_builtin_provider.tools.append(
                         ToolTransformService.tool_to_user_tool(
                             tenant_id=tenant_id,

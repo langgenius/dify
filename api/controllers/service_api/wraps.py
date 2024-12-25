@@ -5,8 +5,8 @@ from functools import wraps
 from typing import Optional
 
 from flask import current_app, request
-from flask_login import user_logged_in
-from flask_restful import Resource
+from flask_login import user_logged_in  # type: ignore
+from flask_restful import Resource  # type: ignore
 from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden, Unauthorized
 
@@ -49,6 +49,8 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
                 raise Forbidden("The app's API service has been disabled.")
 
             tenant = db.session.query(Tenant).filter(Tenant.id == app_model.tenant_id).first()
+            if tenant is None:
+                raise ValueError("Tenant does not exist.")
             if tenant.status == TenantStatus.ARCHIVE:
                 raise Forbidden("The workspace's status is archived.")
 
@@ -154,8 +156,8 @@ def validate_dataset_token(view=None):
                 # Login admin
                 if account:
                     account.current_tenant = tenant
-                    current_app.login_manager._update_request_context_with_user(account)
-                    user_logged_in.send(current_app._get_current_object(), user=_get_user())
+                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
+                    user_logged_in.send(current_app._get_current_object(), user=_get_user())  # type: ignore
                 else:
                     raise Unauthorized("Tenant owner account does not exist.")
             else:

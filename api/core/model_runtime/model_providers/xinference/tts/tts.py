@@ -1,7 +1,7 @@
 import concurrent.futures
 from typing import Any, Optional
 
-from xinference_client.client.restful.restful_client import RESTfulAudioModelHandle
+from xinference_client.client.restful.restful_client import RESTfulAudioModelHandle  # type: ignore
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
@@ -74,11 +74,14 @@ class XinferenceText2SpeechModel(TTSModel):
                 raise CredentialsValidateFailedError("model_uid should not contain /, ?, or #")
 
             credentials["server_url"] = credentials["server_url"].removesuffix("/")
+            api_key = credentials.get("api_key")
+            if api_key is None:
+                raise CredentialsValidateFailedError("api_key is required")
 
             extra_param = XinferenceHelper.get_xinference_extra_parameter(
                 server_url=credentials["server_url"],
                 model_uid=credentials["model_uid"],
-                api_key=credentials.get("api_key"),
+                api_key=api_key,
             )
 
             if "text-to-audio" not in extra_param.model_ability:

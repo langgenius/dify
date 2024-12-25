@@ -72,8 +72,7 @@ class ConversationService:
                 sort_direction=sort_direction,
                 reference_conversation=current_page_last_conversation,
             )
-            count_stmt = stmt.where(rest_filter_condition)
-            count_stmt = select(func.count()).select_from(count_stmt.subquery())
+            count_stmt = select(func.count()).select_from(stmt.where(rest_filter_condition).subquery())
             rest_count = session.scalar(count_stmt) or 0
             if rest_count > 0:
                 has_more = True

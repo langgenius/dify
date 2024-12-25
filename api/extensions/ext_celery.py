@@ -1,8 +1,8 @@
 from datetime import timedelta
 
 import pytz
-from celery import Celery, Task
-from celery.schedules import crontab
+from celery import Celery, Task  # type: ignore
+from celery.schedules import crontab  # type: ignore
 
 from configs import dify_config
 from dify_app import DifyApp
@@ -47,7 +47,7 @@ def init_app(app: DifyApp) -> Celery:
         worker_log_format=dify_config.LOG_FORMAT,
         worker_task_log_format=dify_config.LOG_FORMAT,
         worker_hijack_root_logger=False,
-        timezone=pytz.timezone(dify_config.LOG_TZ),
+        timezone=pytz.timezone(dify_config.LOG_TZ or "UTC"),
     )
 
     if dify_config.BROKER_USE_SSL:

@@ -58,7 +58,7 @@ class AnnotationReplyFeature:
                 query=query, top_k=1, score_threshold=score_threshold, filter={"group_id": [dataset.id]}
             )
 
-            if documents:
+            if documents and documents[0].metadata:
                 annotation_id = documents[0].metadata["annotation_id"]
                 score = documents[0].metadata["score"]
                 annotation = AppAnnotationService.get_annotation_by_id(annotation_id)

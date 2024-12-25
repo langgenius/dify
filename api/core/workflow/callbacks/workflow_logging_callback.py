@@ -33,7 +33,7 @@ _TEXT_COLOR_MAPPING = {
 
 class WorkflowLoggingCallback(WorkflowCallback):
     def __init__(self) -> None:
-        self.current_node_id = None
+        self.current_node_id: Optional[str] = None
 
     def on_event(self, event: GraphEngineEvent) -> None:
         if isinstance(event, GraphRunStartedEvent):

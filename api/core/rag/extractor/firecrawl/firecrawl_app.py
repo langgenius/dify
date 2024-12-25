@@ -1,5 +1,6 @@
 import json
 import time
+from typing import cast
 
 import requests
 
@@ -20,9 +21,9 @@ class FirecrawlApp:
             json_data.update(params)
         response = requests.post(f"{self.base_url}/v0/scrape", headers=headers, json=json_data)
         if response.status_code == 200:
-            response = response.json()
-            if response["success"] == True:
-                data = response["data"]
+            response_data = response.json()
+            if response_data["success"] == True:
+                data = response_data["data"]
                 return {
                     "title": data.get("metadata").get("title"),
                     "description": data.get("metadata").get("description"),
@@ -30,7 +31,7 @@ class FirecrawlApp:
                     "markdown": data.get("markdown"),
                 }
             else:
-                raise Exception(f'Failed to scrape URL. Error: {response["error"]}')
+                raise Exception(f'Failed to scrape URL. Error: {response_data["error"]}')
 
         elif response.status_code in {402, 409, 500}:
             error_message = response.json().get("error", "Unknown error occurred")
@@ -46,9 +47,11 @@ class FirecrawlApp:
         response = self._post_request(f"{self.base_url}/v0/crawl", json_data, headers)
         if response.status_code == 200:
             job_id = response.json().get("jobId")
-            return job_id
+            return cast(str, job_id)
         else:
             self._handle_error(response, "start crawl job")
+            # FIXME: unreachable code for mypy
+            return ""  # unreachable
 
     def check_crawl_status(self, job_id) -> dict:
         headers = self._prepare_headers()
@@ -64,9 +67,9 @@ class FirecrawlApp:
                 for item in data:
                     if isinstance(item, dict) and "metadata" in item and "markdown" in item:
                         url_data = {
-                            "title": item.get("metadata").get("title"),
-                            "description": item.get("metadata").get("description"),
-                            "source_url": item.get("metadata").get("sourceURL"),
+                            "title": item.get("metadata", {}).get("title"),
+                            "description": item.get("metadata", {}).get("description"),
+                            "source_url": item.get("metadata", {}).get("sourceURL"),
                             "markdown": item.get("markdown"),
                         }
                         url_data_list.append(url_data)
@@ -92,6 +95,8 @@ class FirecrawlApp:
 
         else:
             self._handle_error(response, "check crawl status")
+            # FIXME: unreachable code for mypy
+            return {}  # unreachable
 
     def _prepare_headers(self):
         return {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}

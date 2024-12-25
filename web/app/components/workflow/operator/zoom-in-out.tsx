@@ -129,7 +129,7 @@ const ZoomInOut: FC = () => {
         crossAxis: -2,
       }}
     >
-      <PortalToFollowElemTrigger asChild onClick={handleTrigger}>
+      <PortalToFollowElemTrigger asChild>
         <div className={`
           p-0.5 h-9 cursor-pointer text-[13px] backdrop-blur-[5px] rounded-lg
           bg-components-actionbar-bg shadow-lg border-[0.5px] border-components-actionbar-border 
@@ -144,8 +144,11 @@ const ZoomInOut: FC = () => {
               shortcuts={['ctrl', '-']}
             >
               <div
-                className='flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
+                className={`flex items-center justify-center w-8 h-8 rounded-lg ${zoom <= 0.25 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
                 onClick={(e) => {
+                  if (zoom <= 0.25)
+                    return
+
                   e.stopPropagation()
                   zoomOut()
                 }}
@@ -153,14 +156,17 @@ const ZoomInOut: FC = () => {
                 <RiZoomOutLine className='w-4 h-4 text-text-tertiary hover:text-text-secondary' />
               </div>
             </TipPopup>
-            <div className={cn('w-[34px] system-sm-medium text-text-tertiary hover:text-text-secondary')}>{parseFloat(`${zoom * 100}`).toFixed(0)}%</div>
+            <div onClick={handleTrigger} className={cn('w-[34px] system-sm-medium text-text-tertiary hover:text-text-secondary')}>{parseFloat(`${zoom * 100}`).toFixed(0)}%</div>
             <TipPopup
               title={t('workflow.operator.zoomIn')}
               shortcuts={['ctrl', '+']}
             >
               <div
-                className='flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
+                className={`flex items-center justify-center w-8 h-8 rounded-lg ${zoom >= 2 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
                 onClick={(e) => {
+                  if (zoom >= 2)
+                    return
+
                   e.stopPropagation()
                   zoomIn()
                 }}
