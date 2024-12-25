@@ -3,8 +3,9 @@ import time
 
 import click
 from celery import shared_task  # type: ignore
-from extensions.ext_mail import mail
 from flask import render_template
+
+from extensions.ext_mail import mail
 
 
 @shared_task(queue="mail")
