@@ -21,10 +21,9 @@ from libs.helper import TimestampField, timezone
 from libs.login import login_required
 from models import AccountIntegrate, InvitationCode
 from services.account_service import AccountService
+from services.billing_service import BillingService
 from services.errors.account import \
     CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
-
-from api.services.billing_service import BillingService
 
 
 class AccountInitApi(Resource):
@@ -292,7 +291,7 @@ class AccountDeleleUpdateFeedbackApi(Resource):
         parser.add_argument("feedback", type=str, required=True, location="json")
         args = parser.parse_args()
 
-        BillingService.update_account_eletion_feedback(args["email"], args["feedback"])
+        BillingService.update_account_deletion_feedback(args["email"], args["feedback"])
 
         return {"result": "success"}
 

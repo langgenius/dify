@@ -10,7 +10,7 @@ from tasks.mail_account_deletion_task import send_deletion_success_task
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="account_deletion")
+@shared_task(queue="dataset")
 def delete_account_task(account_id, reason: str):
     try:
         BillingService.delete_account(account_id, reason)
