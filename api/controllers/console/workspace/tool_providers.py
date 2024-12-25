@@ -51,12 +51,10 @@ class ToolBuiltinProviderListToolsApi(Resource):
     def get(self, provider):
         user = current_user
 
-        user_id = user.id
         tenant_id = user.current_tenant_id
 
         return jsonable_encoder(
             BuiltinToolManageService.list_builtin_tool_provider_tools(
-                user_id,
                 tenant_id,
                 provider,
             )

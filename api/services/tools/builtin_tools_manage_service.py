@@ -261,8 +261,6 @@ class BuiltinToolManageService:
                     name_func=lambda x: x.identity.name,
                 ):
                     continue
-                if provider_controller.identity is None:
-                    continue
 
                 # convert provider controller to user provider
                 user_builtin_provider = ToolTransformService.builtin_provider_to_user_provider(
