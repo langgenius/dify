@@ -4,10 +4,10 @@ import pytz
 from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
-from controllers.console.workspace.error import (AccountAlreadyInitedError,
-                                                 CurrentPasswordIncorrectError,
-                                                 InvalidInvitationCodeError,
-                                                 RepeatPasswordNotMatchError)
+from controllers.console.workspace.error import (
+    AccountAlreadyInitedError, CurrentPasswordIncorrectError,
+    InvalidAccountDeletionCodeError, InvalidInvitationCodeError,
+    RepeatPasswordNotMatchError)
 from controllers.console.wraps import (account_initialization_required,
                                        enterprise_license_required,
                                        setup_required)
@@ -251,11 +251,8 @@ class AccountDeleteVerifyApi(Resource):
     def get(self):
         account = current_user
 
-        try:
-            token, code = AccountService.generate_account_deletion_verification_code(account)
-            AccountService.send_account_delete_verification_email(account, code)
-        except Exception as e:
-            return {"result": "fail", "error": str(e)}, 429
+        token, code = AccountService.generate_account_deletion_verification_code(account)
+        AccountService.send_account_delete_verification_email(account, code)
 
         return {"result": "success", "data": token}
 
@@ -270,13 +267,12 @@ class AccountDeleteApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("token", type=str, required=True, location="json")
         parser.add_argument("code", type=str, required=True, location="json")
-        parser.add_argument("reason", type=str, required=True, location="json")
         args = parser.parse_args()
 
         if not AccountService.verify_account_deletion_code(args["token"], args["code"]):
-            raise ValueError("Invalid verification code.")
+            raise InvalidAccountDeletionCodeError()
 
-        AccountService.delete_account(account, args["reason"])
+        AccountService.delete_account(account)
 
         return {"result": "success"}
 

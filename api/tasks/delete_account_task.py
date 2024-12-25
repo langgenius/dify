@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
-def delete_account_task(account_id, reason: str):
+def delete_account_task(account_id):
     account = db.session.query(Account).filter(Account.id == account_id).first()
     try:
-        BillingService.delete_account(account_id, reason)
+        BillingService.delete_account(account_id)
     except Exception as e:
         logger.exception(f"Failed to delete account {account_id} from billing service.")
         raise

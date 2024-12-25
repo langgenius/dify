@@ -72,9 +72,9 @@ class BillingService:
             raise ValueError("Only team owner or team admin can perform this action")
 
     @classmethod
-    def delete_account(cls, account_id: str, reason: str):
+    def delete_account(cls, account_id: str):
         """Delete account."""
-        params = {"account_id": account_id, "reason": reason}
+        params = {"account_id": account_id}
         return cls._send_request("DELETE", "/account/", params=params)
 
     @classmethod

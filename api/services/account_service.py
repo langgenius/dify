@@ -284,9 +284,9 @@ class AccountService:
         return True
 
     @staticmethod
-    def delete_account(account: Account, reason="") -> None:
+    def delete_account(account: Account) -> None:
         """Delete account. This method only adds a task to the queue for deletion."""
-        delete_account_task.delay(account.id, reason)
+        delete_account_task.delay(account.id)
 
     @staticmethod
     def link_account_integrate(provider: str, open_id: str, account: Account) -> None:
@@ -854,10 +854,6 @@ class RegisterService:
     ) -> Account:
         db.session.begin_nested()
         """Register account"""
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
-            raise AccountRegisterError(
-                "Unable to re-register the account because the deletion occurred less than 30 days ago"
-            )
         try:
             account = AccountService.create_account(
                 email=email,
