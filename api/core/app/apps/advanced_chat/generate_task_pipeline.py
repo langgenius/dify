@@ -605,7 +605,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         else:
             self._task_state.metadata["usage"] = jsonable_encoder(LLMUsage.empty_usage())
         message_was_created.send(
-            sender=message,
+            message,
             application_generate_entity=self._application_generate_entity,
         )
 

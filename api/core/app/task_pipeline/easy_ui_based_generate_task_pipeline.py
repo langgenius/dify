@@ -382,7 +382,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
             )
 
         message_was_created.send(
-            sender=message,
+            message,
             application_generate_entity=self._application_generate_entity,
         )
 
