@@ -2,10 +2,9 @@ import logging
 import time
 
 import click
-from celery import shared_task
-from flask import render_template
-
+from celery import shared_task  # type: ignore
 from extensions.ext_mail import mail
+from flask import render_template
 
 
 @shared_task(queue="mail")
