@@ -30,8 +30,12 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
     def transform(self, documents: list[Document], **kwargs) -> list[Document]:
         process_rule = kwargs.get("process_rule")
+        if not process_rule:
+            raise ValueError("No process rule found.")
+        if not process_rule.get("rules"):
+            raise ValueError("No rules found in process rule.")
         rules = Rule(**process_rule.get("rules"))
-        all_documents = []
+        all_documents = []  # type: ignore
         if rules.parent_mode == ParentMode.PARAGRAPH:
             # Split the text documents into nodes.
             splitter = self._get_splitter(
@@ -161,6 +165,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         process_rule_mode: str,
         embedding_model_instance: Optional[ModelInstance],
     ) -> list[ChildDocument]:
+        if not rules.subchunk_segmentation:
+            raise ValueError("No subchunk segmentation found in rules.")
         child_splitter = self._get_splitter(
             processing_rule_mode=process_rule_mode,
             max_tokens=rules.subchunk_segmentation.max_tokens,

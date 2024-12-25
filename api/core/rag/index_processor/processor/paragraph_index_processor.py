@@ -30,12 +30,18 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
     def transform(self, documents: list[Document], **kwargs) -> list[Document]:
         process_rule = kwargs.get("process_rule")
+        if not process_rule:
+            raise ValueError("No process rule found.")
         if process_rule.get("mode") == "automatic":
             automatic_rule = DatasetProcessRule.AUTOMATIC_RULES
             rules = Rule(**automatic_rule)
         else:
+            if not process_rule.get("rules"):
+                raise ValueError("No rules found in process rule.")
             rules = Rule(**process_rule.get("rules"))
         # Split the text documents into nodes.
+        if not rules.segmentation:
+            raise ValueError("No segmentation found in rules.")
         splitter = self._get_splitter(
             processing_rule_mode=process_rule.get("mode"),
             max_tokens=rules.segmentation.max_tokens,
