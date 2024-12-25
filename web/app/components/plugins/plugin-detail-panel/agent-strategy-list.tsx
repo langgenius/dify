@@ -39,6 +39,7 @@ const AgentStrategyList = ({
         {strategyList.map(strategyDetail => (
           <StrategyItem
             key={`${strategyDetail.identity.provider}${strategyDetail.identity.name}`}
+            provider={strategyProviderDetail.declaration.identity}
             detail={strategyDetail}
           />
         ))}
