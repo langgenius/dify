@@ -184,7 +184,7 @@ const translation = {
     byCategories: 'カテゴリ別',
     searchAllTemplate: 'すべてのテンプレートを検索...',
   },
-  showMyCreatedAppsOnly: '自分が作成したアプリのみを表示',
+  showMyCreatedAppsOnly: '自分が作成したアプリ',
 }
 
 export default translation

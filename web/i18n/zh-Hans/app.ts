@@ -170,7 +170,7 @@ const translation = {
     },
   },
   openInExplore: '在“探索”中打开',
-  showMyCreatedAppsOnly: '仅显示我创建的应用',
+  showMyCreatedAppsOnly: '我创建的',
 }
 
 export default translation
