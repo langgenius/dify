@@ -1,5 +1,5 @@
-import RetryResultPanel from './retry-result-panel'
-import IterationResultPanel from './iteration-result-panel'
+import { RetryResultPanel } from './retry-log'
+import { IterationResultPanel } from './iteration-log'
 import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 
 type SpecialResultPanelProps = {

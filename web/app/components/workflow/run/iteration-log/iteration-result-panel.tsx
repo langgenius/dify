@@ -8,10 +8,10 @@ import {
   RiErrorWarningLine,
   RiLoader2Line,
 } from '@remixicon/react'
-import { ArrowNarrowLeft } from '../../base/icons/src/vender/line/arrows'
-import { NodeRunningStatus } from '../types'
-import TracingPanel from './tracing-panel'
-import RetryResultPanel from './retry-result-panel'
+import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import { NodeRunningStatus } from '@/app/components/workflow/types'
+import TracingPanel from '@/app/components/workflow/run/tracing-panel'
+import { RetryResultPanel } from '@/app/components/workflow/run/retry-log'
 import { Iteration } from '@/app/components/base/icons/src/vender/workflow'
 import cn from '@/utils/classnames'
 import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
