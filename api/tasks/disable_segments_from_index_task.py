@@ -56,8 +56,7 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
 
         end_at = time.perf_counter()
         logging.info(click.style("Segments removed from index latency: {}".format(end_at - start_at), fg="green"))
-    except Exception as e:
-        logging.exception("remove segments from index failed:{}".format(e))
+    except Exception:
         # update segment error msg
         db.session.query(DocumentSegment).filter(
             DocumentSegment.id.in_(segment_ids),
