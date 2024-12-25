@@ -85,3 +85,9 @@ class BillingService:
             return bool(response.get("data", False))
         except Exception:
             return False
+
+    @classmethod
+    def update_account_eletion_feedback(cls, email: str, feedback: str):
+        """Update account deletion feedback."""
+        json = {"email": email, "feedback": feedback}
+        return cls._send_request("POST", "/account/deletion-feedback", json=json)
