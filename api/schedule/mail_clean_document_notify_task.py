@@ -3,7 +3,6 @@ import time
 
 import click
 from celery import shared_task  # type: ignore
-from flask import render_template
 
 from extensions.ext_mail import mail
 from models.account import Account, Tenant, TenantAccountJoin
