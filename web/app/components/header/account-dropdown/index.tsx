@@ -19,7 +19,6 @@ import { useModalContext } from '@/context/modal-context'
 import { LanguagesSupported } from '@/i18n/language'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
-import WorkplaceSelector from './workplace-selector'
 
 export type IAppSelector = {
   isMobile: boolean
@@ -101,10 +100,6 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                       </div>
                     </div>
                   </Menu.Item>
-                  <div className='px-1 py-1'>
-                    <div className='mt-2 px-3 text-xs font-medium text-text-tertiary'>{t('common.userProfile.workspace')}</div>
-                    <WorkplaceSelector />
-                  </div>
                   <div className="px-1 py-1">
                     <Menu.Item>
                       <Link
