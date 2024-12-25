@@ -175,7 +175,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
       mode,
       parentMode,
     }}>
-      <div className='flex flex-col h-full'>
+      <div className='flex flex-col h-full bg-background-default'>
         <div className='flex items-center justify-between flex-wrap min-h-16 pl-3 pr-4 py-2.5 border-b border-b-divider-subtle'>
           <div onClick={backToPrev} className={'shrink-0 rounded-full w-8 h-8 flex justify-center items-center cursor-pointer hover:bg-components-button-tertiary-bg'}>
             <RiArrowLeftLine className='text-components-button-ghost-text hover:text-text-tertiary w-4 h-4' />
