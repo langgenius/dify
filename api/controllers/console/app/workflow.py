@@ -440,6 +440,31 @@ class WorkflowConfigApi(Resource):
         }
 
 
+class DraftWorkflowNodeRetriableApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @marshal_with(workflow_run_node_execution_fields)
+    def post(self, app_model: App, node_id: str):
+        """
+        Run draft workflow node
+        """
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+        workflow_service = WorkflowService()
+        workflow_node_execution = workflow_service.run_retriable_draft_workflow_node(
+            app_model=app_model, node_id=node_id, user_inputs=args.get("inputs", {}), account=current_user
+        )
+
+        return workflow_node_execution
+
+
 api.add_resource(DraftWorkflowApi, "/apps/<uuid:app_id>/workflows/draft")
 api.add_resource(WorkflowConfigApi, "/apps/<uuid:app_id>/workflows/draft/config")
 api.add_resource(AdvancedChatDraftWorkflowRunApi, "/apps/<uuid:app_id>/advanced-chat/workflows/draft/run")
@@ -459,3 +484,4 @@ api.add_resource(
     DefaultBlockConfigApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>"
 )
 api.add_resource(ConvertToWorkflowApi, "/apps/<uuid:app_id>/convert-to-workflow")
+api.add_resource(DraftWorkflowNodeRetriableApi, "/apps/<uuid:app_id>/workflows/draft/retry/nodes/<string:node_id>/run")
