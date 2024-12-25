@@ -1,5 +1,6 @@
 import io
 import logging
+import uuid
 from typing import Optional
 
 from werkzeug.datastructures import FileStorage
@@ -122,6 +123,10 @@ class AudioService:
                     raise e
 
         if message_id:
+            try:
+                uuid.UUID(message_id)
+            except ValueError:
+                return None
             message = db.session.query(Message).filter(Message.id == message_id).first()
             if message is None:
                 return None
