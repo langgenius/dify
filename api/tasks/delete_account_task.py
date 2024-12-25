@@ -19,5 +19,8 @@ def delete_account_task(account_id, reason: str):
         raise
 
     account = db.session.query(Account).filter(Account.id == account_id).first()
+    if not account:
+        logger.error(f"Account {account_id} not found.")
+        return
     # send success email
     send_deletion_success_task.delay(account.interface_language, account.email)
