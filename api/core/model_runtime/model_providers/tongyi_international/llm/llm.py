@@ -19,9 +19,14 @@ from dashscope.common.error import (
     UnsupportedModel,
 )
 
-dashscope.base_http_api_url = 'https://dashscope-intl.aliyuncs.com/api/v1'
+dashscope.base_http_api_url = "https://dashscope-intl.aliyuncs.com/api/v1"
 
-from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.llm_entities import (
+    LLMMode,
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkDelta,
+)
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
@@ -53,7 +58,9 @@ from core.model_runtime.errors.invoke import (
     InvokeServerUnavailableError,
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.__base.large_language_model import (
+    LargeLanguageModel,
+)
 
 
 class TongyiLargeLanguageModel(LargeLanguageModel):
@@ -84,7 +91,16 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         # invoke model without code wrapper
-        return self._generate(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
+        return self._generate(
+            model,
+            credentials,
+            prompt_messages,
+            model_parameters,
+            tools,
+            stop,
+            stream,
+            user,
+        )
 
     def get_num_tokens(
         self,
@@ -194,21 +210,33 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
         model_schema = self.get_model_schema(model, credentials)
         if ModelFeature.VISION in (model_schema.features or []):
-            params["messages"] = self._convert_prompt_messages_to_tongyi_messages(prompt_messages, rich_content=True)
+            params["messages"] = self._convert_prompt_messages_to_tongyi_messages(
+                prompt_messages, rich_content=True
+            )
 
             response = MultiModalConversation.call(**params, stream=stream)
         else:
             # nothing different between chat model and completion model in tongyi
-            params["messages"] = self._convert_prompt_messages_to_tongyi_messages(prompt_messages)
+            params["messages"] = self._convert_prompt_messages_to_tongyi_messages(
+                prompt_messages
+            )
             response = Generation.call(**params, result_format="message", stream=stream)
 
         if stream:
-            return self._handle_generate_stream_response(model, credentials, response, prompt_messages)
+            return self._handle_generate_stream_response(
+                model, credentials, response, prompt_messages
+            )
 
-        return self._handle_generate_response(model, credentials, response, prompt_messages)
+        return self._handle_generate_response(
+            model, credentials, response, prompt_messages
+        )
 
     def _handle_generate_response(
-        self, model: str, credentials: dict, response: GenerationResponse, prompt_messages: list[PromptMessage]
+        self,
+        model: str,
+        credentials: dict,
+        response: GenerationResponse,
+        prompt_messages: list[PromptMessage],
     ) -> LLMResult:
         """
         Handle llm response
@@ -227,7 +255,12 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         )
 
         # transform usage
-        usage = self._calc_response_usage(model, credentials, response.usage.input_tokens, response.usage.output_tokens)
+        usage = self._calc_response_usage(
+            model,
+            credentials,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
+        )
 
         # transform response
         result = LLMResult(
@@ -281,7 +314,9 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                         resp_content = resp_content[0]["text"]
 
                     # transform assistant message to prompt message
-                    assistant_prompt_message.content = resp_content.replace(full_text, "", 1)
+                    assistant_prompt_message.content = resp_content.replace(
+                        full_text, "", 1
+                    )
 
                     full_text = resp_content
 
@@ -292,7 +327,8 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                             id=tool_call_obj["function"]["name"],
                             type="function",
                             function=AssistantPromptMessage.ToolCall.ToolCallFunction(
-                                name=tool_call_obj["function"]["name"], arguments=tool_call_obj["function"]["arguments"]
+                                name=tool_call_obj["function"]["name"],
+                                arguments=tool_call_obj["function"]["arguments"],
                             ),
                         )
                         message_tool_calls.append(message_tool_call)
@@ -301,13 +337,18 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
                 # transform usage
                 usage = response.usage
-                usage = self._calc_response_usage(model, credentials, usage.input_tokens, usage.output_tokens)
+                usage = self._calc_response_usage(
+                    model, credentials, usage.input_tokens, usage.output_tokens
+                )
 
                 yield LLMResultChunk(
                     model=model,
                     prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
-                        index=index, message=assistant_prompt_message, finish_reason=resp_finish_reason, usage=usage
+                        index=index,
+                        message=assistant_prompt_message,
+                        finish_reason=resp_finish_reason,
+                        usage=usage,
                     ),
                 )
             else:
@@ -331,7 +372,9 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                 yield LLMResultChunk(
                     model=model,
                     prompt_messages=prompt_messages,
-                    delta=LLMResultChunkDelta(index=index, message=assistant_prompt_message),
+                    delta=LLMResultChunkDelta(
+                        index=index, message=assistant_prompt_message
+                    ),
                 )
 
     def _to_credential_kwargs(self, credentials: dict) -> dict:
@@ -385,7 +428,9 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         """
         messages = messages.copy()  # don't mutate the original list
 
-        text = "".join(self._convert_one_message_to_text(message) for message in messages)
+        text = "".join(
+            self._convert_one_message_to_text(message) for message in messages
+        )
 
         # trim off the trailing ' ' that might come from the "Assistant: "
         return text.rstrip()
@@ -405,7 +450,11 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                 tongyi_messages.append(
                     {
                         "role": "system",
-                        "content": prompt_message.content if not rich_content else [{"text": prompt_message.content}],
+                        "content": (
+                            prompt_message.content
+                            if not rich_content
+                            else [{"text": prompt_message.content}]
+                        ),
                     }
                 )
             elif isinstance(prompt_message, UserPromptMessage):
@@ -413,33 +462,45 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                     tongyi_messages.append(
                         {
                             "role": "user",
-                            "content": prompt_message.content
-                            if not rich_content
-                            else [{"text": prompt_message.content}],
+                            "content": (
+                                prompt_message.content
+                                if not rich_content
+                                else [{"text": prompt_message.content}]
+                            ),
                         }
                     )
                 else:
                     sub_messages = []
                     for message_content in prompt_message.content:
                         if message_content.type == PromptMessageContentType.TEXT:
-                            message_content = cast(TextPromptMessageContent, message_content)
+                            message_content = cast(
+                                TextPromptMessageContent, message_content
+                            )
                             sub_message_dict = {"text": message_content.data}
                             sub_messages.append(sub_message_dict)
                         elif message_content.type == PromptMessageContentType.IMAGE:
-                            message_content = cast(ImagePromptMessageContent, message_content)
+                            message_content = cast(
+                                ImagePromptMessageContent, message_content
+                            )
 
                             image_url = message_content.data
                             if message_content.data.startswith("data:"):
                                 # convert image base64 data to file in /tmp
-                                image_url = self._save_base64_image_to_file(message_content.data)
+                                image_url = self._save_base64_image_to_file(
+                                    message_content.data
+                                )
 
                             sub_message_dict = {"image": image_url}
                             sub_messages.append(sub_message_dict)
                         elif message_content.type == PromptMessageContentType.VIDEO:
-                            message_content = cast(VideoPromptMessageContent, message_content)
+                            message_content = cast(
+                                VideoPromptMessageContent, message_content
+                            )
                             video_url = message_content.url
                             if not video_url:
-                                raise InvokeError("not support base64, please set MULTIMODAL_SEND_FORMAT to url")
+                                raise InvokeError(
+                                    "not support base64, please set MULTIMODAL_SEND_FORMAT to url"
+                                )
 
                             sub_message_dict = {"video": video_url}
                             sub_messages.append(sub_message_dict)
@@ -452,13 +513,23 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                 content = prompt_message.content
                 if not content:
                     content = " "
-                message = {"role": "assistant", "content": content if not rich_content else [{"text": content}]}
+                message = {
+                    "role": "assistant",
+                    "content": content if not rich_content else [{"text": content}],
+                }
                 if prompt_message.tool_calls:
-                    message["tool_calls"] = [tool_call.model_dump() for tool_call in prompt_message.tool_calls]
+                    message["tool_calls"] = [
+                        tool_call.model_dump()
+                        for tool_call in prompt_message.tool_calls
+                    ]
                 tongyi_messages.append(message)
             elif isinstance(prompt_message, ToolPromptMessage):
                 tongyi_messages.append(
-                    {"role": "tool", "content": prompt_message.content, "name": prompt_message.tool_call_id}
+                    {
+                        "role": "tool",
+                        "content": prompt_message.content,
+                        "name": prompt_message.tool_call_id,
+                    }
                 )
             else:
                 raise ValueError(f"Got unknown type {prompt_message}")
@@ -474,7 +545,10 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         :return: image file path
         """
         # get mime type and encoded string
-        mime_type, encoded_string = base64_image.split(",")[0].split(";")[0].split(":")[1], base64_image.split(",")[1]
+        mime_type, encoded_string = (
+            base64_image.split(",")[0].split(";")[0].split(":")[1],
+            base64_image.split(",")[1],
+        )
 
         # save image to file
         temp_dir = tempfile.gettempdir()
@@ -547,7 +621,9 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
             ],
         }
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+    def get_customizable_model_schema(
+        self, model: str, credentials: dict
+    ) -> Optional[AIModelEntity]:
         """
         Architecture for defining customizable models
 
@@ -559,12 +635,20 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
             model=model,
             label=I18nObject(en_US=model, zh_Hans=model),
             model_type=ModelType.LLM,
-            features=[ModelFeature.TOOL_CALL, ModelFeature.MULTI_TOOL_CALL, ModelFeature.STREAM_TOOL_CALL]
-            if credentials.get("function_calling_type") == "tool_call"
-            else [],
+            features=(
+                [
+                    ModelFeature.TOOL_CALL,
+                    ModelFeature.MULTI_TOOL_CALL,
+                    ModelFeature.STREAM_TOOL_CALL,
+                ]
+                if credentials.get("function_calling_type") == "tool_call"
+                else []
+            ),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size", 8000)),
+                ModelPropertyKey.CONTEXT_SIZE: int(
+                    credentials.get("context_size", 8000)
+                ),
                 ModelPropertyKey.MODE: LLMMode.CHAT.value,
             },
             parameter_rules=[
