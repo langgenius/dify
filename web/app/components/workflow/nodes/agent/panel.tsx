@@ -42,6 +42,7 @@ const mockSchema = [
       en_US: 'Model',
       zh_Hans: '模型',
     },
+    variable: 'model',
     scope: 'all',
   },
 ] as Array<CredentialFormSchema & { name: string }>
