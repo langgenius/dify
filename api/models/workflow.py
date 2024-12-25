@@ -395,7 +395,7 @@ class WorkflowRun(db.Model):  # type: ignore[name-defined]
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
     app_id = db.Column(StringUUID, nullable=False)
-    sequence_number = db.Column(db.Integer, nullable=False)
+    sequence_number: Mapped[int] = mapped_column()
     workflow_id = db.Column(StringUUID, nullable=False)
     type = db.Column(db.String(255), nullable=False)
     triggered_from = db.Column(db.String(255), nullable=False)
@@ -408,23 +408,11 @@ class WorkflowRun(db.Model):  # type: ignore[name-defined]
     elapsed_time = db.Column(db.Float, nullable=False, server_default=db.text("0"))
     total_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     total_steps = db.Column(db.Integer, server_default=db.text("0"))
-    created_by_role = db.Column(db.String(255), nullable=False)  # account, end_user
+    created_by_role: Mapped[str] = mapped_column(db.String(255))  # account, end_user
     created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     finished_at = db.Column(db.DateTime)
     exceptions_count = db.Column(db.Integer, server_default=db.text("0"))
-
-    @property
-    def created_by_account(self):
-        created_by_role = CreatedByRole(self.created_by_role)
-        return db.session.get(Account, self.created_by) if created_by_role == CreatedByRole.ACCOUNT else None
-
-    @property
-    def created_by_end_user(self):
-        from models.model import EndUser
-
-        created_by_role = CreatedByRole(self.created_by_role)
-        return db.session.get(EndUser, self.created_by) if created_by_role == CreatedByRole.END_USER else None
 
     @property
     def graph_dict(self):

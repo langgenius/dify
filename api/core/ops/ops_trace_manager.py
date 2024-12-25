@@ -9,6 +9,7 @@ from typing import Any, Optional, Union
 from uuid import UUID, uuid4
 
 from flask import current_app
+from sqlalchemy import select
 
 from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
 from core.ops.entities.config_entity import (
@@ -442,11 +443,16 @@ class TraceTask:
 
         return workflow_trace_info
 
-    def message_trace(self, message_id):
+    def message_trace(self, message_id: str | None):
+        if not message_id:
+            return {}
         message_data = get_message_data(message_id)
         if not message_data:
             return {}
-        conversation_mode = db.session.query(Conversation.mode).filter_by(id=message_data.conversation_id).first()
+        conversation_mode_stmt = select(Conversation.mode).where(Conversation.id == message_data.conversation_id)
+        conversation_mode = db.session.scalars(conversation_mode_stmt).all()
+        if not conversation_mode or len(conversation_mode) == 0:
+            return {}
         conversation_mode = conversation_mode[0]
         created_at = message_data.created_at
         inputs = message_data.message
