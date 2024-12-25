@@ -13,7 +13,13 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
   const { t } = useTranslation()
   return <div className='mb-1 px-3 py-1 space-y-1'>
     {inputs.agent_strategy_name
-      ? <SettingItem label='Strategy' status='error' tooltip='ReAct is not installed'>
+      ? <SettingItem
+        label={t('workflow.nodes.agent.strategy.shortLabel')}
+        status='error'
+        tooltip={t('workflow.nodes.agent.strategyNotInstallTooltip', {
+          strategy: inputs.agent_strategy_name,
+        })}
+      >
         {inputs.agent_strategy_name}
       </SettingItem>
       : <SettingItem label={t('workflow.nodes.agent.strategyNotSet')} />}
@@ -40,8 +46,18 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     </GroupLabel>}>
       <div className='grid grid-cols-10 gap-0.5'>
         <ToolIcon src='/logo/logo.png' />
-        <ToolIcon src='/logo/logo.png' status='error' tooltip='Gmail Sender is not installed' />
-        <ToolIcon src='/logo/logo.png' status='warning' tooltip='DuckDuckGo AI Search Not Authorized' />
+        <ToolIcon
+          src='/logo/logo.png'
+          status='error'
+          tooltip={t('workflow.nodes.agent.toolNotInstallTooltip', {
+            tool: 'Gmail Sender',
+          })} />
+        <ToolIcon
+          src='/logo/logo.png'
+          status='warning'
+          tooltip={t('workflow.nodes.agent.toolNotAuthorizedTooltip', {
+            tool: 'DuckDuckGo AI Search',
+          })} />
       </div>
     </Group>
   </div>
