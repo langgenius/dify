@@ -178,7 +178,7 @@ export const simpleIterationData = (() => {
 
   return {
     in: [startNode, outputArrayNode, iterationNode, ...iterations, endNode],
-    output: [startNode, outputArrayNode, {
+    expect: [startNode, outputArrayNode, {
       ...iterationNode,
       details: [
         [iterations[0]],
