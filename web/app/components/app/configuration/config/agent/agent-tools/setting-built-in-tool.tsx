@@ -191,7 +191,7 @@ const SettingBuiltInTool: FC<Props> = ({
                 <OrgInfo
                   packageNameClassName='w-auto'
                   orgName={collection.author}
-                  packageName={collection.name}
+                  packageName={collection.name.split('/').pop() || ''}
                 />
               </div>
               <div className='mt-1 text-text-primary system-md-semibold'>{currTool?.label[language]}</div>
