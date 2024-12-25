@@ -24,7 +24,7 @@ BACKOFF_FACTOR = 0.5
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
 
 
-class MaxRetriesExceededError(Exception):
+class MaxRetriesExceededError(ValueError):
     """Raised when the maximum number of retries is exceeded."""
 
     pass
@@ -45,7 +45,6 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
         )
 
     retries = 0
-    stream = kwargs.pop("stream", False)
     while retries <= max_retries:
         try:
             if dify_config.SSRF_PROXY_ALL_URL:
@@ -61,17 +60,16 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
             if response.status_code not in STATUS_FORCELIST:
                 return response
             else:
-                logging.warning(
-                    f"Received status code {response.status_code} for URL {url} which is in the force list")
+                logging.warning(f"Received status code {response.status_code} for URL {url} which is in the force list")
 
         except httpx.RequestError as e:
-            logging.warning(
-                f"Request to URL {url} failed on attempt {retries + 1}: {e}")
+            logging.warning(f"Request to URL {url} failed on attempt {retries + 1}: {e}")
+            if max_retries == 0:
+                raise
 
         retries += 1
         if retries <= max_retries:
             time.sleep(BACKOFF_FACTOR * (2 ** (retries - 1)))
-
     raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
 
 

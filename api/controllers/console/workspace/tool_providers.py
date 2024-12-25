@@ -1,14 +1,16 @@
 import io
 
 from flask import send_file
-from flask_login import current_user
-from flask_restful import Resource, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, reqparse  # type: ignore
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.console import api
 from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
+from extensions.ext_database import db
 from libs.helper import alphanumeric, uuid_value
 from libs.login import login_required
 from services.tools.api_tools_manage_service import ApiToolManageService
@@ -49,12 +51,10 @@ class ToolBuiltinProviderListToolsApi(Resource):
     def get(self, provider):
         user = current_user
 
-        user_id = user.id
         tenant_id = user.current_tenant_id
 
         return jsonable_encoder(
             BuiltinToolManageService.list_builtin_tool_provider_tools(
-                user_id,
                 tenant_id,
                 provider,
             )
@@ -112,12 +112,16 @@ class ToolBuiltinProviderUpdateApi(Resource):
 
         args = parser.parse_args()
 
-        return BuiltinToolManageService.update_builtin_tool_provider(
-            user_id,
-            tenant_id,
-            provider,
-            args["credentials"],
-        )
+        with Session(db.engine) as session:
+            result = BuiltinToolManageService.update_builtin_tool_provider(
+                session=session,
+                user_id=user_id,
+                tenant_id=tenant_id,
+                provider_name=provider,
+                credentials=args["credentials"],
+            )
+            session.commit()
+        return result
 
 
 class ToolBuiltinProviderGetCredentialsApi(Resource):
@@ -125,15 +129,11 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider):
-        user = current_user
-
-        user_id = user.id
-        tenant_id = user.current_tenant_id
+        tenant_id = current_user.current_tenant_id
 
         return BuiltinToolManageService.get_builtin_tool_provider_credentials(
-            user_id,
-            tenant_id,
-            provider,
+            tenant_id=tenant_id,
+            provider_name=provider,
         )
 
 
@@ -329,7 +329,6 @@ class ToolBuiltinProviderCredentialsSchemaApi(Resource):
     def get(self, provider):
         user = current_user
 
-        user_id = user.id
         tenant_id = user.current_tenant_id
 
         return BuiltinToolManageService.list_builtin_provider_credentials_schema(provider, tenant_id)

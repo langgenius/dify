@@ -1,19 +1,15 @@
 import csv
 import io
 import json
+import logging
 import os
 import tempfile
+from typing import cast
 
 import docx
 import pandas as pd
 import pypdfium2  # type: ignore
 import yaml  # type: ignore
-from unstructured.partition.api import partition_via_api
-from unstructured.partition.email import partition_email
-from unstructured.partition.epub import partition_epub
-from unstructured.partition.msg import partition_msg
-from unstructured.partition.ppt import partition_ppt
-from unstructured.partition.pptx import partition_pptx
 
 from configs import dify_config
 from core.file import File, FileTransferMethod, file_manager
@@ -27,6 +23,8 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import DocumentExtractorNodeData
 from .exc import DocumentExtractorError, FileDownloadError, TextExtractionError, UnsupportedFileTypeError
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
@@ -162,7 +160,7 @@ def _extract_text_from_yaml(file_content: bytes) -> str:
     """Extract the content from yaml file"""
     try:
         yaml_data = yaml.safe_load_all(file_content.decode("utf-8", "ignore"))
-        return yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False)
+        return cast(str, yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False))
     except (UnicodeDecodeError, yaml.YAMLError) as e:
         raise TextExtractionError(f"Failed to decode or parse YAML file: {e}") from e
 
@@ -183,10 +181,43 @@ def _extract_text_from_pdf(file_content: bytes) -> str:
 
 
 def _extract_text_from_doc(file_content: bytes) -> str:
+    """
+    Extract text from a DOC/DOCX file.
+    For now support only paragraph and table add more if needed
+    """
     try:
         doc_file = io.BytesIO(file_content)
         doc = docx.Document(doc_file)
-        return "\n".join([paragraph.text for paragraph in doc.paragraphs])
+        text = []
+        # Process paragraphs
+        for paragraph in doc.paragraphs:
+            if paragraph.text.strip():
+                text.append(paragraph.text)
+
+        # Process tables
+        for table in doc.tables:
+            # Table header
+            try:
+                # table maybe cause errors so ignore it.
+                if len(table.rows) > 0 and table.rows[0].cells is not None:
+                    # Check if any cell in the table has text
+                    has_content = False
+                    for row in table.rows:
+                        if any(cell.text.strip() for cell in row.cells):
+                            has_content = True
+                            break
+
+                    if has_content:
+                        markdown_table = "| " + " | ".join(cell.text for cell in table.rows[0].cells) + " |\n"
+                        markdown_table += "| " + " | ".join(["---"] * len(table.rows[0].cells)) + " |\n"
+                        for row in table.rows[1:]:
+                            markdown_table += "| " + " | ".join(cell.text for cell in row.cells) + " |\n"
+                        text.append(markdown_table)
+            except Exception as e:
+                logger.warning(f"Failed to extract table from DOC/DOCX: {e}")
+                continue
+
+        return "\n".join(text)
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from DOC/DOCX: {str(e)}") from e
 
@@ -199,9 +230,9 @@ def _download_file_content(file: File) -> bytes:
                 raise FileDownloadError("Missing URL for remote file")
             response = ssrf_proxy.get(file.remote_url)
             response.raise_for_status()
-            return response.content
+            return cast(bytes, response.content)
         else:
-            return file_manager.download(file)
+            return cast(bytes, file_manager.download(file))
     except Exception as e:
         raise FileDownloadError(f"Error downloading file: {str(e)}") from e
 
@@ -256,6 +287,8 @@ def _extract_text_from_excel(file_content: bytes) -> str:
 
 
 def _extract_text_from_ppt(file_content: bytes) -> str:
+    from unstructured.partition.ppt import partition_ppt
+
     try:
         with io.BytesIO(file_content) as file:
             elements = partition_ppt(file=file)
@@ -265,6 +298,9 @@ def _extract_text_from_ppt(file_content: bytes) -> str:
 
 
 def _extract_text_from_pptx(file_content: bytes) -> str:
+    from unstructured.partition.api import partition_via_api
+    from unstructured.partition.pptx import partition_pptx
+
     try:
         if dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY:
             with tempfile.NamedTemporaryFile(suffix=".pptx", delete=False) as temp_file:
@@ -287,6 +323,8 @@ def _extract_text_from_pptx(file_content: bytes) -> str:
 
 
 def _extract_text_from_epub(file_content: bytes) -> str:
+    from unstructured.partition.epub import partition_epub
+
     try:
         with io.BytesIO(file_content) as file:
             elements = partition_epub(file=file)
@@ -296,6 +334,8 @@ def _extract_text_from_epub(file_content: bytes) -> str:
 
 
 def _extract_text_from_eml(file_content: bytes) -> str:
+    from unstructured.partition.email import partition_email
+
     try:
         with io.BytesIO(file_content) as file:
             elements = partition_email(file=file)
@@ -305,6 +345,8 @@ def _extract_text_from_eml(file_content: bytes) -> str:
 
 
 def _extract_text_from_msg(file_content: bytes) -> str:
+    from unstructured.partition.msg import partition_msg
+
     try:
         with io.BytesIO(file_content) as file:
             elements = partition_msg(file=file)

@@ -6,6 +6,7 @@ from pydantic import Field
 from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.plugin.entities.parameters import PluginParameterOption
+from core.tools.__base.tool import Tool
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -130,6 +131,7 @@ class WorkflowToolProviderController(ToolProviderController):
                         llm_description=parameter.description,
                         required=variable.required,
                         options=options,
+                        placeholder=I18nObject(en_US="", zh_Hans=""),
                     )
                 )
             elif features.file_upload:
@@ -142,6 +144,7 @@ class WorkflowToolProviderController(ToolProviderController):
                         llm_description=parameter.description,
                         required=False,
                         form=parameter.form,
+                        placeholder=I18nObject(en_US="", zh_Hans=""),
                     )
                 )
             else:
@@ -198,6 +201,8 @@ class WorkflowToolProviderController(ToolProviderController):
 
         if not db_providers:
             return []
+        if not db_providers.app:
+            raise ValueError("app not found")
 
         app = db_providers.app
         if not app:
@@ -207,7 +212,7 @@ class WorkflowToolProviderController(ToolProviderController):
 
         return self.tools
 
-    def get_tool(self, tool_name: str) -> Optional[WorkflowTool]:
+    def get_tool(self, tool_name: str) -> Optional[Tool]:
         """
         get tool by name
 

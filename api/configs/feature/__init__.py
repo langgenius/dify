@@ -297,7 +297,6 @@ class HttpConfig(BaseSettings):
     )
 
     @computed_field
-    @property
     def CONSOLE_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_CONSOLE_CORS_ALLOW_ORIGINS.split(",")
 
@@ -308,7 +307,6 @@ class HttpConfig(BaseSettings):
     )
 
     @computed_field
-    @property
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
 
@@ -489,6 +487,11 @@ class WorkflowConfig(BaseSettings):
     WORKFLOW_CALL_MAX_DEPTH: PositiveInt = Field(
         description="Maximum allowed depth for nested workflow calls",
         default=5,
+    )
+
+    WORKFLOW_PARALLEL_DEPTH_LIMIT: PositiveInt = Field(
+        description="Maximum allowed depth for nested parallel executions",
+        default=3,
     )
 
     MAX_VARIABLE_SIZE: PositiveInt = Field(
@@ -723,14 +726,9 @@ class IndexingConfig(BaseSettings):
     )
 
 
-class VisionFormatConfig(BaseSettings):
-    MULTIMODAL_SEND_IMAGE_FORMAT: Literal["base64", "url"] = Field(
-        description="Format for sending images in multimodal contexts ('base64' or 'url'), default is base64",
-        default="base64",
-    )
-
-    MULTIMODAL_SEND_VIDEO_FORMAT: Literal["base64", "url"] = Field(
-        description="Format for sending videos in multimodal contexts ('base64' or 'url'), default is base64",
+class MultiModalTransferConfig(BaseSettings):
+    MULTIMODAL_SEND_FORMAT: Literal["base64", "url"] = Field(
+        description="Format for sending files in multimodal contexts ('base64' or 'url'), default is base64",
         default="base64",
     )
 
@@ -773,27 +771,27 @@ class PositionConfig(BaseSettings):
         default="",
     )
 
-    @computed_field
+    @property
     def POSITION_PROVIDER_PINS_LIST(self) -> list[str]:
         return [item.strip() for item in self.POSITION_PROVIDER_PINS.split(",") if item.strip() != ""]
 
-    @computed_field
+    @property
     def POSITION_PROVIDER_INCLUDES_SET(self) -> set[str]:
         return {item.strip() for item in self.POSITION_PROVIDER_INCLUDES.split(",") if item.strip() != ""}
 
-    @computed_field
+    @property
     def POSITION_PROVIDER_EXCLUDES_SET(self) -> set[str]:
         return {item.strip() for item in self.POSITION_PROVIDER_EXCLUDES.split(",") if item.strip() != ""}
 
-    @computed_field
+    @property
     def POSITION_TOOL_PINS_LIST(self) -> list[str]:
         return [item.strip() for item in self.POSITION_TOOL_PINS.split(",") if item.strip() != ""]
 
-    @computed_field
+    @property
     def POSITION_TOOL_INCLUDES_SET(self) -> set[str]:
         return {item.strip() for item in self.POSITION_TOOL_INCLUDES.split(",") if item.strip() != ""}
 
-    @computed_field
+    @property
     def POSITION_TOOL_EXCLUDES_SET(self) -> set[str]:
         return {item.strip() for item in self.POSITION_TOOL_EXCLUDES.split(",") if item.strip() != ""}
 
@@ -838,13 +836,13 @@ class FeatureConfig(
     FileAccessConfig,
     FileUploadConfig,
     HttpConfig,
-    VisionFormatConfig,
     InnerAPIConfig,
     IndexingConfig,
     LoggingConfig,
     MailConfig,
     ModelLoadBalanceConfig,
     ModerationConfig,
+    MultiModalTransferConfig,
     PositionConfig,
     RagEtlConfig,
     SecurityConfig,

@@ -2,6 +2,8 @@ import json
 import logging
 from pathlib import Path
 
+from sqlalchemy.orm import Session
+
 from configs import dify_config
 from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -22,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 class BuiltinToolManageService:
     @staticmethod
-    def list_builtin_tool_provider_tools(user_id: str, tenant_id: str, provider: str) -> list[ToolApiEntity]:
+    def list_builtin_tool_provider_tools(tenant_id: str, provider: str) -> list[ToolApiEntity]:
         """
         list builtin tool provider tools
 
@@ -50,8 +52,8 @@ class BuiltinToolManageService:
             credentials = builtin_provider.credentials
             credentials = tool_provider_configurations.decrypt(credentials)
 
-        result = []
-        for tool in tools:
+        result: list[ToolApiEntity] = []
+        for tool in tools or []:
             result.append(
                 ToolTransformService.convert_tool_entity_to_api_entity(
                     tool=tool,
@@ -107,7 +109,9 @@ class BuiltinToolManageService:
         return jsonable_encoder(provider.get_credentials_schema())
 
     @staticmethod
-    def update_builtin_tool_provider(user_id: str, tenant_id: str, provider_name: str, credentials: dict):
+    def update_builtin_tool_provider(
+        session: Session, user_id: str, tenant_id: str, provider_name: str, credentials: dict
+    ):
         """
         update builtin tool provider
         """
@@ -155,13 +159,10 @@ class BuiltinToolManageService:
                 encrypted_credentials=json.dumps(credentials),
             )
 
-            db.session.add(provider)
-            db.session.commit()
+            session.add(provider)
 
         else:
             provider.encrypted_credentials = json.dumps(credentials)
-            db.session.add(provider)
-            db.session.commit()
 
             # delete cache
             tool_configuration.delete_tool_credentials_cache()
@@ -169,11 +170,11 @@ class BuiltinToolManageService:
         return {"result": "success"}
 
     @staticmethod
-    def get_builtin_tool_provider_credentials(user_id: str, tenant_id: str, provider: str):
+    def get_builtin_tool_provider_credentials(tenant_id: str, provider_name: str):
         """
         get builtin tool provider credentials
         """
-        provider_obj = BuiltinToolManageService._fetch_builtin_provider(provider, tenant_id)
+        provider_obj = BuiltinToolManageService._fetch_builtin_provider(provider_name, tenant_id)
 
         if provider_obj is None:
             return {}
@@ -245,9 +246,8 @@ class BuiltinToolManageService:
                 db_provider.provider = f"langgenius/{db_provider.provider}/{db_provider.provider}"
 
         # find provider
-        find_provider = lambda provider: next(
-            filter(lambda db_provider: db_provider.provider == provider, db_providers), None
-        )
+        def find_provider(provider):
+            return next(filter(lambda db_provider: db_provider.provider == provider, db_providers), None)
 
         result: list[ToolProviderApiEntity] = []
 
@@ -258,7 +258,7 @@ class BuiltinToolManageService:
                     include_set=dify_config.POSITION_TOOL_INCLUDES_SET,  # type: ignore
                     exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,  # type: ignore
                     data=provider_controller,
-                    name_func=lambda x: x.identity.name,
+                    name_func=lambda x: x.entity.identity.name,
                 ):
                     continue
 
@@ -273,7 +273,7 @@ class BuiltinToolManageService:
                 ToolTransformService.repack_provider(tenant_id=tenant_id, provider=user_builtin_provider)
 
                 tools = provider_controller.get_tools()
-                for tool in tools:
+                for tool in tools or []:
                     user_builtin_provider.tools.append(
                         ToolTransformService.convert_tool_entity_to_api_entity(
                             tenant_id=tenant_id,

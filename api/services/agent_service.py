@@ -1,7 +1,8 @@
 import threading
+from typing import Optional
 
 import pytz
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 
 import contexts
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
@@ -33,7 +34,7 @@ class AgentService:
         if not conversation:
             raise ValueError(f"Conversation not found: {conversation_id}")
 
-        message: Message = (
+        message: Optional[Message] = (
             db.session.query(Message)
             .filter(
                 Message.id == message_id,

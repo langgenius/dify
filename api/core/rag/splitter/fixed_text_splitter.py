@@ -26,8 +26,8 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
     def from_encoder(
         cls: type[TS],
         embedding_model_instance: Optional[ModelInstance],
-        allowed_special: Union[Literal[all], Set[str]] = set(),
-        disallowed_special: Union[Literal[all], Collection[str]] = "all",
+        allowed_special: Union[Literal["all"], Set[str]] = set(),  # noqa: UP037
+        disallowed_special: Union[Literal["all"], Collection[str]] = "all",  # noqa: UP037
         **kwargs: Any,
     ):
         def _token_encoder(text: str) -> int:

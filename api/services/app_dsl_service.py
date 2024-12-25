@@ -1,7 +1,7 @@
 import logging
 import uuid
 from enum import StrEnum
-from typing import Optional
+from typing import Optional, cast
 from uuid import uuid4
 
 import yaml
@@ -33,8 +33,8 @@ logger = logging.getLogger(__name__)
 IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
-CURRENT_DSL_VERSION = "0.1.4"
 DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
+CURRENT_DSL_VERSION = "0.1.5"
 
 
 class ImportMode(StrEnum):
@@ -124,7 +124,7 @@ class AppDslService:
             raise ValueError(f"Invalid import_mode: {import_mode}")
 
         # Get YAML content
-        content = ""
+        content: bytes | str = b""
         if mode == ImportMode.YAML_URL:
             if not yaml_url:
                 return Import(
@@ -156,7 +156,7 @@ class AppDslService:
                     )
 
                 try:
-                    content = content.decode("utf-8")
+                    content = cast(bytes, content).decode("utf-8")
                 except UnicodeDecodeError as e:
                     return Import(
                         id=import_id,
@@ -391,7 +391,10 @@ class AppDslService:
     ) -> App:
         """Create a new app or update an existing one."""
         app_data = data.get("app", {})
-        app_mode = AppMode(app_data["mode"])
+        app_mode = app_data.get("mode")
+        if not app_mode:
+            raise ValueError("loss app mode")
+        app_mode = AppMode(app_mode)
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
@@ -410,6 +413,9 @@ class AppDslService:
             app.icon_background = icon_background or app_data.get("icon_background", app.icon_background)
             app.updated_by = account.id
         else:
+            if account.current_tenant_id is None:
+                raise ValueError("Current tenant is not set")
+
             # Create new app
             app = App()
             app.id = str(uuid4())

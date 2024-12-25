@@ -30,6 +30,7 @@ export type SystemFeatures = {
   enable_social_oauth_login: boolean
   is_allow_create_workspace: boolean
   is_allow_register: boolean
+  is_email_setup: boolean
   license: License
 }
 
@@ -45,6 +46,7 @@ export const defaultSystemFeatures: SystemFeatures = {
   enable_social_oauth_login: false,
   is_allow_create_workspace: false,
   is_allow_register: false,
+  is_email_setup: false,
   license: {
     status: LicenseStatus.NONE,
     expired_at: '',

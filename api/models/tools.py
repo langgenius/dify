@@ -4,15 +4,15 @@ from typing import Optional
 
 import sqlalchemy as sa
 from deprecated import deprecated
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
-from extensions.ext_database import db
 from models.base import Base
 
+from .engine import db
 from .model import Account, App, Tenant
 from .types import StringUUID
 
@@ -85,8 +85,8 @@ class ApiToolProvider(Base):
     # custom_disclaimer
     custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
 
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def schema_type(self) -> ApiProviderSchemaType:
@@ -98,7 +98,7 @@ class ApiToolProvider(Base):
 
     @property
     def credentials(self) -> dict:
-        return json.loads(self.credentials_str)
+        return dict(json.loads(self.credentials_str))
 
     @property
     def user(self) -> Account | None:
@@ -224,8 +224,8 @@ class ToolModelInvoke(Base):
     provider_response_latency = db.Column(db.Float, nullable=False, server_default=db.text("0"))
     total_price = db.Column(db.Numeric(10, 7))
     currency = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 @deprecated
@@ -252,12 +252,12 @@ class ToolConversationVariables(Base):
     # variables pool
     variables_str = db.Column(db.Text, nullable=False)
 
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def variables(self) -> dict:
-        return json.loads(self.variables_str)
+        return dict(json.loads(self.variables_str))
 
 
 class ToolFile(Base):

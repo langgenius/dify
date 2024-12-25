@@ -1,4 +1,5 @@
 import threading
+from typing import Any
 
 from flask import Flask, current_app
 from pydantic import BaseModel, Field
@@ -7,13 +8,14 @@ from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCa
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.models.document import Document as RagDocument
 from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 
-default_retrieval_model = {
+default_retrieval_model: dict[str, Any] = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
@@ -44,7 +46,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
 
     def _run(self, query: str) -> str:
         threads = []
-        all_documents = []
+        all_documents: list[RagDocument] = []
         for dataset_id in self.dataset_ids:
             retrieval_thread = threading.Thread(
                 target=self._retriever,
@@ -77,8 +79,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
 
         document_score_list = {}
         for item in all_documents:
-            assert item.metadata
-            if item.metadata.get("score"):
+            if item.metadata and item.metadata.get("score"):
                 document_score_list[item.metadata["doc_id"]] = item.metadata["score"]
 
         document_context_list = []
@@ -87,7 +88,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             DocumentSegment.dataset_id.in_(self.dataset_ids),
             DocumentSegment.completed_at.isnot(None),
             DocumentSegment.status == "completed",
-            DocumentSegment.enabled == True,
+            DocumentSegment.enabled is True,
             DocumentSegment.index_node_id.in_(index_node_ids),
         ).all()
 
@@ -108,8 +109,8 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                     dataset = Dataset.query.filter_by(id=segment.dataset_id).first()
                     document = Document.query.filter(
                         Document.id == segment.document_id,
-                        Document.enabled == True,
-                        Document.archived == False,
+                        Document.enabled is True,
+                        Document.archived is False,
                     ).first()
                     if dataset and document:
                         source = {
@@ -140,6 +141,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                     hit_callback.return_retriever_resource_info(context_list)
 
             return str("\n".join(document_context_list))
+        return ""
 
         raise RuntimeError("not segments found")
 

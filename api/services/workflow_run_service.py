@@ -1,4 +1,5 @@
 import threading
+from typing import Optional
 
 import contexts
 from extensions.ext_database import db
@@ -95,7 +96,7 @@ class WorkflowRunService:
 
         return InfiniteScrollPagination(data=workflow_runs, limit=limit, has_more=has_more)
 
-    def get_workflow_run(self, app_model: App, run_id: str) -> WorkflowRun:
+    def get_workflow_run(self, app_model: App, run_id: str) -> Optional[WorkflowRun]:
         """
         Get workflow run detail
 

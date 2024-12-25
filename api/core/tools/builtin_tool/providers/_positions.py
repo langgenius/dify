@@ -5,7 +5,7 @@ from core.tools.entities.api_entities import ToolProviderApiEntity
 
 
 class BuiltinToolProviderSort:
-    _position = {}
+    _position: dict[str, int] = {}
 
     @classmethod
     def sort(cls, providers: list[ToolProviderApiEntity]) -> list[ToolProviderApiEntity]:

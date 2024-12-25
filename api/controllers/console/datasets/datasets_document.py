@@ -1,10 +1,11 @@
 import logging
 from argparse import ArgumentTypeError
 from datetime import UTC, datetime
+from typing import cast
 
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource, fields, marshal, marshal_with, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, fields, marshal, marshal_with, reqparse  # type: ignore
 from sqlalchemy import asc, desc
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -161,7 +162,7 @@ class DatasetDocumentListApi(Resource):
                         f"Truthy value expected: got {fetch_val} but expected one of yes/no, true/false, t/f, y/n, 1/0 "
                         f"(case insensitive)."
                     )
-        except (ArgumentTypeError, ValueError, Exception) as e:
+        except (ArgumentTypeError, ValueError, Exception):
             fetch = False
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
@@ -749,8 +750,7 @@ class DocumentMetadataApi(DocumentResource):
 
         if not isinstance(doc_metadata, dict):
             raise ValueError("doc_metadata must be a dictionary.")
-
-        metadata_schema = DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type]
+        metadata_schema: dict = cast(dict, DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type])
 
         document.doc_metadata = {}
         if doc_type == "others":
@@ -964,7 +964,7 @@ class DocumentRetryApi(DocumentResource):
                 if document.indexing_status == "completed":
                     raise DocumentAlreadyFinishedError()
                 retry_documents.append(document)
-            except Exception as e:
+            except Exception:
                 logging.exception(f"Failed to retry document, document id: {document_id}")
                 continue
         # retry document

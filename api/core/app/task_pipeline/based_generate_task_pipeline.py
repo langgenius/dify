@@ -62,6 +62,7 @@ class BasedGenerateTaskPipeline:
         """
         logger.debug("error: %s", event.error)
         e = event.error
+        err: Exception
 
         if isinstance(e, InvokeAuthorizationError):
             err = InvokeAuthorizationError("Incorrect API key provided")
@@ -130,6 +131,7 @@ class BasedGenerateTaskPipeline:
                 rule=ModerationRule(type=sensitive_word_avoidance.type, config=sensitive_word_avoidance.config),
                 queue_manager=self._queue_manager,
             )
+        return None
 
     def _handle_output_moderation_when_task_finished(self, completion: str) -> Optional[str]:
         """

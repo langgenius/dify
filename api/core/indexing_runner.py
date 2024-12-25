@@ -6,10 +6,10 @@ import re
 import threading
 import time
 import uuid
-from typing import Optional, cast
+from typing import Any, Optional, cast
 
 from flask import Flask, current_app
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from configs import dify_config
@@ -62,6 +62,8 @@ class IndexingRunner:
                     .filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
                     .first()
                 )
+                if not processing_rule:
+                    raise ValueError("no process rule found")
                 index_type = dataset_document.doc_form
                 index_processor = IndexProcessorFactory(index_type).init_index_processor()
                 # extract
@@ -120,6 +122,8 @@ class IndexingRunner:
                 .filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
                 .first()
             )
+            if not processing_rule:
+                raise ValueError("no process rule found")
 
             index_type = dataset_document.doc_form
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
@@ -254,7 +258,7 @@ class IndexingRunner:
                     tenant_id=tenant_id,
                     model_type=ModelType.TEXT_EMBEDDING,
                 )
-        preview_texts = []
+        preview_texts: list[str] = []
         total_segments = 0
         index_type = doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
@@ -285,7 +289,8 @@ class IndexingRunner:
                 for upload_file_id in image_upload_file_ids:
                     image_file = db.session.query(UploadFile).filter(UploadFile.id == upload_file_id).first()
                     try:
-                        storage.delete(image_file.key)
+                        if image_file:
+                            storage.delete(image_file.key)
                     except Exception:
                         logging.exception(
                             "Delete image_files failed while indexing_estimate, \
@@ -379,8 +384,9 @@ class IndexingRunner:
         # replace doc id to document model id
         text_docs = cast(list[Document], text_docs)
         for text_doc in text_docs:
-            text_doc.metadata["document_id"] = dataset_document.id
-            text_doc.metadata["dataset_id"] = dataset_document.dataset_id
+            if text_doc.metadata is not None:
+                text_doc.metadata["document_id"] = dataset_document.id
+                text_doc.metadata["dataset_id"] = dataset_document.dataset_id
 
         return text_docs
 
@@ -400,6 +406,7 @@ class IndexingRunner:
         """
         Get the NodeParser object according to the processing rule.
         """
+        character_splitter: TextSplitter
         if processing_rule.mode == "custom":
             # The user-defined segmentation rule
             rules = json.loads(processing_rule.rules)
@@ -426,9 +433,10 @@ class IndexingRunner:
             )
         else:
             # Automatic segmentation
+            automatic_rules: dict[str, Any] = dict(DatasetProcessRule.AUTOMATIC_RULES["segmentation"])
             character_splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
-                chunk_size=DatasetProcessRule.AUTOMATIC_RULES["segmentation"]["max_tokens"],
-                chunk_overlap=DatasetProcessRule.AUTOMATIC_RULES["segmentation"]["chunk_overlap"],
+                chunk_size=automatic_rules["max_tokens"],
+                chunk_overlap=automatic_rules["chunk_overlap"],
                 separators=["\n\n", "。", ". ", " ", ""],
                 embedding_model_instance=embedding_model_instance,
             )
@@ -497,8 +505,8 @@ class IndexingRunner:
         """
         Split the text documents into nodes.
         """
-        all_documents = []
-        all_qa_documents = []
+        all_documents: list[Document] = []
+        all_qa_documents: list[Document] = []
         for text_doc in text_docs:
             # document clean
             document_text = self._document_clean(text_doc.page_content, processing_rule)
@@ -509,10 +517,11 @@ class IndexingRunner:
             split_documents = []
             for document_node in documents:
                 if document_node.page_content.strip():
-                    doc_id = str(uuid.uuid4())
-                    hash = helper.generate_text_hash(document_node.page_content)
-                    document_node.metadata["doc_id"] = doc_id
-                    document_node.metadata["doc_hash"] = hash
+                    if document_node.metadata is not None:
+                        doc_id = str(uuid.uuid4())
+                        hash = helper.generate_text_hash(document_node.page_content)
+                        document_node.metadata["doc_id"] = doc_id
+                        document_node.metadata["doc_hash"] = hash
                     # delete Splitter character
                     page_content = document_node.page_content
                     document_node.page_content = remove_leading_symbols(page_content)
@@ -529,7 +538,7 @@ class IndexingRunner:
                     document_format_thread = threading.Thread(
                         target=self.format_qa_document,
                         kwargs={
-                            "flask_app": current_app._get_current_object(),
+                            "flask_app": current_app._get_current_object(),  # type: ignore
                             "tenant_id": tenant_id,
                             "document_node": doc,
                             "all_qa_documents": all_qa_documents,
@@ -557,11 +566,12 @@ class IndexingRunner:
                     qa_document = Document(
                         page_content=result["question"], metadata=document_node.metadata.model_copy()
                     )
-                    doc_id = str(uuid.uuid4())
-                    hash = helper.generate_text_hash(result["question"])
-                    qa_document.metadata["answer"] = result["answer"]
-                    qa_document.metadata["doc_id"] = doc_id
-                    qa_document.metadata["doc_hash"] = hash
+                    if qa_document.metadata is not None:
+                        doc_id = str(uuid.uuid4())
+                        hash = helper.generate_text_hash(result["question"])
+                        qa_document.metadata["answer"] = result["answer"]
+                        qa_document.metadata["doc_id"] = doc_id
+                        qa_document.metadata["doc_hash"] = hash
                     qa_documents.append(qa_document)
                 format_documents.extend(qa_documents)
             except Exception as e:
@@ -575,7 +585,7 @@ class IndexingRunner:
         """
         Split the text documents into nodes.
         """
-        all_documents = []
+        all_documents: list[Document] = []
         for text_doc in text_docs:
             # document clean
             document_text = self._document_clean(text_doc.page_content, processing_rule)
@@ -588,11 +598,11 @@ class IndexingRunner:
             for document in documents:
                 if document.page_content is None or not document.page_content.strip():
                     continue
-                doc_id = str(uuid.uuid4())
-                hash = helper.generate_text_hash(document.page_content)
-
-                document.metadata["doc_id"] = doc_id
-                document.metadata["doc_hash"] = hash
+                if document.metadata is not None:
+                    doc_id = str(uuid.uuid4())
+                    hash = helper.generate_text_hash(document.page_content)
+                    document.metadata["doc_id"] = doc_id
+                    document.metadata["doc_hash"] = hash
 
                 split_documents.append(document)
 
@@ -648,7 +658,7 @@ class IndexingRunner:
         # create keyword index
         create_keyword_thread = threading.Thread(
             target=self._process_keyword_index,
-            args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),
+            args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),  # type: ignore
         )
         create_keyword_thread.start()
         if dataset.indexing_technique == "high_quality":
@@ -659,7 +669,7 @@ class IndexingRunner:
                     futures.append(
                         executor.submit(
                             self._process_chunk,
-                            current_app._get_current_object(),
+                            current_app._get_current_object(),  # type: ignore
                             index_processor,
                             chunk_documents,
                             dataset,

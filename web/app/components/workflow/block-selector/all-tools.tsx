@@ -66,9 +66,12 @@ const AllTools = ({
       return mergedTools.filter(toolWithProvider => toolWithProvider.tools.length > 0)
 
     return mergedTools.filter((toolWithProvider) => {
-      return isMatchingKeywords(toolWithProvider.name, searchText) || toolWithProvider.tools.some((tool) => {
-        return tool.label[language].toLowerCase().includes(searchText.toLowerCase()) || tool.name.toLowerCase().includes(searchText.toLowerCase())
-      })
+      return isMatchingKeywords(toolWithProvider.name, searchText)
+        || toolWithProvider.tools.some((tool) => {
+          return Object.values(tool.label).some((label) => {
+            return isMatchingKeywords(label.toLowerCase(), searchText.toLowerCase())
+          })
+        })
     })
   }, [activeTab, buildInTools, customTools, workflowTools, searchText, language, hasFilter])
 

@@ -108,6 +108,7 @@ const config = {
         'dataset-option-card-purple-gradient': 'var(--color-dataset-option-card-purple-gradient)',
         'dataset-option-card-orange-gradient': 'var(--color-dataset-option-card-orange-gradient)',
         'dataset-chunk-list-mask-bg': 'var(--color-dataset-chunk-list-mask-bg)',
+        'mask-top2bottom-gray-50-to-transparent': 'var(--mask-top2bottom-gray-50-to-transparent)',
       },
       lineClamp: {
         20: '20',

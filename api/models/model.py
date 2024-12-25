@@ -1,5 +1,4 @@
 import json
-import logging
 import re
 import uuid
 from collections.abc import Mapping
@@ -15,7 +14,7 @@ if TYPE_CHECKING:
     from models.workflow import Workflow
 
 from enum import StrEnum
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import sqlalchemy as sa
 from flask import request
@@ -27,15 +26,17 @@ from configs import dify_config
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
 from core.file.tool_file_parser import ToolFileParser
-from extensions.ext_database import db
 from libs.helper import generate_string
 from models.base import Base
 from models.enums import CreatedByRole
+from models.workflow import WorkflowRunStatus
 
 from .account import Account, Tenant
+from .engine import db
 from .types import StringUUID
 
-logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from .workflow import Workflow
 
 
 class DifySetup(Base):
@@ -43,7 +44,7 @@ class DifySetup(Base):
     __table_args__ = (db.PrimaryKeyConstraint("version", name="dify_setup_pkey"),)
 
     version = db.Column(db.String(255), nullable=False)
-    setup_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    setup_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class AppMode(StrEnum):
@@ -96,11 +97,11 @@ class App(Base):
     is_public = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     is_universal = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     tracing = db.Column(db.Text, nullable=True)
-    max_active_requests = db.Column(db.Integer, nullable=True)
+    max_active_requests: Mapped[Optional[int]] = mapped_column(nullable=True)
     created_by = db.Column(StringUUID, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = db.Column(StringUUID, nullable=True)
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     use_icon_as_answer_icon = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
 
     @property
@@ -165,7 +166,7 @@ class App(Base):
         if self.mode == AppMode.CHAT.value and self.is_agent:
             return AppMode.AGENT_CHAT.value
 
-        return self.mode
+        return str(self.mode)
 
     @property
     def deleted_tools(self) -> list:
@@ -207,7 +208,6 @@ class App(Base):
 
                         provider_id = GenericProviderID(provider_id, is_hardcoded)
                     except Exception:
-                        logger.exception(f"Invalid builtin provider id: {provider_id}")
                         continue
 
                     builtin_provider_ids.append(provider_id)
@@ -307,9 +307,9 @@ class AppModelConfig(Base):
     model_id = db.Column(db.String(255), nullable=True)
     configs = db.Column(db.JSON, nullable=True)
     created_by = db.Column(StringUUID, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = db.Column(StringUUID, nullable=True)
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     opening_statement = db.Column(db.Text)
     suggested_questions = db.Column(db.Text)
     suggested_questions_after_answer = db.Column(db.Text)
@@ -425,7 +425,7 @@ class AppModelConfig(Base):
     @property
     def dataset_configs_dict(self) -> dict:
         if self.dataset_configs:
-            dataset_configs = json.loads(self.dataset_configs)
+            dataset_configs: dict = json.loads(self.dataset_configs)
             if "retrieval_model" not in dataset_configs:
                 return {"retrieval_model": "single"}
             else:
@@ -566,8 +566,8 @@ class RecommendedApp(Base):
     is_listed = db.Column(db.Boolean, nullable=False, default=True)
     install_count = db.Column(db.Integer, nullable=False, default=0)
     language = db.Column(db.String(255), nullable=False, server_default=db.text("'en-US'::character varying"))
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def app(self):
@@ -591,7 +591,7 @@ class InstalledApp(Base):
     position = db.Column(db.Integer, nullable=False, default=0)
     is_pinned = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     last_used_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def app(self):
@@ -632,8 +632,8 @@ class Conversation(Base):
     read_at = db.Column(db.DateTime)
     read_account_id = db.Column(StringUUID)
     dialogue_count: Mapped[int] = mapped_column(default=0)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     messages = db.relationship("Message", backref="conversation", lazy="select", passive_deletes="all")
     message_annotations = db.relationship(
@@ -645,13 +645,29 @@ class Conversation(Base):
     @property
     def inputs(self):
         inputs = self._inputs.copy()
+
+        # Convert file mapping to File object
         for key, value in inputs.items():
+            # NOTE: It's not the best way to implement this, but it's the only way to avoid circular import for now.
+            from factories import file_factory
+
             if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                inputs[key] = File.model_validate(value)
+                if value["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                    value["tool_file_id"] = value["related_id"]
+                elif value["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                    value["upload_file_id"] = value["related_id"]
+                inputs[key] = file_factory.build_from_mapping(mapping=value, tenant_id=value["tenant_id"])
             elif isinstance(value, list) and all(
                 isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY for item in value
             ):
-                inputs[key] = [File.model_validate(item) for item in value]
+                inputs[key] = []
+                for item in value:
+                    if item["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                        item["tool_file_id"] = item["related_id"]
+                    elif item["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                        item["upload_file_id"] = item["related_id"]
+                    inputs[key].append(file_factory.build_from_mapping(mapping=item, tenant_id=item["tenant_id"]))
+
         return inputs
 
     @inputs.setter
@@ -667,6 +683,8 @@ class Conversation(Base):
     @property
     def model_config(self):
         model_config = {}
+        app_model_config: Optional[AppModelConfig] = None
+
         if self.mode == AppMode.ADVANCED_CHAT.value:
             if self.override_model_configs:
                 override_model_configs = json.loads(self.override_model_configs)
@@ -678,6 +696,7 @@ class Conversation(Base):
                 if "model" in override_model_configs:
                     app_model_config = AppModelConfig()
                     app_model_config = app_model_config.from_model_config_dict(override_model_configs)
+                    assert app_model_config is not None, "app model config not found"
                     model_config = app_model_config.to_dict()
                 else:
                     model_config["configs"] = override_model_configs
@@ -765,6 +784,31 @@ class Conversation(Base):
         return {"like": like, "dislike": dislike}
 
     @property
+    def status_count(self):
+        messages = db.session.query(Message).filter(Message.conversation_id == self.id).all()
+        status_counts = {
+            WorkflowRunStatus.RUNNING: 0,
+            WorkflowRunStatus.SUCCEEDED: 0,
+            WorkflowRunStatus.FAILED: 0,
+            WorkflowRunStatus.STOPPED: 0,
+            WorkflowRunStatus.PARTIAL_SUCCESSED: 0,
+        }
+
+        for message in messages:
+            if message.workflow_run:
+                status_counts[message.workflow_run.status] += 1
+
+        return (
+            {
+                "success": status_counts[WorkflowRunStatus.SUCCEEDED],
+                "failed": status_counts[WorkflowRunStatus.FAILED],
+                "partial_success": status_counts[WorkflowRunStatus.PARTIAL_SUCCESSED],
+            }
+            if messages
+            else None
+        )
+
+    @property
     def first_message(self):
         return db.session.query(Message).filter(Message.conversation_id == self.id).first()
 
@@ -834,8 +878,8 @@ class Message(Base):
     from_source = db.Column(db.String(255), nullable=False)
     from_end_user_id: Mapped[Optional[str]] = db.Column(StringUUID)
     from_account_id: Mapped[Optional[str]] = db.Column(StringUUID)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     agent_based = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     workflow_run_id = db.Column(StringUUID)
 
@@ -843,12 +887,25 @@ class Message(Base):
     def inputs(self):
         inputs = self._inputs.copy()
         for key, value in inputs.items():
+            # NOTE: It's not the best way to implement this, but it's the only way to avoid circular import for now.
+            from factories import file_factory
+
             if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                inputs[key] = File.model_validate(value)
+                if value["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                    value["tool_file_id"] = value["related_id"]
+                elif value["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                    value["upload_file_id"] = value["related_id"]
+                inputs[key] = file_factory.build_from_mapping(mapping=value, tenant_id=value["tenant_id"])
             elif isinstance(value, list) and all(
                 isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY for item in value
             ):
-                inputs[key] = [File.model_validate(item) for item in value]
+                inputs[key] = []
+                for item in value:
+                    if item["transfer_method"] == FileTransferMethod.TOOL_FILE:
+                        item["tool_file_id"] = item["related_id"]
+                    elif item["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                        item["upload_file_id"] = item["related_id"]
+                    inputs[key].append(file_factory.build_from_mapping(mapping=item, tenant_id=item["tenant_id"]))
         return inputs
 
     @inputs.setter
@@ -1022,7 +1079,7 @@ class Message(Base):
         if not current_app:
             raise ValueError(f"App {self.app_id} not found")
 
-        files: list[File] = []
+        files = []
         for message_file in message_files:
             if message_file.transfer_method == "local_file":
                 if message_file.upload_file_id is None:
@@ -1147,8 +1204,8 @@ class MessageFeedback(Base):
     from_source = db.Column(db.String(255), nullable=False)
     from_end_user_id = db.Column(StringUUID)
     from_account_id = db.Column(StringUUID)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def from_account(self):
@@ -1194,9 +1251,7 @@ class MessageFile(Base):
     upload_file_id: Mapped[Optional[str]] = db.Column(StringUUID, nullable=True)
     created_by_role: Mapped[str] = db.Column(db.String(255), nullable=False)
     created_by: Mapped[str] = db.Column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = db.Column(
-        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
-    )
+    created_at: Mapped[datetime] = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class MessageAnnotation(Base):
@@ -1216,8 +1271,8 @@ class MessageAnnotation(Base):
     content = db.Column(db.Text, nullable=False)
     hit_count = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     account_id = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def account(self):
@@ -1246,7 +1301,7 @@ class AppAnnotationHitHistory(Base):
     source = db.Column(db.Text, nullable=False)
     question = db.Column(db.Text, nullable=False)
     account_id = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     score = db.Column(Float, nullable=False, server_default=db.text("0"))
     message_id = db.Column(StringUUID, nullable=False)
     annotation_question = db.Column(db.Text, nullable=False)
@@ -1280,9 +1335,9 @@ class AppAnnotationSetting(Base):
     score_threshold = db.Column(Float, nullable=False, server_default=db.text("0"))
     collection_binding_id = db.Column(StringUUID, nullable=False)
     created_user_id = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_user_id = db.Column(StringUUID, nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def created_account(self):
@@ -1328,9 +1383,9 @@ class OperationLog(Base):
     account_id = db.Column(StringUUID, nullable=False)
     action = db.Column(db.String(255), nullable=False)
     content = db.Column(db.JSON)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     created_ip = db.Column(db.String(255), nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class EndUser(Base, UserMixin):
@@ -1349,8 +1404,8 @@ class EndUser(Base, UserMixin):
     name = db.Column(db.String(255))
     is_anonymous = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
     session_id = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class Site(Base):
@@ -1381,9 +1436,9 @@ class Site(Base):
     prompt_public = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
     created_by = db.Column(StringUUID, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = db.Column(StringUUID, nullable=True)
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     code = db.Column(db.String(255))
 
     @property
@@ -1425,7 +1480,7 @@ class ApiToken(Base):
     type = db.Column(db.String(16), nullable=False)
     token = db.Column(db.String(255), nullable=False)
     last_used_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @staticmethod
     def generate_api_key(prefix, n):
@@ -1456,9 +1511,7 @@ class UploadFile(Base):
         db.String(255), nullable=False, server_default=db.text("'account'::character varying")
     )
     created_by: Mapped[str] = db.Column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = db.Column(
-        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
-    )
+    created_at: Mapped[datetime] = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     used: Mapped[bool] = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     used_by: Mapped[str | None] = db.Column(StringUUID, nullable=True)
     used_at: Mapped[datetime | None] = db.Column(db.DateTime, nullable=True)
@@ -1515,7 +1568,7 @@ class ApiRequest(Base):
     request = db.Column(db.Text, nullable=True)
     response = db.Column(db.Text, nullable=True)
     ip = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class MessageChain(Base):
@@ -1573,7 +1626,7 @@ class MessageAgentThought(Base):
     @property
     def files(self) -> list:
         if self.message_files:
-            return json.loads(self.message_files)
+            return cast(list[Any], json.loads(self.message_files))
         else:
             return []
 
@@ -1585,20 +1638,20 @@ class MessageAgentThought(Base):
     def tool_labels(self) -> dict:
         try:
             if self.tool_labels_str:
-                return json.loads(self.tool_labels_str)
+                return cast(dict, json.loads(self.tool_labels_str))
             else:
                 return {}
-        except Exception as e:
+        except Exception:
             return {}
 
     @property
     def tool_meta(self) -> dict:
         try:
             if self.tool_meta_str:
-                return json.loads(self.tool_meta_str)
+                return cast(dict, json.loads(self.tool_meta_str))
             else:
                 return {}
-        except Exception as e:
+        except Exception:
             return {}
 
     @property
@@ -1619,7 +1672,7 @@ class MessageAgentThought(Base):
                 return result
             else:
                 return {tool: {} for tool in tools}
-        except Exception as e:
+        except Exception:
             return {}
 
     @property
@@ -1640,9 +1693,11 @@ class MessageAgentThought(Base):
                 return result
             else:
                 return {tool: {} for tool in tools}
-        except Exception as e:
+        except Exception:
             if self.observation:
                 return dict.fromkeys(tools, self.observation)
+            else:
+                return {}
 
 
 class DatasetRetrieverResource(Base):
@@ -1687,7 +1742,7 @@ class Tag(Base):
     type = db.Column(db.String(16), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class TagBinding(Base):
@@ -1703,7 +1758,7 @@ class TagBinding(Base):
     tag_id = db.Column(StringUUID, nullable=True)
     target_id = db.Column(StringUUID, nullable=True)
     created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class TraceAppConfig(Base):
@@ -1717,8 +1772,10 @@ class TraceAppConfig(Base):
     app_id = db.Column(StringUUID, nullable=False)
     tracing_provider = db.Column(db.String(255), nullable=True)
     tracing_config = db.Column(db.JSON, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.now())
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(
+        db.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
     is_active = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
 
     @property

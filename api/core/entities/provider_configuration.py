@@ -40,7 +40,7 @@ from models.provider import (
 
 logger = logging.getLogger(__name__)
 
-original_provider_configurate_methods = {}
+original_provider_configurate_methods: dict[str, list[ConfigurateMethod]] = {}
 
 
 class ProviderConfiguration(BaseModel):
@@ -126,7 +126,7 @@ class ProviderConfiguration(BaseModel):
 
             return credentials
 
-    def get_system_configuration_status(self) -> SystemConfigurationStatus:
+    def get_system_configuration_status(self) -> Optional[SystemConfigurationStatus]:
         """
         Get system configuration status.
         :return:
@@ -138,6 +138,8 @@ class ProviderConfiguration(BaseModel):
         current_quota_configuration = next(
             (q for q in self.system_configuration.quota_configurations if q.quota_type == current_quota_type), None
         )
+        if current_quota_configuration is None:
+            return None
 
         if not current_quota_configuration:
             return SystemConfigurationStatus.UNSUPPORTED
@@ -155,7 +157,7 @@ class ProviderConfiguration(BaseModel):
         """
         return self.custom_configuration.provider is not None or len(self.custom_configuration.models) > 0
 
-    def get_custom_credentials(self, obfuscated: bool = False) -> Optional[dict]:
+    def get_custom_credentials(self, obfuscated: bool = False):
         """
         Get custom credentials.
 
@@ -746,7 +748,7 @@ class ProviderConfiguration(BaseModel):
             model_types = provider_schema.supported_model_types
 
         # Group model settings by model type and model
-        model_setting_map = defaultdict(dict)
+        model_setting_map: defaultdict[ModelType, dict[str, ModelSettings]] = defaultdict(dict)
         for model_setting in self.model_settings:
             model_setting_map[model_setting.model_type][model_setting.model] = model_setting
 
@@ -844,44 +846,45 @@ class ProviderConfiguration(BaseModel):
                             )
                         except Exception as ex:
                             logger.warning(f"get custom model schema failed, {ex}")
-                            continue
 
-                        if not custom_model_schema:
-                            continue
+                            if not custom_model_schema:
+                                continue
 
-                        if custom_model_schema.model_type not in model_types:
-                            continue
+                            if custom_model_schema.model_type not in model_types:
+                                continue
 
-                        status = ModelStatus.ACTIVE
-                        if (
-                            custom_model_schema.model_type in model_setting_map
-                            and custom_model_schema.model in model_setting_map[custom_model_schema.model_type]
-                        ):
-                            model_setting = model_setting_map[custom_model_schema.model_type][custom_model_schema.model]
-                            if model_setting.enabled is False:
-                                status = ModelStatus.DISABLED
+                            status = ModelStatus.ACTIVE
+                            if (
+                                custom_model_schema.model_type in model_setting_map
+                                and custom_model_schema.model in model_setting_map[custom_model_schema.model_type]
+                            ):
+                                model_setting = model_setting_map[custom_model_schema.model_type][
+                                    custom_model_schema.model
+                                ]
+                                if model_setting.enabled is False:
+                                    status = ModelStatus.DISABLED
 
-                        provider_models.append(
-                            ModelWithProviderEntity(
-                                model=custom_model_schema.model,
-                                label=custom_model_schema.label,
-                                model_type=custom_model_schema.model_type,
-                                features=custom_model_schema.features,
-                                fetch_from=FetchFrom.PREDEFINED_MODEL,
-                                model_properties=custom_model_schema.model_properties,
-                                deprecated=custom_model_schema.deprecated,
-                                provider=SimpleModelProviderEntity(self.provider),
-                                status=status,
+                            provider_models.append(
+                                ModelWithProviderEntity(
+                                    model=custom_model_schema.model,
+                                    label=custom_model_schema.label,
+                                    model_type=custom_model_schema.model_type,
+                                    features=custom_model_schema.features,
+                                    fetch_from=FetchFrom.PREDEFINED_MODEL,
+                                    model_properties=custom_model_schema.model_properties,
+                                    deprecated=custom_model_schema.deprecated,
+                                    provider=SimpleModelProviderEntity(self.provider),
+                                    status=status,
+                                )
                             )
-                        )
 
             # if llm name not in restricted llm list, remove it
             restrict_model_names = [rm.model for rm in restrict_models]
-            for m in provider_models:
-                if m.model_type == ModelType.LLM and m.model not in restrict_model_names:
-                    m.status = ModelStatus.NO_PERMISSION
+            for model in provider_models:
+                if model.model_type == ModelType.LLM and m.model not in restrict_model_names:
+                    model.status = ModelStatus.NO_PERMISSION
                 elif not quota_configuration.is_valid:
-                    m.status = ModelStatus.QUOTA_EXCEEDED
+                    model.status = ModelStatus.QUOTA_EXCEEDED
 
         return provider_models
 

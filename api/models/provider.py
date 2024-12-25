@@ -1,8 +1,10 @@
 from enum import Enum
 
-from extensions.ext_database import db
+from sqlalchemy import func
+
 from models.base import Base
 
+from .engine import db
 from .types import StringUUID
 
 
@@ -13,6 +15,24 @@ class ProviderType(Enum):
     @staticmethod
     def value_of(value):
         for member in ProviderType:
+            if member.value == value:
+                return member
+        raise ValueError(f"No matching enum found for value '{value}'")
+
+
+class ProviderQuotaType(Enum):
+    PAID = "paid"
+    """hosted paid quota"""
+
+    FREE = "free"
+    """third-party free quota"""
+
+    TRIAL = "trial"
+    """hosted trial quota"""
+
+    @staticmethod
+    def value_of(value):
+        for member in ProviderQuotaType:
             if member.value == value:
                 return member
         raise ValueError(f"No matching enum found for value '{value}'")
@@ -44,8 +64,8 @@ class Provider(Base):
     quota_limit = db.Column(db.BigInteger, nullable=True)
     quota_used = db.Column(db.BigInteger, default=0)
 
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     def __repr__(self):
         return (
@@ -92,8 +112,8 @@ class ProviderModel(Base):
     model_type = db.Column(db.String(40), nullable=False)
     encrypted_config = db.Column(db.Text, nullable=True)
     is_valid = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class TenantDefaultModel(Base):
@@ -108,8 +128,8 @@ class TenantDefaultModel(Base):
     provider_name = db.Column(db.String(255), nullable=False)
     model_name = db.Column(db.String(255), nullable=False)
     model_type = db.Column(db.String(40), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class TenantPreferredModelProvider(Base):
@@ -123,8 +143,8 @@ class TenantPreferredModelProvider(Base):
     tenant_id = db.Column(StringUUID, nullable=False)
     provider_name = db.Column(db.String(255), nullable=False)
     preferred_provider_type = db.Column(db.String(40), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class ProviderOrder(Base):
@@ -148,8 +168,8 @@ class ProviderOrder(Base):
     paid_at = db.Column(db.DateTime)
     pay_failed_at = db.Column(db.DateTime)
     refunded_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class ProviderModelSetting(Base):
@@ -170,8 +190,8 @@ class ProviderModelSetting(Base):
     model_type = db.Column(db.String(40), nullable=False)
     enabled = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
     load_balancing_enabled = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class LoadBalancingModelConfig(Base):
@@ -193,5 +213,5 @@ class LoadBalancingModelConfig(Base):
     name = db.Column(db.String(255), nullable=False)
     encrypted_config = db.Column(db.Text, nullable=True)
     enabled = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())

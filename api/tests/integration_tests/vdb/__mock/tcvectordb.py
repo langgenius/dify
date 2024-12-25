@@ -4,12 +4,12 @@ from typing import Optional
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from requests.adapters import HTTPAdapter
-from tcvectordb import VectorDBClient
-from tcvectordb.model.database import Collection, Database
-from tcvectordb.model.document import Document, Filter
-from tcvectordb.model.enum import ReadConsistency
-from tcvectordb.model.index import Index
-from xinference_client.types import Embedding
+from tcvectordb import VectorDBClient  # type: ignore
+from tcvectordb.model.database import Collection, Database  # type: ignore
+from tcvectordb.model.document import Document, Filter  # type: ignore
+from tcvectordb.model.enum import ReadConsistency  # type: ignore
+from tcvectordb.model.index import Index  # type: ignore
+from xinference_client.types import Embedding  # type: ignore
 
 
 class MockTcvectordbClass:

@@ -102,7 +102,7 @@ class WorkflowTool(Tool):
             raise Exception(data.get("error"))
 
         outputs = data.get("outputs")
-        if outputs == None:
+        if outputs is None:
             outputs = {}
         else:
             outputs, files = self._extract_files(outputs)

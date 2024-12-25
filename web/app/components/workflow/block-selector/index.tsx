@@ -117,12 +117,12 @@ const NodeSelector: FC<NodeSelectorProps> = ({
               <div
                 className={`
                   flex items-center justify-center 
-                  w-4 h-4 rounded-full bg-primary-600 cursor-pointer z-10
+                  w-4 h-4 rounded-full bg-components-button-primary-bg text-text-primary-on-surface hover:bg-components-button-primary-bg-hover cursor-pointer z-10
                   ${triggerClassName?.(open)}
                 `}
                 style={triggerStyle}
               >
-                <Plus02 className='w-2.5 h-2.5 text-white' />
+                <Plus02 className='w-2.5 h-2.5' />
               </div>
             )
         }

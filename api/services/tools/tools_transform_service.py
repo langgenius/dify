@@ -46,7 +46,7 @@ class ToolTransformService:
                 if isinstance(icon, str):
                     return json.loads(icon)
                 return icon
-            except:
+            except Exception:
                 return {"background": "#252525", "content": "\ud83d\ude01"}
 
         return ""
@@ -191,6 +191,8 @@ class ToolTransformService:
         convert provider controller to user provider
         """
         username = "Anonymous"
+        if db_provider.user is None:
+            raise ValueError(f"user is None for api provider {db_provider.id}")
         try:
             user = db_provider.user
             if not user:

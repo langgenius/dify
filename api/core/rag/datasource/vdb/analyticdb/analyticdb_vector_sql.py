@@ -3,8 +3,8 @@ import uuid
 from contextlib import contextmanager
 from typing import Any
 
-import psycopg2.extras
-import psycopg2.pool
+import psycopg2.extras  # type: ignore
+import psycopg2.pool  # type: ignore
 from pydantic import BaseModel, model_validator
 
 from core.rag.models.document import Document
@@ -75,6 +75,7 @@ class AnalyticdbVectorBySql:
 
     @contextmanager
     def _get_cursor(self):
+        assert self.pool is not None, "Connection pool is not initialized"
         conn = self.pool.getconn()
         cur = conn.cursor()
         try:
@@ -156,16 +157,17 @@ class AnalyticdbVectorBySql:
                 VALUES (%s, %s, %s, %s, %s, to_tsvector('zh_cn',  %s));
             """
         for i, doc in enumerate(documents):
-            values.append(
-                (
-                    id_prefix + str(i),
-                    doc.metadata.get("doc_id", str(uuid.uuid4())),
-                    embeddings[i],
-                    doc.page_content,
-                    json.dumps(doc.metadata),
-                    doc.page_content,
+            if doc.metadata is not None:
+                values.append(
+                    (
+                        id_prefix + str(i),
+                        doc.metadata.get("doc_id", str(uuid.uuid4())),
+                        embeddings[i],
+                        doc.page_content,
+                        json.dumps(doc.metadata),
+                        doc.page_content,
+                    )
                 )
-            )
         with self._get_cursor() as cur:
             psycopg2.extras.execute_batch(cur, sql, values)
 

@@ -3,7 +3,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
 # 工作流编排对话型应用 API
 
-对话应用支持会话持久化，可将之前的聊天记录作为上下进行回答，可适用于聊天/客服 AI 等。
+对话应用支持会话持久化，可将之前的聊天记录作为上下文进行回答，可适用于聊天/客服 AI 等。
 
 <div>
   ### 基础 URL
@@ -68,6 +68,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
             - `image` 具体类型包含：'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'
             - `audio` 具体类型包含：'MP3', 'M4A', 'WAV', 'WEBM', 'AMR'
             - `video` 具体类型包含：'MP4', 'MOV', 'MPEG', 'MPGA'
+            - `custom` 具体类型包含：其他文件类型
           - `transfer_method` (string)  传递方式:
             - `remote_url`: 图片地址。
             - `local_file`: 上传文件。
@@ -450,6 +451,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='user' type='string' key='user'>
           用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
       </Property>
+      <Property name='content' type='string' key='content'>
+          消息反馈的具体信息。
+      </Property>
     </Properties>
 
     ### Response
@@ -457,7 +461,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123",\n    "content": "message feedback information"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \
@@ -465,7 +469,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     --header 'Content-Type: application/json' \
     --data-raw '{
         "rating": "like",
-        "user": "abc-123"
+        "user": "abc-123",
+        "content": "message feedback information"
     }'
     ```
 

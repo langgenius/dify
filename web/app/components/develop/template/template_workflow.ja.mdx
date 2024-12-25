@@ -60,6 +60,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
             - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
             - `video` ('MP4', 'MOV', 'MPEG', 'MPGA')
+            - `custom` (他のファイルタイプ)
           - `transfer_method` (string) 転送方法、画像URLの場合は`remote_url` / ファイルアップロードの場合は`local_file`
           - `url` (string) 画像URL（転送方法が`remote_url`の場合）
           - `upload_file_id` (string) アップロードされたファイルID、事前にファイルアップロードAPIを通じて取得する必要があります（転送方法が`local_file`の場合）

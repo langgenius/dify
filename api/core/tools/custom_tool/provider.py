@@ -130,7 +130,7 @@ class ApiToolProviderController(ToolProviderController):
             runtime=ToolRuntime(tenant_id=self.tenant_id),
         )
 
-    def load_bundled_tools(self, tools: list[ApiToolBundle]) -> list[ApiTool]:
+    def load_bundled_tools(self, tools: list[ApiToolBundle]):
         """
         load bundled tools
 
@@ -151,6 +151,8 @@ class ApiToolProviderController(ToolProviderController):
         """
         if len(self.tools) > 0:
             return self.tools
+        if self.identity is None:
+            return None
 
         tools: list[ApiTool] = []
 
@@ -170,7 +172,7 @@ class ApiToolProviderController(ToolProviderController):
         self.tools = tools
         return tools
 
-    def get_tool(self, tool_name: str) -> ApiTool:
+    def get_tool(self, tool_name: str):
         """
         get tool by name
 

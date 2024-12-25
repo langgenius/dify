@@ -93,7 +93,7 @@ class ToolLabelManager:
             db.session.query(ToolLabelBinding).filter(ToolLabelBinding.tool_id.in_(provider_ids)).all()
         )
 
-        tool_labels = {label.tool_id: [] for label in labels}
+        tool_labels: dict[str, list[str]] = {label.tool_id: [] for label in labels}
 
         for label in labels:
             tool_labels[label.tool_id].append(label.label_name)
