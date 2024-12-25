@@ -1,5 +1,6 @@
 import logging
 import time
+from collections import defaultdict
 
 import click
 from celery import shared_task  # type: ignore
@@ -26,7 +27,7 @@ def send_document_clean_notify_task():
     try:
         dataset_auto_disable_logs = DatasetAutoDisableLog.query.filter(DatasetAutoDisableLog.notified == False).all()
         # group by tenant_id
-        dataset_auto_disable_logs_map = {}
+        dataset_auto_disable_logs_map: dict[str, list[DatasetAutoDisableLog]] = defaultdict(list)
         for dataset_auto_disable_log in dataset_auto_disable_logs:
             dataset_auto_disable_logs_map[dataset_auto_disable_log.tenant_id].append(dataset_auto_disable_log)
 
@@ -36,6 +37,8 @@ def send_document_clean_notify_task():
             if not tenant:
                 continue
             current_owner_join = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, role="owner").first()
+            if not current_owner_join:
+                continue
             account = Account.query.filter(Account.id == current_owner_join.account_id).first()
             if not account:
                 continue
