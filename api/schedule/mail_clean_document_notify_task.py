@@ -41,7 +41,7 @@ def send_document_clean_notify_task():
             if not account:
                 continue
 
-            dataset_auto_dataset_map = {}
+            dataset_auto_dataset_map = {}  # type: ignore
             for dataset_auto_disable_log in tenant_dataset_auto_disable_logs:
                 dataset_auto_dataset_map[dataset_auto_disable_log.dataset_id].append(
                     dataset_auto_disable_log.document_id
@@ -52,11 +52,6 @@ def send_document_clean_notify_task():
                 if dataset:
                     document_count = len(document_ids)
                     knowledge_details.append(f"<li>Knowledge base {dataset.name}: {document_count} documents</li>")
-
-        html_content = render_template(
-            "clean_document_job_mail_template-US.html",
-        )
-        mail.send(to=to, subject="立即加入 Dify 工作空间", html=html_content)
 
         end_at = time.perf_counter()
         logging.info(
