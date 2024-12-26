@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useCallback } from 'react'
+import React, { useState } from 'react'
 import useSWR from 'swr'
 import { useWorkflowRun } from '../hooks'
 import VersionHistoryItem from './version-history-item'
@@ -16,13 +16,13 @@ const VersionHistoryModal = () => {
   const [page, setPage] = useState(1)
   const { handleRestoreFromPublishedWorkflow } = useWorkflowRun()
   const appDetail = useAppStore.getState().appDetail
-  
+
   const {
     data: versionHistory,
     isLoading,
   } = useSWR(
     `/apps/${appDetail?.id}/workflows/publish/all?page=${page}&limit=${limit}`,
-    fetchPublishedAllWorkflow
+    fetchPublishedAllWorkflow,
   )
 
   const handleVersionClick = (item: VersionHistory) => {
@@ -33,50 +33,51 @@ const VersionHistoryModal = () => {
   }
 
   const handleNextPage = () => {
-    if (versionHistory?.has_more) {
+    if (versionHistory?.has_more)
       setPage(page => page + 1)
-    }
   }
 
   return (
     <div className='w-[336px] bg-white rounded-2xl border-[0.5px] border-gray-200 shadow-xl p-2'>
       <div className="max-h-[400px] overflow-auto">
-        {isLoading && page === 1 ? (
-          <div className='flex items-center justify-center h-10'>
-            <Loading/>
-          </div>
-        ) : (
-          <>
-            {versionHistory?.items?.map(item => (
-              <VersionHistoryItem
-                key={item.version}
-                item={item}
-                selectedVersion={selectedVersion}
-                onClick={handleVersionClick}
-              />
-            ))}
-            {isLoading && page > 1 && (
-              <div className='flex items-center justify-center h-10'>
-                <Loading/>
-              </div>
-            )}
-            {!isLoading && versionHistory?.has_more && (
-              <div className='flex items-center justify-center h-10 mt-2'>
-                <Button
-                  className='text-sm'
-                  onClick={handleNextPage}
-                >
+        {(isLoading && page) === 1
+          ? (
+            <div className='flex items-center justify-center h-10'>
+              <Loading/>
+            </div>
+          )
+          : (
+            <>
+              {versionHistory?.items?.map(item => (
+                <VersionHistoryItem
+                  key={item.version}
+                  item={item}
+                  selectedVersion={selectedVersion}
+                  onClick={handleVersionClick}
+                />
+              ))}
+              {isLoading && page > 1 && (
+                <div className='flex items-center justify-center h-10'>
+                  <Loading/>
+                </div>
+              )}
+              {!isLoading && versionHistory?.has_more && (
+                <div className='flex items-center justify-center h-10 mt-2'>
+                  <Button
+                    className='text-sm'
+                    onClick={handleNextPage}
+                  >
                   加载更多
-                </Button>
-              </div>
-            )}
-            {!isLoading && !versionHistory?.items?.length && (
-              <div className='flex items-center justify-center h-10 text-gray-500'>
+                  </Button>
+                </div>
+              )}
+              {!isLoading && !versionHistory?.items?.length && (
+                <div className='flex items-center justify-center h-10 text-gray-500'>
                 暂无历史版本
-              </div>
-            )}
-          </>
-        )}
+                </div>
+              )}
+            </>
+          )}
       </div>
     </div>
   )
