@@ -43,7 +43,6 @@ const SpecialResultPanel = ({
         showIteratingDetail && (
           <IterationResultPanel
             list={iterationResultList}
-            onHide={setShowIteratingDetailFalse}
             onBack={setShowIteratingDetailFalse}
             iterDurationMap={iterationResultDurationMap}
           />

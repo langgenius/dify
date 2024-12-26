@@ -9,7 +9,7 @@ import { FileList } from '@/app/components/base/file-uploader'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 
-interface OutputPanelProps {
+type OutputPanelProps = {
   isRunning?: boolean
   outputs?: any
   error?: string
@@ -47,7 +47,7 @@ const OutputPanel: FC<OutputPanelProps> = ({
     return getProcessedFilesFromResponse(fileList)
   }, [outputs])
   return (
-    <div className='py-2'>
+    <div className='p-2'>
       {isRunning && (
         <div className='pt-4 pl-[26px]'>
           <LoadingAnim type='text' />

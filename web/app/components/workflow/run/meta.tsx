@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import useTimestamp from '@/hooks/use-timestamp'
 
-interface Props {
+type Props = {
   status: string
   executor?: string
   startTime?: number
