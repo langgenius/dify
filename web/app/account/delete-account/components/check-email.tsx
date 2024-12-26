@@ -1,6 +1,7 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { useCallback, useState } from 'react'
+import Link from 'next/link'
 import { useSendDeleteAccountEmail } from '../state'
 import { useAppContext } from '@/context/app-context'
 import Input from '@/app/components/base/input'
@@ -28,8 +29,12 @@ export default function CheckEmail(props: DeleteAccountProps) {
   }, [getDeleteEmailVerifyCode, props])
 
   return <>
-    <div className='pt-1 pb-2 text-text-destructive body-md-medium'>
+    <div className='py-1 text-text-destructive body-md-medium'>
       {t('common.account.deleteTip')}
+    </div>
+    <div className='pt-1 pb-2 text-text-secondary body-md-regular'>
+      {t('common.account.deletePrivacyLinkTip')}
+      <Link href='https://dify.ai/privacy' className='text-text-accent'>{t('common.account.deletePrivacyLink')}</Link>
     </div>
     <label className='mt-3 mb-1 h-6 flex items-center system-sm-semibold text-text-secondary'>{t('common.account.deleteLabel')}</label>
     <Input placeholder={t('common.account.deletePlaceholder') as string} onChange={(e) => {
