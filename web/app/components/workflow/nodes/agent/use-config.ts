@@ -20,7 +20,6 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   const currentStrategy = strategies.data?.declaration.strategies.find(
     str => str.identity.name === inputs.agent_strategy_name,
   )
-  console.log('currentStrategy', currentStrategy, 'strategies', strategies, 'inputs', inputs)
   return {
     readOnly,
     inputs,

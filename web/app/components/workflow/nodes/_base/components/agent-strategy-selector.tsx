@@ -76,7 +76,6 @@ export const AgentStrategySelector = (props: AgentStrategySelectorProps) => {
   const [query, setQuery] = useState('')
   const stra = useStrategyProviders()
   const list = stra.data ? formatStrategy(stra.data) : undefined
-  console.log('list', list, 'stra', stra)
   const filteredTools = useMemo(() => {
     if (!list) return []
     return list.filter(tool => tool.name.toLowerCase().includes(query.toLowerCase()))
@@ -125,7 +124,6 @@ export const AgentStrategySelector = (props: AgentStrategySelectorProps) => {
                 agent_parameters: tool!.params,
                 agent_strategy_label: tool!.tool_label,
               })
-              console.log(tool, 'tool')
               setOpen(false)
             }}
             hasSearchText={false}
