@@ -3,13 +3,13 @@ from datetime import UTC, datetime
 from typing import Optional
 
 import requests
-from api.controllers.console.error import AccountOnRegisterError
 from flask import current_app, redirect, request
 from flask_restful import Resource  # type: ignore
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import languages
+from controllers.console.error import AccountOnRegisterError
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.helper import extract_remote_ip
