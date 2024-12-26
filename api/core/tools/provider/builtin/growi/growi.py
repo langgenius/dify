@@ -4,5 +4,5 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 
 
 class GrowiProvider(BuiltinToolProviderController):
-    def validate_credentials(self, credentials: dict[str, Any]) -> None:
+    def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         return None

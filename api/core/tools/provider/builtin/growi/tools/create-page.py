@@ -8,9 +8,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 class CreatePageTool(BuiltinTool):
     def _invoke(
-        self,
-        user_id: str,
-        tool_parameters: dict[str, Any]
+        self, user_id: str, tool_parameters: dict[str, Any]
     ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         # Validate credentials
         growi_url = self.runtime.credentials.get("growi_url")
@@ -30,12 +28,12 @@ class CreatePageTool(BuiltinTool):
         }
 
         if not (path or parent_path):
-            data['parentPath'] = '/'
+            data["parentPath"] = "/"
         else:
             if path:
-                data['path'] = path
+                data["path"] = path
             if parent_path:
-                data['parentPath'] = parent_path
+                data["parentPath"] = parent_path
 
         # Send request
         try:
