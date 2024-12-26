@@ -100,7 +100,9 @@ class PluginMigration:
 
             click.echo(
                 click.style(
-                    f"Processed {handled_tenant_count} tenants ({(handled_tenant_count/total_tenant_count)*100:.1f}%), {handled_tenant_count}/{total_tenant_count}",
+                    f"Processed {handled_tenant_count} tenants "
+                    f"({(handled_tenant_count / total_tenant_count) * 100:.1f}%), "
+                    f"{handled_tenant_count}/{total_tenant_count}",
                     fg="green",
                 )
             )
