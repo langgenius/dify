@@ -1,12 +1,14 @@
 import Button from '@/app/components/base/button'
 import { RiArrowLeftLine } from '@remixicon/react'
-import TracingPanel from '../tracing-panel'
+import AgentLogItem from './agent-log-item'
+import type { AgentLogItemWithChildren } from '@/types/workflow'
 
 type AgentResultPanelProps = {
-  onBack: () => void
+  list: AgentLogItemWithChildren[]
+  setAgentResultList: (list: AgentLogItemWithChildren[]) => void
 }
 const AgentResultPanel = ({
-  onBack,
+  list,
 }: AgentResultPanelProps) => {
   return (
     <div className='overflow-y-auto'>
@@ -15,7 +17,7 @@ const AgentResultPanel = ({
           className='shrink-0 px-[5px]'
           size='small'
           variant='ghost-accent'
-          onClick={onBack}
+          onClick={() => {}}
         >
           <RiArrowLeftLine className='mr-1 w-3.5 h-3.5' />
           Back
@@ -28,14 +30,23 @@ const AgentResultPanel = ({
           className='px-[5px]'
           size='small'
           variant='ghost-accent'
-          onClick={onBack}
+          onClick={() => {}}
         >
           close
         </Button>
       </div>
-      <TracingPanel
-        list={[]}
-      />
+      {
+        <div className='p-2'>
+          {
+            list.map(item => (
+              <AgentLogItem
+                key={item.id}
+                item={item}
+              />
+            ))
+          }
+        </div>
+      }
     </div>
   )
 }

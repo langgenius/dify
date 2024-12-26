@@ -1,7 +1,7 @@
 from functools import wraps
 
-from flask_login import current_user
-from flask_restful import Resource
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource  # type: ignore
 from werkzeug.exceptions import NotFound
 
 from controllers.console.wraps import account_initialization_required

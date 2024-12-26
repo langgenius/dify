@@ -6,8 +6,6 @@ import { useTranslation } from 'react-i18next'
 import OutputPanel from './output-panel'
 import ResultPanel from './result-panel'
 import TracingPanel from './tracing-panel'
-import SpecialResultPanel from './special-result-panel'
-import { useLogs } from './hooks'
 import cn from '@/utils/classnames'
 import { ToastContext } from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
@@ -105,24 +103,6 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
     adjustResultHeight()
   }, [loading])
 
-  const {
-    showSpecialResultPanel,
-
-    showRetryDetail,
-    setShowRetryDetailFalse,
-    retryResultList,
-    handleShowRetryResultList,
-
-    showIteratingDetail,
-    setShowIteratingDetailFalse,
-    iterationResultList,
-    iterationResultDurationMap,
-    handleShowIterationResultList,
-
-    showAgentDetail,
-    setShowAgentDetailFalse,
-  } = useLogs()
-
   return (
     <div className='grow relative flex flex-col'>
       {/* tab */}
@@ -152,7 +132,7 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
         >{t('runLog.tracing')}</div>
       </div>
       {/* panel detail */}
-      <div ref={ref} className={cn('grow bg-components-panel-bg h-0 overflow-y-auto rounded-b-2xl', currentTab !== 'DETAIL' && '!bg-background-section-burn')}>
+      <div ref={ref} className={cn('relative grow bg-components-panel-bg h-0 overflow-y-auto rounded-b-2xl')}>
         {loading && (
           <div className='flex h-full items-center justify-center bg-components-panel-bg'>
             <Loading />
@@ -179,31 +159,12 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
             exceptionCounts={runDetail.exceptions_count}
           />
         )}
-        {!loading && currentTab === 'TRACING' && !showSpecialResultPanel && (
+        {!loading && currentTab === 'TRACING' && (
           <TracingPanel
             className='bg-background-section-burn'
             list={list}
-            onShowIterationDetail={handleShowIterationResultList}
-            onShowRetryDetail={handleShowRetryResultList}
           />
         )}
-        {
-          !loading && currentTab === 'TRACING' && showSpecialResultPanel && (
-            <SpecialResultPanel
-              showRetryDetail={showRetryDetail}
-              setShowRetryDetailFalse={setShowRetryDetailFalse}
-              retryResultList={retryResultList}
-
-              showIteratingDetail={showIteratingDetail}
-              setShowIteratingDetailFalse={setShowIteratingDetailFalse}
-              iterationResultList={iterationResultList}
-              iterationResultDurationMap={iterationResultDurationMap}
-
-              showAgentDetail={showAgentDetail}
-              setShowAgentDetailFalse={setShowAgentDetailFalse}
-            />
-          )
-        }
       </div>
     </div>
   )

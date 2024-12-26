@@ -1,11 +1,11 @@
 from os.path import abspath, dirname, join
 from threading import Lock
 
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer  # type: ignore
 
 
 class JinaTokenizer:
-    _tokenizer = None
+    _tokenizer: AutoTokenizer | None = None
     _lock = Lock()
 
     @classmethod

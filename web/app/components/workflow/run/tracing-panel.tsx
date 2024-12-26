@@ -12,16 +12,16 @@ import {
   RiMenu4Line,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { useLogs } from './hooks'
 import NodePanel from './node'
+import SpecialResultPanel from './special-result-panel'
 import {
   BlockEnum,
 } from '@/app/components/workflow/types'
-import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
+import type { NodeTracing } from '@/types/workflow'
 
 type TracingPanelProps = {
   list: NodeTracing[]
-  onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
-  onShowRetryDetail?: (detail: NodeTracing[]) => void
   className?: string
   hideNodeInfo?: boolean
   hideNodeProcessDetail?: boolean
@@ -160,8 +160,6 @@ function buildLogTree(nodes: NodeTracing[], t: (key: string) => string): Tracing
 
 const TracingPanel: FC<TracingPanelProps> = ({
   list,
-  onShowIterationDetail,
-  onShowRetryDetail,
   className,
   hideNodeInfo = false,
   hideNodeProcessDetail = false,
@@ -202,6 +200,24 @@ const TracingPanel: FC<TracingPanelProps> = ({
       setHoveredParallel(null)
     }
   }, [])
+
+  const {
+    showSpecialResultPanel,
+
+    showRetryDetail,
+    setShowRetryDetailFalse,
+    retryResultList,
+    handleShowRetryResultList,
+
+    showIteratingDetail,
+    setShowIteratingDetailFalse,
+    iterationResultList,
+    iterationResultDurationMap,
+    handleShowIterationResultList,
+
+    agentResultList,
+    setAgentResultList,
+  } = useLogs()
 
   const renderNode = (node: TracingNodeProps) => {
     if (node.isParallel) {
@@ -252,8 +268,9 @@ const TracingPanel: FC<TracingPanelProps> = ({
           </div>
           <NodePanel
             nodeInfo={node.data!}
-            onShowIterationDetail={onShowIterationDetail}
-            onShowRetryDetail={onShowRetryDetail}
+            onShowIterationDetail={handleShowIterationResultList}
+            onShowRetryDetail={handleShowRetryResultList}
+            onShowAgentResultList={setAgentResultList}
             justShowIterationNavArrow={true}
             justShowRetryNavArrow={true}
             hideInfo={hideNodeInfo}
@@ -262,6 +279,24 @@ const TracingPanel: FC<TracingPanelProps> = ({
         </div>
       )
     }
+  }
+
+  if (showSpecialResultPanel) {
+    return (
+      <SpecialResultPanel
+        showRetryDetail={showRetryDetail}
+        setShowRetryDetailFalse={setShowRetryDetailFalse}
+        retryResultList={retryResultList}
+
+        showIteratingDetail={showIteratingDetail}
+        setShowIteratingDetailFalse={setShowIteratingDetailFalse}
+        iterationResultList={iterationResultList}
+        iterationResultDurationMap={iterationResultDurationMap}
+
+        agentResultList={agentResultList}
+        setAgentResultList={setAgentResultList}
+      />
+    )
   }
 
   return (

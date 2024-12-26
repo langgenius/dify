@@ -5,7 +5,7 @@ from dify_app import DifyApp
 def init_app(app: DifyApp):
     # register blueprint routers
 
-    from flask_cors import CORS
+    from flask_cors import CORS  # type: ignore
 
     from controllers.console import bp as console_app_bp
     from controllers.files import bp as files_bp

@@ -1,4 +1,5 @@
-from typing import Optional
+from collections.abc import Mapping
+from typing import Any, Optional, cast
 
 from core.extension.extensible import ExtensionModule
 from extensions.ext_code_based_extension import code_based_extension
@@ -23,9 +24,10 @@ class ExternalDataToolFactory:
         """
         code_based_extension.validate_form_schema(ExtensionModule.EXTERNAL_DATA_TOOL, name, config)
         extension_class = code_based_extension.extension_class(ExtensionModule.EXTERNAL_DATA_TOOL, name)
-        extension_class.validate_config(tenant_id, config)
+        # FIXME mypy issue here, figure out how to fix it
+        extension_class.validate_config(tenant_id, config)  # type: ignore
 
-    def query(self, inputs: dict, query: Optional[str] = None) -> str:
+    def query(self, inputs: Mapping[str, Any], query: Optional[str] = None) -> str:
         """
         Query the external data tool.
 
@@ -33,4 +35,4 @@ class ExternalDataToolFactory:
         :param query: the query of chat app
         :return: the tool query result
         """
-        return self.__extension_instance.query(inputs, query)
+        return cast(str, self.__extension_instance.query(inputs, query))

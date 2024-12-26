@@ -13,7 +13,7 @@ class APIBasedExtensionPoint(enum.Enum):
     APP_MODERATION_OUTPUT = "app.moderation.output"
 
 
-class APIBasedExtension(db.Model):
+class APIBasedExtension(db.Model):  # type: ignore[name-defined]
     __tablename__ = "api_based_extensions"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="api_based_extension_pkey"),

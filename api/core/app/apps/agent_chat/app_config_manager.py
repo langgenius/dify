@@ -61,7 +61,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
             app_model_config_dict = app_model_config.to_dict()
             config_dict = app_model_config_dict.copy()
         else:
-            config_dict = override_config_dict
+            config_dict = override_config_dict or {}
 
         app_mode = AppMode.value_of(app_model.mode)
         app_config = AgentChatAppConfig(

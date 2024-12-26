@@ -21,6 +21,7 @@ export type IToastProps = {
   children?: ReactNode
   onClose?: () => void
   className?: string
+  customComponent?: ReactNode
 }
 type IToastContext = {
   notify: (props: IToastProps) => void
@@ -35,6 +36,7 @@ const Toast = ({
   message,
   children,
   className,
+  customComponent,
 }: IToastProps) => {
   const { close } = useToastContext()
   // sometimes message is react node array. Not handle it.
@@ -119,7 +121,8 @@ Toast.notify = ({
   message,
   duration,
   className,
-}: Pick<IToastProps, 'type' | 'size' | 'message' | 'duration' | 'className'>) => {
+  customComponent,
+}: Pick<IToastProps, 'type' | 'size' | 'message' | 'duration' | 'className' | 'customComponent'>) => {
   const defaultDuring = (type === 'success' || type === 'info') ? 3000 : 6000
   if (typeof window === 'object') {
     const holder = document.createElement('div')
@@ -135,7 +138,7 @@ Toast.notify = ({
           }
         },
       }}>
-        <Toast type={type} size={size} message={message} duration={duration} className={className} />
+        <Toast type={type} size={size} message={message} duration={duration} className={className} customComponent={customComponent} />
       </ToastContext.Provider>,
     )
     document.body.appendChild(holder)

@@ -4,7 +4,7 @@ from typing import Optional
 
 class JiebaKeywordTableHandler:
     def __init__(self):
-        import jieba.analyse
+        import jieba.analyse  # type: ignore
 
         from core.rag.datasource.keyword.jieba.stopwords import STOPWORDS
 
@@ -12,7 +12,7 @@ class JiebaKeywordTableHandler:
 
     def extract_keywords(self, text: str, max_keywords_per_chunk: Optional[int] = 10) -> set[str]:
         """Extract keywords with JIEBA tfidf."""
-        import jieba
+        import jieba  # type: ignore
 
         keywords = jieba.analyse.extract_tags(
             sentence=text,

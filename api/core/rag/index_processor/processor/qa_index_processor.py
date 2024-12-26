@@ -21,26 +21,41 @@ from core.rag.models.document import Document
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
 from models.dataset import Dataset
+from services.entities.knowledge_entities.knowledge_entities import Rule
 
 
 class QAIndexProcessor(BaseIndexProcessor):
     def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
         text_docs = ExtractProcessor.extract(
-            extract_setting=extract_setting, is_automatic=kwargs.get("process_rule_mode") == "automatic"
+            extract_setting=extract_setting,
+            is_automatic=(
+                kwargs.get("process_rule_mode") == "automatic" or kwargs.get("process_rule_mode") == "hierarchical"
+            ),
         )
         return text_docs
 
     def transform(self, documents: list[Document], **kwargs) -> list[Document]:
+        preview = kwargs.get("preview")
+        process_rule = kwargs.get("process_rule")
+        if not process_rule:
+            raise ValueError("No process rule found.")
+        if not process_rule.get("rules"):
+            raise ValueError("No rules found in process rule.")
+        rules = Rule(**process_rule.get("rules"))
         splitter = self._get_splitter(
-            processing_rule=kwargs.get("process_rule"), embedding_model_instance=kwargs.get("embedding_model_instance")
+            processing_rule_mode=process_rule.get("mode"),
+            max_tokens=rules.segmentation.max_tokens if rules.segmentation else 0,
+            chunk_overlap=rules.segmentation.chunk_overlap if rules.segmentation else 0,
+            separator=rules.segmentation.separator if rules.segmentation else "",
+            embedding_model_instance=kwargs.get("embedding_model_instance"),
         )
 
         # Split the text documents into nodes.
-        all_documents = []
-        all_qa_documents = []
+        all_documents: list[Document] = []
+        all_qa_documents: list[Document] = []
         for document in documents:
             # document clean
-            document_text = CleanProcessor.clean(document.page_content, kwargs.get("process_rule"))
+            document_text = CleanProcessor.clean(document.page_content, kwargs.get("process_rule") or {})
             document.page_content = document_text
 
             # parse document to nodes
@@ -50,31 +65,41 @@ class QAIndexProcessor(BaseIndexProcessor):
                 if document_node.page_content.strip():
                     doc_id = str(uuid.uuid4())
                     hash = helper.generate_text_hash(document_node.page_content)
-                    document_node.metadata["doc_id"] = doc_id
-                    document_node.metadata["doc_hash"] = hash
+                    if document_node.metadata is not None:
+                        document_node.metadata["doc_id"] = doc_id
+                        document_node.metadata["doc_hash"] = hash
                     # delete Splitter character
                     page_content = document_node.page_content
                     document_node.page_content = remove_leading_symbols(page_content)
                     split_documents.append(document_node)
             all_documents.extend(split_documents)
-        for i in range(0, len(all_documents), 10):
-            threads = []
-            sub_documents = all_documents[i : i + 10]
-            for doc in sub_documents:
-                document_format_thread = threading.Thread(
-                    target=self._format_qa_document,
-                    kwargs={
-                        "flask_app": current_app._get_current_object(),
-                        "tenant_id": kwargs.get("tenant_id"),
-                        "document_node": doc,
-                        "all_qa_documents": all_qa_documents,
-                        "document_language": kwargs.get("doc_language", "English"),
-                    },
-                )
-                threads.append(document_format_thread)
-                document_format_thread.start()
-            for thread in threads:
-                thread.join()
+        if preview:
+            self._format_qa_document(
+                current_app._get_current_object(),  # type: ignore
+                kwargs.get("tenant_id"),  # type: ignore
+                all_documents[0],
+                all_qa_documents,
+                kwargs.get("doc_language", "English"),
+            )
+        else:
+            for i in range(0, len(all_documents), 10):
+                threads = []
+                sub_documents = all_documents[i : i + 10]
+                for doc in sub_documents:
+                    document_format_thread = threading.Thread(
+                        target=self._format_qa_document,
+                        kwargs={
+                            "flask_app": current_app._get_current_object(),  # type: ignore
+                            "tenant_id": kwargs.get("tenant_id"),  # type: ignore
+                            "document_node": doc,
+                            "all_qa_documents": all_qa_documents,
+                            "document_language": kwargs.get("doc_language", "English"),
+                        },
+                    )
+                    threads.append(document_format_thread)
+                    document_format_thread.start()
+                for thread in threads:
+                    thread.join()
         return all_qa_documents
 
     def format_by_template(self, file: FileStorage, **kwargs) -> list[Document]:
@@ -96,12 +121,12 @@ class QAIndexProcessor(BaseIndexProcessor):
             raise ValueError(str(e))
         return text_docs
 
-    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True):
+    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True, **kwargs):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             vector.create(documents)
 
-    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True):
+    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True, **kwargs):
         vector = Vector(dataset)
         if node_ids:
             vector.delete_by_ids(node_ids)
@@ -148,11 +173,12 @@ class QAIndexProcessor(BaseIndexProcessor):
                 qa_documents = []
                 for result in document_qa_list:
                     qa_document = Document(page_content=result["question"], metadata=document_node.metadata.copy())
-                    doc_id = str(uuid.uuid4())
-                    hash = helper.generate_text_hash(result["question"])
-                    qa_document.metadata["answer"] = result["answer"]
-                    qa_document.metadata["doc_id"] = doc_id
-                    qa_document.metadata["doc_hash"] = hash
+                    if qa_document.metadata is not None:
+                        doc_id = str(uuid.uuid4())
+                        hash = helper.generate_text_hash(result["question"])
+                        qa_document.metadata["answer"] = result["answer"]
+                        qa_document.metadata["doc_id"] = doc_id
+                        qa_document.metadata["doc_hash"] = hash
                     qa_documents.append(qa_document)
                 format_documents.extend(qa_documents)
             except Exception as e:

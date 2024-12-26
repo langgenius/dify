@@ -1,7 +1,7 @@
 import logging
 import mimetypes
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, Optional
 
 from configs import dify_config
 from core.file import File, FileTransferMethod
@@ -36,7 +36,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
     _node_type = NodeType.HTTP_REQUEST
 
     @classmethod
-    def get_default_config(cls, filters: dict | None = None) -> dict:
+    def get_default_config(cls, filters: Optional[dict[str, Any]] = None) -> dict:
         return {
             "type": "http-request",
             "config": {
@@ -160,8 +160,8 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
                             )
 
         mapping = {}
-        for selector in selectors:
-            mapping[node_id + "." + selector.variable] = selector.value_selector
+        for selector_iter in selectors:
+            mapping[node_id + "." + selector_iter.variable] = selector_iter.value_selector
 
         return mapping
 

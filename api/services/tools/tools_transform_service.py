@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Optional, Union
+from typing import Optional, Union, cast
 
 from configs import dify_config
 from core.tools.entities.api_entities import UserTool, UserToolProvider
@@ -35,7 +35,7 @@ class ToolTransformService:
             return url_prefix + "builtin/" + provider_name + "/icon"
         elif provider_type in {ToolProviderType.API.value, ToolProviderType.WORKFLOW.value}:
             try:
-                return json.loads(icon)
+                return cast(dict, json.loads(icon))
             except:
                 return {"background": "#252525", "content": "\ud83d\ude01"}
 
@@ -53,8 +53,11 @@ class ToolTransformService:
                 provider_type=provider["type"], provider_name=provider["name"], icon=provider["icon"]
             )
         elif isinstance(provider, UserToolProvider):
-            provider.icon = ToolTransformService.get_tool_provider_icon_url(
-                provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon
+            provider.icon = cast(
+                str,
+                ToolTransformService.get_tool_provider_icon_url(
+                    provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon
+                ),
             )
 
     @staticmethod
@@ -66,6 +69,9 @@ class ToolTransformService:
         """
         convert provider controller to user provider
         """
+        if provider_controller.identity is None:
+            raise ValueError("provider identity is None")
+
         result = UserToolProvider(
             id=provider_controller.identity.name,
             author=provider_controller.identity.author,
@@ -93,7 +99,8 @@ class ToolTransformService:
         # get credentials schema
         schema = provider_controller.get_credentials_schema()
         for name, value in schema.items():
-            result.masked_credentials[name] = ToolProviderCredentials.CredentialsType.default(value.type)
+            assert result.masked_credentials is not None, "masked credentials is None"
+            result.masked_credentials[name] = ToolProviderCredentials.CredentialsType.default(str(value.type))
 
         # check if the provider need credentials
         if not provider_controller.need_credentials:
@@ -149,6 +156,9 @@ class ToolTransformService:
         """
         convert provider controller to user provider
         """
+        if provider_controller.identity is None:
+            raise ValueError("provider identity is None")
+
         return UserToolProvider(
             id=provider_controller.provider_id,
             author=provider_controller.identity.author,
@@ -180,6 +190,8 @@ class ToolTransformService:
         convert provider controller to user provider
         """
         username = "Anonymous"
+        if db_provider.user is None:
+            raise ValueError(f"user is None for api provider {db_provider.id}")
         try:
             username = db_provider.user.name
         except Exception as e:
@@ -256,19 +268,22 @@ class ToolTransformService:
                 if not found and runtime_parameter.form == ToolParameter.ToolParameterForm.FORM:
                     current_parameters.append(runtime_parameter)
 
+            if tool.identity is None:
+                raise ValueError("tool identity is None")
+
             return UserTool(
                 author=tool.identity.author,
                 name=tool.identity.name,
                 label=tool.identity.label,
-                description=tool.description.human,
+                description=tool.description.human if tool.description else "",  # type: ignore
                 parameters=current_parameters,
                 labels=labels,
             )
         if isinstance(tool, ApiToolBundle):
             return UserTool(
                 author=tool.author,
-                name=tool.operation_id,
-                label=I18nObject(en_US=tool.operation_id, zh_Hans=tool.operation_id),
+                name=tool.operation_id or "",
+                label=I18nObject(en_US=tool.operation_id or "", zh_Hans=tool.operation_id or ""),
                 description=I18nObject(en_US=tool.summary or "", zh_Hans=tool.summary or ""),
                 parameters=tool.parameters,
                 labels=labels,

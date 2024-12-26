@@ -14,7 +14,7 @@ class UserTool(BaseModel):
     label: I18nObject  # label
     description: I18nObject
     parameters: Optional[list[ToolParameter]] = None
-    labels: list[str] = None
+    labels: list[str] | None = None
 
 
 UserToolProviderTypeLiteral = Optional[Literal["builtin", "api", "workflow"]]

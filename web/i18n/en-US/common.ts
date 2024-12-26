@@ -46,6 +46,10 @@ const translation = {
     zoomIn: 'Zoom In',
     openInNewTab: 'Open in new tab',
     in: 'in',
+    saveAndRegenerate: 'Save & Regenerate Child Chunks',
+    view: 'View',
+    viewMore: 'VIEW MORE',
+    regenerate: 'Regenerate',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
@@ -487,9 +491,10 @@ const translation = {
     documents: 'Documents',
     hitTesting: 'Retrieval Testing',
     settings: 'Settings',
-    emptyTip: 'The Knowledge has not been associated, please go to the application or plug-in to complete the association.',
+    emptyTip: 'This Knowledge has not been integrated within any application. Please refer to the document for guidance.',
     viewDoc: 'View documentation',
     relatedApp: 'linked apps',
+    noRelatedApp: 'No linked apps',
   },
   voiceInput: {
     speaking: 'Speak now...',

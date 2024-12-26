@@ -3,7 +3,11 @@ import {
   useState,
 } from 'react'
 import { useBoolean } from 'ahooks'
-import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
+import type {
+  AgentLogItemWithChildren,
+  IterationDurationMap,
+  NodeTracing,
+} from '@/types/workflow'
 
 export const useLogs = () => {
   const [showRetryDetail, {
@@ -28,13 +32,10 @@ export const useLogs = () => {
     setIterationResultDurationMap(iterDurationMap)
   }, [setShowIteratingDetailTrue, setIterationResultList, setIterationResultDurationMap])
 
-  const [showAgentDetail, {
-    setTrue: setShowAgentDetailTrue,
-    setFalse: setShowAgentDetailFalse,
-  }] = useBoolean(false)
+  const [agentResultList, setAgentResultList] = useState<AgentLogItemWithChildren[]>([])
 
   return {
-    showSpecialResultPanel: showRetryDetail || showIteratingDetail,
+    showSpecialResultPanel: showRetryDetail || showIteratingDetail || !!agentResultList.length,
     showRetryDetail,
     setShowRetryDetailTrue,
     setShowRetryDetailFalse,
@@ -51,8 +52,7 @@ export const useLogs = () => {
     setIterationResultDurationMap,
     handleShowIterationResultList,
 
-    showAgentDetail,
-    setShowAgentDetailTrue,
-    setShowAgentDetailFalse,
+    agentResultList,
+    setAgentResultList,
   }
 }

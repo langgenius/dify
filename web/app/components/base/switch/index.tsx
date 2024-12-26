@@ -64,4 +64,7 @@ const Switch = ({ onChange, size = 'md', defaultValue = false, disabled = false,
     </OriginalSwitch>
   )
 }
+
+Switch.displayName = 'Switch'
+
 export default React.memo(Switch)

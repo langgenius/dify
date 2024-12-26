@@ -3,7 +3,8 @@ import cn from '@/utils/classnames'
 
 type BadgeProps = {
   className?: string
-  text: string | React.ReactNode
+  text?: string
+  children?: React.ReactNode
   uppercase?: boolean
   hasRedCornerMark?: boolean
 }
@@ -11,6 +12,7 @@ type BadgeProps = {
 const Badge = ({
   className,
   text,
+  children,
   uppercase = true,
   hasRedCornerMark,
 }: BadgeProps) => {
@@ -22,11 +24,11 @@ const Badge = ({
         className,
       )}
     >
-      {text}
       {hasRedCornerMark && (
         <div className='absolute top-[-2px] right-[-2px] w-1.5 h-1.5 border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg rounded-[2px] shadow-sm'>
         </div>
       )}
+      {children || text}
     </div>
   )
 }

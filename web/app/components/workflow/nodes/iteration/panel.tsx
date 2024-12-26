@@ -53,7 +53,6 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
     isShowIterationDetail,
     backToSingleRun,
     showIterationDetail,
-    hideIterationDetail,
     runningStatus,
     handleRun,
     handleStop,
@@ -181,7 +180,6 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
       {isShowIterationDetail && (
         <IterationResultPanel
           onBack={backToSingleRun}
-          onHide={hideIterationDetail}
           list={iterationRunResult}
         />
       )}

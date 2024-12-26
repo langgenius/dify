@@ -1,12 +1,11 @@
 import logging
 from datetime import UTC, datetime
 
-from flask_login import current_user
-from flask_restful import reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import reqparse  # type: ignore
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
-from controllers.console import api
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -147,21 +146,3 @@ class ChatStopApi(InstalledAppResource):
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
 
         return {"result": "success"}, 200
-
-
-api.add_resource(
-    CompletionApi, "/installed-apps/<uuid:installed_app_id>/completion-messages", endpoint="installed_app_completion"
-)
-api.add_resource(
-    CompletionStopApi,
-    "/installed-apps/<uuid:installed_app_id>/completion-messages/<string:task_id>/stop",
-    endpoint="installed_app_stop_completion",
-)
-api.add_resource(
-    ChatApi, "/installed-apps/<uuid:installed_app_id>/chat-messages", endpoint="installed_app_chat_completion"
-)
-api.add_resource(
-    ChatStopApi,
-    "/installed-apps/<uuid:installed_app_id>/chat-messages/<string:task_id>/stop",
-    endpoint="installed_app_stop_chat_completion",
-)
