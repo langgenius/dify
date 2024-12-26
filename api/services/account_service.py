@@ -432,6 +432,7 @@ class AccountService:
     def send_email_code_login_email(
         cls, account: Optional[Account] = None, email: Optional[str] = None, language: Optional[str] = "en-US"
     ):
+        email = account.email if account else email
         if email is None:
             raise ValueError("Email must be provided.")
         if cls.email_code_login_rate_limiter.is_rate_limited(email):

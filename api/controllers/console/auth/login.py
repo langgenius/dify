@@ -115,8 +115,10 @@ class ResetPasswordSendEmailApi(Resource):
             language = "zh-Hans"
         else:
             language = "en-US"
-
-        account = AccountService.get_user_through_email(args["email"])
+        try:
+            account = AccountService.get_user_through_email(args["email"])
+        except AccountRegisterError as are:
+            raise AccountOnRegisterError(description=str(are))
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
@@ -144,8 +146,11 @@ class EmailCodeLoginSendEmailApi(Resource):
             language = "zh-Hans"
         else:
             language = "en-US"
+        try:
+            account = AccountService.get_user_through_email(args["email"])
+        except AccountRegisterError as are:
+            raise AccountOnRegisterError(description=str(are))
 
-        account = AccountService.get_user_through_email(args["email"])
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
                 token = AccountService.send_email_code_login_email(email=args["email"], language=language)
@@ -179,7 +184,10 @@ class EmailCodeLoginApi(Resource):
             raise EmailCodeError()
 
         AccountService.revoke_email_code_login_token(args["token"])
-        account = AccountService.get_user_through_email(user_email)
+        try:
+            account = AccountService.get_user_through_email(user_email)
+        except AccountRegisterError as are:
+            raise AccountOnRegisterError(description=str(are))
         if account:
             tenant = TenantService.get_join_tenants(account)
             if not tenant:
