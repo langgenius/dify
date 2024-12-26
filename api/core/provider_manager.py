@@ -1,7 +1,7 @@
 import json
 from collections import defaultdict
 from json import JSONDecodeError
-from typing import Optional, cast
+from typing import Any, Optional, cast
 
 from sqlalchemy.exc import IntegrityError
 
@@ -350,7 +350,7 @@ class ProviderManager:
         :param tenant_id: workspace id
         :return:
         """
-        providers = db.session.query(Provider).filter(Provider.tenant_id == tenant_id, Provider.is_valid is True).all()
+        providers = db.session.query(Provider).filter(Provider.tenant_id == tenant_id, Provider.is_valid == True).all()
 
         provider_name_to_provider_records_dict = defaultdict(list)
         for provider in providers:
@@ -369,7 +369,7 @@ class ProviderManager:
         # Get all provider model records of the workspace
         provider_models = (
             db.session.query(ProviderModel)
-            .filter(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid is True)
+            .filter(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
             .all()
         )
 
@@ -735,13 +735,14 @@ class ProviderManager:
                 )
 
                 # Get cached provider credentials
+                # error occurs
                 cached_provider_credentials = provider_credentials_cache.get()
 
                 if not cached_provider_credentials:
                     try:
-                        provider_credentials = json.loads(provider_record.encrypted_config)
+                        provider_credentials: dict[str, Any] = json.loads(provider_record.encrypted_config)
                     except JSONDecodeError:
-                        provider_credentials = {}
+                        provider_credentials: dict[str, Any] = {}
 
                     # Get provider credential secret variables
                     provider_credential_secret_variables = self._extract_secret_variables(
@@ -758,7 +759,9 @@ class ProviderManager:
                         if variable in provider_credentials:
                             try:
                                 provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
-                                    provider_credentials.get(variable), self.decoding_rsa_key, self.decoding_cipher_rsa
+                                    provider_credentials.get(variable, ""),
+                                    self.decoding_rsa_key,
+                                    self.decoding_cipher_rsa,
                                 )
                             except ValueError:
                                 pass
