@@ -146,6 +146,26 @@ const translation = {
   externalAPIPanelDescription: 'API دانش خارجی برای اتصال به یک پایگاه دانش خارج از Dify و بازیابی دانش از آن پایگاه دانش استفاده می شود.',
   allExternalTip: 'هنگامی که فقط از دانش خارجی استفاده می کنید، کاربر می تواند انتخاب کند که آیا مدل Rerank را فعال کند یا خیر. اگر فعال نباشد، تکه های بازیابی شده بر اساس امتیازات مرتب می شوند. هنگامی که استراتژی های بازیابی پایگاه های دانش مختلف متناقض باشد، نادرست خواهد بود.',
   mixtureInternalAndExternalTip: 'مدل Rerank برای آمیختگی دانش درونی و بیرونی مورد نیاز است.',
+  chunkingMode: {
+    parentChild: 'پدر و مادر و فرزند',
+    general: 'عمومی',
+  },
+  parentMode: {
+    fullDoc: 'مستند کامل',
+    paragraph: 'پاراگراف',
+  },
+  batchAction: {
+    disable: 'غیر فعال کردن',
+    cancel: 'لغو',
+    selected: 'انتخاب',
+    enable: 'فعال',
+    delete: 'حذف',
+    archive: 'بایگانی',
+  },
+  enable: 'فعال',
+  documentsDisabled: '{{num}} اسناد غیرفعال - غیرفعال برای بیش از 30 روز',
+  preprocessDocument: '{{عدد}} اسناد پیش پردازش',
+  localDocs: 'اسناد محلی',
 }
 
 export default translation

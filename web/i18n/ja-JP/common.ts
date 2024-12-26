@@ -42,6 +42,11 @@ const translation = {
     openInNewTab: '新しいタブで開く',
     zoomOut: 'ズームアウト',
     copyImage: '画像をコピー',
+    viewMore: 'もっと見る',
+    view: '眺める',
+    close: '閉める',
+    saveAndRegenerate: '子チャンクの保存と再生成',
+    regenerate: '再生',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',
@@ -478,6 +483,7 @@ const translation = {
     emptyTip: '関連付けられた知識がありません。アプリケーションやプラグインに移動して関連付けを完了してください。',
     viewDoc: 'ドキュメントを表示',
     relatedApp: '関連アプリ',
+    noRelatedApp: 'リンクされたアプリはありません',
   },
   voiceInput: {
     speaking: '今話しています...',

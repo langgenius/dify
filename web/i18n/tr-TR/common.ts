@@ -42,6 +42,11 @@ const translation = {
     zoomOut: 'Uzaklaştırma',
     openInNewTab: 'Yeni sekmede aç',
     zoomIn: 'Yakınlaştırma',
+    view: 'Görünüm',
+    viewMore: 'DAHA FAZLA GÖSTER',
+    regenerate: 'Yenilemek',
+    saveAndRegenerate: 'Alt Parçaları Kaydetme ve Yeniden Oluşturma',
+    close: 'Kapatmak',
   },
   errorMsg: {
     fieldRequired: '{{field}} gereklidir',
@@ -478,6 +483,7 @@ const translation = {
     emptyTip: 'Bilgi ilişkilendirilmemiş, ilişkilendirme işlemini tamamlamak için uygulama veya eklentiye gidin.',
     viewDoc: 'Dökümantasyon görüntüle',
     relatedApp: 'bağlantılı uygulamalar',
+    noRelatedApp: 'Bağlı uygulama yok',
   },
   voiceInput: {
     speaking: 'Şimdi konuş...',
