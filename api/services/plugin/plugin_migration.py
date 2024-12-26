@@ -30,6 +30,11 @@ class PluginMigration:
         started_at = datetime.datetime(2023, 4, 3, 8, 59, 24)
         current_time = started_at
 
+        with Session(db.engine) as session:
+            total_tenant_count = session.query(Tenant.id).count()
+
+        handled_tenant_count = 0
+
         while current_time < ended_at:
             # Initial interval of 1 day, will be dynamically adjusted based on tenant count
             interval = datetime.timedelta(days=1)
@@ -90,6 +95,15 @@ class PluginMigration:
             for tenant_id in tenants:
                 plugins = cls.extract_installed_plugin_ids(tenant_id)
                 print(plugins)
+
+            handled_tenant_count += len(tenants)
+
+            click.echo(
+                click.style(
+                    f"Processed {handled_tenant_count} tenants ({(handled_tenant_count/total_tenant_count)*100:.1f}%), {handled_tenant_count}/{total_tenant_count}",
+                    fg="green",
+                )
+            )
 
             current_time = batch_end
 
