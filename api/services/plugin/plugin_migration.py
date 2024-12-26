@@ -4,6 +4,7 @@ import logging
 from collections.abc import Sequence
 
 import click
+from flask import Flask, current_app
 from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
@@ -14,7 +15,6 @@ from models.engine import db
 from models.model import App, AppMode, AppModelConfig
 from models.tools import BuiltinToolProvider
 from models.workflow import Workflow
-from flask import Flask, current_app
 
 logger = logging.getLogger(__name__)
 
