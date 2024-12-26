@@ -1,7 +1,6 @@
 import base64
 import secrets
 
-from api.services.errors.account import AccountRegisterError
 from flask import request
 from flask_restful import Resource, reqparse  # type: ignore
 
@@ -16,6 +15,7 @@ from libs.helper import email, extract_remote_ip
 from libs.password import hash_password, valid_password
 from models.account import Account
 from services.account_service import AccountService, TenantService
+from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
 
