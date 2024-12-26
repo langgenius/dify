@@ -1,11 +1,16 @@
-import { MAX_VAR_KEY_LENGTH, VAR_ITEM_TEMPLATE, VAR_ITEM_TEMPLATE_IN_WORKFLOW, getMaxVarNameLength } from '@/config'
-import { CONTEXT_PLACEHOLDER_TEXT, HISTORY_PLACEHOLDER_TEXT, PRE_PROMPT_PLACEHOLDER_TEXT, QUERY_PLACEHOLDER_TEXT } from '@/app/components/base/prompt-editor/constants'
-import { InputVarType } from '@/app/components/workflow/types'
+import {getMaxVarNameLength, MAX_VAR_KEY_LENGTH, VAR_ITEM_TEMPLATE, VAR_ITEM_TEMPLATE_IN_WORKFLOW} from '@/config'
+import {
+  CONTEXT_PLACEHOLDER_TEXT,
+  HISTORY_PLACEHOLDER_TEXT,
+  PRE_PROMPT_PLACEHOLDER_TEXT,
+  QUERY_PLACEHOLDER_TEXT
+} from '@/app/components/base/prompt-editor/constants'
+import {InputVarType} from '@/app/components/workflow/types'
 
 const otherAllowedRegex = /^[a-zA-Z0-9_]+$/
 
 export const getNewVar = (key: string, type: string) => {
-  const { max_length, ...rest } = VAR_ITEM_TEMPLATE
+  const {max_length, ...rest} = VAR_ITEM_TEMPLATE
   if (type !== 'string') {
     return {
       ...rest,
@@ -23,7 +28,7 @@ export const getNewVar = (key: string, type: string) => {
 }
 
 export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput) => {
-  const { max_length, ...rest } = VAR_ITEM_TEMPLATE_IN_WORKFLOW
+  const {max_length, ...rest} = VAR_ITEM_TEMPLATE_IN_WORKFLOW
   if (type !== InputVarType.textInput) {
     return {
       ...rest,
@@ -74,7 +79,7 @@ export const checkKeys = (keys: string[], canBeEmpty?: boolean) => {
       errorMessageKey = res
     }
   })
-  return { isValid, errorKey, errorMessageKey }
+  return {isValid, errorKey, errorMessageKey}
 }
 
 const varRegex = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g
