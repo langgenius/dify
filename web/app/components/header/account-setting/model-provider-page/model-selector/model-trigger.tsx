@@ -69,7 +69,6 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
           }
         </div>
       )}
-
     </div>
   )
 }

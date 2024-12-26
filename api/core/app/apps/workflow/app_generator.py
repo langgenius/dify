@@ -116,7 +116,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             inputs=self._prepare_user_inputs(
                 user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
             ),
-            files=system_files,
+            files=list(system_files),
             user_id=user.id,
             stream=streaming,
             invoke_from=invoke_from,
@@ -309,7 +309,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         try:
             return generate_task_pipeline.process()
         except ValueError as e:
-            if e.args[0] == "I/O operation on closed file.":  # ignore this error
+            if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedError()
             else:
                 logger.exception(

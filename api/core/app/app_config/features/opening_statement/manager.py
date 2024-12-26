@@ -7,10 +7,10 @@ class OpeningStatementConfigManager:
         :param config: model config args
         """
         # opening statement
-        opening_statement = config.get("opening_statement")
+        opening_statement = config.get("opening_statement", "")
 
         # suggested questions
-        suggested_questions_list = config.get("suggested_questions")
+        suggested_questions_list = config.get("suggested_questions", [])
 
         return opening_statement, suggested_questions_list
 

@@ -1,8 +1,9 @@
 import re
 import sys
+from typing import Any
 
 from flask import current_app, got_request_exception
-from flask_restful import Api, http_status_message
+from flask_restful import Api, http_status_message  # type: ignore
 from werkzeug.datastructures import Headers
 from werkzeug.exceptions import HTTPException
 
@@ -84,7 +85,7 @@ class ExternalApi(Api):
 
         # record the exception in the logs when we have a server error of status code: 500
         if status_code and status_code >= 500:
-            exc_info = sys.exc_info()
+            exc_info: Any = sys.exc_info()
             if exc_info[1] is None:
                 exc_info = None
             current_app.log_exception(exc_info)
@@ -100,7 +101,7 @@ class ExternalApi(Api):
             resp = self.make_response(data, status_code, headers, fallback_mediatype=fallback_mediatype)
         elif status_code == 400:
             if isinstance(data.get("message"), dict):
-                param_key, param_value = list(data.get("message").items())[0]
+                param_key, param_value = list(data.get("message", {}).items())[0]
                 data = {"code": "invalid_param", "message": param_value, "params": param_key}
             else:
                 if "code" not in data:

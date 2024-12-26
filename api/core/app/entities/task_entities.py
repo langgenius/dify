@@ -70,7 +70,7 @@ class StreamResponse(BaseModel):
     event: StreamEvent
     task_id: str
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return jsonable_encoder(self)
 
 
@@ -474,8 +474,8 @@ class IterationNodeStartStreamResponse(StreamResponse):
         title: str
         created_at: int
         extras: dict = {}
-        metadata: dict = {}
-        inputs: dict = {}
+        metadata: Mapping = {}
+        inputs: Mapping = {}
         parallel_id: Optional[str] = None
         parallel_start_node_id: Optional[str] = None
 
@@ -526,15 +526,15 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         node_id: str
         node_type: str
         title: str
-        outputs: Optional[dict] = None
+        outputs: Optional[Mapping] = None
         created_at: int
         extras: Optional[dict] = None
-        inputs: Optional[dict] = None
+        inputs: Optional[Mapping] = None
         status: WorkflowNodeExecutionStatus
         error: Optional[str] = None
         elapsed_time: float
         total_tokens: int
-        execution_metadata: Optional[dict] = None
+        execution_metadata: Optional[Mapping] = None
         finished_at: int
         steps: int
         parallel_id: Optional[str] = None
@@ -628,7 +628,7 @@ class AppBlockingResponse(BaseModel):
 
     task_id: str
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return jsonable_encoder(self)
 
 

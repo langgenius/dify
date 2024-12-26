@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 from configs import dify_config
@@ -84,6 +84,8 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
         raise VariableError("missing value type")
     if (value := mapping.get("value")) is None:
         raise VariableError("missing value")
+    # FIXME: using Any here, fix it later
+    result: Any
     match value_type:
         case SegmentType.STRING:
             result = StringVariable.model_validate(mapping)
@@ -109,7 +111,7 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
         raise VariableError(f"variable size {result.size} exceeds limit {dify_config.MAX_VARIABLE_SIZE}")
     if not result.selector:
         result = result.model_copy(update={"selector": selector})
-    return result
+    return cast(Variable, result)
 
 
 def build_segment(value: Any, /) -> Segment:
@@ -164,10 +166,13 @@ def segment_to_variable(
         raise UnsupportedSegmentTypeError(f"not supported segment type {segment_type}")
 
     variable_class = SEGMENT_TO_VARIABLE_MAP[segment_type]
-    return variable_class(
-        id=id,
-        name=name,
-        description=description,
-        value=segment.value,
-        selector=selector,
+    return cast(
+        Variable,
+        variable_class(
+            id=id,
+            name=name,
+            description=description,
+            value=segment.value,
+            selector=selector,
+        ),
     )

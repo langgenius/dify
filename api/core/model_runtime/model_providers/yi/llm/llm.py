@@ -136,7 +136,7 @@ class YiLargeLanguageModel(OpenAILargeLanguageModel):
             parsed_url = urlparse(credentials["endpoint_url"])
             credentials["openai_api_base"] = f"{parsed_url.scheme}://{parsed_url.netloc}"
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
         return AIModelEntity(
             model=model,
             label=I18nObject(en_US=model, zh_Hans=model),

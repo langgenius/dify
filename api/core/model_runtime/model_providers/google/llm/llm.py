@@ -7,7 +7,7 @@ from collections.abc import Generator
 from typing import Optional, Union
 
 import google.ai.generativelanguage as glm
-import google.generativeai as genai
+import google.generativeai as genai  # type: ignore
 import requests
 from google.api_core import exceptions
 from google.generativeai.types import ContentType, File, GenerateContentResponse

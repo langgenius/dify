@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from enum import Enum, StrEnum
 from typing import Optional
 
-from pydantic import BaseModel, Field, computed_field, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class PromptMessageRole(Enum):
@@ -89,7 +89,6 @@ class MultiModalPromptMessageContent(PromptMessageContent):
     url: str = Field(default="", description="the url of multi-modal file")
     mime_type: str = Field(default=..., description="the mime type of multi-modal file")
 
-    @computed_field(return_type=str)
     @property
     def data(self):
         return self.url or f"data:{self.mime_type};base64,{self.base64_data}"
