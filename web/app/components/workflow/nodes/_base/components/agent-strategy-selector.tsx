@@ -114,10 +114,11 @@ export const AgentStrategySelector = (props: AgentStrategySelectorProps) => {
     <PortalToFollowElemContent className='z-10'>
       <div className='bg-components-panel-bg-blur border-components-panel-border border-[0.5px] rounded-md shadow overflow-hidden w-[388px]'>
         <header className='p-2 gap-1 flex'>
-          <SearchInput placeholder='Search agentic strategy' value={query} onChange={setQuery} className={'w-full'} />
+          <SearchInput placeholder={t('workflow.nodes.agent.strategy.searchPlaceholder')} value={query} onChange={setQuery} className={'w-full'} />
           <ViewTypeSelect viewType={viewType} onChange={setViewType} />
         </header>
         <main className="md:h-[300px] xl:h-[400px] 2xl:h-[564px] relative overflow-hidden">
+          {/* TODO: fix when in list view show workflow as group label */}
           <Tools
             tools={filteredTools}
             viewType={viewType}
@@ -131,7 +132,7 @@ export const AgentStrategySelector = (props: AgentStrategySelectorProps) => {
               setOpen(false)
             }}
             hasSearchText={false}
-            showWorkflowEmpty
+            showWorkflowEmpty={false}
             className='max-w-none'
             indexBarClassName='top-0 xl:top-36'
           />

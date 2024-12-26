@@ -704,6 +704,7 @@ const translation = {
         configureTip: 'Please configure agentic strategy.',
         configureTipDesc: 'After configuring the agentic strategy, this node will automatically load the remaining configurations. The strategy will affect the mechanism of multi-step tool reasoning. ',
         selectTip: 'Select agentic strategy',
+        searchPlaceholder: 'Search agentic strategy',
       },
       learnMore: 'Learn more',
       pluginNotInstalled: 'This plugin is not installed',

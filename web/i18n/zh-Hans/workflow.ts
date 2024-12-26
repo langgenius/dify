@@ -704,6 +704,7 @@ const translation = {
         configureTip: '请配置 Agent 策略。',
         configureTipDesc: '配置完成后，此节点将自动加载剩余配置。策略将影响多步工具推理的机制。',
         selectTip: '选择 Agent 策略',
+        searchPlaceholder: '搜索 Agent 策略',
       },
       learnMore: '了解更多',
       pluginNotInstalled: '插件未安装',
