@@ -8,6 +8,7 @@ import Form from '@/app/components/header/account-setting/model-provider-page/mo
 import { Agent } from '@/app/components/base/icons/src/vender/workflow'
 import { InputNumber } from '@/app/components/base/input-number'
 import Slider from '@/app/components/base/slider'
+import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import Field from './field'
 import type { ComponentProps } from 'react'
 
@@ -29,9 +30,10 @@ export type AgentStrategyProps = {
 type CustomSchema<Type, Field = {}> = Omit<CredentialFormSchema, 'type'> & { type: Type } & Field
 
 type MaxIterFormSchema = CustomSchema<'max-iter'>
-type ToolSelectorSchema = CustomSchema<'array[tools]'>
+type ToolSelectorSchema = CustomSchema<'tool-selector'>
+type MultipleToolSelectorSchema = CustomSchema<'array[tools]'>
 
-type CustomField = MaxIterFormSchema | ToolSelectorSchema
+type CustomField = MaxIterFormSchema | ToolSelectorSchema | MultipleToolSelectorSchema
 
 export const AgentStrategy = (props: AgentStrategyProps) => {
   const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange } = props
@@ -61,9 +63,23 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
           </div>
         </Field>
       }
+      case 'tool-selector': {
+        const value = props.value[schema.variable]
+        const onChange = (value: any) => {
+          props.onChange({ ...props.value, [schema.variable]: value })
+        }
+        return (
+          <Field title={'tool selector'} tooltip={'tool selector'}>
+            <ToolSelector
+              value={value}
+              onSelect={item => onChange(item)}
+            />
+          </Field>
+        )
+      }
       case 'array[tools]': {
         return <Field title={'tool selector'} tooltip={'tool selector'}>
-          tool selector
+          multiple tool selector TODO
         </Field>
       }
     }

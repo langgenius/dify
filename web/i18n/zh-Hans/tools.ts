@@ -152,10 +152,6 @@ const translation = {
   openInStudio: '在工作室中打开',
   toolNameUsageTip: '工具调用名称，用于 Agent 推理和提示词',
   copyToolName: '复制名称',
-  toolSelector: {
-    label: '工具',
-    placeholder: '选择一个工具...',
-  },
   noTools: '没有工具',
 }
 

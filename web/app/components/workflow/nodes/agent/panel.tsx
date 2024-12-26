@@ -9,12 +9,6 @@ import { useTranslation } from 'react-i18next'
 const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
   const { inputs, setInputs, currentStrategy } = useConfig(props.id, props.data)
   const { t } = useTranslation()
-  const [iter, setIter] = [inputs.max_iterations, (value: number) => {
-    setInputs({
-      ...inputs,
-      max_iterations: value,
-    })
-  }]
   return <div className='space-y-2 my-2'>
     <Field title={t('workflow.nodes.agent.strategy.label')} className='px-4' >
       <AgentStrategy

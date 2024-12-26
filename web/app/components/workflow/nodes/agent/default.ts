@@ -4,7 +4,6 @@ import type { AgentNodeType } from './types'
 
 const nodeDefault: NodeDefault<AgentNodeType> = {
   defaultValue: {
-    max_iterations: 3,
   },
   getAvailablePrevNodes(isChatMode) {
     return isChatMode
