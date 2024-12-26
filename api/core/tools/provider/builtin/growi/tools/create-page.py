@@ -1,11 +1,15 @@
-from typing import Any, Dict, List, Union
-from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.entities.tool_entities import ToolInvokeMessage
+from typing import Any, Union
 import requests
 
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
 
 class CreatePageTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+    def _invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any]
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         # Validate credentials
         growi_url = self.runtime.credentials.get("growi_url")
         access_token = self.runtime.credentials.get("access_token")
@@ -19,7 +23,7 @@ class CreatePageTool(BuiltinTool):
         body = tool_parameters.get("body", "")
 
         data = {
-            "access_token": access_token, 
+            "access_token": access_token,
             "body": body,
         }
 
