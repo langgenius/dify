@@ -15,6 +15,7 @@ import { useStrategyProviders } from '@/service/use-strategy'
 import type { StrategyPluginDetail } from '@/app/components/plugins/types'
 import type { ToolWithProvider } from '../../../types'
 import { CollectionType } from '@/app/components/tools/types'
+import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 
 const ExternalNotInstallWarn = () => {
   const { t } = useTranslation()
@@ -34,7 +35,7 @@ const ExternalNotInstallWarn = () => {
   </Tooltip>
 }
 
-function formatStrategy(input: StrategyPluginDetail[]): ToolWithProvider[] {
+function formatStrategy(input: StrategyPluginDetail[], getIcon: (i: string) => string): ToolWithProvider[] {
   return input.map((item) => {
     const res: ToolWithProvider = {
       id: item.provider,
@@ -43,7 +44,7 @@ function formatStrategy(input: StrategyPluginDetail[]): ToolWithProvider[] {
       name: item.declaration.identity.name,
       description: item.declaration.identity.description as any,
       plugin_id: item.plugin_id,
-      icon: item.declaration.identity.icon,
+      icon: getIcon(item.declaration.identity.icon),
       label: item.declaration.identity.label as any,
       type: CollectionType.all,
       tools: item.declaration.strategies.map(strategy => ({
@@ -75,22 +76,25 @@ export const AgentStrategySelector = (props: AgentStrategySelectorProps) => {
   const [viewType, setViewType] = useState<ViewType>(ViewType.flat)
   const [query, setQuery] = useState('')
   const stra = useStrategyProviders()
-  const list = stra.data ? formatStrategy(stra.data) : undefined
+  const { getIconUrl } = useGetIcon()
+  const list = stra.data ? formatStrategy(stra.data, getIconUrl) : undefined
   const filteredTools = useMemo(() => {
     if (!list) return []
     return list.filter(tool => tool.name.toLowerCase().includes(query.toLowerCase()))
   }, [query, list])
   // TODO: should be replaced by real data
   const isExternalInstalled = true
+  // TODO: 验证这玩意写对了没
+  const icon = list?.find(
+    coll => coll.tools?.find(tool => tool.name === value?.agent_strategy_name),
+  )?.icon as string | undefined
   const { t } = useTranslation()
   return <PortalToFollowElem open={open} onOpenChange={setOpen} placement='bottom'>
     <PortalToFollowElemTrigger className='w-full'>
       <div className='py-2 pl-3 pr-2 flex items-center rounded-lg bg-components-input-bg-normal w-full hover:bg-state-base-hover-alt select-none' onClick={() => setOpen(o => !o)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {list && value && <img
-          src={list.find(
-            coll => coll.tools?.find(tool => tool.name === value.agent_strategy_name),
-          )?.icon as string}
+        {icon && <img
+          src={icon}
           width={20}
           height={20}
           className='rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge'
