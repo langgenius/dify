@@ -258,78 +258,79 @@ class RetrievalService:
         include_segment_ids = []
         segment_child_map = {}
         for document in documents:
-            document_id = document.metadata["document_id"]
+            document_id = document.metadata.get("document_id")
             dataset_document = db.session.query(DatasetDocument).filter(DatasetDocument.id == document_id).first()
-            if dataset_document and dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
-                child_index_node_id = document.metadata["doc_id"]
-                result = (
-                    db.session.query(ChildChunk, DocumentSegment)
-                    .join(DocumentSegment, ChildChunk.segment_id == DocumentSegment.id)
-                    .filter(
-                        ChildChunk.index_node_id == child_index_node_id,
-                        DocumentSegment.dataset_id == dataset_document.dataset_id,
-                        DocumentSegment.enabled == True,
-                        DocumentSegment.status == "completed",
+            if dataset_document:
+                if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                    child_index_node_id = document.metadata.get("doc_id")
+                    result = (
+                        db.session.query(ChildChunk, DocumentSegment)
+                        .join(DocumentSegment, ChildChunk.segment_id == DocumentSegment.id)
+                        .filter(
+                            ChildChunk.index_node_id == child_index_node_id,
+                            DocumentSegment.dataset_id == dataset_document.dataset_id,
+                            DocumentSegment.enabled == True,
+                            DocumentSegment.status == "completed",
+                        )
+                        .first()
                     )
-                    .first()
-                )
-                if result:
-                    child_chunk, segment = result
+                    if result:
+                        child_chunk, segment = result
+                        if not segment:
+                            continue
+                        if segment.id not in include_segment_ids:
+                            include_segment_ids.append(segment.id)
+                            child_chunk_detail = {
+                                "id": child_chunk.id,
+                                "content": child_chunk.content,
+                                "position": child_chunk.position,
+                                "score": document.metadata.get("score", 0.0),
+                            }
+                            map_detail = {
+                                "max_score": document.metadata.get("score", 0.0),
+                                "child_chunks": [child_chunk_detail],
+                            }
+                            segment_child_map[segment.id] = map_detail
+                            record = {
+                                "segment": segment,
+                            }
+                            records.append(record)
+                        else:
+                            child_chunk_detail = {
+                                "id": child_chunk.id,
+                                "content": child_chunk.content,
+                                "position": child_chunk.position,
+                                "score": document.metadata.get("score", 0.0),
+                            }
+                            segment_child_map[segment.id]["child_chunks"].append(child_chunk_detail)
+                            segment_child_map[segment.id]["max_score"] = max(
+                                segment_child_map[segment.id]["max_score"], document.metadata.get("score", 0.0)
+                            )
+                    else:
+                        continue
+                else:
+                    index_node_id = document.metadata["doc_id"]
+
+                    segment = (
+                        db.session.query(DocumentSegment)
+                        .filter(
+                            DocumentSegment.dataset_id == dataset_document.dataset_id,
+                            DocumentSegment.enabled == True,
+                            DocumentSegment.status == "completed",
+                            DocumentSegment.index_node_id == index_node_id,
+                        )
+                        .first()
+                    )
+
                     if not segment:
                         continue
-                    if segment.id not in include_segment_ids:
-                        include_segment_ids.append(segment.id)
-                        child_chunk_detail = {
-                            "id": child_chunk.id,
-                            "content": child_chunk.content,
-                            "position": child_chunk.position,
-                            "score": document.metadata.get("score", 0.0),
-                        }
-                        map_detail = {
-                            "max_score": document.metadata.get("score", 0.0),
-                            "child_chunks": [child_chunk_detail],
-                        }
-                        segment_child_map[segment.id] = map_detail
-                        record = {
-                            "segment": segment,
-                        }
-                        records.append(record)
-                    else:
-                        child_chunk_detail = {
-                            "id": child_chunk.id,
-                            "content": child_chunk.content,
-                            "position": child_chunk.position,
-                            "score": document.metadata.get("score", 0.0),
-                        }
-                        segment_child_map[segment.id]["child_chunks"].append(child_chunk_detail)
-                        segment_child_map[segment.id]["max_score"] = max(
-                            segment_child_map[segment.id]["max_score"], document.metadata.get("score", 0.0)
-                        )
-                else:
-                    continue
-            else:
-                index_node_id = document.metadata["doc_id"]
+                    include_segment_ids.append(segment.id)
+                    record = {
+                        "segment": segment,
+                        "score": document.metadata.get("score", None),
+                    }
 
-                segment = (
-                    db.session.query(DocumentSegment)
-                    .filter(
-                        DocumentSegment.dataset_id == dataset_document.dataset_id,
-                        DocumentSegment.enabled == True,
-                        DocumentSegment.status == "completed",
-                        DocumentSegment.index_node_id == index_node_id,
-                    )
-                    .first()
-                )
-
-                if not segment:
-                    continue
-                include_segment_ids.append(segment.id)
-                record = {
-                    "segment": segment,
-                    "score": document.metadata.get("score", None),
-                }
-
-                records.append(record)
+                    records.append(record)
             for record in records:
                 if record["segment"].id in segment_child_map:
                     record["child_chunks"] = segment_child_map[record["segment"].id].get("child_chunks", None)

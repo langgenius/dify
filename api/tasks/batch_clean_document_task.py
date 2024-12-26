@@ -44,7 +44,8 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                 for upload_file_id in image_upload_file_ids:
                     image_file = db.session.query(UploadFile).filter(UploadFile.id == upload_file_id).first()
                     try:
-                        storage.delete(image_file.key)
+                        if image_file and image_file.key:
+                            storage.delete(image_file.key)
                     except Exception:
                         logging.exception(
                             "Delete image_files failed when storage deleted, \

@@ -4,7 +4,7 @@ from enum import StrEnum
 from typing import Optional, cast
 from uuid import uuid4
 
-import yaml
+import yaml  # type: ignore
 from packaging import version
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -465,7 +465,7 @@ class AppDslService:
         else:
             cls._append_model_config_export_data(export_data, app_model)
 
-        return yaml.dump(export_data, allow_unicode=True)
+        return yaml.dump(export_data, allow_unicode=True)  # type: ignore
 
     @classmethod
     def _append_workflow_export_data(cls, *, export_data: dict, app_model: App, include_secret: bool) -> None:
