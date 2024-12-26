@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, List, Union
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 import requests
@@ -23,7 +23,7 @@ class CreatePageTool(BuiltinTool):
             "body": body,
         }
 
-        if not(path or parent_path):
+        if not (path or parent_path):
             data['parentPath'] = '/'
         else:
             if path:
