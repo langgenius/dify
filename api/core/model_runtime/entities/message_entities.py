@@ -125,7 +125,7 @@ class PromptMessage(ABC, BaseModel):
     """
 
     role: PromptMessageRole
-    content: Optional[str | Sequence[PromptMessageContent]] = None
+    content: Optional[str | List[PromptMessageContent]] = None
     name: Optional[str] = None
 
     def is_empty(self) -> bool:
