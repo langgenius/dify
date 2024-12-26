@@ -18,7 +18,11 @@ import cn from '@/utils/classnames'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
+import type {
+  AgentLogItemWithChildren,
+  IterationDurationMap,
+  NodeTracing,
+} from '@/types/workflow'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { hasRetryNode } from '@/app/components/workflow/utils'
 
@@ -30,6 +34,7 @@ type Props = {
   hideProcessDetail?: boolean
   onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
+  onShowAgentResultList?: (detail: AgentLogItemWithChildren[]) => void
   notShowIterationNav?: boolean
   justShowIterationNavArrow?: boolean
   justShowRetryNavArrow?: boolean
@@ -43,6 +48,7 @@ const NodePanel: FC<Props> = ({
   hideProcessDetail,
   onShowIterationDetail,
   onShowRetryDetail,
+  onShowAgentResultList,
   notShowIterationNav,
   justShowIterationNavArrow,
 }) => {
@@ -142,8 +148,11 @@ const NodePanel: FC<Props> = ({
               />
             )}
             {
-              isAgentNode && (
-                <AgentLogTrigger />
+              isAgentNode && onShowAgentResultList && (
+                <AgentLogTrigger
+                  nodeInfo={nodeInfo}
+                  onShowAgentResultList={onShowAgentResultList}
+                />
               )
             }
             <div className={cn('mb-1', hideInfo && '!px-2 !py-0.5')}>
