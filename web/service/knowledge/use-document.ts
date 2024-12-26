@@ -29,6 +29,10 @@ export const useDocumentList = (payload: {
   })
 }
 
+export const useInvalidDocumentList = () => {
+  return useInvalid(useDocumentListKey)
+}
+
 const useAutoDisabledDocumentKey = [NAME_SPACE, 'autoDisabledDocument']
 export const useAutoDisabledDocuments = (datasetId: string) => {
   return useQuery({

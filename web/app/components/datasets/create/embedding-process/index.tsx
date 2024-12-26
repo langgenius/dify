@@ -30,6 +30,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { sleep } from '@/utils'
 import { RETRIEVE_METHOD } from '@/types/app'
 import Tooltip from '@/app/components/base/tooltip'
+import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 
 type Props = {
   datasetId: string
@@ -207,7 +208,9 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
   })
 
   const router = useRouter()
+  const invalidDocumentList = useInvalidDocumentList()
   const navToDocumentList = () => {
+    invalidDocumentList()
     router.push(`/datasets/${datasetId}/documents`)
   }
   const navToApiDocs = () => {

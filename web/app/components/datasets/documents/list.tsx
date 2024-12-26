@@ -134,6 +134,16 @@ export const StatusItem: FC<{
       {DOC_INDEX_STATUS_MAP[localStatus]?.text}
     </span>
     {
+      errorMessage && (
+        <Tooltip
+          popupContent={
+            <div className='max-w-[260px] break-all'>{errorMessage}</div>
+          }
+          triggerClassName='ml-1 w-4 h-4'
+        />
+      )
+    }
+    {
       scene === 'detail' && (
         <div className='flex justify-between items-center ml-1.5'>
           <Tooltip
@@ -150,16 +160,6 @@ export const StatusItem: FC<{
             />
           </Tooltip>
         </div>
-      )
-    }
-    {
-      errorMessage && (
-        <Tooltip
-          popupContent={
-            <div className='max-w-[260px] break-all'>{errorMessage}</div>
-          }
-          triggerClassName='ml-1 w-4 h-4'
-        />
       )
     }
   </div>
