@@ -53,33 +53,35 @@ const ToolCredentialForm: FC<Props> = ({
   }
 
   return (
-    <div className='h-full'>
+    <>
       {!credentialSchema
         ? <div className='pt-3'><Loading type='app' /></div>
         : (
           <>
-            <Form
-              value={tempCredential}
-              onChange={(v) => {
-                setTempCredential(v)
-              }}
-              formSchemas={credentialSchema}
-              isEditMode={true}
-              showOnVariableMap={{}}
-              validating={false}
-              inputClassName='bg-components-input-bg-normal hover:bg-components-input-bg-hover'
-              fieldMoreInfo={item => item.url
-                ? (<a
-                  href={item.url}
-                  target='_blank' rel='noopener noreferrer'
-                  className='inline-flex items-center text-xs text-primary-600'
-                >
-                  {t('tools.howToGet')}
-                  <RiArrowRightUpLine className='ml-1 w-3 h-3' />
-                </a>)
-                : null}
-            />
-            <div className={cn('mt-1 flex justify-end')} >
+            <div className='px-4 max-h-[464px] overflow-y-auto'>
+              <Form
+                value={tempCredential}
+                onChange={(v) => {
+                  setTempCredential(v)
+                }}
+                formSchemas={credentialSchema}
+                isEditMode={true}
+                showOnVariableMap={{}}
+                validating={false}
+                inputClassName='bg-components-input-bg-normal hover:bg-components-input-bg-hover'
+                fieldMoreInfo={item => item.url
+                  ? (<a
+                    href={item.url}
+                    target='_blank' rel='noopener noreferrer'
+                    className='inline-flex items-center text-xs text-text-accent'
+                  >
+                    {t('tools.howToGet')}
+                    <RiArrowRightUpLine className='ml-1 w-3 h-3' />
+                  </a>)
+                  : null}
+              />
+            </div>
+            <div className={cn('mt-1 flex justify-end px-4')} >
               <div className='flex space-x-2'>
                 <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
                 <Button variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
@@ -89,7 +91,7 @@ const ToolCredentialForm: FC<Props> = ({
         )
       }
 
-    </div >
+    </>
   )
 }
 export default React.memo(ToolCredentialForm)

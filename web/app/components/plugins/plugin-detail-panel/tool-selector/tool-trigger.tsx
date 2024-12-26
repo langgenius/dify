@@ -14,7 +14,7 @@ type Props = {
   open: boolean
   provider?: ToolWithProvider
   value?: {
-    provider: string
+    provider_name: string
     tool_name: string
   }
   isConfigure?: boolean
@@ -31,9 +31,9 @@ const ToolTrigger = ({
     <div className={cn(
       'group flex items-center p-2 pl-3 bg-components-input-bg-normal rounded-lg cursor-pointer hover:bg-state-base-hover-alt',
       open && 'bg-state-base-hover-alt',
-      value?.provider && 'pl-1.5 py-1.5',
+      value?.provider_name && 'pl-1.5 py-1.5',
     )}>
-      {value?.provider && provider && (
+      {value?.provider_name && provider && (
         <div className='shrink-0 mr-1 p-px rounded-lg bg-components-panel-bg border border-components-panel-border'>
           <BlockIcon
             className='!w-4 !h-4'
@@ -45,7 +45,7 @@ const ToolTrigger = ({
       {value?.tool_name && (
         <div className='grow system-sm-medium text-components-input-text-filled'>{value.tool_name}</div>
       )}
-      {!value?.provider && (
+      {!value?.provider_name && (
         <div className='grow text-components-input-text-placeholder system-sm-regular'>
           {!isConfigure ? t('plugin.detailPanel.toolSelector.placeholder') : t('plugin.detailPanel.configureTool')}
         </div>
