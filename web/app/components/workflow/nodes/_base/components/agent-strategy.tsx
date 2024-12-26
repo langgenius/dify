@@ -29,7 +29,7 @@ export type AgentStrategyProps = {
 type CustomSchema<Type, Field = {}> = Omit<CredentialFormSchema, 'type'> & { type: Type } & Field
 
 type MaxIterFormSchema = CustomSchema<'max-iter'>
-type ToolSelectorSchema = CustomSchema<'tool-selector'>
+type ToolSelectorSchema = CustomSchema<'array[tools]'>
 
 type CustomField = MaxIterFormSchema | ToolSelectorSchema
 
@@ -59,6 +59,11 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
               placeholder=''
             />
           </div>
+        </Field>
+      }
+      case 'array[tools]': {
+        return <Field title={'tool selector'} tooltip={'tool selector'}>
+          tool selector
         </Field>
       }
     }
