@@ -72,6 +72,8 @@ class PluginMigration:
                 except Exception:
                     logger.exception(f"Failed to process tenant {tenant_id}")
 
+        futures = []
+
         while current_time < ended_at:
             click.echo(click.style(f"Current time: {current_time}, Started at: {datetime.datetime.now()}", fg="white"))
             # Initial interval of 1 day, will be dynamically adjusted based on tenant count
@@ -129,13 +131,19 @@ class PluginMigration:
                         logger.exception(f"Failed to process tenant {tenant_id}")
                         continue
 
-            # Process batch with thread pool
-            thread_pool.map(lambda tenant_id: process_tenant(current_app, tenant_id), tenants)
+                    futures.append(
+                        thread_pool.submit(
+                            process_tenant,
+                            current_app._get_current_object(),  # type: ignore[attr-defined]
+                            tenant_id,
+                        )
+                    )
 
             current_time = batch_end
 
         # wait for all threads to finish
-        thread_pool.shutdown(wait=True)
+        for future in futures:
+            future.result()
 
     @classmethod
     def extract_installed_plugin_ids(cls, tenant_id: str) -> Sequence[str]:
