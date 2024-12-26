@@ -346,5 +346,5 @@ export const sendDeleteAccountCode = () =>
 export const verifyDeleteAccountCode = (body: { code: string;token: string }) =>
   post<CommonResponse & { is_valid: boolean }>('/account/delete', { body })
 
-export const submitDeleteAccountFeedback = (body: { feedback: string }) =>
+export const submitDeleteAccountFeedback = (body: { feedback: string;email: string }) =>
   post<CommonResponse>('/account/delete/feedback', { body })

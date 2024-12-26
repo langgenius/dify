@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useDeleteAccountFeedback } from '../state'
+import { useAppContext } from '@/context/app-context'
 import Button from '@/app/components/base/button'
 import CustomDialog from '@/app/components/base/dialog'
 import Textarea from '@/app/components/base/textarea'
@@ -16,6 +17,7 @@ type DeleteAccountProps = {
 
 export default function FeedBack(props: DeleteAccountProps) {
   const { t } = useTranslation()
+  const { userProfile } = useAppContext()
   const router = useRouter()
   const [userFeedback, setUserFeedback] = useState('')
   const { isPending, mutateAsync: sendFeedback } = useDeleteAccountFeedback()
@@ -36,12 +38,12 @@ export default function FeedBack(props: DeleteAccountProps) {
 
   const handleSubmit = useCallback(async () => {
     try {
-      await sendFeedback({ feedback: userFeedback })
+      await sendFeedback({ feedback: userFeedback, email: userProfile.email })
       props.onConfirm()
       await handleSuccess()
     }
     catch (error) { console.error(error) }
-  }, [handleSuccess, userFeedback, sendFeedback, props])
+  }, [handleSuccess, userFeedback, sendFeedback, userProfile, props])
 
   const handleSkip = useCallback(() => {
     props.onCancel()
