@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import {
   RiArrowLeftLine,
 } from '@remixicon/react'
-import TracingPanel from './tracing-panel'
+import TracingPanel from '../tracing-panel'
 import type { NodeTracing } from '@/types/workflow'
 
 type Props = {

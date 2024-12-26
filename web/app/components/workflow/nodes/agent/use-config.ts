@@ -1,3 +1,4 @@
+import { useStrategyProviderDetail } from '@/service/use-strategy'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import useVarList from '../_base/hooks/use-var-list'
 import type { AgentNodeType } from './types'
@@ -13,13 +14,20 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     inputs,
     setInputs,
   })
-
+  const strategies = useStrategyProviderDetail(
+    inputs.agent_strategy_provider_name || '',
+  )
+  const currentStrategy = strategies.data?.declaration.strategies.find(
+    str => str.identity.name === inputs.agent_strategy_name,
+  )
+  console.log('currentStrategy', currentStrategy, 'strategies', strategies, 'inputs', inputs)
   return {
     readOnly,
     inputs,
     setInputs,
     handleVarListChange,
     handleAddVariable,
+    currentStrategy,
   }
 }
 

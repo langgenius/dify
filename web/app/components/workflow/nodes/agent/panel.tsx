@@ -7,48 +7,9 @@ import Slider from '@/app/components/base/slider'
 import { AgentStrategy } from '../_base/components/agent-strategy'
 import useConfig from './use-config'
 import { useTranslation } from 'react-i18next'
-import { type CredentialFormSchema, FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-
-// @ts-expect-error fuck
-const mockSchema = [
-  {
-    name: 'format',
-    label: {
-      en_US: 'Format',
-      zh_Hans: '格式',
-      pt_BR: 'Format',
-      ja_JP: 'Format',
-    },
-    placeholder: undefined,
-    scope: undefined,
-    required: false,
-    default: '%Y-%m-%d %H:%M:%S',
-    options: [],
-    type: 'text-input',
-    form: 'form',
-    llm_description: null,
-    variable: 'format',
-    _type: 'string',
-    show_on: [],
-    tooltip: {
-      en_US: 'Time format in strftime standard.',
-      zh_Hans: 'strftime 标准的时间格式。',
-    },
-  },
-  {
-    name: 'model',
-    type: FormTypeEnum.modelSelector,
-    label: {
-      en_US: 'Model',
-      zh_Hans: '模型',
-    },
-    variable: 'model',
-    scope: 'all',
-  },
-] as Array<CredentialFormSchema & { name: string }>
 
 const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
-  const { inputs, setInputs } = useConfig(props.id, props.data)
+  const { inputs, setInputs, currentStrategy } = useConfig(props.id, props.data)
   const { t } = useTranslation()
   const [iter, setIter] = [inputs.max_iterations, (value: number) => {
     setInputs({
@@ -63,6 +24,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
           agent_strategy_provider_name: inputs.agent_strategy_provider_name!,
           agent_strategy_name: inputs.agent_strategy_name!,
           agent_parameters: inputs.agent_parameters,
+          agent_strategy_label: inputs.agent_strategy_label!,
         } : undefined}
         onStrategyChange={(strategy) => {
           setInputs({
@@ -70,9 +32,10 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
             agent_strategy_provider_name: strategy?.agent_strategy_provider_name,
             agent_strategy_name: strategy?.agent_strategy_name,
             agent_parameters: strategy?.agent_parameters,
+            agent_strategy_label: strategy?.agent_strategy_label,
           })
         }}
-        formSchema={mockSchema as any}
+        formSchema={currentStrategy?.parameters as any || []}
         formValue={inputs.agent_parameters || {}}
         onFormValueChange={value => setInputs({
           ...inputs,

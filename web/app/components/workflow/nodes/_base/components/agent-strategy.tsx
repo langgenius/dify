@@ -10,7 +10,7 @@ import { Agent } from '@/app/components/base/icons/src/vender/workflow'
 export type Strategy = {
   agent_strategy_provider_name: string
   agent_strategy_name: string
-  agent_strategy_label?: string
+  agent_strategy_label: string
   agent_parameters?: ToolVarInputs
 }
 

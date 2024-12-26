@@ -18,7 +18,7 @@ import Toast from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 import type { NodeTracing } from '@/types/workflow'
-import RetryResultPanel from '@/app/components/workflow/run/retry-result-panel'
+import { RetryResultPanel } from '@/app/components/workflow/run/retry-log'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import type { Emoji } from '@/app/components/tools/types'
 
