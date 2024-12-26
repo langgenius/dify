@@ -15,6 +15,7 @@ import { useStrategyProviders } from '@/service/use-strategy'
 import type { StrategyPluginDetail } from '@/app/components/plugins/types'
 import type { ToolWithProvider } from '../../../types'
 import { CollectionType } from '@/app/components/tools/types'
+import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 
 const ExternalNotInstallWarn = () => {
   const { t } = useTranslation()
@@ -82,15 +83,19 @@ export const AgentStrategySelector = (props: AgentStrategySelectorProps) => {
   }, [query, list])
   // TODO: should be replaced by real data
   const isExternalInstalled = true
+  const { getIconUrl } = useGetIcon()
+  // TODO: 验证这玩意写对了没
+  const iconFilename = list?.find(
+    coll => coll.tools?.find(tool => tool.name === value?.agent_strategy_name),
+  )?.icon
+  const icon = iconFilename ? getIconUrl(iconFilename as string) : undefined
   const { t } = useTranslation()
   return <PortalToFollowElem open={open} onOpenChange={setOpen} placement='bottom'>
     <PortalToFollowElemTrigger className='w-full'>
       <div className='py-2 pl-3 pr-2 flex items-center rounded-lg bg-components-input-bg-normal w-full hover:bg-state-base-hover-alt select-none' onClick={() => setOpen(o => !o)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {list && value && <img
-          src={list.find(
-            coll => coll.tools?.find(tool => tool.name === value.agent_strategy_name),
-          )?.icon as string}
+        {icon && <img
+          src={icon}
           width={20}
           height={20}
           className='rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge'
