@@ -71,7 +71,7 @@ const WorkplaceSelector = () => {
                 className={cn(
                   `
                     absolute top-[1px] min-w-[200px] max-h-[70vh] overflow-y-scroll z-10 bg-white border-[0.5px] border-gray-200
-                    divide-y divide-gray-100 origin-top-right rounded-xl
+                    divide-y divide-gray-100 origin-top-right rounded-xl focus:outline-none
                   `,
                   s.popup,
                 )}
