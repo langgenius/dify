@@ -31,7 +31,7 @@ class CreatePageTool(BuiltinTool):
             if parent_path:
                 data['parentPath'] = parent_path
 
-        ## Send request
+        # Send request
         try:
             endpoint = f"{growi_url}/_api/v3/page"
             res = requests.post(endpoint, data=data)
