@@ -151,8 +151,6 @@ class ApiToolProviderController(ToolProviderController):
         """
         if len(self.tools) > 0:
             return self.tools
-        if self.identity is None:
-            return None
 
         tools: list[ApiTool] = []
 
