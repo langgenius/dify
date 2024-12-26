@@ -16,6 +16,7 @@ from extensions.ext_database import db
 from fields.segment_fields import segment_fields
 from models.dataset import Dataset, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService, SegmentService
+from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
 
 
 class SegmentApi(DatasetApiResource):
@@ -193,7 +194,7 @@ class DatasetSegmentApi(DatasetApiResource):
         args = parser.parse_args()
 
         SegmentService.segment_create_args_validate(args["segment"], document)
-        segment = SegmentService.update_segment(args["segment"], segment, document, dataset)
+        segment = SegmentService.update_segment(SegmentUpdateArgs(**args["segment"]), segment, document, dataset)
         return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
 
 

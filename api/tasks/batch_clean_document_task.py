@@ -1,6 +1,5 @@
 import logging
 import time
-from typing import Optional
 
 import click
 from celery import shared_task  # type: ignore
@@ -14,17 +13,17 @@ from models.model import UploadFile
 
 
 @shared_task(queue="dataset")
-def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_id: Optional[str]):
+def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form: str, file_ids: list[str]):
     """
     Clean document when document deleted.
-    :param document_id: document id
+    :param document_ids: document ids
     :param dataset_id: dataset id
     :param doc_form: doc_form
-    :param file_id: file id
+    :param file_ids: file ids
 
     Usage: clean_document_task.delay(document_id, dataset_id)
     """
-    logging.info(click.style("Start clean document when document deleted: {}".format(document_id), fg="green"))
+    logging.info(click.style("Start batch clean documents when documents deleted", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -33,7 +32,7 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
         if not dataset:
             raise Exception("Document has no dataset")
 
-        segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
+        segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id.in_(document_ids)).all()
         # check segment is exist
         if segments:
             index_node_ids = [segment.index_node_id for segment in segments]
@@ -44,10 +43,9 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                 image_upload_file_ids = get_image_upload_file_ids(segment.content)
                 for upload_file_id in image_upload_file_ids:
                     image_file = db.session.query(UploadFile).filter(UploadFile.id == upload_file_id).first()
-                    if image_file is None:
-                        continue
                     try:
-                        storage.delete(image_file.key)
+                        if image_file and image_file.key:
+                            storage.delete(image_file.key)
                     except Exception:
                         logging.exception(
                             "Delete image_files failed when storage deleted, \
@@ -57,22 +55,22 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                 db.session.delete(segment)
 
             db.session.commit()
-        if file_id:
-            file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
-            if file:
+        if file_ids:
+            files = db.session.query(UploadFile).filter(UploadFile.id.in_(file_ids)).all()
+            for file in files:
                 try:
                     storage.delete(file.key)
                 except Exception:
-                    logging.exception("Delete file failed when document deleted, file_id: {}".format(file_id))
+                    logging.exception("Delete file failed when document deleted, file_id: {}".format(file.id))
                 db.session.delete(file)
-                db.session.commit()
+            db.session.commit()
 
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                "Cleaned document when document deleted: {} latency: {}".format(document_id, end_at - start_at),
+                "Cleaned documents when documents deleted latency: {}".format(end_at - start_at),
                 fg="green",
             )
         )
     except Exception:
-        logging.exception("Cleaned document when document deleted failed")
+        logging.exception("Cleaned documents when documents deleted failed")

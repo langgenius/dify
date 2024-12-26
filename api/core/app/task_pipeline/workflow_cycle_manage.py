@@ -46,7 +46,6 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.workflow_entry import WorkflowEntry
-from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatedByRole, WorkflowRunTriggeredFrom
 from models.model import EndUser
@@ -66,7 +65,6 @@ class WorkflowCycleManage:
     _application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity]
     _task_state: WorkflowTaskState
     _workflow_system_variables: dict[SystemVariableKey, Any]
-    _wip_workflow_node_executions: dict[str, WorkflowNodeExecution]
 
     def _handle_workflow_run_start(
         self,
@@ -130,7 +128,7 @@ class WorkflowCycleManage:
         self,
         *,
         session: Session,
-        workflow_run: WorkflowRun,
+        workflow_run_id: str,
         start_at: float,
         total_tokens: int,
         total_steps: int,
@@ -148,7 +146,7 @@ class WorkflowCycleManage:
         :param conversation_id: conversation id
         :return:
         """
-        workflow_run = self._refetch_workflow_run(session=session, workflow_run_id=workflow_run.id)
+        workflow_run = self._get_workflow_run(session=session, workflow_run_id=workflow_run_id)
 
         outputs = WorkflowEntry.handle_special_values(outputs)
 
@@ -175,7 +173,7 @@ class WorkflowCycleManage:
         self,
         *,
         session: Session,
-        workflow_run: WorkflowRun,
+        workflow_run_id: str,
         start_at: float,
         total_tokens: int,
         total_steps: int,
@@ -184,18 +182,7 @@ class WorkflowCycleManage:
         conversation_id: Optional[str] = None,
         trace_manager: Optional[TraceQueueManager] = None,
     ) -> WorkflowRun:
-        """
-        Workflow run success
-        :param workflow_run: workflow run
-        :param start_at: start time
-        :param total_tokens: total tokens
-        :param total_steps: total steps
-        :param outputs: outputs
-        :param conversation_id: conversation id
-        :return:
-        """
-        workflow_run = self._refetch_workflow_run(session=session, workflow_run_id=workflow_run.id)
-
+        workflow_run = self._get_workflow_run(session=session, workflow_run_id=workflow_run_id)
         outputs = WorkflowEntry.handle_special_values(dict(outputs) if outputs else None)
 
         workflow_run.status = WorkflowRunStatus.PARTIAL_SUCCESSED.value
@@ -222,7 +209,7 @@ class WorkflowCycleManage:
         self,
         *,
         session: Session,
-        workflow_run: WorkflowRun,
+        workflow_run_id: str,
         start_at: float,
         total_tokens: int,
         total_steps: int,
@@ -242,7 +229,7 @@ class WorkflowCycleManage:
         :param error: error message
         :return:
         """
-        workflow_run = self._refetch_workflow_run(session=session, workflow_run_id=workflow_run.id)
+        workflow_run = self._get_workflow_run(session=session, workflow_run_id=workflow_run_id)
 
         workflow_run.status = status.value
         workflow_run.error = error
@@ -284,49 +271,41 @@ class WorkflowCycleManage:
         return workflow_run
 
     def _handle_node_execution_start(
-        self, workflow_run: WorkflowRun, event: QueueNodeStartedEvent
+        self, *, session: Session, workflow_run: WorkflowRun, event: QueueNodeStartedEvent
     ) -> WorkflowNodeExecution:
-        # init workflow node execution
+        workflow_node_execution = WorkflowNodeExecution()
+        workflow_node_execution.id = event.node_execution_id
+        workflow_node_execution.tenant_id = workflow_run.tenant_id
+        workflow_node_execution.app_id = workflow_run.app_id
+        workflow_node_execution.workflow_id = workflow_run.workflow_id
+        workflow_node_execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value
+        workflow_node_execution.workflow_run_id = workflow_run.id
+        workflow_node_execution.predecessor_node_id = event.predecessor_node_id
+        workflow_node_execution.index = event.node_run_index
+        workflow_node_execution.node_execution_id = event.node_execution_id
+        workflow_node_execution.node_id = event.node_id
+        workflow_node_execution.node_type = event.node_type.value
+        workflow_node_execution.title = event.node_data.title
+        workflow_node_execution.status = WorkflowNodeExecutionStatus.RUNNING.value
+        workflow_node_execution.created_by_role = workflow_run.created_by_role
+        workflow_node_execution.created_by = workflow_run.created_by
+        workflow_node_execution.execution_metadata = json.dumps(
+            {
+                NodeRunMetadataKey.PARALLEL_MODE_RUN_ID: event.parallel_mode_run_id,
+                NodeRunMetadataKey.ITERATION_ID: event.in_iteration_id,
+            }
+        )
+        workflow_node_execution.created_at = datetime.now(UTC).replace(tzinfo=None)
 
-        with Session(db.engine, expire_on_commit=False) as session:
-            workflow_node_execution = WorkflowNodeExecution()
-            workflow_node_execution.tenant_id = workflow_run.tenant_id
-            workflow_node_execution.app_id = workflow_run.app_id
-            workflow_node_execution.workflow_id = workflow_run.workflow_id
-            workflow_node_execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value
-            workflow_node_execution.workflow_run_id = workflow_run.id
-            workflow_node_execution.predecessor_node_id = event.predecessor_node_id
-            workflow_node_execution.index = event.node_run_index
-            workflow_node_execution.node_execution_id = event.node_execution_id
-            workflow_node_execution.node_id = event.node_id
-            workflow_node_execution.node_type = event.node_type.value
-            workflow_node_execution.title = event.node_data.title
-            workflow_node_execution.status = WorkflowNodeExecutionStatus.RUNNING.value
-            workflow_node_execution.created_by_role = workflow_run.created_by_role
-            workflow_node_execution.created_by = workflow_run.created_by
-            workflow_node_execution.execution_metadata = json.dumps(
-                {
-                    NodeRunMetadataKey.PARALLEL_MODE_RUN_ID: event.parallel_mode_run_id,
-                    NodeRunMetadataKey.ITERATION_ID: event.in_iteration_id,
-                }
-            )
-            workflow_node_execution.created_at = datetime.now(UTC).replace(tzinfo=None)
-
-            session.add(workflow_node_execution)
-            session.commit()
-            session.refresh(workflow_node_execution)
-
-        self._wip_workflow_node_executions[workflow_node_execution.node_execution_id] = workflow_node_execution
+        session.add(workflow_node_execution)
         return workflow_node_execution
 
-    def _handle_workflow_node_execution_success(self, event: QueueNodeSucceededEvent) -> WorkflowNodeExecution:
-        """
-        Workflow node execution success
-        :param event: queue node succeeded event
-        :return:
-        """
-        workflow_node_execution = self._refetch_workflow_node_execution(event.node_execution_id)
-
+    def _handle_workflow_node_execution_success(
+        self, *, session: Session, event: QueueNodeSucceededEvent
+    ) -> WorkflowNodeExecution:
+        workflow_node_execution = self._get_workflow_node_execution(
+            session=session, node_execution_id=event.node_execution_id
+        )
         inputs = WorkflowEntry.handle_special_values(event.inputs)
         process_data = WorkflowEntry.handle_special_values(event.process_data)
         outputs = WorkflowEntry.handle_special_values(event.outputs)
@@ -336,20 +315,6 @@ class WorkflowCycleManage:
         finished_at = datetime.now(UTC).replace(tzinfo=None)
         elapsed_time = (finished_at - event.start_at).total_seconds()
 
-        db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution.id).update(
-            {
-                WorkflowNodeExecution.status: WorkflowNodeExecutionStatus.SUCCEEDED.value,
-                WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else None,
-                WorkflowNodeExecution.process_data: json.dumps(process_data) if event.process_data else None,
-                WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else None,
-                WorkflowNodeExecution.execution_metadata: execution_metadata,
-                WorkflowNodeExecution.finished_at: finished_at,
-                WorkflowNodeExecution.elapsed_time: elapsed_time,
-            }
-        )
-
-        db.session.commit()
-        db.session.close()
         process_data = WorkflowEntry.handle_special_values(event.process_data)
 
         workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
@@ -360,19 +325,22 @@ class WorkflowCycleManage:
         workflow_node_execution.finished_at = finished_at
         workflow_node_execution.elapsed_time = elapsed_time
 
-        self._wip_workflow_node_executions.pop(workflow_node_execution.node_execution_id)
-
         return workflow_node_execution
 
     def _handle_workflow_node_execution_failed(
-        self, event: QueueNodeFailedEvent | QueueNodeInIterationFailedEvent | QueueNodeExceptionEvent
+        self,
+        *,
+        session: Session,
+        event: QueueNodeFailedEvent | QueueNodeInIterationFailedEvent | QueueNodeExceptionEvent,
     ) -> WorkflowNodeExecution:
         """
         Workflow node execution failed
         :param event: queue node failed event
         :return:
         """
-        workflow_node_execution = self._refetch_workflow_node_execution(event.node_execution_id)
+        workflow_node_execution = self._get_workflow_node_execution(
+            session=session, node_execution_id=event.node_execution_id
+        )
 
         inputs = WorkflowEntry.handle_special_values(event.inputs)
         process_data = WorkflowEntry.handle_special_values(event.process_data)
@@ -382,25 +350,6 @@ class WorkflowCycleManage:
         execution_metadata = (
             json.dumps(jsonable_encoder(event.execution_metadata)) if event.execution_metadata else None
         )
-        db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution.id).update(
-            {
-                WorkflowNodeExecution.status: (
-                    WorkflowNodeExecutionStatus.FAILED.value
-                    if not isinstance(event, QueueNodeExceptionEvent)
-                    else WorkflowNodeExecutionStatus.EXCEPTION.value
-                ),
-                WorkflowNodeExecution.error: event.error,
-                WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else None,
-                WorkflowNodeExecution.process_data: json.dumps(process_data) if process_data else None,
-                WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else None,
-                WorkflowNodeExecution.finished_at: finished_at,
-                WorkflowNodeExecution.elapsed_time: elapsed_time,
-                WorkflowNodeExecution.execution_metadata: execution_metadata,
-            }
-        )
-
-        db.session.commit()
-        db.session.close()
         process_data = WorkflowEntry.handle_special_values(event.process_data)
         workflow_node_execution.status = (
             WorkflowNodeExecutionStatus.FAILED.value
@@ -415,12 +364,10 @@ class WorkflowCycleManage:
         workflow_node_execution.elapsed_time = elapsed_time
         workflow_node_execution.execution_metadata = execution_metadata
 
-        self._wip_workflow_node_executions.pop(workflow_node_execution.node_execution_id)
-
         return workflow_node_execution
 
     def _handle_workflow_node_execution_retried(
-        self, workflow_run: WorkflowRun, event: QueueNodeRetryEvent
+        self, *, session: Session, workflow_run: WorkflowRun, event: QueueNodeRetryEvent
     ) -> WorkflowNodeExecution:
         """
         Workflow node execution failed
@@ -444,6 +391,7 @@ class WorkflowCycleManage:
         execution_metadata = json.dumps(merged_metadata)
 
         workflow_node_execution = WorkflowNodeExecution()
+        workflow_node_execution.id = event.node_execution_id
         workflow_node_execution.tenant_id = workflow_run.tenant_id
         workflow_node_execution.app_id = workflow_run.app_id
         workflow_node_execution.workflow_id = workflow_run.workflow_id
@@ -466,10 +414,7 @@ class WorkflowCycleManage:
         workflow_node_execution.execution_metadata = execution_metadata
         workflow_node_execution.index = event.node_run_index
 
-        db.session.add(workflow_node_execution)
-        db.session.commit()
-        db.session.refresh(workflow_node_execution)
-
+        session.add(workflow_node_execution)
         return workflow_node_execution
 
     #################################################
@@ -547,16 +492,19 @@ class WorkflowCycleManage:
         )
 
     def _workflow_node_start_to_stream_response(
-        self, event: QueueNodeStartedEvent, task_id: str, workflow_node_execution: WorkflowNodeExecution
+        self,
+        *,
+        session: Session,
+        event: QueueNodeStartedEvent,
+        task_id: str,
+        workflow_node_execution: WorkflowNodeExecution,
     ) -> Optional[NodeStartStreamResponse]:
-        """
-        Workflow node start to stream response.
-        :param event: queue node started event
-        :param task_id: task id
-        :param workflow_node_execution: workflow node execution
-        :return:
-        """
+        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
+        _ = session
+
         if workflow_node_execution.node_type in {NodeType.ITERATION.value, NodeType.LOOP.value}:
+            return None
+        if not workflow_node_execution.workflow_run_id:
             return None
 
         response = NodeStartStreamResponse(
@@ -593,6 +541,8 @@ class WorkflowCycleManage:
 
     def _workflow_node_finish_to_stream_response(
         self,
+        *,
+        session: Session,
         event: QueueNodeSucceededEvent
         | QueueNodeFailedEvent
         | QueueNodeInIterationFailedEvent
@@ -600,14 +550,13 @@ class WorkflowCycleManage:
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
     ) -> Optional[NodeFinishStreamResponse]:
-        """
-        Workflow node finish to stream response.
-        :param event: queue node succeeded or failed event
-        :param task_id: task id
-        :param workflow_node_execution: workflow node execution
-        :return:
-        """
+        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
+        _ = session
         if workflow_node_execution.node_type in {NodeType.ITERATION.value, NodeType.LOOP.value}:
+            return None
+        if not workflow_node_execution.workflow_run_id:
+            return None
+        if not workflow_node_execution.finished_at:
             return None
 
         return NodeFinishStreamResponse(
@@ -640,18 +589,19 @@ class WorkflowCycleManage:
 
     def _workflow_node_retry_to_stream_response(
         self,
+        *,
+        session: Session,
         event: QueueNodeRetryEvent,
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
     ) -> Optional[Union[NodeRetryStreamResponse, NodeFinishStreamResponse]]:
-        """
-        Workflow node finish to stream response.
-        :param event: queue node succeeded or failed event
-        :param task_id: task id
-        :param workflow_node_execution: workflow node execution
-        :return:
-        """
+        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
+        _ = session
         if workflow_node_execution.node_type in {NodeType.ITERATION.value, NodeType.LOOP.value}:
+            return None
+        if not workflow_node_execution.workflow_run_id:
+            return None
+        if not workflow_node_execution.finished_at:
             return None
 
         return NodeRetryStreamResponse(
@@ -684,15 +634,10 @@ class WorkflowCycleManage:
         )
 
     def _workflow_parallel_branch_start_to_stream_response(
-        self, task_id: str, workflow_run: WorkflowRun, event: QueueParallelBranchRunStartedEvent
+        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueParallelBranchRunStartedEvent
     ) -> ParallelBranchStartStreamResponse:
-        """
-        Workflow parallel branch start to stream response
-        :param task_id: task id
-        :param workflow_run: workflow run
-        :param event: parallel branch run started event
-        :return:
-        """
+        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
+        _ = session
         return ParallelBranchStartStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_run.id,
@@ -708,17 +653,14 @@ class WorkflowCycleManage:
 
     def _workflow_parallel_branch_finished_to_stream_response(
         self,
+        *,
+        session: Session,
         task_id: str,
         workflow_run: WorkflowRun,
         event: QueueParallelBranchRunSucceededEvent | QueueParallelBranchRunFailedEvent,
     ) -> ParallelBranchFinishedStreamResponse:
-        """
-        Workflow parallel branch finished to stream response
-        :param task_id: task id
-        :param workflow_run: workflow run
-        :param event: parallel branch run succeeded or failed event
-        :return:
-        """
+        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
+        _ = session
         return ParallelBranchFinishedStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_run.id,
@@ -735,15 +677,10 @@ class WorkflowCycleManage:
         )
 
     def _workflow_iteration_start_to_stream_response(
-        self, task_id: str, workflow_run: WorkflowRun, event: QueueIterationStartEvent
+        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueIterationStartEvent
     ) -> IterationNodeStartStreamResponse:
-        """
-        Workflow iteration start to stream response
-        :param task_id: task id
-        :param workflow_run: workflow run
-        :param event: iteration start event
-        :return:
-        """
+        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
+        _ = session
         return IterationNodeStartStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_run.id,
@@ -762,15 +699,10 @@ class WorkflowCycleManage:
         )
 
     def _workflow_iteration_next_to_stream_response(
-        self, task_id: str, workflow_run: WorkflowRun, event: QueueIterationNextEvent
+        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueIterationNextEvent
     ) -> IterationNodeNextStreamResponse:
-        """
-        Workflow iteration next to stream response
-        :param task_id: task id
-        :param workflow_run: workflow run
-        :param event: iteration next event
-        :return:
-        """
+        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
+        _ = session
         return IterationNodeNextStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_run.id,
@@ -791,15 +723,10 @@ class WorkflowCycleManage:
         )
 
     def _workflow_iteration_completed_to_stream_response(
-        self, task_id: str, workflow_run: WorkflowRun, event: QueueIterationCompletedEvent
+        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueIterationCompletedEvent
     ) -> IterationNodeCompletedStreamResponse:
-        """
-        Workflow iteration completed to stream response
-        :param task_id: task id
-        :param workflow_run: workflow run
-        :param event: iteration completed event
-        :return:
-        """
+        # receive session to make sure the workflow_run won't be expired, need a more elegant way to handle this
+        _ = session
         return IterationNodeCompletedStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_run.id,
@@ -883,7 +810,7 @@ class WorkflowCycleManage:
 
         return None
 
-    def _refetch_workflow_run(self, *, session: Session, workflow_run_id: str) -> WorkflowRun:
+    def _get_workflow_run(self, *, session: Session, workflow_run_id: str) -> WorkflowRun:
         """
         Refetch workflow run
         :param workflow_run_id: workflow run id
@@ -896,14 +823,9 @@ class WorkflowCycleManage:
 
         return workflow_run
 
-    def _refetch_workflow_node_execution(self, node_execution_id: str) -> WorkflowNodeExecution:
-        """
-        Refetch workflow node execution
-        :param node_execution_id: workflow node execution id
-        :return:
-        """
-        workflow_node_execution = self._wip_workflow_node_executions.get(node_execution_id)
-
+    def _get_workflow_node_execution(self, session: Session, node_execution_id: str) -> WorkflowNodeExecution:
+        stmt = select(WorkflowNodeExecution).where(WorkflowNodeExecution.id == node_execution_id)
+        workflow_node_execution = session.scalar(stmt)
         if not workflow_node_execution:
             raise WorkflowNodeExecutionNotFoundError(node_execution_id)
 

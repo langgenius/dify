@@ -23,6 +23,7 @@ from .exc import (
     FileFetchError,
     HttpRequestNodeError,
     InvalidHttpMethodError,
+    InvalidURLError,
     RequestBodyError,
     ResponseSizeError,
 )
@@ -65,6 +66,12 @@ class Executor:
             node_data.authorization.config.api_key = variable_pool.convert_template(
                 node_data.authorization.config.api_key
             ).text
+
+        # check if node_data.url is a valid URL
+        if not node_data.url:
+            raise InvalidURLError("url is required")
+        if not node_data.url.startswith(("http://", "https://")):
+            raise InvalidURLError("url should start with http:// or https://")
 
         self.url: str = node_data.url
         self.method = node_data.method

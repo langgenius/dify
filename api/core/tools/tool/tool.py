@@ -222,6 +222,12 @@ class Tool(BaseModel, ABC):
         if not isinstance(result, list):
             result = [result]
 
+        if not all(isinstance(message, ToolInvokeMessage) for message in result):
+            raise ValueError(
+                f"Invalid return type from {self.__class__.__name__}._invoke method. "
+                "Expected ToolInvokeMessage or list of ToolInvokeMessage."
+            )
+
         return result
 
     def _transform_tool_parameters_type(self, tool_parameters: Mapping[str, Any]) -> dict[str, Any]:
