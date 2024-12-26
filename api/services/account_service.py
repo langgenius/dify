@@ -210,7 +210,10 @@ class AccountService:
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
             raise AccountRegisterError(
-                description="Unable to re-register the account because the deletion occurred less than 30 days ago"
+                description=(
+                    "This email account has been deleted within the past "
+                    "30 days and is temporarily unavailable for new account registration"
+                )
             )
 
         account = Account()
@@ -459,7 +462,10 @@ class AccountService:
     def get_user_through_email(cls, email: str):
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
             raise AccountRegisterError(
-                description="Unable to re-register the account because the deletion occurred less than 30 days ago"
+                description=(
+                    "This email account has been deleted within the past "
+                    "30 days and is temporarily unavailable for new account registration"
+                )
             )
 
         account = db.session.query(Account).filter(Account.email == email).first()

@@ -17,8 +17,8 @@ from controllers.console.auth.error import (
 )
 from controllers.console.error import (
     AccountBannedError,
+    AccountInFreezeError,
     AccountNotFound,
-    AccountOnRegisterError,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
 )
@@ -49,9 +49,7 @@ class LoginApi(Resource):
         args = parser.parse_args()
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(args["email"]):
-            raise AccountOnRegisterError(
-                description="Unable to re-register the account because the deletion occurred less than 30 days ago"
-            )
+            raise AccountInFreezeError()
 
         is_login_error_rate_limit = AccountService.is_login_error_rate_limit(args["email"])
         if is_login_error_rate_limit:
@@ -125,7 +123,7 @@ class ResetPasswordSendEmailApi(Resource):
         try:
             account = AccountService.get_user_through_email(args["email"])
         except AccountRegisterError as are:
-            raise AccountOnRegisterError(description=are.description)
+            raise AccountInFreezeError()
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
@@ -156,7 +154,7 @@ class EmailCodeLoginSendEmailApi(Resource):
         try:
             account = AccountService.get_user_through_email(args["email"])
         except AccountRegisterError as are:
-            raise AccountOnRegisterError(description=are.description)
+            raise AccountInFreezeError()
 
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
@@ -194,7 +192,7 @@ class EmailCodeLoginApi(Resource):
         try:
             account = AccountService.get_user_through_email(user_email)
         except AccountRegisterError as are:
-            raise AccountOnRegisterError(description=are.description)
+            raise AccountInFreezeError()
         if account:
             tenant = TenantService.get_join_tenants(account)
             if not tenant:
@@ -214,7 +212,7 @@ class EmailCodeLoginApi(Resource):
             except WorkSpaceNotAllowedCreateError:
                 return NotAllowedCreateWorkspace()
             except AccountRegisterError as are:
-                raise AccountOnRegisterError(description=are.description)
+                raise AccountInFreezeError()
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])
         return {"result": "success", "data": token_pair.model_dump()}

@@ -93,8 +93,10 @@ class UnauthorizedAndForceLogout(BaseHTTPException):
     description = "Unauthorized and force logout."
     code = 401
 
-
-class AccountOnRegisterError(BaseHTTPException):
-    error_code = "account_register_error"
-    code = 400
-    description = "Account register error."
+    class AccountInFreezeError(BaseHTTPException):
+        error_code = "account_in_freeze"
+        code = 400
+        description = (
+            "This email account has been deleted within the past 30 days"
+            "and is temporarily unavailable for new account registration."
+        )
