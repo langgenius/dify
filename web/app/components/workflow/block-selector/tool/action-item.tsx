@@ -59,6 +59,7 @@ const ToolItem: FC<Props> = ({
             title: payload.label[language],
             is_team_authorization: provider.is_team_authorization,
             output_schema: payload.output_schema,
+            paramSchemas: payload.parameters,
             params,
           })
         }}
