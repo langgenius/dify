@@ -484,7 +484,11 @@ class BaseAgentRunner(AppRunner):
         files = db.session.query(MessageFile).filter(MessageFile.message_id == message.id).all()
         if not files:
             return UserPromptMessage(content=message.query)
-        file_extra_config = FileUploadConfigManager.convert(message.app_model_config.to_dict())
+        if message.app_model_config:
+            file_extra_config = FileUploadConfigManager.convert(message.app_model_config.to_dict())
+        else:
+            file_extra_config = None
+
         if not file_extra_config:
             return UserPromptMessage(content=message.query)
 

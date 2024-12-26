@@ -4,7 +4,7 @@ import logging
 import click
 
 from core.entities import DEFAULT_PLUGIN_ID
-from extensions.ext_database import db
+from models.engine import db
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ class PluginDataMigration:
         cls.migrate_datasets()
         cls.migrate_db_records("embeddings", "provider_name")  # large table
         cls.migrate_db_records("dataset_collection_bindings", "provider_name")
+        cls.migrate_db_records("tool_builtin_providers", "provider")
 
     @classmethod
     def migrate_datasets(cls) -> None:
