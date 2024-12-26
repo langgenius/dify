@@ -26,15 +26,21 @@ export type AgentStrategyProps = {
   onFormValueChange: (value: ToolVarInputs) => void
 }
 
-type MaxIterFormSchema = Omit<CredentialFormSchema, 'type'> & { type: 'max-iter' }
+type CustomSchema<Type, Field = {}> = Omit<CredentialFormSchema, 'type'> & { type: Type } & Field
+
+type MaxIterFormSchema = CustomSchema<'max-iter'>
+type ToolSelectorSchema = CustomSchema<'tool-selector'>
+
+type CustomField = MaxIterFormSchema | ToolSelectorSchema
 
 export const AgentStrategy = (props: AgentStrategyProps) => {
   const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange } = props
   const { t } = useTranslation()
-  const renderField: ComponentProps<typeof Form<MaxIterFormSchema>>['customRenderField'] = (schema, props) => {
+  const renderField: ComponentProps<typeof Form<CustomField>>['customRenderField'] = (schema, props) => {
     switch (schema.type) {
       case 'max-iter': {
-        const value = props.value[schema.variable]
+        const defaultValue = schema.default ? Number.parseInt(schema.default) : 1
+        const value = props.value[schema.variable] || defaultValue
         const onChange = (value: number) => {
           props.onChange({ ...props.value, [schema.variable]: value })
         }
@@ -45,7 +51,7 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
               value={value}
               // TODO: maybe empty, handle this
               onChange={onChange as any}
-              defaultValue={3}
+              defaultValue={defaultValue}
               size='sm'
               min={1}
               max={10}
@@ -63,7 +69,7 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
     {
       strategy
         ? <div>
-          <Form<MaxIterFormSchema>
+          <Form<CustomField>
             formSchemas={[
               ...formSchema,
               {
@@ -76,6 +82,7 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
                 name: 'max iter',
                 required: true,
                 show_on: [],
+                default: '3',
               } as MaxIterFormSchema,
             ]}
             value={formValue}
