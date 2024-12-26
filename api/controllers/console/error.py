@@ -97,7 +97,4 @@ class UnauthorizedAndForceLogout(BaseHTTPException):
 class AccountOnRegisterError(BaseHTTPException):
     error_code = "account_register_error"
     code = 400
-
-    def __init__(self, message: str = ""):
-        description = f"Account register error: {message}."
-        super().__init__(description=description)
+    description = "Account register error."

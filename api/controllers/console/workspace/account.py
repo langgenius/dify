@@ -277,7 +277,7 @@ class AccountDeleteApi(Resource):
         return {"result": "success"}
 
 
-class AccountDeleleUpdateFeedbackApi(Resource):
+class AccountDeleteUpdateFeedbackApi(Resource):
     @setup_required
     def post(self):
         account = current_user
@@ -304,6 +304,6 @@ api.add_resource(AccountPasswordApi, "/account/password")
 api.add_resource(AccountIntegrateApi, "/account/integrates")
 api.add_resource(AccountDeleteVerifyApi, "/account/delete/verify")
 api.add_resource(AccountDeleteApi, "/account/delete")
-api.add_resource(AccountDeleleUpdateFeedbackApi, "/account/delete/feedback")
+api.add_resource(AccountDeleteUpdateFeedbackApi, "/account/delete/feedback")
 # api.add_resource(AccountEmailApi, '/account/email')
 # api.add_resource(AccountEmailVerifyApi, '/account/email-verify')

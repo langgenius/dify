@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, Optional, cast
 
+from api.controllers.console.error import AccountOnRegisterError
 from pydantic import BaseModel
 from sqlalchemy import func
 from werkzeug.exceptions import Unauthorized
@@ -209,8 +210,8 @@ class AccountService:
             raise AccountNotFound()
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
-            raise AccountRegisterError(
-                "Unable to re-register the account because the deletion occurred less than 30 days ago"
+            raise AccountOnRegisterError(
+                description="Unable to re-register the account because the deletion occurred less than 30 days ago"
             )
 
         account = Account()
@@ -467,6 +468,11 @@ class AccountService:
 
         if account.status == AccountStatus.BANNED.value:
             raise Unauthorized("Account is banned.")
+
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+            raise AccountOnRegisterError(
+                description="Unable to re-register the account because the deletion occurred less than 30 days ago"
+            )
 
         return account
 
