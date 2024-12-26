@@ -13,6 +13,7 @@ import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import ToolCredentialForm from '@/app/components/plugins/plugin-detail-panel/tool-selector/tool-credentials-form'
 import Toast from '@/app/components/base/toast'
+import Textarea from '@/app/components/base/textarea'
 
 import { useAppContext } from '@/context/app-context'
 import {
@@ -34,6 +35,8 @@ type Props = {
   value?: {
     provider: string
     tool_name: string
+    description?: string
+    parameters?: Record<string, any>
   }
   disabled?: boolean
   placement?: Placement
@@ -41,6 +44,8 @@ type Props = {
   onSelect: (tool: {
     provider: string
     tool_name: string
+    description?: string
+    parameters?: Record<string, any>
   }) => void
   supportAddCustomTool?: boolean
   scope?: string
@@ -80,9 +85,18 @@ const ToolSelector: FC<Props> = ({
     }
     onSelect(toolValue)
     setIsShowChooseTool(false)
-    if (tool.provider_type === CollectionType.builtIn && tool.is_team_authorization)
-      onShowChange(false)
+    // if (tool.provider_type === CollectionType.builtIn && tool.is_team_authorization)
+    //   onShowChange(false)
   }
+
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onSelect({
+      ...value,
+      description: e.target.value || '',
+    } as any)
+  }
+
+  // authorization
   const { isCurrentWorkspaceManager } = useAppContext()
   const [isShowSettingAuth, setShowSettingAuth] = useState(false)
   const handleCredentialSettingUpdate = () => {
@@ -112,32 +126,45 @@ const ToolSelector: FC<Props> = ({
           onClick={handleTriggerClick}
         >
           <ToolTrigger
+            isConfigure
             open={isShow}
             value={value}
             provider={currentProvider}
           />
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1000]'>
-          <div className="relative w-[389px] min-h-20 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg">
-            <div className='px-4 py-3 flex flex-col gap-1'>
-              <div className='h-6 flex items-center system-sm-semibold text-text-secondary'>{t('tools.toolSelector.label')}</div>
-              <ToolPicker
-                placement='bottom'
-                offset={offset}
-                trigger={
-                  <ToolTrigger
-                    open={isShowChooseTool}
-                    value={value}
-                    provider={currentProvider}
-                  />
-                }
-                isShow={isShowChooseTool}
-                onShowChange={setIsShowChooseTool}
-                disabled={false}
-                supportAddCustomTool
-                onSelect={handleSelectTool}
-                scope={scope}
-              />
+          <div className="relative w-[361px] min-h-20 pb-2 rounded-xl backdrop-blur-sm bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg">
+            <div className='px-4 pt-3.5 pb-1 text-text-primary system-xl-semibold'>{t('plugin.detailPanel.toolSelector.title')}</div>
+            <div className='px-4 py-2 flex flex-col gap-3'>
+              <div className='flex flex-col gap-1'>
+                <div className='h-6 flex items-center system-sm-semibold text-text-secondary'>{t('plugin.detailPanel.toolSelector.toolLabel')}</div>
+                <ToolPicker
+                  placement='bottom'
+                  offset={offset}
+                  trigger={
+                    <ToolTrigger
+                      open={isShowChooseTool}
+                      value={value}
+                      provider={currentProvider}
+                    />
+                  }
+                  isShow={isShowChooseTool}
+                  onShowChange={setIsShowChooseTool}
+                  disabled={false}
+                  supportAddCustomTool
+                  onSelect={handleSelectTool}
+                  scope={scope}
+                />
+              </div>
+              <div className='flex flex-col gap-1'>
+                <div className='h-6 flex items-center system-sm-semibold text-text-secondary'>{t('plugin.detailPanel.toolSelector.descriptionLabel')}</div>
+                <Textarea
+                  className='resize-none'
+                  placeholder={t('plugin.detailPanel.toolSelector.descriptionPlaceholder')}
+                  value={value?.description || ''}
+                  onChange={handleDescriptionChange}
+                />
+              </div>
             </div>
             {/* authorization panel */}
             {isShowSettingAuth && currentProvider && (
@@ -154,7 +181,7 @@ const ToolSelector: FC<Props> = ({
             )}
             {!isShowSettingAuth && currentProvider && currentProvider.type === CollectionType.builtIn && currentProvider.is_team_authorization && currentProvider.allow_delete && (
               <div className='px-4 py-3 flex items-center border-t border-divider-subtle'>
-                <div className='grow mr-3 h-6 flex items-center system-sm-semibold text-text-secondary'>{t('tools.toolSelector.auth')}</div>
+                <div className='grow mr-3 h-6 flex items-center system-sm-semibold text-text-secondary'>{t('plugin.detailPanel.toolSelector.auth')}</div>
                 {isCurrentWorkspaceManager && (
                   <Button
                     variant='secondary'
