@@ -2,8 +2,8 @@ import datetime
 
 import pytz
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource, fields, marshal_with, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
 
 from configs import dify_config
 from constants.languages import supported_language

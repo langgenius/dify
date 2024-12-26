@@ -157,7 +157,6 @@ class HuggingfaceTeiTextEmbeddingModel(TextEmbeddingModel):
                 headers["Authorization"] = f"Bearer {api_key}"
 
             extra_args = TeiHelper.get_tei_extra_parameter(server_url, model, headers)
-            print(extra_args)
             if extra_args.model_type != "embedding":
                 raise CredentialsValidateFailedError("Current model is not a embedding model")
 

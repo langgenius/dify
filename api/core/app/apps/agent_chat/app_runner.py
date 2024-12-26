@@ -173,6 +173,8 @@ class AgentChatAppRunner(AppRunner):
             return
 
         agent_entity = app_config.agent
+        if not agent_entity:
+            raise ValueError("Agent entity not found")
 
         # load tool variables
         tool_conversation_variables = self._load_tool_variables(
@@ -200,14 +202,21 @@ class AgentChatAppRunner(AppRunner):
         # change function call strategy based on LLM model
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
         model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+        if not model_schema or not model_schema.features:
+            raise ValueError("Model schema not found")
 
         if {ModelFeature.MULTI_TOOL_CALL, ModelFeature.TOOL_CALL}.intersection(model_schema.features or []):
             agent_entity.strategy = AgentEntity.Strategy.FUNCTION_CALLING
 
-        conversation = db.session.query(Conversation).filter(Conversation.id == conversation.id).first()
-        message = db.session.query(Message).filter(Message.id == message.id).first()
+        conversation_result = db.session.query(Conversation).filter(Conversation.id == conversation.id).first()
+        if conversation_result is None:
+            raise ValueError("Conversation not found")
+        message_result = db.session.query(Message).filter(Message.id == message.id).first()
+        if message_result is None:
+            raise ValueError("Message not found")
         db.session.close()
 
+        runner_cls: type[FunctionCallAgentRunner] | type[CotChatAgentRunner] | type[CotCompletionAgentRunner]
         # start agent runner
         if agent_entity.strategy == AgentEntity.Strategy.CHAIN_OF_THOUGHT:
             # check LLM mode
@@ -225,12 +234,12 @@ class AgentChatAppRunner(AppRunner):
         runner = runner_cls(
             tenant_id=app_config.tenant_id,
             application_generate_entity=application_generate_entity,
-            conversation=conversation,
+            conversation=conversation_result,
             app_config=app_config,
             model_config=application_generate_entity.model_conf,
             config=agent_entity,
             queue_manager=queue_manager,
-            message=message,
+            message=message_result,
             user_id=application_generate_entity.user_id,
             memory=memory,
             prompt_messages=prompt_message,
@@ -257,7 +266,7 @@ class AgentChatAppRunner(AppRunner):
         """
         load tool variables from database
         """
-        tool_variables: ToolConversationVariables = (
+        tool_variables: ToolConversationVariables | None = (
             db.session.query(ToolConversationVariables)
             .filter(
                 ToolConversationVariables.conversation_id == conversation_id,

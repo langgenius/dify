@@ -1,6 +1,6 @@
 from typing import Optional
 
-from xinference_client.client.restful.restful_client import Client, RESTfulRerankModelHandle
+from xinference_client.client.restful.restful_client import Client, RESTfulRerankModelHandle  # type: ignore
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType

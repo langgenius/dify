@@ -7,7 +7,7 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.models.document import Document
 from extensions.ext_database import db
-from models.dataset import Dataset, DocumentSegment
+from models.dataset import ChildChunk, Dataset, DocumentSegment
 
 
 class DatasetDocumentStore:
@@ -60,7 +60,7 @@ class DatasetDocumentStore:
 
         return output
 
-    def add_documents(self, docs: Sequence[Document], allow_update: bool = True) -> None:
+    def add_documents(self, docs: Sequence[Document], allow_update: bool = True, save_child: bool = False) -> None:
         max_position = (
             db.session.query(func.max(DocumentSegment.position))
             .filter(DocumentSegment.document_id == self._document_id)
@@ -82,6 +82,9 @@ class DatasetDocumentStore:
         for doc in docs:
             if not isinstance(doc, Document):
                 raise ValueError("doc must be a Document")
+
+            if doc.metadata is None:
+                raise ValueError("doc.metadata must be a dict")
 
             segment_document = self.get_document_segment(doc_id=doc.metadata["doc_id"])
 
@@ -117,13 +120,55 @@ class DatasetDocumentStore:
                     segment_document.answer = doc.metadata.pop("answer", "")
 
                 db.session.add(segment_document)
+                db.session.flush()
+                if save_child:
+                    if doc.children:
+                        for postion, child in enumerate(doc.children, start=1):
+                            child_segment = ChildChunk(
+                                tenant_id=self._dataset.tenant_id,
+                                dataset_id=self._dataset.id,
+                                document_id=self._document_id,
+                                segment_id=segment_document.id,
+                                position=postion,
+                                index_node_id=child.metadata.get("doc_id"),
+                                index_node_hash=child.metadata.get("doc_hash"),
+                                content=child.page_content,
+                                word_count=len(child.page_content),
+                                type="automatic",
+                                created_by=self._user_id,
+                            )
+                            db.session.add(child_segment)
             else:
                 segment_document.content = doc.page_content
                 if doc.metadata.get("answer"):
                     segment_document.answer = doc.metadata.pop("answer", "")
-                segment_document.index_node_hash = doc.metadata["doc_hash"]
+                segment_document.index_node_hash = doc.metadata.get("doc_hash")
                 segment_document.word_count = len(doc.page_content)
                 segment_document.tokens = tokens
+                if save_child and doc.children:
+                    # delete the existing child chunks
+                    db.session.query(ChildChunk).filter(
+                        ChildChunk.tenant_id == self._dataset.tenant_id,
+                        ChildChunk.dataset_id == self._dataset.id,
+                        ChildChunk.document_id == self._document_id,
+                        ChildChunk.segment_id == segment_document.id,
+                    ).delete()
+                    # add new child chunks
+                    for position, child in enumerate(doc.children, start=1):
+                        child_segment = ChildChunk(
+                            tenant_id=self._dataset.tenant_id,
+                            dataset_id=self._dataset.id,
+                            document_id=self._document_id,
+                            segment_id=segment_document.id,
+                            position=position,
+                            index_node_id=child.metadata.get("doc_id"),
+                            index_node_hash=child.metadata.get("doc_hash"),
+                            content=child.page_content,
+                            word_count=len(child.page_content),
+                            type="automatic",
+                            created_by=self._user_id,
+                        )
+                        db.session.add(child_segment)
 
             db.session.commit()
 
@@ -179,10 +224,10 @@ class DatasetDocumentStore:
 
         if document_segment is None:
             return None
+        data: Optional[str] = document_segment.index_node_hash
+        return data
 
-        return document_segment.index_node_hash
-
-    def get_document_segment(self, doc_id: str) -> DocumentSegment:
+    def get_document_segment(self, doc_id: str) -> Optional[DocumentSegment]:
         document_segment = (
             db.session.query(DocumentSegment)
             .filter(DocumentSegment.dataset_id == self._dataset.id, DocumentSegment.index_node_id == doc_id)

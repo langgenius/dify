@@ -1,4 +1,4 @@
-from flask_restful import fields
+from flask_restful import fields  # type: ignore
 
 from libs.helper import TimestampField
 
@@ -73,6 +73,7 @@ dataset_detail_fields = {
     "embedding_available": fields.Boolean,
     "retrieval_model_dict": fields.Nested(dataset_retrieval_model_fields),
     "tags": fields.List(fields.Nested(tag_fields)),
+    "doc_form": fields.String,
     "external_knowledge_info": fields.Nested(external_knowledge_info_fields),
     "external_retrieval_model": fields.Nested(external_retrieval_model_fields, allow_null=True),
 }

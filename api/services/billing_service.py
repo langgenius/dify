@@ -1,7 +1,8 @@
 import os
+from typing import Optional
 
 import httpx
-from tenacity import retry, retry_if_not_exception_type, stop_before_delay, wait_fixed
+from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 
 from extensions.ext_database import db
 from models.account import TenantAccountJoin, TenantAccountRole
@@ -43,7 +44,7 @@ class BillingService:
     @retry(
         wait=wait_fixed(2),
         stop=stop_before_delay(10),
-        retry=retry_if_not_exception_type(httpx.RequestError),
+        retry=retry_if_exception_type(httpx.RequestError),
         reraise=True,
     )
     def _send_request(cls, method, endpoint, json=None, params=None):
@@ -58,11 +59,14 @@ class BillingService:
     def is_tenant_owner_or_admin(current_user):
         tenant_id = current_user.current_tenant_id
 
-        join = (
+        join: Optional[TenantAccountJoin] = (
             db.session.query(TenantAccountJoin)
             .filter(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == current_user.id)
             .first()
         )
+
+        if not join:
+            raise ValueError("Tenant account join not found")
 
         if not TenantAccountRole.is_privileged_role(join.role):
             raise ValueError("Only team owner or team admin can perform this action")

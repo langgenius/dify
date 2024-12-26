@@ -2,7 +2,8 @@ import json
 import time
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import Optional, cast
+from typing import Any, Optional, cast
+from uuid import uuid4
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
@@ -242,7 +243,7 @@ class WorkflowService:
                 raise ValueError("Node run failed with no run result")
             # single step debug mode error handling return
             if node_run_result.status == WorkflowNodeExecutionStatus.FAILED and node_instance.should_continue_on_error:
-                node_error_args = {
+                node_error_args: dict[str, Any] = {
                     "status": WorkflowNodeExecutionStatus.EXCEPTION,
                     "error": node_run_result.error,
                     "inputs": node_run_result.inputs,
@@ -277,6 +278,7 @@ class WorkflowService:
             error = e.error
 
         workflow_node_execution = WorkflowNodeExecution()
+        workflow_node_execution.id = str(uuid4())
         workflow_node_execution.tenant_id = app_model.tenant_id
         workflow_node_execution.app_id = app_model.id
         workflow_node_execution.workflow_id = draft_workflow.id
@@ -338,7 +340,7 @@ class WorkflowService:
             raise ValueError(f"Current App mode: {app_model.mode} is not supported convert to workflow.")
 
         # convert to workflow
-        new_app = workflow_converter.convert_to_workflow(
+        new_app: App = workflow_converter.convert_to_workflow(
             app_model=app_model,
             account=account,
             name=args.get("name", "Default Name"),

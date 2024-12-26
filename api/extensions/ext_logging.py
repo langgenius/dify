@@ -11,7 +11,7 @@ from dify_app import DifyApp
 
 
 def init_app(app: DifyApp):
-    log_handlers = []
+    log_handlers: list[logging.Handler] = []
     log_file = dify_config.LOG_FILE
     if log_file:
         log_dir = os.path.dirname(log_file)
@@ -49,7 +49,8 @@ def init_app(app: DifyApp):
             return datetime.utcfromtimestamp(seconds).astimezone(timezone).timetuple()
 
         for handler in logging.root.handlers:
-            handler.formatter.converter = time_converter
+            if handler.formatter:
+                handler.formatter.converter = time_converter
 
 
 def get_request_id():
