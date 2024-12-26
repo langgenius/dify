@@ -2,6 +2,7 @@ import csv
 import io
 import json
 import logging
+import operator
 import os
 import tempfile
 from typing import cast
@@ -10,7 +11,6 @@ import docx
 import pandas as pd
 import pypdfium2  # type: ignore
 import yaml  # type: ignore
-import operator
 
 from configs import dify_config
 from core.file import File, FileTransferMethod, file_manager
@@ -193,23 +193,23 @@ def _extract_text_from_doc(file_content: bytes) -> str:
 
         # Keep track of paragraph and table positions
         content_items = []
-        
+
         # Process paragraphs and tables
         for i, paragraph in enumerate(doc.paragraphs):
             if paragraph.text.strip():
-                content_items.append((i, 'paragraph', paragraph))
-        
+                content_items.append((i, "paragraph", paragraph))
+
         for i, table in enumerate(doc.tables):
-            content_items.append((i, 'table', table))
-        
+            content_items.append((i, "table", table))
+
         # Sort content items based on their original position
         content_items.sort(key=operator.itemgetter(0))
-        
+
         # Process sorted content
         for _, item_type, item in content_items:
-            if item_type == 'paragraph':
+            if item_type == "paragraph":
                 text.append(item.text)
-            elif item_type == 'table':
+            elif item_type == "table":
                 # Process tables
                 try:
                     # Check if any cell in the table has text
@@ -218,22 +218,22 @@ def _extract_text_from_doc(file_content: bytes) -> str:
                         if any(cell.text.strip() for cell in row.cells):
                             has_content = True
                             break
-                    
+
                     if has_content:
-                        cell_texts = [cell.text.replace('\n', '<br>') for cell in item.rows[0].cells]
+                        cell_texts = [cell.text.replace("\n", "<br>") for cell in item.rows[0].cells]
                         markdown_table = f"| {' | '.join(cell_texts)} |\n"
                         markdown_table += f"| {' | '.join(['---'] * len(item.rows[0].cells))} |\n"
-                        
+
                         for row in item.rows[1:]:
                             # Replace newlines with <br> in each cell
-                            row_cells = [cell.text.replace('\n', '<br>') for cell in row.cells]
+                            row_cells = [cell.text.replace("\n", "<br>") for cell in row.cells]
                             markdown_table += "| " + " | ".join(row_cells) + " |\n"
-                        
+
                         text.append(markdown_table)
                 except Exception as e:
                     logger.warning(f"Failed to extract table from DOC/DOCX: {e}")
                     continue
-        
+
         return "\n".join(text)
 
     except Exception as e:
