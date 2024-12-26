@@ -23,4 +23,4 @@ def delete_account_task(account_id):
         logger.error(f"Account {account_id} not found.")
         return
     # send success email
-    send_deletion_success_task.delay(account.interface_language, account.email)
+    send_deletion_success_task.delay(account.email)

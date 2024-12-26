@@ -9,7 +9,7 @@ from extensions.ext_mail import mail
 
 
 @shared_task(queue="mail")
-def send_deletion_success_task(language, to):
+def send_deletion_success_task(to):
     """Send email to user regarding account deletion.
 
     Args:
@@ -22,20 +22,12 @@ def send_deletion_success_task(language, to):
     start_at = time.perf_counter()
 
     try:
-        if language == "zh-Hans":
-            html_content = render_template(
-                "delete_account_success_template_zh-CN.html",
-                to=to,
-                email=to,
-            )
-            mail.send(to=to, subject="Dify 账户删除成功", html=html_content)
-        else:
-            html_content = render_template(
-                "delete_account_success_template_en-US.html",
-                to=to,
-                email=to,
-            )
-            mail.send(to=to, subject="Dify Account Deleted", html=html_content)
+        html_content = render_template(
+            "delete_account_success_template_en-US.html",
+            to=to,
+            email=to,
+        )
+        mail.send(to=to, subject="Your Dify.AI Account Has Been Successfully Deleted", html=html_content)
 
         end_at = time.perf_counter()
         logging.info(
@@ -48,7 +40,7 @@ def send_deletion_success_task(language, to):
 
 
 @shared_task(queue="mail")
-def send_account_deletion_verification_code(language, to, code):
+def send_account_deletion_verification_code(to, code):
     """Send email to user regarding account deletion verification code.
 
     Args:
@@ -62,12 +54,8 @@ def send_account_deletion_verification_code(language, to, code):
     start_at = time.perf_counter()
 
     try:
-        if language == "zh-Hans":
-            html_content = render_template("delete_account_code_email_template_zh-CN.html", to=to, code=code)
-            mail.send(to=to, subject="Dify 的删除账户验证码", html=html_content)
-        else:
-            html_content = render_template("delete_account_code_email_en-US.html", to=to, code=code)
-            mail.send(to=to, subject="Delete Your Dify Account", html=html_content)
+        html_content = render_template("delete_account_code_email_template_en-US.html", to=to, code=code)
+        mail.send(to=to, subject="Dify.AI Account Deletion and Verification", html=html_content)
 
         end_at = time.perf_counter()
         logging.info(

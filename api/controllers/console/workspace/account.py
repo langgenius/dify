@@ -252,7 +252,7 @@ class AccountDeleteVerifyApi(Resource):
         account = current_user
 
         token, code = AccountService.generate_account_deletion_verification_code(account)
-        AccountService.send_account_delete_verification_email(account, code)
+        AccountService.send_account_deletion_verification_email(account, code)
 
         return {"result": "success", "data": token}
 

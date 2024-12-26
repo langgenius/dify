@@ -262,13 +262,13 @@ class AccountService:
 
     @classmethod
     def send_account_deletion_verification_email(cls, account: Account, code: str):
-        language, email = account.interface_language, account.email
+        email = account.email
         if cls.email_code_account_deletion_rate_limiter.is_rate_limited(email):
             from controllers.console.auth.error import EmailCodeAccountDeletionRateLimitExceededError
 
             raise EmailCodeAccountDeletionRateLimitExceededError()
 
-        send_account_deletion_verification_code.delay(language=language, to=email, code=code)
+        send_account_deletion_verification_code.delay(to=email, code=code)
 
         cls.email_code_account_deletion_rate_limiter.increment_rate_limit(email)
 
@@ -422,11 +422,6 @@ class AccountService:
     @classmethod
     def get_reset_password_data(cls, token: str) -> Optional[dict[str, Any]]:
         return TokenManager.get_token_data(token, "reset_password")
-
-    @classmethod
-    def send_account_delete_verification_email(cls, account: Account, code: str):
-        language, email = account.interface_language, account.email
-        send_account_deletion_verification_code.delay(language=language, to=email, code=code)
 
     @classmethod
     def send_email_code_login_email(
