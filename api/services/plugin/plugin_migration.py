@@ -1,4 +1,5 @@
 import datetime
+import json
 import logging
 from collections.abc import Sequence
 
@@ -21,7 +22,7 @@ excluded_providers = ["time", "audio", "code", "webscraper"]
 
 class PluginMigration:
     @classmethod
-    def extract_plugins(cls) -> None:
+    def extract_plugins(cls, filepath: str) -> None:
         """
         Migrate plugin.
         """
@@ -94,7 +95,9 @@ class PluginMigration:
 
             for tenant_id in tenants:
                 plugins = cls.extract_installed_plugin_ids(tenant_id)
-                print(plugins)
+                # append to file, it's a jsonl file
+                with open(filepath, "a") as f:
+                    f.write(json.dumps({"tenant_id": tenant_id, "plugins": plugins}) + "\n")
 
             handled_tenant_count += len(tenants)
 

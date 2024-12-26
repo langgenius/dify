@@ -661,12 +661,13 @@ def migrate_data_for_plugin():
 
 
 @click.command("extract-plugins", help="Extract plugins.")
-def extract_plugins():
+@click.option("--output_file", prompt=True, help="The file to store the extracted plugins.")
+def extract_plugins(output_file: str):
     """
     Extract plugins.
     """
     click.echo(click.style("Starting extract plugins.", fg="white"))
 
-    PluginMigration.extract_plugins()
+    PluginMigration.extract_plugins(output_file)
 
     click.echo(click.style("Extract plugins completed.", fg="green"))
