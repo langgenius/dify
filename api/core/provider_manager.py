@@ -735,6 +735,7 @@ class ProviderManager:
                 )
 
                 # Get cached provider credentials
+                # error occurs
                 cached_provider_credentials = provider_credentials_cache.get()
 
                 if not cached_provider_credentials:
