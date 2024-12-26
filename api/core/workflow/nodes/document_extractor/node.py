@@ -10,6 +10,7 @@ import docx
 import pandas as pd
 import pypdfium2  # type: ignore
 import yaml  # type: ignore
+import operator
 
 from configs import dify_config
 from core.file import File, FileTransferMethod, file_manager
@@ -202,7 +203,7 @@ def _extract_text_from_doc(file_content: bytes) -> str:
             content_items.append((i, 'table', table))
         
         # Sort content items based on their original position
-        content_items.sort(key=lambda x: x[0])
+        content_items.sort(key=operator.itemgetter(0))
         
         # Process sorted content
         for _, item_type, item in content_items:
@@ -219,8 +220,9 @@ def _extract_text_from_doc(file_content: bytes) -> str:
                             break
                     
                     if has_content:
-                        markdown_table = "| " + " | ".join(cell.text.replace('\n', '<br>') for cell in item.rows[0].cells) + " |\n"
-                        markdown_table += "| " + " | ".join(["---"] * len(item.rows[0].cells)) + " |\n"
+                        cell_texts = [cell.text.replace('\n', '<br>') for cell in item.rows[0].cells]
+                        markdown_table = f"| {' | '.join(cell_texts)} |\n"
+                        markdown_table += f"| {' | '.join(['---'] * len(item.rows[0].cells))} |\n"
                         
                         for row in item.rows[1:]:
                             # Replace newlines with <br> in each cell
