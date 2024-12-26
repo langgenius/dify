@@ -24,7 +24,8 @@ export const useInvalidateStrategyProviders = () => {
 export const useStrategyProviderDetail = (agentProvider: string) => {
   return useQuery<StrategyPluginDetail>({
     queryKey: [NAME_SPACE, 'detail', agentProvider],
-    queryFn: () => get<StrategyPluginDetail>(`/workspaces/current/agent-providers/${agentProvider}`),
+    queryFn: () => get<StrategyPluginDetail>(`/workspaces/current/agent-provider/${agentProvider}`),
+    enabled: !!agentProvider,
   })
 }
 

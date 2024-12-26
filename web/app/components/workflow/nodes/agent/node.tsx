@@ -17,10 +17,10 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
         label={t('workflow.nodes.agent.strategy.shortLabel')}
         status='error'
         tooltip={t('workflow.nodes.agent.strategyNotInstallTooltip', {
-          strategy: inputs.agent_strategy_name,
+          strategy: inputs.agent_strategy_label,
         })}
       >
-        {inputs.agent_strategy_name}
+        {inputs.agent_strategy_label}
       </SettingItem>
       : <SettingItem label={t('workflow.nodes.agent.strategyNotSet')} />}
     <Group
