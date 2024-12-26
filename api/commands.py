@@ -26,6 +26,7 @@ from models.model import Account, App, AppAnnotationSetting, AppMode, Conversati
 from models.provider import Provider, ProviderModel
 from services.account_service import RegisterService, TenantService
 from services.plugin.data_migration import PluginDataMigration
+from services.plugin.plugin_migration import PluginMigration
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -659,14 +660,13 @@ def migrate_data_for_plugin():
     click.echo(click.style("Migrate data for plugin completed.", fg="green"))
 
 
-def register_commands(app):
-    app.cli.add_command(reset_password)
-    app.cli.add_command(reset_email)
-    app.cli.add_command(reset_encrypt_key_pair)
-    app.cli.add_command(vdb_migrate)
-    app.cli.add_command(convert_to_agent_apps)
-    app.cli.add_command(add_qdrant_doc_id_index)
-    app.cli.add_command(create_tenant)
-    app.cli.add_command(upgrade_db)
-    app.cli.add_command(fix_app_site_missing)
-    app.cli.add_command(migrate_data_for_plugin)
+@click.command("extract-plugins", help="Extract plugins.")
+def extract_plugins():
+    """
+    Extract plugins.
+    """
+    click.echo(click.style("Starting extract plugins.", fg="white"))
+
+    PluginMigration.extract_plugins()
+
+    click.echo(click.style("Extract plugins completed.", fg="green"))
