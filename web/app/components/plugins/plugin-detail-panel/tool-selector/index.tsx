@@ -43,13 +43,15 @@ type Props = {
     tool_name: string
   }) => void
   supportAddCustomTool?: boolean
+  scope?: string
 }
 const ToolSelector: FC<Props> = ({
   value,
   disabled,
-  placement = 'bottom',
+  placement = 'left',
   offset = 4,
   onSelect,
+  scope,
 }) => {
   const { t } = useTranslation()
   const [isShow, onShowChange] = useState(false)
@@ -73,6 +75,8 @@ const ToolSelector: FC<Props> = ({
     const toolValue = {
       provider: tool.provider_id,
       tool_name: tool.tool_name,
+      description: '',
+      parameters: {},
     }
     onSelect(toolValue)
     setIsShowChooseTool(false)
@@ -132,6 +136,7 @@ const ToolSelector: FC<Props> = ({
                 disabled={false}
                 supportAddCustomTool
                 onSelect={handleSelectTool}
+                scope={scope}
               />
             </div>
             {/* authorization panel */}

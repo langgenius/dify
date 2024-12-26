@@ -275,7 +275,10 @@ function Form<
 
     if (formSchema.type === FormTypeEnum.toolSelector) {
       const {
-        variable, label, required,
+        variable,
+        label,
+        required,
+        scope,
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
 
       return (
@@ -288,6 +291,7 @@ function Form<
             {tooltipContent}
           </div>
           <ToolSelector
+            scope={scope}
             disabled={readonly}
             value={value[variable]}
             onSelect={item => handleFormChange(variable, item as any)} />

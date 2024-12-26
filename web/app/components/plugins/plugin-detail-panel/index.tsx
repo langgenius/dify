@@ -7,6 +7,7 @@ import ActionList from './action-list'
 import ModelList from './model-list'
 import AgentStrategyList from './agent-strategy-list'
 import Drawer from '@/app/components/base/drawer'
+import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import cn from '@/utils/classnames'
 
@@ -25,6 +26,10 @@ const PluginDetailPanel: FC<Props> = ({
     if (isDelete)
       onHide()
     onUpdate()
+  }
+
+  const testChange = (val: any) => {
+    console.log('tool change', val)
   }
 
   if (!detail)
@@ -52,6 +57,12 @@ const PluginDetailPanel: FC<Props> = ({
             {!!detail.declaration.agent_strategy && <AgentStrategyList detail={detail} />}
             {!!detail.declaration.endpoint && <EndpointList detail={detail} />}
             {!!detail.declaration.model && <ModelList detail={detail} />}
+            <div>
+              <ToolSelector
+                value={undefined}
+                onSelect={item => testChange(item)}
+              />
+            </div>
           </div>
         </>
       )}
