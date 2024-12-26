@@ -462,17 +462,17 @@ class AccountService:
 
     @classmethod
     def get_user_through_email(cls, email: str):
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+            raise AccountRegisterError(
+                description="Unable to re-register the account because the deletion occurred less than 30 days ago"
+            )
+
         account = db.session.query(Account).filter(Account.email == email).first()
         if not account:
             return None
 
         if account.status == AccountStatus.BANNED.value:
             raise Unauthorized("Account is banned.")
-
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
-            raise AccountRegisterError(
-                description="Unable to re-register the account because the deletion occurred less than 30 days ago"
-            )
 
         return account
 
