@@ -10,16 +10,25 @@ description:
 parameters:
   - name: path
     type: string
-    required: true
+    required: false
     label:
       en_US: Page path
     human_description:
       en_US: Page path
     llm_description: The path where the page will be created. Must start with forward slash (e.g., /user/page-name)
     form: llm
+  - name: parent_path
+    type: string
+    required: false
+    label:
+      en_US: Parent page path
+    human_description:
+      en_US: Parent page path
+    llm_description: The path of the parent page. Must start with forward slash (e.g., /user/parent-page-name)
+    form: llm
   - name: body
     type: string
-    required: true
+    required: false
     label:
       en_US: Page body
     human_description:

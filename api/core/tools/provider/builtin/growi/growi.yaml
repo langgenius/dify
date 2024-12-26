@@ -4,7 +4,7 @@ identity:
   label:
     en_US: GROWI
   description:
-    en_US: Provider to operate GROWI in Dify
+    en_US: Provider to operate GROWI
   icon: icon.svg
 credentials_for_provider:
   access_token:
