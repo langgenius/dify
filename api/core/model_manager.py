@@ -191,7 +191,7 @@ class ModelInstance:
 
         self.model_type_instance = cast(LargeLanguageModel, self.model_type_instance)
         return cast(
-            int,
+            list[int],
             self._round_robin_invoke(
                 function=self.model_type_instance.get_num_tokens,
                 model=self.model,
@@ -240,7 +240,7 @@ class ModelInstance:
 
         self.model_type_instance = cast(TextEmbeddingModel, self.model_type_instance)
         return cast(
-            int,
+            list[int],
             self._round_robin_invoke(
                 function=self.model_type_instance.get_num_tokens,
                 model=self.model,

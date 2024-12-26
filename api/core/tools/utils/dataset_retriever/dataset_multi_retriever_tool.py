@@ -88,7 +88,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             DocumentSegment.dataset_id.in_(self.dataset_ids),
             DocumentSegment.completed_at.isnot(None),
             DocumentSegment.status == "completed",
-            DocumentSegment.enabled is True,
+            DocumentSegment.enabled == True,  # noqa
             DocumentSegment.index_node_id.in_(index_node_ids),
         ).all()
 
@@ -109,8 +109,8 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                     dataset = Dataset.query.filter_by(id=segment.dataset_id).first()
                     document = Document.query.filter(
                         Document.id == segment.document_id,
-                        Document.enabled is True,
-                        Document.archived is False,
+                        Document.enabled == True,  # noqa
+                        Document.archived == False,  # noqa
                     ).first()
                     if dataset and document:
                         source = {
