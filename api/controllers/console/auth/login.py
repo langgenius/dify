@@ -5,6 +5,7 @@ from flask import request
 from flask_restful import Resource, reqparse  # type: ignore
 
 import services
+from configs import dify_config
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
@@ -27,6 +28,7 @@ from libs.helper import email, extract_remote_ip
 from libs.password import valid_password
 from models.account import Account
 from services.account_service import AccountService, RegisterService, TenantService
+from services.billing_service import BillingService
 from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
@@ -45,6 +47,11 @@ class LoginApi(Resource):
         parser.add_argument("invite_token", type=str, required=False, default=None, location="json")
         parser.add_argument("language", type=str, required=False, default="en-US", location="json")
         args = parser.parse_args()
+
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+            raise AccountOnRegisterError(
+                description="Unable to re-register the account because the deletion occurred less than 30 days ago"
+            )
 
         is_login_error_rate_limit = AccountService.is_login_error_rate_limit(args["email"])
         if is_login_error_rate_limit:
