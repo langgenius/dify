@@ -141,14 +141,12 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             model_conf=ModelConfigConverter.convert(app_config),
             file_upload_config=file_extra_config,
             conversation_id=conversation.id if conversation else None,
-            inputs=conversation.inputs
-            if conversation
-            else self._prepare_user_inputs(
+            inputs=self._prepare_user_inputs(
                 user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
             ),
             query=query,
             files=list(file_objs),
-            parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
+            parent_message_id=args.get("parent_message_id"),
             user_id=user.id,
             invoke_from=invoke_from,
             extras=extras,

@@ -134,14 +134,6 @@ class ConversationAppGenerateEntity(AppGenerateEntity):
         ),
     )
 
-    @field_validator("parent_message_id")
-    @classmethod
-    def validate_parent_message_id(cls, v, info: ValidationInfo):
-        if info.data.get("invoke_from") == InvokeFrom.SERVICE_API and v != UUID_NIL:
-            raise ValueError("parent_message_id should be UUID_NIL for service API")
-        return v
-
-
 class ChatAppGenerateEntity(ConversationAppGenerateEntity, EasyUIBasedAppGenerateEntity):
     """
     Chat Application Generate Entity.
