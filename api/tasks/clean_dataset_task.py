@@ -2,7 +2,7 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
@@ -62,7 +62,7 @@ def clean_dataset_task(
             if doc_form is None:
                 raise ValueError("Index type must be specified.")
             index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-            index_processor.clean(dataset, None)
+            index_processor.clean(dataset, None, with_keywords=True, delete_child_chunks=True)
 
             for document in documents:
                 db.session.delete(document)
@@ -71,6 +71,8 @@ def clean_dataset_task(
                 image_upload_file_ids = get_image_upload_file_ids(segment.content)
                 for upload_file_id in image_upload_file_ids:
                     image_file = db.session.query(UploadFile).filter(UploadFile.id == upload_file_id).first()
+                    if image_file is None:
+                        continue
                     try:
                         storage.delete(image_file.key)
                     except Exception:

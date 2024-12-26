@@ -42,6 +42,11 @@ const translation = {
     openInNewTab: '在新選項卡中打開',
     zoomIn: '放大',
     zoomOut: '縮小',
+    saveAndRegenerate: '保存並重新生成子塊',
+    view: '視圖',
+    close: '關閉',
+    viewMore: '查看更多',
+    regenerate: '再生',
   },
   placeholder: {
     input: '請輸入',
@@ -474,6 +479,7 @@ const translation = {
     emptyTip: ' 知識庫尚未關聯，請前往應用程式或外掛完成關聯。',
     viewDoc: '檢視文件',
     relatedApp: '個關聯應用',
+    noRelatedApp: '沒有連結的應用程式',
   },
   voiceInput: {
     speaking: '現在講...',

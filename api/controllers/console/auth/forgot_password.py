@@ -2,7 +2,7 @@ import base64
 import secrets
 
 from flask import request
-from flask_restful import Resource, reqparse
+from flask_restful import Resource, reqparse  # type: ignore
 
 from constants.languages import languages
 from controllers.console import api
@@ -122,8 +122,8 @@ class ForgotPasswordResetApi(Resource):
         else:
             try:
                 account = AccountService.create_account_and_tenant(
-                    email=reset_data.get("email"),
-                    name=reset_data.get("email"),
+                    email=reset_data.get("email", ""),
+                    name=reset_data.get("email", ""),
                     password=password_confirm,
                     interface_language=languages[0],
                 )

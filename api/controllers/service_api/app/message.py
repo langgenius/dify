@@ -1,7 +1,7 @@
 import logging
 
-from flask_restful import Resource, fields, marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
+from flask_restful.inputs import int_range  # type: ignore
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -108,7 +108,13 @@ class MessageFeedbackApi(Resource):
         args = parser.parse_args()
 
         try:
-            MessageService.create_feedback(app_model, message_id, end_user, args["rating"], args["content"])
+            MessageService.create_feedback(
+                app_model=app_model,
+                message_id=message_id,
+                user=end_user,
+                rating=args.get("rating"),
+                content=args.get("content"),
+            )
         except services.errors.message.MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 

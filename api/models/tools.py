@@ -1,5 +1,5 @@
 import json
-from typing import Optional
+from typing import Any, Optional
 
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey, func
@@ -14,7 +14,7 @@ from .model import Account, App, Tenant
 from .types import StringUUID
 
 
-class BuiltinToolProvider(db.Model):
+class BuiltinToolProvider(db.Model):  # type: ignore[name-defined]
     """
     This table stores the tool provider information for built-in tools for each tenant.
     """
@@ -41,10 +41,10 @@ class BuiltinToolProvider(db.Model):
 
     @property
     def credentials(self) -> dict:
-        return json.loads(self.encrypted_credentials)
+        return dict(json.loads(self.encrypted_credentials))
 
 
-class PublishedAppTool(db.Model):
+class PublishedAppTool(db.Model):  # type: ignore[name-defined]
     """
     The table stores the apps published as a tool for each person.
     """
@@ -86,7 +86,7 @@ class PublishedAppTool(db.Model):
         return db.session.query(App).filter(App.id == self.app_id).first()
 
 
-class ApiToolProvider(db.Model):
+class ApiToolProvider(db.Model):  # type: ignore[name-defined]
     """
     The table stores the api providers.
     """
@@ -133,7 +133,7 @@ class ApiToolProvider(db.Model):
 
     @property
     def credentials(self) -> dict:
-        return json.loads(self.credentials_str)
+        return dict(json.loads(self.credentials_str))
 
     @property
     def user(self) -> Account | None:
@@ -144,7 +144,7 @@ class ApiToolProvider(db.Model):
         return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
 
 
-class ToolLabelBinding(db.Model):
+class ToolLabelBinding(db.Model):  # type: ignore[name-defined]
     """
     The table stores the labels for tools.
     """
@@ -164,7 +164,7 @@ class ToolLabelBinding(db.Model):
     label_name = db.Column(db.String(40), nullable=False)
 
 
-class WorkflowToolProvider(db.Model):
+class WorkflowToolProvider(db.Model):  # type: ignore[name-defined]
     """
     The table stores the workflow providers.
     """
@@ -218,7 +218,7 @@ class WorkflowToolProvider(db.Model):
         return db.session.query(App).filter(App.id == self.app_id).first()
 
 
-class ToolModelInvoke(db.Model):
+class ToolModelInvoke(db.Model):  # type: ignore[name-defined]
     """
     store the invoke logs from tool invoke
     """
@@ -255,7 +255,7 @@ class ToolModelInvoke(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class ToolConversationVariables(db.Model):
+class ToolConversationVariables(db.Model):  # type: ignore[name-defined]
     """
     store the conversation variables from tool invoke
     """
@@ -282,11 +282,11 @@ class ToolConversationVariables(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def variables(self) -> dict:
+    def variables(self) -> Any:
         return json.loads(self.variables_str)
 
 
-class ToolFile(db.Model):
+class ToolFile(db.Model):  # type: ignore[name-defined]
     __tablename__ = "tool_files"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tool_file_pkey"),

@@ -2,10 +2,11 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import Image from 'next/image'
 import RetrievalParamConfig from '../retrieval-param-config'
+import { OptionCard } from '../../create/step-two/option-card'
+import { retrievalIcon } from '../../create/icons'
 import { RETRIEVE_METHOD } from '@/types/app'
-import RadioCard from '@/app/components/base/radio-card'
-import { HighPriority } from '@/app/components/base/icons/src/vender/solid/arrows'
 import type { RetrievalConfig } from '@/types/app'
 
 type Props = {
@@ -21,19 +22,17 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
 
   return (
     <div className='space-y-2'>
-      <RadioCard
-        icon={<HighPriority className='w-4 h-4 text-[#7839EE]' />}
+      <OptionCard icon={<Image className='w-4 h-4' src={retrievalIcon.vector} alt='' />}
         title={t('dataset.retrieval.invertedIndex.title')}
-        description={t('dataset.retrieval.invertedIndex.description')}
-        noRadio
-        chosenConfig={
-          <RetrievalParamConfig
-            type={RETRIEVE_METHOD.invertedIndex}
-            value={value}
-            onChange={onChange}
-          />
-        }
-      />
+        description={t('dataset.retrieval.invertedIndex.description')} isActive
+        activeHeaderClassName='bg-dataset-option-card-purple-gradient'
+      >
+        <RetrievalParamConfig
+          type={RETRIEVE_METHOD.invertedIndex}
+          value={value}
+          onChange={onChange}
+        />
+      </OptionCard>
     </div>
   )
 }

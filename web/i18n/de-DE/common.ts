@@ -42,6 +42,11 @@ const translation = {
     zoomIn: 'Vergrößern',
     openInNewTab: 'In neuem Tab öffnen',
     copyImage: 'Bild kopieren',
+    close: 'Schließen',
+    viewMore: 'MEHR SEHEN',
+    regenerate: 'Erneuern',
+    saveAndRegenerate: 'Speichern und Regenerieren von untergeordneten Chunks',
+    view: 'Ansehen',
   },
   placeholder: {
     input: 'Bitte eingeben',
@@ -474,6 +479,7 @@ const translation = {
     emptyTip: 'Das Wissen wurde nicht zugeordnet, bitte gehen Sie zur Anwendung oder zum Plug-in, um die Zuordnung abzuschließen.',
     viewDoc: 'Dokumentation anzeigen',
     relatedApp: 'verbundene Apps',
+    noRelatedApp: 'Keine verknüpften Apps',
   },
   voiceInput: {
     speaking: 'Sprechen Sie jetzt...',

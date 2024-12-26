@@ -146,6 +146,26 @@ const translation = {
   learnHowToWriteGoodKnowledgeDescription: 'Aprende a escribir una buena descripción del conocimiento',
   externalAPIPanelDocumentation: 'Más información sobre cómo crear una API de conocimiento externo',
   mixtureInternalAndExternalTip: 'El modelo de Rerank es necesario para la mezcla de conocimiento interno y externo.',
+  chunkingMode: {
+    parentChild: 'Padre-hijo',
+    general: 'General',
+  },
+  parentMode: {
+    fullDoc: 'Documento completo',
+    paragraph: 'Párrafo',
+  },
+  batchAction: {
+    selected: 'Seleccionado',
+    enable: 'Habilitar',
+    disable: 'Inutilizar',
+    cancel: 'Cancelar',
+    archive: 'Archivo',
+    delete: 'Borrar',
+  },
+  enable: 'Habilitar',
+  documentsDisabled: '{{num}} Documentos desactivados - inactivos durante más de 30 días',
+  preprocessDocument: '{{num}} Documentos de preprocesamiento',
+  localDocs: 'Documentos locales',
 }
 
 export default translation

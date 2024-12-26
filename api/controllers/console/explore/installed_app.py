@@ -1,8 +1,9 @@
 from datetime import UTC, datetime
+from typing import Any
 
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource, inputs, marshal_with, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, inputs, marshal_with, reqparse  # type: ignore
 from sqlalchemy import and_
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
@@ -34,7 +35,7 @@ class InstalledAppsListApi(Resource):
             installed_apps = db.session.query(InstalledApp).filter(InstalledApp.tenant_id == current_tenant_id).all()
 
         current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
-        installed_apps = [
+        installed_app_list: list[dict[str, Any]] = [
             {
                 "id": installed_app.id,
                 "app": installed_app.app,
@@ -47,7 +48,7 @@ class InstalledAppsListApi(Resource):
             for installed_app in installed_apps
             if installed_app.app is not None
         ]
-        installed_apps.sort(
+        installed_app_list.sort(
             key=lambda app: (
                 -app["is_pinned"],
                 app["last_used_at"] is None,
@@ -55,7 +56,7 @@ class InstalledAppsListApi(Resource):
             )
         )
 
-        return {"installed_apps": installed_apps}
+        return {"installed_apps": installed_app_list}
 
     @login_required
     @account_initialization_required

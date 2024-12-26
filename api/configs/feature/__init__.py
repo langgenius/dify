@@ -239,7 +239,6 @@ class HttpConfig(BaseSettings):
     )
 
     @computed_field
-    @property
     def CONSOLE_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_CONSOLE_CORS_ALLOW_ORIGINS.split(",")
 
@@ -250,7 +249,6 @@ class HttpConfig(BaseSettings):
     )
 
     @computed_field
-    @property
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
 
@@ -603,7 +601,7 @@ class RagEtlConfig(BaseSettings):
 
     UNSTRUCTURED_API_KEY: Optional[str] = Field(
         description="API key for Unstructured.io service",
-        default=None,
+        default="",
     )
 
     SCARF_NO_ANALYTICS: Optional[str] = Field(
@@ -715,27 +713,27 @@ class PositionConfig(BaseSettings):
         default="",
     )
 
-    @computed_field
+    @property
     def POSITION_PROVIDER_PINS_LIST(self) -> list[str]:
         return [item.strip() for item in self.POSITION_PROVIDER_PINS.split(",") if item.strip() != ""]
 
-    @computed_field
+    @property
     def POSITION_PROVIDER_INCLUDES_SET(self) -> set[str]:
         return {item.strip() for item in self.POSITION_PROVIDER_INCLUDES.split(",") if item.strip() != ""}
 
-    @computed_field
+    @property
     def POSITION_PROVIDER_EXCLUDES_SET(self) -> set[str]:
         return {item.strip() for item in self.POSITION_PROVIDER_EXCLUDES.split(",") if item.strip() != ""}
 
-    @computed_field
+    @property
     def POSITION_TOOL_PINS_LIST(self) -> list[str]:
         return [item.strip() for item in self.POSITION_TOOL_PINS.split(",") if item.strip() != ""]
 
-    @computed_field
+    @property
     def POSITION_TOOL_INCLUDES_SET(self) -> set[str]:
         return {item.strip() for item in self.POSITION_TOOL_INCLUDES.split(",") if item.strip() != ""}
 
-    @computed_field
+    @property
     def POSITION_TOOL_EXCLUDES_SET(self) -> set[str]:
         return {item.strip() for item in self.POSITION_TOOL_EXCLUDES.split(",") if item.strip() != ""}
 

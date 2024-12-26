@@ -2,10 +2,11 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 
+from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from core.rag.models.document import Document
+from core.rag.models.document import ChildDocument, Document
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
@@ -105,7 +106,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                 db.session.commit()
 
                 # clean index
-                index_processor.clean(dataset, None, with_keywords=False)
+                index_processor.clean(dataset, None, with_keywords=False, delete_child_chunks=False)
 
                 for dataset_document in dataset_documents:
                     # update from vector index
@@ -128,7 +129,22 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                                         "dataset_id": segment.dataset_id,
                                     },
                                 )
-
+                                if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                                    child_chunks = segment.child_chunks
+                                    if child_chunks:
+                                        child_documents = []
+                                        for child_chunk in child_chunks:
+                                            child_document = ChildDocument(
+                                                page_content=child_chunk.content,
+                                                metadata={
+                                                    "doc_id": child_chunk.index_node_id,
+                                                    "doc_hash": child_chunk.index_node_hash,
+                                                    "document_id": segment.document_id,
+                                                    "dataset_id": segment.dataset_id,
+                                                },
+                                            )
+                                            child_documents.append(child_document)
+                                        document.children = child_documents
                                 documents.append(document)
                             # save vector index
                             index_processor.load(dataset, documents, with_keywords=False)

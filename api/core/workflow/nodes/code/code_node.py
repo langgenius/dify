@@ -125,7 +125,7 @@ class CodeNode(BaseNode[CodeNodeData]):
         if depth > dify_config.CODE_MAX_DEPTH:
             raise DepthLimitError(f"Depth limit ${dify_config.CODE_MAX_DEPTH} reached, object too deep.")
 
-        transformed_result = {}
+        transformed_result: dict[str, Any] = {}
         if output_schema is None:
             # validate output thought instance type
             for output_name, output_value in result.items():

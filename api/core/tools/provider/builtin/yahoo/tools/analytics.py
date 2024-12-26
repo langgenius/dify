@@ -3,7 +3,7 @@ from typing import Any, Union
 
 import pandas as pd
 from requests.exceptions import HTTPError, ReadTimeout
-from yfinance import download
+from yfinance import download  # type: ignore
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool

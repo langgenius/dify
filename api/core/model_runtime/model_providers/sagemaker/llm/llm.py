@@ -4,7 +4,7 @@ import re
 from collections.abc import Generator, Iterator
 from typing import Any, Optional, Union, cast
 
-import boto3
+import boto3  # type: ignore
 
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
@@ -83,7 +83,7 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
 
     sagemaker_session: Any = None
     predictor: Any = None
-    sagemaker_endpoint: str = None
+    sagemaker_endpoint: str | None = None
 
     def _handle_chat_generate_response(
         self,
@@ -209,8 +209,8 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
-        from sagemaker import Predictor, serializers
-        from sagemaker.session import Session
+        from sagemaker import Predictor, serializers  # type: ignore
+        from sagemaker.session import Session  # type: ignore
 
         if not self.sagemaker_session:
             access_key = credentials.get("aws_access_key_id")

@@ -19,7 +19,7 @@ class UnstructuredEpubExtractor(BaseExtractor):
         self,
         file_path: str,
         api_url: Optional[str] = None,
-        api_key: Optional[str] = None,
+        api_key: str = "",
     ):
         """Initialize with file path."""
         self._file_path = file_path

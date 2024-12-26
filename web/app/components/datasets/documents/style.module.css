@@ -8,26 +8,22 @@
   box-sizing: border-box;
   max-width: 200px;
 }
-.title {
-  @apply text-xl font-medium text-gray-900;
-}
-.desc {
-  @apply text-sm font-normal text-gray-500;
-}
 .actionIconWrapperList {
   @apply h-6 w-6 rounded-md border-none p-1 hover:bg-gray-100 !important;
 }
 .actionIconWrapperDetail {
-  @apply h-8 w-8 p-2 hover:bg-gray-50 border border-gray-200 hover:border-gray-300 hover:shadow-[0_1px_2px_rgba(16,24,40,0.05)] !important;
+  @apply p-2 bg-components-button-secondary-bg hover:bg-components-button-secondary-bg-hover
+  border-[0.5px] border-components-button-secondary-border hover:border-components-button-secondary-border-hover
+  shadow-xs shadow-shadow-shadow-3 !important;
 }
 .actionItem {
   @apply h-9 py-2 px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer;
 }
 .deleteActionItem {
-  @apply hover:bg-red-50 !important;
+  @apply hover:bg-state-destructive-hover !important;
 }
 .actionName {
-  @apply text-gray-700 text-sm;
+  @apply text-text-secondary text-sm;
 }
 .addFileBtn {
   @apply mt-4 w-fit !text-[13px] text-primary-600 font-medium bg-white border-[0.5px];
@@ -94,7 +90,8 @@
   background-image: url(~@/assets/docx.svg);
 }
 .statusItemDetail {
-  @apply h-8 font-medium border border-gray-200 inline-flex items-center rounded-lg pl-3 pr-4 mr-2;
+  @apply border-[0.5px] border-components-button-secondary-border inline-flex items-center
+  rounded-lg pl-2.5 pr-2 py-2 mr-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px];
 }
 .tdValue {
   @apply text-sm overflow-hidden text-ellipsis whitespace-nowrap;
