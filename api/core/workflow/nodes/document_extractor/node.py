@@ -11,6 +11,8 @@ import docx
 import pandas as pd
 import pypdfium2  # type: ignore
 import yaml  # type: ignore
+from docx.table import Table
+from docx.text.paragraph import Paragraph
 
 from configs import dify_config
 from core.file import File, FileTransferMethod, file_manager
@@ -192,7 +194,7 @@ def _extract_text_from_doc(file_content: bytes) -> str:
         text = []
 
         # Keep track of paragraph and table positions
-        content_items = []
+        content_items: list[tuple[int, str, Table | Paragraph]] = []
 
         # Process paragraphs and tables
         for i, paragraph in enumerate(doc.paragraphs):
