@@ -1,5 +1,6 @@
 import { RetryResultPanel } from './retry-log'
 import { IterationResultPanel } from './iteration-log'
+import { AgentResultPanel } from './agent-log'
 import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 
 type SpecialResultPanelProps = {
@@ -11,6 +12,9 @@ type SpecialResultPanelProps = {
   setShowIteratingDetailFalse: () => void
   iterationResultList: NodeTracing[][]
   iterationResultDurationMap: IterationDurationMap
+
+  showAgentDetail: boolean
+  setShowAgentDetailFalse: () => void
 }
 const SpecialResultPanel = ({
   showRetryDetail,
@@ -21,6 +25,9 @@ const SpecialResultPanel = ({
   setShowIteratingDetailFalse,
   iterationResultList,
   iterationResultDurationMap,
+
+  showAgentDetail,
+  setShowAgentDetailFalse,
 }: SpecialResultPanelProps) => {
   return (
     <>
@@ -39,6 +46,13 @@ const SpecialResultPanel = ({
             onHide={setShowIteratingDetailFalse}
             onBack={setShowIteratingDetailFalse}
             iterDurationMap={iterationResultDurationMap}
+          />
+        )
+      }
+      {
+        showAgentDetail && (
+          <AgentResultPanel
+            onBack={setShowAgentDetailFalse}
           />
         )
       }

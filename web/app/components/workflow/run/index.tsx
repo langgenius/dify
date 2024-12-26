@@ -106,16 +106,21 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
   }, [loading])
 
   const {
+    showSpecialResultPanel,
+
     showRetryDetail,
     setShowRetryDetailFalse,
     retryResultList,
     handleShowRetryResultList,
+
     showIteratingDetail,
     setShowIteratingDetailFalse,
     iterationResultList,
     iterationResultDurationMap,
     handleShowIterationResultList,
-    showSpecialResultPanel,
+
+    showAgentDetail,
+    setShowAgentDetailFalse,
   } = useLogs()
 
   return (
@@ -193,6 +198,9 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
               setShowIteratingDetailFalse={setShowIteratingDetailFalse}
               iterationResultList={iterationResultList}
               iterationResultDurationMap={iterationResultDurationMap}
+
+              showAgentDetail={showAgentDetail}
+              setShowAgentDetailFalse={setShowAgentDetailFalse}
             />
           )
         }

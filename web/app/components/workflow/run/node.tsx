@@ -13,6 +13,7 @@ import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import { RetryLogTrigger } from './retry-log'
 import { IterationLogTrigger } from './iteration-log'
+import { AgentLogTrigger } from './agent-log'
 import cn from '@/utils/classnames'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -76,6 +77,7 @@ const NodePanel: FC<Props> = ({
 
   const isIterationNode = nodeInfo.node_type === BlockEnum.Iteration
   const isRetryNode = hasRetryNode(nodeInfo.node_type) && nodeInfo.retryDetail
+  const isAgentNode = nodeInfo.node_type === BlockEnum.Agent
 
   return (
     <div className={cn('px-2 py-1', className)}>
@@ -139,6 +141,11 @@ const NodePanel: FC<Props> = ({
                 onShowRetryResultList={onShowRetryDetail}
               />
             )}
+            {
+              isAgentNode && (
+                <AgentLogTrigger />
+              )
+            }
             <div className={cn('mb-1', hideInfo && '!px-2 !py-0.5')}>
               {(nodeInfo.status === 'stopped') && (
                 <StatusContainer status='stopped'>
