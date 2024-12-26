@@ -40,11 +40,24 @@ class PluginParameterType(enum.StrEnum):
     SYSTEM_FILES = CommonParameterType.SYSTEM_FILES.value
 
 
+class PluginParameterAutoGenerate(BaseModel):
+    class Type(enum.StrEnum):
+        PROMPT_INSTRUCTION = "prompt_instruction"
+
+    type: Type
+
+
+class PluginParameterTemplate(BaseModel):
+    enabled: bool = Field(default=False, description="Whether the parameter is jinja enabled")
+
+
 class PluginParameter(BaseModel):
     name: str = Field(..., description="The name of the parameter")
     label: I18nObject = Field(..., description="The label presented to the user")
     placeholder: Optional[I18nObject] = Field(default=None, description="The placeholder presented to the user")
     scope: str | None = None
+    auto_generate: Optional[PluginParameterAutoGenerate] = None
+    template: Optional[PluginParameterTemplate] = None
     required: bool = False
     default: Optional[Union[float, int, str]] = None
     min: Optional[Union[float, int]] = None
