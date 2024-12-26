@@ -2,7 +2,7 @@ import json
 import time
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import Any, Optional, cast
+from typing import Optional, cast
 from uuid import uuid4
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -356,7 +356,7 @@ class WorkflowService:
         should_retry = True
         retries = 0
         max_retries = 0
-        retry_interval = 0
+        retry_interval = 0.0
         list_node_executions = []
 
         while retries <= max_retries and should_retry:
@@ -464,7 +464,10 @@ class WorkflowService:
         }
         if node_instance.node_data.error_strategy is ErrorStrategy.DEFAULT_VALUE:
             node_run_result = NodeRunResult(
-                **node_error_args,
+                status=WorkflowNodeExecutionStatus.EXCEPTION,
+                error=node_run_result.error,
+                inputs=node_run_result.inputs,
+                metadata={NodeRunMetadataKey.ERROR_STRATEGY: node_instance.node_data.error_strategy},
                 outputs={
                     **node_instance.node_data.default_value_dict,
                     "error_message": node_run_result.error,
@@ -473,7 +476,10 @@ class WorkflowService:
             )
         else:
             node_run_result = NodeRunResult(
-                **node_error_args,
+                status=WorkflowNodeExecutionStatus.EXCEPTION,
+                error=node_run_result.error,
+                inputs=node_run_result.inputs,
+                metadata={NodeRunMetadataKey.ERROR_STRATEGY: node_instance.node_data.error_strategy},
                 outputs={
                     "error_message": node_run_result.error,
                     "error_type": node_run_result.error_type,
