@@ -48,9 +48,11 @@ class StreamProcessor(ABC):
                     # we remove the node maybe shortcut the answer node, so comment this code for now
                     # there is not effect on the answer node and the workflow, when we have a better solution
                     # we can open this code. Issues: #11542 #9560 #10638 #10564
-
-                    # reachable_node_ids.extend(self._fetch_node_ids_in_reachable_branch(edge.target_node_id))
-                    continue
+                    ids = self._fetch_node_ids_in_reachable_branch(edge.target_node_id)
+                    if "answer" in ids:
+                        continue
+                    else:
+                        reachable_node_ids.extend(ids)
                 else:
                     unreachable_first_node_ids.append(edge.target_node_id)
 
