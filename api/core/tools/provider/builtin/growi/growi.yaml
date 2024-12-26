@@ -1,0 +1,27 @@
+identity:
+  author: Shun Miyazawa
+  name: growi
+  label:
+    en_US: GROWI
+  description:
+    en_US: Provider to operate GROWI in Dify
+  icon: icon.svg
+credentials_for_provider:
+  access_token:
+    type: secret-input
+    required: true
+    label:
+      en_US: GROWI access token
+    placeholder:
+      en_US: Please input your GROWI access token
+    help:
+      en_US: Get your GROWI access token from GROWI
+  growi_url:
+    type: text-input
+    required: true
+    label:
+      en_US: GROWI site url
+    placeholder:
+      en_US: Please input your GROWI site url
+    help:
+      en_US: Find your GROWI site url

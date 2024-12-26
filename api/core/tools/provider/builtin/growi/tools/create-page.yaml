@@ -1,0 +1,28 @@
+identity:
+  name: create-page
+  author: Shun Miyazawa
+  label:
+    en_US: Create Page
+description:
+  human:
+    en_US: Create a page in GROWI
+  llm: Create a page in GROWI
+parameters:
+  - name: path
+    type: string
+    required: true
+    label:
+      en_US: Page path
+    human_description:
+      en_US: Page path
+    llm_description: The path where the page will be created. Must start with forward slash (e.g., /user/page-name)
+    form: llm
+  - name: body
+    type: string
+    required: true
+    label:
+      en_US: Page body
+    human_description:
+      en_US: Page body
+    llm_description: The content of the page in Markdown format
+    form: llm
