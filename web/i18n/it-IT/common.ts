@@ -42,6 +42,11 @@ const translation = {
     zoomIn: 'Ingrandisci',
     openInNewTab: 'Apri in una nuova scheda',
     copyImage: 'Copia immagine',
+    close: 'Chiudere',
+    view: 'Vista',
+    saveAndRegenerate: 'Salva e rigenera i blocchi figlio',
+    regenerate: 'Rigenerare',
+    viewMore: 'SCOPRI DI PIÙ',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',
@@ -504,6 +509,7 @@ const translation = {
       'La Conoscenza non è stata associata, per favore vai all\'applicazione o al plug-in per completare l\'associazione.',
     viewDoc: 'Visualizza documentazione',
     relatedApp: 'app collegate',
+    noRelatedApp: 'Nessuna app collegata',
   },
   voiceInput: {
     speaking: 'Parla ora...',

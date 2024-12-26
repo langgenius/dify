@@ -25,6 +25,11 @@ const translation = {
   viewChart: 'VEKTÖR GRAFİĞİNİ GÖRÜNTÜLE',
   viewDetail: 'ayrıntılara bakın',
   settingTitle: 'Alma Ayarı',
+  open: 'Açık',
+  chunkDetail: 'Yığın Detayı',
+  keyword: 'Anahtar kelime -ler',
+  hitChunks: '{{num}} alt parçalarına basın',
+  records: 'Kayıt',
 }
 
 export default translation

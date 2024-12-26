@@ -32,6 +32,9 @@ const translation = {
     externalKnowledgeID: '外部知識ID',
     externalKnowledgeAPI: '外部知識 API',
     retrievalSettings: '檢索設置',
+    indexMethodChangeToEconomyDisabledTip: '不適用於從 HQ 降級到 ECO',
+    upgradeHighQualityTip: '升級到高品質模式后，無法恢復到經濟模式',
+    helpText: '瞭解如何編寫良好的數據集描述。',
   },
 }
 

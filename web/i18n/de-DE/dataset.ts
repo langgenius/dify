@@ -146,6 +146,26 @@ const translation = {
   mixtureInternalAndExternalTip: 'Das Rerank-Modell ist für die Mischung von internem und externem Wissen erforderlich.',
   externalKnowledgeId: 'ID für externes Wissen',
   editExternalAPIFormTitle: 'Bearbeiten der API für externes Wissen',
+  chunkingMode: {
+    parentChild: 'Eltern-Kind',
+    general: 'Allgemein',
+  },
+  parentMode: {
+    paragraph: 'Absatz',
+    fullDoc: 'Vollständiges Dokument',
+  },
+  batchAction: {
+    selected: 'Ausgewählt',
+    cancel: 'Abbrechen',
+    archive: 'Archiv',
+    disable: 'Abschalten',
+    delete: 'Löschen',
+    enable: 'Ermöglichen',
+  },
+  enable: 'Ermöglichen',
+  localDocs: 'Lokale Dokumente',
+  preprocessDocument: '{{num}} Vorverarbeiten von Dokumenten',
+  documentsDisabled: '{{num}} Dokumente deaktiviert - seit über 30 Tagen inaktiv',
 }
 
 export default translation
