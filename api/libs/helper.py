@@ -12,12 +12,13 @@ from hashlib import sha256
 from typing import Any, Optional, Union, cast
 from zoneinfo import available_timezones
 
+from flask import Response, stream_with_context
+from flask_restful import fields  # type: ignore
+
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.file import helpers as file_helpers
 from extensions.ext_redis import redis_client
-from flask import Response, stream_with_context
-from flask_restful import fields  # type: ignore
 from models.account import Account
 
 

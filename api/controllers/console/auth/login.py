@@ -1,26 +1,31 @@
 from typing import cast
 
 import flask_login  # type: ignore
+from flask import request
+from flask_restful import Resource, reqparse  # type: ignore
+
 import services
 from constants.languages import languages
 from controllers.console import api
-from controllers.console.auth.error import (EmailCodeError,
-                                            EmailOrPasswordMismatchError,
-                                            EmailPasswordLoginLimitError,
-                                            InvalidEmailError,
-                                            InvalidTokenError)
-from controllers.console.error import (AccountBannedError, AccountNotFound,
-                                       EmailSendIpLimitError,
-                                       NotAllowedCreateWorkspace)
+from controllers.console.auth.error import (
+    EmailCodeError,
+    EmailOrPasswordMismatchError,
+    EmailPasswordLoginLimitError,
+    InvalidEmailError,
+    InvalidTokenError,
+)
+from controllers.console.error import (
+    AccountBannedError,
+    AccountNotFound,
+    EmailSendIpLimitError,
+    NotAllowedCreateWorkspace,
+)
 from controllers.console.wraps import setup_required
 from events.tenant_event import tenant_was_created
-from flask import request
-from flask_restful import Resource, reqparse  # type: ignore
 from libs.helper import email, extract_remote_ip
 from libs.password import valid_password
 from models.account import Account
-from services.account_service import (AccountService, RegisterService,
-                                      TenantService)
+from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
 

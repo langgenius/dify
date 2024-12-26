@@ -2,10 +2,10 @@ import os
 from typing import Optional
 
 import httpx
+from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
+
 from extensions.ext_database import db
 from models.account import TenantAccountJoin, TenantAccountRole
-from tenacity import (retry, retry_if_exception_type, stop_before_delay,
-                      wait_fixed)
 
 
 class BillingService:
