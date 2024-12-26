@@ -210,11 +210,12 @@ def _extract_text_from_doc(file_content: bytes) -> str:
         # Process sorted content
         for _, item_type, item in content_items:
             if item_type == "paragraph":
-                if isinstance(item,Paragraph):
-                    text.append(item.text)
+                if isinstance(item, Table):
+                    continue
+                text.append(item.text)
             elif item_type == "table":
                 # Process tables
-                if not isinstance(item,Table):
+                if not isinstance(item, Table):
                     continue
                 try:
                     # Check if any cell in the table has text
