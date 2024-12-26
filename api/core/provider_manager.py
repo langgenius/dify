@@ -350,7 +350,7 @@ class ProviderManager:
         :param tenant_id: workspace id
         :return:
         """
-        providers = db.session.query(Provider).filter(Provider.tenant_id == tenant_id, Provider.is_valid == True).all()  # noqa
+        providers = db.session.query(Provider).filter(Provider.tenant_id == tenant_id, Provider.is_valid == True).all()
 
         provider_name_to_provider_records_dict = defaultdict(list)
         for provider in providers:
@@ -369,7 +369,7 @@ class ProviderManager:
         # Get all provider model records of the workspace
         provider_models = (
             db.session.query(ProviderModel)
-            .filter(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)  # noqa
+            .filter(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
             .all()
         )
 
