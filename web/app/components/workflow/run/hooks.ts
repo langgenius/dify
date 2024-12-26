@@ -28,14 +28,20 @@ export const useLogs = () => {
     setIterationResultDurationMap(iterDurationMap)
   }, [setShowIteratingDetailTrue, setIterationResultList, setIterationResultDurationMap])
 
+  const [showAgentDetail, {
+    setTrue: setShowAgentDetailTrue,
+    setFalse: setShowAgentDetailFalse,
+  }] = useBoolean(false)
+
   return {
-    showSpecialResultPanel: !showRetryDetail && !showIteratingDetail,
+    showSpecialResultPanel: showRetryDetail || showIteratingDetail,
     showRetryDetail,
     setShowRetryDetailTrue,
     setShowRetryDetailFalse,
     retryResultList,
     setRetryResultList,
     handleShowRetryResultList,
+
     showIteratingDetail,
     setShowIteratingDetailTrue,
     setShowIteratingDetailFalse,
@@ -44,5 +50,9 @@ export const useLogs = () => {
     iterationResultDurationMap,
     setIterationResultDurationMap,
     handleShowIterationResultList,
+
+    showAgentDetail,
+    setShowAgentDetailTrue,
+    setShowAgentDetailFalse,
   }
 }
