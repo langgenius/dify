@@ -100,7 +100,7 @@ class OAuthCallback(Resource):
                 "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
             )
         except AccountRegisterError as e:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={str(e)}")
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={e.description}")
 
         # Check account status
         if account.status == AccountStatus.BANNED.value:
