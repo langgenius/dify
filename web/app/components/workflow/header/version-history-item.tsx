@@ -33,7 +33,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({ item, selectedV
       onClick={() => item.version !== WorkflowVersion.Draft && onClick(item)}
     >
       <div>{formatTime(item.version === WorkflowVersion.Draft ? item.updated_at : item.created_at)}</div>
-      {renderVersionLabel(item.version)}
+      {renderVersionLabel(item.version)} authored by {item.created_by.name}
     </div>
   )
 }
