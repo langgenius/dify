@@ -2,36 +2,52 @@ identity:
   name: create-page
   author: Shun Miyazawa
   label:
+    ja_JP: 新規ページ作成
     en_US: Create Page
+    zh_Hans: 创建页面
 description:
   human:
+    ja_JP: GROWI にページを作成します
     en_US: Create a page in GROWI
+    zh_Hans: 在 GROWI 中创建页面
   llm: Create a page in GROWI
 parameters:
   - name: path
     type: string
     required: false
     label:
+      ja_JP: ページパス
       en_US: Page path
+      zh_Hans: 页面路径
     human_description:
-      en_US: Page path
+      ja_JP: ページのパスを指定します。
+      en_US: The path where the page will be created.
+      zh_Hans: 指定页面的路径。
     llm_description: The path where the page will be created. Must start with forward slash (e.g., /user/page-name)
     form: llm
   - name: parent_path
     type: string
     required: false
     label:
+      ja_JP: 親ページパス
       en_US: Parent page path
+      zh_Hans: 父页面路径
     human_description:
-      en_US: Parent page path
+      ja_JP: 親ページのパスを指定します。"path" が指定されている場合は無視されます。
+      en_US: The path of the parent page. Ignored if "path" is specified.
+      zh_Hans: 指定父页面的路径。如果指定了“path”，则忽略此参数。
     llm_description: The path of the parent page. Must start with forward slash (e.g., /user/parent-page-name)
     form: llm
   - name: body
     type: string
     required: false
     label:
+      ja_JP: ページ本文
       en_US: Page body
+      zh_Hans: 页面内容
     human_description:
-      en_US: Page body
+      ja_JP: ページの本文を指定します。
+      en_US: The content of the page
+      zh_Hans: 页面的内容
     llm_description: The content of the page in Markdown format
     form: llm
