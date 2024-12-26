@@ -74,7 +74,9 @@ def send_document_clean_notify_task():
                         knowledge_details=knowledge_details,
                         url=url,
                     )
-                    mail.send(to=account.email, subject="Dify Knowledge base auto disable notification", html=html_content)
+                    mail.send(
+                        to=account.email, subject="Dify Knowledge base auto disable notification", html=html_content
+                    )
 
             # update notified to True
             for dataset_auto_disable_log in tenant_dataset_auto_disable_logs:
