@@ -1,9 +1,6 @@
 from typing import Any
 
-
-from core.tools.provider.builtin_tool_provider import (
-    BuiltinToolProviderController,
-)
+from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
 
 class GrowiProvider(BuiltinToolProviderController):
