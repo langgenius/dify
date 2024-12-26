@@ -122,26 +122,27 @@ class DatasetDocumentStore:
                 db.session.add(segment_document)
                 db.session.flush()
                 if save_child:
-                    for postion, child in enumerate(doc.children, start=1):
-                        child_segment = ChildChunk(
-                            tenant_id=self._dataset.tenant_id,
-                            dataset_id=self._dataset.id,
-                            document_id=self._document_id,
-                            segment_id=segment_document.id,
-                            position=postion,
-                            index_node_id=child.metadata["doc_id"],
-                            index_node_hash=child.metadata["doc_hash"],
-                            content=child.page_content,
-                            word_count=len(child.page_content),
-                            type="automatic",
-                            created_by=self._user_id,
-                        )
-                        db.session.add(child_segment)
+                    if doc.children:
+                        for postion, child in enumerate(doc.children, start=1):
+                            child_segment = ChildChunk(
+                                tenant_id=self._dataset.tenant_id,
+                                dataset_id=self._dataset.id,
+                                document_id=self._document_id,
+                                segment_id=segment_document.id,
+                                position=postion,
+                                index_node_id=child.metadata.get("doc_id"),
+                                index_node_hash=child.metadata.get("doc_hash"),
+                                content=child.page_content,
+                                word_count=len(child.page_content),
+                                type="automatic",
+                                created_by=self._user_id,
+                            )
+                            db.session.add(child_segment)
             else:
                 segment_document.content = doc.page_content
                 if doc.metadata.get("answer"):
                     segment_document.answer = doc.metadata.pop("answer", "")
-                segment_document.index_node_hash = doc.metadata["doc_hash"]
+                segment_document.index_node_hash = doc.metadata.get("doc_hash")
                 segment_document.word_count = len(doc.page_content)
                 segment_document.tokens = tokens
                 if save_child and doc.children:
@@ -160,8 +161,8 @@ class DatasetDocumentStore:
                             document_id=self._document_id,
                             segment_id=segment_document.id,
                             position=position,
-                            index_node_id=child.metadata["doc_id"],
-                            index_node_hash=child.metadata["doc_hash"],
+                            index_node_id=child.metadata.get("doc_id"),
+                            index_node_hash=child.metadata.get("doc_hash"),
                             content=child.page_content,
                             word_count=len(child.page_content),
                             type="automatic",
