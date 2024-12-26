@@ -118,7 +118,7 @@ class ResetPasswordSendEmailApi(Resource):
         try:
             account = AccountService.get_user_through_email(args["email"])
         except AccountRegisterError as are:
-            raise AccountOnRegisterError(description=str(are))
+            raise AccountOnRegisterError(description=are.description)
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
@@ -149,7 +149,7 @@ class EmailCodeLoginSendEmailApi(Resource):
         try:
             account = AccountService.get_user_through_email(args["email"])
         except AccountRegisterError as are:
-            raise AccountOnRegisterError(description=str(are))
+            raise AccountOnRegisterError(description=are.description)
 
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
@@ -187,7 +187,7 @@ class EmailCodeLoginApi(Resource):
         try:
             account = AccountService.get_user_through_email(user_email)
         except AccountRegisterError as are:
-            raise AccountOnRegisterError(description=str(are))
+            raise AccountOnRegisterError(description=are.description)
         if account:
             tenant = TenantService.get_join_tenants(account)
             if not tenant:
@@ -207,7 +207,7 @@ class EmailCodeLoginApi(Resource):
             except WorkSpaceNotAllowedCreateError:
                 return NotAllowedCreateWorkspace()
             except AccountRegisterError as are:
-                raise AccountOnRegisterError(description=str(are))
+                raise AccountOnRegisterError(description=are.description)
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])
         return {"result": "success", "data": token_pair.model_dump()}
