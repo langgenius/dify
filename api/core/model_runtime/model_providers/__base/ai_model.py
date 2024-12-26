@@ -1,7 +1,6 @@
 import decimal
 import os
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
 from typing import Optional
 
 from pydantic import ConfigDict
@@ -36,7 +35,7 @@ class AIModel(ABC):
     model_config = ConfigDict(protected_namespaces=())
 
     @abstractmethod
-    def validate_credentials(self, model: str, credentials: Mapping) -> None:
+    def validate_credentials(self, model: str, credentials: dict) -> None:
         """
         Validate model credentials
 
@@ -214,7 +213,7 @@ class AIModel(ABC):
 
         return model_schemas
 
-    def get_model_schema(self, model: str, credentials: Optional[Mapping] = None) -> Optional[AIModelEntity]:
+    def get_model_schema(self, model: str, credentials: Optional[dict] = None) -> Optional[AIModelEntity]:
         """
         Get model schema by model name and credentials
 
@@ -236,9 +235,7 @@ class AIModel(ABC):
 
         return None
 
-    def get_customizable_model_schema_from_credentials(
-        self, model: str, credentials: Mapping
-    ) -> Optional[AIModelEntity]:
+    def get_customizable_model_schema_from_credentials(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         Get customizable model schema from credentials
 
@@ -248,7 +245,7 @@ class AIModel(ABC):
         """
         return self._get_customizable_model_schema(model, credentials)
 
-    def _get_customizable_model_schema(self, model: str, credentials: Mapping) -> Optional[AIModelEntity]:
+    def _get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         Get customizable model schema and fill in the template
         """
@@ -301,7 +298,7 @@ class AIModel(ABC):
 
         return schema
 
-    def get_customizable_model_schema(self, model: str, credentials: Mapping) -> Optional[AIModelEntity]:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         Get customizable model schema
 

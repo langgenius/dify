@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Optional
 
-import arxiv
+import arxiv  # type: ignore
 from pydantic import BaseModel, Field
 
 from core.tools.entities.tool_entities import ToolInvokeMessage

@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import React, { Fragment, useEffect, useState } from 'react'
 import { Combobox, Listbox, Transition } from '@headlessui/react'
-import { CheckIcon, ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/20/solid'
+import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/20/solid'
+import { RiCheckLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import classNames from '@/utils/classnames'
 import {
@@ -152,7 +153,7 @@ const Select: FC<ISelectProps> = ({
                                 'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
                               )}
                             >
-                              <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                              <RiCheckLine className="h-4 w-4" aria-hidden="true" />
                             </span>
                           )}
                         </>
@@ -265,10 +266,10 @@ const SimpleSelect: FC<ISelectProps> = ({
                           {selected && !hideChecked && (
                             <span
                               className={classNames(
-                                'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
+                                'absolute inset-y-0 right-0 flex items-center pr-4 text-text-accent',
                               )}
                             >
-                              <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                              <RiCheckLine className="h-4 w-4" aria-hidden="true" />
                             </span>
                           )}
                         </>)}
@@ -369,7 +370,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
                 {item.name}
               </span>
               {!hideChecked && item.value === value && (
-                <CheckIcon className='shrink-0 h-4 w-4 text-text-accent' />
+                <RiCheckLine className='shrink-0 h-4 w-4 text-text-accent' />
               )}
             </div>
           ))}

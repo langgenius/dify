@@ -13,7 +13,7 @@ from typing import Any, Optional, Union, cast
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
-from flask_restful import fields
+from flask_restful import fields  # type: ignore
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
@@ -248,13 +248,13 @@ class TokenManager:
         if token_data_json is None:
             logging.warning(f"{token_type} token {token} not found with key {key}")
             return None
-        token_data = json.loads(token_data_json)
+        token_data: Optional[dict[str, Any]] = json.loads(token_data_json)
         return token_data
 
     @classmethod
     def _get_current_token_for_account(cls, account_id: str, token_type: str) -> Optional[str]:
         key = cls._get_account_token_key(account_id, token_type)
-        current_token = redis_client.get(key)
+        current_token: Optional[str] = redis_client.get(key)
         return current_token
 
     @classmethod

@@ -191,6 +191,7 @@ const translation = {
     editorTip: 'Peut construire des applications, mais ne peut pas gérer les paramètres de l\'équipe',
     inviteTeamMember: 'Ajouter un membre de l\'équipe',
     inviteTeamMemberTip: 'Ils peuvent accéder directement à vos données d\'équipe après s\'être connectés.',
+    emailNotSetup: 'Le serveur de messagerie n\'est pas configuré, les e-mails d\'invitation ne peuvent donc pas être envoyés. Veuillez informer les utilisateurs du lien d\'invitation qui sera émis après l\'invitation.',
     email: 'Courrier électronique',
     emailInvalid: 'Format de courriel invalide',
     emailPlaceholder: 'Veuillez entrer des emails',

@@ -57,7 +57,7 @@ class DifyAgentCallbackHandler(BaseModel):
         self,
         tool_name: str,
         tool_inputs: Mapping[str, Any],
-        tool_outputs: Sequence[ToolInvokeMessage],
+        tool_outputs: Sequence[ToolInvokeMessage] | str,
         message_id: Optional[str] = None,
         timer: Optional[Any] = None,
         trace_manager: Optional[TraceQueueManager] = None,

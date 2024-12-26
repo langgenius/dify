@@ -29,6 +29,7 @@ from factories import file_factory
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
 from models.workflow import Workflow
+from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +146,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
             ),
             query=query,
-            files=file_objs,
+            files=list(file_objs),
             parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
             user_id=user.id,
             stream=streaming,
@@ -313,6 +314,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 # get conversation and message
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)
+                if message is None:
+                    raise MessageNotExistsError("Message not exists")
 
                 # chatbot app
                 runner = AdvancedChatAppRunner(
@@ -380,7 +383,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         try:
             return generate_task_pipeline.process()
         except ValueError as e:
-            if e.args[0] == "I/O operation on closed file.":  # ignore this error
+            if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedError()
             else:
                 logger.exception(f"Failed to process generate task pipeline, conversation_id: {conversation.id}")

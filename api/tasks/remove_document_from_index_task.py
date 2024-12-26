@@ -2,7 +2,7 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 from werkzeug.exceptions import NotFound
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -43,7 +43,7 @@ def remove_document_from_index_task(document_id: str):
         index_node_ids = [segment.index_node_id for segment in segments]
         if index_node_ids:
             try:
-                index_processor.clean(dataset, index_node_ids)
+                index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=False)
             except Exception:
                 logging.exception(f"clean dataset {dataset.id} from index failed")
 

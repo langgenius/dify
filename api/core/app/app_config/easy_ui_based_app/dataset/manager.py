@@ -66,6 +66,8 @@ class DatasetConfigManager:
             dataset_configs = config.get("dataset_configs")
         else:
             dataset_configs = {"retrieval_model": "multiple"}
+        if dataset_configs is None:
+            return None
         query_variable = config.get("dataset_query_variable")
 
         if dataset_configs["retrieval_model"] == "single":

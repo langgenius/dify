@@ -1,9 +1,9 @@
 from collections.abc import Generator
 from typing import Optional, Union
 
-from zhipuai import ZhipuAI
-from zhipuai.types.chat.chat_completion import Completion
-from zhipuai.types.chat.chat_completion_chunk import ChatCompletionChunk
+from zhipuai import ZhipuAI  # type: ignore
+from zhipuai.types.chat.chat_completion import Completion  # type: ignore
+from zhipuai.types.chat.chat_completion_chunk import ChatCompletionChunk  # type: ignore
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (

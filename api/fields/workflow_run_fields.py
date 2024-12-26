@@ -1,4 +1,4 @@
-from flask_restful import fields
+from flask_restful import fields  # type: ignore
 
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields
@@ -82,13 +82,15 @@ workflow_run_detail_fields = {
 }
 
 retry_event_field = {
+    "elapsed_time": fields.Float,
+    "status": fields.String,
+    "inputs": fields.Raw(attribute="inputs"),
+    "process_data": fields.Raw(attribute="process_data"),
+    "outputs": fields.Raw(attribute="outputs"),
+    "metadata": fields.Raw(attribute="metadata"),
+    "llm_usage": fields.Raw(attribute="llm_usage"),
     "error": fields.String,
     "retry_index": fields.Integer,
-    "inputs": fields.Raw(attribute="inputs"),
-    "elapsed_time": fields.Float,
-    "execution_metadata": fields.Raw(attribute="execution_metadata_dict"),
-    "status": fields.String,
-    "outputs": fields.Raw(attribute="outputs"),
 }
 
 
@@ -112,7 +114,6 @@ workflow_run_node_execution_fields = {
     "created_by_account": fields.Nested(simple_account_fields, attribute="created_by_account", allow_null=True),
     "created_by_end_user": fields.Nested(simple_end_user_fields, attribute="created_by_end_user", allow_null=True),
     "finished_at": TimestampField,
-    "retry_events": fields.List(fields.Nested(retry_event_field)),
 }
 
 workflow_run_node_execution_list_fields = {

@@ -1,6 +1,6 @@
 import json
 
-import flask_login
+import flask_login  # type: ignore
 from flask import Response, request
 from flask_login import user_loaded_from_request, user_logged_in
 from werkzeug.exceptions import Unauthorized

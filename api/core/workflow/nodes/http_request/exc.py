@@ -16,3 +16,11 @@ class InvalidHttpMethodError(HttpRequestNodeError):
 
 class ResponseSizeError(HttpRequestNodeError):
     """Raised when the response size exceeds the allowed threshold."""
+
+
+class RequestBodyError(HttpRequestNodeError):
+    """Raised when the request body is invalid."""
+
+
+class InvalidURLError(HttpRequestNodeError):
+    """Raised when the URL is invalid."""

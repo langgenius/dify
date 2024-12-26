@@ -25,21 +25,28 @@ class TemplateTransformer(ABC):
         return runner_script, preload_script
 
     @classmethod
-    def extract_result_str_from_response(cls, response: str) -> str:
+    def extract_result_str_from_response(cls, response: str):
         result = re.search(rf"{cls._result_tag}(.*){cls._result_tag}", response, re.DOTALL)
         if not result:
             raise ValueError("Failed to parse result")
-        result = result.group(1)
-        return result
+        return result.group(1)
 
     @classmethod
-    def transform_response(cls, response: str) -> dict:
+    def transform_response(cls, response: str) -> Mapping[str, Any]:
         """
         Transform response to dict
         :param response: response
         :return:
         """
-        return json.loads(cls.extract_result_str_from_response(response))
+        try:
+            result = json.loads(cls.extract_result_str_from_response(response))
+        except json.JSONDecodeError:
+            raise ValueError("failed to parse response")
+        if not isinstance(result, dict):
+            raise ValueError("result must be a dict")
+        if not all(isinstance(k, str) for k in result):
+            raise ValueError("result keys must be strings")
+        return result
 
     @classmethod
     @abstractmethod
