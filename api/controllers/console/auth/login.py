@@ -48,7 +48,7 @@ class LoginApi(Resource):
         parser.add_argument("language", type=str, required=False, default="en-US", location="json")
         args = parser.parse_args()
 
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(args["email"]):
             raise AccountOnRegisterError(
                 description="Unable to re-register the account because the deletion occurred less than 30 days ago"
             )
