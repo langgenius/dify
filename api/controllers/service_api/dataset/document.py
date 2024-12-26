@@ -8,12 +8,16 @@ from werkzeug.exceptions import NotFound
 import services.dataset_service
 from controllers.common.errors import FilenameNotExistsError
 from controllers.service_api import api
-from controllers.service_api.app.error import ProviderNotInitializeError
+from controllers.service_api.app.error import (
+    FileTooLargeError,
+    NoFileUploadedError,
+    ProviderNotInitializeError,
+    TooManyFilesError,
+    UnsupportedFileTypeError,
+)
 from controllers.service_api.dataset.error import (
     ArchivedDocumentImmutableError,
     DocumentIndexingError,
-    NoFileUploadedError,
-    TooManyFilesError,
 )
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_resource_check
 from core.errors.error import ProviderTokenNotInitError
@@ -238,13 +242,18 @@ class DocumentUpdateByFileApi(DatasetApiResource):
             if not file.filename:
                 raise FilenameNotExistsError
 
-            upload_file = FileService.upload_file(
-                filename=file.filename,
-                content=file.read(),
-                mimetype=file.mimetype,
-                user=current_user,
-                source="datasets",
-            )
+            try:
+                upload_file = FileService.upload_file(
+                    filename=file.filename,
+                    content=file.read(),
+                    mimetype=file.mimetype,
+                    user=current_user,
+                    source="datasets",
+                )
+            except services.errors.file.FileTooLargeError as file_too_large_error:
+                raise FileTooLargeError(file_too_large_error.description)
+            except services.errors.file.UnsupportedFileTypeError:
+                raise UnsupportedFileTypeError()
             data_source = {"type": "upload_file", "info_list": {"file_info_list": {"file_ids": [upload_file.id]}}}
             args["data_source"] = data_source
         # validate args
