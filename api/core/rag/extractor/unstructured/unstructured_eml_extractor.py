@@ -1,7 +1,7 @@
 import base64
 import logging
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup  # type: ignore
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document

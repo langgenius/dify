@@ -2,7 +2,7 @@ import json
 import logging
 
 from flask import abort, request
-from flask_restful import Resource, marshal_with, reqparse
+from flask_restful import Resource, marshal_with, reqparse  # type: ignore
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services

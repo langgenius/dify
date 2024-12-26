@@ -12,6 +12,7 @@ from core.model_runtime.entities.model_entities import (
     AIModelEntity,
     DefaultParameterName,
     FetchFrom,
+    ModelFeature,
     ModelPropertyKey,
     ModelType,
     ParameterRule,
@@ -67,7 +68,7 @@ class TogetherAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
         cred_with_endpoint = self._update_endpoint_url(credentials=credentials)
         REPETITION_PENALTY = "repetition_penalty"
         TOP_K = "top_k"
-        features = []
+        features: list[ModelFeature] = []
 
         entity = AIModelEntity(
             model=model,

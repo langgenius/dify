@@ -83,8 +83,6 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         query = query.replace("\x00", "")
         inputs = args["inputs"]
 
-        extras = {}
-
         # get conversation
         conversation = None
 
@@ -99,7 +97,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
 
             # validate config
             override_model_config_dict = CompletionAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id, config=args.get("model_config")
+                tenant_id=app_model.tenant_id, config=args.get("model_config", {})
             )
 
         # parse files
@@ -132,11 +130,11 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
             ),
             query=query,
-            files=file_objs,
+            files=list(file_objs),
             user_id=user.id,
             stream=streaming,
             invoke_from=invoke_from,
-            extras=extras,
+            extras={},
             trace_manager=trace_manager,
         )
 
@@ -157,7 +155,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         worker_thread = threading.Thread(
             target=self._generate_worker,
             kwargs={
-                "flask_app": current_app._get_current_object(),
+                "flask_app": current_app._get_current_object(),  # type: ignore
                 "application_generate_entity": application_generate_entity,
                 "queue_manager": queue_manager,
                 "message_id": message.id,
@@ -197,6 +195,8 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             try:
                 # get message
                 message = self._get_message(message_id)
+                if message is None:
+                    raise MessageNotExistsError()
 
                 # chatbot app
                 runner = CompletionAppRunner()
@@ -231,7 +231,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         invoke_from: InvokeFrom,
         stream: bool = True,
-    ) -> Union[dict, Generator[str, None, None]]:
+    ) -> Union[Mapping[str, Any], Generator[str, None, None]]:
         """
         Generate App response.
 
@@ -293,7 +293,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             model_conf=ModelConfigConverter.convert(app_config),
             inputs=message.inputs,
             query=message.query,
-            files=file_objs,
+            files=list(file_objs),
             user_id=user.id,
             stream=stream,
             invoke_from=invoke_from,
@@ -317,7 +317,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         worker_thread = threading.Thread(
             target=self._generate_worker,
             kwargs={
-                "flask_app": current_app._get_current_object(),
+                "flask_app": current_app._get_current_object(),  # type: ignore
                 "application_generate_entity": application_generate_entity,
                 "queue_manager": queue_manager,
                 "message_id": message.id,

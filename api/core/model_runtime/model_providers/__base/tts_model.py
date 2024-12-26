@@ -127,7 +127,8 @@ class TTSModel(AIModel):
         if not model_schema or ModelPropertyKey.AUDIO_TYPE not in model_schema.model_properties:
             raise ValueError("this model does not support audio type")
 
-        return model_schema.model_properties[ModelPropertyKey.AUDIO_TYPE]
+        audio_type: str = model_schema.model_properties[ModelPropertyKey.AUDIO_TYPE]
+        return audio_type
 
     def _get_model_word_limit(self, model: str, credentials: dict) -> int:
         """
@@ -138,8 +139,9 @@ class TTSModel(AIModel):
 
         if not model_schema or ModelPropertyKey.WORD_LIMIT not in model_schema.model_properties:
             raise ValueError("this model does not support word limit")
+        world_limit: int = model_schema.model_properties[ModelPropertyKey.WORD_LIMIT]
 
-        return model_schema.model_properties[ModelPropertyKey.WORD_LIMIT]
+        return world_limit
 
     def _get_model_workers_limit(self, model: str, credentials: dict) -> int:
         """
@@ -150,8 +152,9 @@ class TTSModel(AIModel):
 
         if not model_schema or ModelPropertyKey.MAX_WORKERS not in model_schema.model_properties:
             raise ValueError("this model does not support max workers")
+        workers_limit: int = model_schema.model_properties[ModelPropertyKey.MAX_WORKERS]
 
-        return model_schema.model_properties[ModelPropertyKey.MAX_WORKERS]
+        return workers_limit
 
     @staticmethod
     def _split_text_into_sentences(org_text, max_length=2000, pattern=r"[。.!?]"):

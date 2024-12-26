@@ -1,4 +1,4 @@
-from flask_restful import fields
+from flask_restful import fields  # type: ignore
 
 from fields.dataset_fields import dataset_fields
 from libs.helper import TimestampField
@@ -34,6 +34,7 @@ document_with_segments_fields = {
     "data_source_info": fields.Raw(attribute="data_source_info_dict"),
     "data_source_detail_dict": fields.Raw(attribute="data_source_detail_dict"),
     "dataset_process_rule_id": fields.String,
+    "process_rule_dict": fields.Raw(attribute="process_rule_dict"),
     "name": fields.String,
     "created_from": fields.String,
     "created_by": fields.String,

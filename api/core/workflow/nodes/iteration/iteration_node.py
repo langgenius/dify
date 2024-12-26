@@ -361,13 +361,16 @@ class IterationNode(BaseNode[IterationNodeData]):
             metadata = event.route_node_state.node_run_result.metadata
             if not metadata:
                 metadata = {}
-
             if NodeRunMetadataKey.ITERATION_ID not in metadata:
-                metadata[NodeRunMetadataKey.ITERATION_ID] = self.node_id
-                if self.node_data.is_parallel:
-                    metadata[NodeRunMetadataKey.PARALLEL_MODE_RUN_ID] = parallel_mode_run_id
-                else:
-                    metadata[NodeRunMetadataKey.ITERATION_INDEX] = iter_run_index
+                metadata = {
+                    **metadata,
+                    NodeRunMetadataKey.ITERATION_ID: self.node_id,
+                    NodeRunMetadataKey.PARALLEL_MODE_RUN_ID
+                    if self.node_data.is_parallel
+                    else NodeRunMetadataKey.ITERATION_INDEX: parallel_mode_run_id
+                    if self.node_data.is_parallel
+                    else iter_run_index,
+                }
                 event.route_node_state.node_run_result.metadata = metadata
         return event
 

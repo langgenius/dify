@@ -36,6 +36,8 @@ class VariableAssignerNode(BaseNode[VariableAssignerData]):
 
             case WriteMode.CLEAR:
                 income_value = get_zero_value(original_variable.value_type)
+                if income_value is None:
+                    raise VariableOperatorNodeError("income value not found")
                 updated_variable = original_variable.model_copy(update={"value": income_value.to_object()})
 
             case _:
