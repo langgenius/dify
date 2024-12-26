@@ -661,13 +661,14 @@ def migrate_data_for_plugin():
 
 
 @click.command("extract-plugins", help="Extract plugins.")
-@click.option("--output_file", prompt=True, help="The file to store the extracted plugins.")
-def extract_plugins(output_file: str):
+@click.option("--output_file", prompt=True, help="The file to store the extracted plugins.", default="plugins.jsonl")
+@click.option("--workers", prompt=True, help="The number of workers to extract plugins.", default=10)
+def extract_plugins(output_file: str, workers: int):
     """
     Extract plugins.
     """
     click.echo(click.style("Starting extract plugins.", fg="white"))
 
-    PluginMigration.extract_plugins(output_file)
+    PluginMigration.extract_plugins(output_file, workers)
 
     click.echo(click.style("Extract plugins completed.", fg="green"))
