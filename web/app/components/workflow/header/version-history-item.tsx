@@ -26,14 +26,25 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({ item, selectedV
   return (
     <div
       className={cn(
-        'flex items-center p-2 h-9 text-xs font-medium text-gray-700 justify-between',
-        item.version === selectedVersion ? '' : 'hover:bg-gray-100',
-        item.version === WorkflowVersion.Draft ? 'cursor-not-allowed' : 'cursor-pointer',
+        'flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200',
+        'hover:transform hover:translate-x-1',
+        'text-sm font-medium text-gray-700',
+        item.version === selectedVersion ? 'bg-blue-50' : 'hover:bg-gray-50',
+        item.version === WorkflowVersion.Draft ? 'cursor-not-allowed opacity-80' : 'cursor-pointer',
       )}
       onClick={() => item.version !== WorkflowVersion.Draft && onClick(item)}
     >
-      <div>{formatTime(item.version === WorkflowVersion.Draft ? item.updated_at : item.created_at)}</div>
-      {renderVersionLabel(item.version)} authored by {item.created_by.name}
+      <div className="flex items-center gap-3">
+        <span className="text-gray-500">
+          {formatTime(item.version === WorkflowVersion.Draft ? item.updated_at : item.created_at)}
+        </span>
+        <div className="flex items-center gap-2">
+          {renderVersionLabel(item.version)}
+          <span className="text-gray-600">
+        published by <span className="font-semibold">{item.created_by.name}</span>
+          </span>
+        </div>
+      </div>
     </div>
   )
 }
