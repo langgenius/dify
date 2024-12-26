@@ -14,7 +14,6 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import language_timezone_mapping, languages
-from controllers.console.error import AccountOnRegisterError
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -210,7 +209,7 @@ class AccountService:
             raise AccountNotFound()
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
-            raise AccountOnRegisterError(
+            raise AccountRegisterError(
                 description="Unable to re-register the account because the deletion occurred less than 30 days ago"
             )
 
@@ -470,7 +469,7 @@ class AccountService:
             raise Unauthorized("Account is banned.")
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
-            raise AccountOnRegisterError(
+            raise AccountRegisterError(
                 description="Unable to re-register the account because the deletion occurred less than 30 days ago"
             )
 

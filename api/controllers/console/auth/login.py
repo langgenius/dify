@@ -1,6 +1,7 @@
 from typing import cast
 
 import flask_login  # type: ignore
+from api.services.errors.account import AccountRegisterError
 from flask import request
 from flask_restful import Resource, reqparse  # type: ignore
 
@@ -17,6 +18,7 @@ from controllers.console.auth.error import (
 from controllers.console.error import (
     AccountBannedError,
     AccountNotFound,
+    AccountOnRegisterError,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
 )
@@ -196,6 +198,8 @@ class EmailCodeLoginApi(Resource):
                 )
             except WorkSpaceNotAllowedCreateError:
                 return NotAllowedCreateWorkspace()
+            except AccountRegisterError as are:
+                raise AccountOnRegisterError(description=str(are))
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])
         return {"result": "success", "data": token_pair.model_dump()}
