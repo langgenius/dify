@@ -5,7 +5,7 @@ from typing import Optional, Union
 from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
 from libs.login import current_user
-from models import App, AppMode
+from models import App, AppMode, Tenant, TenantAccountJoin
 
 
 def get_app_model(view: Optional[Callable] = None, *, mode: Union[AppMode, list[AppMode], None] = None):
@@ -25,6 +25,31 @@ def get_app_model(view: Optional[Callable] = None, *, mode: Union[AppMode, list[
                 .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
                 .first()
             )
+
+            if not app_model:
+                # If app not found in current tenant, check other workspaces
+                accessible_tenants = (
+                    db.session.query(Tenant)
+                    .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
+                    .filter(TenantAccountJoin.account_id == current_user.id)
+                    .all()
+                )
+
+                for tenant in accessible_tenants:
+                    if tenant.id == current_user.current_tenant_id:
+                        continue
+
+                    app_model = (
+                        db.session.query(App)
+                        .filter(App.id == app_id, App.tenant_id == tenant.id, App.status == "normal")
+                        .first()
+                    )
+
+                    if app_model:
+                        # Found app in another tenant, switch to it
+                        current_user.current_tenant_id = tenant.id
+                        db.session.commit()
+                        break
 
             if not app_model:
                 raise AppNotFoundError()
