@@ -41,8 +41,8 @@ type Props = {
   value?: {
     provider: string
     tool_name: string
-    description?: string
     parameters?: Record<string, any>
+    extra?: Record<string, any>
   }
   disabled?: boolean
   placement?: Placement
@@ -50,8 +50,8 @@ type Props = {
   onSelect: (tool: {
     provider: string
     tool_name: string
-    description?: string
     parameters?: Record<string, any>
+    extra?: Record<string, any>
   }) => void
   supportAddCustomTool?: boolean
   scope?: string
@@ -101,7 +101,10 @@ const ToolSelector: FC<Props> = ({
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onSelect({
       ...value,
-      description: e.target.value || '',
+      extra: {
+        ...value?.extra,
+        description: e.target.value || '',
+      },
     } as any)
   }
 
@@ -186,7 +189,7 @@ const ToolSelector: FC<Props> = ({
                 <Textarea
                   className='resize-none'
                   placeholder={t('plugin.detailPanel.toolSelector.descriptionPlaceholder')}
-                  value={value?.description || ''}
+                  value={value?.extra?.description || ''}
                   onChange={handleDescriptionChange}
                 />
               </div>
