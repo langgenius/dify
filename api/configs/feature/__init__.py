@@ -601,7 +601,7 @@ class RagEtlConfig(BaseSettings):
 
     UNSTRUCTURED_API_KEY: Optional[str] = Field(
         description="API key for Unstructured.io service",
-        default=None,
+        default="",
     )
 
     SCARF_NO_ANALYTICS: Optional[str] = Field(

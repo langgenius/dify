@@ -11,6 +11,7 @@ import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/ec
 import Button from '@/app/components/base/button'
 import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { RerankingModeEnum } from '@/models/datasets'
 
 type Props = {
   indexMethod: string
@@ -57,7 +58,10 @@ const ModifyRetrievalModal: FC<Props> = ({
     }
     onSave(ensureRerankModelSelected({
       rerankDefaultModel: rerankDefaultModel!,
-      retrievalConfig,
+      retrievalConfig: {
+        ...retrievalConfig,
+        reranking_enable: retrievalConfig.reranking_mode === RerankingModeEnum.RerankingModel,
+      },
       indexMethod,
     }))
   }
@@ -77,7 +81,7 @@ const ModifyRetrievalModal: FC<Props> = ({
         <div className='text-base font-semibold text-gray-900'>
           <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
           <div className='leading-[18px] text-xs font-normal text-gray-500'>
-            <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+            <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
             {t('datasetSettings.form.retrievalSetting.description')}
           </div>
         </div>
