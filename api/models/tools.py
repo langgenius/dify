@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from typing import Optional
+from typing import Any
 
 import sqlalchemy as sa
 from deprecated import deprecated
@@ -256,8 +257,8 @@ class ToolConversationVariables(Base):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def variables(self) -> dict:
-        return dict(json.loads(self.variables_str))
+    def variables(self) -> Any:
+        return json.loads(self.variables_str)
 
 
 class ToolFile(Base):

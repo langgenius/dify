@@ -146,6 +146,26 @@ const translation = {
   externalKnowledgeId: 'Harici Bilgi Kimliği',
   createExternalAPI: 'Harici bilgi API\'si ekleme',
   createNewExternalAPI: 'Yeni bir External Knowledge API oluşturma',
+  chunkingMode: {
+    general: 'Genel',
+    parentChild: 'Ebeveyn-çocuk',
+  },
+  parentMode: {
+    fullDoc: 'Tam doküman',
+    paragraph: 'Paragraf',
+  },
+  batchAction: {
+    selected: 'Seçilmiş',
+    cancel: 'İptal',
+    enable: 'Etkinleştirmek',
+    delete: 'Silmek',
+    archive: 'Arşiv',
+    disable: 'Devre dışı bırakmak',
+  },
+  preprocessDocument: '{{sayı}} Belgeleri Ön İşleme',
+  localDocs: 'Yerel Dokümanlar',
+  documentsDisabled: '{{num}} belge devre dışı - 30 günden uzun süre etkin değil',
+  enable: 'Etkinleştirmek',
 }
 
 export default translation

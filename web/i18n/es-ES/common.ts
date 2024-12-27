@@ -42,6 +42,11 @@ const translation = {
     zoomIn: 'Acercar',
     openInNewTab: 'Abrir en una nueva pestaña',
     copyImage: 'Copiar imagen',
+    viewMore: 'VER MÁS',
+    regenerate: 'Regenerar',
+    close: 'Cerrar',
+    saveAndRegenerate: 'Guardar y regenerar fragmentos secundarios',
+    view: 'Vista',
   },
   errorMsg: {
     fieldRequired: '{{field}} es requerido',
@@ -478,6 +483,7 @@ const translation = {
     emptyTip: 'El Conocimiento no ha sido asociado, por favor ve a la aplicación o plugin para completar la asociación.',
     viewDoc: 'Ver documentación',
     relatedApp: 'aplicaciones vinculadas',
+    noRelatedApp: 'No hay aplicaciones vinculadas',
   },
   voiceInput: {
     speaking: 'Habla ahora...',

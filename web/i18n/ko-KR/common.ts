@@ -42,6 +42,11 @@ const translation = {
     zoomIn: '확대',
     copyImage: '이미지 복사',
     zoomOut: '축소',
+    close: '닫다',
+    viewMore: '더보기',
+    regenerate: '재생성',
+    view: '보기',
+    saveAndRegenerate: '저장 및 자식 청크 재생성',
   },
   placeholder: {
     input: '입력해주세요',
@@ -470,6 +475,7 @@ const translation = {
     emptyTip: '연결된 지식이 없습니다. 애플리케이션 또는 플러그인으로 이동하여 연결을 완료하세요.',
     viewDoc: '문서 보기',
     relatedApp: '관련 앱',
+    noRelatedApp: '연결된 앱 없음',
   },
   voiceInput: {
     speaking: '지금 말하고 있습니다...',

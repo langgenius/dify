@@ -4,7 +4,7 @@ from enum import StrEnum
 from typing import Optional, cast
 from uuid import uuid4
 
-import yaml
+import yaml  # type: ignore
 from packaging import version
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -196,6 +196,9 @@ class AppDslService:
                 data["kind"] = "app"
 
             imported_version = data.get("version", "0.1.0")
+            # check if imported_version is a float-like string
+            if not isinstance(imported_version, str):
+                raise ValueError(f"Invalid version type, expected str, got {type(imported_version)}")
             status = _check_version_compatibility(imported_version)
 
             # Extract app data
@@ -524,7 +527,7 @@ class AppDslService:
         else:
             cls._append_model_config_export_data(export_data, app_model)
 
-        return yaml.dump(export_data, allow_unicode=True)
+        return yaml.dump(export_data, allow_unicode=True)  # type: ignore
 
     @classmethod
     def _append_workflow_export_data(cls, *, export_data: dict, app_model: App, include_secret: bool) -> None:

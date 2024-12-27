@@ -3,6 +3,7 @@ import time
 from collections.abc import Callable, Generator, Sequence
 from datetime import UTC, datetime
 from typing import Any, Optional
+from uuid import uuid4
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
@@ -333,6 +334,7 @@ class WorkflowService:
             error = e.error
 
         workflow_node_execution = WorkflowNodeExecution()
+        workflow_node_execution.id = str(uuid4())
         workflow_node_execution.tenant_id = tenant_id
         workflow_node_execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP.value
         workflow_node_execution.index = 1

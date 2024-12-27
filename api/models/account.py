@@ -23,7 +23,7 @@ class Account(UserMixin, Base):
     __tablename__ = "accounts"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="account_pkey"), db.Index("account_email_idx", "email"))
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     name = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(255), nullable=False)
     password = db.Column(db.String(255), nullable=True)

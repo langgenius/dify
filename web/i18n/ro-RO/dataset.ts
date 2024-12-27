@@ -146,6 +146,26 @@ const translation = {
   mixtureInternalAndExternalTip: 'Modelul Rerank este necesar pentru amestecul de cunoștințe interne și externe.',
   externalAPIPanelDescription: 'API-ul de cunoștințe externe este utilizat pentru a se conecta la o bază de cunoștințe din afara Dify și pentru a prelua cunoștințe din acea bază de cunoștințe.',
   createNewExternalAPI: 'Creați un nou API de cunoștințe externe',
+  chunkingMode: {
+    general: 'General',
+    parentChild: 'Părinte-copil',
+  },
+  parentMode: {
+    paragraph: 'Paragraf',
+    fullDoc: 'Documentar complet',
+  },
+  batchAction: {
+    enable: 'Activa',
+    cancel: 'Anula',
+    delete: 'Șterge',
+    disable: 'Dezactiva',
+    selected: 'Selectat',
+    archive: 'Arhivă',
+  },
+  documentsDisabled: '{{num}} documente dezactivate - inactive de peste 30 de zile',
+  preprocessDocument: '{{num}} Procesarea prealabilă a documentelor',
+  enable: 'Activa',
+  localDocs: 'Documente locale',
 }
 
 export default translation

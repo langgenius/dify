@@ -32,6 +32,9 @@ const translation = {
     externalKnowledgeID: '外部ナレッジID',
     retrievalSettings: '取得設定',
     externalKnowledgeAPI: '外部ナレッジAPI',
+    upgradeHighQualityTip: 'ハイクオリティモードにアップグレードすると、エコノミーモードに戻すことはできません',
+    indexMethodChangeToEconomyDisabledTip: '本社からECOへのダウングレードは対象外です',
+    helpText: '適切なデータセットの説明を書く方法を学びます。',
   },
 }
 

@@ -881,7 +881,7 @@ class ProviderConfiguration(BaseModel):
             # if llm name not in restricted llm list, remove it
             restrict_model_names = [rm.model for rm in restrict_models]
             for model in provider_models:
-                if model.model_type == ModelType.LLM and m.model not in restrict_model_names:
+                if model.model_type == ModelType.LLM and model.model not in restrict_model_names:
                     model.status = ModelStatus.NO_PERMISSION
                 elif not quota_configuration.is_valid:
                     model.status = ModelStatus.QUOTA_EXCEEDED

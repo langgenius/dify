@@ -64,7 +64,10 @@ class ToolTransformService:
             )
         elif isinstance(provider, ToolProviderApiEntity):
             if provider.plugin_id:
-                provider.icon = ToolTransformService.get_plugin_icon_url(tenant_id=tenant_id, filename=provider.icon)
+                if isinstance(provider.icon, str):
+                    provider.icon = ToolTransformService.get_plugin_icon_url(
+                        tenant_id=tenant_id, filename=provider.icon
+                    )
             else:
                 provider.icon = ToolTransformService.get_tool_provider_icon_url(
                     provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon
