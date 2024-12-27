@@ -5,7 +5,7 @@ export type AgentNodeType = CommonNodeType & {
   agent_strategy_provider_name?: string
   agent_strategy_name?: string
   agent_strategy_label?: string
-  agent_parameters?: ToolVarInputs,
+  agent_parameters?: Record<string, any>
   agent_configurations?: Record<string, ToolVarInputs>
   output_schema: Record<string, any>
 }
