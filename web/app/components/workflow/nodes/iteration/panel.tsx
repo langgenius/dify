@@ -1,13 +1,9 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiArrowRightSLine,
-} from '@remixicon/react'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import Split from '../_base/components/split'
 import ResultPanel from '../../run/result-panel'
-import { IterationResultPanel } from '../../run/iteration-log'
 import { MAX_ITERATION_PARALLEL_NUM, MIN_ITERATION_PARALLEL_NUM } from '../../constants'
 import type { IterationNodeType } from './types'
 import useConfig from './use-config'
@@ -18,6 +14,12 @@ import Switch from '@/app/components/base/switch'
 import Select from '@/app/components/base/select'
 import Slider from '@/app/components/base/slider'
 import Input from '@/app/components/base/input'
+import formatTracing from '@/app/components/workflow/run/utils/format-log'
+import {
+  IterationLogTrigger,
+  IterationResultPanel,
+} from '@/app/components/workflow/run/iteration-log'
+import { useLogs } from '@/app/components/workflow/run/hooks'
 
 const i18nPrefix = 'workflow.nodes.iteration'
 
@@ -50,9 +52,6 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
     handleOutputVarChange,
     isShowSingleRun,
     hideSingleRun,
-    isShowIterationDetail,
-    backToSingleRun,
-    showIterationDetail,
     runningStatus,
     handleRun,
     handleStop,
@@ -68,6 +67,14 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
     changeErrorResponseMode,
     changeParallelNums,
   } = useConfig(id, data)
+
+  const nodeInfo = formatTracing(iterationRunResult, t)[0]
+  const {
+    showIteratingDetail,
+    iterationResultList,
+    setShowIteratingDetailFalse,
+    handleShowIterationResultList,
+  } = useLogs()
 
   return (
     <div className='pt-2 pb-2'>
@@ -165,22 +172,34 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           onStop={handleStop}
           result={
             <div className='mt-3'>
-              <div className='px-4'>
-                <div className='flex items-center h-[34px] justify-between px-3 bg-gray-100 border-[0.5px] border-gray-200 rounded-lg cursor-pointer' onClick={showIterationDetail}>
-                  <div className='leading-[18px] text-[13px] font-medium text-gray-700'>{t(`${i18nPrefix}.iteration`, { count: iterationRunResult.length })}</div>
-                  <RiArrowRightSLine className='w-3.5 h-3.5 text-gray-500' />
-                </div>
-                <Split className='mt-3' />
-              </div>
-              <ResultPanel {...runResult} showSteps={false} />
+              {
+                !showIteratingDetail && (
+                  <>
+                    {
+                      nodeInfo && (
+                        <div className='px-4'>
+                          <IterationLogTrigger
+                            nodeInfo={nodeInfo}
+                            onShowIterationResultList={handleShowIterationResultList}
+                          />
+                          <Split className='mt-3' />
+                        </div>
+                      )
+                    }
+                    <ResultPanel {...runResult} showSteps={false} />
+                  </>
+                )
+              }
+              {
+                showIteratingDetail && (
+                  <IterationResultPanel
+                    list={iterationResultList}
+                    onBack={setShowIteratingDetailFalse}
+                  />
+                )
+              }
             </div>
           }
-        />
-      )}
-      {isShowIterationDetail && (
-        <IterationResultPanel
-          onBack={backToSingleRun}
-          list={iterationRunResult}
         />
       )}
     </div>
