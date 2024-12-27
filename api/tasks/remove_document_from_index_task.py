@@ -48,12 +48,14 @@ def remove_document_from_index_task(document_id: str):
             except Exception:
                 logging.exception(f"clean dataset {dataset.id} from index failed")
         # update segment to disable
-        for segment in segments:
-            segment.enabled = False
-            segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-            segment.disabled_by = document.disabled_by
-            segment.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-            db.session.add(segment)
+        db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).update(
+            {
+                DocumentSegment.enabled: False,
+                DocumentSegment.disabled_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                DocumentSegment.disabled_by: document.disabled_by,
+                DocumentSegment.updated_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+            }
+        )
         db.session.commit()
 
         end_at = time.perf_counter()

@@ -91,12 +91,14 @@ def add_document_to_index_task(dataset_document_id: str):
         ).delete()
 
         # update segment to enable
-        for segment in segments:
-            segment.enabled = True
-            segment.disabled_at = None
-            segment.disabled_by = None
-            segment.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-            db.session.add(segment)
+        db.session.query(DocumentSegment).filter(DocumentSegment.document_id == dataset_document.id).update(
+            {
+                DocumentSegment.enabled: True,
+                DocumentSegment.disabled_at: None,
+                DocumentSegment.disabled_by: None,
+                DocumentSegment.updated_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+            }
+        )
         db.session.commit()
 
         end_at = time.perf_counter()
