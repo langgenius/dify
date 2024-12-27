@@ -352,8 +352,8 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     workflow_node_execution=workflow_node_execution,
                 )
 
-                if response:
-                    yield response
+                if response_finish:
+                    yield response_finish
 
             elif isinstance(event, QueueParallelBranchRunStartedEvent):
                 if not workflow_run:
