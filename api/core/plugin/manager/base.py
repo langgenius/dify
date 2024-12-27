@@ -24,6 +24,7 @@ from core.plugin.manager.exc import (
     PluginDaemonNotFoundError,
     PluginDaemonUnauthorizedError,
     PluginInvokeError,
+    PluginNotFoundError,
     PluginPermissionDeniedError,
     PluginUniqueIdentifierError,
 )
@@ -143,7 +144,7 @@ class BasePluginManager:
         if rep.code != 0:
             try:
                 error = PluginDaemonError(**json.loads(rep.message))
-            except Exception as e:
+            except Exception:
                 raise ValueError(f"{rep.message}, code: {rep.code}")
 
             self._handle_plugin_daemon_error(error.error_type, error.message)
@@ -171,7 +172,7 @@ class BasePluginManager:
             try:
                 line_data = json.loads(line)
                 rep = PluginDaemonBasicResponse[type](**line_data)
-            except Exception as e:
+            except Exception:
                 # TODO modify this when line_data has code and message
                 if line_data and "error" in line_data:
                     raise ValueError(line_data["error"])
@@ -182,7 +183,7 @@ class BasePluginManager:
                 if rep.code == -500:
                     try:
                         error = PluginDaemonError(**json.loads(rep.message))
-                    except Exception as e:
+                    except Exception:
                         raise PluginDaemonInnerError(code=rep.code, message=rep.message)
 
                     self._handle_plugin_daemon_error(error.error_type, error.message)
@@ -226,6 +227,8 @@ class BasePluginManager:
                 raise PluginDaemonNotFoundError(description=message)
             case PluginUniqueIdentifierError.__name__:
                 raise PluginUniqueIdentifierError(description=message)
+            case PluginNotFoundError.__name__:
+                raise PluginNotFoundError(description=message)
             case PluginDaemonUnauthorizedError.__name__:
                 raise PluginDaemonUnauthorizedError(description=message)
             case PluginPermissionDeniedError.__name__:
