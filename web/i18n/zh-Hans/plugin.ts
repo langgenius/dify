@@ -73,6 +73,7 @@ const translation = {
       placeholder: '选择工具',
       auth: '授权',
       settings: '工具设置',
+      empty: '点击 "+" 按钮添加工具。您可以添加多个工具。',
     },
     configureApp: '应用设置',
     configureModel: '模型设置',

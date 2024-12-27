@@ -17,6 +17,7 @@ export enum FormTypeEnum {
   file = 'file',
   modelSelector = 'model-selector',
   toolSelector = 'tool-selector',
+  multiToolSelector = 'array[tools]',
   appSelector = 'app-selector',
 }
 

@@ -19,6 +19,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import Radio from '@/app/components/base/radio'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
+import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import RadioE from '@/app/components/base/radio/ui'
 
@@ -328,7 +329,35 @@ function Form<
             scope={scope}
             disabled={readonly}
             value={value[variable]}
-            onSelect={item => handleFormChange(variable, item as any)} />
+            onSelect={item => handleFormChange(variable, item as any)}
+            onDelete={() => handleFormChange(variable, null as any)}
+          />
+          {fieldMoreInfo?.(formSchema)}
+          {validating && changeKey === variable && <ValidatingTip />}
+        </div>
+      )
+    }
+
+    if (formSchema.type === FormTypeEnum.multiToolSelector) {
+      const {
+        variable,
+        label,
+        tooltip,
+        required,
+        scope,
+      } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
+
+      return (
+        <div key={variable} className={cn(itemClassName, 'py-3')}>
+          <MultipleToolSelector
+            disabled={readonly}
+            scope={scope}
+            label={label[language] || label.en_US}
+            required={required}
+            tooltip={tooltip?.[language] || tooltip?.en_US}
+            value={value[variable]}
+            onChange={item => handleFormChange(variable, item as any)}
+          />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
         </div>

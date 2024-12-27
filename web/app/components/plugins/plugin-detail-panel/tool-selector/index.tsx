@@ -40,13 +40,16 @@ import type {
 } from '@floating-ui/react'
 import cn from '@/utils/classnames'
 
+export type ToolValue = {
+  provider_name: string
+  tool_name: string
+  parameters?: Record<string, any>
+  enabled?: boolean
+  extra?: Record<string, any>
+}
+
 type Props = {
-  value?: {
-    provider_name: string
-    tool_name: string
-    parameters?: Record<string, any>
-    extra?: Record<string, any>
-  }
+  value?: ToolValue
   disabled?: boolean
   placement?: Placement
   offset?: OffsetOptions
