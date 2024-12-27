@@ -135,16 +135,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         workflow_run_id = str(uuid.uuid4())
         # init application generate entity
+        inputs = self._prepare_user_inputs(user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id)
         application_generate_entity = AdvancedChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
             file_upload_config=file_extra_config,
             conversation_id=conversation.id if conversation else None,
-            inputs=conversation.inputs
-            if conversation
-            else self._prepare_user_inputs(
-                user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
-            ),
+            inputs=conversation.inputs if conversation and not inputs else inputs,
             query=query,
             files=list(file_objs),
             parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
