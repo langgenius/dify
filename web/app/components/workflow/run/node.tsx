@@ -36,8 +36,6 @@ type Props = {
   onShowRetryDetail?: (detail: NodeTracing[]) => void
   onShowAgentResultList?: (detail: AgentLogItemWithChildren[]) => void
   notShowIterationNav?: boolean
-  justShowIterationNavArrow?: boolean
-  justShowRetryNavArrow?: boolean
 }
 
 const NodePanel: FC<Props> = ({
@@ -50,7 +48,6 @@ const NodePanel: FC<Props> = ({
   onShowRetryDetail,
   onShowAgentResultList,
   notShowIterationNav,
-  justShowIterationNavArrow,
 }) => {
   const [collapseState, doSetCollapseState] = useState<boolean>(true)
   const setCollapseState = useCallback((state: boolean) => {
@@ -138,7 +135,6 @@ const NodePanel: FC<Props> = ({
               <IterationLogTrigger
                 nodeInfo={nodeInfo}
                 onShowIterationResultList={onShowIterationDetail}
-                justShowIterationNavArrow={justShowIterationNavArrow}
               />
             )}
             {isRetryNode && onShowRetryDetail && (

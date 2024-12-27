@@ -7,7 +7,7 @@ import ActionList from './action-list'
 import ModelList from './model-list'
 import AgentStrategyList from './agent-strategy-list'
 import Drawer from '@/app/components/base/drawer'
-import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
+import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import cn from '@/utils/classnames'
 
@@ -32,9 +32,6 @@ const PluginDetailPanel: FC<Props> = ({
   const testChange = (val: any) => {
     console.log('tool change', val)
     setValue(val)
-  }
-  const testDelete = () => {
-    setValue(undefined)
   }
 
   if (!detail)
@@ -64,10 +61,10 @@ const PluginDetailPanel: FC<Props> = ({
             {!!detail.declaration.model && <ModelList detail={detail} />}
             {false && (
               <div className='px-4 py-2'>
-                <ToolSelector
-                  value={value}
-                  onSelect={item => testChange(item)}
-                  onDelete={testDelete}
+                <MultipleToolSelector
+                  value={value || []}
+                  label='TOOLS'
+                  onChange={testChange}
                 />
               </div>
             )}

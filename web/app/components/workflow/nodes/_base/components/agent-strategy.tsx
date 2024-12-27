@@ -10,6 +10,7 @@ import { Agent } from '@/app/components/base/icons/src/vender/workflow'
 import { InputNumber } from '@/app/components/base/input-number'
 import Slider from '@/app/components/base/slider'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
+import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
 import Field from './field'
 import type { ComponentProps } from 'react'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -160,18 +161,31 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
           props.onChange({ ...props.value, [schema.variable]: value })
         }
         return (
-          <Field title={'tool selector'} tooltip={'tool selector'}>
+          <Field title={schema.label[language]} tooltip={schema.tooltip?.[language]}>
             <ToolSelector
+              scope={schema.scope}
               value={value}
               onSelect={item => onChange(item)}
+              onDelete={() => onChange(null)}
             />
           </Field>
         )
       }
       case 'array[tools]': {
-        return <Field title={'tool selector'} tooltip={'tool selector'}>
-          multiple tool selector TODO
-        </Field>
+        const value = props.value[schema.variable]
+        const onChange = (value: any) => {
+          props.onChange({ ...props.value, [schema.variable]: value })
+        }
+        return (
+          <MultipleToolSelector
+            scope={schema.scope}
+            value={value}
+            label={schema.label[language]}
+            tooltip={schema.tooltip?.[language]}
+            onChange={onChange}
+            supportCollapse
+          />
+        )
       }
     }
   }

@@ -73,6 +73,7 @@ const translation = {
       placeholder: 'Select a tool...',
       auth: 'AUTHORIZATION',
       settings: 'TOOL SETTINGS',
+      empty: 'Click the \'+\' button to add tools. You can add multiple tools.',
     },
     configureApp: 'Configure App',
     configureModel: 'Configure model',

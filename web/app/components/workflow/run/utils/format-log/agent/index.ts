@@ -1,6 +1,8 @@
 import { BlockEnum } from '@/app/components/workflow/types'
 import type { AgentLogItem, AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 
+const supportedAgentLogNodes = [BlockEnum.Agent, BlockEnum.Tool]
+
 const listToTree = (logs: AgentLogItem[]) => {
   if (!logs || logs.length === 0)
     return []
@@ -24,7 +26,7 @@ const listToTree = (logs: AgentLogItem[]) => {
 }
 const format = (list: NodeTracing[]): NodeTracing[] => {
   const result: NodeTracing[] = list.map((item) => {
-    if (item.node_type === BlockEnum.Agent && item.execution_metadata?.agent_log && item.execution_metadata?.agent_log.length > 0)
+    if (supportedAgentLogNodes.includes(item.node_type) && item.execution_metadata?.agent_log && item.execution_metadata?.agent_log.length > 0)
       item.agentLog = listToTree(item.execution_metadata.agent_log)
 
     return item
