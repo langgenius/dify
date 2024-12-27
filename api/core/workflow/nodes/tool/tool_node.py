@@ -193,7 +193,7 @@ class ToolNode(BaseNode[ToolNodeData]):
         files: list[File] = []
         json: list[dict] = []
 
-        agent_logs: list[AgentLog] = []
+        agent_logs: list[AgentLogEvent] = []
 
         variables: dict[str, Any] = {}
 
@@ -288,7 +288,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                 files.append(message.meta["file"])
             elif message.type == ToolInvokeMessage.MessageType.LOG:
                 assert isinstance(message.message, ToolInvokeMessage.LogMessage)
-                yield AgentLogEvent(
+                agent_log = AgentLogEvent(
                     id=message.message.id,
                     node_execution_id=self.id,
                     parent_id=message.message.parent_id,
@@ -298,11 +298,25 @@ class ToolNode(BaseNode[ToolNodeData]):
                     label=message.message.label,
                 )
 
+                # check if the agent log is already in the list
+                for log in agent_logs:
+                    if log.id == agent_log.id:
+                        # update the log
+                        log.data = agent_log.data
+                        log.status = agent_log.status
+                        log.error = agent_log.error
+                        log.label = agent_log.label
+                        break
+                else:
+                    agent_logs.append(agent_log)
+
+                yield agent_log
+
         yield RunCompletedEvent(
             run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs={"text": text, "files": files, "json": json, **variables},
-                metadata={NodeRunMetadataKey.TOOL_INFO: tool_info},
+                metadata={NodeRunMetadataKey.TOOL_INFO: tool_info, NodeRunMetadataKey.AGENT_LOG: agent_logs},
                 inputs=parameters_for_log,
             )
         )
