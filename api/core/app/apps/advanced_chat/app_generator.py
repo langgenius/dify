@@ -135,7 +135,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         workflow_run_id = str(uuid.uuid4())
         # init application generate entity
-        inputs = self._prepare_user_inputs(user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id)
+        inputs = self._prepare_user_inputs(
+            user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
+        )
         application_generate_entity = AdvancedChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
