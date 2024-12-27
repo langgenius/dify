@@ -11,7 +11,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 class SageMakerReRankTool(BuiltinTool):
     sagemaker_client: Any = None
     sagemaker_endpoint: str = None
-    
+
     def _sagemaker_rerank(self, query_input: str, docs: list[str], rerank_endpoint: str):
         inputs = [query_input] * len(docs)
         response_model = self.sagemaker_client.invoke_endpoint(
