@@ -6,8 +6,18 @@ import { AgentStrategy } from '../_base/components/agent-strategy'
 import useConfig from './use-config'
 import { useTranslation } from 'react-i18next'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
+import type { StrategyParamItem } from '@/app/components/plugins/types'
+import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const i18nPrefix = 'workflow.nodes.agent'
+
+function strategyParamToCredientialForm(param: StrategyParamItem): CredentialFormSchema {
+  return {
+    ...param as any,
+    variable: param.name,
+    show_on: [],
+  }
+}
 
 const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
   const { inputs, setInputs, currentStrategy } = useConfig(props.id, props.data)
@@ -32,7 +42,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
             output_schema: strategy!.agent_output_schema,
           })
         }}
-        formSchema={currentStrategy?.parameters as any || []}
+        formSchema={currentStrategy?.parameters?.map(strategyParamToCredientialForm) || []}
         formValue={inputs.agent_parameters || {}}
         onFormValueChange={value => setInputs({
           ...inputs,

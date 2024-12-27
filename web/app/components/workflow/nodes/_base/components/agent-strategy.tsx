@@ -102,7 +102,12 @@ const devMockForm = [{
     pt_BR: 'The maximum number of iterations to run',
     ja_JP: 'The maximum number of iterations to run',
   },
-}]
+}].map((item) => {
+  return {
+    ...item,
+    variable: item.name,
+  }
+})
 
 export const AgentStrategy = (props: AgentStrategyProps) => {
   const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange } = props
