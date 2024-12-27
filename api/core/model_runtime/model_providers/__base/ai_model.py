@@ -1,5 +1,4 @@
 import decimal
-from abc import abstractmethod
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -37,17 +36,6 @@ class AIModel(BaseModel):
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
-
-    @abstractmethod
-    def validate_credentials(self, model: str, credentials: dict) -> None:
-        """
-        Validate model credentials
-
-        :param model: model name
-        :param credentials: model credentials
-        :return:
-        """
-        raise NotImplementedError
 
     @property
     def _invoke_error_mapping(self) -> dict[type[Exception], list[type[Exception]]]:
