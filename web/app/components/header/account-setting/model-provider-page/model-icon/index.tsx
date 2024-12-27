@@ -5,32 +5,37 @@ import type {
 } from '../declarations'
 import { useLanguage } from '../hooks'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
-import { OpenaiViolet } from '@/app/components/base/icons/src/public/llm'
+import { OpenaiBlue, OpenaiViolet } from '@/app/components/base/icons/src/public/llm'
 import cn from '@/utils/classnames'
 
 type ModelIconProps = {
   provider?: Model | ModelProvider
   modelName?: string
   className?: string
+  isDeprecated?: boolean
 }
 const ModelIcon: FC<ModelIconProps> = ({
   provider,
   className,
   modelName,
+  isDeprecated = false,
 }) => {
   const language = useLanguage()
-
-  if (provider?.provider.includes('openai') && (modelName?.startsWith('gpt-4') || modelName?.includes('4o')))
-    return <OpenaiViolet className={cn('w-4 h-4', className)}/>
+  if (provider?.provider.includes('openai') && modelName?.includes('gpt-4o'))
+    return <OpenaiBlue className={cn('w-5 h-5', className)}/>
+  if (provider?.provider.includes('openai') && modelName?.startsWith('gpt-4'))
+    return <OpenaiViolet className={cn('w-5 h-5', className)}/>
 
   if (provider?.icon_small) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        alt='model-icon'
-        src={`${provider.icon_small[language] || provider.icon_small.en_US}`}
-        className={cn('w-4 h-4', className)}
-      />
+
+      <div className={isDeprecated ? 'opacity-50' : ''}>
+        <img
+          alt='model-icon'
+          src={`${provider.icon_small[language] || provider.icon_small.en_US}`}
+          className={cn('w-4 h-4', className)}
+        />
+      </div>
     )
   }
 

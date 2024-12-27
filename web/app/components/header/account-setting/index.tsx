@@ -36,6 +36,10 @@ const iconClassName = `
   w-5 h-5 mr-2
 `
 
+const scrolledClassName = `
+  border-b shadow-xs bg-white/[.98]
+`
+
 type IAccountSettingProps = {
   onCancel: () => void
   activeTab?: string

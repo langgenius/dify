@@ -77,28 +77,30 @@ const PopupItem: FC<PopupItemProps> = ({
             <div
               key={modelItem.model}
               className={`
-                group relative flex items-center px-3 py-1.5 h-8 rounded-lg
+                group relative flex items-center px-3 py-1.5 h-8 rounded-lg gap-1
                 ${modelItem.status === ModelStatusEnum.active ? 'cursor-pointer hover:bg-state-base-hover' : 'cursor-not-allowed hover:bg-state-base-hover-alt'}
               `}
               onClick={() => handleSelect(model.provider, modelItem)}
             >
-              <ModelIcon
-                className={`
-                  shrink-0 mr-2 w-4 h-4
-                  ${modelItem.status !== ModelStatusEnum.active && 'opacity-60'}
-                `}
-                provider={model}
-                modelName={modelItem.model}
-              />
-              <ModelName
-                className={`
-                  grow text-sm font-normal text-text-primary
-                  ${modelItem.status !== ModelStatusEnum.active && 'opacity-60'}
-                `}
-                modelItem={modelItem}
-                showMode
-                showFeatures
-              />
+              <div className='flex items-center gap-2'>
+                <ModelIcon
+                  className={`
+                    shrink-0 w-4 h-4
+                    ${modelItem.status !== ModelStatusEnum.active && 'opacity-60'}
+                  `}
+                  provider={model}
+                  modelName={modelItem.model}
+                />
+                <ModelName
+                  className={`
+                    text-text-secondary system-sm-medium
+                    ${modelItem.status !== ModelStatusEnum.active && 'opacity-60'}
+                  `}
+                  modelItem={modelItem}
+                  showMode
+                  showFeatures
+                />
+              </div>
               {
                 defaultModel?.model === modelItem.model && defaultModel.provider === currentProvider.provider && (
                   <Check className='shrink-0 w-4 h-4 text-text-accent' />

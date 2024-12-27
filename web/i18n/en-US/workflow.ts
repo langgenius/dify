@@ -714,6 +714,8 @@ const translation = {
         install: 'Install',
         installing: 'Installing',
       },
+      configureModel: 'Configure Model',
+      notAuthorized: 'Not Authorized',
       model: 'model',
       toolbox: 'toolbox',
       strategyNotSet: 'Agentic strategy Not Set',
@@ -723,6 +725,9 @@ const translation = {
       toolNotInstallTooltip: '{{tool}} is not installed',
       toolNotAuthorizedTooltip: '{{tool}} Not Authorized',
       strategyNotInstallTooltip: '{{strategy}} is not installed',
+      modelSelectorTooltips: {
+        deprecated: 'This model is deprecated',
+      },
     },
   },
   tracing: {
