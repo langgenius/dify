@@ -1,6 +1,5 @@
 'use client'
 
-import { useTranslation } from 'react-i18next'
 import { RiArrowRightSLine } from '@remixicon/react'
 import type { MarketplaceCollection } from '../types'
 import CardWrapper from './card-wrapper'
@@ -8,6 +7,7 @@ import type { Plugin } from '@/app/components/plugins/types'
 import { getLanguage } from '@/i18n/language'
 import cn from '@/utils/classnames'
 import type { SearchParamsFromCollection } from '@/app/components/plugins/marketplace/types'
+import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 
 type ListWithCollectionProps = {
   marketplaceCollections: MarketplaceCollection[]
@@ -27,7 +27,7 @@ const ListWithCollection = ({
   cardRender,
   onMoreClick,
 }: ListWithCollectionProps) => {
-  const { t } = useTranslation()
+  const { t } = useMixedTranslation(locale)
 
   return (
     <>

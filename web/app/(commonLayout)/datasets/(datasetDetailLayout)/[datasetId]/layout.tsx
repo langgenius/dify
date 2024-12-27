@@ -201,7 +201,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }, [isMobile, setAppSiderbarExpand])
 
   if (!datasetRes && !error)
-    return <Loading />
+    return <Loading type='app' />
 
   return (
     <div className='grow flex overflow-hidden'>
@@ -220,7 +220,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         dataset: datasetRes,
         mutateDatasetRes: () => mutateDatasetRes(),
       }}>
-        <div className="bg-white grow overflow-hidden">{children}</div>
+        <div className="bg-background-default-subtle grow overflow-hidden">{children}</div>
       </DatasetDetailContext.Provider>
     </div>
   )

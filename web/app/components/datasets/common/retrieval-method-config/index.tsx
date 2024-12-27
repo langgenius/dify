@@ -110,7 +110,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           description={t('dataset.retrieval.hybrid_search.description')} isActive={
             value.search_method === RETRIEVE_METHOD.hybrid
           }
-          onClick={() => onChange({
+          onSwitched={() => onChange({
             ...value,
             search_method: RETRIEVE_METHOD.hybrid,
             reranking_enable: true,

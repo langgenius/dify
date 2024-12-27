@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
@@ -99,7 +99,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     return { page: currPage + 1, limit, keyword: debouncedSearchValue, fetch: isDataSourceNotion ? true : '' }
   }, [currPage, debouncedSearchValue, isDataSourceNotion, limit])
 
-  const { data: documentsRes, error, mutate } = useSWR(
+  const { data: documentsRes, error, mutate, isLoading: isListLoading } = useSWR(
     {
       action: 'fetchDocuments',
       datasetId,
@@ -108,6 +108,17 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     apiParams => fetchDocuments(omit(apiParams, 'action')),
     { refreshInterval: (isDataSourceNotion && timerCanRun) ? 2500 : 0 },
   )
+
+  const [isMuting, setIsMuting] = useState(false)
+  useEffect(() => {
+    if (!isListLoading && isMuting)
+      setIsMuting(false)
+  }, [isListLoading, isMuting])
+
+  const handleUpdate = useCallback(() => {
+    setIsMuting(true)
+    mutate()
+  }, [mutate])
 
   const documentsWithProgress = useMemo(() => {
     let completedNum = 0
@@ -150,7 +161,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     router.push(`/datasets/${datasetId}/documents/create`)
   }
 
-  const isLoading = !documentsRes && !error
+  const isLoading = isListLoading // !documentsRes && !error
 
   const handleSaveNotionPageSelected = async (selectedPages: NotionPage[]) => {
     const workspacesMap = groupBy(selectedPages, 'workspace_id')
@@ -247,13 +258,14 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             )}
           </div>
         </div>
-        {isLoading
+        {(isLoading && !isMuting)
           ? <Loading type='app' />
           : total > 0
             ? <List
               embeddingAvailable={embeddingAvailable}
               documents={documentsList || []}
-              datasetId={datasetId} onUpdate={mutate}
+              datasetId={datasetId}
+              onUpdate={handleUpdate}
               selectedIds={selectedIds}
               onSelectedIdChange={setSelectedIds}
               pagination={{

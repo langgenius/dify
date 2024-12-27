@@ -85,7 +85,7 @@ const DocumentPicker: FC<Props> = ({
               <TypeIcon className='w-3 h-3' />
               <span className={cn('system-2xs-medium-uppercase', isParentChild && 'mt-0.5' /* to icon problem cause not ver align */)}>
                 {isParentChild ? t('dataset.chunkingMode.parentChild') : t('dataset.chunkingMode.general')}
-                {isParentChild && ` · ${parentMode || '--'}`}
+                {isParentChild && ` · ${!parentMode ? '--' : parentMode === 'paragraph' ? t('dataset.parentMode.paragraph') : t('dataset.parentMode.fullDoc')}`}
               </span>
             </div>
           </div>
@@ -101,7 +101,7 @@ const DocumentPicker: FC<Props> = ({
                 list={documentsList.map(d => ({
                   id: d.id,
                   name: d.name,
-                  extension: d.data_source_detail_dict?.upload_file.extension || '',
+                  extension: d.data_source_detail_dict?.upload_file?.extension || '',
                 }))}
                 onChange={handleChange}
               />

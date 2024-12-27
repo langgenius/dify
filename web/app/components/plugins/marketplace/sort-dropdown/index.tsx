@@ -4,16 +4,21 @@ import {
   RiArrowDownSLine,
   RiCheckLine,
 } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
 import { useMarketplaceContext } from '../context'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 
-const SortDropdown = () => {
-  const { t } = useTranslation()
+type SortDropdownProps = {
+  locale?: string
+}
+const SortDropdown = ({
+  locale,
+}: SortDropdownProps) => {
+  const { t } = useMixedTranslation(locale)
   const options = [
     {
       value: 'install_count',

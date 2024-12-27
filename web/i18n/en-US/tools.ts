@@ -152,11 +152,6 @@ const translation = {
   openInStudio: 'Open in Studio',
   toolNameUsageTip: 'Tool call name for agent reasoning and prompting',
   copyToolName: 'Copy Name',
-  toolSelector: {
-    label: 'TOOL',
-    placeholder: 'Select a tool...',
-    auth: 'AUTHORIZATION',
-  },
   noTools: 'No tools found',
 }
 

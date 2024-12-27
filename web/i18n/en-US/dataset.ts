@@ -4,6 +4,10 @@ const translation = {
     general: 'General',
     parentChild: 'Parent-child',
   },
+  parentMode: {
+    paragraph: 'Paragraph',
+    fullDoc: 'Full-doc',
+  },
   externalTag: 'External',
   externalAPI: 'External API',
   externalAPIPanelTitle: 'External Knowledge API',

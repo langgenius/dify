@@ -56,6 +56,7 @@ const Empty: FC<IEmptyProps> = ({
           {t('datasetDocuments.segment.empty')}
         </div>
         <button
+          type='button'
           className='text-text-accent system-sm-medium mt-1'
           onClick={onClearFilter}
         >

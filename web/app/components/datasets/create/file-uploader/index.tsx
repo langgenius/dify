@@ -243,7 +243,7 @@ const FileUploader = ({
   }, [handleDrop])
 
   return (
-    <div className="mb-5">
+    <div className="mb-5 w-[640px]">
       {!hideUpload && (
         <input
           ref={fileUploader}
@@ -284,7 +284,7 @@ const FileUploader = ({
             key={`${fileItem.fileID}-${index}`}
             onClick={() => fileItem.file?.id && onPreview(fileItem.file)}
             className={cn(
-              'flex items-center h-12 bg-components-panel-on-panel-item-bg text-xs leading-3 text-text-tertiary border border-components-panel-border rounded-lg shadow-xs',
+              'flex items-center h-12 max-w-[640px] bg-components-panel-on-panel-item-bg text-xs leading-3 text-text-tertiary border border-components-panel-border rounded-lg shadow-xs',
               // 'border-state-destructive-border bg-state-destructive-hover',
             )}
           >

@@ -76,7 +76,7 @@ class FeatureService:
 
         cls._fulfill_params_from_env(features)
 
-        if dify_config.BILLING_ENABLED:
+        if dify_config.BILLING_ENABLED and tenant_id:
             cls._fulfill_params_from_billing_api(features, tenant_id)
 
         return features

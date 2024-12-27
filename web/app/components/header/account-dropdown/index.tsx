@@ -101,10 +101,6 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                       </div>
                     </div>
                   </Menu.Item>
-                  <div className='px-1 py-1'>
-                    <div className='mt-2 px-3 text-xs font-medium text-text-tertiary'>{t('common.userProfile.workspace')}</div>
-                    <WorkplaceSelector />
-                  </div>
                   <div className="px-1 py-1">
                     <Menu.Item>
                       <Link

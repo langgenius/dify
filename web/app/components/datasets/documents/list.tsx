@@ -19,6 +19,7 @@ import dayjs from 'dayjs'
 import { Edit03 } from '../../base/icons/src/vender/solid/general'
 import { Globe01 } from '../../base/icons/src/vender/line/mapsAndTravel'
 import ChunkingModeLabel from '../common/chunking-mode-label'
+import FileTypeIcon from '../../base/file-uploader/file-type-icon'
 import s from './style.module.css'
 import RenameModal from './rename-modal'
 import BatchAction from './detail/completed/common/batch-action'
@@ -35,7 +36,7 @@ import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
 import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
-import { ChuckingMode, DataSourceType, DocumentActionType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
+import { ChunkingMode, DataSourceType, DocumentActionType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
@@ -43,6 +44,7 @@ import type { Props as PaginationProps } from '@/app/components/base/pagination'
 import Pagination from '@/app/components/base/pagination'
 import Checkbox from '@/app/components/base/checkbox'
 import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable, useDocumentUnArchive, useSyncDocument, useSyncWebsite } from '@/service/knowledge/use-document'
+import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
 
 export const useIndexStatus = () => {
   const { t } = useTranslation()
@@ -118,6 +120,10 @@ export const StatusItem: FC<{
     onOperate(operationName)
   }, { wait: 500 })
 
+  const embedding = useMemo(() => {
+    return ['queuing', 'indexing', 'paused'].includes(localStatus)
+  }, [localStatus])
+
   return <div className={
     cn('flex items-center',
       reverse ? 'flex-row-reverse' : '',
@@ -139,7 +145,7 @@ export const StatusItem: FC<{
             <Switch
               defaultValue={archived ? false : enabled}
               onChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')}
-              disabled={archived}
+              disabled={embedding || archived}
               size='md'
             />
           </Tooltip>
@@ -414,8 +420,8 @@ const DocumentList: FC<IDocumentListProps> = ({
   const router = useRouter()
   const [datasetConfig] = useDatasetDetailContext(s => [s.dataset])
   const chunkingMode = datasetConfig?.doc_form
-  const isGeneralMode = chunkingMode !== ChuckingMode.parentChild
-  const isQAMode = chunkingMode === ChuckingMode.qa
+  const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
+  const isQAMode = chunkingMode === ChunkingMode.qa
   const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
   const [enableSort, setEnableSort] = useState(true)
 
@@ -520,7 +526,7 @@ const DocumentList: FC<IDocumentListProps> = ({
             <td className='w-44'>
               <div className='flex items-center' onClick={onClickSort}>
                 {t('datasetDocuments.list.table.header.uploadTime')}
-                <ArrowDownIcon className={cn('ml-0.5 h-3 w-3 stroke-current stroke-2 cursor-pointer', enableSort ? 'text-text-tertiary' : 'text-gray-300')} />
+                <ArrowDownIcon className={cn('ml-0.5 h-3 w-3 stroke-current stroke-2 cursor-pointer', enableSort ? 'text-text-tertiary' : 'text-text-disabled')} />
               </div>
             </td>
             <td className='w-40'>{t('datasetDocuments.list.table.header.status')}</td>
@@ -555,11 +561,11 @@ const DocumentList: FC<IDocumentListProps> = ({
                 </div>
               </td>
               <td>
-                <div className='group flex items-center justify-between'>
-                  <span className={s.tdValue}>
+                <div className={'group flex items-center justify-between mr-6 hover:mr-0'}>
+                  <span className={cn(s.tdValue, 'flex items-center')}>
                     {doc?.data_source_type === DataSourceType.NOTION && <NotionIcon className='inline-flex -mt-[3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />
                     }
-                    {doc?.data_source_type === DataSourceType.FILE && <div className={cn(s[`${doc?.data_source_info?.upload_file?.extension ?? fileType}Icon`], s.commonIcon, 'mr-1.5')}></div>}
+                    {doc?.data_source_type === DataSourceType.FILE && <FileTypeIcon type={extensionToFileType(doc?.data_source_info?.upload_file?.extension ?? fileType)} className='mr-1.5' />}
                     {doc?.data_source_type === DataSourceType.WEB && <Globe01 className='inline-flex -mt-[3px] mr-1.5 align-middle' />
                     }
                     {

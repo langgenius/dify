@@ -15,7 +15,7 @@ import Dot from './completed/common/dot'
 import { useDocumentContext } from './index'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
-import { ChuckingMode, type SegmentUpdater } from '@/models/datasets'
+import { ChunkingMode, type SegmentUpdater } from '@/models/datasets'
 import classNames from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import Divider from '@/app/components/base/divider'
@@ -23,7 +23,7 @@ import { useAddSegment } from '@/service/knowledge/use-segment'
 
 type NewSegmentModalProps = {
   onCancel: () => void
-  docForm: ChuckingMode
+  docForm: ChunkingMode
   onSave: () => void
   viewNewlyAddedChunk: () => void
 }
@@ -42,7 +42,8 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   const [keywords, setKeywords] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [addAnother, setAddAnother] = useState(true)
-  const [fullScreen, toggleFullScreen] = useSegmentListContext(s => [s.fullScreen, s.toggleFullScreen])
+  const fullScreen = useSegmentListContext(s => s.fullScreen)
+  const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
   const mode = useDocumentContext(s => s.mode)
   const { appSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
@@ -51,16 +52,19 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
 
   const CustomButton = <>
     <Divider type='vertical' className='h-3 mx-1 bg-divider-regular' />
-    <button className='text-text-accent system-xs-semibold' onClick={() => {
-      clearTimeout(refreshTimer.current)
-      viewNewlyAddedChunk()
-    }}>
+    <button
+      type='button'
+      className='text-text-accent system-xs-semibold'
+      onClick={() => {
+        clearTimeout(refreshTimer.current)
+        viewNewlyAddedChunk()
+      }}>
       {t('common.operation.view')}
     </button>
   </>
 
   const isQAModel = useMemo(() => {
-    return docForm === ChuckingMode.qa
+    return docForm === ChunkingMode.qa
   }, [docForm])
 
   const handleCancel = (actionType: 'esc' | 'add' = 'esc') => {
@@ -141,7 +145,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
             t('datasetDocuments.segment.addChunk')
           }</div>
           <div className='flex items-center gap-x-2'>
-            <SegmentIndexTag label={'New Chunk'} />
+            <SegmentIndexTag label={t('datasetDocuments.segment.newChunk')!} />
             <Dot />
             <span className='text-text-tertiary system-xs-medium'>{wordCountText}</span>
           </div>
@@ -167,8 +171,8 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
           </div>
         </div>
       </div>
-      <div className={classNames('flex grow overflow-hidden', fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8' : 'flex-col gap-y-1 py-3 px-4')}>
-        <div className={classNames('break-all overflow-y-auto whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
+      <div className={classNames('flex grow', fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8' : 'flex-col gap-y-1 py-3 px-4')}>
+        <div className={classNames('break-all overflow-hidden whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
           <ChunkContent
             docForm={docForm}
             question={question}

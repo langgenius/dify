@@ -49,6 +49,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     handleRun,
     handleStop,
     runResult,
+    outputSchema,
   } = useConfig(id, data)
   const toolIcon = useToolIcon(data)
   const {
@@ -143,6 +144,14 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
               type='Array[Object]'
               description={t(`${i18nPrefix}.outputVars.json`)}
             />
+            {outputSchema.map(outputItem => (
+              <VarItem
+                key={outputItem.name}
+                name={outputItem.name}
+                type={outputItem.type}
+                description={outputItem.description}
+              />
+            ))}
           </>
         </OutputVars>
       </div>

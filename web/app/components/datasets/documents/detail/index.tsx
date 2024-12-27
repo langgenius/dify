@@ -1,11 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import React, { useMemo, useState } from 'react'
-import useSWR from 'swr'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import { omit } from 'lodash-es'
 import { RiArrowLeftLine, RiLayoutRight2Line } from '@remixicon/react'
 import { OperationAction, StatusItem } from '../list'
 import DocumentPicker from '../../common/document-picker'
@@ -18,14 +16,14 @@ import style from './style.module.css'
 import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
-import type { MetadataType } from '@/service/datasets'
-import { checkSegmentBatchImportProgress, fetchDocumentDetail, segmentBatchImport } from '@/service/datasets'
 import { ToastContext } from '@/app/components/base/toast'
-import type { DocForm, ParentMode, ProcessMode } from '@/models/datasets'
+import type { ChunkingMode, ParentMode, ProcessMode } from '@/models/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { LayoutRight2LineMod } from '@/app/components/base/icons/src/public/knowledge'
+import { useCheckSegmentBatchImportProgress, useSegmentBatchImport } from '@/service/knowledge/use-segment'
+import { useDocumentDetail, useDocumentMetadata } from '@/service/knowledge/use-document'
 
 type DocumentContextValue = {
   datasetId?: string
@@ -95,49 +93,52 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   const showBatchModal = () => setBatchModalVisible(true)
   const hideBatchModal = () => setBatchModalVisible(false)
   const resetProcessStatus = () => setImportStatus('')
+
+  const { mutateAsync: checkSegmentBatchImportProgress } = useCheckSegmentBatchImportProgress()
   const checkProcess = async (jobID: string) => {
-    try {
-      const res = await checkSegmentBatchImportProgress({ jobID })
-      setImportStatus(res.job_status)
-      if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
-        setTimeout(() => checkProcess(res.job_id), 2500)
-      if (res.job_status === ProcessStatus.ERROR)
-        notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}` })
-    }
-    catch (e: any) {
-      notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
-    }
+    await checkSegmentBatchImportProgress({ jobID }, {
+      onSuccess: (res) => {
+        setImportStatus(res.job_status)
+        if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
+          setTimeout(() => checkProcess(res.job_id), 2500)
+        if (res.job_status === ProcessStatus.ERROR)
+          notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}` })
+      },
+      onError: (e) => {
+        notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
+      },
+    })
   }
+
+  const { mutateAsync: segmentBatchImport } = useSegmentBatchImport()
   const runBatch = async (csv: File) => {
     const formData = new FormData()
     formData.append('file', csv)
-    try {
-      const res = await segmentBatchImport({
-        url: `/datasets/${datasetId}/documents/${documentId}/segments/batch_import`,
-        body: formData,
-      })
-      setImportStatus(res.job_status)
-      checkProcess(res.job_id)
-    }
-    catch (e: any) {
-      notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
-    }
+    await segmentBatchImport({
+      url: `/datasets/${datasetId}/documents/${documentId}/segments/batch_import`,
+      body: formData,
+    }, {
+      onSuccess: (res) => {
+        setImportStatus(res.job_status)
+        checkProcess(res.job_id)
+      },
+      onError: (e) => {
+        notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
+      },
+    })
   }
 
-  const { data: documentDetail, error, mutate: detailMutate } = useSWR({
-    action: 'fetchDocumentDetail',
+  const { data: documentDetail, error, refetch: detailMutate } = useDocumentDetail({
     datasetId,
     documentId,
-    params: { metadata: 'without' as MetadataType },
-  }, apiParams => fetchDocumentDetail(omit(apiParams, 'action')))
+    params: { metadata: 'without' },
+  })
 
-  const { data: documentMetadata, error: metadataErr, mutate: metadataMutate } = useSWR({
-    action: 'fetchDocumentDetail',
+  const { data: documentMetadata, error: metadataErr, refetch: metadataMutate } = useDocumentMetadata({
     datasetId,
     documentId,
-    params: { metadata: 'only' as MetadataType },
-  }, apiParams => fetchDocumentDetail(omit(apiParams, 'action')),
-  )
+    params: { metadata: 'only' },
+  })
 
   const backToPrev = () => {
     router.push(`/datasets/${datasetId}/documents`)
@@ -156,12 +157,12 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   }
 
   const mode = useMemo(() => {
-    return documentDetail?.dataset_process_rule?.mode
-  }, [documentDetail?.dataset_process_rule])
+    return documentDetail?.document_process_rule?.mode
+  }, [documentDetail?.document_process_rule])
 
   const parentMode = useMemo(() => {
-    return documentDetail?.dataset_process_rule?.rules?.parent_mode
-  }, [documentDetail?.dataset_process_rule])
+    return documentDetail?.document_process_rule?.rules?.parent_mode
+  }, [documentDetail?.document_process_rule])
 
   const isFullDocMode = useMemo(() => {
     return mode === 'hierarchical' && parentMode === 'full-doc'
@@ -175,7 +176,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
       mode,
       parentMode,
     }}>
-      <div className='flex flex-col h-full'>
+      <div className='flex flex-col h-full bg-background-default'>
         <div className='flex items-center justify-between flex-wrap min-h-16 pl-3 pr-4 py-2.5 border-b border-b-divider-subtle'>
           <div onClick={backToPrev} className={'shrink-0 rounded-full w-8 h-8 flex justify-center items-center cursor-pointer hover:bg-components-button-tertiary-bg'}>
             <RiArrowLeftLine className='text-components-button-ghost-text hover:text-text-tertiary w-4 h-4' />
@@ -196,6 +197,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
                   clearProcessStatus={resetProcessStatus}
                   showNewSegmentModal={showNewSegmentModal}
                   showBatchModal={showBatchModal}
+                  embedding={embedding}
                 />
                 <Divider type='vertical' className='!bg-divider-regular !h-[14px] !mx-3' />
               </>
@@ -234,7 +236,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
             >
               {
                 showMetadata
-                  ? <LayoutRight2LineMod className='w-4 h-4 text-components-button-secondary-accent-text' />
+                  ? <LayoutRight2LineMod className='w-4 h-4 text-components-button-secondary-text' />
                   : <RiLayoutRight2Line className='w-4 h-4 text-components-button-secondary-text' />
               }
             </button>
@@ -244,11 +246,14 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           {isDetailLoading
             ? <Loading type='app' />
             : <div className={cn('h-full w-full flex flex-col',
-              embedding ? 'px-6 py-3 sm:py-12 sm:px-16' : 'relative pt-3 pr-11',
-              isFullDocMode ? 'pl-11 pt-4' : 'pl-5',
+              embedding ? '' : isFullDocMode ? 'relative pt-4 pr-11 pl-11' : 'relative pt-3 pr-11 pl-5',
             )}>
               {embedding
-                ? <Embedding detail={documentDetail} detailUpdate={detailMutate} />
+                ? <Embedding
+                  detailUpdate={detailMutate}
+                  indexingType={dataset?.indexing_technique}
+                  retrievalMethod={dataset?.retrieval_model_dict?.search_method}
+                />
                 : <Completed
                   embeddingAvailable={embeddingAvailable}
                   showNewSegmentModal={newSegmentModalVisible}
@@ -271,7 +276,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           isShow={batchModalVisible}
           onCancel={hideBatchModal}
           onConfirm={runBatch}
-          docForm={documentDetail?.doc_form as DocForm}
+          docForm={documentDetail?.doc_form as ChunkingMode}
         />
       </div>
     </DocumentContext.Provider>

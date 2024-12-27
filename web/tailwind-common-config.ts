@@ -88,6 +88,7 @@ const config = {
         'chatbot-bg': 'var(--color-chatbot-bg)',
         'chat-bubble-bg': 'var(--color-chat-bubble-bg)',
         'workflow-process-bg': 'var(--color-workflow-process-bg)',
+        'mask-top2bottom-gray-50-to-transparent': 'var(--mask-top2bottom-gray-50-to-transparent)',
         'marketplace-divider-bg': 'var(--color-marketplace-divider-bg)',
         'marketplace-plugin-empty': 'var(--color-marketplace-plugin-empty)',
         'toast-success-bg': 'var(--color-toast-success-bg)',

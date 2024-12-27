@@ -1,6 +1,7 @@
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
 import type { AppIconType, AppMode, RetrievalConfig } from '@/types/app'
 import type { Tag } from '@/app/components/base/tag-management/constant'
+import type { IndexingType } from '@/app/components/datasets/create/step-two'
 
 export enum DataSourceType {
   FILE = 'upload_file',
@@ -10,10 +11,10 @@ export enum DataSourceType {
 
 export type DatasetPermission = 'only_me' | 'all_team_members' | 'partial_members'
 
-export enum ChuckingMode {
-  text = 'text_model', // General text
-  qa = 'qa_model', // General QA
-  parentChild = 'hierarchical_model', // Parent-Child
+export enum ChunkingMode {
+  'text' = 'text_model', // General text
+  'qa' = 'qa_model', // General QA
+  'parentChild' = 'hierarchical_model', // Parent-Child
 }
 
 export type DataSet = {
@@ -24,12 +25,12 @@ export type DataSet = {
   description: string
   permission: DatasetPermission
   data_source_type: DataSourceType
-  indexing_technique: 'high_quality' | 'economy'
+  indexing_technique: IndexingType
   created_by: string
   updated_by: string
   updated_at: number
   app_count: number
-  doc_form: ChuckingMode
+  doc_form: ChunkingMode
   document_count: number
   word_count: number
   provider: string
@@ -278,7 +279,7 @@ export type InitialDocumentDetail = {
   display_status: DocumentDisplayStatus
   completed_segments?: number
   total_segments?: number
-  doc_form: 'text_model' | 'qa_model'
+  doc_form: ChunkingMode
   doc_language: string
 }
 
@@ -310,7 +311,7 @@ export type DocumentListResponse = {
 export type DocumentReq = {
   original_document_id?: string
   indexing_technique?: string
-  doc_form: ChuckingMode
+  doc_form: ChunkingMode
   doc_language: string
   process_rule: ProcessRule
 }
@@ -352,7 +353,7 @@ export type NotionPage = {
 }
 
 export type ProcessRule = {
-  mode: ChildChunkType | 'hierarchical'
+  mode: ProcessMode
   rules: Rules
 }
 
@@ -390,6 +391,7 @@ export type FullDocumentDetail = SimpleDocumentDetail & {
   doc_metadata?: DocMetadata | null
   segment_count: number
   dataset_process_rule: PrecessRule
+  document_process_rule: ProcessRule
   [key: string]: any
 }
 
@@ -572,11 +574,6 @@ export type SegmentUpdater = {
   regenerate_child_chunks?: boolean
 }
 
-export enum DocForm {
-  TEXT = 'text_model',
-  QA = 'qa_model',
-}
-
 export type ErrorDocsResponse = {
   data: IndexingStatusResponse[]
   total: number
@@ -659,4 +656,9 @@ export type UpdateDocumentBatchParams = {
   datasetId: string
   documentId?: string
   documentIds?: string[] | string
+}
+
+export type BatchImportResponse = {
+  job_id: string
+  job_status: string
 }

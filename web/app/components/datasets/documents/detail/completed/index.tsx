@@ -16,6 +16,7 @@ import ChildSegmentList from './child-segment-list'
 import NewChildSegment from './new-child-segment'
 import FullScreenDrawer from './common/full-screen-drawer'
 import ChildSegmentDetail from './child-segment-detail'
+import StatusItem from './status-item'
 import Pagination from '@/app/components/base/pagination'
 import cn from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
@@ -24,7 +25,7 @@ import Input from '@/app/components/base/input'
 import { ToastContext } from '@/app/components/base/toast'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
-import { type ChildChunkDetail, ChuckingMode, type SegmentDetailModel, type SegmentUpdater } from '@/models/datasets'
+import { type ChildChunkDetail, ChunkingMode, type SegmentDetailModel, type SegmentUpdater } from '@/models/datasets'
 import NewSegment from '@/app/components/datasets/documents/detail/new-segment'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import Checkbox from '@/app/components/base/checkbox'
@@ -44,16 +45,31 @@ import { useInvalid } from '@/service/use-base'
 
 const DEFAULT_LIMIT = 10
 
+type CurrSegmentType = {
+  segInfo?: SegmentDetailModel
+  showModal: boolean
+  isEditMode?: boolean
+}
+
+type CurrChildChunkType = {
+  childChunkInfo?: ChildChunkDetail
+  showModal: boolean
+}
+
 type SegmentListContextValue = {
   isCollapsed: boolean
   fullScreen: boolean
   toggleFullScreen: (fullscreen?: boolean) => void
+  currSegment: CurrSegmentType
+  currChildChunk: CurrChildChunkType
 }
 
 const SegmentListContext = createContext<SegmentListContextValue>({
   isCollapsed: true,
   fullScreen: false,
   toggleFullScreen: () => {},
+  currSegment: { showModal: false },
+  currChildChunk: { showModal: false },
 })
 
 export const useSegmentListContext = (selector: (value: SegmentListContextValue) => any) => {
@@ -80,10 +96,14 @@ const Completed: FC<ICompletedProps> = ({
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const [datasetId = '', documentId = '', docForm, mode, parentMode] = useDocumentContext(s => [s.datasetId, s.documentId, s.docForm, s.mode, s.parentMode])
+  const datasetId = useDocumentContext(s => s.datasetId) || ''
+  const documentId = useDocumentContext(s => s.documentId) || ''
+  const docForm = useDocumentContext(s => s.docForm)
+  const mode = useDocumentContext(s => s.mode)
+  const parentMode = useDocumentContext(s => s.parentMode)
   // the current segment id and whether to show the modal
-  const [currSegment, setCurrSegment] = useState<{ segInfo?: SegmentDetailModel; showModal: boolean; isEditMode?: boolean }>({ showModal: false })
-  const [currChildChunk, setCurrChildChunk] = useState<{ childChunkInfo?: ChildChunkDetail; showModal: boolean }>({ showModal: false })
+  const [currSegment, setCurrSegment] = useState<CurrSegmentType>({ showModal: false })
+  const [currChildChunk, setCurrChildChunk] = useState<CurrChildChunkType>({ showModal: false })
   const [currChunkId, setCurrChunkId] = useState('')
 
   const [inputValue, setInputValue] = useState<string>('') // the input value
@@ -103,6 +123,11 @@ const Completed: FC<ICompletedProps> = ({
   const segmentListRef = useRef<HTMLDivElement>(null)
   const childSegmentListRef = useRef<HTMLDivElement>(null)
   const needScrollToBottom = useRef(false)
+  const statusList = useRef<Item[]>([
+    { value: 'all', name: t('datasetDocuments.list.index.all') },
+    { value: 0, name: t('datasetDocuments.list.status.disabled') },
+    { value: 1, name: t('datasetDocuments.list.status.enabled') },
+  ])
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchValue(inputValue)
@@ -203,9 +228,9 @@ const Completed: FC<ICompletedProps> = ({
   }
 
   const onCloseSegmentDetail = useCallback(() => {
-    setCurrSegment({ ...currSegment, showModal: false })
+    setCurrSegment({ showModal: false })
     setFullScreen(false)
-  }, [currSegment])
+  }, [])
 
   const { mutateAsync: enableSegment } = useEnableSegment()
   const { mutateAsync: disableSegment } = useDisableSegment()
@@ -254,7 +279,7 @@ const Completed: FC<ICompletedProps> = ({
     needRegenerate = false,
   ) => {
     const params: SegmentUpdater = { content: '' }
-    if (docForm === ChuckingMode.qa) {
+    if (docForm === ChunkingMode.qa) {
       if (!question.trim())
         return notify({ type: 'error', message: t('datasetDocuments.segment.questionEmpty') })
       if (!answer.trim())
@@ -278,20 +303,20 @@ const Completed: FC<ICompletedProps> = ({
 
     eventEmitter?.emit('update-segment')
     await updateSegment({ datasetId, documentId, segmentId, body: params }, {
-      onSuccess(data) {
+      onSuccess(res) {
         notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
         if (!needRegenerate)
           onCloseSegmentDetail()
         for (const seg of segments) {
           if (seg.id === segmentId) {
-            seg.answer = data.data.answer
-            seg.content = data.data.content
-            seg.keywords = data.data.keywords
-            seg.word_count = data.data.word_count
-            seg.hit_count = data.data.hit_count
-            seg.enabled = data.data.enabled
-            seg.updated_at = data.data.updated_at
-            seg.child_chunks = data.data.child_chunks
+            seg.answer = res.data.answer
+            seg.content = res.data.content
+            seg.keywords = res.data.keywords
+            seg.word_count = res.data.word_count
+            seg.hit_count = res.data.hit_count
+            seg.enabled = res.data.enabled
+            seg.updated_at = res.data.updated_at
+            seg.child_chunks = res.data.child_chunks
           }
         }
         setSegments([...segments])
@@ -435,9 +460,9 @@ const Completed: FC<ICompletedProps> = ({
   }, [])
 
   const onCloseChildSegmentDetail = useCallback(() => {
-    setCurrChildChunk({ ...currChildChunk, showModal: false })
+    setCurrChildChunk({ showModal: false })
     setFullScreen(false)
-  }, [currChildChunk])
+  }, [])
 
   const { mutateAsync: updateChildSegment } = useUpdateChildSegment()
 
@@ -452,41 +477,42 @@ const Completed: FC<ICompletedProps> = ({
 
     params.content = content
 
-    try {
-      eventEmitter?.emit('update-child-segment')
-      const res = await updateChildSegment({ datasetId, documentId, segmentId, childChunkId, body: params })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      onCloseChildSegmentDetail()
-      if (parentMode === 'paragraph') {
-        for (const seg of segments) {
-          if (seg.id === segmentId) {
-            for (const childSeg of seg.child_chunks!) {
-              if (childSeg.id === childChunkId) {
-                childSeg.content = res.data.content
-                childSeg.type = res.data.type
-                childSeg.word_count = res.data.word_count
-                childSeg.updated_at = res.data.updated_at
+    eventEmitter?.emit('update-child-segment')
+    await updateChildSegment({ datasetId, documentId, segmentId, childChunkId, body: params }, {
+      onSuccess: (res) => {
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        onCloseChildSegmentDetail()
+        if (parentMode === 'paragraph') {
+          for (const seg of segments) {
+            if (seg.id === segmentId) {
+              for (const childSeg of seg.child_chunks!) {
+                if (childSeg.id === childChunkId) {
+                  childSeg.content = res.data.content
+                  childSeg.type = res.data.type
+                  childSeg.word_count = res.data.word_count
+                  childSeg.updated_at = res.data.updated_at
+                }
               }
             }
           }
+          setSegments([...segments])
         }
-        setSegments([...segments])
-      }
-      else {
-        for (const childSeg of childSegments) {
-          if (childSeg.id === childChunkId) {
-            childSeg.content = res.data.content
-            childSeg.type = res.data.type
-            childSeg.word_count = res.data.word_count
-            childSeg.updated_at = res.data.updated_at
+        else {
+          for (const childSeg of childSegments) {
+            if (childSeg.id === childChunkId) {
+              childSeg.content = res.data.content
+              childSeg.type = res.data.type
+              childSeg.word_count = res.data.word_count
+              childSeg.updated_at = res.data.updated_at
+            }
           }
+          setChildSegments([...childSegments])
         }
-        setChildSegments([...childSegments])
-      }
-    }
-    finally {
-      eventEmitter?.emit('update-child-segment-done')
-    }
+      },
+      onSettled: () => {
+        eventEmitter?.emit('update-child-segment-done')
+      },
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segments, childSegments, datasetId, documentId, parentMode])
 
@@ -502,6 +528,8 @@ const Completed: FC<ICompletedProps> = ({
       isCollapsed,
       fullScreen,
       toggleFullScreen,
+      currSegment,
+      currChildChunk,
     }}>
       {/* Menu Bar */}
       {!isFullDocMode && <div className={s.docSearchWrapper}>
@@ -512,17 +540,17 @@ const Completed: FC<ICompletedProps> = ({
           onCheck={onSelectedAll}
           disabled={isLoadingSegmentList}
         />
-        <div className={cn('system-sm-semibold-uppercase pl-5', s.totalText)}>{totalText}</div>
+        <div className={'system-sm-semibold-uppercase pl-5 text-text-secondary flex-1'}>{totalText}</div>
         <SimpleSelect
           onSelect={onChangeStatus}
-          items={[
-            { value: 'all', name: t('datasetDocuments.list.index.all') },
-            { value: 0, name: t('datasetDocuments.list.status.disabled') },
-            { value: 1, name: t('datasetDocuments.list.status.enabled') },
-          ]}
+          items={statusList.current}
           defaultValue={'all'}
           className={s.select}
-          wrapperClassName='h-fit w-[100px] mr-2' />
+          wrapperClassName='h-fit mr-2'
+          optionWrapClassName='w-[160px]'
+          optionClassName='p-0'
+          renderOption={({ item, selected }) => <StatusItem item={item} selected={selected} />}
+        />
         <Input
           showLeftIcon
           showClearIcon
@@ -545,6 +573,10 @@ const Completed: FC<ICompletedProps> = ({
               detail={segments[0]}
               onClick={() => onClickCard(segments[0])}
               loading={isLoadingSegmentList}
+              focused={{
+                segmentIndex: currSegment?.segInfo?.id === segments[0]?.id,
+                segmentContent: currSegment?.segInfo?.id === segments[0]?.id,
+              }}
             />
             <ChildSegmentList
               parentChunkId={segments[0]?.id}

@@ -28,7 +28,7 @@ export const Topbar: FC<TopbarProps> = (props) => {
       </p>
     </Link>
     <div className={
-      'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 absolute'
+      'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 absolute'
     }>
       <Stepper
         steps={Array.from({ length: 3 }, (_, i) => ({

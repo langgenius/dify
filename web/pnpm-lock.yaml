@@ -143,8 +143,11 @@ importers:
         specifier: ^1.2.1
         version: 1.2.1
       lexical:
-        specifier: ^0.18.0
-        version: 0.18.0
+        specifier: ^0.16.0
+        version: 0.16.1
+      line-clamp:
+        specifier: ^1.0.0
+        version: 1.0.0
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
@@ -266,10 +269,13 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1
       sharp:
-        specifier: ^0.33.5
+        specifier: ^0.33.2
         version: 0.33.5
+      shave:
+        specifier: ^5.0.4
+        version: 5.0.4
       sortablejs:
-        specifier: ^1.15.3
+        specifier: ^1.15.0
         version: 1.15.3
       swr:
         specifier: ^2.1.0
@@ -5784,6 +5790,9 @@ packages:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
 
+  lexical@0.16.1:
+    resolution: {integrity: sha512-+R05d3+N945OY8pTUjTqQrWoApjC+ctzvjnmNETtx9WmVAaiW0tQVG+AYLt5pDGY8dQXtd4RPorvnxBTECt9SA==}
+
   lexical@0.18.0:
     resolution: {integrity: sha512-3K/B0RpzjoW+Wj2E455wWXxkqxqK8UgdIiuqkOqdOsoSSo5mCkHOU6eVw7Nlmlr1MFvAMzGmz4RPn8NZaLQ2Mw==}
 
@@ -5802,6 +5811,9 @@ packages:
   lilconfig@3.1.2:
     resolution: {integrity: sha512-eop+wDAvpItUys0FWkHIKeC9ybYrTGbU41U5K7+bttZZeohvnY7M9dZ5kB21GNWiFT2q1OoPTvncPCgSOVO5ow==}
     engines: {node: '>=14'}
+
+  line-clamp@1.0.0:
+    resolution: {integrity: sha512-dCDlvMj572RIRBQ3x9aIX0DTdt2St1bMdpi64jVTAi5vqBck7wf+J97//+J7+pS80rFJaYa8HiyXCTp0flpnBA==}
 
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
@@ -7412,6 +7424,9 @@ packages:
   sharp@0.33.5:
     resolution: {integrity: sha512-haPVm1EkS9pgvHrQ/F3Xy+hgcuMV0Wm9vfIBSiwZ05k+xgb0PkBQpGsAA/oWdDobNaZTH5ppvHtzCFbnSEwHVw==}
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
+
+  shave@5.0.4:
+    resolution: {integrity: sha512-AnvEI1wM2rQmrwCl364LVLLhzCzSHJ7DQmdd+fHJTnNzbD2mjsUAOcxWLLYKam7Q63skwyQf2CB2TCdJ2O5c8w==}
 
   shebang-command@2.0.0:
     resolution: {integrity: sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==}
@@ -15162,6 +15177,8 @@ snapshots:
       prelude-ls: 1.2.1
       type-check: 0.4.0
 
+  lexical@0.16.1: {}
+
   lexical@0.18.0: {}
 
   lib0@0.2.98:
@@ -15175,6 +15192,8 @@ snapshots:
   lilconfig@2.1.0: {}
 
   lilconfig@3.1.2: {}
+
+  line-clamp@1.0.0: {}
 
   lines-and-columns@1.2.4: {}
 
@@ -17296,6 +17315,8 @@ snapshots:
       '@img/sharp-wasm32': 0.33.5
       '@img/sharp-win32-ia32': 0.33.5
       '@img/sharp-win32-x64': 0.33.5
+
+  shave@5.0.4: {}
 
   shebang-command@2.0.0:
     dependencies:

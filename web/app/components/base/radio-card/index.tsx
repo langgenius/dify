@@ -42,7 +42,7 @@ const RadioCard: FC<Props> = ({
         </div>
         <div className='grow'>
           <div className='system-sm-semibold text-text-secondary mb-1'>{title}</div>
-          <div className='system-sm-regular text-text-tertiary'>{description}</div>
+          <div className='system-xs-regular text-text-tertiary'>{description}</div>
         </div>
         {!noRadio && (
           <div className='absolute top-3 right-3'>

@@ -9,7 +9,7 @@ import ChunkContent from './common/chunk-content'
 import Dot from './common/dot'
 import { SegmentIndexTag } from './common/segment-index-tag'
 import { useSegmentListContext } from './index'
-import type { ChildChunkDetail, ChuckingMode } from '@/models/datasets'
+import type { ChildChunkDetail, ChunkingMode } from '@/models/datasets'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { formatNumber } from '@/utils/format'
 import classNames from '@/utils/classnames'
@@ -21,7 +21,7 @@ type IChildSegmentDetailProps = {
   childChunkInfo?: Partial<ChildChunkDetail> & { id: string }
   onUpdate: (segmentId: string, childChunkId: string, content: string) => void
   onCancel: () => void
-  docForm: ChuckingMode
+  docForm: ChunkingMode
 }
 
 /**
@@ -38,7 +38,8 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
   const [content, setContent] = useState(childChunkInfo?.content || '')
   const { eventEmitter } = useEventEmitterContextContext()
   const [loading, setLoading] = useState(false)
-  const [fullScreen, toggleFullScreen] = useSegmentListContext(s => [s.fullScreen, s.toggleFullScreen])
+  const fullScreen = useSegmentListContext(s => s.fullScreen)
+  const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
 
   eventEmitter?.useSubscription((v) => {
     if (v === 'update-child-segment')
@@ -106,8 +107,8 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
           </div>
         </div>
       </div>
-      <div className={classNames('flex grow overflow-hidden', fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8 mx-auto' : 'flex-col gap-y-1 py-3 px-4')}>
-        <div className={classNames('break-all overflow-y-auto whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
+      <div className={classNames('flex grow w-full', fullScreen ? 'flex-row justify-center px-6 pt-6' : 'py-3 px-4')}>
+        <div className={classNames('break-all overflow-hidden whitespace-pre-line h-full', fullScreen ? 'w-1/2' : 'w-full')}>
           <ChunkContent
             docForm={docForm}
             question={content}

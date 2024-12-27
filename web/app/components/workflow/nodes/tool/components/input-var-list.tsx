@@ -123,24 +123,11 @@ const InputVarList: FC<Props> = ({
     }
   }, [onChange, value])
   const handleModelChange = useCallback((variable: string) => {
-    return (model: { provider: string; modelId: string; mode?: string }) => {
+    return (model: any) => {
       const newValue = produce(value, (draft: ToolVarInputs) => {
         draft[variable] = {
           ...draft[variable],
-          provider: model.provider,
-          model: model.modelId,
-          mode: model.mode,
-        } as any
-      })
-      onChange(newValue)
-    }
-  }, [onChange, value])
-  const handleModelParamsChange = useCallback((variable: string) => {
-    return (newParams: Record<string, any>) => {
-      const newValue = produce(value, (draft: ToolVarInputs) => {
-        draft[variable] = {
-          ...draft[variable],
-          completion_params: newParams,
+          ...model,
         } as any
       })
       onChange(newValue)
@@ -242,12 +229,8 @@ const InputVarList: FC<Props> = ({
                   popupClassName='!w-[387px]'
                   isAdvancedMode
                   isInWorkflow
-                  provider={(varInput as any)?.provider}
-                  modelId={(varInput as any)?.model}
-                  mode={(varInput as any)?.mode}
-                  completionParams={(varInput as any)?.completion_params}
+                  value={varInput as any}
                   setModel={handleModelChange(variable)}
-                  onCompletionParamsChange={handleModelParamsChange(variable)}
                   readonly={readOnly}
                   scope={scope}
                 />

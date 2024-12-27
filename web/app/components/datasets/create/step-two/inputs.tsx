@@ -17,14 +17,14 @@ const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
   </div>
 }
 
-export const DelimiterInput: FC<InputProps> = (props) => {
+export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => {
   const { t } = useTranslation()
   return <FormField label={<div className='flex items-center mb-1'>
     <span className='system-sm-semibold mr-0.5'>{t('datasetCreation.stepTwo.separator')}</span>
     <Tooltip
       popupContent={
         <div className='max-w-[200px]'>
-          {t('datasetCreation.stepTwo.separatorTip')}
+          {props.tooltip || t('datasetCreation.stepTwo.separatorTip')}
         </div>
       }
     />

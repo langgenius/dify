@@ -24,11 +24,11 @@ const Badge = ({
         className,
       )}
     >
-      {children || text}
       {hasRedCornerMark && (
         <div className='absolute top-[-2px] right-[-2px] w-1.5 h-1.5 border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg rounded-[2px] shadow-sm'>
         </div>
       )}
+      {children || text}
     </div>
   )
 }

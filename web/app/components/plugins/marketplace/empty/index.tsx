@@ -1,21 +1,23 @@
 'use client'
-import { useTranslation } from 'react-i18next'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import Line from './line'
 import cn from '@/utils/classnames'
+import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 
 type Props = {
   text?: string
   lightCard?: boolean
   className?: string
+  locale?: string
 }
 
 const Empty = ({
   text,
   lightCard,
   className,
+  locale,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useMixedTranslation(locale)
 
   return (
     <div

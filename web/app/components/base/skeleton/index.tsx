@@ -37,7 +37,7 @@ export const SkeletonPoint: FC<SkeletonProps> = (props) => {
   )
 }
 /** Usage
- * <SkeletonContanier>
+ * <SkeletonContainer>
  *  <SkeletonRow>
  *    <SkeletonRectangle className="w-96" />
  *    <SkeletonPoint />

@@ -34,7 +34,7 @@ export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
     <TriangleArrow
       className='absolute left-4 -bottom-1.5 text-components-panel-bg'
     />
-    <div className='flex-1 space-y-0.5 py-3'>
+    <div className='flex-1 space-y-0.5 py-3 pr-4'>
       <div className='text-text-secondary system-md-semibold'>{title}</div>
       <div className='text-text-tertiary system-xs-regular'>{description}</div>
     </div>
@@ -53,10 +53,10 @@ type OptionCardProps = {
   onSwitched?: () => void
   noHighlight?: boolean
   disabled?: boolean
-} & Omit<ComponentProps<'div'>, 'title'>
+} & Omit<ComponentProps<'div'>, 'title' | 'onClick'>
 
 export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
-  const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSwitched, onClick, noHighlight, disabled, ...rest } = props
+  const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSwitched, noHighlight, disabled, ...rest } = props
   return <div
     className={classNames(
       'rounded-xl bg-components-option-card-option-bg shadow-xs',
@@ -69,10 +69,9 @@ export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
     style={{
       ...style,
     }}
-    onClick={(e) => {
-      if (!isActive)
+    onClick={() => {
+      if (!isActive && !disabled)
         onSwitched?.()
-      onClick?.(e)
     }}
     {...rest}
     ref={ref}
@@ -86,7 +85,7 @@ export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
       effectImg={effectImg}
     />
     {/** Body */}
-    {isActive && (children || actions) && <div className='py-3 px-4'>
+    {isActive && (children || actions) && <div className='py-3 px-4 bg-components-panel-bg rounded-b-xl'>
       {children}
       {actions && <div className='flex gap-2 mt-4'>
         {actions}

@@ -20,4 +20,5 @@ export type ToolNodeType = CommonNodeType & {
   tool_label: string
   tool_parameters: ToolVarInputs
   tool_configurations: Record<string, any>
+  output_schema: Record<string, any>
 }

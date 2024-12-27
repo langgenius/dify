@@ -1,0 +1,26 @@
+import Tooltip from '@/app/components/base/tooltip'
+import Indicator from '@/app/components/header/indicator'
+import classNames from '@/utils/classnames'
+import type { ComponentProps, PropsWithChildren, ReactNode } from 'react'
+
+export type SettingItemProps = PropsWithChildren<{
+  label: string
+  status?: 'error' | 'warning'
+  tooltip?: ReactNode
+}>
+
+export const SettingItem = ({ label, children, status, tooltip }: SettingItemProps) => {
+  const indicator: ComponentProps<typeof Indicator>['color'] = status === 'error' ? 'red' : status === 'warning' ? 'yellow' : undefined
+  const needTooltip = ['error', 'warning'].includes(status as any)
+  return <div className='flex items-center h-6 justify-between bg-workflow-block-parma-bg rounded-md  px-1 space-x-1 text-xs font-normal relative'>
+    <div className={classNames('shrink-0 truncate text-xs font-medium text-text-tertiary uppercase', !!children && 'max-w-[100px]')}>
+      {label}
+    </div>
+    <Tooltip popupContent={tooltip} disabled={!needTooltip}>
+      <div className='truncate text-right text-xs font-normal text-text-secondary'>
+        {children}
+      </div>
+    </Tooltip>
+    {indicator && <Indicator color={indicator} className='absolute -right-0.5 -top-0.5' />}
+  </div>
+}

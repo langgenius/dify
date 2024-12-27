@@ -14,7 +14,7 @@ import Dot from './common/dot'
 import { useSegmentListContext } from './index'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
-import { type ChildChunkDetail, ChuckingMode, type SegmentUpdater } from '@/models/datasets'
+import { type ChildChunkDetail, ChunkingMode, type SegmentUpdater } from '@/models/datasets'
 import classNames from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import Divider from '@/app/components/base/divider'
@@ -39,7 +39,8 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
   const { datasetId, documentId } = useParams<{ datasetId: string; documentId: string }>()
   const [loading, setLoading] = useState(false)
   const [addAnother, setAddAnother] = useState(true)
-  const [fullScreen, toggleFullScreen] = useSegmentListContext(s => [s.fullScreen, s.toggleFullScreen])
+  const fullScreen = useSegmentListContext(s => s.fullScreen)
+  const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
   const { appSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
   })))
@@ -53,10 +54,13 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
 
   const CustomButton = <>
     <Divider type='vertical' className='h-3 mx-1 bg-divider-regular' />
-    <button className='text-text-accent system-xs-semibold' onClick={() => {
-      clearTimeout(refreshTimer.current)
-      viewNewlyAddedChildChunk?.()
-    }}>
+    <button
+      type='button'
+      className='text-text-accent system-xs-semibold'
+      onClick={() => {
+        clearTimeout(refreshTimer.current)
+        viewNewlyAddedChildChunk?.()
+      }}>
       {t('common.operation.view')}
     </button>
   </>
@@ -78,28 +82,29 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
     params.content = content
 
     setLoading(true)
-    try {
-      const res = await addChildSegment({ datasetId, documentId, segmentId: chunkId, body: params })
-      notify({
-        type: 'success',
-        message: t('datasetDocuments.segment.childChunkAdded'),
-        className: `!w-[296px] !bottom-0 ${appSidebarExpand === 'expand' ? '!left-[216px]' : '!left-14'}
+    await addChildSegment({ datasetId, documentId, segmentId: chunkId, body: params }, {
+      onSuccess(res) {
+        notify({
+          type: 'success',
+          message: t('datasetDocuments.segment.childChunkAdded'),
+          className: `!w-[296px] !bottom-0 ${appSidebarExpand === 'expand' ? '!left-[216px]' : '!left-14'}
           !top-auto !right-auto !mb-[52px] !ml-11`,
-        customComponent: isFullDocMode && CustomButton,
-      })
-      handleCancel('add')
-      if (isFullDocMode) {
-        refreshTimer.current = setTimeout(() => {
-          onSave()
-        }, 3000)
-      }
-      else {
-        onSave(res.data)
-      }
-    }
-    finally {
-      setLoading(false)
-    }
+          customComponent: isFullDocMode && CustomButton,
+        })
+        handleCancel('add')
+        if (isFullDocMode) {
+          refreshTimer.current = setTimeout(() => {
+            onSave()
+          }, 3000)
+        }
+        else {
+          onSave(res.data)
+        }
+      },
+      onSettled() {
+        setLoading(false)
+      },
+    })
   }
 
   const wordCountText = useMemo(() => {
@@ -141,10 +146,10 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
           </div>
         </div>
       </div>
-      <div className={classNames('flex grow overflow-hidden', fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8' : 'flex-col gap-y-1 py-3 px-4')}>
-        <div className={classNames('break-all overflow-y-auto whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
+      <div className={classNames('flex grow w-full', fullScreen ? 'flex-row justify-center px-6 pt-6' : 'py-3 px-4')}>
+        <div className={classNames('break-all overflow-hidden whitespace-pre-line h-full', fullScreen ? 'w-1/2' : 'w-full')}>
           <ChunkContent
-            docForm={ChuckingMode.parentChild}
+            docForm={ChunkingMode.parentChild}
             question={content}
             onQuestionChange={content => setContent(content)}
             isEditMode={true}

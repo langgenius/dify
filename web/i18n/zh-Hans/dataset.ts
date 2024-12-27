@@ -4,6 +4,10 @@ const translation = {
     general: '通用',
     parentChild: '父子',
   },
+  parentMode: {
+    paragraph: '段落',
+    fullDoc: '全文',
+  },
   externalTag: '外部',
   externalAPI: '外部 API',
   externalAPIPanelTitle: '外部知识库 API',

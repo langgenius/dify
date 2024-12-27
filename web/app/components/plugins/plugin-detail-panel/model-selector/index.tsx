@@ -3,92 +3,57 @@ import type {
   ReactNode,
 } from 'react'
 import { useMemo, useState } from 'react'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import type {
   DefaultModel,
   FormValue,
-  ModelParameterRule,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import {
   useModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ParameterItem from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
-import type { ParameterValue } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
 import Trigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
-import PresetsParameter from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter'
-import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { fetchModelParameterRules } from '@/service/common'
-import Loading from '@/app/components/base/loading'
+import LLMParamsPanel from './llm-params-panel'
+import TTSParamsPanel from './tts-params-panel'
 import { useProviderContext } from '@/context/provider-context'
-import { TONE_LIST } from '@/config'
+import cn from '@/utils/classnames'
 
 export type ModelParameterModalProps = {
   popupClassName?: string
   portalToFollowElemContentClassName?: string
   isAdvancedMode: boolean
-  mode: string
-  modelId: string
-  provider: string
-  setModel: (model: { modelId: string; provider: string; mode?: string; features?: string[] }) => void
-  completionParams: FormValue
-  onCompletionParamsChange: (newParams: FormValue) => void
+  value: any
+  setModel: (model: any) => void
   renderTrigger?: (v: TriggerProps) => ReactNode
   readonly?: boolean
   isInWorkflow?: boolean
   scope?: string
 }
-const stopParameterRule: ModelParameterRule = {
-  default: [],
-  help: {
-    en_US: 'Up to four sequences where the API will stop generating further tokens. The returned text will not contain the stop sequence.',
-    zh_Hans: '最多四个序列，API 将停止生成更多的 token。返回的文本将不包含停止序列。',
-  },
-  label: {
-    en_US: 'Stop sequences',
-    zh_Hans: '停止序列',
-  },
-  name: 'stop',
-  required: false,
-  type: 'tag',
-  tagPlaceholder: {
-    en_US: 'Enter sequence and press Tab',
-    zh_Hans: '输入序列并按 Tab 键',
-  },
-}
 
-const PROVIDER_WITH_PRESET_TONE = ['langgenius/openai/openai', 'langgenius/azure_openai/azure_openai']
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
   popupClassName,
   portalToFollowElemContentClassName,
   isAdvancedMode,
-  modelId,
-  provider,
+  value,
   setModel,
-  completionParams,
-  onCompletionParamsChange,
   renderTrigger,
   readonly,
   isInWorkflow,
-  scope = 'text-generation',
+  scope = ModelTypeEnum.textGeneration,
 }) => {
   const { t } = useTranslation()
   const { isAPIKeySet } = useProviderContext()
   const [open, setOpen] = useState(false)
   const scopeArray = scope.split('&')
-  const { data: parameterRulesData, isLoading } = useSWR(
-    (provider && modelId && (scopeArray.includes('text-generation') || scopeArray.includes('all')))
-      ? `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}`
-      : null, fetchModelParameterRules,
-  )
+  const scopeFeatures = scopeArray.slice(1) || []
+
   const { data: textGenerationList } = useModelList(ModelTypeEnum.textGeneration)
   const { data: textEmbeddingList } = useModelList(ModelTypeEnum.textEmbedding)
   const { data: rerankList } = useModelList(ModelTypeEnum.rerank)
@@ -108,31 +73,29 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         ...moderationList,
       ]
     }
-    if (scopeArray.includes('text-generation'))
+    if (scopeArray.includes(ModelTypeEnum.textGeneration))
       return textGenerationList
-    if (scopeArray.includes('embedding'))
+    if (scopeArray.includes(ModelTypeEnum.textEmbedding))
       return textEmbeddingList
-    if (scopeArray.includes('rerank'))
+    if (scopeArray.includes(ModelTypeEnum.rerank))
       return rerankList
-    if (scopeArray.includes('moderation'))
+    if (scopeArray.includes(ModelTypeEnum.moderation))
       return moderationList
-    if (scopeArray.includes('stt'))
+    if (scopeArray.includes(ModelTypeEnum.speech2text))
       return sttList
-    if (scopeArray.includes('tts'))
+    if (scopeArray.includes(ModelTypeEnum.tts))
       return ttsList
-    // if (scopeArray.includes('vision'))
-    //   return textGenerationList
     return resultList
   }, [scopeArray, textGenerationList, textEmbeddingList, rerankList, sttList, ttsList, moderationList])
 
   const { currentProvider, currentModel } = useMemo(() => {
-    const currentProvider = scopedModelList.find(item => item.provider === provider)
-    const currentModel = currentProvider?.models.find((model: { model: string }) => model.model === modelId)
+    const currentProvider = scopedModelList.find(item => item.provider === value?.provider)
+    const currentModel = currentProvider?.models.find((model: { model: string }) => model.model === value?.model)
     return {
       currentProvider,
       currentModel,
     }
-  }, [provider, modelId, scopedModelList])
+  }, [scopedModelList, value?.provider, value?.model])
 
   const hasDeprecated = useMemo(() => {
     return !currentProvider || !currentModel
@@ -144,51 +107,37 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     return !isAPIKeySet || hasDeprecated || modelDisabled
   }, [hasDeprecated, isAPIKeySet, modelDisabled])
 
-  const parameterRules: ModelParameterRule[] = useMemo(() => {
-    return parameterRulesData?.data || []
-  }, [parameterRulesData])
-
-  const handleParamChange = (key: string, value: ParameterValue) => {
-    onCompletionParamsChange({
-      ...completionParams,
-      [key]: value,
-    })
-  }
-
   const handleChangeModel = ({ provider, model }: DefaultModel) => {
     const targetProvider = scopedModelList.find(modelItem => modelItem.provider === provider)
     const targetModelItem = targetProvider?.models.find((modelItem: { model: string }) => modelItem.model === model)
+    const model_type = targetModelItem?.model_type as string
     setModel({
-      modelId: model,
       provider,
-      mode: targetModelItem?.model_properties.mode as string,
-      features: targetModelItem?.features || [],
+      model,
+      model_type,
+      ...(model_type === ModelTypeEnum.textGeneration ? {
+        mode: targetModelItem?.model_properties.mode as string,
+      } : {}),
     })
   }
 
-  const handleSwitch = (key: string, value: boolean, assignValue: ParameterValue) => {
-    if (!value) {
-      const newCompletionParams = { ...completionParams }
-      delete newCompletionParams[key]
-
-      onCompletionParamsChange(newCompletionParams)
+  const handleLLMParamsChange = (newParams: FormValue) => {
+    const newValue = {
+      ...(value?.completionParams || {}),
+      completion_params: newParams,
     }
-    if (value) {
-      onCompletionParamsChange({
-        ...completionParams,
-        [key]: assignValue,
-      })
-    }
+    setModel({
+      ...value,
+      ...newValue,
+    })
   }
 
-  const handleSelectPresetParameter = (toneId: number) => {
-    const tone = TONE_LIST.find(tone => tone.id === toneId)
-    if (tone) {
-      onCompletionParamsChange({
-        ...completionParams,
-        ...tone.config,
-      })
-    }
+  const handleTTSParamsChange = (language: string, voice: string) => {
+    setModel({
+      ...value,
+      language,
+      voice,
+    })
   }
 
   return (
@@ -216,8 +165,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 hasDeprecated,
                 currentProvider,
                 currentModel,
-                providerName: provider,
-                modelId,
+                providerName: value?.provider,
+                modelId: value?.model,
               })
               : (
                 <Trigger
@@ -227,8 +176,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   hasDeprecated={hasDeprecated}
                   currentProvider={currentProvider}
                   currentModel={currentModel}
-                  providerName={provider}
-                  modelId={modelId}
+                  providerName={value?.provider}
+                  modelId={value?.model}
                 />
               )
           }
@@ -241,50 +190,32 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   {t('common.modelProvider.model').toLocaleUpperCase()}
                 </div>
                 <ModelSelector
-                  defaultModel={(provider || modelId) ? { provider, model: modelId } : undefined}
+                  defaultModel={(value?.provider || value?.model) ? { provider: value?.provider, model: value?.model } : undefined}
                   modelList={scopedModelList}
+                  scopeFeatures={scopeFeatures}
                   onSelect={handleChangeModel}
                 />
               </div>
-              {
-                !!parameterRules.length && (
-                  <div className='my-3 h-[1px] bg-divider-subtle' />
-                )
-              }
-              {
-                isLoading && (
-                  <div className='mt-5'><Loading /></div>
-                )
-              }
-              {
-                !isLoading && !!parameterRules.length && (
-                  <div className='flex items-center justify-between mb-2'>
-                    <div className={cn('h-6 flex items-center text-text-secondary system-sm-semibold')}>{t('common.modelProvider.parameters')}</div>
-                    {
-                      PROVIDER_WITH_PRESET_TONE.includes(provider) && (
-                        <PresetsParameter onSelect={handleSelectPresetParameter} />
-                      )
-                    }
-                  </div>
-                )
-              }
-              {
-                !isLoading && !!parameterRules.length && (
-                  [
-                    ...parameterRules,
-                    ...(isAdvancedMode ? [stopParameterRule] : []),
-                  ].map(parameter => (
-                    <ParameterItem
-                      key={`${modelId}-${parameter.name}`}
-                      parameterRule={parameter}
-                      value={completionParams?.[parameter.name]}
-                      onChange={v => handleParamChange(parameter.name, v)}
-                      onSwitch={(checked, assignValue) => handleSwitch(parameter.name, checked, assignValue)}
-                      isInWorkflow={isInWorkflow}
-                    />
-                  ))
-                )
-              }
+              {(currentModel?.model_type === ModelTypeEnum.textGeneration || currentModel?.model_type === ModelTypeEnum.tts) && (
+                <div className='my-3 h-[1px] bg-divider-subtle' />
+              )}
+              {currentModel?.model_type === ModelTypeEnum.textGeneration && (
+                <LLMParamsPanel
+                  provider={value?.provider}
+                  modelId={value?.model}
+                  completionParams={value?.completion_params || {}}
+                  onCompletionParamsChange={handleLLMParamsChange}
+                  isAdvancedMode={isAdvancedMode}
+                />
+              )}
+              {currentModel?.model_type === ModelTypeEnum.tts && (
+                <TTSParamsPanel
+                  currentModel={currentModel}
+                  language={value?.language}
+                  voice={value?.voice}
+                  onChange={handleTTSParamsChange}
+                />
+              )}
             </div>
           </div>
         </PortalToFollowElemContent>

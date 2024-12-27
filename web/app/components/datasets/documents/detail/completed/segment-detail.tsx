@@ -12,7 +12,7 @@ import RegenerationModal from './common/regeneration-modal'
 import { SegmentIndexTag } from './common/segment-index-tag'
 import Dot from './common/dot'
 import { useSegmentListContext } from './index'
-import { ChuckingMode, type SegmentDetailModel } from '@/models/datasets'
+import { ChunkingMode, type SegmentDetailModel } from '@/models/datasets'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { formatNumber } from '@/utils/format'
 import classNames from '@/utils/classnames'
@@ -23,7 +23,7 @@ type ISegmentDetailProps = {
   onUpdate: (segmentId: string, q: string, a: string, k: string[], needRegenerate?: boolean) => void
   onCancel: () => void
   isEditMode?: boolean
-  docForm: ChuckingMode
+  docForm: ChunkingMode
 }
 
 /**
@@ -43,8 +43,10 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   const { eventEmitter } = useEventEmitterContextContext()
   const [loading, setLoading] = useState(false)
   const [showRegenerationModal, setShowRegenerationModal] = useState(false)
-  const [fullScreen, toggleFullScreen] = useSegmentListContext(s => [s.fullScreen, s.toggleFullScreen])
+  const fullScreen = useSegmentListContext(s => s.fullScreen)
+  const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
   const mode = useDocumentContext(s => s.mode)
+  const parentMode = useDocumentContext(s => s.parentMode)
 
   eventEmitter?.useSubscription((v) => {
     if (v === 'update-segment')
@@ -80,13 +82,17 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
     return mode === 'hierarchical'
   }, [mode])
 
+  const isFullDocMode = useMemo(() => {
+    return mode === 'hierarchical' && parentMode === 'full-doc'
+  }, [mode, parentMode])
+
   const titleText = useMemo(() => {
     return isEditMode ? t('datasetDocuments.segment.editChunk') : t('datasetDocuments.segment.chunkDetail')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditMode])
 
   const isQAModel = useMemo(() => {
-    return docForm === ChuckingMode.qa
+    return docForm === ChunkingMode.qa
   }, [docForm])
 
   const wordCountText = useMemo(() => {
@@ -108,7 +114,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
         <div className='flex flex-col'>
           <div className='text-text-primary system-xl-semibold'>{titleText}</div>
           <div className='flex items-center gap-x-2'>
-            <SegmentIndexTag positionId={segInfo?.position || ''} labelPrefix={labelPrefix} />
+            <SegmentIndexTag positionId={segInfo?.position || ''} label={isFullDocMode ? labelPrefix : ''} labelPrefix={labelPrefix} />
             <Dot />
             <span className='text-text-tertiary system-xs-medium'>{wordCountText}</span>
           </div>
@@ -134,11 +140,11 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
         </div>
       </div>
       <div className={classNames(
-        'flex grow overflow-hidden',
-        fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8 mx-auto' : 'flex-col gap-y-1 py-3 px-4',
+        'flex grow',
+        fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8' : 'flex-col gap-y-1 py-3 px-4',
         !isEditMode && 'pb-0',
       )}>
-        <div className={classNames('break-all overflow-y-auto whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
+        <div className={classNames('break-all overflow-hidden whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
           <ChunkContent
             docForm={docForm}
             question={question}

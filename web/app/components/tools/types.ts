@@ -76,6 +76,7 @@ export type Tool = {
   description: any
   parameters: ToolParameter[]
   labels: string[]
+  output_schema: Record<string, any>
 }
 
 export type ToolCredential = {

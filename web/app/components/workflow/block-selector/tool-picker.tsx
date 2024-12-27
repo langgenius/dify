@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -34,6 +34,7 @@ type Props = {
   onShowChange: (isShow: boolean) => void
   onSelect: (tool: ToolDefaultValue) => void
   supportAddCustomTool?: boolean
+  scope?: string
 }
 
 const ToolPicker: FC<Props> = ({
@@ -45,6 +46,7 @@ const ToolPicker: FC<Props> = ({
   onShowChange,
   onSelect,
   supportAddCustomTool,
+  scope = 'all',
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -54,6 +56,35 @@ const ToolPicker: FC<Props> = ({
   const { data: customTools } = useAllCustomTools()
   const invalidateCustomTools = useInvalidateAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
+
+  const { builtinToolList, customToolList, workflowToolList } = useMemo(() => {
+    if (scope === 'plugins') {
+      return {
+        builtinToolList: buildInTools,
+        customToolList: [],
+        workflowToolList: [],
+      }
+    }
+    if (scope === 'custom') {
+      return {
+        builtinToolList: [],
+        customToolList: customTools,
+        workflowToolList: [],
+      }
+    }
+    if (scope === 'workflow') {
+      return {
+        builtinToolList: [],
+        customToolList: [],
+        workflowToolList: workflowTools,
+      }
+    }
+    return {
+      builtinToolList: buildInTools,
+      customToolList: customTools,
+      workflowToolList: workflowTools,
+    }
+  }, [scope, buildInTools, customTools, workflowTools])
 
   const handleAddedCustomTool = invalidateCustomTools
 
@@ -122,9 +153,9 @@ const ToolPicker: FC<Props> = ({
             tags={tags}
             searchText={searchText}
             onSelect={handleSelect}
-            buildInTools={buildInTools || []}
-            customTools={customTools || []}
-            workflowTools={workflowTools || []}
+            buildInTools={builtinToolList || []}
+            customTools={customToolList || []}
+            workflowTools={workflowToolList || []}
             supportAddCustomTool={supportAddCustomTool}
             onAddedCustomTool={handleAddedCustomTool}
             onShowAddCustomCollectionModal={showEditCustomCollectionModal}

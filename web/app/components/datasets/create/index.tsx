@@ -166,7 +166,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           datasetId={datasetId}
           datasetName={detail?.name}
           indexingType={detail?.indexing_technique || indexingTypeCache}
-          retrievalMethod={detail?.retrieval_model?.search_method || retrievalMethodCache}
+          retrievalMethod={detail?.retrieval_model_dict?.search_method || retrievalMethodCache}
           creationCache={result}
         />}
       </div>

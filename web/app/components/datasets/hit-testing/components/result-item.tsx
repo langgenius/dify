@@ -14,6 +14,7 @@ import cn from '@/utils/classnames'
 import FileIcon from '@/app/components/base/file-uploader/file-type-icon'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import Tag from '@/app/components/datasets/documents/detail/completed/common/tag'
+import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
 
 const i18nPrefix = 'datasetHitTesting'
 type Props = {
@@ -31,6 +32,7 @@ const ResultItem: FC<Props> = ({
   const { position, word_count, content, keywords, document } = data
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
+  const fileType = extensionToFileType(extension)
   const [isFold, {
     toggle: toggleFold,
   }] = useBoolean(false)
@@ -41,8 +43,13 @@ const ResultItem: FC<Props> = ({
     setFalse: hideDetailModal,
   }] = useBoolean(false)
 
+  const handleClickCard = () => {
+    if (!isParentChildRetrieval)
+      showDetailModal()
+  }
+
   return (
-    <div className='pt-3 bg-chat-bubble-bg rounded-xl hover:shadow-lg'>
+    <div className={cn('pt-3 bg-chat-bubble-bg rounded-xl hover:shadow-lg', !isParentChildRetrieval && 'cursor-pointer')} onClick={handleClickCard}>
       {/* Meta info */}
       <div className='flex justify-between items-center px-3'>
         <div className='flex items-center space-x-2'>
@@ -88,7 +95,7 @@ const ResultItem: FC<Props> = ({
       {/* Foot */}
       <div className='mt-3 flex justify-between items-center h-10 pl-3 pr-2 border-t border-divider-subtle'>
         <div className='grow flex items-center space-x-1'>
-          <FileIcon type={extension} size='sm' />
+          <FileIcon type={fileType} size='sm' />
           <span className='grow w-0 truncate text-text-secondary text-[13px] font-normal'>{document.name}</span>
         </div>
         <div

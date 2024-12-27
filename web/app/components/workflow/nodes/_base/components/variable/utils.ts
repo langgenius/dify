@@ -32,6 +32,7 @@ import {
 } from '@/app/components/workflow/constants'
 import type { PromptItem } from '@/models/debug'
 import { VAR_REGEX } from '@/config'
+import type { AgentNodeType } from '../../../agent/types'
 
 export const isSystemVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
@@ -235,7 +236,29 @@ const formatItem = (
     }
 
     case BlockEnum.Tool: {
-      res.vars = TOOL_OUTPUT_STRUCT
+      const {
+        output_schema,
+      } = data as ToolNodeType
+      if (!output_schema) {
+        res.vars = TOOL_OUTPUT_STRUCT
+      }
+      else {
+        const outputSchema: any[] = []
+        Object.keys(output_schema.properties).forEach((outputKey) => {
+          const output = output_schema.properties[outputKey]
+          outputSchema.push({
+            variable: outputKey,
+            type: output.type === 'array'
+              ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]`
+              : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}`,
+            description: output.description,
+          })
+        })
+        res.vars = [
+          ...TOOL_OUTPUT_STRUCT,
+          ...outputSchema,
+        ]
+      }
       break
     }
 
@@ -290,6 +313,22 @@ const formatItem = (
           type: (data as ListFilterNodeType).item_var_type,
         },
       ]
+      break
+    }
+
+    case BlockEnum.Agent: {
+      const payload = data as AgentNodeType
+      if (!payload.agent_parameters) {
+        res.vars = []
+        break
+      }
+      res.vars = Object.keys(payload.agent_parameters).map((key) => {
+        return {
+          variable: key,
+          // TODO: is this correct?
+          type: payload.agent_parameters![key].type as unknown as VarType,
+        }
+      })
       break
     }
 
@@ -761,6 +800,14 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     case BlockEnum.ListFilter: {
       res = [(data as ListFilterNodeType).variable]
       break
+    }
+
+    case BlockEnum.Agent: {
+      const payload = data as AgentNodeType
+      const params = payload.agent_parameters || {}
+      const mixVars = matchNotSystemVars(Object.keys(params)?.filter(key => params[key].type === ToolVarType.mixed).map(key => params[key].value) as string[])
+      const vars = Object.keys(params).filter(key => params[key].type === ToolVarType.variable).map(key => params[key].value as string) || []
+      res = [...(mixVars as ValueSelector[]), ...(vars as any)]
     }
   }
   return res || []

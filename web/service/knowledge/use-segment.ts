@@ -1,7 +1,15 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { del, get, patch, post } from '../base'
 import type { CommonResponse } from '@/models/common'
-import type { ChildChunkDetail, ChildSegmentsResponse, ChuckingMode, SegmentDetailModel, SegmentUpdater, SegmentsResponse } from '@/models/datasets'
+import type {
+  BatchImportResponse,
+  ChildChunkDetail,
+  ChildSegmentsResponse,
+  ChunkingMode,
+  SegmentDetailModel,
+  SegmentUpdater,
+  SegmentsResponse,
+} from '@/models/datasets'
 
 const NAME_SPACE = 'segment'
 
@@ -36,7 +44,7 @@ export const useUpdateSegment = () => {
     mutationKey: [NAME_SPACE, 'update'],
     mutationFn: (payload: { datasetId: string; documentId: string; segmentId: string; body: SegmentUpdater }) => {
       const { datasetId, documentId, segmentId, body } = payload
-      return patch<{ data: SegmentDetailModel; doc_form: ChuckingMode }>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`, { body })
+      return patch<{ data: SegmentDetailModel; doc_form: ChunkingMode }>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`, { body })
     },
   })
 }
@@ -46,7 +54,7 @@ export const useAddSegment = () => {
     mutationKey: [NAME_SPACE, 'add'],
     mutationFn: (payload: { datasetId: string; documentId: string; body: SegmentUpdater }) => {
       const { datasetId, documentId, body } = payload
-      return post<{ data: SegmentDetailModel; doc_form: ChuckingMode }>(`/datasets/${datasetId}/documents/${documentId}/segment`, { body })
+      return post<{ data: SegmentDetailModel; doc_form: ChunkingMode }>(`/datasets/${datasetId}/documents/${documentId}/segment`, { body })
     },
   })
 }
@@ -136,6 +144,26 @@ export const useUpdateChildSegment = () => {
     mutationFn: (payload: { datasetId: string; documentId: string; segmentId: string; childChunkId: string; body: { content: string } }) => {
       const { datasetId, documentId, segmentId, childChunkId, body } = payload
       return patch<{ data: ChildChunkDetail }>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}/child_chunks/${childChunkId}`, { body })
+    },
+  })
+}
+
+export const useSegmentBatchImport = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'batchImport'],
+    mutationFn: (payload: { url: string; body: FormData }) => {
+      const { url, body } = payload
+      return post<BatchImportResponse>(url, { body }, { bodyStringify: false, deleteContentType: true })
+    },
+  })
+}
+
+export const useCheckSegmentBatchImportProgress = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'batchImport', 'checkProgress'],
+    mutationFn: (payload: { jobID: string }) => {
+      const { jobID } = payload
+      return get<BatchImportResponse>(`/datasets/batch_import_status/${jobID}`)
     },
   })
 }

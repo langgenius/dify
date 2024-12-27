@@ -4,7 +4,7 @@ import {
   RiBrain2Line,
   RiHammerLine,
   RiPuzzle2Line,
-  RiUmbrellaLine,
+  RiSpeakAiLine,
 } from '@remixicon/react'
 import { PluginType } from '../types'
 import { useMarketplaceContext } from './context'
@@ -50,7 +50,7 @@ const PluginTypeSwitch = ({
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,
       text: t('plugin.category.agents'),
-      icon: <RiUmbrellaLine className='mr-1.5 w-4 h-4' />,
+      icon: <RiSpeakAiLine className='mr-1.5 w-4 h-4' />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.extension,

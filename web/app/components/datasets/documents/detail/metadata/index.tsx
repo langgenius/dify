@@ -59,7 +59,7 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
 
   return (
     <div className={cn('flex items-center gap-1 py-0.5 min-h-5 text-xs', editAlignTop && '!items-start', readAlignTop && '!items-start pt-1')}>
-      <div className={cn('w-[200px] text-text-tertiary overflow-hidden text-ellipsis whitespace-nowrap', editAlignTop && 'pt-1')}>{label}</div>
+      <div className={cn('w-[200px] text-text-tertiary overflow-hidden text-ellipsis whitespace-nowrap shrink-0', editAlignTop && 'pt-1')}>{label}</div>
       <div className="grow flex items-center gap-1 text-text-secondary">
         {valueIcon}
         {!showEdit
@@ -150,7 +150,8 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
   const [saveLoading, setSaveLoading] = useState(false)
 
   const { notify } = useContext(ToastContext)
-  const [datasetId, documentId] = useDocumentContext(s => [s.datasetId, s.documentId])
+  const datasetId = useDocumentContext(s => s.datasetId)
+  const documentId = useDocumentContext(s => s.documentId)
 
   useEffect(() => {
     if (docDetail?.doc_type) {

@@ -267,8 +267,10 @@ class WordExtractor(BaseExtractor):
                 if isinstance(element.tag, str) and element.tag.endswith("p"):  # paragraph
                     para = paragraphs.pop(0)
                     parsed_paragraph = parse_paragraph(para)
-                    if parsed_paragraph:
+                    if parsed_paragraph.strip():
                         content.append(parsed_paragraph)
+                    else:
+                        content.append("\n")
                 elif isinstance(element.tag, str) and element.tag.endswith("tbl"):  # table
                     table = tables.pop(0)
                     content.append(self._table_to_markdown(table, image_map))

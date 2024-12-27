@@ -41,7 +41,7 @@ import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/componen
 import Toast from '@/app/components/base/toast'
 import type { NotionPage } from '@/models/common'
 import { DataSourceProvider } from '@/models/common'
-import { ChuckingMode, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType, RerankingModeEnum } from '@/models/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -57,10 +57,11 @@ import { IS_CE_EDITION } from '@/config'
 import Divider from '@/app/components/base/divider'
 import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocument, useFetchDefaultProcessRule, useFetchFileIndexingEstimateForFile, useFetchFileIndexingEstimateForNotion, useFetchFileIndexingEstimateForWeb } from '@/service/knowledge/use-create-dataset'
 import Badge from '@/app/components/base/badge'
-import { SkeletonContanier, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Tooltip from '@/app/components/base/tooltip'
 import CustomDialog from '@/app/components/base/dialog'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='text-text-secondary system-sm-semibold'>{props.children}</label>
@@ -153,6 +154,12 @@ const StepTwo = ({
   const isMobile = media === MediaType.mobile
 
   const { dataset: currentDataset, mutateDatasetRes } = useDatasetDetailContext()
+
+  const isInUpload = Boolean(currentDataset)
+  const isUploadInEmptyDataset = isInUpload && !currentDataset?.doc_form
+  const isNotUploadInEmptyDataset = !isUploadInEmptyDataset
+  const isInInit = !isInUpload && !isSetting
+
   const isInCreatePage = !datasetId || (datasetId && !currentDataset?.data_source_type)
   const dataSourceType = isInCreatePage ? inCreatePageDataSourceType : currentDataset?.data_source_type
   const [segmentationType, setSegmentationType] = useState<SegmentType>(SegmentType.CUSTOM)
@@ -193,18 +200,18 @@ const StepTwo = ({
   // QA Related
   const [isLanguageSelectDisabled, _setIsLanguageSelectDisabled] = useState(false)
   const [isQAConfirmDialogOpen, setIsQAConfirmDialogOpen] = useState(false)
-  const [docForm, setDocForm] = useState<ChuckingMode>(
-    (datasetId && documentDetail) ? documentDetail.doc_form as ChuckingMode : ChuckingMode.text,
+  const [docForm, setDocForm] = useState<ChunkingMode>(
+    (datasetId && documentDetail) ? documentDetail.doc_form as ChunkingMode : ChunkingMode.text,
   )
-  const handleChangeDocform = (value: ChuckingMode) => {
-    if (value === ChuckingMode.qa && indexType === IndexingType.ECONOMICAL) {
+  const handleChangeDocform = (value: ChunkingMode) => {
+    if (value === ChunkingMode.qa && indexType === IndexingType.ECONOMICAL) {
       setIsQAConfirmDialogOpen(true)
       return
     }
-    if (value === ChuckingMode.parentChild && indexType === IndexingType.ECONOMICAL)
+    if (value === ChunkingMode.parentChild && indexType === IndexingType.ECONOMICAL)
       setIndexType(IndexingType.QUALIFIED)
     setDocForm(value)
-    // eslint-disable-next-line ts/no-use-before-define
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
     currentEstimateMutation.reset()
   }
 
@@ -215,9 +222,10 @@ const StepTwo = ({
   const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>(defaultParentChildConfig)
 
   const getIndexing_technique = () => indexingType || indexType
+  const currentDocForm = currentDataset?.doc_form || docForm
 
   const getProcessRule = (): ProcessRule => {
-    if (docForm === ChuckingMode.parentChild) {
+    if (currentDocForm === ChunkingMode.parentChild) {
       return {
         rules: {
           pre_processing_rules: rules,
@@ -232,7 +240,7 @@ const StepTwo = ({
             separator: unescape(parentChildConfig.child.delimiter),
             max_tokens: parentChildConfig.child.maxLength,
           },
-        }, // api will check this. It will be removed after api refactored.
+        },
         mode: 'hierarchical',
       } as ProcessRule
     }
@@ -250,7 +258,7 @@ const StepTwo = ({
   }
 
   const fileIndexingEstimateQuery = useFetchFileIndexingEstimateForFile({
-    docForm,
+    docForm: currentDocForm,
     docLanguage,
     dataSourceType: DataSourceType.FILE,
     files: previewFile
@@ -261,7 +269,7 @@ const StepTwo = ({
     dataset_id: datasetId!,
   })
   const notionIndexingEstimateQuery = useFetchFileIndexingEstimateForNotion({
-    docForm,
+    docForm: currentDocForm,
     docLanguage,
     dataSourceType: DataSourceType.NOTION,
     notionPages: [previewNotionPage],
@@ -271,7 +279,7 @@ const StepTwo = ({
   })
 
   const websiteIndexingEstimateQuery = useFetchFileIndexingEstimateForWeb({
-    docForm,
+    docForm: currentDocForm,
     docLanguage,
     dataSourceType: DataSourceType.WEB,
     websitePages: [previewWebsitePage],
@@ -378,13 +386,14 @@ const StepTwo = ({
     if (isSetting) {
       params = {
         original_document_id: documentDetail?.id,
-        doc_form: docForm,
+        doc_form: currentDocForm,
         doc_language: docLanguage,
         process_rule: getProcessRule(),
         // eslint-disable-next-line ts/no-use-before-define
         retrieval_model: retrievalConfig, // Readonly. If want to changed, just go to settings page.
         embedding_model: embeddingModel.model, // Readonly
         embedding_model_provider: embeddingModel.provider, // Readonly
+        indexing_technique: getIndexing_technique(),
       } as CreateDocumentReq
     }
     else { // create
@@ -404,8 +413,12 @@ const StepTwo = ({
       }
       const postRetrievalConfig = ensureRerankModelSelected({
         rerankDefaultModel: rerankDefaultModel!,
-        // eslint-disable-next-line ts/no-use-before-define
-        retrievalConfig,
+        retrievalConfig: {
+          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          ...retrievalConfig,
+          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          reranking_enable: retrievalConfig.reranking_mode === RerankingModeEnum.RerankingModel,
+        },
         indexMethod: indexMethod as string,
       })
       params = {
@@ -417,7 +430,7 @@ const StepTwo = ({
         },
         indexing_technique: getIndexing_technique(),
         process_rule: getProcessRule(),
-        doc_form: docForm,
+        doc_form: currentDocForm,
         doc_language: docLanguage,
 
         retrieval_model: postRetrievalConfig,
@@ -512,7 +525,7 @@ const StepTwo = ({
           onSuccess(data) {
             updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
             updateResultCache && updateResultCache(data)
-            // eslint-disable-next-line ts/no-use-before-define
+            // eslint-disable-next-line @typescript-eslint/no-use-before-define
             updateRetrievalMethodCache && updateRetrievalMethodCache(retrievalConfig.search_method as string)
           },
         },
@@ -533,7 +546,7 @@ const StepTwo = ({
   }
 
   const changeToEconomicalType = () => {
-    if (docForm !== ChuckingMode.text)
+    if (docForm !== ChunkingMode.text)
       return
 
     if (!hasSetIndexType)
@@ -580,7 +593,9 @@ const StepTwo = ({
     <div className='flex w-full h-full'>
       <div className={cn('relative h-full w-1/2 py-6 overflow-y-auto', isMobile ? 'px-4' : 'px-12')}>
         <div className={'system-md-semibold mb-1'}>{t('datasetCreation.stepTwo.segmentation')}</div>
-        {(!datasetId || [ChuckingMode.text, ChuckingMode.qa].includes(currentDataset!.doc_form))
+        {((isInUpload && [ChunkingMode.text, ChunkingMode.qa].includes(currentDataset!.doc_form))
+          || isUploadInEmptyDataset
+          || isInInit)
           && <OptionCard
             className='bg-background-section mb-2'
             title={t('datasetCreation.stepTwo.general')}
@@ -588,12 +603,10 @@ const StepTwo = ({
             activeHeaderClassName='bg-dataset-option-card-blue-gradient'
             description={t('datasetCreation.stepTwo.generalTip')}
             isActive={
-              [ChuckingMode.text, ChuckingMode.qa].includes(
-                datasetId ? currentDataset!.doc_form : docForm,
-              )
+              [ChunkingMode.text, ChunkingMode.qa].includes(currentDocForm)
             }
             onSwitched={() =>
-              handleChangeDocform(ChuckingMode.text)
+              handleChangeDocform(ChunkingMode.text)
             }
             actions={
               <>
@@ -606,7 +619,7 @@ const StepTwo = ({
                 </Button>
               </>
             }
-            noHighlight={Boolean(datasetId)}
+            noHighlight={isInUpload && isNotUploadInEmptyDataset}
           >
             <div className='flex flex-col gap-y-4'>
               <div className='flex gap-3'>
@@ -615,10 +628,12 @@ const StepTwo = ({
                   onChange={e => setSegmentIdentifier(e.target.value, true)}
                 />
                 <MaxLengthInput
+                  unit='tokens'
                   value={maxChunkLength}
                   onChange={setMaxChunkLength}
                 />
                 <OverlapInput
+                  unit='tokens'
                   value={overlap}
                   min={1}
                   onChange={setOverlap}
@@ -643,31 +658,32 @@ const StepTwo = ({
                     </div>
                   ))}
                   {IS_CE_EDITION && <>
-                    <div className='flex items-center'>
-                      <Checkbox
-                        checked={docForm === ChuckingMode.qa}
-                        onCheck={() => {
-                          if (docForm === ChuckingMode.qa)
-                            handleChangeDocform(ChuckingMode.text)
-                          else
-                            handleChangeDocform(ChuckingMode.qa)
-                        }}
-                      />
-                      <div className='flex items-center gap-1'>
+                    <Divider type='horizontal' className='my-4 bg-divider-subtle' />
+                    <div className='flex items-center py-0.5'>
+                      <div className='flex items-center' onClick={() => {
+                        if (currentDataset?.doc_form)
+                          return
+                        if (docForm === ChunkingMode.qa)
+                          handleChangeDocform(ChunkingMode.text)
+                        else
+                          handleChangeDocform(ChunkingMode.qa)
+                      }}>
+                        <Checkbox
+                          checked={currentDocForm === ChunkingMode.qa}
+                          disabled={!!currentDataset?.doc_form}
+                        />
                         <label className="ml-2 system-sm-regular cursor-pointer text-text-secondary">
                           {t('datasetCreation.stepTwo.useQALanguage')}
                         </label>
-                        <div className='z-50 relative'>
-                          <LanguageSelect
-                            currentLanguage={docLanguage || locale}
-                            onSelect={setDocLanguage}
-                            disabled={isLanguageSelectDisabled}
-                          />
-                        </div>
-                        <Tooltip popupContent={t('datasetCreation.stepTwo.QATip')} />
                       </div>
+                      <LanguageSelect
+                        currentLanguage={docLanguage || locale}
+                        onSelect={setDocLanguage}
+                        disabled={currentDocForm !== ChunkingMode.qa}
+                      />
+                      <Tooltip popupContent={t('datasetCreation.stepTwo.QATip')} />
                     </div>
-                    {docForm === ChuckingMode.qa && (
+                    {currentDocForm === ChunkingMode.qa && (
                       <div
                         style={{
                           background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.1) 0%, rgba(255, 255, 255, 0.00) 100%)',
@@ -686,17 +702,19 @@ const StepTwo = ({
             </div>
           </OptionCard>}
         {
-          (!datasetId || currentDataset!.doc_form === ChuckingMode.parentChild)
+          (
+            (isInUpload && currentDataset!.doc_form === ChunkingMode.parentChild)
+            || isUploadInEmptyDataset
+            || isInInit
+          )
           && <OptionCard
             title={t('datasetCreation.stepTwo.parentChild')}
             icon={<Image width={20} height={20} src={FamilyMod} alt={t('datasetCreation.stepTwo.parentChild')} />}
             effectImg={OrangeEffect.src}
             activeHeaderClassName='bg-dataset-option-card-orange-gradient'
             description={t('datasetCreation.stepTwo.parentChildTip')}
-            isActive={
-              datasetId ? currentDataset!.doc_form === ChuckingMode.parentChild : docForm === ChuckingMode.parentChild
-            }
-            onSwitched={() => handleChangeDocform(ChuckingMode.parentChild)}
+            isActive={currentDocForm === ChunkingMode.parentChild}
+            onSwitched={() => handleChangeDocform(ChunkingMode.parentChild)}
             actions={
               <>
                 <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
@@ -708,7 +726,7 @@ const StepTwo = ({
                 </Button>
               </>
             }
-            noHighlight={Boolean(datasetId)}
+            noHighlight={isInUpload && isNotUploadInEmptyDataset}
           >
             <div className='flex flex-col gap-4'>
               <div>
@@ -733,6 +751,7 @@ const StepTwo = ({
                     <div className='flex gap-3'>
                       <DelimiterInput
                         value={parentChildConfig.parent.delimiter}
+                        tooltip={t('datasetCreation.stepTwo.parentChildDelimiterTip')!}
                         onChange={e => setParentChildConfig({
                           ...parentChildConfig,
                           parent: {
@@ -742,6 +761,7 @@ const StepTwo = ({
                         })}
                       />
                       <MaxLengthInput
+                        unit='tokens'
                         value={parentChildConfig.parent.maxLength}
                         onChange={value => setParentChildConfig({
                           ...parentChildConfig,
@@ -778,6 +798,7 @@ const StepTwo = ({
                 <div className='flex gap-3 mt-1'>
                   <DelimiterInput
                     value={parentChildConfig.child.delimiter}
+                    tooltip={t('datasetCreation.stepTwo.parentChildChunkDelimiterTip')!}
                     onChange={e => setParentChildConfig({
                       ...parentChildConfig,
                       child: {
@@ -787,6 +808,7 @@ const StepTwo = ({
                     })}
                   />
                   <MaxLengthInput
+                    unit='tokens'
                     value={parentChildConfig.child.maxLength}
                     onChange={value => setParentChildConfig({
                       ...parentChildConfig,
@@ -822,17 +844,18 @@ const StepTwo = ({
           </OptionCard>}
         <Divider className='my-5' />
         <div className={'system-md-semibold mb-1'}>{t('datasetCreation.stepTwo.indexMode')}</div>
-        <div className='flex items-center gap-2 flex-wrap sm:flex-nowrap'>
+        <div className='flex items-center gap-2'>
           {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.QUALIFIED)) && (
-            <OptionCard
-              title={<p className='flex items-center'>
+            <OptionCard className='flex-1'
+              title={<div className='flex items-center'>
                 {t('datasetCreation.stepTwo.qualified')}
-                {!hasSetIndexType
-                  && <Badge className={cn('ml-1 h-[18px]', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>{t('datasetCreation.stepTwo.recommend')}</Badge>}
+                <Badge className={cn('ml-1 h-[18px]', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>
+                  {t('datasetCreation.stepTwo.recommend')}
+                </Badge>
                 <span className='ml-auto'>
                   {!hasSetIndexType && <span className={cn(s.radio)} />}
                 </span>
-              </p>}
+              </div>}
               description={t('datasetCreation.stepTwo.qualifiedTip')}
               icon={<Image src={indexMethodIcon.high_quality} alt='' />}
               isActive={!hasSetIndexType && indexType === IndexingType.QUALIFIED}
@@ -864,7 +887,7 @@ const StepTwo = ({
                   <Button variant={'primary'} onClick={() => {
                     setIsQAConfirmDialogOpen(false)
                     setIndexType(IndexingType.QUALIFIED)
-                    setDocForm(ChuckingMode.qa)
+                    setDocForm(ChunkingMode.qa)
                   }}>
                     {t('datasetCreation.stepTwo.switch')}
                   </Button>
@@ -872,20 +895,20 @@ const StepTwo = ({
               </CustomDialog>
               <PortalToFollowElem
                 open={
-                  isHoveringEconomy && docForm !== ChuckingMode.text
+                  isHoveringEconomy && docForm !== ChunkingMode.text
                 }
                 placement={'top'}
               >
-                <PortalToFollowElemTrigger>
-                  <OptionCard
+                <PortalToFollowElemTrigger asChild>
+                  <OptionCard className='flex-1'
                     title={t('datasetCreation.stepTwo.economical')}
                     description={t('datasetCreation.stepTwo.economicalTip')}
                     icon={<Image src={indexMethodIcon.economical} alt='' />}
                     isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
-                    disabled={!isAPIKeySet || hasSetIndexType || docForm !== ChuckingMode.text}
+                    disabled={!isAPIKeySet || hasSetIndexType || docForm !== ChunkingMode.text}
                     ref={economyDomRef}
                     onSwitched={() => {
-                      if (isAPIKeySet && docForm === ChuckingMode.text)
+                      if (isAPIKeySet && docForm === ChunkingMode.text)
                         setIndexType(IndexingType.ECONOMICAL)
                     }}
                   />
@@ -893,7 +916,7 @@ const StepTwo = ({
                 <PortalToFollowElemContent>
                   <div className='p-3 bg-components-tooltip-bg border-components-panel-border text-xs font-medium text-text-secondary rounded-lg shadow-lg'>
                     {
-                      docForm === ChuckingMode.qa
+                      docForm === ChunkingMode.qa
                         ? t('datasetCreation.stepTwo.notAvailableForQA')
                         : t('datasetCreation.stepTwo.notAvailableForParentChild')
                     }
@@ -902,8 +925,17 @@ const StepTwo = ({
               </PortalToFollowElem>
             </>)}
         </div>
+        {!hasSetIndexType && indexType === IndexingType.QUALIFIED && (
+          <div className='mt-2 h-10 p-2 flex items-center gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border overflow-hidden bg-components-panel-bg-blur backdrop-blur-[5px] shadow-xs'>
+            <div className='absolute top-0 left-0 right-0 bottom-0 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)] opacity-40'></div>
+            <div className='p-1'>
+              <AlertTriangle className='size-4 text-text-warning-secondary' />
+            </div>
+            <span className='system-xs-medium'>{t('datasetCreation.stepTwo.highQualityTip')}</span>
+          </div>
+        )}
         {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
-          <div className='mt-2 text-xs text-gray-500 font-medium'>
+          <div className='mt-2 system-xs-medium'>
             {t('datasetCreation.stepTwo.indexSettingTip')}
             <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
           </div>
@@ -921,7 +953,7 @@ const StepTwo = ({
               }}
             />
             {!!datasetId && (
-              <div className='mt-2 text-xs text-gray-500 font-medium'>
+              <div className='mt-2 system-xs-medium'>
                 {t('datasetCreation.stepTwo.indexSettingTip')}
                 <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
               </div>
@@ -997,7 +1029,8 @@ const StepTwo = ({
                     setPreviewFile(selected)
                     currentEstimateMutation.mutate()
                   }}
-                  value={previewFile}
+                  // when it is from setting, it just has one file
+                  value={isSetting ? (files[0]! as Required<CustomFile>) : previewFile}
                 />
               }
               {dataSourceType === DataSourceType.NOTION
@@ -1046,21 +1079,31 @@ const StepTwo = ({
                   }
                 />
               }
-              <Badge text={t(
-                'datasetCreation.stepTwo.previewChunkCount', {
-                  count: estimate?.preview.length || estimate?.qa_preview?.length || 0,
-                }) as string} />
+              {
+                currentDocForm !== ChunkingMode.qa
+                  && <Badge text={t(
+                    'datasetCreation.stepTwo.previewChunkCount', {
+                      count: estimate?.total_segments || 0,
+                    }) as string}
+                  />
+              }
             </div>
           </PreviewHeader>}
           className={cn('flex shrink-0 w-1/2 p-4 pr-0 relative h-full', isMobile && 'w-full max-w-[524px]')}
           mainClassName='space-y-6'
         >
-          {docForm === ChuckingMode.qa && estimate?.qa_preview && (
-            estimate?.qa_preview.map(item => (
-              <QAPreview key={item.question} qa={item} />
+          {currentDocForm === ChunkingMode.qa && estimate?.qa_preview && (
+            estimate?.qa_preview.map((item, index) => (
+              <ChunkContainer
+                key={item.question}
+                label={`Chunk-${index + 1}`}
+                characterCount={item.question.length + item.answer.length}
+              >
+                <QAPreview qa={item} />
+              </ChunkContainer>
             ))
           )}
-          {docForm === ChuckingMode.text && estimate?.preview && (
+          {currentDocForm === ChunkingMode.text && estimate?.preview && (
             estimate?.preview.map((item, index) => (
               <ChunkContainer
                 key={item.content}
@@ -1071,7 +1114,7 @@ const StepTwo = ({
               </ChunkContainer>
             ))
           )}
-          {docForm === ChuckingMode.parentChild && currentEstimateMutation.data?.preview && (
+          {currentDocForm === ChunkingMode.parentChild && currentEstimateMutation.data?.preview && (
             estimate?.preview?.map((item, index) => {
               const indexForLabel = index + 1
               return (
@@ -1090,6 +1133,7 @@ const StepTwo = ({
                           text={child}
                           tooltip={`Child-chunk-${indexForLabel} · ${child.length} Characters`}
                           labelInnerClassName='text-[10px] font-semibold align-bottom leading-7'
+                          dividerClassName='leading-7'
                         />
                       )
                     })}
@@ -1111,7 +1155,7 @@ const StepTwo = ({
           {currentEstimateMutation.isPending && (
             <div className='space-y-6'>
               {Array.from({ length: 10 }, (_, i) => (
-                <SkeletonContanier key={i}>
+                <SkeletonContainer key={i}>
                   <SkeletonRow>
                     <SkeletonRectangle className="w-20" />
                     <SkeletonPoint />
@@ -1120,7 +1164,7 @@ const StepTwo = ({
                   <SkeletonRectangle className="w-full" />
                   <SkeletonRectangle className="w-full" />
                   <SkeletonRectangle className="w-[422px]" />
-                </SkeletonContanier>
+                </SkeletonContainer>
               ))}
             </div>
           )}

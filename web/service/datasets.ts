@@ -5,7 +5,6 @@ import type {
   CreateDocumentReq,
   DataSet,
   DataSetListResponse,
-  DocumentDetailResponse,
   DocumentListResponse,
   ErrorDocsResponse,
   ExternalAPIDeleteResponse,
@@ -149,10 +148,6 @@ export const fetchIndexingStatusBatch: Fetcher<IndexingStatusBatchResponse, Batc
   return get<IndexingStatusBatchResponse>(`/datasets/${datasetId}/batch/${batchId}/indexing-status`, {})
 }
 
-export const fetchDocumentDetail: Fetcher<DocumentDetailResponse, CommonDocReq & { params: { metadata?: MetadataType } }> = ({ datasetId, documentId, params }) => {
-  return get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params })
-}
-
 export const renameDocumentName: Fetcher<CommonResponse, CommonDocReq & { name: string }> = ({ datasetId, documentId, name }) => {
   return post<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/rename`, {
     body: { name },
@@ -173,15 +168,6 @@ export const preImportNotionPages: Fetcher<{ notion_info: DataSourceNotionWorksp
 
 export const modifyDocMetadata: Fetcher<CommonResponse, CommonDocReq & { body: { doc_type: string; doc_metadata: Record<string, any> } }> = ({ datasetId, documentId, body }) => {
   return put<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/metadata`, { body })
-}
-
-// apis for segments in a document
-export const segmentBatchImport: Fetcher<{ job_id: string; job_status: string }, { url: string; body: FormData }> = ({ url, body }) => {
-  return post<{ job_id: string; job_status: string }>(url, { body }, { bodyStringify: false, deleteContentType: true })
-}
-
-export const checkSegmentBatchImportProgress: Fetcher<{ job_id: string; job_status: string }, { jobID: string }> = ({ jobID }) => {
-  return get<{ job_id: string; job_status: string }>(`/datasets/batch_import_status/${jobID}`)
 }
 
 // hit testing

@@ -70,7 +70,8 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
         retries += 1
         if retries <= max_retries:
             time.sleep(BACKOFF_FACTOR * (2 ** (retries - 1)))
-    raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
+    raise MaxRetriesExceededError(
+        f"Reached maximum retries ({max_retries}) for URL {url}")
 
 
 def get(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):

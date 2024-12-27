@@ -29,17 +29,17 @@ const ChunkDetailModal: FC<Props> = ({
   const { position, content, keywords, document } = segment
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
-  const maxHeighClassName = 'max-h-[min(752px,_80vh)] overflow-y-auto'
+  const heighClassName = isParentChildRetrieval ? 'h-[min(627px,_80vh)] overflow-y-auto' : 'h-[min(539px,_80vh)] overflow-y-auto'
   return (
     <Modal
       title={t(`${i18nPrefix}.chunkDetail`)}
       isShow
       closable
       onClose={onHide}
-      className={cn(isParentChildRetrieval ? '!min-w-[1200px]' : '!min-w-[720px]')}
+      className={cn(isParentChildRetrieval ? '!min-w-[1200px]' : '!min-w-[800px]')}
     >
       <div className='mt-4 flex'>
-        <div className='w-full'>
+        <div className={cn('flex-1', isParentChildRetrieval && 'pr-6')}>
           {/* Meta info */}
           <div className='flex justify-between items-center'>
             <div className='grow flex items-center space-x-2'>
@@ -56,7 +56,7 @@ const ChunkDetailModal: FC<Props> = ({
             </div>
             <Score value={score} />
           </div>
-          <div className={cn('mt-2 body-md-regular text-text-secondary', maxHeighClassName)}>
+          <div className={cn('mt-2 body-md-regular text-text-secondary', heighClassName)}>
             {content}
           </div>
           {!isParentChildRetrieval && keywords && keywords.length > 0 && (
@@ -72,9 +72,9 @@ const ChunkDetailModal: FC<Props> = ({
         </div>
 
         {isParentChildRetrieval && (
-          <div className='shrink-0 w-[552px] px-6'>
+          <div className='flex-1 pl-6 pb-6'>
             <div className='system-xs-semibold-uppercase text-text-secondary'>{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
-            <div className={cn('mt-1 space-y-2', maxHeighClassName)}>
+            <div className={cn('mt-1 space-y-2', heighClassName)}>
               {child_chunks.map(item => (
                 <ChildChunksItem key={item.id} payload={item} isShowAll />
               ))}

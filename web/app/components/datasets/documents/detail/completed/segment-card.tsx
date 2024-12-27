@@ -32,6 +32,10 @@ type ISegmentCardProps = {
   className?: string
   archived?: boolean
   embeddingAvailable?: boolean
+  focused: {
+    segmentIndex: boolean
+    segmentContent: boolean
+  }
 }
 
 const SegmentCard: FC<ISegmentCardProps> = ({
@@ -47,6 +51,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   className = '',
   archived,
   embeddingAvailable,
+  focused,
 }) => {
   const { t } = useTranslation()
   const {
@@ -64,7 +69,8 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   } = detail as Required<ISegmentCardProps>['detail']
   const [showModal, setShowModal] = useState(false)
   const isCollapsed = useSegmentListContext(s => s.isCollapsed)
-  const [mode, parentMode] = useDocumentContext(s => [s.mode, s.parentMode])
+  const mode = useDocumentContext(s => s.mode)
+  const parentMode = useDocumentContext(s => s.parentMode)
 
   const isGeneralMode = useMemo(() => {
     return mode === 'custom'
@@ -73,6 +79,10 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   const isParentChildMode = useMemo(() => {
     return mode === 'hierarchical'
   }, [mode])
+
+  const isParagraphMode = useMemo(() => {
+    return mode === 'hierarchical' && parentMode === 'paragraph'
+  }, [mode, parentMode])
 
   const isFullDocMode = useMemo(() => {
     return mode === 'hierarchical' && parentMode === 'full-doc'
@@ -84,9 +94,9 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     return isAfter(updated_at * 1000, created_at * 1000)
   }, [mode, parentMode, updated_at, created_at])
 
-  const textOpacity = useMemo(() => {
-    return enabled ? '' : 'opacity-50 group-hover/card:opacity-100'
-  }, [enabled])
+  const contentOpacity = useMemo(() => {
+    return (enabled || focused.segmentContent) ? '' : 'opacity-50 group-hover/card:opacity-100'
+  }, [enabled, focused.segmentContent])
 
   const handleClickCard = useCallback(() => {
     if (mode !== 'hierarchical' || parentMode !== 'full-doc')
@@ -98,7 +108,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       return (
         <>
           <div className='flex gap-x-1'>
-            <div className='w-4 mr-2 text-[13px] font-medium leading-[20px] text-text-tertiary'>Q</div>
+            <div className='w-4 text-[13px] font-medium leading-[20px] text-text-tertiary shrink-0'>Q</div>
             <div
               className={cn('text-text-secondary body-md-regular',
                 isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
@@ -107,7 +117,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
             </div>
           </div>
           <div className='flex gap-x-1'>
-            <div className='w-4 mr-2 text-[13px] font-medium leading-[20px] text-text-tertiary'>A</div>
+            <div className='w-4 text-[13px] font-medium leading-[20px] text-text-tertiary shrink-0'>A</div>
             <div className={cn('text-text-secondary body-md-regular',
               isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
             )}>
@@ -136,21 +146,33 @@ const SegmentCard: FC<ISegmentCardProps> = ({
 
   return (
     <div
-      className={cn('w-full px-3 rounded-xl group/card', isFullDocMode ? '' : 'pt-2.5 pb-2 hover:bg-dataset-chunk-detail-card-hover-bg', className)}
+      className={cn(
+        'w-full px-3 rounded-xl group/card',
+        isFullDocMode ? '' : 'pt-2.5 pb-2 hover:bg-dataset-chunk-detail-card-hover-bg',
+        focused.segmentContent ? 'bg-dataset-chunk-detail-card-hover-bg' : '',
+        className,
+      )}
       onClick={handleClickCard}
     >
       <div className='h-5 relative flex items-center justify-between'>
         <>
           <div className='flex items-center gap-x-2'>
-            <SegmentIndexTag positionId={position} className={textOpacity} labelPrefix={labelPrefix} />
+            <SegmentIndexTag
+              className={cn(contentOpacity)}
+              iconClassName={focused.segmentIndex ? 'text-text-accent' : ''}
+              labelClassName={focused.segmentIndex ? 'text-text-accent' : ''}
+              positionId={position}
+              label={isFullDocMode ? labelPrefix : ''}
+              labelPrefix={labelPrefix}
+            />
             <Dot />
-            <div className={cn('text-text-tertiary system-xs-medium', textOpacity)}>{wordCountText}</div>
+            <div className={cn('text-text-tertiary system-xs-medium', contentOpacity)}>{wordCountText}</div>
             <Dot />
-            <div className={cn('text-text-tertiary system-xs-medium', textOpacity)}>{`${formatNumber(hit_count)} ${t('datasetDocuments.segment.hitCount')}`}</div>
+            <div className={cn('text-text-tertiary system-xs-medium', contentOpacity)}>{`${formatNumber(hit_count)} ${t('datasetDocuments.segment.hitCount')}`}</div>
             {chunkEdited && (
               <>
                 <Dot />
-                <Badge text={t('datasetDocuments.segment.edited') as string} uppercase className={textOpacity} />
+                <Badge text={t('datasetDocuments.segment.edited') as string} uppercase className={contentOpacity} />
               </>
             )}
           </div>
@@ -199,7 +221,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                   >
                     <Switch
                       size='md'
-                      disabled={archived || detail.status !== 'completed'}
+                      disabled={archived || detail?.status !== 'completed'}
                       defaultValue={enabled}
                       onChange={async (val) => {
                         await onChangeSwitch?.(val, id)
@@ -213,32 +235,34 @@ const SegmentCard: FC<ISegmentCardProps> = ({
         </>
       </div>
       <div className={cn('text-text-secondary body-md-regular -tracking-[0.07px] mt-0.5',
-        textOpacity,
+        contentOpacity,
         isFullDocMode ? 'line-clamp-3' : isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
       )}>
         {renderContent()}
       </div>
-      {isGeneralMode && <div className={cn('flex items-center gap-x-2 py-1.5', textOpacity)}>
+      {isGeneralMode && <div className={cn('flex flex-wrap items-center gap-2 py-1.5', contentOpacity)}>
         {keywords?.map(keyword => <Tag key={keyword} text={keyword} />)}
       </div>}
       {
         isFullDocMode
           ? <button
+            type='button'
             className='mt-0.5 mb-2 text-text-accent system-xs-semibold-uppercase'
             onClick={() => onClick?.()}
           >{t('common.operation.viewMore')}</button>
           : null
       }
       {
-        child_chunks.length > 0
-              && <ChildSegmentList
-                parentChunkId={id}
-                childChunks={child_chunks}
-                enabled={enabled}
-                onDelete={onDeleteChildChunk!}
-                handleAddNewChildChunk={handleAddNewChildChunk}
-                onClickSlice={onClickSlice}
-              />
+        isParagraphMode && child_chunks.length > 0
+          && <ChildSegmentList
+            parentChunkId={id}
+            childChunks={child_chunks}
+            enabled={enabled}
+            onDelete={onDeleteChildChunk!}
+            handleAddNewChildChunk={handleAddNewChildChunk}
+            onClickSlice={onClickSlice}
+            focused={focused.segmentContent}
+          />
       }
       {showModal
         && <Confirm

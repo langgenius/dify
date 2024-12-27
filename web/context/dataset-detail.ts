@@ -1,7 +1,9 @@
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import type { DataSet } from '@/models/datasets'
+import type { IndexingType } from '@/app/components/datasets/create/step-two'
+
 type DatasetDetailContextValue = {
-  indexingTechnique?: string
+  indexingTechnique?: IndexingType
   dataset?: DataSet
   mutateDatasetRes?: () => void
 }

@@ -23,6 +23,7 @@ type ModelSelectorProps = {
   popupClassName?: string
   onSelect?: (model: DefaultModel) => void
   readonly?: boolean
+  scopeFeatures?: string[]
 }
 const ModelSelector: FC<ModelSelectorProps> = ({
   defaultModel,
@@ -31,6 +32,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
   popupClassName,
   onSelect,
   readonly,
+  scopeFeatures = [],
 }) => {
   const [open, setOpen] = useState(false)
   const {
@@ -101,6 +103,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
             defaultModel={defaultModel}
             modelList={modelList}
             onSelect={handleSelect}
+            scopeFeatures={scopeFeatures}
           />
         </PortalToFollowElemContent>
       </div>

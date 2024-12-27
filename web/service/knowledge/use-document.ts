@@ -4,7 +4,8 @@ import {
 } from '@tanstack/react-query'
 import { del, get, patch } from '../base'
 import { useInvalid } from '../use-base'
-import type { SimpleDocumentDetail, UpdateDocumentBatchParams } from '@/models/datasets'
+import type { MetadataType } from '../datasets'
+import type { DocumentDetailResponse, SimpleDocumentDetail, UpdateDocumentBatchParams } from '@/models/datasets'
 import { DocumentActionType } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 
@@ -91,4 +92,33 @@ export const useSyncWebsite = () => {
       return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/website-sync`)
     },
   })
+}
+
+const useDocumentDetailKey = [NAME_SPACE, 'documentDetail']
+export const useDocumentDetail = (payload: {
+  datasetId: string
+  documentId: string
+  params: { metadata: MetadataType }
+}) => {
+  const { datasetId, documentId, params } = payload
+  return useQuery<DocumentDetailResponse>({
+    queryKey: [...useDocumentDetailKey, 'withoutMetaData', datasetId, documentId],
+    queryFn: () => get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params }),
+  })
+}
+
+export const useDocumentMetadata = (payload: {
+  datasetId: string
+  documentId: string
+  params: { metadata: MetadataType }
+}) => {
+  const { datasetId, documentId, params } = payload
+  return useQuery<DocumentDetailResponse>({
+    queryKey: [...useDocumentDetailKey, 'withMetaData', datasetId, documentId],
+    queryFn: () => get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params }),
+  })
+}
+
+export const useInvalidDocumentDetailKey = () => {
+  return useInvalid(useDocumentDetailKey)
 }

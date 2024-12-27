@@ -23,7 +23,8 @@ const ActionButtons: FC<IActionButtonsProps> = ({
   isChildChunk = false,
 }) => {
   const { t } = useTranslation()
-  const [mode, parentMode] = useDocumentContext(s => [s.mode, s.parentMode])
+  const mode = useDocumentContext(s => s.mode)
+  const parentMode = useDocumentContext(s => s.parentMode)
 
   useKeyPress(['esc'], (e) => {
     e.preventDefault()

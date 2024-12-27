@@ -7,7 +7,7 @@ import {
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import Split from '../_base/components/split'
 import ResultPanel from '../../run/result-panel'
-import IterationResultPanel from '../../run/iteration-result-panel'
+import { IterationResultPanel } from '../../run/iteration-log'
 import { MAX_ITERATION_PARALLEL_NUM, MIN_ITERATION_PARALLEL_NUM } from '../../constants'
 import type { IterationNodeType } from './types'
 import useConfig from './use-config'
@@ -53,7 +53,6 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
     isShowIterationDetail,
     backToSingleRun,
     showIterationDetail,
-    hideIterationDetail,
     runningStatus,
     handleRun,
     handleStop,
@@ -123,7 +122,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
                 onChange={changeParallelNums}
                 max={MAX_ITERATION_PARALLEL_NUM}
                 min={MIN_ITERATION_PARALLEL_NUM}
-                className=' flex-shrink-0 flex-1 mt-4'
+                className=' shrink-0 flex-1 mt-4'
               />
             </div>
 
@@ -181,7 +180,6 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
       {isShowIterationDetail && (
         <IterationResultPanel
           onBack={backToSingleRun}
-          onHide={hideIterationDetail}
           list={iterationRunResult}
         />
       )}
