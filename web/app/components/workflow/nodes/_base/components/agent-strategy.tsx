@@ -35,6 +35,87 @@ type MultipleToolSelectorSchema = CustomSchema<'array[tools]'>
 
 type CustomField = MaxIterFormSchema | ToolSelectorSchema | MultipleToolSelectorSchema
 
+const devMockForm = [{
+  name: 'model',
+  label: {
+    en_US: 'Model',
+    zh_Hans: '模型',
+    pt_BR: 'Model',
+    ja_JP: 'Model',
+  },
+  placeholder: null,
+  scope: 'tool-call&llm',
+  auto_generate: null,
+  template: null,
+  required: true,
+  default: null,
+  min: null,
+  max: null,
+  options: [],
+  type: 'model-selector',
+},
+{
+  name: 'tools',
+  label: {
+    en_US: 'Tools list',
+    zh_Hans: '工具列表',
+    pt_BR: 'Tools list',
+    ja_JP: 'Tools list',
+  },
+  placeholder: null,
+  scope: null,
+  auto_generate: null,
+  template: null,
+  required: true,
+  default: null,
+  min: null,
+  max: null,
+  options: [],
+  type: 'array[tools]',
+},
+{
+  name: 'instruction',
+  label: {
+    en_US: 'Instruction',
+    zh_Hans: '指令',
+    pt_BR: 'Instruction',
+    ja_JP: 'Instruction',
+  },
+  placeholder: null,
+  scope: null,
+  auto_generate: {
+    type: 'prompt_instruction',
+  },
+  template: {
+    enabled: true,
+  },
+  required: true,
+  default: null,
+  min: null,
+  max: null,
+  options: [],
+  type: 'string',
+},
+{
+  name: 'query',
+  label: {
+    en_US: 'Query',
+    zh_Hans: '查询',
+    pt_BR: 'Query',
+    ja_JP: 'Query',
+  },
+  placeholder: null,
+  scope: null,
+  auto_generate: null,
+  template: null,
+  required: true,
+  default: null,
+  min: null,
+  max: null,
+  options: [],
+  type: 'string',
+}]
+
 export const AgentStrategy = (props: AgentStrategyProps) => {
   const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange } = props
   const { t } = useTranslation()
@@ -84,7 +165,6 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
       }
     }
   }
-  console.log(formSchema)
   return <div className='space-y-2'>
     <AgentStrategySelector value={strategy} onChange={onStrategyChange} />
     {
@@ -93,18 +173,7 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
           <Form<CustomField>
             formSchemas={[
               ...formSchema,
-              {
-                type: 'max-iter',
-                variable: 'max_iterations',
-                label: {
-                  en_US: 'Max Iterations',
-                  zh_Hans: '最大迭代次数',
-                },
-                name: 'max iter',
-                required: true,
-                show_on: [],
-                default: '3',
-              } as MaxIterFormSchema,
+              ...devMockForm as any,
             ]}
             value={formValue}
             onChange={onFormValueChange}

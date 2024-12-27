@@ -39,7 +39,6 @@ function formatStrategy(input: StrategyPluginDetail[], getIcon: (i: string) => s
   return input.map((item) => {
     const res: ToolWithProvider = {
       id: item.provider,
-      // TODO: replace this
       author: item.declaration.identity.author,
       name: item.declaration.identity.name,
       description: item.declaration.identity.description as any,

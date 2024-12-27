@@ -1,6 +1,16 @@
 import { BlockEnum } from '@/app/components/workflow/types'
 import type { NodeTracing } from '@/types/workflow'
 
+function printNodeStructure(node: NodeTracing, level: number) {
+  const indent = '  '.repeat(level)
+  console.log(`${indent}${node.title}`)
+  if (node.parallelDetail?.children) {
+    node.parallelDetail.children.forEach((child) => {
+      printNodeStructure(child, level + 1)
+    })
+  }
+}
+
 function addTitle({
   list, level, parallelNumRecord,
 }: {
@@ -52,6 +62,7 @@ function addTitle({
 
 // list => group by parallel_id(parallel tree).
 const format = (list: NodeTracing[], t: any): NodeTracing[] => {
+  // console.log(list)
   const result: NodeTracing[] = [...list]
   const parallelFirstNodeMap: Record<string, string> = {}
   // list to tree by parent_parallel_start_node_id and parallel_start_node_id
@@ -65,7 +76,7 @@ const format = (list: NodeTracing[], t: any): NodeTracing[] => {
 
     const isParallelStartNode = !parallelFirstNodeMap[parallel_id]
     if (isParallelStartNode) {
-      const selfNode = { ...node }
+      const selfNode = { ...node, parallelDetail: undefined }
       node.parallelDetail = {
         isParallelStartNode: true,
         children: [selfNode],
@@ -86,6 +97,7 @@ const format = (list: NodeTracing[], t: any): NodeTracing[] => {
         if (parentParallelStartNode!.parallelDetail.children)
           parentParallelStartNode!.parallelDetail.children.push(node)
       }
+      return
     }
 
     // append to parallel start node
@@ -110,6 +122,11 @@ const format = (list: NodeTracing[], t: any): NodeTracing[] => {
       return false
 
     return true
+  })
+
+  // print node structure for debug
+  filteredInParallelSubNodes.forEach((node) => {
+    printNodeStructure(node, 0)
   })
 
   const parallelNumRecord: Record<string, number> = {
