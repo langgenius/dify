@@ -7,6 +7,7 @@ from flask_login import current_user  # type: ignore
 import contexts
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
 from core.plugin.manager.agent import PluginAgentManager
+from core.plugin.manager.exc import PluginDaemonClientSideError
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from models.account import Account
@@ -169,4 +170,7 @@ class AgentService:
         Get agent provider
         """
         manager = PluginAgentManager()
-        return manager.fetch_agent_strategy_provider(tenant_id, provider_name)
+        try:
+            return manager.fetch_agent_strategy_provider(tenant_id, provider_name)
+        except PluginDaemonClientSideError as e:
+            raise ValueError(str(e)) from e
