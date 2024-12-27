@@ -348,10 +348,10 @@ class AccountService:
         with Session(db.engine) as session:
             return (
                 session.query(StagingAccountWhitelist)
-                .filter(StagingAccountWhitelist.email == email, StagingAccountWhitelist.disabled == False)  # noqa: E712
+                .filter(StagingAccountWhitelist.email == email, StagingAccountWhitelist.disabled == False)
                 .first()
                 is not None
-            )  # noqa: E712
+            )
 
     @staticmethod
     def load_logged_in_account(*, account_id: str):
