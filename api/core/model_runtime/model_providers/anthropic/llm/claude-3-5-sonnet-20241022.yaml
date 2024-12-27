@@ -33,6 +33,15 @@ parameter_rules:
     max: 8192
   - name: response_format
     use_template: response_format
+  - name: prompt_caching
+    label:
+      en_US: Prompt Caching
+      zh_Hans: 提示词缓存
+    type: boolean
+    required: false
+    help:
+      zh_Hans: 缓存使用<prompt-cache></prompt-cache> 包裹的提示词（最多 4 组，每组 1024+ 个 token）
+      en_US: Cache prompts in <prompt-cache> tags (max 4, 1024+ tokens)
 pricing:
   input: '3.00'
   output: '15.00'

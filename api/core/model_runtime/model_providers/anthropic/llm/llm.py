@@ -1,6 +1,7 @@
 import base64
 import json
-from collections.abc import Generator, Sequence
+import re
+from collections.abc import Generator, Iterable, Sequence
 from typing import Optional, Union, cast
 
 import anthropic
@@ -127,10 +128,10 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
             extra_model_kwargs["system"] = system
 
         # Add the new header for claude-3-5-sonnet-20240620 model
-        extra_headers = {}
+        beta_flags = []
         if model == "claude-3-5-sonnet-20240620":
             if model_parameters.get("max_tokens", 0) > 4096:
-                extra_headers["anthropic-beta"] = "max-tokens-3-5-sonnet-2024-07-15"
+                beta_flags.append("max-tokens-3-5-sonnet-2024-07-15")
 
         if any(
             isinstance(content, DocumentPromptMessageContent)
@@ -138,8 +139,20 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
             if isinstance(prompt_message.content, list)
             for content in prompt_message.content
         ):
-            extra_headers["anthropic-beta"] = "pdfs-2024-09-25"
+            beta_flags.append("pdfs-2024-09-25")
 
+        if (
+            any(s in model for s in ["claude-3-5-sonnet", "claude-3-haiku", "claude-3-opus"])
+            and model_parameters.get("prompt_caching") is True
+        ):
+            # remove prompt_caching parameter from model_parameters
+            model_parameters.pop("prompt_caching")
+            # append prompt-caching-2024-07-31
+            beta_flags.append("prompt-caching-2024-07-31")
+            extra_model_kwargs["system"] = self.parse_prompt_with_ephemeral_tags(system)
+        extra_headers = {}
+        if beta_flags:
+            extra_headers["anthropic-beta"] = ",".join(beta_flags)
         if tools:
             extra_model_kwargs["tools"] = [self._transform_tool_prompt(tool) for tool in tools]
             response = client.beta.tools.messages.create(
@@ -652,3 +665,17 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                 anthropic.APIError,
             ],
         }
+
+    def parse_prompt_with_ephemeral_tags(self, system: str) -> Iterable[ToolsBetaMessage]:
+        parts = re.split(r"(<prompt-cache>.*?</prompt-cache>)", system, flags=re.DOTALL)
+
+        result: list[ToolsBetaMessage] = []
+        for part in parts:
+            if part.strip():  # ignore white
+                if part.startswith("<prompt-cache>") and part.endswith("</prompt-cache>"):
+                    text = part[14:-15].strip()
+                    result.append({"text": text, "type": "text", "cache_control": {"type": "ephemeral"}})
+                else:
+                    result.append({"text": part.strip(), "type": "text"})
+
+        return result
