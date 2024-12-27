@@ -5,10 +5,11 @@ import {
   RiArrowDropDownLine,
   RiQuestionLine,
 } from '@remixicon/react'
-import type { ToolValue } from '@/app/components/plugins/plugin-detail-panel/tool-selector'
+import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 import Divider from '@/app/components/base/divider'
+import type { ToolValue } from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -18,23 +19,55 @@ type Props = {
   required?: boolean
   tooltip?: any
   supportCollapse?: boolean
-  onChange: (value: ToolValue[]) => void
   scope?: string
+  onChange: (value: ToolValue[]) => void
 }
 
 const MultipleToolSelector = ({
+  disabled,
   value,
   label,
   required,
   tooltip,
   supportCollapse,
+  scope,
+  onChange,
 }: Props) => {
   const { t } = useTranslation()
+  // collapse control
   const [collapse, setCollapse] = React.useState(false)
-
   const handleCollapse = () => {
     if (supportCollapse)
       setCollapse(!collapse)
+  }
+
+  // add tool
+  const [open, setOpen] = React.useState(false)
+  const handleAdd = (val: ToolValue) => {
+    const newValue = [...value, val]
+    // deduplication
+    const deduplication = newValue.reduce((acc, cur) => {
+      if (!acc.find(item => item.provider_name === cur.provider_name && item.tool_name === cur.tool_name))
+        acc.push(cur)
+      return acc
+    }, [] as ToolValue[])
+    // update value
+    onChange(deduplication)
+    setOpen(false)
+  }
+
+  // delete tool
+  const handleDelete = (index: number) => {
+    const newValue = [...value]
+    newValue.splice(index, 1)
+    onChange(newValue)
+  }
+
+  // configure tool
+  const handleConfigure = (val: ToolValue, index: number) => {
+    const newValue = [...value]
+    newValue[index] = val
+    onChange(newValue)
   }
 
   return (
@@ -74,15 +107,38 @@ const MultipleToolSelector = ({
             <Divider type='vertical' className='ml-3 mr-1 h-3' />
           </>
         )}
-        <ActionButton className='mx-1' onClick={() => {}}>
-          <RiAddLine className='w-4 h-4' />
-        </ActionButton>
+        {!disabled && (
+          <ActionButton className='mx-1' onClick={() => setOpen(!open)}>
+            <RiAddLine className='w-4 h-4' />
+          </ActionButton>
+        )}
       </div>
       {!collapse && (
         <>
+          <ToolSelector
+            scope={scope}
+            value={undefined}
+            onSelect={handleAdd}
+            controlledState={open}
+            onControlledStateChange={setOpen}
+            trigger={
+              <div className=''></div>
+            }
+          />
           {value.length === 0 && (
             <div className='p-3 flex justify-center rounded-[10px] bg-background-section text-text-tertiary system-xs-regular'>{t('plugin.detailPanel.toolSelector.empty')}</div>
           )}
+          {value.length > 0 && value.map((item, index) => (
+            <div className='mb-1' key={index}>
+              <ToolSelector
+                scope={scope}
+                value={item}
+                onSelect={item => handleConfigure(item, index)}
+                onDelete={() => handleDelete(index)}
+                supportEnableSwitch
+              />
+            </div>
+          ))}
         </>
       )}
     </>

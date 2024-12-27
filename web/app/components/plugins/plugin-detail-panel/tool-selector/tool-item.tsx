@@ -77,7 +77,10 @@ const ToolItem = ({
         )}
         <div
           className='p-1 rounded-md text-text-tertiary cursor-pointer hover:text-text-destructive'
-          onClick={onDelete}
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete?.()
+          }}
           onMouseOver={() => setIsDeleting(true)}
           onMouseLeave={() => setIsDeleting(false)}
         >
@@ -85,11 +88,13 @@ const ToolItem = ({
         </div>
       </div>
       {!isError && !uninstalled && !noAuth && showSwitch && (
-        <Switch
-          className='mr-1'
-          size='md'
-          defaultValue={switchValue}
-          onChange={onSwitchChange} />
+        <div className='mr-1' onClick={e => e.stopPropagation()}>
+          <Switch
+            size='md'
+            defaultValue={switchValue}
+            onChange={onSwitchChange}
+          />
+        </div>
       )}
       {!isError && !uninstalled && noAuth && (
         <Button variant='secondary' size='small' onClick={onAuth}>

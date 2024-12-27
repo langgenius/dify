@@ -49,10 +49,11 @@ export type ToolValue = {
 }
 
 type Props = {
-  value?: ToolValue
   disabled?: boolean
   placement?: Placement
   offset?: OffsetOptions
+  scope?: string
+  value?: ToolValue
   onSelect: (tool: {
     provider_name: string
     tool_name: string
@@ -60,8 +61,11 @@ type Props = {
     extra?: Record<string, any>
   }) => void
   onDelete?: () => void
+  supportEnableSwitch?: boolean
   supportAddCustomTool?: boolean
-  scope?: string
+  trigger?: React.ReactNode
+  controlledState?: boolean
+  onControlledStateChange?: (state: boolean) => void
 }
 const ToolSelector: FC<Props> = ({
   value,
@@ -71,6 +75,10 @@ const ToolSelector: FC<Props> = ({
   onSelect,
   onDelete,
   scope,
+  supportEnableSwitch,
+  trigger,
+  controlledState,
+  onControlledStateChange,
 }) => {
   const { t } = useTranslation()
   const [isShow, onShowChange] = useState(false)
@@ -98,14 +106,13 @@ const ToolSelector: FC<Props> = ({
       provider_name: tool.provider_id,
       tool_name: tool.tool_name,
       parameters: paramValues,
+      enabled: tool.is_team_authorization,
       extra: {
         description: '',
       },
     }
     onSelect(toolValue)
     setIsShowChooseTool(false)
-    // if (tool.provider_type === CollectionType.builtIn && tool.is_team_authorization)
-    //   onShowChange(false)
   }
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -133,6 +140,13 @@ const ToolSelector: FC<Props> = ({
     onSelect(toolValue as any)
   }
 
+  const handleEnabledChange = (state: boolean) => {
+    onSelect({
+      ...value,
+      enabled: state,
+    } as any)
+  }
+
   // authorization
   const { isCurrentWorkspaceManager } = useAppContext()
   const [isShowSettingAuth, setShowSettingAuth] = useState(false)
@@ -155,14 +169,15 @@ const ToolSelector: FC<Props> = ({
       <PortalToFollowElem
         placement={placement}
         offset={offset}
-        open={isShow}
-        onOpenChange={onShowChange}
+        open={trigger ? controlledState : isShow}
+        onOpenChange={trigger ? onControlledStateChange : onShowChange}
       >
         <PortalToFollowElemTrigger
           className='w-full'
           onClick={handleTriggerClick}
         >
-          {!value?.provider_name && (
+          {trigger}
+          {!trigger && !value?.provider_name && (
             <ToolTrigger
               isConfigure
               open={isShow}
@@ -170,16 +185,20 @@ const ToolSelector: FC<Props> = ({
               provider={currentProvider}
             />
           )}
-          {value?.provider_name && (
+          {!trigger && value?.provider_name && (
             <ToolItem
               open={isShow}
               icon={currentProvider?.icon}
               providerName={value.provider_name}
               toolName={value.tool_name}
+              showSwitch={supportEnableSwitch}
+              switchValue={value.enabled}
+              onSwitchChange={handleEnabledChange}
               onDelete={onDelete}
               noAuth={currentProvider && !currentProvider.is_team_authorization}
               onAuth={() => setShowSettingAuth(true)}
-              // uninstalled
+              // uninstalled TODO
+              // isError TODO
               errorTip={<div className='space-y-1 text-xs'>
                 <h3 className='text-text-primary font-semibold'>{t('workflow.nodes.agent.pluginNotInstalled')}</h3>
                 <p className='text-text-secondary tracking-tight'>{t('workflow.nodes.agent.pluginNotInstalledDesc')}</p>
