@@ -78,7 +78,7 @@ const format = (list: NodeTracing[], t: any): NodeTracing[] => {
     const parallel_id = node.parallel_id ?? node.execution_metadata?.parallel_id ?? null
     const parent_parallel_id = node.parent_parallel_id ?? node.execution_metadata?.parent_parallel_id ?? null
     const branchStartNodeId = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
-    const parent_parallel_start_node_id = node.parent_parallel_start_node_id ?? node.execution_metadata?.parent_parallel_start_node_id ?? null
+    const parentParallelBranchStartNodeId = node.parent_parallel_start_node_id ?? node.execution_metadata?.parent_parallel_start_node_id ?? null
     const isNotInParallel = !parallel_id || node.node_type === BlockEnum.End
     if (isNotInParallel)
       return
@@ -95,16 +95,24 @@ const format = (list: NodeTracing[], t: any): NodeTracing[] => {
       if (isRootLevel)
         return
 
-      const parentParallelStartNode = result.find(item => item.node_id === parent_parallel_start_node_id)
-      // append to parent parallel start node
+      const parentParallelStartNode = result.find(item => item.node_id === parentParallelBranchStartNodeId)
+      // append to parent parallel start node and after the same branch
       if (parentParallelStartNode) {
         if (!parentParallelStartNode?.parallelDetail) {
           parentParallelStartNode!.parallelDetail = {
             children: [],
           }
         }
-        if (parentParallelStartNode!.parallelDetail.children)
-          parentParallelStartNode!.parallelDetail.children.push(node)
+        if (parentParallelStartNode!.parallelDetail.children) {
+          const sameBranchNodesLastIndex = parentParallelStartNode.parallelDetail.children.findLastIndex((node) => {
+            const currStartNodeId = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
+            return currStartNodeId === parentParallelBranchStartNodeId
+          })
+          if (sameBranchNodesLastIndex !== -1)
+            parentParallelStartNode!.parallelDetail.children.splice(sameBranchNodesLastIndex + 1, 0, node)
+          else
+            parentParallelStartNode!.parallelDetail.children.push(node)
+        }
       }
       return
     }
