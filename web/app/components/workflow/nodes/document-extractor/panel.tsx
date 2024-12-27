@@ -51,7 +51,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
   } = useConfig(id, data)
 
   return (
-    <div className='mt-2'>
+    <div className='pt-2'>
       <div className='px-4 pb-4 space-y-4'>
         <Field
           title={t(`${i18nPrefix}.inputVar`)}
@@ -72,28 +72,29 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
             </div>
           </>
         </Field>
-      </div>
-      <Split />
-      <div
-        className='ml-4 leading-[18px] text-[13px] font-semibold text-gray-800'>{t(`${i18nPrefix}.output_format`)}</div>
-      <div className='p-4 ml-4 mr-4 mt-2  border rounded-lg'>
-        <RadioGroup
-          className='space-x-3'
-          options={[
-            {
-              label: t(`${i18nPrefix}.output_image`),
-              value: 'image',
-            },
-            {
-              label: t(`${i18nPrefix}.output_text`),
-              value: 'text',
-            },
-          ]}
-          value={inputs.output_image ? 'image' : 'text'}
-          onChange={val => handleConfigChanges({
-            output_image: val === 'image',
-          })}
-        />
+        <Field
+          title={t(`${i18nPrefix}.output_format`)}
+        >
+          <>
+            <RadioGroup
+              className='space-x-3'
+              options={[
+                {
+                  label: t(`${i18nPrefix}.output_text`),
+                  value: 'text',
+                },
+                {
+                  label: t(`${i18nPrefix}.output_image`),
+                  value: 'image',
+                },
+              ]}
+              value={inputs.output_image ? 'image' : 'text'}
+              onChange={val => handleConfigChanges({
+                output_image: val === 'image',
+              })}
+            />
+          </>
+        </Field>
       </div>
       <Split />
       <div>
