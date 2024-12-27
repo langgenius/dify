@@ -137,8 +137,6 @@ const TracingPanel: FC<TracingPanelProps> = ({
             onShowIterationDetail={handleShowIterationResultList}
             onShowRetryDetail={handleShowRetryResultList}
             onShowAgentResultList={setAgentResultList}
-            justShowIterationNavArrow={true}
-            justShowRetryNavArrow={true}
             hideInfo={hideNodeInfo}
             hideProcessDetail={hideNodeProcessDetail}
           />

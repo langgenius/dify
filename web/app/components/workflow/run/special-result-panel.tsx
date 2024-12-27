@@ -7,18 +7,18 @@ import type {
   NodeTracing,
 } from '@/types/workflow'
 
-type SpecialResultPanelProps = {
-  showRetryDetail: boolean
-  setShowRetryDetailFalse: () => void
-  retryResultList: NodeTracing[]
+export type SpecialResultPanelProps = {
+  showRetryDetail?: boolean
+  setShowRetryDetailFalse?: () => void
+  retryResultList?: NodeTracing[]
 
-  showIteratingDetail: boolean
-  setShowIteratingDetailFalse: () => void
-  iterationResultList: NodeTracing[][]
-  iterationResultDurationMap: IterationDurationMap
+  showIteratingDetail?: boolean
+  setShowIteratingDetailFalse?: () => void
+  iterationResultList?: NodeTracing[][]
+  iterationResultDurationMap?: IterationDurationMap
 
-  agentResultList: AgentLogItemWithChildren[]
-  setAgentResultList: (list: AgentLogItemWithChildren[]) => void
+  agentResultList?: AgentLogItemWithChildren[]
+  setAgentResultList?: (list: AgentLogItemWithChildren[]) => void
 }
 const SpecialResultPanel = ({
   showRetryDetail,
@@ -36,7 +36,7 @@ const SpecialResultPanel = ({
   return (
     <>
       {
-        showRetryDetail && (
+        !!showRetryDetail && !!retryResultList?.length && setShowRetryDetailFalse && (
           <RetryResultPanel
             list={retryResultList}
             onBack={setShowRetryDetailFalse}
@@ -44,7 +44,7 @@ const SpecialResultPanel = ({
         )
       }
       {
-        showIteratingDetail && (
+        showIteratingDetail && !!iterationResultList?.length && setShowIteratingDetailFalse && (
           <IterationResultPanel
             list={iterationResultList}
             onBack={setShowIteratingDetailFalse}
@@ -53,7 +53,7 @@ const SpecialResultPanel = ({
         )
       }
       {
-        !!agentResultList.length && (
+        !!agentResultList?.length && setAgentResultList && (
           <AgentResultPanel
             list={agentResultList}
             setAgentResultList={setAgentResultList}

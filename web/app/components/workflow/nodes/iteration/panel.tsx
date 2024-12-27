@@ -15,10 +15,7 @@ import Select from '@/app/components/base/select'
 import Slider from '@/app/components/base/slider'
 import Input from '@/app/components/base/input'
 import formatTracing from '@/app/components/workflow/run/utils/format-log'
-import {
-  IterationLogTrigger,
-  IterationResultPanel,
-} from '@/app/components/workflow/run/iteration-log'
+
 import { useLogs } from '@/app/components/workflow/run/hooks'
 
 const i18nPrefix = 'workflow.nodes.iteration'
@@ -69,12 +66,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
   } = useConfig(id, data)
 
   const nodeInfo = formatTracing(iterationRunResult, t)[0]
-  const {
-    showIteratingDetail,
-    iterationResultList,
-    setShowIteratingDetailFalse,
-    handleShowIterationResultList,
-  } = useLogs()
+  const logsParams = useLogs()
 
   return (
     <div className='pt-2 pb-2'>
@@ -170,35 +162,9 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}
+          {...logsParams}
           result={
-            <div className='mt-3'>
-              {
-                !showIteratingDetail && (
-                  <>
-                    {
-                      nodeInfo && (
-                        <div className='px-4'>
-                          <IterationLogTrigger
-                            nodeInfo={nodeInfo}
-                            onShowIterationResultList={handleShowIterationResultList}
-                          />
-                          <Split className='mt-3' />
-                        </div>
-                      )
-                    }
-                    <ResultPanel {...runResult} showSteps={false} />
-                  </>
-                )
-              }
-              {
-                showIteratingDetail && (
-                  <IterationResultPanel
-                    list={iterationResultList}
-                    onBack={setShowIteratingDetailFalse}
-                  />
-                )
-              }
-            </div>
+            <ResultPanel {...runResult} showSteps={false} nodeInfo={nodeInfo} {...logsParams} />
           }
         />
       )}
