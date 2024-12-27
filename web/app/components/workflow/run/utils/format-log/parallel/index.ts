@@ -137,9 +137,12 @@ const format = (list: NodeTracing[], t: any): NodeTracing[] => {
   })
 
   // print node structure for debug
-  filteredInParallelSubNodes.forEach((node) => {
-    printNodeStructure(node, 0)
-  })
+  // filteredInParallelSubNodes.forEach((node) => {
+  //   const now = Date.now()
+  //   console.log(`----- p: ${now} start -----`)
+  //   printNodeStructure(node, 0)
+  //   console.log(`----- p: ${now} end -----`)
+  // })
 
   const parallelNumRecord: Record<string, number> = {
     num: 0,
