@@ -20,11 +20,13 @@ import {
 import Badge from '@/app/components/base/badge'
 
 type Props = {
+  disabled?: boolean
   value: RetrievalConfig
   onChange: (value: RetrievalConfig) => void
 }
 
 const RetrievalMethodConfig: FC<Props> = ({
+  disabled = false,
   value: passValue,
   onChange,
 }) => {
@@ -58,7 +60,7 @@ const RetrievalMethodConfig: FC<Props> = ({
   return (
     <div className='space-y-2'>
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
-        <OptionCard icon={<Image className='w-4 h-4' src={retrievalIcon.vector} alt='' />}
+        <OptionCard disabled={disabled} icon={<Image className='w-4 h-4' src={retrievalIcon.vector} alt='' />}
           title={t('dataset.retrieval.semantic_search.title')}
           description={t('dataset.retrieval.semantic_search.description')}
           isActive={
@@ -79,7 +81,7 @@ const RetrievalMethodConfig: FC<Props> = ({
         </OptionCard>
       )}
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
-        <OptionCard icon={<Image className='w-4 h-4' src={retrievalIcon.fullText} alt='' />}
+        <OptionCard disabled={disabled} icon={<Image className='w-4 h-4' src={retrievalIcon.fullText} alt='' />}
           title={t('dataset.retrieval.full_text_search.title')}
           description={t('dataset.retrieval.full_text_search.description')}
           isActive={
@@ -100,7 +102,7 @@ const RetrievalMethodConfig: FC<Props> = ({
         </OptionCard>
       )}
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
-        <OptionCard icon={<Image className='w-4 h-4' src={retrievalIcon.hybrid} alt='' />}
+        <OptionCard disabled={disabled} icon={<Image className='w-4 h-4' src={retrievalIcon.hybrid} alt='' />}
           title={
             <div className='flex items-center space-x-1'>
               <div>{t('dataset.retrieval.hybrid_search.title')}</div>
