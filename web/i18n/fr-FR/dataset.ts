@@ -146,6 +146,26 @@ const translation = {
   externalAPIPanelTitle: 'API de connaissances externes',
   noExternalKnowledge: 'Il n’y a pas encore d’API de connaissances externes, cliquez ici pour créer',
   learnHowToWriteGoodKnowledgeDescription: 'Apprenez à rédiger une bonne description des connaissances',
+  chunkingMode: {
+    general: 'Généralités',
+    parentChild: 'Parent-enfant',
+  },
+  parentMode: {
+    paragraph: 'Paragraphe',
+    fullDoc: 'Doc complet',
+  },
+  batchAction: {
+    archive: 'Archiver',
+    disable: 'Désactiver',
+    delete: 'Supprimer',
+    cancel: 'Annuler',
+    enable: 'Activer',
+    selected: 'Sélectionné',
+  },
+  preprocessDocument: '{{num}} Prétraiter les documents',
+  documentsDisabled: '{{num}} documents désactivés - inactifs depuis plus de 30 jours',
+  localDocs: 'Docs locaux',
+  enable: 'Activer',
 }
 
 export default translation

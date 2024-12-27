@@ -5,11 +5,7 @@
   @apply h-6 w-6 !important;
 }
 .layoutRightIcon {
-  @apply w-8 h-8 ml-2 box-border border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer hover:shadow-[0_1px_2px_rgba(16,24,40,0.05)];
-}
-.iconShow {
-  background: center center url(../assets/layoutRightShow.svg) no-repeat;
-}
-.iconClose {
-  background: center center url(../assets/layoutRightClose.svg) no-repeat;
+  @apply p-2 ml-2 border-[0.5px] border-components-button-secondary-border hover:border-components-button-secondary-border-hover
+  rounded-lg bg-components-button-secondary-bg hover:bg-components-button-secondary-bg-hover cursor-pointer
+  shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px];
 }

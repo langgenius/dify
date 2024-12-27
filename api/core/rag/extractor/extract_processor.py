@@ -24,7 +24,6 @@ from core.rag.extractor.unstructured.unstructured_markdown_extractor import Unst
 from core.rag.extractor.unstructured.unstructured_msg_extractor import UnstructuredMsgExtractor
 from core.rag.extractor.unstructured.unstructured_ppt_extractor import UnstructuredPPTExtractor
 from core.rag.extractor.unstructured.unstructured_pptx_extractor import UnstructuredPPTXExtractor
-from core.rag.extractor.unstructured.unstructured_text_extractor import UnstructuredTextExtractor
 from core.rag.extractor.unstructured.unstructured_xml_extractor import UnstructuredXmlExtractor
 from core.rag.extractor.word_extractor import WordExtractor
 from core.rag.models.document import Document
@@ -103,12 +102,11 @@ class ExtractProcessor:
                 input_file = Path(file_path)
                 file_extension = input_file.suffix.lower()
                 etl_type = dify_config.ETL_TYPE
-                unstructured_api_url = dify_config.UNSTRUCTURED_API_URL
-                unstructured_api_key = dify_config.UNSTRUCTURED_API_KEY
-                assert unstructured_api_url is not None, "unstructured_api_url is required"
-                assert unstructured_api_key is not None, "unstructured_api_key is required"
                 extractor: Optional[BaseExtractor] = None
                 if etl_type == "Unstructured":
+                    unstructured_api_url = dify_config.UNSTRUCTURED_API_URL
+                    unstructured_api_key = dify_config.UNSTRUCTURED_API_KEY or ""
+
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
@@ -141,11 +139,7 @@ class ExtractProcessor:
                         extractor = UnstructuredEpubExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     else:
                         # txt
-                        extractor = (
-                            UnstructuredTextExtractor(file_path, unstructured_api_url)
-                            if is_automatic
-                            else TextExtractor(file_path, autodetect_encoding=True)
-                        )
+                        extractor = TextExtractor(file_path, autodetect_encoding=True)
                 else:
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)

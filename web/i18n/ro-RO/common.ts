@@ -42,6 +42,11 @@ const translation = {
     zoomOut: 'Micșorare',
     openInNewTab: 'Deschide într-o filă nouă',
     zoomIn: 'Măriți',
+    close: 'Închide',
+    viewMore: 'VEZI MAI MULT',
+    regenerate: 'Regenera',
+    saveAndRegenerate: 'Salvați și regenerați bucățile secundare',
+    view: 'Vedere',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',
@@ -474,6 +479,7 @@ const translation = {
     emptyTip: 'Cunoștințele nu au fost asociate, vă rugăm să mergeți la aplicație sau la plug-in pentru a finaliza asocierea.',
     viewDoc: 'Vizualizați documentația',
     relatedApp: 'aplicații asociate',
+    noRelatedApp: 'Fără aplicații conectate',
   },
   voiceInput: {
     speaking: 'Vorbiți acum...',

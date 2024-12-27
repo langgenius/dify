@@ -25,6 +25,11 @@ const translation = {
   viewChart: 'ベクトルチャートを表示',
   settingTitle: '取得設定',
   viewDetail: '詳細を表示',
+  records: '誌',
+  hitChunks: '{{num}}子チャンクをヒット',
+  open: '開ける',
+  keyword: 'キーワード',
+  chunkDetail: 'チャンクの詳細',
 }
 
 export default translation

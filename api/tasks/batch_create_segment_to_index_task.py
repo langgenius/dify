@@ -7,13 +7,13 @@ import click
 from celery import shared_task  # type: ignore
 from sqlalchemy import func
 
-from core.indexing_runner import IndexingRunner
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs import helper
 from models.dataset import Dataset, Document, DocumentSegment
+from services.vector_service import VectorService
 
 
 @shared_task(queue="dataset")
@@ -96,8 +96,7 @@ def batch_create_segment_to_index_task(
         dataset_document.word_count += word_count_change
         db.session.add(dataset_document)
         # add index to db
-        indexing_runner = IndexingRunner()
-        indexing_runner.batch_add_segments(document_segments, dataset)
+        VectorService.create_segments_vector(None, document_segments, dataset, dataset_document.doc_form)
         db.session.commit()
         redis_client.setex(indexing_cache_key, 600, "completed")
         end_at = time.perf_counter()

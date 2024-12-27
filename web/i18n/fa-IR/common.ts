@@ -42,6 +42,11 @@ const translation = {
     copyImage: 'کپی تصویر',
     openInNewTab: 'باز کردن در برگه جدید',
     zoomOut: 'کوچک نمایی',
+    close: 'نزدیک',
+    regenerate: 'بازسازی',
+    view: 'مشاهده',
+    viewMore: 'بیشتر ببینید',
+    saveAndRegenerate: 'ذخیره و بازسازی تکه های فرزند',
   },
   errorMsg: {
     fieldRequired: '{{field}} الزامی است',
@@ -478,6 +483,7 @@ const translation = {
     emptyTip: 'دانش مرتبط نشده است، لطفاً به برنامه یا افزونه بروید تا ارتباط را کامل کنید.',
     viewDoc: 'مشاهده مستندات',
     relatedApp: 'برنامه‌های مرتبط',
+    noRelatedApp: 'هیچ برنامه پیوندی وجود ندارد',
   },
   voiceInput: {
     speaking: 'اکنون صحبت کنید...',
