@@ -104,8 +104,8 @@ const translation = {
     branch: 'BRANCH',
     onFailure: 'On Failure',
     addFailureBranch: 'Add Fail Branch',
-    loadMore: '加载更多',
-    noHistory: '没有历史版本',
+    loadMore: 'Load More Workflows',
+    noHistory: 'No History',
   },
   env: {
     envPanelTitle: 'Environment Variables',
