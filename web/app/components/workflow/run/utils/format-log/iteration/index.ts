@@ -1,6 +1,6 @@
 import { BlockEnum } from '@/app/components/workflow/types'
 import type { NodeTracing } from '@/types/workflow'
-
+import formatParallelNode from '../parallel'
 function addChildrenToIterationNode(iterationNode: NodeTracing, childrenNodes: NodeTracing[]): NodeTracing {
   const details: NodeTracing[][] = []
   childrenNodes.forEach((item) => {
@@ -18,7 +18,7 @@ function addChildrenToIterationNode(iterationNode: NodeTracing, childrenNodes: N
   }
 }
 
-const format = (list: NodeTracing[]): NodeTracing[] => {
+const format = (list: NodeTracing[], t: any): NodeTracing[] => {
   const iterationNodeIds = list
     .filter(item => item.node_type === BlockEnum.Iteration)
     .map(item => item.node_id)
@@ -36,7 +36,14 @@ const format = (list: NodeTracing[]): NodeTracing[] => {
           item.status = 'failed'
           item.error = error.error
         }
-        return addChildrenToIterationNode(item, childrenNodes)
+        const addedChildrenList = addChildrenToIterationNode(item, childrenNodes)
+        // handle parallel node in iteration node
+        if (addedChildrenList.details && addedChildrenList.details.length > 0) {
+          addedChildrenList.details = addedChildrenList.details.map((row) => {
+            return formatParallelNode(row, t)
+          })
+        }
+        return addedChildrenList
       }
 
       return item

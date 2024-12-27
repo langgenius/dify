@@ -13,7 +13,7 @@ const formatToTracingNodeList = (list: NodeTracing[], t: any) => {
   const formattedAgentList = formatAgentNode(allItems)
   const formattedRetryList = formatRetryNode(formattedAgentList) // retry one node
   // would change the structure of the list. Iteration and parallel can include each other.
-  const formattedIterationList = formatIterationNode(formattedRetryList)
+  const formattedIterationList = formatIterationNode(formattedRetryList, t)
   const formattedParallelList = formatParallelNode(formattedIterationList, t)
 
   const result = formattedParallelList

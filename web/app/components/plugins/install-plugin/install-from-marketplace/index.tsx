@@ -38,7 +38,6 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   const updateModelProviders = useUpdateModelProviders()
   const invalidateAllToolProviders = useInvalidateAllToolProviders()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
-  // TODO: check installed in beta version.
 
   const getTitle = useCallback(() => {
     if (isBundle && step === InstallStep.installed)
