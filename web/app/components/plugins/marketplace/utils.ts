@@ -102,7 +102,7 @@ export const getMarketplaceListCondition = (pluginType: string) => {
     return 'category=tool'
 
   if (pluginType === PluginType.agent)
-    return 'category=agent-strategy'
+    return 'category=agent_strategy'
 
   if (pluginType === PluginType.model)
     return 'category=model'

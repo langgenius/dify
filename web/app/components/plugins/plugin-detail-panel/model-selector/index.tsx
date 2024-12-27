@@ -13,6 +13,7 @@ import ModelSelector from '@/app/components/header/account-setting/model-provide
 import {
   useModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import AgentModelTrigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/agent-model-trigger'
 import Trigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import {
@@ -34,6 +35,7 @@ export type ModelParameterModalProps = {
   renderTrigger?: (v: TriggerProps) => ReactNode
   readonly?: boolean
   isInWorkflow?: boolean
+  isAgentStrategy?: boolean
   scope?: string
 }
 
@@ -46,13 +48,25 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   renderTrigger,
   readonly,
   isInWorkflow,
+  isAgentStrategy,
   scope = ModelTypeEnum.textGeneration,
 }) => {
   const { t } = useTranslation()
   const { isAPIKeySet } = useProviderContext()
   const [open, setOpen] = useState(false)
   const scopeArray = scope.split('&')
-  const scopeFeatures = scopeArray.slice(1) || []
+  const scopeFeatures = useMemo(() => {
+    if (scopeArray.includes('all'))
+      return []
+    return scopeArray.filter(item => ![
+      ModelTypeEnum.textGeneration,
+      ModelTypeEnum.textEmbedding,
+      ModelTypeEnum.rerank,
+      ModelTypeEnum.moderation,
+      ModelTypeEnum.speech2text,
+      ModelTypeEnum.tts,
+    ].includes(item as ModelTypeEnum))
+  }, [scopeArray])
 
   const { data: textGenerationList } = useModelList(ModelTypeEnum.textGeneration)
   const { data: textEmbeddingList } = useModelList(ModelTypeEnum.textEmbedding)
@@ -168,8 +182,16 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 providerName: value?.provider,
                 modelId: value?.model,
               })
-              : (
-                <Trigger
+              : (isAgentStrategy
+                ? <AgentModelTrigger
+                  disabled={disabled}
+                  hasDeprecated={hasDeprecated}
+                  currentProvider={currentProvider}
+                  currentModel={currentModel}
+                  providerName={value?.provider}
+                  modelId={value?.model}
+                />
+                : <Trigger
                   disabled={disabled}
                   isInWorkflow={isInWorkflow}
                   modelDisabled={modelDisabled}

@@ -6,7 +6,7 @@ export enum PluginType {
   tool = 'tool',
   model = 'model',
   extension = 'extension',
-  agent = 'agent-strategy',
+  agent = 'agent_strategy',
 }
 
 export enum PluginSource {
@@ -109,7 +109,7 @@ export type PluginDetail = {
 }
 
 export type Plugin = {
-  type: 'plugin' | 'bundle' | 'model' | 'extension' | 'tool'
+  type: 'plugin' | 'bundle' | 'model' | 'extension' | 'tool' | 'agent_strategy'
   org: string
   author?: string
   name: string

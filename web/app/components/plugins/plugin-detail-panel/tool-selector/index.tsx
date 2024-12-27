@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Link from 'next/link'
 import {
   RiArrowLeftLine,
   RiArrowRightUpLine,
@@ -12,6 +13,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import ToolTrigger from '@/app/components/plugins/plugin-detail-panel/tool-selector/tool-trigger'
+import ToolItem from '@/app/components/plugins/plugin-detail-panel/tool-selector/tool-item'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
@@ -54,6 +56,7 @@ type Props = {
     parameters?: Record<string, any>
     extra?: Record<string, any>
   }) => void
+  onDelete?: () => void
   supportAddCustomTool?: boolean
   scope?: string
 }
@@ -63,6 +66,7 @@ const ToolSelector: FC<Props> = ({
   placement = 'left',
   offset = 4,
   onSelect,
+  onDelete,
   scope,
 }) => {
   const { t } = useTranslation()
@@ -155,12 +159,33 @@ const ToolSelector: FC<Props> = ({
           className='w-full'
           onClick={handleTriggerClick}
         >
-          <ToolTrigger
-            isConfigure
-            open={isShow}
-            value={value}
-            provider={currentProvider}
-          />
+          {!value?.provider_name && (
+            <ToolTrigger
+              isConfigure
+              open={isShow}
+              value={value}
+              provider={currentProvider}
+            />
+          )}
+          {value?.provider_name && (
+            <ToolItem
+              open={isShow}
+              icon={currentProvider?.icon}
+              providerName={value.provider_name}
+              toolName={value.tool_name}
+              onDelete={onDelete}
+              noAuth={currentProvider && !currentProvider.is_team_authorization}
+              onAuth={() => setShowSettingAuth(true)}
+              // uninstalled
+              errorTip={<div className='space-y-1 text-xs'>
+                <h3 className='text-text-primary font-semibold'>{t('workflow.nodes.agent.pluginNotInstalled')}</h3>
+                <p className='text-text-secondary tracking-tight'>{t('workflow.nodes.agent.pluginNotInstalledDesc')}</p>
+                <p>
+                  <Link href={'/plugins'} className='text-text-accent tracking-tight'>{t('workflow.nodes.agent.linkToPlugin')}</Link>
+                </p>
+              </div>}
+            />
+          )}
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1000]'>
           <div className={cn('relative w-[361px] min-h-20 max-h-[642px] pb-4 rounded-xl backdrop-blur-sm bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg', !isShowSettingAuth && 'overflow-y-auto pb-2')}>

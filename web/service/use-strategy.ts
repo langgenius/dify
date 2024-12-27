@@ -7,7 +7,7 @@ import {
   useQuery,
 } from '@tanstack/react-query'
 
-const NAME_SPACE = 'agent-strategy'
+const NAME_SPACE = 'agent_strategy'
 
 const useStrategyListKey = [NAME_SPACE, 'strategyList']
 export const useStrategyProviders = () => {

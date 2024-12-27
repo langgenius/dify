@@ -717,12 +717,17 @@ const translation = {
       model: '模型',
       toolbox: '工具箱',
       strategyNotSet: '代理策略未设置',
+      configureModel: '配置模型',
+      notAuthorized: '未授权',
       tools: '工具',
       maxIterations: '最大迭代次数',
       modelNotInstallTooltip: '此模型未安装',
       toolNotInstallTooltip: '{{tool}} 未安装',
       toolNotAuthorizedTooltip: '{{tool}} 未授权',
       strategyNotInstallTooltip: '{{strategy}} 未安装',
+      modelSelectorTooltips: {
+        deprecated: '此模型已弃用',
+      },
     },
   },
   tracing: {

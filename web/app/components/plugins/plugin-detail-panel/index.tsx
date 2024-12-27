@@ -33,6 +33,9 @@ const PluginDetailPanel: FC<Props> = ({
     console.log('tool change', val)
     setValue(val)
   }
+  const testDelete = () => {
+    setValue(undefined)
+  }
 
   if (!detail)
     return null
@@ -63,6 +66,7 @@ const PluginDetailPanel: FC<Props> = ({
               <ToolSelector
                 value={value}
                 onSelect={item => testChange(item)}
+                onDelete={testDelete}
               />
             </div>
           </div>
