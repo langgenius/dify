@@ -147,18 +147,7 @@ export type NodeStartedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
-  data: {
-    id: string
-    node_id: string
-    iteration_id?: string
-    parallel_run_id?: string
-    node_type: string
-    index: number
-    predecessor_node_id?: string
-    inputs: any
-    created_at: number
-    extras?: any
-  }
+  data: NodeTracing
 }
 
 export type FileResponse = {
@@ -176,120 +165,42 @@ export type NodeFinishedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
-  data: {
-    id: string
-    node_id: string
-    iteration_id?: string
-    node_type: string
-    index: number
-    predecessor_node_id?: string
-    inputs: any
-    process_data: any
-    outputs: any
-    status: string
-    error: string
-    elapsed_time: number
-    execution_metadata: {
-      total_tokens: number
-      total_price: number
-      currency: string
-      parallel_id?: string
-      parallel_start_node_id?: string
-      iteration_index?: number
-      iteration_id?: string
-      parallel_mode_run_id: string
-      error_strategy?: ErrorHandleTypeEnum
-    }
-    created_at: number
-    files?: FileResponse[]
-    retry_index?: number
-  }
+  data: NodeTracing
 }
 
 export type IterationStartedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
-  data: {
-    id: string
-    node_id: string
-    metadata: {
-      iterator_length: number
-      iteration_id: string
-      iteration_index: number
-    }
-    created_at: number
-    extras?: any
-  }
+  data: NodeTracing
 }
 
 export type IterationNextResponse = {
   task_id: string
   workflow_run_id: string
   event: string
-  data: {
-    id: string
-    node_id: string
-    index: number
-    output: any
-    extras?: any
-    created_at: number
-    parallel_mode_run_id: string
-    execution_metadata: {
-      parallel_id?: string
-      iteration_index: number
-      parallel_mode_run_id?: string
-    }
-    duration?: number
-  }
+  data: NodeTracing
 }
 
 export type IterationFinishedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
-  data: {
-    id: string
-    node_id: string
-    outputs: any
-    extras?: any
-    status: string
-    created_at: number
-    error: string
-    execution_metadata: {
-      parallel_id?: string
-    }
-  }
+  data: NodeTracing
 }
 
 export type ParallelBranchStartedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
-  data: {
-    parallel_id: string
-    parallel_start_node_id: string
-    parent_parallel_id: string
-    parent_parallel_start_node_id: string
-    iteration_id?: string
-    created_at: number
-  }
+  data: NodeTracing
 }
 
 export type ParallelBranchFinishedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
-  data: {
-    parallel_id: string
-    parallel_start_node_id: string
-    parent_parallel_id: string
-    parent_parallel_start_node_id: string
-    iteration_id?: string
-    status: string
-    created_at: number
-    error: string
-  }
+  data: NodeTracing
 }
 
 export type TextChunkResponse = {

@@ -3,7 +3,6 @@ import { useStoreApi } from 'reactflow'
 import produce from 'immer'
 import type { IterationFinishedResponse } from '@/types/workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { DEFAULT_ITER_TIMES } from '@/app/components/workflow/constants'
 
 export const useWorkflowNodeIterationFinished = () => {
@@ -22,15 +21,14 @@ export const useWorkflowNodeIterationFinished = () => {
       setNodes,
     } = store.getState()
     const nodes = getNodes()
-
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
-      const tracing = draft.tracing!
-      const currIterationNode = tracing.find(trace => trace.node_id === data.node_id)
-      if (currIterationNode) {
-        Object.assign(currIterationNode, {
+      const currentIndex = draft.tracing!.findIndex(item => item.id === data.id)
+
+      if (currentIndex > -1) {
+        draft.tracing![currentIndex] = {
+          ...draft.tracing![currentIndex],
           ...data,
-          status: NodeRunningStatus.Succeeded,
-        })
+        }
       }
     }))
     setIterTimes(DEFAULT_ITER_TIMES)
