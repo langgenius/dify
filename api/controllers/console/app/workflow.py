@@ -479,7 +479,7 @@ api.add_resource(
     WorkflowDraftRunIterationNodeApi, "/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run"
 )
 api.add_resource(PublishedWorkflowApi, "/apps/<uuid:app_id>/workflows/publish")
-api.add_resource(PublishedAllWorkflowApi, "/apps/<uuid:app_id>/workflows/publish/all")
+api.add_resource(PublishedAllWorkflowApi, "/apps/<uuid:app_id>/workflows")
 api.add_resource(DefaultBlockConfigsApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
 api.add_resource(
     DefaultBlockConfigApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>"

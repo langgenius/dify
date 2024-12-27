@@ -98,16 +98,6 @@ class WorkflowService:
         if has_more:
             workflows = workflows[:-1]
 
-        if len(workflows) > 1:
-            workflows[1].version = "latest"
-
-        for workflow in workflows:
-            try:
-                version_datetime = datetime.strptime(workflow.version, "%Y-%m-%d %H:%M:%S.%f")
-                workflow.version = version_datetime.strftime("%Y-%m-%d %H:%M:%S")
-            except ValueError:
-                pass
-
         return workflows, has_more
 
     def sync_draft_workflow(
