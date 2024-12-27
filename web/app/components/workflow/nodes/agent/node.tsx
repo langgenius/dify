@@ -18,26 +18,24 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
   // TODO: Implement models
   const models = useMemo(() => {
     if (!inputs) return []
-    const models = currentStrategy?.parameters
-      .filter(param => param.type === FormTypeEnum.modelSelector)
-      .flatMap((param) => {
-        const item = inputs.agent_parameters?.[param.name]
-        if (!item) {
-          if (param.required)
-            return null
-          else
-            return []
-        }
-        return {
-          provider: item.provider,
-          model: item.model,
-          param: param.name,
-        }
-      }) || []
-    return models
     // if selected, show in node
     // if required and not selected, show empty selector
     // if not required and not selected, show nothing
+    const models = currentStrategy?.parameters
+      .filter(param => param.type === FormTypeEnum.modelSelector)
+      .reduce((acc, param) => {
+        const item = inputs.agent_parameters?.[param.name]
+        if (!item) {
+          if (param.required) {
+            acc.push({ param: param.name })
+            return acc
+          }
+          else { return acc }
+        }
+        acc.push({ provider: item.provider, model: item.model, param: param.name })
+        return acc
+      }, [] as Array<{ param: string } | { provider: string, model: string, param: string }>) || []
+    return models
   }, [currentStrategy, inputs])
 
   const tools = useMemo(() => {
@@ -78,6 +76,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
           key={model?.param || Math.random()}
           modelList={[]}
           defaultModel={model || undefined}
+          readonly
         />
       })}
     </Group>}
