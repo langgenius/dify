@@ -1,22 +1,25 @@
 import { BlockEnum } from '@/app/components/workflow/types'
 import type { NodeTracing } from '@/types/workflow'
 
-function printNodeStructure(node: NodeTracing, level: number) {
-  const indent = '  '.repeat(level)
+function printNodeStructure(node: NodeTracing, depth: number) {
+  const indent = '  '.repeat(depth)
   console.log(`${indent}${node.title}`)
   if (node.parallelDetail?.children) {
     node.parallelDetail.children.forEach((child) => {
-      printNodeStructure(child, level + 1)
+      printNodeStructure(child, depth + 1)
     })
   }
 }
 
 function addTitle({
-  list, level, parallelNumRecord,
+  list, depth, belongParallelIndexInfo,
 }: {
-  list: NodeTracing[], level: number, parallelNumRecord: Record<string, number>
+  list: NodeTracing[],
+  depth: number,
+  belongParallelIndexInfo?: string,
 }, t: any) {
   let branchIndex = 0
+  const hasMoreThanOneParallel = list.filter(node => node.parallelDetail?.isParallelStartNode).length > 1
   list.forEach((node) => {
     const parallel_id = node.parallel_id ?? node.execution_metadata?.parallel_id ?? null
     const parallel_start_node_id = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
@@ -26,15 +29,20 @@ function addTitle({
       return
 
     const isParallelStartNode = node.parallelDetail?.isParallelStartNode
-    if (isParallelStartNode)
-      parallelNumRecord.num++
 
-    const letter = parallelNumRecord.num > 1 ? String.fromCharCode(64 + level) : ''
-    const parallelLevelInfo = `${parallelNumRecord.num}${letter}`
+    const parallelIndexLetter = (() => {
+      if (!isParallelStartNode || !hasMoreThanOneParallel)
+        return ''
+
+      const index = 1 + list.filter(node => node.parallelDetail?.isParallelStartNode).findIndex(item => item.node_id === node.node_id)
+      return String.fromCharCode(64 + index)
+    })()
+
+    const parallelIndexInfo = `${depth}${parallelIndexLetter}`
 
     if (isParallelStartNode) {
       node.parallelDetail!.isParallelStartNode = true
-      node.parallelDetail!.parallelTitle = `${t('workflow.common.parallel')}-${parallelLevelInfo}`
+      node.parallelDetail!.parallelTitle = `${t('workflow.common.parallel')}-${parallelIndexInfo}`
     }
 
     const isBrachStartNode = parallel_start_node_id === node.node_id
@@ -47,14 +55,14 @@ function addTitle({
         }
       }
 
-      node.parallelDetail!.branchTitle = `${t('workflow.common.branch')}-${parallelLevelInfo}-${branchLetter}`
+      node.parallelDetail!.branchTitle = `${t('workflow.common.branch')}-${belongParallelIndexInfo}-${branchLetter}`
     }
 
     if (node.parallelDetail?.children && node.parallelDetail.children.length > 0) {
       addTitle({
         list: node.parallelDetail.children,
-        level: level + 1,
-        parallelNumRecord,
+        depth: depth + 1,
+        belongParallelIndexInfo: parallelIndexInfo,
       }, t)
     }
   })
@@ -144,14 +152,9 @@ const format = (list: NodeTracing[], t: any): NodeTracing[] => {
   //   console.log(`----- p: ${now} end -----`)
   // })
 
-  const parallelNumRecord: Record<string, number> = {
-    num: 0,
-  }
-
   addTitle({
     list: filteredInParallelSubNodes,
-    level: 1,
-    parallelNumRecord,
+    depth: 1,
   }, t)
 
   return filteredInParallelSubNodes
