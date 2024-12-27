@@ -34,6 +34,7 @@ const MultipleToolSelector = ({
   onChange,
 }: Props) => {
   const { t } = useTranslation()
+  const enabledCount = value.filter(item => item.enabled).length
   // collapse control
   const [collapse, setCollapse] = React.useState(false)
   const handleCollapse = () => {
@@ -101,7 +102,7 @@ const MultipleToolSelector = ({
         {value.length > 0 && (
           <>
             <div className='flex items-center gap-1 text-text-tertiary system-xs-medium'>
-              <span>{`${value.length}/${value.length}`}</span>
+              <span>{`${enabledCount}/${value.length}`}</span>
               <span>{t('appDebug.agent.tools.enabled')}</span>
             </div>
             <Divider type='vertical' className='ml-3 mr-1 h-3' />
