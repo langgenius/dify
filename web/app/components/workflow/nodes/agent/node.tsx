@@ -72,10 +72,15 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     >
       {models.map((model) => {
         return <ModelSelector
-        // TODO: ugly
-          key={model?.param || Math.random()}
+          key={model.param}
           modelList={[]}
-          defaultModel={model || undefined}
+          defaultModel={
+            'provider' in model
+              ? {
+                provider: model.provider,
+                model: model.model,
+              }
+              : undefined}
           readonly
         />
       })}
