@@ -55,7 +55,18 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const { isAPIKeySet } = useProviderContext()
   const [open, setOpen] = useState(false)
   const scopeArray = scope.split('&')
-  const scopeFeatures = scopeArray.slice(1) || []
+  const scopeFeatures = useMemo(() => {
+    if (scopeArray.includes('all'))
+      return []
+    return scopeArray.filter(item => ![
+      ModelTypeEnum.textGeneration,
+      ModelTypeEnum.textEmbedding,
+      ModelTypeEnum.rerank,
+      ModelTypeEnum.moderation,
+      ModelTypeEnum.speech2text,
+      ModelTypeEnum.tts,
+    ].includes(item as ModelTypeEnum))
+  }, [scopeArray])
 
   const { data: textGenerationList } = useModelList(ModelTypeEnum.textGeneration)
   const { data: textEmbeddingList } = useModelList(ModelTypeEnum.textEmbedding)
