@@ -59,7 +59,7 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
         try:
             if isinstance(value, list):
                 if output_image:
-                    images = _extract_images_from_file(files=value, user=current_user)
+                    images = _extract_images_from_file(files=value)
                 extracted_text_list = list(map(_extract_text_from_file, value))
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -69,7 +69,7 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
                 )
             elif isinstance(value, File):
                 if output_image:
-                    images = _extract_images_from_file([value], user=current_user)
+                    images = _extract_images_from_file([value])
                 extracted_text = _extract_text_from_file(value)
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -223,7 +223,7 @@ def _extract_images_from_pdf(file: File) -> list[File]:
         raise Exception(f"Failed to convert PDF to images: {e}")
 
 
-def _extract_images_from_file(files: list[File], user) -> list[File]:
+def _extract_images_from_file(files: list[File]):
     try:
         for file in files:
             if file.extension:
@@ -236,6 +236,7 @@ def _extract_images_from_file(files: list[File], user) -> list[File]:
                 return []
             else:
                 raise UnsupportedFileTypeError("Unable to determine file type: MIME type or file extension is missing")
+        return []
     except Exception as e:
         raise TextExtractionError(f"Failed to extract image from PDF: {str(e)}") from e
 
