@@ -38,7 +38,11 @@ def add_document_to_index_task(dataset_document_id: str):
     try:
         segments = (
             db.session.query(DocumentSegment)
-            .filter(DocumentSegment.document_id == dataset_document.id, DocumentSegment.enabled == True)
+            .filter(
+                DocumentSegment.document_id == dataset_document.id,
+                DocumentSegment.enabled == False,
+                DocumentSegment.status == "completed",
+            )
             .order_by(DocumentSegment.position.asc())
             .all()
         )
@@ -85,6 +89,14 @@ def add_document_to_index_task(dataset_document_id: str):
         db.session.query(DatasetAutoDisableLog).filter(
             DatasetAutoDisableLog.document_id == dataset_document.id
         ).delete()
+
+        # update segment to enable
+        for segment in segments:
+            segment.enabled = True
+            segment.disabled_at = None
+            segment.disabled_by = None
+            segment.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            db.session.add(segment)
         db.session.commit()
 
         end_at = time.perf_counter()
