@@ -62,6 +62,7 @@ class PluginParameter(BaseModel):
     default: Optional[Union[float, int, str]] = None
     min: Optional[Union[float, int]] = None
     max: Optional[Union[float, int]] = None
+    precision: Optional[int] = None
     options: list[PluginParameterOption] = Field(default_factory=list)
 
     @field_validator("options", mode="before")
