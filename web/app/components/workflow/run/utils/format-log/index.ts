@@ -5,7 +5,7 @@ import formatRetryNode from './retry'
 import formatAgentNode from './agent'
 
 const formatToTracingNodeList = (list: NodeTracing[], t: any) => {
-  const allItems = [...list].reverse()
+  const allItems = [...list].sort((a, b) => a.index - b.index)
   /*
   * First handle not change list structure node
   * Because Handle struct node will put the node in different

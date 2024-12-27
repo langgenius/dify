@@ -127,6 +127,7 @@ export const AgentStrategySelector = (props: AgentStrategySelectorProps) => {
                 agent_strategy_provider_name: tool!.provider_name,
                 agent_parameters: tool!.params,
                 agent_strategy_label: tool!.tool_label,
+                agent_output_schema: tool!.output_schema,
               })
               setOpen(false)
             }}

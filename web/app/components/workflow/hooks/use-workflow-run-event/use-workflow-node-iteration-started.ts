@@ -35,15 +35,13 @@ export const useWorkflowNodeIterationStarted = () => {
       transform,
     } = store.getState()
     const nodes = getNodes()
-    setIterTimes(DEFAULT_ITER_TIMES)
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
       draft.tracing!.push({
         ...data,
         status: NodeRunningStatus.Running,
-        details: [],
-        iterDurationMap: {},
-      } as any)
+      })
     }))
+    setIterTimes(DEFAULT_ITER_TIMES)
 
     const {
       setViewport,
