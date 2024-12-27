@@ -369,11 +369,12 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 with Session(db.engine) as session:
                     workflow_node_execution = self._handle_workflow_node_execution_failed(session=session, event=event)
 
-                response_finish = self._workflow_node_finish_to_stream_response(
-                    event=event,
-                    task_id=self._application_generate_entity.task_id,
-                    workflow_node_execution=workflow_node_execution,
-                )
+                    response_finish = self._workflow_node_finish_to_stream_response(
+                        session=session,
+                        event=event,
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_node_execution=workflow_node_execution,
+                    )
 
                 if response_finish:
                     yield response_finish

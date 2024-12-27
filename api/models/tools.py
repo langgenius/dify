@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 
 import sqlalchemy as sa
 from deprecated import deprecated

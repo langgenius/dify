@@ -67,8 +67,6 @@ class WorkflowCycleManage:
     _application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity]
     _task_state: WorkflowTaskState
     _workflow_system_variables: dict[SystemVariableKey, Any]
-    _wip_workflow_node_executions: dict[str, WorkflowNodeExecution]
-    _wip_workflow_agent_logs: dict[str, list[AgentLogStreamResponse.Data]]
 
     def _handle_workflow_run_start(
         self,
@@ -313,33 +311,11 @@ class WorkflowCycleManage:
         inputs = WorkflowEntry.handle_special_values(event.inputs)
         process_data = WorkflowEntry.handle_special_values(event.process_data)
         outputs = WorkflowEntry.handle_special_values(event.outputs)
-        execution_metadata_dict = event.execution_metadata
-        if self._wip_workflow_agent_logs.get(workflow_node_execution.id):
-            if not execution_metadata_dict:
-                execution_metadata_dict = {}
-
-            execution_metadata_dict[NodeRunMetadataKey.AGENT_LOG] = self._wip_workflow_agent_logs.get(
-                workflow_node_execution.id, []
-            )
-
+        execution_metadata_dict = dict(event.execution_metadata or {})
         execution_metadata = json.dumps(jsonable_encoder(execution_metadata_dict)) if execution_metadata_dict else None
         finished_at = datetime.now(UTC).replace(tzinfo=None)
         elapsed_time = (finished_at - event.start_at).total_seconds()
 
-        db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution.id).update(
-            {
-                WorkflowNodeExecution.status: WorkflowNodeExecutionStatus.SUCCEEDED.value,
-                WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else None,
-                WorkflowNodeExecution.process_data: json.dumps(process_data) if process_data else None,
-                WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else None,
-                WorkflowNodeExecution.execution_metadata: execution_metadata,
-                WorkflowNodeExecution.finished_at: finished_at,
-                WorkflowNodeExecution.elapsed_time: elapsed_time,
-            }
-        )
-
-        db.session.commit()
-        db.session.close()
         process_data = WorkflowEntry.handle_special_values(event.process_data)
 
         workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
@@ -372,35 +348,9 @@ class WorkflowCycleManage:
         outputs = WorkflowEntry.handle_special_values(event.outputs)
         finished_at = datetime.now(UTC).replace(tzinfo=None)
         elapsed_time = (finished_at - event.start_at).total_seconds()
-        execution_metadata_dict = event.execution_metadata
-        if self._wip_workflow_agent_logs.get(workflow_node_execution.id):
-            if not execution_metadata_dict:
-                execution_metadata_dict = {}
-
-            execution_metadata_dict[NodeRunMetadataKey.AGENT_LOG] = self._wip_workflow_agent_logs.get(
-                workflow_node_execution.id, []
-            )
-
-        execution_metadata = json.dumps(jsonable_encoder(execution_metadata_dict)) if execution_metadata_dict else None
-        db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution.id).update(
-            {
-                WorkflowNodeExecution.status: (
-                    WorkflowNodeExecutionStatus.FAILED.value
-                    if not isinstance(event, QueueNodeExceptionEvent)
-                    else WorkflowNodeExecutionStatus.EXCEPTION.value
-                ),
-                WorkflowNodeExecution.error: event.error,
-                WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else None,
-                WorkflowNodeExecution.process_data: json.dumps(process_data) if process_data else None,
-                WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else None,
-                WorkflowNodeExecution.finished_at: finished_at,
-                WorkflowNodeExecution.elapsed_time: elapsed_time,
-                WorkflowNodeExecution.execution_metadata: execution_metadata,
-            }
+        execution_metadata = (
+            json.dumps(jsonable_encoder(event.execution_metadata)) if event.execution_metadata else None
         )
-
-        db.session.commit()
-        db.session.close()
         process_data = WorkflowEntry.handle_special_values(event.process_data)
         workflow_node_execution.status = (
             WorkflowNodeExecutionStatus.FAILED.value
@@ -889,41 +839,10 @@ class WorkflowCycleManage:
         :param event: agent log event
         :return:
         """
-        node_execution = self._wip_workflow_node_executions.get(event.node_execution_id)
-        if not node_execution:
-            raise Exception(f"Workflow node execution not found: {event.node_execution_id}")
-
-        node_execution_id = node_execution.id
-        original_agent_logs = self._wip_workflow_agent_logs.get(node_execution_id, [])
-
-        # try to find the log with the same id
-        for log in original_agent_logs:
-            if log.id == event.id:
-                # update the log
-                log.status = event.status
-                log.error = event.error
-                log.data = event.data
-                break
-        else:
-            # append the log
-            original_agent_logs.append(
-                AgentLogStreamResponse.Data(
-                    id=event.id,
-                    parent_id=event.parent_id,
-                    node_execution_id=node_execution_id,
-                    error=event.error,
-                    status=event.status,
-                    data=event.data,
-                    label=event.label,
-                )
-            )
-
-        self._wip_workflow_agent_logs[node_execution_id] = original_agent_logs
-
         return AgentLogStreamResponse(
             task_id=task_id,
             data=AgentLogStreamResponse.Data(
-                node_execution_id=node_execution_id,
+                node_execution_id=event.node_execution_id,
                 id=event.id,
                 parent_id=event.parent_id,
                 label=event.label,

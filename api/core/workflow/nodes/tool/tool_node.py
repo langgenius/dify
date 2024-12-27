@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.file import File, FileTransferMethod, FileType
+from core.file import File, FileTransferMethod
 from core.plugin.manager.exc import PluginDaemonClientSideError
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.tool_engine import ToolEngine
@@ -189,9 +189,11 @@ class ToolNode(BaseNode[ToolNodeData]):
             conversation_id=None,
         )
 
-        files: list[File] = []
         text = ""
+        files: list[File] = []
         json: list[dict] = []
+
+        agent_logs: list[AgentLog] = []
 
         variables: dict[str, Any] = {}
 
@@ -239,14 +241,16 @@ class ToolNode(BaseNode[ToolNodeData]):
                     tool_file = session.scalar(stmt)
                     if tool_file is None:
                         raise ToolFileError(f"tool file {tool_file_id} not exists")
+
+                mapping = {
+                    "tool_file_id": tool_file_id,
+                    "transfer_method": FileTransferMethod.TOOL_FILE,
+                }
+
                 files.append(
-                    File(
+                    file_factory.build_from_mapping(
+                        mapping=mapping,
                         tenant_id=self.tenant_id,
-                        type=FileType.IMAGE,
-                        transfer_method=FileTransferMethod.TOOL_FILE,
-                        related_id=tool_file_id,
-                        extension=None,
-                        mime_type=message.meta.get("mime_type", "application/octet-stream"),
                     )
                 )
             elif message.type == ToolInvokeMessage.MessageType.TEXT:

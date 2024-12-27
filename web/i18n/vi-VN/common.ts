@@ -42,6 +42,11 @@ const translation = {
     zoomOut: 'Thu nhỏ',
     zoomIn: 'Phóng to',
     openInNewTab: 'Mở trong tab mới',
+    regenerate: 'Tái tạo',
+    close: 'Đóng',
+    saveAndRegenerate: 'Lưu và tạo lại các phần con',
+    view: 'Cảnh',
+    viewMore: 'XEM THÊM',
   },
   placeholder: {
     input: 'Vui lòng nhập',
@@ -474,6 +479,7 @@ const translation = {
     emptyTip: 'Kiến thức chưa được liên kết, vui lòng đi đến ứng dụng hoặc plug-in để hoàn thành liên kết.',
     viewDoc: 'Xem tài liệu',
     relatedApp: 'các ứng dụng liên kết',
+    noRelatedApp: 'Không có ứng dụng được liên kết',
   },
   voiceInput: {
     speaking: 'Hãy nói...',

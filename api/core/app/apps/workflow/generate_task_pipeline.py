@@ -114,9 +114,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         }
 
         self._task_state = WorkflowTaskState()
-        self._wip_workflow_node_executions = {}
-        self._wip_workflow_agent_logs = {}
-        self.total_tokens: int = 0
+        self._workflow_run_id = ""
 
     def process(self) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
         """

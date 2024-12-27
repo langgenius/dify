@@ -25,6 +25,11 @@ const translation = {
   viewChart: 'Zobacz WYKRES WEKTOROWY',
   settingTitle: 'Ustawienie pobierania',
   viewDetail: 'Pokaż szczegóły',
+  keyword: 'Słowa kluczowe',
+  hitChunks: 'Trafienie w {{num}} fragmentów podrzędnych',
+  open: 'Otwierać',
+  records: 'Rekordy',
+  chunkDetail: 'Szczegóły kawałka',
 }
 
 export default translation

@@ -42,6 +42,11 @@ const translation = {
     openInNewTab: 'Otwórz w nowej karcie',
     zoomIn: 'Powiększenie',
     zoomOut: 'Pomniejszanie',
+    saveAndRegenerate: 'Zapisywanie i regeneracja fragmentów podrzędnych',
+    view: 'Widok',
+    regenerate: 'Ponownie wygenerować',
+    viewMore: 'ZOBACZ WIĘCEJ',
+    close: 'Zamykać',
   },
   placeholder: {
     input: 'Proszę wprowadzić',
@@ -489,6 +494,7 @@ const translation = {
       'Wiedza nie została powiązana, przejdź do aplikacji lub wtyczki, aby ukończyć powiązanie.',
     viewDoc: 'Zobacz dokumentację',
     relatedApp: 'powiązane aplikacje',
+    noRelatedApp: 'Brak połączonych aplikacji',
   },
   voiceInput: {
     speaking: 'Mów teraz...',

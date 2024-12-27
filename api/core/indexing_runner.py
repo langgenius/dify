@@ -31,7 +31,6 @@ from core.rag.splitter.fixed_text_splitter import (
 )
 from core.rag.splitter.text_splitter import TextSplitter
 from core.tools.utils.rag_web_reader import get_image_upload_file_ids
-from core.tools.utils.text_processing_utils import remove_leading_symbols
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
