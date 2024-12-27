@@ -1,5 +1,6 @@
 'use client'
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { useWorkflowRun } from '../hooks'
 import VersionHistoryItem from './version-history-item'
@@ -16,7 +17,7 @@ const VersionHistoryModal = () => {
   const [page, setPage] = useState(1)
   const { handleRestoreFromPublishedWorkflow } = useWorkflowRun()
   const appDetail = useAppStore.getState().appDetail
-
+  const { t } = useTranslation()
   const {
     data: versionHistory,
     isLoading,
@@ -69,13 +70,13 @@ const VersionHistoryModal = () => {
                     className='text-sm'
                     onClick={handleNextPage}
                   >
-                  workflow.common.loadMore
+                    {t('workflow.common.loadMore')}
                   </Button>
                 </div>
               )}
               {!isLoading && !versionHistory?.items?.length && (
                 <div className='flex items-center justify-center h-10 text-gray-500'>
-                workflow.common.noHistory
+                  {t('workflow.common.noHistory')}
                 </div>
               )}
             </>
