@@ -9,12 +9,32 @@ type VersionHistoryItemProps = {
   item: VersionHistory
   selectedVersion: string
   onClick: (item: VersionHistory) => void
+  curIdx: number
+  page: number
 }
 
-const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({ item, selectedVersion, onClick }) => {
+const formatVersion = (version: string, curIdx: number, page: number): string => {
+  if (curIdx === 0 && page === 1)
+    return WorkflowVersion.Draft
+  if (curIdx === 1 && page === 1)
+    return WorkflowVersion.Latest
+  try {
+    const date = new Date(version)
+    if (isNaN(date.getTime()))
+      return version
+
+    // format as YYYY-MM-DD HH:mm:ss
+    return date.toISOString().slice(0, 19).replace('T', ' ')
+  }
+  catch {
+    return version
+  }
+}
+
+const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({ item, selectedVersion, onClick, curIdx, page }) => {
   const { t } = useTranslation()
   const formatTime = (time: number) => dayjs.unix(time).format('YYYY-MM-DD HH:mm:ss')
-
+  const formattedVersion = formatVersion(item.version, curIdx, page)
   const renderVersionLabel = (version: string) => (
     (version === WorkflowVersion.Draft || version === WorkflowVersion.Latest)
       ? (
@@ -29,16 +49,16 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({ item, selectedV
     <div
       className={cn(
         'flex items-center p-2 h-12 text-xs font-medium text-gray-700 justify-between',
-        item.version === selectedVersion ? '' : 'hover:bg-gray-100',
-        item.version === WorkflowVersion.Draft ? 'cursor-not-allowed' : 'cursor-pointer',
+        formattedVersion === selectedVersion ? '' : 'hover:bg-gray-100',
+        formattedVersion === WorkflowVersion.Draft ? 'cursor-not-allowed' : 'cursor-pointer',
       )}
       onClick={() => item.version !== WorkflowVersion.Draft && onClick(item)}
     >
       <div className='flex flex-col gap-1 py-2'>
-        <span className="text-left">{formatTime(item.version === WorkflowVersion.Draft ? item.updated_at : item.created_at)}</span>
+        <span className="text-left">{formatTime(formattedVersion === WorkflowVersion.Draft ? item.updated_at : item.created_at)}</span>
         <span className="text-left">{t('workflow.panel.createdBy')}  {item.created_by.name}</span>
       </div>
-      {renderVersionLabel(item.version)}
+      {renderVersionLabel(formattedVersion)}
     </div>
   )
 }

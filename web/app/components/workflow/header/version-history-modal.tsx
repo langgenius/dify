@@ -21,7 +21,7 @@ const VersionHistoryModal = () => {
     data: versionHistory,
     isLoading,
   } = useSWR(
-    `/apps/${appDetail?.id}/workflows/publish/all?page=${page}&limit=${limit}`,
+    `/apps/${appDetail?.id}/workflows?page=${page}&limit=${limit}`,
     fetchPublishedAllWorkflow,
   )
 
@@ -48,12 +48,14 @@ const VersionHistoryModal = () => {
           )
           : (
             <>
-              {versionHistory?.items?.map(item => (
+              {versionHistory?.items?.map((item, idx) => (
                 <VersionHistoryItem
                   key={item.version}
                   item={item}
                   selectedVersion={selectedVersion}
                   onClick={handleVersionClick}
+                  curIdx={idx}
+                  page={page}
                 />
               ))}
               {isLoading && page > 1 && (
@@ -67,13 +69,13 @@ const VersionHistoryModal = () => {
                     className='text-sm'
                     onClick={handleNextPage}
                   >
-                  加载更多
+                  workflow.common.loadMore
                   </Button>
                 </div>
               )}
               {!isLoading && !versionHistory?.items?.length && (
                 <div className='flex items-center justify-center h-10 text-gray-500'>
-                暂无历史版本
+                workflow.common.noHistory
                 </div>
               )}
             </>
