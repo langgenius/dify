@@ -3,7 +3,7 @@ const translation = {
     all: '全部',
     models: '模型',
     tools: '工具',
-    agents: 'Agent Strategy',
+    agents: 'Agent 策略',
     extensions: '扩展',
     bundles: '插件集',
   },

@@ -1,12 +1,12 @@
 'use client'
 import { useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
 import type { Plugin } from '../../types'
 import type { MarketplaceCollection } from '../types'
 import { useMarketplaceContext } from '../context'
 import List from './index'
 import SortDropdown from '../sort-dropdown'
 import Loading from '@/app/components/base/loading'
+import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 
 type ListWrapperProps = {
   marketplaceCollections: MarketplaceCollection[]
@@ -20,7 +20,7 @@ const ListWrapper = ({
   showInstallButton,
   locale,
 }: ListWrapperProps) => {
-  const { t } = useTranslation()
+  const { t } = useMixedTranslation(locale)
   const plugins = useMarketplaceContext(v => v.plugins)
   const pluginsTotal = useMarketplaceContext(v => v.pluginsTotal)
   const marketplaceCollectionsFromClient = useMarketplaceContext(v => v.marketplaceCollectionsFromClient)
@@ -43,7 +43,7 @@ const ListWrapper = ({
           <div className='top-5 flex items-center mb-4 pt-3'>
             <div className='title-xl-semi-bold text-text-primary'>{t('plugin.marketplace.pluginsResult', { num: pluginsTotal })}</div>
             <div className='mx-3 w-[1px] h-3.5 bg-divider-regular'></div>
-            <SortDropdown />
+            <SortDropdown locale={locale} />
           </div>
         )
       }

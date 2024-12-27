@@ -45,7 +45,7 @@ type FormProps<
     props: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'>
   ) => ReactNode
   // If return falsy value, this field will fallback to default render
-  override?: [Array<FormTypeEnum>, (formSchema: CredentialFormSchema) => ReactNode]
+  override?: [Array<FormTypeEnum>, (formSchema: CredentialFormSchema, props: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'>) => ReactNode]
 }
 
 function Form<
@@ -71,6 +71,22 @@ function Form<
 }: FormProps<CustomFormSchema>) {
   const language = useLanguage()
   const [changeKey, setChangeKey] = useState('')
+  const filteredProps: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'> = {
+    className,
+    itemClassName,
+    fieldLabelClassName,
+    value,
+    onChange,
+    formSchemas,
+    validating,
+    validatedSuccess,
+    showOnVariableMap,
+    isEditMode,
+    readonly,
+    inputClassName,
+    isShowDefaultValue,
+    fieldMoreInfo,
+  }
 
   const handleFormChange = (key: string, val: string | boolean) => {
     if (isEditMode && (key === '__model_type' || key === '__model_name'))
@@ -108,7 +124,7 @@ function Form<
     if (override) {
       const [overrideTypes, overrideRender] = override
       if (overrideTypes.includes(formSchema.type as FormTypeEnum)) {
-        const node = overrideRender(formSchema as CredentialFormSchema)
+        const node = overrideRender(formSchema as CredentialFormSchema, filteredProps)
         if (node)
           return node
       }
@@ -345,24 +361,8 @@ function Form<
     }
 
     // @ts-expect-error it work
-    if (!Object.values(FormTypeEnum).includes(formSchema.type)) {
-      return customRenderField?.(formSchema as CustomFormSchema, {
-        className,
-        itemClassName,
-        fieldLabelClassName,
-        value,
-        onChange,
-        formSchemas,
-        validating,
-        validatedSuccess,
-        showOnVariableMap,
-        isEditMode,
-        readonly,
-        inputClassName,
-        isShowDefaultValue,
-        fieldMoreInfo,
-      })
-    }
+    if (!Object.values(FormTypeEnum).includes(formSchema.type))
+      return customRenderField?.(formSchema as CustomFormSchema, filteredProps)
   }
 
   return (

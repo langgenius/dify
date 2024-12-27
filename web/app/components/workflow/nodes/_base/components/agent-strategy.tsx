@@ -1,4 +1,5 @@
-import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { CredentialFormSchemaNumberInput } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { type CredentialFormSchema, FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolVarInputs } from '../../tool/types'
 import ListEmpty from '@/app/components/base/list-empty'
 import { AgentStrategySelector } from './agent-strategy-selector'
@@ -11,6 +12,7 @@ import Slider from '@/app/components/base/slider'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import Field from './field'
 import type { ComponentProps } from 'react'
+import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 export type Strategy = {
   agent_strategy_provider_name: string
@@ -29,11 +31,10 @@ export type AgentStrategyProps = {
 
 type CustomSchema<Type, Field = {}> = Omit<CredentialFormSchema, 'type'> & { type: Type } & Field
 
-type MaxIterFormSchema = CustomSchema<'max-iter'>
 type ToolSelectorSchema = CustomSchema<'tool-selector'>
 type MultipleToolSelectorSchema = CustomSchema<'array[tools]'>
 
-type CustomField = MaxIterFormSchema | ToolSelectorSchema | MultipleToolSelectorSchema
+type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema
 
 const devMockForm = [{
   name: 'model',
@@ -114,36 +115,77 @@ const devMockForm = [{
   max: null,
   options: [],
   type: 'string',
+},
+{
+  name: 'max iterations',
+  label: {
+    en_US: 'Max Iterations',
+    zh_Hans: '最大迭代次数',
+    pt_BR: 'Max Iterations',
+    ja_JP: 'Max Iterations',
+  },
+  placeholder: null,
+  scope: null,
+  auto_generate: null,
+  template: null,
+  required: true,
+  default: '1',
+  min: 1,
+  max: 10,
+  type: FormTypeEnum.textNumber,
+  tooltip: {
+    en_US: 'The maximum number of iterations to run',
+    zh_Hans: '运行的最大迭代次数',
+    pt_BR: 'The maximum number of iterations to run',
+    ja_JP: 'The maximum number of iterations to run',
+  },
 }]
 
 export const AgentStrategy = (props: AgentStrategyProps) => {
   const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange } = props
   const { t } = useTranslation()
+  const language = useLanguage()
+  const override: ComponentProps<typeof Form<CustomField>>['override'] = [
+    [FormTypeEnum.textNumber],
+    (schema, props) => {
+      switch (schema.type) {
+        case FormTypeEnum.textNumber: {
+          const def = schema as CredentialFormSchemaNumberInput
+          if (!def.max || !def.min)
+            return false
+
+          const defaultValue = schema.default ? Number.parseInt(schema.default) : 1
+          const value = props.value[schema.variable] || defaultValue
+          const onChange = (value: number) => {
+            props.onChange({ ...props.value, [schema.variable]: value })
+          }
+          return <Field title={def.label[language]} tooltip={def.tooltip?.[language]} inline>
+            <div className='flex w-[200px] items-center gap-3'>
+              <Slider
+                value={value}
+                onChange={onChange}
+                className='w-full'
+                min={def.min}
+                max={def.max}
+              />
+              <InputNumber
+                value={value}
+                // TODO: maybe empty, handle this
+                onChange={onChange as any}
+                defaultValue={defaultValue}
+                size='sm'
+                min={def.min}
+                max={def.max}
+                className='w-12'
+              />
+            </div>
+          </Field>
+        }
+      }
+    },
+  ]
   const renderField: ComponentProps<typeof Form<CustomField>>['customRenderField'] = (schema, props) => {
     switch (schema.type) {
-      case 'max-iter': {
-        const defaultValue = schema.default ? Number.parseInt(schema.default) : 1
-        const value = props.value[schema.variable] || defaultValue
-        const onChange = (value: number) => {
-          props.onChange({ ...props.value, [schema.variable]: value })
-        }
-        return <Field title={t('workflow.nodes.agent.maxIterations')} tooltip={'max iter'} inline>
-          <div className='flex w-[200px] items-center gap-3'>
-            <Slider value={value} onChange={onChange} className='w-full' min={1} max={10} />
-            <InputNumber
-              value={value}
-              // TODO: maybe empty, handle this
-              onChange={onChange as any}
-              defaultValue={defaultValue}
-              size='sm'
-              min={1}
-              max={10}
-              className='w-12'
-              placeholder=''
-            />
-          </div>
-        </Field>
-      }
       case 'tool-selector': {
         const value = props.value[schema.variable]
         const onChange = (value: any) => {
@@ -183,6 +225,7 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
             isAgentStrategy={true}
             fieldLabelClassName='uppercase'
             customRenderField={renderField}
+            override={override}
           />
         </div>
         : <ListEmpty

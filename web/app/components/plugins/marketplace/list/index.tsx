@@ -69,7 +69,7 @@ const List = ({
       }
       {
         plugins && !plugins.length && (
-          <Empty className={emptyClassName} />
+          <Empty className={emptyClassName} locale={locale} />
         )
       }
     </>
