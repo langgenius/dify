@@ -341,7 +341,7 @@ class WorkflowCycleManage:
         inputs = WorkflowEntry.handle_special_values(event.inputs)
         process_data = WorkflowEntry.handle_special_values(event.process_data)
         outputs = WorkflowEntry.handle_special_values(event.outputs)
-        execution_metadata_dict = event.execution_metadata
+        execution_metadata_dict = dict(event.execution_metadata or {})
         if self._wip_workflow_agent_logs.get(workflow_node_execution.id):
             if not execution_metadata_dict:
                 execution_metadata_dict = {}
@@ -397,7 +397,7 @@ class WorkflowCycleManage:
         outputs = WorkflowEntry.handle_special_values(event.outputs)
         finished_at = datetime.now(UTC).replace(tzinfo=None)
         elapsed_time = (finished_at - event.start_at).total_seconds()
-        execution_metadata_dict = event.execution_metadata
+        execution_metadata_dict = dict(event.execution_metadata or {})
         if self._wip_workflow_agent_logs.get(workflow_node_execution.id):
             if not execution_metadata_dict:
                 execution_metadata_dict = {}
