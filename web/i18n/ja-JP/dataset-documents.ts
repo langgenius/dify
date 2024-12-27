@@ -15,7 +15,6 @@ const translation = {
         uploadTime: 'アップロード時間',
         status: 'ステータス',
         action: 'アクション',
-        chunkingMode: 'チャンクモード',
       },
       rename: '名前を変更',
       name: '名前',
@@ -80,7 +79,6 @@ const translation = {
       error: 'インポートエラー',
       ok: 'OK',
     },
-    learnMore: '詳細情報',
   },
   metadata: {
     title: 'メタデータ',
