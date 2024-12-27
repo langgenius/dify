@@ -17,7 +17,7 @@ from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.helper import RateLimiter, TokenManager, generate_string
+from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
@@ -257,7 +257,7 @@ class AccountService:
 
     @staticmethod
     def generate_account_deletion_verification_code(account: Account) -> tuple[str, str]:
-        code = generate_string(6)
+        code = "".join([str(random.randint(0, 9)) for _ in range(6)])
         token = TokenManager.generate_token(
             account=account, token_type="account_deletion", additional_data={"code": code}
         )
