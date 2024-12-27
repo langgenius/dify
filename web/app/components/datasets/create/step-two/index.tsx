@@ -31,17 +31,17 @@ import LanguageSelect from './language-select'
 import { DelimiterInput, MaxLengthInput, OverlapInput } from './inputs'
 import cn from '@/utils/classnames'
 import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, DocumentItem, FullDocumentDetail, ParentMode, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
+import { ChunkingMode, DataSourceType, ProcessMode } from '@/models/datasets'
 
 import Button from '@/app/components/base/button'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { type RetrievalConfig } from '@/types/app'
-import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import Toast from '@/app/components/base/toast'
 import type { NotionPage } from '@/models/common'
 import { DataSourceProvider } from '@/models/common'
-import { ChunkingMode, DataSourceType, RerankingModeEnum } from '@/models/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -90,17 +90,13 @@ type StepTwoProps = {
   onCancel?: () => void
 }
 
-export enum SegmentType {
-  AUTO = 'automatic',
-  CUSTOM = 'custom',
-}
 export enum IndexingType {
   QUALIFIED = 'high_quality',
   ECONOMICAL = 'economy',
 }
 
 const DEFAULT_SEGMENT_IDENTIFIER = '\\n\\n'
-const DEFAULT_MAXMIMUM_CHUNK_LENGTH = 500
+const DEFAULT_MAXIMUM_CHUNK_LENGTH = 500
 const DEFAULT_OVERLAP = 50
 
 type ParentChildConfig = {
@@ -162,12 +158,12 @@ const StepTwo = ({
 
   const isInCreatePage = !datasetId || (datasetId && !currentDataset?.data_source_type)
   const dataSourceType = isInCreatePage ? inCreatePageDataSourceType : currentDataset?.data_source_type
-  const [segmentationType, setSegmentationType] = useState<SegmentType>(SegmentType.CUSTOM)
+  const [segmentationType, setSegmentationType] = useState<ProcessMode>(ProcessMode.general)
   const [segmentIdentifier, doSetSegmentIdentifier] = useState(DEFAULT_SEGMENT_IDENTIFIER)
   const setSegmentIdentifier = useCallback((value: string, canEmpty?: boolean) => {
     doSetSegmentIdentifier(value ? escape(value) : (canEmpty ? '' : DEFAULT_SEGMENT_IDENTIFIER))
   }, [])
-  const [maxChunkLength, setMaxChunkLength] = useState(DEFAULT_MAXMIMUM_CHUNK_LENGTH) // default chunk length
+  const [maxChunkLength, setMaxChunkLength] = useState(DEFAULT_MAXIMUM_CHUNK_LENGTH) // default chunk length
   const [limitMaxChunkLength, setLimitMaxChunkLength] = useState(4000)
   const [overlap, setOverlap] = useState(DEFAULT_OVERLAP)
   const [rules, setRules] = useState<PreProcessingRule[]>([])
@@ -198,7 +194,6 @@ const StepTwo = ({
   )
 
   // QA Related
-  const [isLanguageSelectDisabled, _setIsLanguageSelectDisabled] = useState(false)
   const [isQAConfirmDialogOpen, setIsQAConfirmDialogOpen] = useState(false)
   const [docForm, setDocForm] = useState<ChunkingMode>(
     (datasetId && documentDetail) ? documentDetail.doc_form as ChunkingMode : ChunkingMode.text,
@@ -348,7 +343,7 @@ const StepTwo = ({
   }
 
   const updatePreview = () => {
-    if (segmentationType === SegmentType.CUSTOM && maxChunkLength > 4000) {
+    if (segmentationType === ProcessMode.general && maxChunkLength > 4000) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
       return
     }
@@ -373,13 +368,25 @@ const StepTwo = ({
         model: defaultEmbeddingModel?.model || '',
       },
   )
+  const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict || {
+    search_method: RETRIEVE_METHOD.semantic,
+    reranking_enable: false,
+    reranking_model: {
+      reranking_provider_name: rerankDefaultModel?.provider.provider,
+      reranking_model_name: rerankDefaultModel?.model,
+    },
+    top_k: 3,
+    score_threshold_enabled: false,
+    score_threshold: 0.5,
+  } as RetrievalConfig)
+
   const getCreationParams = () => {
     let params
-    if (segmentationType === SegmentType.CUSTOM && overlap > maxChunkLength) {
+    if (segmentationType === ProcessMode.general && overlap > maxChunkLength) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.overlapCheck') })
       return
     }
-    if (segmentationType === SegmentType.CUSTOM && maxChunkLength > limitMaxChunkLength) {
+    if (segmentationType === ProcessMode.general && maxChunkLength > limitMaxChunkLength) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck', { limit: limitMaxChunkLength }) })
       return
     }
@@ -389,7 +396,6 @@ const StepTwo = ({
         doc_form: currentDocForm,
         doc_language: docLanguage,
         process_rule: getProcessRule(),
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
         retrieval_model: retrievalConfig, // Readonly. If want to changed, just go to settings page.
         embedding_model: embeddingModel.model, // Readonly
         embedding_model_provider: embeddingModel.provider, // Readonly
@@ -403,7 +409,6 @@ const StepTwo = ({
           rerankDefaultModel,
           isRerankDefaultModelValid: !!isRerankDefaultModelValid,
           rerankModelList,
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define
           retrievalConfig,
           indexMethod: indexMethod as string,
         })
@@ -411,16 +416,6 @@ const StepTwo = ({
         Toast.notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
         return
       }
-      const postRetrievalConfig = ensureRerankModelSelected({
-        rerankDefaultModel: rerankDefaultModel!,
-        retrievalConfig: {
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define
-          ...retrievalConfig,
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define
-          reranking_enable: retrievalConfig.reranking_mode === RerankingModeEnum.RerankingModel,
-        },
-        indexMethod: indexMethod as string,
-      })
       params = {
         data_source: {
           type: dataSourceType,
@@ -432,8 +427,7 @@ const StepTwo = ({
         process_rule: getProcessRule(),
         doc_form: currentDocForm,
         doc_language: docLanguage,
-
-        retrieval_model: postRetrievalConfig,
+        retrieval_model: retrievalConfig,
         embedding_model: embeddingModel.model,
         embedding_model_provider: embeddingModel.provider,
       } as CreateDocumentReq
@@ -490,7 +484,6 @@ const StepTwo = ({
 
   const getDefaultMode = () => {
     if (documentDetail)
-      // @ts-expect-error fix after api refactored
       setSegmentationType(documentDetail.dataset_process_rule.mode)
   }
 
@@ -525,7 +518,6 @@ const StepTwo = ({
           onSuccess(data) {
             updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
             updateResultCache && updateResultCache(data)
-            // eslint-disable-next-line @typescript-eslint/no-use-before-define
             updateRetrievalMethodCache && updateRetrievalMethodCache(retrievalConfig.search_method as string)
           },
         },
@@ -573,18 +565,6 @@ const StepTwo = ({
     else
       setIndexType(isAPIKeySet ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL)
   }, [isAPIKeySet, indexingType, datasetId])
-
-  const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict || {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: rerankDefaultModel?.provider.provider,
-      reranking_model_name: rerankDefaultModel?.model,
-    },
-    top_k: 3,
-    score_threshold_enabled: false,
-    score_threshold: 0.5,
-  } as RetrievalConfig)
 
   const economyDomRef = useRef<HTMLDivElement>(null)
   const isHoveringEconomy = useHover(economyDomRef)

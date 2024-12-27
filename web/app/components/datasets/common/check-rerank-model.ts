@@ -33,6 +33,14 @@ export const isReRankModelSelected = ({
 
   if (
     indexMethod === 'high_quality'
+    && ([RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText].includes(retrievalConfig.search_method))
+    && retrievalConfig.reranking_enable
+    && !rerankModelSelected
+  )
+    return false
+
+  if (
+    indexMethod === 'high_quality'
     && (retrievalConfig.search_method === RETRIEVE_METHOD.hybrid && retrievalConfig.reranking_mode !== RerankingModeEnum.WeightedScore)
     && !rerankModelSelected
   )

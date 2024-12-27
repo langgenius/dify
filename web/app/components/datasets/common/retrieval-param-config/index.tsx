@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useBoolean } from 'ahooks'
 
 import Image from 'next/image'
 import ProgressIndicator from '../../create/assets/progress-indicator.svg'
@@ -39,6 +40,7 @@ const RetrievalParamConfig: FC<Props> = ({
   const { t } = useTranslation()
   const canToggleRerankModalEnable = type !== RETRIEVE_METHOD.hybrid
   const isEconomical = type === RETRIEVE_METHOD.invertedIndex
+  const isHybridSearch = type === RETRIEVE_METHOD.hybrid
   const {
     defaultModel: rerankDefaultModel,
     modelList: rerankModelList,
@@ -56,12 +58,18 @@ const RetrievalParamConfig: FC<Props> = ({
       : undefined,
   )
 
-  const handleDisabledSwitchClick = useCallback(() => {
-    if (!currentModel)
-      Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
-  }, [currentModel, rerankDefaultModel, t])
+  const [rerankingEnable, { toggle: toggleRerankingEnable }] = useBoolean((isHybridSearch || currentModel) ? value.reranking_enable : false)
 
-  const isHybridSearch = type === RETRIEVE_METHOD.hybrid
+  const handleDisabledSwitchClick = useCallback((enable: boolean) => {
+    toggleRerankingEnable()
+    if (enable && !currentModel)
+      Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
+    onChange({
+      ...value,
+      reranking_enable: enable,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentModel, rerankDefaultModel, onChange, value])
 
   const rerankModel = (() => {
     if (value.reranking_model) {
@@ -122,22 +130,11 @@ const RetrievalParamConfig: FC<Props> = ({
         <div>
           <div className='flex items-center space-x-2 mb-2'>
             {canToggleRerankModalEnable && (
-              <div
-                className='flex items-center'
-                onClick={handleDisabledSwitchClick}
-              >
-                <Switch
-                  size='md'
-                  defaultValue={currentModel ? value.reranking_enable : false}
-                  onChange={(v) => {
-                    onChange({
-                      ...value,
-                      reranking_enable: v,
-                    })
-                  }}
-                  disabled={!currentModel}
-                />
-              </div>
+              <Switch
+                size='md'
+                defaultValue={rerankingEnable}
+                onChange={handleDisabledSwitchClick}
+              />
             )}
             <div className='flex items-center'>
               <span className='mr-0.5 system-sm-semibold text-text-secondary'>{t('common.modelProvider.rerankModel.key')}</span>
@@ -148,21 +145,23 @@ const RetrievalParamConfig: FC<Props> = ({
               />
             </div>
           </div>
-          <ModelSelector
-            triggerClassName={`${!value.reranking_enable && '!opacity-60 !cursor-not-allowed'}`}
-            defaultModel={rerankModel && { provider: rerankModel.provider_name, model: rerankModel.model_name }}
-            modelList={rerankModelList}
-            readonly={!value.reranking_enable}
-            onSelect={(v) => {
-              onChange({
-                ...value,
-                reranking_model: {
-                  reranking_provider_name: v.provider,
-                  reranking_model_name: v.model,
-                },
-              })
-            }}
-          />
+          {
+            rerankingEnable && (
+              <ModelSelector
+                defaultModel={rerankModel && { provider: rerankModel.provider_name, model: rerankModel.model_name }}
+                modelList={rerankModelList}
+                onSelect={(v) => {
+                  onChange({
+                    ...value,
+                    reranking_model: {
+                      reranking_provider_name: v.provider,
+                      reranking_model_name: v.model,
+                    },
+                  })
+                }}
+              />
+            )
+          }
         </div>
       )}
       {

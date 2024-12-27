@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Image from 'next/image'
 import RetrievalParamConfig from '../retrieval-param-config'
@@ -31,30 +31,35 @@ const RetrievalMethodConfig: FC<Props> = ({
   const { t } = useTranslation()
   const { supportRetrievalMethods } = useProviderContext()
   const { data: rerankDefaultModel } = useDefaultModel(ModelTypeEnum.rerank)
-  const value = (() => {
-    if (!passValue.reranking_model.reranking_model_name) {
-      return {
-        ...passValue,
-        reranking_model: {
-          reranking_provider_name: rerankDefaultModel?.provider.provider || '',
-          reranking_model_name: rerankDefaultModel?.model || '',
-        },
-        reranking_mode: passValue.reranking_mode || (rerankDefaultModel ? RerankingModeEnum.RerankingModel : RerankingModeEnum.WeightedScore),
-        weights: passValue.weights || {
-          weight_type: WeightedScoreEnum.Customized,
-          vector_setting: {
-            vector_weight: DEFAULT_WEIGHTED_SCORE.other.semantic,
-            embedding_provider_name: '',
-            embedding_model_name: '',
+  const value = useMemo(() => {
+    return {
+      ...passValue,
+      ...(!passValue.reranking_model.reranking_model_name
+        ? {
+          reranking_model: {
+            reranking_provider_name: rerankDefaultModel?.provider.provider || '',
+            reranking_model_name: rerankDefaultModel?.model || '',
           },
-          keyword_setting: {
-            keyword_weight: DEFAULT_WEIGHTED_SCORE.other.keyword,
+        }
+        : {}),
+      ...(passValue.search_method === RETRIEVE_METHOD.hybrid
+        ? {
+          reranking_mode: passValue.reranking_mode || (rerankDefaultModel ? RerankingModeEnum.RerankingModel : RerankingModeEnum.WeightedScore),
+          weights: passValue.weights || {
+            weight_type: WeightedScoreEnum.Customized,
+            vector_setting: {
+              vector_weight: DEFAULT_WEIGHTED_SCORE.other.semantic,
+              embedding_provider_name: '',
+              embedding_model_name: '',
+            },
+            keyword_setting: {
+              keyword_weight: DEFAULT_WEIGHTED_SCORE.other.keyword,
+            },
           },
-        },
-      }
+        }
+        : {}),
     }
-    return passValue
-  })()
+  }, [passValue, rerankDefaultModel])
   return (
     <div className='space-y-2'>
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
@@ -67,6 +72,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           onSwitched={() => onChange({
             ...value,
             search_method: RETRIEVE_METHOD.semantic,
+            reranking_enable: false,
           })}
           effectImg={Effect.src}
           activeHeaderClassName='bg-dataset-option-card-purple-gradient'
@@ -78,7 +84,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           />
         </OptionCard>
       )}
-      {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
+      {supportRetrievalMethods.includes(RETRIEVE_METHOD.fullText) && (
         <OptionCard icon={<Image className='w-4 h-4' src={retrievalIcon.fullText} alt='' />}
           title={t('dataset.retrieval.full_text_search.title')}
           description={t('dataset.retrieval.full_text_search.description')}
@@ -88,6 +94,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           onSwitched={() => onChange({
             ...value,
             search_method: RETRIEVE_METHOD.fullText,
+            reranking_enable: false,
           })}
           effectImg={Effect.src}
           activeHeaderClassName='bg-dataset-option-card-purple-gradient'
@@ -99,7 +106,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           />
         </OptionCard>
       )}
-      {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
+      {supportRetrievalMethods.includes(RETRIEVE_METHOD.hybrid) && (
         <OptionCard icon={<Image className='w-4 h-4' src={retrievalIcon.hybrid} alt='' />}
           title={
             <div className='flex items-center space-x-1'>
