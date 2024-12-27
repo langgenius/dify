@@ -3,9 +3,10 @@ import formatIterationNode from './iteration'
 import formatParallelNode from './parallel'
 import formatRetryNode from './retry'
 import formatAgentNode from './agent'
+import { cloneDeep } from 'lodash-es'
 
 const formatToTracingNodeList = (list: NodeTracing[], t: any) => {
-  const allItems = [...list].sort((a, b) => a.index - b.index)
+  const allItems = cloneDeep([...list]).sort((a, b) => a.index - b.index)
   /*
   * First handle not change list structure node
   * Because Handle struct node will put the node in different
