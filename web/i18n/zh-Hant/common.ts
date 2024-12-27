@@ -42,6 +42,11 @@ const translation = {
     openInNewTab: '在新選項卡中打開',
     zoomIn: '放大',
     zoomOut: '縮小',
+    saveAndRegenerate: '保存並重新生成子塊',
+    view: '視圖',
+    close: '關閉',
+    viewMore: '查看更多',
+    regenerate: '再生',
   },
   placeholder: {
     input: '請輸入',
@@ -191,6 +196,7 @@ const translation = {
     editorTip: '能夠建立並編輯應用程式，不能管理團隊設定',
     inviteTeamMember: '新增團隊成員',
     inviteTeamMemberTip: '對方在登入後可以訪問你的團隊資料。',
+    emailNotSetup: '由於郵件伺服器未設置，無法發送邀請郵件。請將邀請後生成的邀請連結通知用戶。',
     email: '郵箱',
     emailInvalid: '郵箱格式無效',
     emailPlaceholder: '輸入郵箱',
@@ -473,6 +479,7 @@ const translation = {
     emptyTip: ' 知識庫尚未關聯，請前往應用程式或外掛完成關聯。',
     viewDoc: '檢視文件',
     relatedApp: '個關聯應用',
+    noRelatedApp: '沒有連結的應用程式',
   },
   voiceInput: {
     speaking: '現在講...',

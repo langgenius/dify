@@ -32,11 +32,13 @@ class ApiTool(Tool):
         :param meta: the meta data of a tool call processing, tenant_id is required
         :return: the new tool
         """
+        if self.api_bundle is None:
+            raise ValueError("api_bundle is required")
         return self.__class__(
             identity=self.identity.model_copy() if self.identity else None,
             parameters=self.parameters.copy() if self.parameters else None,
             description=self.description.model_copy() if self.description else None,
-            api_bundle=self.api_bundle.model_copy() if self.api_bundle else None,
+            api_bundle=self.api_bundle.model_copy(),
             runtime=Tool.Runtime(**runtime),
         )
 
@@ -61,6 +63,8 @@ class ApiTool(Tool):
 
     def assembling_request(self, parameters: dict[str, Any]) -> dict[str, Any]:
         headers = {}
+        if self.runtime is None:
+            raise ValueError("runtime is required")
         credentials = self.runtime.credentials or {}
 
         if "auth_type" not in credentials:
@@ -88,7 +92,7 @@ class ApiTool(Tool):
 
             headers[api_key_header] = credentials["api_key_value"]
 
-        needed_parameters = [parameter for parameter in self.api_bundle.parameters if parameter.required]
+        needed_parameters = [parameter for parameter in (self.api_bundle.parameters or []) if parameter.required]
         for parameter in needed_parameters:
             if parameter.required and parameter.name not in parameters:
                 raise ToolParameterValidationError(f"Missing required parameter {parameter.name}")
@@ -137,7 +141,8 @@ class ApiTool(Tool):
 
         params = {}
         path_params = {}
-        body = {}
+        # FIXME: body should be a dict[str, Any] but it changed a lot in this function
+        body: Any = {}
         cookies = {}
         files = []
 
@@ -198,7 +203,7 @@ class ApiTool(Tool):
                 body = body
 
         if method in {"get", "head", "post", "put", "delete", "patch"}:
-            response = getattr(ssrf_proxy, method)(
+            response: httpx.Response = getattr(ssrf_proxy, method)(
                 url,
                 params=params,
                 headers=headers,
@@ -210,7 +215,7 @@ class ApiTool(Tool):
             )
             return response
         else:
-            raise ValueError(f"Invalid http method {self.method}")
+            raise ValueError(f"Invalid http method {method}")
 
     def _convert_body_property_any_of(
         self, property: dict[str, Any], value: Any, any_of: list[dict[str, Any]], max_recursive=10
@@ -288,6 +293,7 @@ class ApiTool(Tool):
         """
         invoke http request
         """
+        response: httpx.Response | str = ""
         # assemble request
         headers = self.assembling_request(tool_parameters)
 

@@ -9,6 +9,8 @@ from typing import Any, Optional, Union
 from uuid import UUID, uuid4
 
 from flask import current_app
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
 from core.ops.entities.config_entity import (
@@ -33,11 +35,11 @@ from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
 from core.ops.utils import get_message_data
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models.model import App, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, TraceAppConfig
+from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog, WorkflowRun
 from tasks.ops_trace_task import process_trace_tasks
 
-provider_config_map = {
+provider_config_map: dict[str, dict[str, Any]] = {
     TracingProviderEnum.LANGFUSE.value: {
         "config_class": LangfuseConfig,
         "secret_keys": ["public_key", "secret_key"],
@@ -145,7 +147,7 @@ class OpsTraceManager:
         :param tracing_provider: tracing provider
         :return:
         """
-        trace_config_data: TraceAppConfig = (
+        trace_config_data: Optional[TraceAppConfig] = (
             db.session.query(TraceAppConfig)
             .filter(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()
@@ -155,7 +157,11 @@ class OpsTraceManager:
             return None
 
         # decrypt_token
-        tenant_id = db.session.query(App).filter(App.id == app_id).first().tenant_id
+        app = db.session.query(App).filter(App.id == app_id).first()
+        if not app:
+            raise ValueError("App not found")
+
+        tenant_id = app.tenant_id
         decrypt_tracing_config = cls.decrypt_tracing_config(
             tenant_id, tracing_provider, trace_config_data.tracing_config
         )
@@ -178,7 +184,7 @@ class OpsTraceManager:
         if app_id is None:
             return None
 
-        app: App = db.session.query(App).filter(App.id == app_id).first()
+        app: Optional[App] = db.session.query(App).filter(App.id == app_id).first()
 
         if app is None:
             return None
@@ -209,8 +215,12 @@ class OpsTraceManager:
     def get_app_config_through_message_id(cls, message_id: str):
         app_model_config = None
         message_data = db.session.query(Message).filter(Message.id == message_id).first()
+        if not message_data:
+            return None
         conversation_id = message_data.conversation_id
         conversation_data = db.session.query(Conversation).filter(Conversation.id == conversation_id).first()
+        if not conversation_data:
+            return None
 
         if conversation_data.app_model_config_id:
             app_model_config = (
@@ -236,7 +246,9 @@ class OpsTraceManager:
         if tracing_provider not in provider_config_map and tracing_provider is not None:
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
-        app_config: App = db.session.query(App).filter(App.id == app_id).first()
+        app_config: Optional[App] = db.session.query(App).filter(App.id == app_id).first()
+        if not app_config:
+            raise ValueError("App not found")
         app_config.tracing = json.dumps(
             {
                 "enabled": enabled,
@@ -252,7 +264,9 @@ class OpsTraceManager:
         :param app_id: app id
         :return:
         """
-        app: App = db.session.query(App).filter(App.id == app_id).first()
+        app: Optional[App] = db.session.query(App).filter(App.id == app_id).first()
+        if not app:
+            raise ValueError("App not found")
         if not app.tracing:
             return {"enabled": False, "tracing_provider": None}
         app_trace_config = json.loads(app.tracing)
@@ -317,14 +331,14 @@ class TraceTask:
     ):
         self.trace_type = trace_type
         self.message_id = message_id
-        self.workflow_run = workflow_run
+        self.workflow_run_id = workflow_run.id if workflow_run else None
         self.conversation_id = conversation_id
         self.user_id = user_id
         self.timer = timer
-        self.kwargs = kwargs
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
-
         self.app_id = None
+
+        self.kwargs = kwargs
 
     def execute(self):
         return self.preprocess()
@@ -333,19 +347,23 @@ class TraceTask:
         preprocess_map = {
             TraceTaskName.CONVERSATION_TRACE: lambda: self.conversation_trace(**self.kwargs),
             TraceTaskName.WORKFLOW_TRACE: lambda: self.workflow_trace(
-                self.workflow_run, self.conversation_id, self.user_id
+                workflow_run_id=self.workflow_run_id, conversation_id=self.conversation_id, user_id=self.user_id
             ),
-            TraceTaskName.MESSAGE_TRACE: lambda: self.message_trace(self.message_id),
-            TraceTaskName.MODERATION_TRACE: lambda: self.moderation_trace(self.message_id, self.timer, **self.kwargs),
+            TraceTaskName.MESSAGE_TRACE: lambda: self.message_trace(message_id=self.message_id),
+            TraceTaskName.MODERATION_TRACE: lambda: self.moderation_trace(
+                message_id=self.message_id, timer=self.timer, **self.kwargs
+            ),
             TraceTaskName.SUGGESTED_QUESTION_TRACE: lambda: self.suggested_question_trace(
-                self.message_id, self.timer, **self.kwargs
+                message_id=self.message_id, timer=self.timer, **self.kwargs
             ),
             TraceTaskName.DATASET_RETRIEVAL_TRACE: lambda: self.dataset_retrieval_trace(
-                self.message_id, self.timer, **self.kwargs
+                message_id=self.message_id, timer=self.timer, **self.kwargs
             ),
-            TraceTaskName.TOOL_TRACE: lambda: self.tool_trace(self.message_id, self.timer, **self.kwargs),
+            TraceTaskName.TOOL_TRACE: lambda: self.tool_trace(
+                message_id=self.message_id, timer=self.timer, **self.kwargs
+            ),
             TraceTaskName.GENERATE_NAME_TRACE: lambda: self.generate_name_trace(
-                self.conversation_id, self.timer, **self.kwargs
+                conversation_id=self.conversation_id, timer=self.timer, **self.kwargs
             ),
         }
 
@@ -355,80 +373,100 @@ class TraceTask:
     def conversation_trace(self, **kwargs):
         return kwargs
 
-    def workflow_trace(self, workflow_run: WorkflowRun, conversation_id, user_id):
-        workflow_id = workflow_run.workflow_id
-        tenant_id = workflow_run.tenant_id
-        workflow_run_id = workflow_run.id
-        workflow_run_elapsed_time = workflow_run.elapsed_time
-        workflow_run_status = workflow_run.status
-        workflow_run_inputs = workflow_run.inputs_dict
-        workflow_run_outputs = workflow_run.outputs_dict
-        workflow_run_version = workflow_run.version
-        error = workflow_run.error or ""
+    def workflow_trace(
+        self,
+        *,
+        workflow_run_id: str | None,
+        conversation_id: str | None,
+        user_id: str | None,
+    ):
+        if not workflow_run_id:
+            return {}
 
-        total_tokens = workflow_run.total_tokens
+        with Session(db.engine) as session:
+            workflow_run_stmt = select(WorkflowRun).where(WorkflowRun.id == workflow_run_id)
+            workflow_run = session.scalars(workflow_run_stmt).first()
+            if not workflow_run:
+                raise ValueError("Workflow run not found")
 
-        file_list = workflow_run_inputs.get("sys.file") or []
-        query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
+            workflow_id = workflow_run.workflow_id
+            tenant_id = workflow_run.tenant_id
+            workflow_run_id = workflow_run.id
+            workflow_run_elapsed_time = workflow_run.elapsed_time
+            workflow_run_status = workflow_run.status
+            workflow_run_inputs = workflow_run.inputs_dict
+            workflow_run_outputs = workflow_run.outputs_dict
+            workflow_run_version = workflow_run.version
+            error = workflow_run.error or ""
 
-        # get workflow_app_log_id
-        workflow_app_log_data = (
-            db.session.query(WorkflowAppLog)
-            .filter_by(tenant_id=tenant_id, app_id=workflow_run.app_id, workflow_run_id=workflow_run.id)
-            .first()
-        )
-        workflow_app_log_id = str(workflow_app_log_data.id) if workflow_app_log_data else None
-        # get message_id
-        message_data = (
-            db.session.query(Message.id)
-            .filter_by(conversation_id=conversation_id, workflow_run_id=workflow_run_id)
-            .first()
-        )
-        message_id = str(message_data.id) if message_data else None
+            total_tokens = workflow_run.total_tokens
 
-        metadata = {
-            "workflow_id": workflow_id,
-            "conversation_id": conversation_id,
-            "workflow_run_id": workflow_run_id,
-            "tenant_id": tenant_id,
-            "elapsed_time": workflow_run_elapsed_time,
-            "status": workflow_run_status,
-            "version": workflow_run_version,
-            "total_tokens": total_tokens,
-            "file_list": file_list,
-            "triggered_form": workflow_run.triggered_from,
-            "user_id": user_id,
-        }
+            file_list = workflow_run_inputs.get("sys.file") or []
+            query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
 
-        workflow_trace_info = WorkflowTraceInfo(
-            workflow_data=workflow_run.to_dict(),
-            conversation_id=conversation_id,
-            workflow_id=workflow_id,
-            tenant_id=tenant_id,
-            workflow_run_id=workflow_run_id,
-            workflow_run_elapsed_time=workflow_run_elapsed_time,
-            workflow_run_status=workflow_run_status,
-            workflow_run_inputs=workflow_run_inputs,
-            workflow_run_outputs=workflow_run_outputs,
-            workflow_run_version=workflow_run_version,
-            error=error,
-            total_tokens=total_tokens,
-            file_list=file_list,
-            query=query,
-            metadata=metadata,
-            workflow_app_log_id=workflow_app_log_id,
-            message_id=message_id,
-            start_time=workflow_run.created_at,
-            end_time=workflow_run.finished_at,
-        )
+            # get workflow_app_log_id
+            workflow_app_log_data_stmt = select(WorkflowAppLog.id).where(
+                WorkflowAppLog.tenant_id == tenant_id,
+                WorkflowAppLog.app_id == workflow_run.app_id,
+                WorkflowAppLog.workflow_run_id == workflow_run.id,
+            )
+            workflow_app_log_id = session.scalar(workflow_app_log_data_stmt)
+            # get message_id
+            message_id = None
+            if conversation_id:
+                message_data_stmt = select(Message.id).where(
+                    Message.conversation_id == conversation_id,
+                    Message.workflow_run_id == workflow_run_id,
+                )
+                message_id = session.scalar(message_data_stmt)
 
+            metadata = {
+                "workflow_id": workflow_id,
+                "conversation_id": conversation_id,
+                "workflow_run_id": workflow_run_id,
+                "tenant_id": tenant_id,
+                "elapsed_time": workflow_run_elapsed_time,
+                "status": workflow_run_status,
+                "version": workflow_run_version,
+                "total_tokens": total_tokens,
+                "file_list": file_list,
+                "triggered_form": workflow_run.triggered_from,
+                "user_id": user_id,
+            }
+
+            workflow_trace_info = WorkflowTraceInfo(
+                workflow_data=workflow_run.to_dict(),
+                conversation_id=conversation_id,
+                workflow_id=workflow_id,
+                tenant_id=tenant_id,
+                workflow_run_id=workflow_run_id,
+                workflow_run_elapsed_time=workflow_run_elapsed_time,
+                workflow_run_status=workflow_run_status,
+                workflow_run_inputs=workflow_run_inputs,
+                workflow_run_outputs=workflow_run_outputs,
+                workflow_run_version=workflow_run_version,
+                error=error,
+                total_tokens=total_tokens,
+                file_list=file_list,
+                query=query,
+                metadata=metadata,
+                workflow_app_log_id=workflow_app_log_id,
+                message_id=message_id,
+                start_time=workflow_run.created_at,
+                end_time=workflow_run.finished_at,
+            )
         return workflow_trace_info
 
-    def message_trace(self, message_id):
+    def message_trace(self, message_id: str | None):
+        if not message_id:
+            return {}
         message_data = get_message_data(message_id)
         if not message_data:
             return {}
-        conversation_mode = db.session.query(Conversation.mode).filter_by(id=message_data.conversation_id).first()
+        conversation_mode_stmt = select(Conversation.mode).where(Conversation.id == message_data.conversation_id)
+        conversation_mode = db.session.scalars(conversation_mode_stmt).all()
+        if not conversation_mode or len(conversation_mode) == 0:
+            return {}
         conversation_mode = conversation_mode[0]
         created_at = message_data.created_at
         inputs = message_data.message
@@ -477,6 +515,8 @@ class TraceTask:
 
     def moderation_trace(self, message_id, timer, **kwargs):
         moderation_result = kwargs.get("moderation_result")
+        if not moderation_result:
+            return {}
         inputs = kwargs.get("inputs")
         message_data = get_message_data(message_id)
         if not message_data:
@@ -512,7 +552,7 @@ class TraceTask:
         return moderation_trace_info
 
     def suggested_question_trace(self, message_id, timer, **kwargs):
-        suggested_question = kwargs.get("suggested_question")
+        suggested_question = kwargs.get("suggested_question", [])
         message_data = get_message_data(message_id)
         if not message_data:
             return {}
@@ -580,7 +620,7 @@ class TraceTask:
         dataset_retrieval_trace_info = DatasetRetrievalTraceInfo(
             message_id=message_id,
             inputs=message_data.query or message_data.inputs,
-            documents=[doc.model_dump() for doc in documents],
+            documents=[doc.model_dump() for doc in documents] if documents else [],
             start_time=timer.get("start"),
             end_time=timer.get("end"),
             metadata=metadata,
@@ -590,9 +630,9 @@ class TraceTask:
         return dataset_retrieval_trace_info
 
     def tool_trace(self, message_id, timer, **kwargs):
-        tool_name = kwargs.get("tool_name")
-        tool_inputs = kwargs.get("tool_inputs")
-        tool_outputs = kwargs.get("tool_outputs")
+        tool_name = kwargs.get("tool_name", "")
+        tool_inputs = kwargs.get("tool_inputs", {})
+        tool_outputs = kwargs.get("tool_outputs", {})
         message_data = get_message_data(message_id)
         if not message_data:
             return {}
@@ -602,7 +642,7 @@ class TraceTask:
         tool_parameters = {}
         created_time = message_data.created_at
         end_time = message_data.updated_at
-        agent_thoughts: list[MessageAgentThought] = message_data.agent_thoughts
+        agent_thoughts = message_data.agent_thoughts
         for agent_thought in agent_thoughts:
             if tool_name in agent_thought.tools:
                 created_time = agent_thought.created_at
@@ -666,6 +706,8 @@ class TraceTask:
         generate_conversation_name = kwargs.get("generate_conversation_name")
         inputs = kwargs.get("inputs")
         tenant_id = kwargs.get("tenant_id")
+        if not tenant_id:
+            return {}
         start_time = timer.get("start")
         end_time = timer.get("end")
 
@@ -687,8 +729,8 @@ class TraceTask:
         return generate_name_trace_info
 
 
-trace_manager_timer = None
-trace_manager_queue = queue.Queue()
+trace_manager_timer: Optional[threading.Timer] = None
+trace_manager_queue: queue.Queue = queue.Queue()
 trace_manager_interval = int(os.getenv("TRACE_QUEUE_MANAGER_INTERVAL", 5))
 trace_manager_batch_size = int(os.getenv("TRACE_QUEUE_MANAGER_BATCH_SIZE", 100))
 
@@ -700,7 +742,7 @@ class TraceQueueManager:
         self.app_id = app_id
         self.user_id = user_id
         self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
-        self.flask_app = current_app._get_current_object()
+        self.flask_app = current_app._get_current_object()  # type: ignore
         if trace_manager_timer is None:
             self.start_timer()
 
@@ -717,7 +759,7 @@ class TraceQueueManager:
 
     def collect_tasks(self):
         global trace_manager_queue
-        tasks = []
+        tasks: list[TraceTask] = []
         while len(tasks) < trace_manager_batch_size and not trace_manager_queue.empty():
             task = trace_manager_queue.get_nowait()
             tasks.append(task)
@@ -743,6 +785,8 @@ class TraceQueueManager:
     def send_to_celery(self, tasks: list[TraceTask]):
         with self.flask_app.app_context():
             for task in tasks:
+                if task.app_id is None:
+                    continue
                 file_id = uuid4().hex
                 trace_info = task.execute()
                 task_data = TaskData(

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Union, cast
 
 from core.model_runtime.entities.provider_entities import CredentialFormSchema, FormType
 
@@ -38,7 +38,7 @@ class CommonValidator:
 
     def _validate_credential_form_schema(
         self, credential_form_schema: CredentialFormSchema, credentials: dict
-    ) -> Optional[str]:
+    ) -> Union[str, bool, None]:
         """
         Validate credential form schema
 
@@ -47,6 +47,7 @@ class CommonValidator:
         :return: validated credential form schema value
         """
         #  If the variable does not exist in credentials
+        value: Union[str, bool, None] = None
         if credential_form_schema.variable not in credentials or not credentials[credential_form_schema.variable]:
             # If required is True, an exception is thrown
             if credential_form_schema.required:
@@ -61,7 +62,7 @@ class CommonValidator:
                     return None
 
         # Get the value corresponding to the variable from credentials
-        value = credentials[credential_form_schema.variable]
+        value = cast(str, credentials[credential_form_schema.variable])
 
         # If max_length=0, no validation is performed
         if credential_form_schema.max_length:

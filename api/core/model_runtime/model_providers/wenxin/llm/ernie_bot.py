@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from enum import Enum
 from json import dumps, loads
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from requests import Response, post
 
@@ -22,7 +22,7 @@ class ErnieMessage:
 
     role: str = Role.USER.value
     content: str
-    usage: dict[str, int] = None
+    usage: Optional[dict[str, int]] = None
     stop_reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -135,6 +135,7 @@ class ErnieBotModel(_CommonWenxin):
         """
         TODO: implement function calling
         """
+        raise NotImplementedError("Function calling is not supported yet.")
 
     def _build_chat_request_body(
         self,

@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.14.1",
+  "version": "0.14.2",
   "private": true,
   "engines": {
     "node": ">=18.17.0"
@@ -64,6 +64,7 @@
     "katex": "^0.16.10",
     "lamejs": "^1.2.1",
     "lexical": "^0.16.0",
+    "line-clamp": "^1.0.0",
     "lodash-es": "^4.17.21",
     "mermaid": "11.4.1",
     "mime": "^4.0.4",
@@ -102,6 +103,7 @@
     "scheduler": "^0.23.0",
     "server-only": "^0.0.1",
     "sharp": "^0.33.2",
+    "shave": "^5.0.4",
     "sortablejs": "^1.15.0",
     "swr": "^2.1.0",
     "tailwind-merge": "^2.4.0",

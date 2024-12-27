@@ -43,7 +43,7 @@ def generate_shared_env_block(env_vars, anchor_name="shared-api-worker-env"):
         else:
             # If default value contains special characters, wrap it in quotes
             if re.search(r"[:\s]", default):
-                default = f'"{default}"'
+                default = f"{default}"
             lines.append(f"  {key}: ${{{key}:-{default}}}")
     return "\n".join(lines)
 

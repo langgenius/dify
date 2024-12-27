@@ -42,6 +42,11 @@ const translation = {
     zoomOut: 'Uzaklaştırma',
     openInNewTab: 'Yeni sekmede aç',
     zoomIn: 'Yakınlaştırma',
+    view: 'Görünüm',
+    viewMore: 'DAHA FAZLA GÖSTER',
+    regenerate: 'Yenilemek',
+    saveAndRegenerate: 'Alt Parçaları Kaydetme ve Yeniden Oluşturma',
+    close: 'Kapatmak',
   },
   errorMsg: {
     fieldRequired: '{{field}} gereklidir',
@@ -199,6 +204,7 @@ const translation = {
     datasetOperatorTip: 'Sadece bilgi tabanını yönetebilir',
     inviteTeamMember: 'Takım Üyesi Ekle',
     inviteTeamMemberTip: 'Giriş yaptıktan sonra takım verilerinize doğrudan erişebilirler.',
+    emailNotSetup: 'E-posta sunucusu kurulu değil, bu nedenle davet e-postaları gönderilemiyor. Lütfen kullanıcıları davetten sonra verilecek davet bağlantısı hakkında bilgilendirin.',
     email: 'E-posta',
     emailInvalid: 'Geçersiz E-posta Formatı',
     emailPlaceholder: 'Lütfen e-postaları girin',
@@ -477,6 +483,7 @@ const translation = {
     emptyTip: 'Bilgi ilişkilendirilmemiş, ilişkilendirme işlemini tamamlamak için uygulama veya eklentiye gidin.',
     viewDoc: 'Dökümantasyon görüntüle',
     relatedApp: 'bağlantılı uygulamalar',
+    noRelatedApp: 'Bağlı uygulama yok',
   },
   voiceInput: {
     speaking: 'Şimdi konuş...',

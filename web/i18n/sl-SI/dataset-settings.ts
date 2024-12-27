@@ -32,6 +32,9 @@ const translation = {
     externalKnowledgeID: 'ID zunanjega znanja',
     retrievalSettings: 'Nastavitve pridobivanja',
     save: 'Shrani',
+    indexMethodChangeToEconomyDisabledTip: 'Ni na voljo za pregradnjo iz HQ v ECO',
+    upgradeHighQualityTip: 'Ko nadgradite na način visoke kakovosti, vrnitev v ekonomični način ni na voljo',
+    helpText: 'Naučite se napisati dober opis nabora podatkov.',
   },
 }
 

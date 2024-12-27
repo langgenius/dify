@@ -42,6 +42,11 @@ const translation = {
     zoomOut: 'ज़ूम आउट करें',
     openInNewTab: 'नए टैब में खोलें',
     zoomIn: 'ज़ूम इन करें',
+    view: 'देखना',
+    viewMore: 'और देखें',
+    regenerate: 'पुनर्जन्म',
+    close: 'बंद करना',
+    saveAndRegenerate: 'सहेजें और पुन: उत्पन्न करें बाल विखंडू',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',
@@ -204,6 +209,7 @@ const translation = {
     inviteTeamMember: 'टीम सदस्य जोड़ें',
     inviteTeamMemberTip:
       'वे साइन इन करने के बाद सीधे आपकी टीम डेटा तक पहुंच सकते हैं।',
+    emailNotSetup: 'ईमेल सर्वर सेट नहीं है, इसलिए आमंत्रण ईमेल नहीं भेजे जा सकते। कृपया उपयोगकर्ताओं को आमंत्रण के बाद जारी किए जाने वाले आमंत्रण लिंक के बारे में सूचित करें。',
     email: 'ईमेल',
     emailInvalid: 'अवैध ईमेल प्रारूप',
     emailPlaceholder: 'कृपया ईमेल दर्ज करें',
@@ -495,6 +501,7 @@ const translation = {
       'ज्ञान को संबद्ध नहीं किया गया है, कृपया संबद्धता पूरी करने के लिए एप्लिकेशन या प्लग-इन पर जाएं।',
     viewDoc: 'दस्तावेज़ देखें',
     relatedApp: 'संबंधित ऐप्स',
+    noRelatedApp: 'कोई लिंक नहीं किए गए ऐप्स',
   },
   voiceInput: {
     speaking: 'अब बोलें...',

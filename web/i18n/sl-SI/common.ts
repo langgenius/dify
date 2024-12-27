@@ -42,6 +42,11 @@ const translation = {
     openInNewTab: 'Odpri v novem zavihku',
     zoomOut: 'Pomanjšanje',
     zoomIn: 'Povečava',
+    saveAndRegenerate: 'Shranite in regenerirajte otroške koščke',
+    close: 'Blizu',
+    view: 'Pogled',
+    regenerate: 'Regeneracijo',
+    viewMore: 'POGLEJ VEČ',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
@@ -199,6 +204,7 @@ const translation = {
     datasetOperatorTip: 'Lahko upravlja samo bazo znanja',
     inviteTeamMember: 'Dodaj člana ekipe',
     inviteTeamMemberTip: 'Do vaših podatkov bo lahko dostopal takoj po prijavi.',
+    emailNotSetup: 'E-poštni strežnik ni nastavljen, zato vabil po e-pošti ni mogoče poslati. Prosimo, obvestite uporabnike o povezavi za povabilo, ki bo izdana po povabilu.',
     email: 'E-pošta',
     emailInvalid: 'Neveljaven format e-pošte',
     emailPlaceholder: 'Vnesite e-poštne naslove',
@@ -676,6 +682,7 @@ const translation = {
     emptyTip: 'Znanje ni bilo povezano, prosimo, pojdite na aplikacijo ali vtičnik, da dokončate združenje.',
     viewDoc: 'Oglejte si dokumentacijo',
     relatedApp: 'Povezane aplikacije',
+    noRelatedApp: 'Brez povezanih aplikacij',
   },
   voiceInput: {
     notAllow: 'Mikrofon ni pooblaščen',

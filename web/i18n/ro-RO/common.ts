@@ -42,6 +42,11 @@ const translation = {
     zoomOut: 'Micșorare',
     openInNewTab: 'Deschide într-o filă nouă',
     zoomIn: 'Măriți',
+    close: 'Închide',
+    viewMore: 'VEZI MAI MULT',
+    regenerate: 'Regenera',
+    saveAndRegenerate: 'Salvați și regenerați bucățile secundare',
+    view: 'Vedere',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',
@@ -191,6 +196,7 @@ const translation = {
     editorTip: 'Poate construi aplicații, dar nu poate gestiona setările echipei',
     inviteTeamMember: 'Adaugă membru în echipă',
     inviteTeamMemberTip: 'Pot accesa direct datele echipei dvs. după autentificare.',
+    emailNotSetup: 'Serverul de e-mail nu este configurat, astfel încât e-mailurile de invitație nu pot fi trimise. Vă rugăm să notificați utilizatorii despre linkul de invitație care va fi emis după invitație.',
     email: 'Email',
     emailInvalid: 'Format de email invalid',
     emailPlaceholder: 'Vă rugăm să introduceți emailuri',
@@ -473,6 +479,7 @@ const translation = {
     emptyTip: 'Cunoștințele nu au fost asociate, vă rugăm să mergeți la aplicație sau la plug-in pentru a finaliza asocierea.',
     viewDoc: 'Vizualizați documentația',
     relatedApp: 'aplicații asociate',
+    noRelatedApp: 'Fără aplicații conectate',
   },
   voiceInput: {
     speaking: 'Vorbiți acum...',

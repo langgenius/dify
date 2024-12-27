@@ -42,6 +42,11 @@ const translation = {
     zoomIn: 'Zoom avant',
     openInNewTab: 'Ouvrir dans un nouvel onglet',
     copyImage: 'Copier l’image',
+    view: 'Vue',
+    viewMore: 'VOIR PLUS',
+    close: 'Fermer',
+    saveAndRegenerate: 'Enregistrer et régénérer des morceaux enfants',
+    regenerate: 'Régénérer',
   },
   placeholder: {
     input: 'Veuillez entrer',
@@ -191,6 +196,7 @@ const translation = {
     editorTip: 'Peut construire des applications, mais ne peut pas gérer les paramètres de l\'équipe',
     inviteTeamMember: 'Ajouter un membre de l\'équipe',
     inviteTeamMemberTip: 'Ils peuvent accéder directement à vos données d\'équipe après s\'être connectés.',
+    emailNotSetup: 'Le serveur de messagerie n\'est pas configuré, les e-mails d\'invitation ne peuvent donc pas être envoyés. Veuillez informer les utilisateurs du lien d\'invitation qui sera émis après l\'invitation.',
     email: 'Courrier électronique',
     emailInvalid: 'Format de courriel invalide',
     emailPlaceholder: 'Veuillez entrer des emails',
@@ -473,6 +479,7 @@ const translation = {
     emptyTip: 'La Connaissance n\'a pas été associée, veuillez aller à l\'application ou au plug-in pour compléter l\'association.',
     viewDoc: 'Voir la documentation',
     relatedApp: 'applications liées',
+    noRelatedApp: 'Pas d’applications liées',
   },
   voiceInput: {
     speaking: 'Parle maintenant...',

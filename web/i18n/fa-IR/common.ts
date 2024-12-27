@@ -42,6 +42,11 @@ const translation = {
     copyImage: 'کپی تصویر',
     openInNewTab: 'باز کردن در برگه جدید',
     zoomOut: 'کوچک نمایی',
+    close: 'نزدیک',
+    regenerate: 'بازسازی',
+    view: 'مشاهده',
+    viewMore: 'بیشتر ببینید',
+    saveAndRegenerate: 'ذخیره و بازسازی تکه های فرزند',
   },
   errorMsg: {
     fieldRequired: '{{field}} الزامی است',
@@ -199,6 +204,7 @@ const translation = {
     datasetOperatorTip: 'فقط می‌تواند پایگاه دانش را مدیریت کند',
     inviteTeamMember: 'افزودن عضو تیم',
     inviteTeamMemberTip: 'آنها می‌توانند پس از ورود به سیستم، مستقیماً به داده‌های تیم شما دسترسی پیدا کنند.',
+    emailNotSetup: 'سرور ایمیل راه‌اندازی نشده است، بنابراین ایمیل‌های دعوت نمی‌توانند ارسال شوند. لطفاً کاربران را از لینک دعوت که پس از دعوت صادر خواهد شد مطلع کنید。',
     email: 'ایمیل',
     emailInvalid: 'فرمت ایمیل نامعتبر است',
     emailPlaceholder: 'لطفاً ایمیل‌ها را وارد کنید',
@@ -477,6 +483,7 @@ const translation = {
     emptyTip: 'دانش مرتبط نشده است، لطفاً به برنامه یا افزونه بروید تا ارتباط را کامل کنید.',
     viewDoc: 'مشاهده مستندات',
     relatedApp: 'برنامه‌های مرتبط',
+    noRelatedApp: 'هیچ برنامه پیوندی وجود ندارد',
   },
   voiceInput: {
     speaking: 'اکنون صحبت کنید...',

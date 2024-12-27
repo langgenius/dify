@@ -42,6 +42,11 @@ const translation = {
     zoomIn: 'Ingrandisci',
     openInNewTab: 'Apri in una nuova scheda',
     copyImage: 'Copia immagine',
+    close: 'Chiudere',
+    view: 'Vista',
+    saveAndRegenerate: 'Salva e rigenera i blocchi figlio',
+    regenerate: 'Rigenerare',
+    viewMore: 'SCOPRI DI PIÙ',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',
@@ -208,6 +213,7 @@ const translation = {
     inviteTeamMember: 'Aggiungi membro del team',
     inviteTeamMemberTip:
       'Potranno accedere ai dati del tuo team direttamente dopo aver effettuato l\'accesso.',
+    emailNotSetup: 'Il server email non è configurato, quindi non è possibile inviare email di invito. Si prega di notificare agli utenti il link di invito che verrà emesso dopo l\'invito.',
     email: 'Email',
     emailInvalid: 'Formato Email non valido',
     emailPlaceholder: 'Per favore inserisci le email',
@@ -503,6 +509,7 @@ const translation = {
       'La Conoscenza non è stata associata, per favore vai all\'applicazione o al plug-in per completare l\'associazione.',
     viewDoc: 'Visualizza documentazione',
     relatedApp: 'app collegate',
+    noRelatedApp: 'Nessuna app collegata',
   },
   voiceInput: {
     speaking: 'Parla ora...',

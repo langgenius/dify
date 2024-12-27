@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Union
 
-import numexpr as ne
+import numexpr as ne  # type: ignore
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool

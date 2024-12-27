@@ -42,6 +42,11 @@ const translation = {
     openInNewTab: 'Otwórz w nowej karcie',
     zoomIn: 'Powiększenie',
     zoomOut: 'Pomniejszanie',
+    saveAndRegenerate: 'Zapisywanie i regeneracja fragmentów podrzędnych',
+    view: 'Widok',
+    regenerate: 'Ponownie wygenerować',
+    viewMore: 'ZOBACZ WIĘCEJ',
+    close: 'Zamykać',
   },
   placeholder: {
     input: 'Proszę wprowadzić',
@@ -198,6 +203,7 @@ const translation = {
     inviteTeamMember: 'Dodaj członka zespołu',
     inviteTeamMemberTip:
       'Mogą uzyskać bezpośredni dostęp do danych Twojego zespołu po zalogowaniu.',
+    emailNotSetup: 'Serwer poczty nie jest skonfigurowany, więc nie można wysyłać zaproszeń e-mail. Proszę powiadomić użytkowników o linku do zaproszenia, który zostanie wydany po zaproszeniu.',
     email: 'Email',
     emailInvalid: 'Nieprawidłowy format e-maila',
     emailPlaceholder: 'Proszę podać adresy e-mail',
@@ -488,6 +494,7 @@ const translation = {
       'Wiedza nie została powiązana, przejdź do aplikacji lub wtyczki, aby ukończyć powiązanie.',
     viewDoc: 'Zobacz dokumentację',
     relatedApp: 'powiązane aplikacje',
+    noRelatedApp: 'Brak połączonych aplikacji',
   },
   voiceInput: {
     speaking: 'Mów teraz...',

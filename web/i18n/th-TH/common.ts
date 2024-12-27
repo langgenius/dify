@@ -42,6 +42,11 @@ const translation = {
     zoomOut: 'ซูมออก',
     zoomIn: 'ซูมเข้า',
     openInNewTab: 'เปิดในแท็บใหม่',
+    view: 'ทิวทัศน์',
+    regenerate: 'สร้างใหม่',
+    viewMore: 'ดูเพิ่มเติม',
+    saveAndRegenerate: 'บันทึกและสร้างก้อนย่อยใหม่',
+    close: 'ปิด',
   },
   errorMsg: {
     fieldRequired: '{{field}} เป็นสิ่งจําเป็น',
@@ -194,6 +199,7 @@ const translation = {
     datasetOperatorTip: 'สามารถจัดการฐานความรู้ได้เท่านั้น',
     inviteTeamMember: 'เพิ่มสมาชิกในทีม',
     inviteTeamMemberTip: 'พวกเขาสามารถเข้าถึงข้อมูลทีมของคุณได้โดยตรงหลังจากลงชื่อเข้าใช้',
+    emailNotSetup: 'เซิร์ฟเวอร์อีเมลไม่ได้ตั้งค่าไว้ จึงไม่สามารถส่งอีเมลเชิญได้ กรุณาแจ้งผู้ใช้เกี่ยวกับลิงก์เชิญที่จะออกหลังจากการเชิญแทน',
     email: 'อีเมล',
     emailInvalid: 'รูปแบบอีเมลไม่ถูกต้อง',
     emailPlaceholder: 'กรุณากรอกอีเมล',
@@ -472,6 +478,7 @@ const translation = {
     emptyTip: 'ความรู้ยังไม่ได้เชื่อมโยง โปรดไปที่แอปพลิเคชันหรือปลั๊กอินเพื่อเชื่อมโยงให้เสร็จสมบูรณ์',
     viewDoc: 'ดูเอกสารประกอบ',
     relatedApp: 'แอปที่เชื่อมโยง',
+    noRelatedApp: 'ไม่มีแอปที่เชื่อมโยง',
   },
   voiceInput: {
     speaking: 'พูดเดี๋ยวนี้...',

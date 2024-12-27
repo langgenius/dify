@@ -146,6 +146,26 @@ const translation = {
   externalKnowledgeDescriptionPlaceholder: 'このナレッジベースの内容を説明する(オプション)',
   allExternalTip: '外部ナレッジのみを使用する場合、ユーザーは Rerank モデルを有効にするかどうかを選択できます。有効にしない場合、取得されたチャンクはスコアに基づいて並べ替えられます。異なるナレッジベースの検索戦略に一貫性がない場合、不正確になります。',
   externalAPIPanelDescription: '外部ナレッジAPIは、Difyの外部のナレッジベースに接続し、そのナレッジベースからナレッジを取得するために使用されます。',
+  chunkingMode: {
+    general: '全般',
+    parentChild: '親子',
+  },
+  parentMode: {
+    fullDoc: 'フルドキュメント',
+    paragraph: '段落',
+  },
+  batchAction: {
+    delete: '削除',
+    selected: '入選',
+    archive: 'アーカイブ',
+    enable: 'エネーブル',
+    disable: '無効にする',
+    cancel: 'キャンセル',
+  },
+  documentsDisabled: '{{num}}ドキュメントが無効 - 30日以上非アクティブ',
+  localDocs: 'ローカルドキュメント',
+  enable: 'エネーブル',
+  preprocessDocument: '{{数値}}ドキュメントの前処理',
 }
 
 export default translation

@@ -6,7 +6,7 @@ import time
 from collections.abc import Generator
 from typing import TYPE_CHECKING, Optional, Union, cast
 
-import google.auth.transport.requests
+import google.auth.transport.requests  # type: ignore
 import requests
 from anthropic import AnthropicVertex, Stream
 from anthropic.types import (

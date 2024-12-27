@@ -39,15 +39,9 @@ class RunRetryEvent(BaseModel):
     start_at: datetime = Field(..., description="Retry start time")
 
 
-class SingleStepRetryEvent(BaseModel):
+class SingleStepRetryEvent(NodeRunResult):
     """Single step retry event"""
 
-    status: str = WorkflowNodeExecutionStatus.RETRY.value
+    status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.RETRY
 
-    inputs: dict | None = Field(..., description="input")
-    error: str = Field(..., description="error")
-    outputs: dict = Field(..., description="output")
-    retry_index: int = Field(..., description="Retry attempt number")
-    error: str = Field(..., description="error")
     elapsed_time: float = Field(..., description="elapsed time")
-    execution_metadata: dict | None = Field(..., description="execution metadata")

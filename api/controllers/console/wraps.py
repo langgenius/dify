@@ -3,7 +3,7 @@ import os
 from functools import wraps
 
 from flask import abort, request
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 
 from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
@@ -121,8 +121,8 @@ def cloud_utm_record(view):
                 utm_info = request.cookies.get("utm_info")
 
                 if utm_info:
-                    utm_info = json.loads(utm_info)
-                    OperationService.record_utm(current_user.current_tenant_id, utm_info)
+                    utm_info_dict: dict = json.loads(utm_info)
+                    OperationService.record_utm(current_user.current_tenant_id, utm_info_dict)
         except Exception as e:
             pass
         return view(*args, **kwargs)

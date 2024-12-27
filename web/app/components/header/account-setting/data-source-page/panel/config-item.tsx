@@ -44,22 +44,22 @@ const ConfigItem: FC<Props> = ({
   const onChangeAuthorizedPage = notionActions?.onChangeAuthorizedPage || function () { }
 
   return (
-    <div className={cn(s['workspace-item'], 'flex items-center mb-1 py-1 pr-1 bg-white rounded-lg')} key={payload.id}>
+    <div className={cn(s['workspace-item'], 'flex items-center mb-1 py-1 pr-1 bg-components-panel-on-panel-item-bg rounded-lg')} key={payload.id}>
       <payload.logo className='ml-3 mr-1.5' />
-      <div className='grow py-[7px] leading-[18px] text-[13px] font-medium text-gray-700 truncate' title={payload.name}>{payload.name}</div>
+      <div className='grow py-[7px] system-sm-medium text-text-secondary truncate' title={payload.name}>{payload.name}</div>
       {
         payload.isActive
-          ? <Indicator className='shrink-0 mr-[6px]' />
+          ? <Indicator className='shrink-0 mr-[6px]' color='green' />
           : <Indicator className='shrink-0 mr-[6px]' color='yellow' />
       }
-      <div className='shrink-0 mr-3 text-xs font-medium uppercase'>
+      <div className={`shrink-0 mr-3 text-xs font-medium uppercase ${payload.isActive ? 'text-util-colors-green-green-600' : 'text-util-colors-warning-warning-600'}`}>
         {
           payload.isActive
             ? t(isNotion ? 'common.dataSource.notion.connected' : 'common.dataSource.website.active')
             : t(isNotion ? 'common.dataSource.notion.disconnected' : 'common.dataSource.website.inactive')
         }
       </div>
-      <div className='mr-2 w-[1px] h-3 bg-gray-100' />
+      <div className='mr-2 w-[1px] h-3 bg-divider-regular' />
       {isNotion && (
         <Operate payload={{
           id: payload.id,
@@ -70,8 +70,8 @@ const ConfigItem: FC<Props> = ({
 
       {
         isWebsite && !readOnly && (
-          <div className='p-2 text-gray-500 cursor-pointer rounded-md hover:bg-black/5' onClick={onRemove} >
-            <RiDeleteBinLine className='w-4 h-4 ' />
+          <div className='p-2 text-text-tertiary cursor-pointer rounded-md hover:bg-black/5' onClick={onRemove} >
+            <RiDeleteBinLine className='w-4 h-4' />
           </div>
         )
       }

@@ -2,10 +2,10 @@ import threading
 from queue import Queue
 from typing import Any, Optional
 
-import dashscope
-from dashscope import SpeechSynthesizer
-from dashscope.api_entities.dashscope_response import SpeechSynthesisResponse
-from dashscope.audio.tts import ResultCallback, SpeechSynthesisResult
+import dashscope  # type: ignore
+from dashscope import SpeechSynthesizer  # type: ignore
+from dashscope.api_entities.dashscope_response import SpeechSynthesisResponse  # type: ignore
+from dashscope.audio.tts import ResultCallback, SpeechSynthesisResult  # type: ignore
 
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
