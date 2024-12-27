@@ -15,7 +15,7 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
       ? ALL_CHAT_AVAILABLE_BLOCKS
       : ALL_COMPLETION_AVAILABLE_BLOCKS
   },
-  checkValid(payload) {
+  checkValid(payload, t, moreDataForCheckValid) {
     let isValid = true
     let errorMessages = ''
     if (payload.type) {

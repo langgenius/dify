@@ -84,7 +84,6 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
       }
     }
   }
-  console.log(formSchema)
   return <div className='space-y-2'>
     <AgentStrategySelector value={strategy} onChange={onStrategyChange} />
     {

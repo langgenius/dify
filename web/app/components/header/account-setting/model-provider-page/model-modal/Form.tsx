@@ -39,7 +39,12 @@ type FormProps<
   inputClassName?: string
   isShowDefaultValue?: boolean
   fieldMoreInfo?: (payload: CredentialFormSchema | CustomFormSchema) => ReactNode
-  customRenderField?: (formSchema: CustomFormSchema, props: FormProps<CustomFormSchema>) => ReactNode
+  customRenderField?: (
+    formSchema: CustomFormSchema,
+    props: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'>
+  ) => ReactNode
+  // If return falsy value, this field will fallback to default render
+  override?: [Array<FormTypeEnum>, (formSchema: CredentialFormSchema) => ReactNode]
 }
 
 function Form<
@@ -60,6 +65,7 @@ function Form<
   isShowDefaultValue = false,
   fieldMoreInfo,
   customRenderField,
+  override,
 }: FormProps<CustomFormSchema>) {
   const language = useLanguage()
   const [changeKey, setChangeKey] = useState('')
@@ -97,6 +103,15 @@ function Form<
         triggerClassName='ml-1 w-4 h-4'
         asChild={false} />
     ))
+    if (override) {
+      const [overrideTypes, overrideRender] = override
+      if (overrideTypes.includes(formSchema.type as FormTypeEnum)) {
+        const node = overrideRender(formSchema as CredentialFormSchema)
+        if (node)
+          return node
+      }
+    }
+
     if (formSchema.type === FormTypeEnum.textInput || formSchema.type === FormTypeEnum.secretInput || formSchema.type === FormTypeEnum.textNumber) {
       const {
         variable, label, placeholder, required, show_on,
@@ -343,7 +358,6 @@ function Form<
         inputClassName,
         isShowDefaultValue,
         fieldMoreInfo,
-        customRenderField,
       })
     }
   }
