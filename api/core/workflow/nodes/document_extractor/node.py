@@ -4,8 +4,8 @@ import json
 import logging
 import os
 import tempfile
-from uuid import uuid4
 from typing import cast
+from uuid import uuid4
 
 import docx
 import pandas as pd
