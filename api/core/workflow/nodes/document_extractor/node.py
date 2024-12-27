@@ -6,11 +6,12 @@ import os
 import tempfile
 from typing import cast
 
+import chardet
 import docx
 import pandas as pd
 import pypdfium2  # type: ignore
 import yaml  # type: ignore
-import chardet
+
 from configs import dify_config
 from core.file import File, FileTransferMethod, file_manager
 from core.helper import ssrf_proxy

@@ -3,6 +3,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
+from core.file import File
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import LLMUsage, ModelPropertyKey, PromptMessageRole
@@ -33,7 +34,7 @@ from .template_prompts import (
     QUESTION_CLASSIFIER_USER_PROMPT_2,
     QUESTION_CLASSIFIER_USER_PROMPT_3,
 )
-from core.file import File
+
 
 class QuestionClassifierNode(LLMNode):
     _node_data_cls = QuestionClassifierNodeData  # type: ignore
