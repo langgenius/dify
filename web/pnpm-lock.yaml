@@ -143,8 +143,8 @@ importers:
         specifier: ^1.2.1
         version: 1.2.1
       lexical:
-        specifier: ^0.16.0
-        version: 0.16.1
+        specifier: ^0.18.0
+        version: 0.18.0
       line-clamp:
         specifier: ^1.0.0
         version: 1.0.0
