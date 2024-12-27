@@ -65,10 +65,11 @@ const format = (list: NodeTracing[], t: any): NodeTracing[] => {
   // console.log(list)
   const result: NodeTracing[] = [...list]
   const parallelFirstNodeMap: Record<string, string> = {}
-  // list to tree by parent_parallel_start_node_id and parallel_start_node_id
+  // list to tree by parent_parallel_start_node_id and branch by parallel_start_node_id. Each parallel may has more than one branch.
   result.forEach((node) => {
     const parallel_id = node.parallel_id ?? node.execution_metadata?.parallel_id ?? null
     const parent_parallel_id = node.parent_parallel_id ?? node.execution_metadata?.parent_parallel_id ?? null
+    const branchStartNodeId = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
     const parent_parallel_start_node_id = node.parent_parallel_start_node_id ?? node.execution_metadata?.parent_parallel_start_node_id ?? null
     const isNotInParallel = !parallel_id || node.node_type === BlockEnum.End
     if (isNotInParallel)
@@ -100,10 +101,21 @@ const format = (list: NodeTracing[], t: any): NodeTracing[] => {
       return
     }
 
-    // append to parallel start node
+    // append to parallel start node and after the same branch
     const parallelStartNode = result.find(item => item.node_id === parallelFirstNodeMap[parallel_id])
-    if (parallelStartNode && parallelStartNode.parallelDetail && parallelStartNode!.parallelDetail!.children)
-      parallelStartNode!.parallelDetail!.children.push(node)
+    if (parallelStartNode && parallelStartNode.parallelDetail && parallelStartNode!.parallelDetail!.children) {
+      const sameBranchNodesLastIndex = parallelStartNode.parallelDetail.children.findLastIndex((node) => {
+        const currStartNodeId = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
+        return currStartNodeId === branchStartNodeId
+      })
+      if (sameBranchNodesLastIndex !== -1) {
+        parallelStartNode.parallelDetail.children.splice(sameBranchNodesLastIndex + 1, 0, node)
+      }
+      else { // new branch
+        parallelStartNode.parallelDetail.children.push(node)
+      }
+    }
+    // parallelStartNode!.parallelDetail!.children.push(node)
   })
 
   const filteredInParallelSubNodes = result.filter((node) => {

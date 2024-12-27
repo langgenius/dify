@@ -30,7 +30,6 @@ const TracingPanel: FC<TracingPanelProps> = ({
   hideNodeProcessDetail = false,
 }) => {
   const treeNodes = list
-  console.log(treeNodes)
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
   const [hoveredParallel, setHoveredParallel] = useState<string | null>(null)
 
@@ -83,7 +82,6 @@ const TracingPanel: FC<TracingPanelProps> = ({
     agentResultList,
     setAgentResultList,
   } = useLogs()
-
 
   const renderNode = (node: NodeTracing) => {
     const isParallelFirstNode = !!node.parallelDetail?.isParallelStartNode
