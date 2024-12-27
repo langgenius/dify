@@ -68,12 +68,18 @@ export type NodeTracing = {
   expand?: boolean // for UI
   details?: NodeTracing[][] // iteration detail
   retryDetail?: NodeTracing[] // retry detail
-  agentLog?: AgentLogItemWithChildren[]
+  retry_index?: number
+  parallelDetail?: { // parallel detail. if is in parallel, this field will be set
+    isParallelStartNode?: boolean
+    parallelTitle?: string
+    branchTitle?: string
+    children?: NodeTracing[]
+  }
   parallel_id?: string
   parallel_start_node_id?: string
   parent_parallel_id?: string
   parent_parallel_start_node_id?: string
-  retry_index?: number
+  agentLog?: AgentLogItemWithChildren[] // agent log
 }
 
 export type FetchWorkflowDraftResponse = {

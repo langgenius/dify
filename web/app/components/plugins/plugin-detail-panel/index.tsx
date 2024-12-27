@@ -59,14 +59,12 @@ const PluginDetailPanel: FC<Props> = ({
             {!!detail.declaration.agent_strategy && <AgentStrategyList detail={detail} />}
             {!!detail.declaration.endpoint && <EndpointList detail={detail} />}
             {!!detail.declaration.model && <ModelList detail={detail} />}
-            {false && (
-              <div className='px-4 py-2'>
-                <ToolSelector
-                  value={value}
-                  onSelect={item => testChange(item)}
-                />
-              </div>
-            )}
+            <div className='px-4 py-2'>
+              <ToolSelector
+                value={value}
+                onSelect={item => testChange(item)}
+              />
+            </div>
           </div>
         </>
       )}

@@ -61,7 +61,7 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
       const { data: nodeList } = await fetchTracingList({
         url: `/apps/${appID}/workflow-runs/${runID}/node-executions`,
       })
-      setList(formatNodeList(nodeList))
+      setList(formatNodeList(nodeList, t))
     }
     catch (err) {
       notify({
