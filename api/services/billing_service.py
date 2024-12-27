@@ -90,4 +90,4 @@ class BillingService:
     def update_account_deletion_feedback(cls, email: str, feedback: str):
         """Update account deletion feedback."""
         json = {"email": email, "feedback": feedback}
-        return cls._send_request("POST", "/account/deletion-feedback", json=json)
+        return cls._send_request("POST", "/account/delete-feedback", json=json)
