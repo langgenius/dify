@@ -19,6 +19,7 @@ export type Strategy = {
   agent_strategy_name: string
   agent_strategy_label: string
   agent_parameters?: ToolVarInputs
+  agent_output_schema: Record<string, any>
 }
 
 export type AgentStrategyProps = {
@@ -37,44 +38,6 @@ type MultipleToolSelectorSchema = CustomSchema<'array[tools]'>
 type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema
 
 const devMockForm = [{
-  name: 'model',
-  label: {
-    en_US: 'Model',
-    zh_Hans: '模型',
-    pt_BR: 'Model',
-    ja_JP: 'Model',
-  },
-  placeholder: null,
-  scope: 'tool-call&llm',
-  auto_generate: null,
-  template: null,
-  required: true,
-  default: null,
-  min: null,
-  max: null,
-  options: [],
-  type: 'model-selector',
-},
-{
-  name: 'tools',
-  label: {
-    en_US: 'Tools list',
-    zh_Hans: '工具列表',
-    pt_BR: 'Tools list',
-    ja_JP: 'Tools list',
-  },
-  placeholder: null,
-  scope: null,
-  auto_generate: null,
-  template: null,
-  required: true,
-  default: null,
-  min: null,
-  max: null,
-  options: [],
-  type: 'array[tools]',
-},
-{
   name: 'instruction',
   label: {
     en_US: 'Instruction',
