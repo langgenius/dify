@@ -280,9 +280,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 # save agent thought
                 self.save_agent_thought(
                     agent_thought=agent_thought,
-                    tool_name=None,
-                    tool_input=None,
-                    thought=None,
+                    tool_name="",
+                    tool_input="",
+                    thought="",
                     tool_invoke_meta={
                         tool_response["tool_call_name"]: tool_response["meta"] for tool_response in tool_responses
                     },
