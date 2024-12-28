@@ -417,7 +417,7 @@ class ApiToolManageService:
 
         try:
             provider_controller.validate_credentials_format(credentials)
-
+            # get tool 
             tool = provider_controller.get_tool(tool_name)
             runtime_tool = tool.fork_tool_runtime(
                 runtime={
