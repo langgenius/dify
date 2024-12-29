@@ -904,6 +904,10 @@ services:
       xpack.security.http.ssl.enabled: 'false'
     ports:
       - ${ELASTICSEARCH_PORT:-9200}:9200
+    deploy:
+      resources:
+        limits:
+          memory: 2g
     healthcheck:
       test: ['CMD', 'curl', '-s', 'http://localhost:9200/_cluster/health?pretty']
       interval: 30s
