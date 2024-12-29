@@ -1,6 +1,7 @@
 from typing import Any
 
 from configs import dify_config
+from core.rag.datasource.keyword.japanese.japanese import JapaneseKeywordExtractor
 from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.datasource.keyword.keyword_type import KeyWordType
 from core.rag.models.document import Document
@@ -24,6 +25,8 @@ class Keyword:
                 from core.rag.datasource.keyword.jieba.jieba import Jieba
 
                 return Jieba
+            case KeyWordType.JAPANESE:
+                return JapaneseKeywordExtractor
             case _:
                 raise ValueError(f"Keyword store {keyword_type} is not supported.")
 
