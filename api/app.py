@@ -14,8 +14,6 @@ if is_db_command():
 
     app = create_migrations_app()
 else:
-    from app_factory import create_app
-
     if not os.environ.get("DEBUG", False):
         from gevent import monkey  # type: ignore
 
@@ -26,6 +24,8 @@ else:
 
         # grpc gevent
         grpc_gevent.init_gevent()
+
+    from app_factory import create_app
 
     app = create_app()
     celery = app.extensions["celery"]
