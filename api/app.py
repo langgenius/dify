@@ -1,12 +1,8 @@
-from libs import version_utils
-
-# preparation before creating app
-version_utils.check_supported_python_version()
+import os
+import sys
 
 
 def is_db_command():
-    import sys
-
     if len(sys.argv) > 1 and sys.argv[0].endswith("flask") and sys.argv[1] == "db":
         return True
     return False
@@ -19,9 +15,17 @@ if is_db_command():
     app = create_migrations_app()
 else:
     from app_factory import create_app
-    from libs import threadings_utils
 
-    threadings_utils.apply_gevent_threading_patch()
+    if not os.environ.get("DEBUG", False):
+        from gevent import monkey  # type: ignore
+
+        # gevent
+        monkey.patch_all()
+
+        from grpc.experimental import gevent as grpc_gevent  # type: ignore
+
+        # grpc gevent
+        grpc_gevent.init_gevent()
 
     app = create_app()
     celery = app.extensions["celery"]
