@@ -14,7 +14,7 @@ if is_db_command():
 
     app = create_migrations_app()
 else:
-    if not os.environ.get("DEBUG", False):
+    if os.environ.get("FLASK_DEBUG", "False") != "True":
         from gevent import monkey  # type: ignore
 
         # gevent
