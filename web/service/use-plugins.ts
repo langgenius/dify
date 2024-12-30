@@ -9,6 +9,7 @@ import type {
   Permissions,
   Plugin,
   PluginDetail,
+  PluginInfoFromMarketPlace,
   PluginTask,
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
@@ -91,6 +92,7 @@ export const useUpdatePackageFromMarketPlace = () => {
 
 export const useVersionListOfPlugin = (pluginID: string) => {
   return useQuery<{ data: VersionListResponse }>({
+    enabled: !!pluginID,
     queryKey: [NAME_SPACE, 'versions', pluginID],
     queryFn: () => getMarketplace<{ data: VersionListResponse }>(`/plugins/${pluginID}/versions`, { params: { page: 1, page_size: 100 } }),
   })
@@ -396,6 +398,15 @@ export const useMutationClearAllTaskPlugin = () => {
     mutationFn: () => {
       return post<{ success: boolean }>('/workspaces/current/plugin/tasks/delete_all')
     },
+  })
+}
+
+export const usePluginManifestInfo = (pluginUID: string) => {
+  return useQuery({
+    enabled: !!pluginUID,
+    queryKey: [[NAME_SPACE, 'manifest', pluginUID]],
+    queryFn: () => getMarketplace<{ data: { plugin: PluginInfoFromMarketPlace, version: { version: string } } }>(`/plugins/${pluginUID}`),
+    retry: 0,
   })
 }
 

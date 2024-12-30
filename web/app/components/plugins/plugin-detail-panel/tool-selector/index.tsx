@@ -32,12 +32,15 @@ import {
   useInvalidateAllBuiltInTools,
   useUpdateProviderCredentials,
 } from '@/service/use-tools'
+import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
+import { usePluginInstalledCheck } from '@/app/components/plugins/plugin-detail-panel/tool-selector/hooks'
 import { CollectionType } from '@/app/components/tools/types'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type {
   OffsetOptions,
   Placement,
 } from '@floating-ui/react'
+import { MARKETPLACE_API_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
 
 export type ToolValue = {
@@ -91,6 +94,9 @@ const ToolSelector: FC<Props> = ({
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
   const invalidateAllBuiltinTools = useInvalidateAllBuiltInTools()
+
+  // plugin info check
+  const { inMarketPlace, manifest } = usePluginInstalledCheck(value?.provider_name)
 
   const currentProvider = useMemo(() => {
     const mergedTools = [...(buildInTools || []), ...(customTools || []), ...(workflowTools || [])]
@@ -164,6 +170,25 @@ const ToolSelector: FC<Props> = ({
     onSuccess: handleCredentialSettingUpdate,
   })
 
+  // install from marketplace
+  const { mutateAsync: installPackageFromMarketPlace, isPending } = useInstallPackageFromMarketPlace()
+  const manifestIcon = useMemo(() => {
+    if (!manifest)
+      return ''
+    return `${MARKETPLACE_API_PREFIX}/plugins/${(manifest as any).plugin_id}/icon`
+  }, [manifest])
+  const handleInstall = async () => {
+    if (!manifest)
+      return
+    try {
+      await installPackageFromMarketPlace(manifest.latest_package_identifier)
+      invalidateAllBuiltinTools()
+    }
+    catch (e: any) {
+      Toast.notify({ type: 'error', message: `${e.message || e}` })
+    }
+  }
+
   return (
     <>
       <PortalToFollowElem
@@ -188,7 +213,7 @@ const ToolSelector: FC<Props> = ({
           {!trigger && value?.provider_name && (
             <ToolItem
               open={isShow}
-              icon={currentProvider?.icon}
+              icon={currentProvider?.icon || manifestIcon}
               providerName={value.provider_name}
               toolName={value.tool_name}
               showSwitch={supportEnableSwitch}
@@ -197,13 +222,15 @@ const ToolSelector: FC<Props> = ({
               onDelete={onDelete}
               noAuth={currentProvider && !currentProvider.is_team_authorization}
               onAuth={() => setShowSettingAuth(true)}
-              // uninstalled TODO
-              // isError TODO
-              errorTip={<div className='space-y-1 text-xs'>
-                <h3 className='text-text-primary font-semibold'>{t('workflow.nodes.agent.pluginNotInstalled')}</h3>
-                <p className='text-text-secondary tracking-tight'>{t('workflow.nodes.agent.pluginNotInstalledDesc')}</p>
+              uninstalled={!currentProvider && inMarketPlace}
+              isInstalling={isPending}
+              onInstall={() => handleInstall()}
+              isError={!currentProvider && !inMarketPlace}
+              errorTip={<div className='space-y-1 max-w-[240px] text-xs'>
+                <h3 className='text-text-primary font-semibold'>{t('plugin.detailPanel.toolSelector.uninstalledTitle')}</h3>
+                <p className='text-text-secondary tracking-tight'>{t('plugin.detailPanel.toolSelector.uninstalledContent')}</p>
                 <p>
-                  <Link href={'/plugins'} className='text-text-accent tracking-tight'>{t('workflow.nodes.agent.linkToPlugin')}</Link>
+                  <Link href={'/plugins'} className='text-text-accent tracking-tight'>{t('plugin.detailPanel.toolSelector.uninstalledLink')}</Link>
                 </p>
               </div>}
             />
