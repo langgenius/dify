@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, MutableMapping
 
 from pydantic import BaseModel
 
@@ -11,7 +11,7 @@ from models.api_based_extension import APIBasedExtension
 
 class ModerationInputParams(BaseModel):
     app_id: str = ""
-    inputs: dict = {}
+    inputs: MutableMapping = {}
     query: str = ""
 
 
@@ -42,7 +42,7 @@ class ApiModeration(Moderation):
         if not extension:
             raise ValueError("API-based Extension not found. Please check it again.")
 
-    def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
+    def moderation_for_inputs(self, inputs: MutableMapping, query: str = "") -> ModerationInputsResult:
         flagged = False
         preset_response = ""
         if self.config is None:

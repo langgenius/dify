@@ -1,3 +1,4 @@
+from typing import MutableMapping
 from core.extension.extensible import ExtensionModule
 from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult
 from extensions.ext_code_based_extension import code_based_extension
@@ -25,7 +26,7 @@ class ModerationFactory:
         # FIXME: mypy error, try to fix it instead of using type: ignore
         extension_class.validate_config(tenant_id, config)  # type: ignore
 
-    def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
+    def moderation_for_inputs(self, inputs: MutableMapping, query: str = "") -> ModerationInputsResult:
         """
         Moderation for inputs.
         After the user inputs, this method will be called to perform sensitive content review

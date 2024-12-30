@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Optional
+from typing import Optional, MutableMapping
 
 from pydantic import BaseModel
 
@@ -51,7 +51,7 @@ class Moderation(Extensible, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
+    def moderation_for_inputs(self, inputs: MutableMapping, query: str = "") -> ModerationInputsResult:
         """
         Moderation for inputs.
         After the user inputs, this method will be called to perform sensitive content review

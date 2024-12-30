@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from typing import Any, Optional
 
 from core.app.app_config.entities import AppConfig
@@ -18,11 +18,11 @@ class InputModeration:
         app_id: str,
         tenant_id: str,
         app_config: AppConfig,
-        inputs: Mapping[str, Any],
+        inputs: MutableMapping[str, Any],
         query: str,
         message_id: str,
         trace_manager: Optional[TraceQueueManager] = None,
-    ) -> tuple[bool, Mapping[str, Any], str]:
+    ) -> tuple[bool, MutableMapping[str, Any], str]:
         """
         Process sensitive_word_avoidance.
         :param app_id: app id
@@ -34,7 +34,6 @@ class InputModeration:
         :param trace_manager: trace manager
         :return:
         """
-        inputs = dict(inputs)
         if not app_config.sensitive_word_avoidance:
             return False, inputs, query
 

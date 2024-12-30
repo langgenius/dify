@@ -1,3 +1,4 @@
+from typing import MutableMapping
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.moderation.base import Moderation, ModerationAction, ModerationInputsResult, ModerationOutputsResult
@@ -17,7 +18,7 @@ class OpenAIModeration(Moderation):
         """
         cls._validate_inputs_and_outputs_config(config, True)
 
-    def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
+    def moderation_for_inputs(self, inputs: MutableMapping, query: str = "") -> ModerationInputsResult:
         flagged = False
         preset_response = ""
         if self.config is None:
@@ -48,7 +49,7 @@ class OpenAIModeration(Moderation):
             flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response
         )
 
-    def _is_violated(self, inputs: dict):
+    def _is_violated(self, inputs: MutableMapping):
         text = "\n".join(str(inputs.values()))
         model_manager = ModelManager()
         model_instance = model_manager.get_model_instance(
