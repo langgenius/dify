@@ -13,7 +13,6 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
   const { inputs, currentStrategy } = useConfig(props.id, props.data)
   const { t } = useTranslation()
-  // TODO: Implement models
   const models = useMemo(() => {
     if (!inputs) return []
     // if selected, show in node
@@ -22,7 +21,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     const models = currentStrategy?.parameters
       .filter(param => param.type === FormTypeEnum.modelSelector)
       .reduce((acc, param) => {
-        const item = inputs.agent_parameters?.[param.name]
+        const item = inputs.agent_configurations?.[param.name]
         if (!item) {
           if (param.required) {
             acc.push({ param: param.name })
@@ -41,18 +40,18 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     currentStrategy?.parameters.forEach((param) => {
       if (param.type === FormTypeEnum.toolSelector) {
         const field = param.name
-        const value = inputs.agent_parameters?.[field]
+        const value = inputs.agent_configurations?.[field]
         if (value) {
           tools.push({
-            providerName: value.provider_name,
+            providerName: value.provider_name as any,
           })
         }
       }
       if (param.type === FormTypeEnum.multiToolSelector) {
         const field = param.name
-        const value = inputs.agent_parameters?.[field]
+        const value = inputs.agent_configurations?.[field]
         if (value) {
-          (value as any[]).forEach((item) => {
+          (value as unknown as any[]).forEach((item) => {
             tools.push({
               providerName: item.provider_name,
             })
@@ -61,7 +60,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
       }
     })
     return tools
-  }, [currentStrategy, inputs.agent_parameters])
+  }, [currentStrategy?.parameters, inputs.agent_configurations])
   return <div className='mb-1 px-3 py-1 space-y-1'>
     {inputs.agent_strategy_name
       ? <SettingItem

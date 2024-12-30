@@ -83,7 +83,6 @@ export const AgentStrategySelector = (props: AgentStrategySelectorProps) => {
   }, [query, list])
   // TODO: should be replaced by real data
   const isExternalInstalled = true
-  // TODO: 验证这玩意写对了没
   const icon = list?.find(
     coll => coll.tools?.find(tool => tool.name === value?.agent_strategy_name),
   )?.icon as string | undefined
@@ -125,9 +124,10 @@ export const AgentStrategySelector = (props: AgentStrategySelectorProps) => {
               onChange({
                 agent_strategy_name: tool!.tool_name,
                 agent_strategy_provider_name: tool!.provider_name,
-                agent_parameters: tool!.params,
                 agent_strategy_label: tool!.tool_label,
                 agent_output_schema: tool!.output_schema,
+                agent_configurations: {},
+                agent_parameters: {},
               })
               setOpen(false)
             }}

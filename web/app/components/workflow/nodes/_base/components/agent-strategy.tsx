@@ -19,7 +19,8 @@ export type Strategy = {
   agent_strategy_provider_name: string
   agent_strategy_name: string
   agent_strategy_label: string
-  agent_parameters?: ToolVarInputs
+  agent_configurations?: Record<string, any>
+  agent_parameters?: Record<string, ToolVarInputs>
   agent_output_schema: Record<string, any>
 }
 
