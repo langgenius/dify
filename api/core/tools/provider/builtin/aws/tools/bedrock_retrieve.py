@@ -1,6 +1,6 @@
 import json
 import operator
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 import boto3
 
@@ -13,42 +13,45 @@ class BedrockRetrieveTool(BuiltinTool):
     knowledge_base_id: str = None
     topk: int = None
 
-    def _bedrock_retrieve(
-        self, query_input: str, knowledge_base_id: str, num_results: int, metadata_filter: Optional[dict] = None
-    ):
+    def _bedrock_retrieve(self, query_input: str, knowledge_base_id: str, num_results: int,
+                          metadata_filter: dict | None = None):
         try:
-            retrieval_query = {"text": query_input}
+            retrieval_query = {
+                'text': query_input
+            }
 
-            retrieval_configuration = {"vectorSearchConfiguration": {"numberOfResults": num_results}}
+            retrieval_configuration = {
+                'vectorSearchConfiguration': {
+                    'numberOfResults': num_results
+                }
+            }
 
             # 如果有元数据过滤条件，则添加到检索配置中
             if metadata_filter:
-                retrieval_configuration["vectorSearchConfiguration"]["filter"] = metadata_filter
+                retrieval_configuration['vectorSearchConfiguration']['filter'] = metadata_filter
 
             response = self.bedrock_client.retrieve(
                 knowledgeBaseId=knowledge_base_id,
                 retrievalQuery=retrieval_query,
-                retrievalConfiguration=retrieval_configuration,
+                retrievalConfiguration=retrieval_configuration
             )
 
             results = []
-            for result in response.get("retrievalResults", []):
-                results.append(
-                    {
-                        "content": result.get("content", {}).get("text", ""),
-                        "score": result.get("score", 0.0),
-                        "metadata": result.get("metadata", {}),
-                    }
-                )
+            for result in response.get('retrievalResults', []):
+                results.append({
+                    'content': result.get('content', {}).get('text', ''),
+                    'score': result.get('score', 0.0),
+                    'metadata': result.get('metadata', {})
+                })
 
             return results
         except Exception as e:
             raise Exception(f"Error retrieving from knowledge base: {str(e)}")
 
     def _invoke(
-        self,
-        user_id: str,
-        tool_parameters: dict[str, Any],
+            self,
+            user_id: str,
+            tool_parameters: dict[str, Any],
     ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
         invoke tools
@@ -58,9 +61,9 @@ class BedrockRetrieveTool(BuiltinTool):
             if not self.bedrock_client:
                 aws_region = tool_parameters.get("aws_region")
                 if aws_region:
-                    self.bedrock_client = boto3.client("bedrock-agent-runtime", region_name=aws_region)
+                    self.bedrock_client = boto3.client('bedrock-agent-runtime', region_name=aws_region)
                 else:
-                    self.bedrock_client = boto3.client("bedrock-agent-runtime")
+                    self.bedrock_client = boto3.client('bedrock-agent-runtime')
 
             line = 1
             if not self.knowledge_base_id:
@@ -86,7 +89,7 @@ class BedrockRetrieveTool(BuiltinTool):
                 query_input=query,
                 knowledge_base_id=self.knowledge_base_id,
                 num_results=self.topk,
-                metadata_filter=metadata_filter,  # 将元数据过滤条件传递给检索方法
+                metadata_filter=metadata_filter  # 将元数据过滤条件传递给检索方法
             )
 
             line = 5
