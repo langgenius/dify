@@ -1,6 +1,6 @@
 import json
 import operator
-from typing import Any, Union
+from typing import Any, Union, Optional
 
 import boto3
 
@@ -14,7 +14,7 @@ class BedrockRetrieveTool(BuiltinTool):
     topk: int = None
 
     def _bedrock_retrieve(self, query_input: str, knowledge_base_id: str, num_results: int,
-                          metadata_filter: dict | None = None):
+                          metadata_filter: Optional[dict] = None):
         try:
             retrieval_query = {
                 'text': query_input
