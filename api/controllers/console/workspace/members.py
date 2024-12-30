@@ -170,7 +170,8 @@ class MemberResetPasswordApi(Resource):
         try:
             assert member is not None, "Member not found"
             TenantService.admin_update_member_password(
-                current_user.current_tenant, member, args["new_password"], current_user)
+                current_user.current_tenant, member, args["new_password"], current_user
+            )
         except Exception as e:
             raise ValueError(str(e))
 
