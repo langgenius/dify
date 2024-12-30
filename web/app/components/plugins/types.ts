@@ -392,6 +392,12 @@ export type StrategyParamItem = {
   required: boolean
   default: any
   options: any[]
+  template: {
+    enabled: boolean
+  },
+  auto_generate: {
+    type: string
+  }
 }
 
 export type StrategyDetail = {

@@ -20,7 +20,7 @@ function strategyParamToCredientialForm(param: StrategyParamItem): CredentialFor
 }
 
 const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
-  const { inputs, setInputs, currentStrategy } = useConfig(props.id, props.data)
+  const { inputs, setInputs, currentStrategy, formData, onFormChange } = useConfig(props.id, props.data)
   const { t } = useTranslation()
   return <div className='my-2'>
     <Field title={t('workflow.nodes.agent.strategy.label')} className='px-4' >
@@ -28,28 +28,21 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
         strategy={inputs.agent_strategy_name ? {
           agent_strategy_provider_name: inputs.agent_strategy_provider_name!,
           agent_strategy_name: inputs.agent_strategy_name!,
-          agent_configurations: inputs.agent_configurations,
           agent_strategy_label: inputs.agent_strategy_label!,
           agent_output_schema: inputs.output_schema,
-          agent_parameters: inputs.agent_parameters,
         } : undefined}
         onStrategyChange={(strategy) => {
           setInputs({
             ...inputs,
             agent_strategy_provider_name: strategy?.agent_strategy_provider_name,
             agent_strategy_name: strategy?.agent_strategy_name,
-            agent_configurations: strategy?.agent_configurations,
-            agent_parameters: strategy?.agent_parameters,
             agent_strategy_label: strategy?.agent_strategy_label,
             output_schema: strategy!.agent_output_schema,
           })
         }}
         formSchema={currentStrategy?.parameters?.map(strategyParamToCredientialForm) || []}
-        formValue={inputs.agent_configurations || {}}
-        onFormValueChange={value => setInputs({
-          ...inputs,
-          agent_configurations: value,
-        })}
+        formValue={formData}
+        onFormValueChange={onFormChange}
       />
     </Field>
     <div>
