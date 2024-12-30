@@ -1,11 +1,5 @@
 import type { Viewport } from 'reactflow'
-import type {
-  BlockEnum,
-  ConversationVariable,
-  Edge,
-  EnvironmentVariable,
-  Node,
-} from '@/app/components/workflow/types'
+import type { BlockEnum, ConversationVariable, Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
 import type { TransferMethod } from '@/types/app'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 
@@ -79,6 +73,15 @@ export type FetchWorkflowDraftResponse = {
   tool_published: boolean
   environment_variables?: EnvironmentVariable[]
   conversation_variables?: ConversationVariable[]
+  version: string
+}
+
+export type VersionHistory = FetchWorkflowDraftResponse
+
+export type FetchWorkflowDraftPageResponse = {
+  items: VersionHistory[]
+  has_more: boolean
+  page: number
 }
 
 export type NodeTracingListResponse = {

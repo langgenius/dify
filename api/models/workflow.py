@@ -415,6 +415,18 @@ class WorkflowRun(db.Model):  # type: ignore[name-defined]
     exceptions_count = db.Column(db.Integer, server_default=db.text("0"))
 
     @property
+    def created_by_account(self):
+        created_by_role = CreatedByRole(self.created_by_role)
+        return db.session.get(Account, self.created_by) if created_by_role == CreatedByRole.ACCOUNT else None
+
+    @property
+    def created_by_end_user(self):
+        from models.model import EndUser
+
+        created_by_role = CreatedByRole(self.created_by_role)
+        return db.session.get(EndUser, self.created_by) if created_by_role == CreatedByRole.END_USER else None
+
+    @property
     def graph_dict(self):
         return json.loads(self.graph) if self.graph else {}
 

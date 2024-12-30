@@ -104,6 +104,8 @@ const translation = {
     branch: 'BRANCH',
     onFailure: 'On Failure',
     addFailureBranch: 'Add Fail Branch',
+    loadMore: 'Load More Workflows',
+    noHistory: 'No History',
   },
   env: {
     envPanelTitle: 'Environment Variables',

@@ -85,11 +85,11 @@ ignore = [
 ]
 "tests/*" = [
     "F811", # redefined-while-unused
-    "F401", # unused-import
 ]
 
 [lint.pyflakes]
-extend-generics = [
+allowed-unused-imports = [
     "_pytest.monkeypatch",
     "tests.integration_tests",
+    "tests.unit_tests",
 ]

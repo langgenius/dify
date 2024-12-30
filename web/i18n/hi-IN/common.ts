@@ -42,6 +42,11 @@ const translation = {
     zoomOut: 'ज़ूम आउट करें',
     openInNewTab: 'नए टैब में खोलें',
     zoomIn: 'ज़ूम इन करें',
+    view: 'देखना',
+    viewMore: 'और देखें',
+    regenerate: 'पुनर्जन्म',
+    close: 'बंद करना',
+    saveAndRegenerate: 'सहेजें और पुन: उत्पन्न करें बाल विखंडू',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',
@@ -496,6 +501,7 @@ const translation = {
       'ज्ञान को संबद्ध नहीं किया गया है, कृपया संबद्धता पूरी करने के लिए एप्लिकेशन या प्लग-इन पर जाएं।',
     viewDoc: 'दस्तावेज़ देखें',
     relatedApp: 'संबंधित ऐप्स',
+    noRelatedApp: 'कोई लिंक नहीं किए गए ऐप्स',
   },
   voiceInput: {
     speaking: 'अब बोलें...',
