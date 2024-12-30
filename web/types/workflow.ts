@@ -20,6 +20,7 @@ export type AgentLogItem = {
 }
 
 export type AgentLogItemWithChildren = AgentLogItem & {
+  hasCircle?: boolean
   children: AgentLogItemWithChildren[]
 }
 
