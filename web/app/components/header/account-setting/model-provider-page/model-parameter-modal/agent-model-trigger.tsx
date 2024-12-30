@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   CustomConfigurationModelFixedFields,
@@ -10,20 +11,24 @@ import {
   CustomConfigurationStatusEnum,
 } from '../declarations'
 import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from '../provider-added-card'
-import { ModelStatusEnum } from '../declarations'
+import type { PluginInfoFromMarketPlace } from '@/app/components/plugins/types'
+import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
+import ConfigurationButton from './configuration-button'
+import { PluginType } from '@/app/components/plugins/types'
 import {
   useUpdateModelList,
   useUpdateModelProviders,
 } from '../hooks'
 import ModelIcon from '../model-icon'
-import ModelName from '../model-name'
-import Button from '@/app/components/base/button'
+import ModelDisplay from './model-display'
+import InstallButton from '@/app/components/base/install-button'
+import StatusIndicators from './status-indicators'
 import cn from '@/utils/classnames'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import Tooltip from '@/app/components/base/tooltip'
-import { RiEqualizer2Line, RiErrorWarningFill } from '@remixicon/react'
+import { RiEqualizer2Line } from '@remixicon/react'
+import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 
 export type AgentModelTriggerProps = {
   open?: boolean
@@ -56,6 +61,36 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
       item => item.quota_type === modelProvider.system_configuration.current_quota_type,
     )
   )
+  const [pluginInfo, setPluginInfo] = useState<PluginInfoFromMarketPlace | null>(null)
+  const [isPluginChecked, setIsPluginChecked] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [installed, setInstalled] = useState(false)
+  const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
+
+  useEffect(() => {
+    (async () => {
+      if (providerName && !modelProvider) {
+        const parts = providerName.split('/')
+        const org = parts[0]
+        const name = parts[1]
+        try {
+          const pluginInfo = await fetchPluginInfoFromMarketPlace({ org, name })
+          if (pluginInfo.data.plugin.category === PluginType.model)
+            setPluginInfo(pluginInfo.data.plugin)
+        }
+        catch (error) {
+          // pass
+        }
+        setIsPluginChecked(true)
+      }
+      else {
+        setIsPluginChecked(true)
+      }
+    })()
+  }, [providerName, modelProvider])
+
+  if (modelId && !isPluginChecked)
+    return null
 
   const handleOpenModal = (
     provider: ModelProvider,
@@ -97,64 +132,41 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
     >
       {modelId ? (
         <>
-          {currentProvider && (
-            <ModelIcon
-              className="m-0.5"
-              provider={currentProvider}
-              modelName={currentModel?.model}
-              isDeprecated={hasDeprecated}
-            />
-          )}
-          {!currentProvider && (
-            <ModelIcon
-              className="m-0.5"
-              provider={modelProvider}
-              modelName={modelId}
-              isDeprecated={hasDeprecated}
-            />
-          )}
-          {currentModel && (
-            <ModelName
-              className="flex px-1 py-[3px] items-center gap-1 grow"
-              modelItem={currentModel}
-              showMode
-              showFeatures
-            />
-          )}
-          {!currentModel && (
-            <div className="flex py-[3px] px-1 items-center gap-1 grow opacity-50 truncate">
-              <div className="text-components-input-text-filled text-ellipsis overflow-hidden system-sm-regular">
-                {modelId}
-              </div>
-            </div>
-          )}
+          <ModelIcon
+            className="m-0.5"
+            provider={currentProvider || modelProvider}
+            modelName={currentModel?.model || modelId}
+            isDeprecated={hasDeprecated}
+          />
+          <ModelDisplay
+            currentModel={currentModel}
+            modelId={modelId}
+          />
           {needsConfiguration && (
-            <Button
-              size="small"
-              className="z-[100]"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleOpenModal(modelProvider, ConfigurationMethodEnum.predefinedModel, undefined)
-              }}
-            >
-              <div className="flex px-[3px] justify-center items-center gap-1">
-                {t('workflow.nodes.agent.notAuthorized')}
-              </div>
-              <div className="flex w-[14px] h-[14px] justify-center items-center">
-                <div className="w-2 h-2 shrink-0 rounded-[3px] border border-components-badge-status-light-warning-border-inner
-                  bg-components-badge-status-light-warning-bg shadow-components-badge-status-light-warning-halo" />
-              </div>
-            </Button>
+            <ConfigurationButton
+              modelProvider={modelProvider}
+              handleOpenModal={handleOpenModal}
+            />
           )}
-          {!needsConfiguration && disabled && (
-            <Tooltip
-              popupContent={t('workflow.nodes.agent.modelSelectorTooltips.deprecated')}
-              asChild={false}
-            >
-              <RiErrorWarningFill className='w-4 h-4 text-text-destructive' />
-            </Tooltip>
-          )
-          }
+          <StatusIndicators
+            needsConfiguration={needsConfiguration}
+            modelProvider={!!modelProvider}
+            disabled={!!disabled}
+            pluginInfo={pluginInfo}
+            t={t}
+          />
+          {!installed && !modelProvider && pluginInfo && (
+            <InstallButton
+              loading={loading}
+              onInstall={async () => {
+                setLoading(true)
+                const { all_installed } = await installPackageFromMarketPlace(pluginInfo.latest_package_identifier)
+                if (all_installed)
+                  setInstalled(true)
+              }}
+              t={t}
+            />
+          )}
         </>
       ) : (
         <>
@@ -167,11 +179,6 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
             <RiEqualizer2Line className="w-4 h-4 text-text-tertiary group-hover:text-text-secondary" />
           </div>
         </>
-      )}
-      {currentProvider && currentModel && currentModel.status === ModelStatusEnum.active && (
-        <div className="flex pr-1 items-center">
-          <RiEqualizer2Line className="w-4 h-4 text-text-tertiary group-hover:text-text-secondary" />
-        </div>
       )}
     </div>
   )

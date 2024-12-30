@@ -28,25 +28,27 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
         strategy={inputs.agent_strategy_name ? {
           agent_strategy_provider_name: inputs.agent_strategy_provider_name!,
           agent_strategy_name: inputs.agent_strategy_name!,
-          agent_parameters: inputs.agent_parameters,
+          agent_configurations: inputs.agent_configurations,
           agent_strategy_label: inputs.agent_strategy_label!,
           agent_output_schema: inputs.output_schema,
+          agent_parameters: inputs.agent_parameters,
         } : undefined}
         onStrategyChange={(strategy) => {
           setInputs({
             ...inputs,
             agent_strategy_provider_name: strategy?.agent_strategy_provider_name,
             agent_strategy_name: strategy?.agent_strategy_name,
+            agent_configurations: strategy?.agent_configurations,
             agent_parameters: strategy?.agent_parameters,
             agent_strategy_label: strategy?.agent_strategy_label,
             output_schema: strategy!.agent_output_schema,
           })
         }}
         formSchema={currentStrategy?.parameters?.map(strategyParamToCredientialForm) || []}
-        formValue={inputs.agent_parameters || {}}
+        formValue={inputs.agent_configurations || {}}
         onFormValueChange={value => setInputs({
           ...inputs,
-          agent_parameters: value,
+          agent_configurations: value,
         })}
       />
     </Field>

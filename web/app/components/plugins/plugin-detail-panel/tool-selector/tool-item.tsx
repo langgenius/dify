@@ -6,6 +6,7 @@ import {
   RiEqualizer2Line,
   RiErrorWarningFill,
 } from '@remixicon/react'
+import { Group } from '@/app/components/base/icons/src/vender/other'
 import AppIcon from '@/app/components/base/app-icon'
 import Switch from '@/app/components/base/switch'
 import Button from '@/app/components/base/button'
@@ -61,10 +62,21 @@ const ToolItem = ({
       open && 'bg-components-panel-on-panel-item-bg-hover shadow-sm',
       isDeleting && 'hover:bg-state-destructive-hover border-state-destructive-border shadow-xs',
     )}>
-      <div className={cn('shrink-0', isTransparent && 'opacity-50')}>
-        {typeof icon === 'string' && <div className='w-7 h-7 bg-cover bg-center border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge rounded-lg' style={{ backgroundImage: `url(${icon})` }} />}
-        {typeof icon !== 'string' && <AppIcon className='w-7 h-7 border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge rounded-lg' size='xs' icon={icon?.content} background={icon?.background} />}
-      </div>
+      {icon && (
+        <div className={cn('shrink-0', isTransparent && 'opacity-50')}>
+          {typeof icon === 'string' && <div className='w-7 h-7 bg-cover bg-center border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge rounded-lg' style={{ backgroundImage: `url(${icon})` }} />}
+          {typeof icon !== 'string' && <AppIcon className='w-7 h-7 border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge rounded-lg' size='xs' icon={icon?.content} background={icon?.background} />}
+        </div>
+      )}
+      {!icon && (
+        <div className={cn(
+          'flex items-center justify-center w-7 h-7 rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
+        )}>
+          <div className='flex w-5 h-5 items-center justify-center opacity-35'>
+            <Group className='text-text-tertiary' />
+          </div>
+        </div>
+      )}
       <div className={cn('pl-0.5 grow truncate', isTransparent && 'opacity-50')}>
         <div className='text-text-tertiary system-2xs-medium-uppercase'>{providerNameText}</div>
         <div className='text-text-secondary system-xs-medium'>{toolName}</div>

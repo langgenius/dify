@@ -5,6 +5,7 @@ import type {
   InstallPackageResponse,
   Permissions,
   PluginDeclaration,
+  PluginInfoFromMarketPlace,
   PluginManifestInMarket,
   PluginTasksResponse,
   TaskStatusResponse,
@@ -73,6 +74,13 @@ export const fetchBundleInfoFromMarketPlace = async ({
   version,
 }: Record<string, string>) => {
   return getMarketplace<{ data: { version: { dependencies: Dependency[] } } }>(`/bundles/${org}/${name}/${version}`)
+}
+
+export const fetchPluginInfoFromMarketPlace = async ({
+  org,
+  name,
+}: Record<string, string>) => {
+  return getMarketplace<{ data: { plugin: PluginInfoFromMarketPlace, version: { version: string } } }>(`/plugins/${org}/${name}`)
 }
 
 export const fetchMarketplaceCollections: Fetcher<MarketplaceCollectionsResponse, { url: string; }> = ({ url }) => {
