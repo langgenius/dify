@@ -8,13 +8,11 @@ import type { ToolIconProps } from './components/tool-icon'
 import { ToolIcon } from './components/tool-icon'
 import useConfig from './use-config'
 import { useTranslation } from 'react-i18next'
-import { useInstalledPluginList } from '@/service/use-plugins'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
   const { inputs, currentStrategy } = useConfig(props.id, props.data)
   const { t } = useTranslation()
-  const pluginList = useInstalledPluginList()
   // TODO: Implement models
   const models = useMemo(() => {
     if (!inputs) return []
@@ -41,17 +39,28 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
   const tools = useMemo(() => {
     const tools: Array<ToolIconProps> = []
     currentStrategy?.parameters.forEach((param) => {
-      if (['array[tool]', 'tool'].includes(param.type)) {
-        const vari = inputs.agent_parameters?.[param.name]
-        if (!vari) return
-        if (Array.isArray(vari.value)) {
-          // TODO: Implement array of tools
+      if (param.type === FormTypeEnum.toolSelector) {
+        const field = param.name
+        const value = inputs.agent_parameters?.[field]
+        if (value) {
+          tools.push({
+            providerName: value.provider_name,
+          })
         }
-        else {
-          // TODO: Implement single tool
+      }
+      if (param.type === FormTypeEnum.multiToolSelector) {
+        const field = param.name
+        const value = inputs.agent_parameters?.[field]
+        if (value) {
+          (value as any[]).forEach((item) => {
+            tools.push({
+              providerName: item.provider_name,
+            })
+          })
         }
       }
     })
+    return tools
   }, [currentStrategy, inputs.agent_parameters])
   return <div className='mb-1 px-3 py-1 space-y-1'>
     {inputs.agent_strategy_name
@@ -89,19 +98,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
       {t('workflow.nodes.agent.toolbox')}
     </GroupLabel>}>
       <div className='grid grid-cols-10 gap-0.5'>
-        <ToolIcon src='/logo/logo.png' />
-        <ToolIcon
-          src='/logo/logo.png'
-          status='error'
-          tooltip={t('workflow.nodes.agent.toolNotInstallTooltip', {
-            tool: 'Gmail Sender',
-          })} />
-        <ToolIcon
-          src='/logo/logo.png'
-          status='warning'
-          tooltip={t('workflow.nodes.agent.toolNotAuthorizedTooltip', {
-            tool: 'DuckDuckGo AI Search',
-          })} />
+        {tools.map(tool => <ToolIcon {...tool} key={Math.random()} />)}
       </div>
     </Group>
   </div>
