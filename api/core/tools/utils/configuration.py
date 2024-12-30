@@ -221,8 +221,6 @@ class ToolParameterConfigurationManager:
 
         return a deep copy of parameters with decrypted values
         """
-        if self.tool_runtime is None or self.tool_runtime.identity is None:
-            raise ValueError("tool_runtime is required")
 
         cache = ToolParameterCache(
             tenant_id=self.tenant_id,
