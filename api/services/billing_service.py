@@ -70,3 +70,24 @@ class BillingService:
 
         if not TenantAccountRole.is_privileged_role(join.role):
             raise ValueError("Only team owner or team admin can perform this action")
+
+    @classmethod
+    def delete_account(cls, account_id: str):
+        """Delete account."""
+        params = {"account_id": account_id}
+        return cls._send_request("DELETE", "/account/", params=params)
+
+    @classmethod
+    def is_email_in_freeze(cls, email: str) -> bool:
+        params = {"email": email}
+        try:
+            response = cls._send_request("GET", "/account/in-freeze", params=params)
+            return bool(response.get("data", False))
+        except Exception:
+            return False
+
+    @classmethod
+    def update_account_deletion_feedback(cls, email: str, feedback: str):
+        """Update account deletion feedback."""
+        json = {"email": email, "feedback": feedback}
+        return cls._send_request("POST", "/account/delete-feedback", json=json)
