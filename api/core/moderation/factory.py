@@ -1,4 +1,5 @@
-from typing import MutableMapping
+from collections.abc import MutableMapping
+
 from core.extension.extensible import ExtensionModule
 from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult
 from extensions.ext_code_based_extension import code_based_extension

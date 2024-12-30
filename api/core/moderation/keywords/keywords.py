@@ -1,5 +1,5 @@
-from collections.abc import Sequence
-from typing import Any, MutableMapping
+from collections.abc import MutableMapping, Sequence
+from typing import Any
 
 from core.moderation.base import Moderation, ModerationAction, ModerationInputsResult, ModerationOutputsResult
 

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
+from collections.abc import MutableMapping
 from enum import Enum
-from typing import Optional, MutableMapping
+from typing import Optional
 
 from pydantic import BaseModel
 

@@ -1,4 +1,5 @@
-from typing import Optional, MutableMapping
+from collections.abc import MutableMapping
+from typing import Optional
 
 from pydantic import BaseModel
 

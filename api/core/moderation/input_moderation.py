@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Mapping, MutableMapping
+from collections.abc import MutableMapping
 from typing import Any, Optional
 
 from core.app.app_config.entities import AppConfig
