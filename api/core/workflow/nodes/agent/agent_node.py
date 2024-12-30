@@ -5,6 +5,7 @@ from core.agent.plugin_entities import AgentStrategyParameter
 from core.plugin.manager.exc import PluginDaemonClientSideError
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.agent.entities import AgentNodeData
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event.event import RunCompletedEvent
@@ -59,12 +60,15 @@ class AgentNode(ToolNode):
             for_log=True,
         )
 
+        # get conversation id
+        conversation_id = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
+
         try:
             message_stream = strategy.invoke(
                 params=parameters,
                 user_id=self.user_id,
                 app_id=self.app_id,
-                # TODO: conversation id and message id
+                conversation_id=conversation_id.text if conversation_id else None,
             )
         except Exception as e:
             yield RunCompletedEvent(
