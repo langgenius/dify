@@ -179,7 +179,7 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
         return (
           <MultipleToolSelector
             scope={schema.scope}
-            value={value}
+            value={value || []}
             label={schema.label[language]}
             tooltip={schema.tooltip?.[language]}
             onChange={onChange}

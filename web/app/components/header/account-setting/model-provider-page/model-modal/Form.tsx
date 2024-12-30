@@ -355,7 +355,7 @@ function Form<
             label={label[language] || label.en_US}
             required={required}
             tooltip={tooltip?.[language] || tooltip?.en_US}
-            value={value[variable]}
+            value={value[variable] || []}
             onChange={item => handleFormChange(variable, item as any)}
           />
           {fieldMoreInfo?.(formSchema)}
