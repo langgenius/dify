@@ -17,8 +17,9 @@ export type SpecialResultPanelProps = {
   iterationResultList?: NodeTracing[][]
   iterationResultDurationMap?: IterationDurationMap
 
-  agentResultList?: AgentLogItemWithChildren[]
-  setAgentResultList?: (list: AgentLogItemWithChildren[]) => void
+  agentOrToolLogItemStack?: { id: string; label: string }[]
+  agentOrToolLogListMap?: Record<string, AgentLogItemWithChildren[]>
+  handleShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
 }
 const SpecialResultPanel = ({
   showRetryDetail,
@@ -30,8 +31,9 @@ const SpecialResultPanel = ({
   iterationResultList,
   iterationResultDurationMap,
 
-  agentResultList,
-  setAgentResultList,
+  agentOrToolLogItemStack,
+  agentOrToolLogListMap,
+  handleShowAgentOrToolLog,
 }: SpecialResultPanelProps) => {
   return (
     <>
@@ -53,10 +55,11 @@ const SpecialResultPanel = ({
         )
       }
       {
-        !!agentResultList?.length && setAgentResultList && (
+        !!agentOrToolLogItemStack?.length && agentOrToolLogListMap && handleShowAgentOrToolLog && (
           <AgentResultPanel
-            list={agentResultList}
-            setAgentResultList={setAgentResultList}
+            agentOrToolLogItemStack={agentOrToolLogItemStack}
+            agentOrToolLogListMap={agentOrToolLogListMap}
+            onShowAgentOrToolLog={handleShowAgentOrToolLog}
           />
         )
       }

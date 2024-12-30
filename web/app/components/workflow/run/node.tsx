@@ -34,7 +34,7 @@ type Props = {
   hideProcessDetail?: boolean
   onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
-  onShowAgentResultList?: (detail: AgentLogItemWithChildren[]) => void
+  onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
   notShowIterationNav?: boolean
 }
 
@@ -46,7 +46,7 @@ const NodePanel: FC<Props> = ({
   hideProcessDetail,
   onShowIterationDetail,
   onShowRetryDetail,
-  onShowAgentResultList,
+  onShowAgentOrToolLog,
   notShowIterationNav,
 }) => {
   const [collapseState, doSetCollapseState] = useState<boolean>(true)
@@ -144,10 +144,10 @@ const NodePanel: FC<Props> = ({
               />
             )}
             {
-              isAgentNode && onShowAgentResultList && (
+              isAgentNode && onShowAgentOrToolLog && (
                 <AgentLogTrigger
                   nodeInfo={nodeInfo}
-                  onShowAgentResultList={onShowAgentResultList}
+                  onShowAgentOrToolLog={onShowAgentOrToolLog}
                 />
               )
             }

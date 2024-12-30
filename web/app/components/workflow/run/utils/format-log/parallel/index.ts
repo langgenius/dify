@@ -69,8 +69,10 @@ function addTitle({
 }
 
 // list => group by parallel_id(parallel tree).
-const format = (list: NodeTracing[], t: any): NodeTracing[] => {
-  // console.log(list)
+const format = (list: NodeTracing[], t: any, isPrint?: boolean): NodeTracing[] => {
+  if (isPrint)
+    console.log(list)
+
   const result: NodeTracing[] = [...list]
   const parallelFirstNodeMap: Record<string, string> = {}
   // list to tree by parent_parallel_start_node_id and branch by parallel_start_node_id. Each parallel may has more than one branch.
@@ -119,6 +121,7 @@ const format = (list: NodeTracing[], t: any): NodeTracing[] => {
 
     // append to parallel start node and after the same branch
     const parallelStartNode = result.find(item => item.node_id === parallelFirstNodeMap[parallel_id])
+
     if (parallelStartNode && parallelStartNode.parallelDetail && parallelStartNode!.parallelDetail!.children) {
       const sameBranchNodesLastIndex = parallelStartNode.parallelDetail.children.findLastIndex((node) => {
         const currStartNodeId = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
@@ -153,12 +156,14 @@ const format = (list: NodeTracing[], t: any): NodeTracing[] => {
   })
 
   // print node structure for debug
-  // filteredInParallelSubNodes.forEach((node) => {
-  //   const now = Date.now()
-  //   console.log(`----- p: ${now} start -----`)
-  //   printNodeStructure(node, 0)
-  //   console.log(`----- p: ${now} end -----`)
-  // })
+  if (isPrint) {
+    filteredInParallelSubNodes.forEach((node) => {
+      const now = Date.now()
+      console.log(`----- p: ${now} start -----`)
+      printNodeStructure(node, 0)
+      console.log(`----- p: ${now} end -----`)
+    })
+  }
 
   addTitle({
     list: filteredInParallelSubNodes,

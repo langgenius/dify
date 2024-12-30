@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useRef,
   useState,
 } from 'react'
 import { useBoolean } from 'ahooks'
@@ -32,10 +33,38 @@ export const useLogs = () => {
     setIterationResultDurationMap(iterDurationMap)
   }, [setShowIteratingDetailTrue, setIterationResultList, setIterationResultDurationMap])
 
-  const [agentResultList, setAgentResultList] = useState<AgentLogItemWithChildren[]>([])
+  const [agentOrToolLogItemStack, setAgentOrToolLogItemStack] = useState<{ id: string; label: string }[]>([])
+  const agentOrToolLogItemStackRef = useRef(agentOrToolLogItemStack)
+  const [agentOrToolLogListMap, setAgentOrToolLogListMap] = useState<Record<string, AgentLogItemWithChildren[]>>({})
+  const agentOrToolLogListMapRef = useRef(agentOrToolLogListMap)
+  const handleShowAgentOrToolLog = useCallback((detail?: AgentLogItemWithChildren) => {
+    if (!detail) {
+      setAgentOrToolLogItemStack([])
+      agentOrToolLogItemStackRef.current = []
+      return
+    }
+    const { id, label, children } = detail
+    let currentAgentOrToolLogItemStack = agentOrToolLogItemStackRef.current.slice()
+    const index = currentAgentOrToolLogItemStack.findIndex(logItem => logItem.id === id)
+
+    if (index > -1)
+      currentAgentOrToolLogItemStack = currentAgentOrToolLogItemStack.slice(0, index + 1)
+    else
+      currentAgentOrToolLogItemStack = [...currentAgentOrToolLogItemStack.slice(), { id, label }]
+
+    setAgentOrToolLogItemStack(currentAgentOrToolLogItemStack)
+    agentOrToolLogItemStackRef.current = currentAgentOrToolLogItemStack
+
+    if (children) {
+      setAgentOrToolLogListMap({
+        ...agentOrToolLogListMapRef.current,
+        [id]: children,
+      })
+    }
+  }, [setAgentOrToolLogItemStack, setAgentOrToolLogListMap])
 
   return {
-    showSpecialResultPanel: showRetryDetail || showIteratingDetail || !!agentResultList.length,
+    showSpecialResultPanel: showRetryDetail || showIteratingDetail || !!agentOrToolLogItemStack.length,
     showRetryDetail,
     setShowRetryDetailTrue,
     setShowRetryDetailFalse,
@@ -52,7 +81,8 @@ export const useLogs = () => {
     setIterationResultDurationMap,
     handleShowIterationResultList,
 
-    agentResultList,
-    setAgentResultList,
+    agentOrToolLogItemStack,
+    agentOrToolLogListMap,
+    handleShowAgentOrToolLog,
   }
 }

@@ -25,7 +25,7 @@ type Props = {
 
 const MultipleToolSelector = ({
   disabled,
-  value,
+  value = [],
   label,
   required,
   tooltip,
