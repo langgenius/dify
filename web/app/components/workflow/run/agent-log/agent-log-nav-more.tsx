@@ -6,12 +6,15 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Button from '@/app/components/base/button'
+import type { AgentLogItemWithChildren } from '@/types/workflow'
 
 type AgentLogNavMoreProps = {
   options: { id: string; label: string }[]
+  onShowAgentOrToolLog: (detail?: AgentLogItemWithChildren) => void
 }
 const AgentLogNavMore = ({
   options,
+  onShowAgentOrToolLog,
 }: AgentLogNavMoreProps) => {
   const [open, setOpen] = useState(false)
 
@@ -40,6 +43,10 @@ const AgentLogNavMore = ({
               <div
                 key={option.id}
                 className='flex items-center px-2 h-8 rounded-lg system-md-regular text-text-secondary hover:bg-state-base-hover cursor-pointer'
+                onClick={() => {
+                  onShowAgentOrToolLog(option as AgentLogItemWithChildren)
+                  setOpen(false)
+                }}
               >
                 {option.label}
               </div>

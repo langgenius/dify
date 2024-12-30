@@ -3,21 +3,24 @@ import AgentLogNav from './agent-log-nav'
 import type { AgentLogItemWithChildren } from '@/types/workflow'
 
 type AgentResultPanelProps = {
-  agentOrToolLogIdStack: string[]
+  agentOrToolLogItemStack: { id: string; label: string }[]
   agentOrToolLogListMap: Record<string, AgentLogItemWithChildren[]>
-  onShowAgentOrToolLog: (detail: AgentLogItemWithChildren) => void
+  onShowAgentOrToolLog: (detail?: AgentLogItemWithChildren) => void
 }
 const AgentResultPanel = ({
-  agentOrToolLogIdStack,
+  agentOrToolLogItemStack,
   agentOrToolLogListMap,
   onShowAgentOrToolLog,
 }: AgentResultPanelProps) => {
-  const top = agentOrToolLogIdStack[agentOrToolLogIdStack.length - 1]
-  const list = agentOrToolLogListMap[top]
+  const top = agentOrToolLogItemStack[agentOrToolLogItemStack.length - 1]
+  const list = agentOrToolLogListMap[top.id]
 
   return (
     <div className='overflow-y-auto'>
-      <AgentLogNav />
+      <AgentLogNav
+        agentOrToolLogItemStack={agentOrToolLogItemStack}
+        onShowAgentOrToolLog={onShowAgentOrToolLog}
+      />
       {
         <div className='p-2'>
           {
