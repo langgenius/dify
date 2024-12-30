@@ -6,7 +6,7 @@ import type {
 
 type AgentLogTriggerProps = {
   nodeInfo: NodeTracing
-  onShowAgentOrToolLog: (detail: AgentLogItemWithChildren) => void
+  onShowAgentOrToolLog: (detail?: AgentLogItemWithChildren) => void
 }
 const AgentLogTrigger = ({
   nodeInfo,

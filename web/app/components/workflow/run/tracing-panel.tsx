@@ -79,7 +79,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
     iterationResultDurationMap,
     handleShowIterationResultList,
 
-    agentOrToolLogIdStack,
+    agentOrToolLogItemStack,
     agentOrToolLogListMap,
     handleShowAgentOrToolLog,
   } = useLogs()
@@ -158,7 +158,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
         iterationResultList={iterationResultList}
         iterationResultDurationMap={iterationResultDurationMap}
 
-        agentOrToolLogIdStack={agentOrToolLogIdStack}
+        agentOrToolLogItemStack={agentOrToolLogItemStack}
         agentOrToolLogListMap={agentOrToolLogListMap}
         handleShowAgentOrToolLog={handleShowAgentOrToolLog}
       />

@@ -34,7 +34,7 @@ type ResultPanelProps = {
   execution_metadata?: any
   handleShowIterationResultList?: (detail: NodeTracing[][], iterDurationMap: any) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
-  handleShowAgentOrToolLog?: (detail: AgentLogItemWithChildren) => void
+  handleShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
 }
 
 const ResultPanel: FC<ResultPanelProps> = ({
