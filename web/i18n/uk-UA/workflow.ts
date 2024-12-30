@@ -104,6 +104,8 @@ const translation = {
     openInExplore: 'Відкрити в Огляді',
     onFailure: 'Про невдачу',
     addFailureBranch: 'Додано гілку помилки',
+    noHistory: 'Без історії',
+    loadMore: 'Завантажте більше робочих процесів',
   },
   env: {
     envPanelTitle: 'Змінні середовища',
