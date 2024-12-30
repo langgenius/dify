@@ -102,12 +102,11 @@ class ExtractProcessor:
                 input_file = Path(file_path)
                 file_extension = input_file.suffix.lower()
                 etl_type = dify_config.ETL_TYPE
-                unstructured_api_url = dify_config.UNSTRUCTURED_API_URL
-                unstructured_api_key = dify_config.UNSTRUCTURED_API_KEY
-                assert unstructured_api_url is not None, "unstructured_api_url is required"
-                assert unstructured_api_key is not None, "unstructured_api_key is required"
                 extractor: Optional[BaseExtractor] = None
                 if etl_type == "Unstructured":
+                    unstructured_api_url = dify_config.UNSTRUCTURED_API_URL
+                    unstructured_api_key = dify_config.UNSTRUCTURED_API_KEY or ""
+
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
