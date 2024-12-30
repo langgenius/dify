@@ -34,7 +34,7 @@ type Props = {
   hideProcessDetail?: boolean
   onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
-  onShowAgentOrToolLog?: (detail: AgentLogItemWithChildren) => void
+  onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
   notShowIterationNav?: boolean
 }
 
