@@ -6,11 +6,11 @@ import type {
 
 type AgentLogTriggerProps = {
   nodeInfo: NodeTracing
-  onShowAgentResultList: (agentLogs: AgentLogItemWithChildren[]) => void
+  onShowAgentOrToolLog: (detail: AgentLogItemWithChildren) => void
 }
 const AgentLogTrigger = ({
   nodeInfo,
-  onShowAgentResultList,
+  onShowAgentOrToolLog,
 }: AgentLogTriggerProps) => {
   const { agentLog } = nodeInfo
 
@@ -24,7 +24,7 @@ const AgentLogTrigger = ({
         <div className='grow mx-0.5 px-1 system-xs-medium text-text-secondary'></div>
         <div
           className='shrink-0 flex items-center px-[1px] system-xs-regular-uppercase text-text-tertiary cursor-pointer'
-          onClick={() => onShowAgentResultList(agentLog || [])}
+          onClick={() => onShowAgentOrToolLog({ id: nodeInfo.id, children: agentLog || [] } as AgentLogItemWithChildren)}
         >
           Detail
           <RiArrowRightLine className='ml-0.5 w-3.5 h-3.5' />

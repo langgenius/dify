@@ -6,7 +6,10 @@ import MetaData from './meta'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
-import type { NodeTracing } from '@/types/workflow'
+import type {
+  AgentLogItemWithChildren,
+  NodeTracing,
+} from '@/types/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import { IterationLogTrigger } from '@/app/components/workflow/run/iteration-log'
@@ -31,7 +34,7 @@ type ResultPanelProps = {
   execution_metadata?: any
   handleShowIterationResultList?: (detail: NodeTracing[][], iterDurationMap: any) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
-  onShowAgentResultList?: () => void
+  handleShowAgentOrToolLog?: (detail: AgentLogItemWithChildren) => void
 }
 
 const ResultPanel: FC<ResultPanelProps> = ({
@@ -51,7 +54,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   execution_metadata,
   handleShowIterationResultList,
   onShowRetryDetail,
-  onShowAgentResultList,
+  handleShowAgentOrToolLog,
 }) => {
   const { t } = useTranslation()
   const isIterationNode = nodeInfo?.node_type === BlockEnum.Iteration
@@ -87,10 +90,10 @@ const ResultPanel: FC<ResultPanelProps> = ({
           )
         }
         {
-          isAgentNode && onShowAgentResultList && (
+          isAgentNode && handleShowAgentOrToolLog && (
             <AgentLogTrigger
               nodeInfo={nodeInfo}
-              onShowAgentResultList={onShowAgentResultList}
+              onShowAgentOrToolLog={handleShowAgentOrToolLog}
             />
           )
         }

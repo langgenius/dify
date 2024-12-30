@@ -12,9 +12,11 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 
 type AgentLogItemProps = {
   item: AgentLogItemWithChildren
+  onShowAgentOrToolLog: (detail: AgentLogItemWithChildren) => void
 }
 const AgentLogItem = ({
   item,
+  onShowAgentOrToolLog,
 }: AgentLogItemProps) => {
   const {
     label,
@@ -51,7 +53,7 @@ const AgentLogItem = ({
                 <Button
                   className='flex items-center justify-between mb-1 w-full'
                   variant='tertiary'
-                  onClick={() => {}}
+                  onClick={() => onShowAgentOrToolLog(item)}
                 >
                   <div className='flex items-center'>
                     <RiListView className='mr-1 w-4 h-4 text-components-button-tertiary-text shrink-0' />

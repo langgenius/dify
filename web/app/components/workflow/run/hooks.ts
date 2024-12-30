@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useRef,
   useState,
 } from 'react'
 import { useBoolean } from 'ahooks'
@@ -32,10 +33,33 @@ export const useLogs = () => {
     setIterationResultDurationMap(iterDurationMap)
   }, [setShowIteratingDetailTrue, setIterationResultList, setIterationResultDurationMap])
 
-  const [agentResultList, setAgentResultList] = useState<AgentLogItemWithChildren[]>([])
+  const [agentOrToolLogIdStack, setAgentOrToolLogIdStack] = useState<string[]>([])
+  const agentOrToolLogIdStackRef = useRef(agentOrToolLogIdStack)
+  const [agentOrToolLogListMap, setAgentOrToolLogListMap] = useState<Record<string, AgentLogItemWithChildren[]>>({})
+  const agentOrToolLogListMapRef = useRef(agentOrToolLogListMap)
+  const handleShowAgentOrToolLog = useCallback((detail: AgentLogItemWithChildren) => {
+    const { id, children } = detail
+    let currentAgentOrToolLogIdStack = agentOrToolLogIdStackRef.current.slice()
+    const index = currentAgentOrToolLogIdStack.findIndex(logId => logId === id)
+
+    if (index > -1)
+      currentAgentOrToolLogIdStack = currentAgentOrToolLogIdStack.slice(0, index + 1)
+    else
+      currentAgentOrToolLogIdStack = [...currentAgentOrToolLogIdStack.slice(), id]
+
+    setAgentOrToolLogIdStack(currentAgentOrToolLogIdStack)
+    agentOrToolLogIdStackRef.current = currentAgentOrToolLogIdStack
+
+    if (children) {
+      setAgentOrToolLogListMap({
+        ...agentOrToolLogListMapRef.current,
+        [id]: children,
+      })
+    }
+  }, [setAgentOrToolLogIdStack, setAgentOrToolLogListMap])
 
   return {
-    showSpecialResultPanel: showRetryDetail || showIteratingDetail || !!agentResultList.length,
+    showSpecialResultPanel: showRetryDetail || showIteratingDetail || !!agentOrToolLogIdStack.length,
     showRetryDetail,
     setShowRetryDetailTrue,
     setShowRetryDetailFalse,
@@ -52,7 +76,8 @@ export const useLogs = () => {
     setIterationResultDurationMap,
     handleShowIterationResultList,
 
-    agentResultList,
-    setAgentResultList,
+    agentOrToolLogIdStack,
+    agentOrToolLogListMap,
+    handleShowAgentOrToolLog,
   }
 }
