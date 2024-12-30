@@ -92,9 +92,6 @@ class BedrockRetrieveTool(BuiltinTool):
                 metadata_filter=metadata_filter
             )
 
-
-
-
             line = 5
             # Sort results by score in descending order
             sorted_docs = sorted(retrieved_docs, key=operator.itemgetter("score"), reverse=True)
