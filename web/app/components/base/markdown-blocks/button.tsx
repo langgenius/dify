@@ -6,13 +6,20 @@ const MarkdownButton = ({ node }: any) => {
   const { onSend } = useChatContext()
   const variant = node.properties.dataVariant
   const message = node.properties.dataMessage
+  const link = node.properties.dataLink
   const size = node.properties.dataSize
 
   return <Button
     variant={variant}
     size={size}
     className={cn('!h-8 !px-3 select-none')}
-    onClick={() => onSend?.(message)}
+    onClick={() => {
+      if (link && (!link.startsWith('http') || !link.startsWith('https'))) {
+        window.open(link, '_blank')
+        return
+      }
+      onSend?.(message)
+    }}
   >
     <span className='text-[13px]'>{node.children[0]?.value || ''}</span>
   </Button>
