@@ -5,16 +5,13 @@ import type { AgentLogItemWithChildren } from '@/types/workflow'
 
 type AgentLogNavProps = {
   agentOrToolLogItemStack: { id: string; label: string }[]
-  agentOrToolLogListMap: Record<string, AgentLogItemWithChildren[]>
   onShowAgentOrToolLog: (detail?: AgentLogItemWithChildren) => void
 }
 const AgentLogNav = ({
   agentOrToolLogItemStack,
-  agentOrToolLogListMap,
   onShowAgentOrToolLog,
 }: AgentLogNavProps) => {
-  const top = agentOrToolLogItemStack[agentOrToolLogItemStack.length - 1]
-  const options = agentOrToolLogListMap[top.id]
+  const options = agentOrToolLogItemStack.slice(2)
 
   return (
     <div className='flex items-center p-1 pr-3 h-8'>
@@ -37,11 +34,17 @@ const AgentLogNav = ({
         <RiArrowLeftLine className='mr-1 w-3.5 h-3.5' />
         Agent strategy
       </Button>
-      <div className='shrink-0 mx-0.5 system-xs-regular text-divider-deep'>/</div>
-      <AgentLogNavMore
-        options={options}
-        onShowAgentOrToolLog={onShowAgentOrToolLog}
-      />
+      {
+        !!options.length && (
+          <>
+            <div className='shrink-0 mx-0.5 system-xs-regular text-divider-deep'>/</div>
+            <AgentLogNavMore
+              options={options}
+              onShowAgentOrToolLog={onShowAgentOrToolLog}
+            />
+          </>
+        )
+      }
       <div className='shrink-0 mx-0.5 system-xs-regular text-divider-deep'>/</div>
       <div className='flex items-center px-[5px] system-xs-medium-uppercase text-text-tertiary'>
         Run Actions

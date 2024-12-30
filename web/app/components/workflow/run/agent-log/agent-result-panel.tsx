@@ -19,7 +19,6 @@ const AgentResultPanel = ({
     <div className='overflow-y-auto'>
       <AgentLogNav
         agentOrToolLogItemStack={agentOrToolLogItemStack}
-        agentOrToolLogListMap={agentOrToolLogListMap}
         onShowAgentOrToolLog={onShowAgentOrToolLog}
       />
       {
