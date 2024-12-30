@@ -64,7 +64,7 @@ const ToolItem: FC<Props> = ({
           })
         }}
       >
-        <div className='h-8 leading-8 border-l-2 border-divider-subtle pl-4 truncate text-text-secondary system-sm-medium'>{payload.name}</div>
+        <div className='h-8 leading-8 border-l-2 border-divider-subtle pl-4 truncate text-text-secondary system-sm-medium'>{payload.label[language]}</div>
       </div>
     </Tooltip >
   )
