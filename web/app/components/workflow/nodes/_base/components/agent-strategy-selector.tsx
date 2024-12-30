@@ -89,15 +89,15 @@ export const AgentStrategySelector = (props: AgentStrategySelectorProps) => {
   const { t } = useTranslation()
   return <PortalToFollowElem open={open} onOpenChange={setOpen} placement='bottom'>
     <PortalToFollowElemTrigger className='w-full'>
-      <div className='py-2 pl-3 pr-2 flex items-center rounded-lg bg-components-input-bg-normal w-full hover:bg-state-base-hover-alt select-none' onClick={() => setOpen(o => !o)}>
+      <div className='p-1 gap-0.5 flex items-center rounded-lg bg-components-input-bg-normal w-full hover:bg-state-base-hover-alt select-none' onClick={() => setOpen(o => !o)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {icon && <img
+        {icon && <div className='flex items-center justify-center w-6 h-6'><img
           src={icon}
           width={20}
           height={20}
           className='rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge'
           alt='icon'
-        />}
+        /></div>}
         <p
           className={classNames(value ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder', 'text-xs px-1')}
         >

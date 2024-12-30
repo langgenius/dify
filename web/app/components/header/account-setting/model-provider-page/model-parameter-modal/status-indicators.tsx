@@ -1,4 +1,5 @@
 import Tooltip from '@/app/components/base/tooltip'
+import Link from 'next/link'
 import { RiErrorWarningFill } from '@remixicon/react'
 
 type StatusIndicatorsProps = {
@@ -28,7 +29,16 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, disabled, pluginI
               <div className='min-w-[200px] text-text-secondary body-xs-regular'>
                 {t('workflow.nodes.agent.modelNotInMarketplace.desc')}
               </div>
-              <div className='text-text-accent body-xs-regular'>{t('workflow.nodes.agent.modelNotInMarketplace.manageInPlugins')}</div>
+              <div className='text-text-accent body-xs-regular cursor-pointer z-[100]'>
+                <Link
+                  href={'/plugins'}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                  }}
+                >
+                  {t('workflow.nodes.agent.linkToPlugin')}
+                </Link>
+              </div>
             </div>
           }
           asChild={false}

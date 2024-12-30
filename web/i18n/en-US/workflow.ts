@@ -716,7 +716,7 @@ const translation = {
       },
       modelNotInMarketplace: {
         title: 'Model not installed',
-        desc: 'This model is not installed from the marketplace. Please go to Plugins to reinstall.',
+        desc: 'This model is installed from Local or GitHub repository. Please use after installation.',
         manageInPlugins: 'Manage in Plugins',
       },
       configureModel: 'Configure Model',

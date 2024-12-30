@@ -14,7 +14,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
   return (
     <div
       className={cn(
-        'flex items-center px-2 h-8 rounded-lg bg-components-input-bg-normal hover:bg-components-input-bg-hover cursor-pointer', open && 'bg-components-input-bg-hover',
+        'flex items-center p-1 gap-0.5 rounded-lg bg-components-input-bg-normal hover:bg-components-input-bg-hover cursor-pointer', open && 'bg-components-input-bg-hover',
         className,
       )}
     >

@@ -22,14 +22,14 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
 
   return (
     <div
-      className={cn('group flex items-center px-2 h-8 rounded-lg bg-components-input-bg-disabled cursor-pointer', className)}
+      className={cn('group flex items-center p-1 gap-0.5 rounded-lg bg-components-input-bg-disabled cursor-pointer', className)}
     >
       <ModelIcon
         className='shrink-0 mr-1.5'
         provider={currentProvider}
         modelName={modelName}
       />
-      <div className='mr-1 text-[13px] font-medium text-text-secondary truncate'>
+      <div className='mr-1 system-sm-regular text-components-input-text-filled truncate'>
         {modelName}
       </div>
       <div className='shrink-0 flex items-center justify-center w-4 h-4'>
