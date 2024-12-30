@@ -133,14 +133,14 @@ export const multiStepsCircle = (() => {
         { id: '2', parent_id: '1', label: 'Node 2' },
         { id: '3', parent_id: '1', label: 'Node 3' },
         { id: '4', parent_id: '2', label: 'Node 4' },
+
         // Loop
-        { id: '1', parent_id: '1', label: 'Node 1' },
+        { id: '1', parent_id: '4', label: 'Node 1' },
         { id: '2', parent_id: '1', label: 'Node 2' },
         { id: '4', parent_id: '2', label: 'Node 4' },
-        // { id: '1', parent_id: '1', label: 'Node 1' },
-        // { id: '2', parent_id: '1', label: 'Node 2' },
-        // { id: '4', parent_id: '2', label: 'Node 4' },
-
+        { id: '1', parent_id: '4', label: 'Node 1' },
+        { id: '2', parent_id: '1', label: 'Node 2' },
+        { id: '4', parent_id: '2', label: 'Node 4' },
       ],
     },
   }

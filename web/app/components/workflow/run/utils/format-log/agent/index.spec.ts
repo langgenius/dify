@@ -10,8 +10,7 @@ describe('agent', () => {
 
   test('list should remove circle log item', () => {
     // format(oneStepCircle.in as any)
-    console.log(JSON.stringify(format(multiStepsCircle.in as any)[0].agentLog))
-    // expect(format(oneStepCircle.in as any)).toEqual(oneStepCircle.expect)
-    // expect(format(multiStepsCircle.in as any)).toEqual(multiStepsCircle.expect)
+    expect(format(oneStepCircle.in as any)).toEqual(oneStepCircle.expect)
+    expect(format(multiStepsCircle.in as any)).toEqual(multiStepsCircle.expect)
   })
 })

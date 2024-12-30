@@ -19,8 +19,24 @@ const remove = (node: AgentLogItemWithChildren, removeId: string) => {
   })
 }
 
+const removeRepeatedSiblings = (list: AgentLogItemWithChildren[]) => {
+  if (!list || list.length === 0) {
+    return []
+  }
+  const result: AgentLogItemWithChildren[] = []
+  const addedItemIds: string[] = []
+  list.forEach((item) => {
+    if (!addedItemIds.includes(item.id)) {
+      result.push(item)
+      addedItemIds.push(item.id)
+    }
+  })
+  return result
+}
+
 const removeCircleLogItem = (log: AgentLogItemWithChildren) => {
   let newLog = cloneDeep(log)
+  newLog.children = removeRepeatedSiblings(newLog.children)
   let { id, children } = newLog
   if (!children || children.length === 0) {
     return log
@@ -31,6 +47,7 @@ const removeCircleLogItem = (log: AgentLogItemWithChildren) => {
     newLog.hasCircle = true
     newLog.children = newLog.children.filter(c => c.id !== id)
     children = newLog.children
+
   }
 
   children.forEach((child, index) => {
