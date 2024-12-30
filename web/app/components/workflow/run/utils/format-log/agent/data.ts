@@ -89,3 +89,39 @@ export const agentNodeData = (() => {
     }],
   }
 })()
+
+export const oneStepCircle = (() => {
+  const node = {
+    node_type: BlockEnum.Agent,
+    execution_metadata: {
+      agent_log: [
+        { id: '1', label: 'Node 1' },
+        { id: '1', parent_id: '1', label: 'Node 1' },
+        { id: '1', parent_id: '1', label: 'Node 1' },
+        { id: '1', parent_id: '1', label: 'Node 1' },
+        { id: '1', parent_id: '1', label: 'Node 1' },
+        { id: '1', parent_id: '1', label: 'Node 1' },
+      ],
+    },
+  }
+
+  return {
+    in: [node],
+    expect: [{
+      ...node,
+      agentLog: [
+        {
+          id: '1',
+          label: 'Node 1',
+          hasCircle: true,
+        },
+      ],
+    }],
+  }
+})()
+
+export const multiStepsCircle = () => {
+}
+
+export const CircleNestCircle = (() => {
+})()

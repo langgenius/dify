@@ -3,6 +3,10 @@ import type { AgentLogItem, AgentLogItemWithChildren, NodeTracing } from '@/type
 
 const supportedAgentLogNodes = [BlockEnum.Agent, BlockEnum.Tool]
 
+const removeCircle = (node: NodeTracing) => {
+
+}
+
 const listToTree = (logs: AgentLogItem[]) => {
   if (!logs || logs.length === 0)
     return []
@@ -24,6 +28,7 @@ const listToTree = (logs: AgentLogItem[]) => {
   })
   return tree
 }
+
 const format = (list: NodeTracing[]): NodeTracing[] => {
   const result: NodeTracing[] = list.map((item) => {
     if (supportedAgentLogNodes.includes(item.node_type) && item.execution_metadata?.agent_log && item.execution_metadata?.agent_log.length > 0)
