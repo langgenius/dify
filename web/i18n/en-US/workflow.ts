@@ -189,7 +189,7 @@ const translation = {
       variableValue: 'Variable Value',
       code: 'Code',
       model: 'Model',
-      rerankModel: 'Rerank Model',
+      rerankModel: 'A configured Rerank Model',
       visionVariable: 'Vision Variable',
     },
     invalidVariable: 'Invalid variable',
