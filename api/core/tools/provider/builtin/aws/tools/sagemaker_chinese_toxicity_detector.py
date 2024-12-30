@@ -6,7 +6,7 @@ import boto3
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
-# 定义标签映射
+# Define label mappings
 LABEL_MAPPING = {
     0: 'SAFE',
     1: 'NO_SAFE'
@@ -35,8 +35,8 @@ class ContentModerationTool(BuiltinTool):
         else:
             prediction_result = json_obj.get('prediction')
 
-        # 映射标签并返回
-        result = LABEL_MAPPING.get(prediction_result, 'NO_SAFE')  # 如果映射中没有找到，默认返回NO_SAFE
+        # Map labels and return
+        result = LABEL_MAPPING.get(prediction_result, 'NO_SAFE')  # If not found in mapping, default to NO_SAFE
         return result
 
     def _invoke(self,
