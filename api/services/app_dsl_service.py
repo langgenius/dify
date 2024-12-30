@@ -176,6 +176,9 @@ class AppDslService:
                 data["kind"] = "app"
 
             imported_version = data.get("version", "0.1.0")
+            # check if imported_version is a float-like string
+            if not isinstance(imported_version, str):
+                raise ValueError(f"Invalid version type, expected str, got {type(imported_version)}")
             status = _check_version_compatibility(imported_version)
 
             # Extract app data

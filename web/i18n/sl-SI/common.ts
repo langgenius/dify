@@ -42,6 +42,11 @@ const translation = {
     openInNewTab: 'Odpri v novem zavihku',
     zoomOut: 'Pomanjšanje',
     zoomIn: 'Povečava',
+    saveAndRegenerate: 'Shranite in regenerirajte otroške koščke',
+    close: 'Blizu',
+    view: 'Pogled',
+    regenerate: 'Regeneracijo',
+    viewMore: 'POGLEJ VEČ',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
@@ -677,6 +682,7 @@ const translation = {
     emptyTip: 'Znanje ni bilo povezano, prosimo, pojdite na aplikacijo ali vtičnik, da dokončate združenje.',
     viewDoc: 'Oglejte si dokumentacijo',
     relatedApp: 'Povezane aplikacije',
+    noRelatedApp: 'Brez povezanih aplikacij',
   },
   voiceInput: {
     notAllow: 'Mikrofon ni pooblaščen',

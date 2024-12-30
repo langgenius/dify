@@ -146,6 +146,26 @@ const translation = {
   externalAPIPanelDocumentation: '瞭解如何創建外部知識 API',
   externalKnowledgeNamePlaceholder: '請輸入知識庫的名稱',
   noExternalKnowledge: '目前還沒有外部知識 API，按兩下此處創建',
+  chunkingMode: {
+    parentChild: '父子',
+    general: '常規',
+  },
+  parentMode: {
+    paragraph: '段',
+    fullDoc: '完整文件',
+  },
+  batchAction: {
+    delete: '刪除',
+    enable: '使',
+    disable: '禁用',
+    cancel: '取消',
+    archive: '檔案',
+    selected: '選擇',
+  },
+  enable: '使',
+  documentsDisabled: '已禁用 {{num}} 個文檔 - 處於非活動狀態超過 30 天',
+  localDocs: '本地文件',
+  preprocessDocument: '{{num}}預處理文件',
 }
 
 export default translation

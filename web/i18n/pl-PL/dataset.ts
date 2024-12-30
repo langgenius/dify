@@ -152,6 +152,26 @@ const translation = {
   learnHowToWriteGoodKnowledgeDescription: 'Dowiedz się, jak napisać dobry opis wiedzy',
   externalKnowledgeNamePlaceholder: 'Podaj nazwę bazy wiedzy',
   externalAPIPanelDescription: 'Interfejs API wiedzy zewnętrznej służy do łączenia się z bazą wiedzy poza Dify i pobierania wiedzy z tej bazy wiedzy.',
+  chunkingMode: {
+    parentChild: 'Rodzic-dziecko',
+    general: 'Ogólne',
+  },
+  parentMode: {
+    fullDoc: 'Pełna wersja dokumentu',
+    paragraph: 'Akapit',
+  },
+  batchAction: {
+    selected: 'Wybrany',
+    archive: 'Archiwum',
+    enable: 'Umożliwiać',
+    disable: 'Wyłączać',
+    delete: 'Usunąć',
+    cancel: 'Anuluj',
+  },
+  preprocessDocument: '{{liczba}} Przetwarzanie wstępne dokumentów',
+  localDocs: 'Lokalne dokumenty',
+  documentsDisabled: '{{num}} dokumenty wyłączone - nieaktywne przez ponad 30 dni',
+  enable: 'Umożliwiać',
 }
 
 export default translation

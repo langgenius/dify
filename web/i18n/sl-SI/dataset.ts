@@ -146,6 +146,26 @@ const translation = {
   nTo1RetrievalLegacy: 'N-to-1 pridobivanje bo uradno ukinjeno septembra. Priporočamo uporabo najnovejšega večpotnega pridobivanja za boljše rezultate.',
   nTo1RetrievalLegacyLink: 'Izvedite več',
   nTo1RetrievalLegacyLinkText: 'N-to-1 pridobivanje bo uradno ukinjeno septembra.',
+  chunkingMode: {
+    general: 'Splošno',
+    parentChild: 'Starš-otrok',
+  },
+  parentMode: {
+    fullDoc: 'Celoten dokument',
+    paragraph: 'Odstavek',
+  },
+  batchAction: {
+    cancel: 'Odpovedati',
+    selected: 'Izbrane',
+    enable: 'Omogočiti',
+    disable: 'Onesposobiti',
+    archive: 'Arhiv',
+    delete: 'Izbrisati',
+  },
+  localDocs: 'Lokalni dokumenti',
+  documentsDisabled: '{{num}} dokumenti onemogočeni - neaktivni več kot 30 dni',
+  preprocessDocument: '{{num}} Predobdelava dokumentov',
+  enable: 'Omogočiti',
 }
 
 export default translation
