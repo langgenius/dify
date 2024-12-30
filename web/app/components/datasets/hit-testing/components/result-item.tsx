@@ -43,13 +43,8 @@ const ResultItem: FC<Props> = ({
     setFalse: hideDetailModal,
   }] = useBoolean(false)
 
-  const handleClickCard = () => {
-    if (!isParentChildRetrieval)
-      showDetailModal()
-  }
-
   return (
-    <div className={cn('pt-3 bg-chat-bubble-bg rounded-xl hover:shadow-lg', !isParentChildRetrieval && 'cursor-pointer')} onClick={handleClickCard}>
+    <div className={cn('pt-3 bg-chat-bubble-bg rounded-xl hover:shadow-lg cursor-pointer')} onClick={showDetailModal}>
       {/* Meta info */}
       <div className='flex justify-between items-center px-3'>
         <div className='flex items-center space-x-2'>
