@@ -76,9 +76,6 @@ class ToolEngine:
                 if not isinstance(tool_parameters, dict):
                     raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
 
-        # invoke the tool
-        if tool.identity is None:
-            raise ValueError("tool identity is not set")
         try:
             # hit the callback handler
             agent_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
@@ -207,8 +204,6 @@ class ToolEngine:
         """
         Invoke the tool with the given arguments.
         """
-        if tool.identity is None:
-            raise ValueError("tool identity is not set")
         started_at = datetime.now(UTC)
         meta = ToolInvokeMeta(
             time_cost=0.0,

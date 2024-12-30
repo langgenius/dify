@@ -49,9 +49,6 @@ class BuiltinTool(Tool):
         :return: the model result
         """
         # invoke model
-        if self.runtime is None or self.identity is None:
-            raise ValueError("runtime and identity are required")
-
         return ModelInvocationUtils.invoke(
             user_id=user_id,
             tenant_id=self.runtime.tenant_id or "",
