@@ -714,6 +714,11 @@ const translation = {
         install: '安装',
         installing: '安装中',
       },
+      modelNotInMarketplace: {
+        title: '模型未安装',
+        desc: '此模型未从市场安装。请转到插件重新安装。',
+        manageInPlugins: '在插件中管理',
+      },
       model: '模型',
       toolbox: '工具箱',
       strategyNotSet: '代理策略未设置',

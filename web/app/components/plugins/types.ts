@@ -81,7 +81,7 @@ export type PluginManifestInMarket = {
   icon: string
   label: Record<Locale, string>
   category: PluginType
-  version: string // conbine the other place to it
+  version: string // combine the other place to it
   latest_version: string
   brief: Record<Locale, string>
   introduction: string
@@ -106,6 +106,11 @@ export type PluginDetail = {
   latest_unique_identifier: string
   source: PluginSource
   meta?: MetaData
+}
+
+export type PluginInfoFromMarketPlace = {
+  category: PluginType
+  latest_package_identifier: string
 }
 
 export type Plugin = {
