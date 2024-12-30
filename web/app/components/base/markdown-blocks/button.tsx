@@ -9,12 +9,22 @@ const MarkdownButton = ({ node }: any) => {
   const link = node.properties.dataLink
   const size = node.properties.dataSize
 
+  function is_valid_url(url: string): boolean {
+    try {
+      const parsed_url = new URL(url)
+      return ['http:', 'https:'].includes(parsed_url.protocol)
+    }
+    catch {
+      return false
+    }
+  }
+
   return <Button
     variant={variant}
     size={size}
     className={cn('!h-8 !px-3 select-none')}
     onClick={() => {
-      if (link && (!link.startsWith('http') || !link.startsWith('https'))) {
+      if (is_valid_url(link)) {
         window.open(link, '_blank')
         return
       }
