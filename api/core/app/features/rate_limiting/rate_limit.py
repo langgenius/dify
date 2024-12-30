@@ -27,6 +27,9 @@ class RateLimit:
 
     def __init__(self, client_id: str, max_active_requests: int):
         self.max_active_requests = max_active_requests
+        # must be called after max_active_requests is set
+        if self.disabled():
+            return
         if hasattr(self, "initialized"):
             return
         self.initialized = True
@@ -37,6 +40,8 @@ class RateLimit:
         self.flush_cache(use_local_value=True)
 
     def flush_cache(self, use_local_value=False):
+        if self.disabled():
+            return
         self.last_recalculate_time = time.time()
         # flush max active requests
         if use_local_value or not redis_client.exists(self.max_active_requests_key):
@@ -59,10 +64,10 @@ class RateLimit:
             redis_client.hdel(self.active_requests_key, *timeout_requests)
 
     def enter(self, request_id: Optional[str] = None) -> str:
+        if self.disabled():
+            return RateLimit._UNLIMITED_REQUEST_ID
         if time.time() - self.last_recalculate_time > RateLimit._ACTIVE_REQUESTS_COUNT_FLUSH_INTERVAL:
             self.flush_cache()
-        if self.max_active_requests <= 0:
-            return RateLimit._UNLIMITED_REQUEST_ID
         if not request_id:
             request_id = RateLimit.gen_request_key()
 
@@ -79,6 +84,9 @@ class RateLimit:
         if request_id == RateLimit._UNLIMITED_REQUEST_ID:
             return
         redis_client.hdel(self.active_requests_key, request_id)
+
+    def disabled(self):
+        return self.max_active_requests <= 0
 
     @staticmethod
     def gen_request_key() -> str:
