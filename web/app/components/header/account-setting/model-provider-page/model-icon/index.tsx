@@ -22,18 +22,18 @@ const ModelIcon: FC<ModelIconProps> = ({
 }) => {
   const language = useLanguage()
   if (provider?.provider.includes('openai') && modelName?.includes('gpt-4o'))
-    return <OpenaiBlue className={cn('w-5 h-5', className)}/>
+    return <div className='flex w-6 h-6 items-center justify-center'><OpenaiBlue className={cn('w-5 h-5', className)}/></div>
   if (provider?.provider.includes('openai') && modelName?.startsWith('gpt-4'))
-    return <OpenaiViolet className={cn('w-5 h-5', className)}/>
+    return <div className='flex w-6 h-6 items-center justify-center'><OpenaiViolet className={cn('w-5 h-5', className)}/></div>
 
   if (provider?.icon_small) {
     return (
 
-      <div className={isDeprecated ? 'opacity-50' : ''}>
+      <div className={`flex w-6 h-6 items-center justify-center ${isDeprecated ? 'opacity-50' : ''}`}>
         <img
           alt='model-icon'
           src={`${provider.icon_small[language] || provider.icon_small.en_US}`}
-          className={cn('w-4 h-4', className)}
+          className={cn('w-5 h-5', className)}
         />
       </div>
     )
@@ -41,10 +41,10 @@ const ModelIcon: FC<ModelIconProps> = ({
 
   return (
     <div className={cn(
-      'flex items-center justify-center w-5 h-5 rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
+      'flex items-center justify-center w-6 h-6 rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
       className,
     )}>
-      <div className='flex w-3 h-3 items-center justify-center opacity-35'>
+      <div className='flex w-5 h5 items-center justify-center opacity-35'>
         <Group className='text-text-tertiary' />
       </div>
     </div>
