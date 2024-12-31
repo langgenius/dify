@@ -190,6 +190,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   currentModel={currentModel}
                   providerName={value?.provider}
                   modelId={value?.model}
+                  scope={scope}
                 />
                 : <Trigger
                   disabled={disabled}
