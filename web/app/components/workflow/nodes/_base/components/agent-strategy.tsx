@@ -15,7 +15,6 @@ import Field from './field'
 import type { ComponentProps } from 'react'
 import { useDefaultModel, useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Editor from './prompt/editor'
-import { strategyParamToCredientialForm } from '../../agent/panel'
 import { useWorkflowStore } from '../../../store'
 
 export type Strategy = {
@@ -144,7 +143,7 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
           onChange={onChange}
           onGenerated={handleGenerated}
           title={schema.label[language]}
-          headerClassName='bg-transparent px-0 text-text-secondary system-sm-semibold-uppercase !text-base'
+          headerClassName='bg-transparent px-0 text-text-secondary system-sm-semibold-uppercase'
           containerClassName='bg-transparent'
           gradientBorder={false}
           isSupportPromptGenerator={!!schema.auto_generate?.type}
@@ -173,26 +172,7 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
       strategy
         ? <div>
           <Form<CustomField>
-            formSchemas={[
-              ...formSchema,
-              ...[{
-                name: 'instruction2',
-                type: 'string',
-                required: true,
-                label: {
-                  en_US: 'Instruction2',
-                  zh_Hans: '指令2',
-                  pt_BR: 'Instruction2',
-                },
-                auto_generate: {
-                  type: 'prompt_instruction',
-                },
-                template: {
-                  enabled: true,
-                },
-              // @ts-expect-error just for test
-              }].map(strategyParamToCredientialForm),
-            ]}
+            formSchemas={formSchema}
             value={formValue}
             onChange={onFormValueChange}
             validating={false}
