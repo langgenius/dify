@@ -3,11 +3,11 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useContext } from 'use-context-selector'
+import DeleteAccount from '../delete-account'
 import s from './index.module.css'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import type { IItem } from '@/app/components/header/account-setting/collapse'
 import Modal from '@/app/components/base/modal'
-import Confirm from '@/app/components/base/confirm'
 import Button from '@/app/components/base/button'
 import { updateUserProfile } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
@@ -296,37 +296,9 @@ export default function AccountPage() {
       }
       {
         showDeleteAccountModal && (
-          <Confirm
-            isShow
+          <DeleteAccount
             onCancel={() => setShowDeleteAccountModal(false)}
             onConfirm={() => setShowDeleteAccountModal(false)}
-            showCancel={false}
-            type='warning'
-            title={t('common.account.delete')}
-            content={
-              <>
-                <div className='my-1 text-text-destructive body-md-medium'>
-                  {t('common.account.deleteTip')}
-                </div>
-                <div className='mt-3 text-sm leading-5'>
-                  <span>{t('common.account.deleteConfirmTip')}</span>
-                  <a
-                    className='text-text-accent cursor'
-                    href={`mailto:support@dify.ai?subject=Delete Account Request&body=Delete Account: ${userProfile.email}`}
-                    target='_blank'
-                    rel='noreferrer noopener'
-                    onClick={(e) => {
-                      e.preventDefault()
-                      window.location.href = e.currentTarget.href
-                    }}
-                  >
-                    support@dify.ai
-                  </a>
-                </div>
-                <div className='my-2 px-3 py-2 rounded-lg bg-components-input-bg-active border border-components-input-border-active system-sm-regular text-components-input-text-filled'>{`${t('common.account.delete')}: ${userProfile.email}`}</div>
-              </>
-            }
-            confirmText={t('common.operation.ok') as string}
           />
         )
       }
