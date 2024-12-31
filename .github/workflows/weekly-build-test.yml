@@ -1,8 +1,12 @@
 name: Weekly Build Without Cache
 
 on:
-  schedule:
-    - cron: "0 0 * * 0" # This cron expression triggers the workflow every Sunday at midnight UTC
+  # schedule:
+  #   - cron: "0 0 * * 0" # This cron expression triggers the workflow every Sunday at midnight UTC
+  push:
+    branches:
+      - main
+      - weekly-build-test
 
 jobs:
   build:
