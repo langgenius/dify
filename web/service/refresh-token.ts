@@ -21,16 +21,23 @@ function waitUntilTokenRefreshed() {
   })
 }
 
+const isRefreshingSignAvailable = function (delta: number) {
+  const nowTime = new Date().getTime()
+  const lastTime = globalThis.localStorage.getItem('last_refresh_time') || '0'
+  return nowTime - parseInt(lastTime) <= delta
+}
+
 // only one request can send
-async function getNewAccessToken(): Promise<void> {
+async function getNewAccessToken(timeout: number): Promise<void> {
   try {
     const isRefreshingSign = globalThis.localStorage.getItem(LOCAL_STORAGE_KEY)
-    if ((isRefreshingSign && isRefreshingSign === '1') || isRefreshing) {
+    if ((isRefreshingSign && isRefreshingSign === '1' && isRefreshingSignAvailable(timeout)) || isRefreshing) {
       await waitUntilTokenRefreshed()
     }
     else {
       isRefreshing = true
       globalThis.localStorage.setItem(LOCAL_STORAGE_KEY, '1')
+      globalThis.localStorage.setItem('last_refresh_time', new Date().getTime().toString())
       globalThis.addEventListener('beforeunload', releaseRefreshLock)
       const refresh_token = globalThis.localStorage.getItem('refresh_token')
 
@@ -72,6 +79,7 @@ function releaseRefreshLock() {
   if (isRefreshing) {
     isRefreshing = false
     globalThis.localStorage.removeItem(LOCAL_STORAGE_KEY)
+    globalThis.localStorage.removeItem('last_refresh_time')
     globalThis.removeEventListener('beforeunload', releaseRefreshLock)
   }
 }
@@ -80,5 +88,5 @@ export async function refreshAccessTokenOrRelogin(timeout: number) {
   return Promise.race([new Promise<void>((resolve, reject) => setTimeout(() => {
     releaseRefreshLock()
     reject(new Error('request timeout'))
-  }, timeout)), getNewAccessToken()])
+  }, timeout)), getNewAccessToken(timeout)])
 }
