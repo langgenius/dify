@@ -8,11 +8,33 @@ import type { ToolIconProps } from './components/tool-icon'
 import { ToolIcon } from './components/tool-icon'
 import useConfig from './use-config'
 import { useTranslation } from 'react-i18next'
-import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { FormTypeEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+
+const useAllModel = () => {
+  const { data: textGeneration } = useModelList(ModelTypeEnum.textGeneration)
+  const { data: moderation } = useModelList(ModelTypeEnum.moderation)
+  const { data: rerank } = useModelList(ModelTypeEnum.rerank)
+  const { data: speech2text } = useModelList(ModelTypeEnum.speech2text)
+  const { data: textEmbedding } = useModelList(ModelTypeEnum.textEmbedding)
+  const { data: tts } = useModelList(ModelTypeEnum.tts)
+  const models = useMemo(() => {
+    return textGeneration
+      .concat(moderation)
+      .concat(rerank)
+      .concat(speech2text)
+      .concat(textEmbedding)
+      .concat(tts)
+  }, [textGeneration, moderation, rerank, speech2text, textEmbedding, tts])
+  if (!textGeneration || !moderation || !rerank || !speech2text || !textEmbedding || !tts)
+    return undefined
+  return models
+}
 
 const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
   const { inputs, currentStrategy } = useConfig(props.id, props.data)
   const { t } = useTranslation()
+  const modelList = useAllModel()
   const models = useMemo(() => {
     if (!inputs) return []
     // if selected, show in node
@@ -73,7 +95,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
         {inputs.agent_strategy_label}
       </SettingItem>
       : <SettingItem label={t('workflow.nodes.agent.strategyNotSet')} />}
-    {models.length > 0 && <Group
+    {models.length > 0 && modelList && <Group
       label={<GroupLabel className='mt-1'>
         {t('workflow.nodes.agent.model')}
       </GroupLabel>}
@@ -81,7 +103,8 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
       {models.map((model) => {
         return <ModelSelector
           key={model.param}
-          modelList={[]}
+          modelList={modelList}
+          triggerClassName='bg-workflow-block-parma-bg'
           defaultModel={
             'provider' in model
               ? {
