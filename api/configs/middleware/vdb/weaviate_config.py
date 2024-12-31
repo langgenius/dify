@@ -28,3 +28,8 @@ class WeaviateConfig(BaseSettings):
         description="Number of objects to be processed in a single batch operation (default is 100)",
         default=100,
     )
+
+    WEAVIATE_TOKENIZATION: Optional[str] = Field(
+        description="Tokenization for Weaviate",
+        default=None,
+    )
