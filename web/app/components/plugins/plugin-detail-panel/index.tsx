@@ -10,8 +10,6 @@ import Drawer from '@/app/components/base/drawer'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import cn from '@/utils/classnames'
 
-import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
-
 type Props = {
   detail?: PluginDetail
   onUpdate: () => void
@@ -54,15 +52,6 @@ const PluginDetailPanel: FC<Props> = ({
             {!!detail.declaration.agent_strategy && <AgentStrategyList detail={detail} />}
             {!!detail.declaration.endpoint && <EndpointList detail={detail} />}
             {!!detail.declaration.model && <ModelList detail={detail} />}
-            <ModelParameterModal
-              popupClassName='!w-[387px]'
-              isAdvancedMode
-              isInWorkflow
-              isAgentStrategy={true}
-              value={null}
-              setModel={() => {}}
-              scope={'llm'}
-            />
           </div>
         </>
       )}
