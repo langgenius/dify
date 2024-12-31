@@ -68,7 +68,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
         popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.vision })}
       >
         <div className='inline-block cursor-help'>
-          <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-text-tertiary ${className}`}>
+          <ModelBadge className={`!px-0 w-[18px] justify-center text-text-tertiary ${className}`}>
             <MagicEyes className='w-3 h-3' />
           </ModelBadge>
         </div>
@@ -82,7 +82,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
         popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.document })}
       >
         <div className='inline-block cursor-help'>
-          <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-text-tertiary ${className}`}>
+          <ModelBadge className={`!px-0 w-[18px] justify-center text-text-tertiary ${className}`}>
             <DocumentSupportIcon className='w-3 h-3' />
           </ModelBadge>
         </div>
@@ -96,7 +96,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
         popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.audio })}
       >
         <div className='inline-block cursor-help'>
-          <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-text-tertiary ${className}`}>
+          <ModelBadge className={`!px-0 w-[18px] justify-center text-text-tertiary ${className}`}>
             <AudioSupportIcon className='w-3 h-3' />
           </ModelBadge>
         </div>
@@ -110,7 +110,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
         popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.video })}
       >
         <div className='inline-block cursor-help'>
-          <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-text-tertiary ${className}`}>
+          <ModelBadge className={`!px-0 w-[18px] justify-center text-text-tertiary ${className}`}>
             <VideoSupportIcon className='w-3 h-3' />
           </ModelBadge>
         </div>
