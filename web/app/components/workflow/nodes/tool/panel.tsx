@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Split from '../_base/components/split'
 import type { ToolNodeType } from './types'
@@ -54,7 +54,11 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
   } = useConfig(id, data)
   const toolIcon = useToolIcon(data)
   const logsParams = useLogs()
-  const nodeInfo = formatToTracingNodeList([runResult], t)[0]
+  const nodeInfo = useMemo(() => {
+    if (!runResult)
+      return null
+    return formatToTracingNodeList([runResult], t)[0]
+  }, [runResult, t])
 
   if (isLoading) {
     return <div className='flex h-[200px] items-center justify-center'>
