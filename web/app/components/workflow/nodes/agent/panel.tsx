@@ -11,7 +11,7 @@ import type { CredentialFormSchema } from '@/app/components/header/account-setti
 
 const i18nPrefix = 'workflow.nodes.agent'
 
-function strategyParamToCredientialForm(param: StrategyParamItem): CredentialFormSchema {
+export function strategyParamToCredientialForm(param: StrategyParamItem): CredentialFormSchema {
   return {
     ...param as any,
     variable: param.name,

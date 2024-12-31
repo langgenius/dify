@@ -1,5 +1,5 @@
 import type { CredentialFormSchemaNumberInput } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { type CredentialFormSchema, FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { type CredentialFormSchema, FormTypeEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolVarInputs } from '../../tool/types'
 import ListEmpty from '@/app/components/base/list-empty'
 import { AgentStrategySelector } from './agent-strategy-selector'
@@ -13,8 +13,9 @@ import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-sele
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
 import Field from './field'
 import type { ComponentProps } from 'react'
-import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useDefaultModel, useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Editor from './prompt/editor'
+import { strategyParamToCredientialForm } from '../../agent/panel'
 
 export type Strategy = {
   agent_strategy_provider_name: string
@@ -36,10 +37,10 @@ type CustomSchema<Type, Field = {}> = Omit<CredentialFormSchema, 'type'> & { typ
 type ToolSelectorSchema = CustomSchema<'tool-selector'>
 type MultipleToolSelectorSchema = CustomSchema<'array[tools]'>
 type StringSchema = CustomSchema<'string', {
-  template: {
+  template?: {
     enabled: boolean
   },
-  auto_generate: {
+  auto_generate?: {
     type: string
   }
 }>
@@ -50,6 +51,7 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
   const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange } = props
   const { t } = useTranslation()
   const language = useLanguage()
+  const defaultModel = useDefaultModel(ModelTypeEnum.textGeneration)
   const override: ComponentProps<typeof Form<CustomField>>['override'] = [
     [FormTypeEnum.textNumber],
     (schema, props) => {
@@ -125,14 +127,33 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
       }
       case 'string': {
         const value = props.value[schema.variable]
-        const onChange = (value: any) => {
+        const onChange = (value: string) => {
           props.onChange({ ...props.value, [schema.variable]: value })
         }
         return <Editor
           value={value}
           onChange={onChange}
           title={schema.label[language]}
-          headerClassName='bg-transparent'
+          headerClassName='bg-transparent px-0 text-text-secondary system-sm-semibold-uppercase !text-base'
+          containerClassName='bg-transparent'
+          gradientBorder={false}
+          isSupportPromptGenerator={!!schema.auto_generate?.type}
+          titleTooltip={schema.tooltip?.[language]}
+          editorContainerClassName='px-0'
+          isSupportJinja={schema.template?.enabled}
+          varList={[]}
+          modelConfig={
+            defaultModel.data
+              ? {
+                mode: 'chat',
+                name: defaultModel.data.model,
+                provider: defaultModel.data.provider.provider,
+                completion_params: {},
+              } : undefined
+          }
+          onGenerated={onChange}
+          placeholderClassName='px-2 py-1'
+          inputClassName='px-2 py-1 bg-components-input-bg-normal focus:bg-components-input-bg-active focus:border-components-input-border-active focus:border rounded-lg'
         />
       }
     }
@@ -143,7 +164,26 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
       strategy
         ? <div>
           <Form<CustomField>
-            formSchemas={formSchema}
+            formSchemas={[
+              ...formSchema,
+              ...[{
+                name: 'instruction2',
+                type: 'string',
+                required: true,
+                label: {
+                  en_US: 'Instruction2',
+                  zh_Hans: '指令2',
+                  pt_BR: 'Instruction2',
+                },
+                auto_generate: {
+                  type: 'prompt_instruction',
+                },
+                template: {
+                  enabled: true,
+                },
+              // @ts-expect-error just for test
+              }].map(strategyParamToCredientialForm),
+            ]}
             value={formValue}
             onChange={onFormValueChange}
             validating={false}

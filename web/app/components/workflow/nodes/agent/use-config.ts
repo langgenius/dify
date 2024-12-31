@@ -16,12 +16,18 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     inputs,
     setInputs,
   })
-  const strategies = useStrategyProviderDetail(
+  const strategyProvider = useStrategyProviderDetail(
     inputs.agent_strategy_provider_name || '',
   )
-  const currentStrategy = strategies.data?.declaration.strategies.find(
+  const currentStrategy = strategyProvider.data?.declaration.strategies.find(
     str => str.identity.name === inputs.agent_strategy_name,
   )
+  const currentStrategyStatus = useMemo(() => {
+    if (strategyProvider.isLoading) return 'loading'
+    if (strategyProvider.isError) return 'plugin-not-found'
+    if (!currentStrategy) return 'strategy-not-found'
+    return 'success'
+  }, [currentStrategy, strategyProvider])
   const formData = useMemo(() => {
     return Object.fromEntries(
       Object.entries(inputs.agent_parameters || {}).map(([key, value]) => {
@@ -31,12 +37,9 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   }, [inputs.agent_parameters])
   const onFormChange = (value: Record<string, any>) => {
     const res: ToolVarInputs = {}
-    const params = currentStrategy!.parameters
     Object.entries(value).forEach(([key, val]) => {
-      const param = params.find(p => p.name === key)
-      const isMixed = param?.type === 'string'
       res[key] = {
-        type: isMixed ? VarType.mixed : VarType.constant,
+        type: VarType.constant,
         value: val,
       }
     })
@@ -44,7 +47,6 @@ const useConfig = (id: string, payload: AgentNodeType) => {
       ...inputs,
       agent_parameters: res,
     })
-    console.log(res)
   }
   return {
     readOnly,
@@ -55,6 +57,8 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     currentStrategy,
     formData,
     onFormChange,
+    currentStrategyStatus,
+    strategyProvider: strategyProvider.data,
   }
 }
 
