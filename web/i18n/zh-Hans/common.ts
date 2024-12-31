@@ -126,6 +126,8 @@ const translation = {
       Custom: '自定义',
     },
     addMoreModel: '添加更多模型',
+    settingsLink: '模型设置',
+    capabilities: '多模态能力',
   },
   menus: {
     status: 'beta',

@@ -205,7 +205,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               )
           }
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className={cn('z-[60]', portalToFollowElemContentClassName)}>
+        <PortalToFollowElemContent className={cn('z-50', portalToFollowElemContentClassName)}>
           <div className={cn(popupClassName, 'w-[389px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg')}>
             <div className={cn('max-h-[420px] p-4 pt-3 overflow-y-auto')}>
               <div className='relative'>
