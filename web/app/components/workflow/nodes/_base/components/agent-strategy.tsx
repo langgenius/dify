@@ -16,6 +16,7 @@ import type { ComponentProps } from 'react'
 import { useDefaultModel, useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Editor from './prompt/editor'
 import { strategyParamToCredientialForm } from '../../agent/panel'
+import { useWorkflowStore } from '../../../store'
 
 export type Strategy = {
   agent_strategy_provider_name: string
@@ -52,6 +53,10 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
   const { t } = useTranslation()
   const language = useLanguage()
   const defaultModel = useDefaultModel(ModelTypeEnum.textGeneration)
+  const workflowStore = useWorkflowStore()
+  const {
+    setControlPromptEditorRerenderKey,
+  } = workflowStore.getState()
   const override: ComponentProps<typeof Form<CustomField>>['override'] = [
     [FormTypeEnum.textNumber],
     (schema, props) => {
@@ -130,9 +135,14 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
         const onChange = (value: string) => {
           props.onChange({ ...props.value, [schema.variable]: value })
         }
+        const handleGenerated = (value: string) => {
+          onChange(value)
+          setControlPromptEditorRerenderKey(Math.random())
+        }
         return <Editor
           value={value}
           onChange={onChange}
+          onGenerated={handleGenerated}
           title={schema.label[language]}
           headerClassName='bg-transparent px-0 text-text-secondary system-sm-semibold-uppercase !text-base'
           containerClassName='bg-transparent'
@@ -151,7 +161,6 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
                 completion_params: {},
               } : undefined
           }
-          onGenerated={onChange}
           placeholderClassName='px-2 py-1'
           inputClassName='px-2 py-1 bg-components-input-bg-normal focus:bg-components-input-bg-active focus:border-components-input-border-active focus:border rounded-lg'
         />
