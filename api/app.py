@@ -25,6 +25,10 @@ else:
         # grpc gevent
         grpc_gevent.init_gevent()
 
+        import psycogreen.gevent  # type: ignore
+
+        psycogreen.gevent.patch_psycopg()
+
     from app_factory import create_app
 
     app = create_app()
