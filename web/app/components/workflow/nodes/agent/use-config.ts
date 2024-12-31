@@ -21,26 +21,6 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     inputs.agent_strategy_provider_name || '',
   )
 
-  // single run
-  const agentInputKey = `${id}.input_selector`
-  const {
-    isShowSingleRun,
-    showSingleRun,
-    hideSingleRun,
-    toVarInputs,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runInputData,
-    setRunInputData,
-    runResult,
-  } = useOneStepRun<AgentNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: {
-      [agentInputKey]: [''],
-    },
-  })
   const currentStrategy = strategyProvider.data?.declaration.strategies.find(
     str => str.identity.name === inputs.agent_strategy_name,
   )
@@ -70,6 +50,36 @@ const useConfig = (id: string, payload: AgentNodeType) => {
       agent_parameters: res,
     })
   }
+
+  // single run
+  const {
+    isShowSingleRun,
+    showSingleRun,
+    hideSingleRun,
+    toVarInputs,
+    runningStatus,
+    handleRun,
+    handleStop,
+    runInputData,
+    setRunInputData,
+    runResult,
+    getInputVars,
+  } = useOneStepRun<AgentNodeType>({
+    id,
+    data: inputs,
+    defaultRunInputData: {},
+  })
+  const allVarStrArr = (() => {
+    const arr = ['']
+
+    return arr
+  })()
+  const varInputs = (() => {
+    const vars = getInputVars(allVarStrArr)
+
+    return vars
+  })()
+
   return {
     readOnly,
     inputs,
@@ -92,7 +102,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     runInputData,
     setRunInputData,
     runResult,
-    agentInputKey,
+    varInputs,
   }
 }
 
