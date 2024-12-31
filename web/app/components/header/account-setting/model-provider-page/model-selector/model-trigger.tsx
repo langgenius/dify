@@ -48,7 +48,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
           modelName={model.model}
         />
       </div>
-      <div className='flex px-1 py-[3px] items-center gap-1 grow'>
+      <div className='flex px-1 py-[3px] items-center gap-1 truncate'>
         <ModelName
           className='grow'
           modelItem={model}
