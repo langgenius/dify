@@ -34,7 +34,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
   return (
     <div
       className={cn(
-        'group flex items-center p-1 gap-0.5 h-8 rounded-lg bg-components-input-bg-normal',
+        'group flex items-center p-1 gap-0.5 h-6 rounded-lg bg-components-input-bg-normal',
         !readonly && 'hover:bg-components-input-bg-hover cursor-pointer',
         open && 'bg-components-input-bg-hover',
         model.status !== ModelStatusEnum.active && 'bg-components-input-bg-disabled hover:bg-components-input-bg-disabled',
@@ -42,7 +42,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
       )}
     >
       <ModelIcon
-        className='shrink-0 m-1'
+        className='w-4 h-4'
         provider={provider}
         modelName={model.model}
       />
