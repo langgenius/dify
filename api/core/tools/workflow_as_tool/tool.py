@@ -1,8 +1,7 @@
 import json
 import logging
 from collections.abc import Generator
-from typing import Any, Optional, Union
-from typing import cast
+from typing import Any, Optional, Union, cast
 
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.tools.__base.tool import Tool
