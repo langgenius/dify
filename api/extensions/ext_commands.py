@@ -9,13 +9,13 @@ def init_app(app: DifyApp):
         extract_plugins,
         extract_unique_plugins,
         fix_app_site_missing,
+        install_plugins,
         migrate_data_for_plugin,
         reset_email,
         reset_encrypt_key_pair,
         reset_password,
         upgrade_db,
         vdb_migrate,
-        install_plugins,
     )
 
     cmds_to_register = [

@@ -1,12 +1,12 @@
-from concurrent.futures import ThreadPoolExecutor
 import datetime
 import json
 import logging
-from collections.abc import Sequence
-from pathlib import Path
 import sys
 import time
-from typing import Any, Mapping, Optional
+from collections.abc import Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from typing import Any, Optional
 from uuid import uuid4
 
 import click
@@ -392,7 +392,7 @@ class PluginMigration:
                     ],
                 )
 
-        with open(extracted_plugins, "r") as f:
+        with open(extracted_plugins) as f:
             """
             Read line by line, and install plugins for each tenant.
             """
