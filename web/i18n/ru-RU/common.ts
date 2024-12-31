@@ -42,6 +42,11 @@ const translation = {
     zoomOut: 'Уменьшение масштаба',
     openInNewTab: 'Открыть в новой вкладке',
     copyImage: 'Скопировать изображение',
+    close: 'Закрывать',
+    regenerate: 'Регенерировать',
+    view: 'Вид',
+    viewMore: 'ПОДРОБНЕЕ',
+    saveAndRegenerate: 'Сохранение и повторное создание дочерних блоков',
   },
   errorMsg: {
     fieldRequired: '{{field}} обязательно',
@@ -478,6 +483,7 @@ const translation = {
     emptyTip: 'Знания не были связаны, пожалуйста, перейдите в приложение или плагин, чтобы завершить связывание.',
     viewDoc: 'Просмотреть документацию',
     relatedApp: 'связанные приложения',
+    noRelatedApp: 'Нет связанных приложений',
   },
   voiceInput: {
     speaking: 'Говорите сейчас...',

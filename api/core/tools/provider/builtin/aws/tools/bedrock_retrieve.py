@@ -21,7 +21,7 @@ class BedrockRetrieveTool(BuiltinTool):
 
             retrieval_configuration = {"vectorSearchConfiguration": {"numberOfResults": num_results}}
 
-            # 如果有元数据过滤条件，则添加到检索配置中
+            # Add metadata filter to retrieval configuration if present
             if metadata_filter:
                 retrieval_configuration["vectorSearchConfiguration"]["filter"] = metadata_filter
 
@@ -77,7 +77,7 @@ class BedrockRetrieveTool(BuiltinTool):
             if not query:
                 return self.create_text_message("Please input query")
 
-            # 获取元数据过滤条件（如果存在）
+            # Get metadata filter conditions (if they exist)
             metadata_filter_str = tool_parameters.get("metadata_filter")
             metadata_filter = json.loads(metadata_filter_str) if metadata_filter_str else None
 
@@ -86,7 +86,7 @@ class BedrockRetrieveTool(BuiltinTool):
                 query_input=query,
                 knowledge_base_id=self.knowledge_base_id,
                 num_results=self.topk,
-                metadata_filter=metadata_filter,  # 将元数据过滤条件传递给检索方法
+                metadata_filter=metadata_filter,
             )
 
             line = 5
@@ -109,7 +109,7 @@ class BedrockRetrieveTool(BuiltinTool):
         if not parameters.get("query"):
             raise ValueError("query is required")
 
-        # 可选：可以验证元数据过滤条件是否为有效的 JSON 字符串（如果提供）
+        # Optional: Validate if metadata filter is a valid JSON string (if provided)
         metadata_filter_str = parameters.get("metadata_filter")
         if metadata_filter_str and not isinstance(json.loads(metadata_filter_str), dict):
             raise ValueError("metadata_filter must be a valid JSON object")

@@ -33,7 +33,7 @@ export const useLogs = () => {
     setIterationResultDurationMap(iterDurationMap)
   }, [setShowIteratingDetailTrue, setIterationResultList, setIterationResultDurationMap])
 
-  const [agentOrToolLogItemStack, setAgentOrToolLogItemStack] = useState<{ id: string; label: string }[]>([])
+  const [agentOrToolLogItemStack, setAgentOrToolLogItemStack] = useState<AgentLogItemWithChildren[]>([])
   const agentOrToolLogItemStackRef = useRef(agentOrToolLogItemStack)
   const [agentOrToolLogListMap, setAgentOrToolLogListMap] = useState<Record<string, AgentLogItemWithChildren[]>>({})
   const agentOrToolLogListMapRef = useRef(agentOrToolLogListMap)
@@ -43,14 +43,14 @@ export const useLogs = () => {
       agentOrToolLogItemStackRef.current = []
       return
     }
-    const { id, label, children } = detail
+    const { id, children } = detail
     let currentAgentOrToolLogItemStack = agentOrToolLogItemStackRef.current.slice()
     const index = currentAgentOrToolLogItemStack.findIndex(logItem => logItem.id === id)
 
     if (index > -1)
       currentAgentOrToolLogItemStack = currentAgentOrToolLogItemStack.slice(0, index + 1)
     else
-      currentAgentOrToolLogItemStack = [...currentAgentOrToolLogItemStack.slice(), { id, label }]
+      currentAgentOrToolLogItemStack = [...currentAgentOrToolLogItemStack.slice(), detail]
 
     setAgentOrToolLogItemStack(currentAgentOrToolLogItemStack)
     agentOrToolLogItemStackRef.current = currentAgentOrToolLogItemStack

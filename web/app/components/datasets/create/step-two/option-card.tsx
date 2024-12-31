@@ -15,13 +15,15 @@ type OptionCardHeaderProps = {
   isActive?: boolean
   activeClassName?: string
   effectImg?: string
+  disabled?: boolean
 }
 
 export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
-  const { icon, title, description, isActive, activeClassName, effectImg } = props
+  const { icon, title, description, isActive, activeClassName, effectImg, disabled } = props
   return <div className={classNames(
     'flex h-full overflow-hidden rounded-t-xl relative',
     isActive && activeClassName,
+    !disabled && 'cursor-pointer',
   )}>
     <div className='size-14 flex items-center justify-center relative overflow-hidden'>
       {isActive && effectImg && <Image src={effectImg} className='absolute top-0 left-0 w-full h-full' alt='' width={56} height={56} />}
@@ -63,7 +65,7 @@ export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
       (isActive && !noHighlight)
         ? 'border-[1.5px] border-components-option-card-option-selected-border'
         : 'border border-components-option-card-option-border',
-      disabled && 'opacity-50',
+      disabled && 'opacity-50 cursor-not-allowed',
       className,
     )}
     style={{
@@ -83,6 +85,7 @@ export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
       isActive={isActive && !noHighlight}
       activeClassName={activeHeaderClassName}
       effectImg={effectImg}
+      disabled={disabled}
     />
     {/** Body */}
     {isActive && (children || actions) && <div className='py-3 px-4 bg-components-panel-bg rounded-b-xl'>

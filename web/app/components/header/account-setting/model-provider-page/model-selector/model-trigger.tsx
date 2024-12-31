@@ -42,33 +42,35 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
       )}
     >
       <ModelIcon
-        className='shrink-0 mr-1.5'
+        className='shrink-0 m-1'
         provider={provider}
         modelName={model.model}
       />
-      <ModelName
-        className='grow'
-        modelItem={model}
-        showMode
-        showFeatures
-      />
-      {!readonly && (
-        <div className='shrink-0 flex items-center justify-center w-4 h-4'>
-          {
-            model.status !== ModelStatusEnum.active
-              ? (
-                <Tooltip popupContent={MODEL_STATUS_TEXT[model.status][language]}>
-                  <AlertTriangle className='w-4 h-4 text-[#F79009]' />
-                </Tooltip>
-              )
-              : (
-                <RiArrowDownSLine
-                  className='w-3.5 h-3.5 text-text-tertiary'
-                />
-              )
-          }
-        </div>
-      )}
+      <div className='flex px-1 py-[3px] items-center gap-1 grow'>
+        <ModelName
+          className='grow'
+          modelItem={model}
+          showMode
+          showFeatures
+        />
+        {!readonly && (
+          <div className='shrink-0 flex items-center justify-center w-4 h-4'>
+            {
+              model.status !== ModelStatusEnum.active
+                ? (
+                  <Tooltip popupContent={MODEL_STATUS_TEXT[model.status][language]}>
+                    <AlertTriangle className='w-4 h-4 text-text-warning-secondary' />
+                  </Tooltip>
+                )
+                : (
+                  <RiArrowDownSLine
+                    className='w-3.5 h-3.5 text-text-tertiary'
+                  />
+                )
+            }
+          </div>
+        )}
+      </div>
     </div>
   )
 }

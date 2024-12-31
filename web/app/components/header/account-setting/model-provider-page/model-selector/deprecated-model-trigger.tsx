@@ -22,11 +22,11 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
 
   return (
     <div
-      className={cn('group flex flex-grow items-center p-[3px] pl-1 gap-1 rounded-lg bg-components-input-bg-disabled cursor-pointer', className)}
+      className={cn('group flex flex-grow items-center p-[3px] pl-1 h-6 gap-1 rounded-lg bg-components-input-bg-disabled cursor-pointer', className)}
     >
       <div className='flex items-center py-[1px] gap-1 grow'>
         <ModelIcon
-          className="m-0.5"
+          className="m-0.5 w-4 h-4"
           provider={currentProvider}
           modelName={modelName}
         />

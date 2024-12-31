@@ -1,3 +1,4 @@
+import datetime
 import logging
 import time
 
@@ -46,6 +47,16 @@ def remove_document_from_index_task(document_id: str):
                 index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=False)
             except Exception:
                 logging.exception(f"clean dataset {dataset.id} from index failed")
+        # update segment to disable
+        db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).update(
+            {
+                DocumentSegment.enabled: False,
+                DocumentSegment.disabled_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                DocumentSegment.disabled_by: document.disabled_by,
+                DocumentSegment.updated_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+            }
+        )
+        db.session.commit()
 
         end_at = time.perf_counter()
         logging.info(

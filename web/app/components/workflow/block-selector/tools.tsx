@@ -69,13 +69,14 @@ const Blocks = ({
 
   const listViewToolData = useMemo(() => {
     const result: ToolWithProvider[] = []
-    Object.keys(withLetterAndGroupViewToolsData).forEach((letter) => {
+    letters.forEach((letter) => {
       Object.keys(withLetterAndGroupViewToolsData[letter]).forEach((groupName) => {
         result.push(...withLetterAndGroupViewToolsData[letter][groupName])
       })
     })
+
     return result
-  }, [withLetterAndGroupViewToolsData])
+  }, [withLetterAndGroupViewToolsData, letters])
 
   const toolRefs = useRef({})
 

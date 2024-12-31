@@ -194,6 +194,11 @@ const translation = {
     modelButtonConfirm: '确认停止',
     modelButtonCancel: '取消',
   },
+  otherDataSource: {
+    title: '连接到其他数据源？',
+    description: '目前，Dify 的知识库只有有限的数据源。向 Dify 知识库贡献数据源是帮助所有用户增强平台灵活性和强大功能的绝佳方式。我们的贡献指南使入门变得容易。请点击下面的链接了解更多信息。',
+    learnMore: '了解更多信息',
+  },
 }
 
 export default translation

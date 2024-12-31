@@ -32,6 +32,9 @@ const translation = {
     retrievalSettings: 'Paramètres de récupération',
     externalKnowledgeAPI: 'API de connaissances externes',
     externalKnowledgeID: 'Identification des connaissances externes',
+    indexMethodChangeToEconomyDisabledTip: 'Non disponible pour le déclassement de HQ à ECO',
+    upgradeHighQualityTip: 'Une fois la mise à niveau vers le mode Haute Qualité, il n’est pas possible de revenir au mode Économique',
+    helpText: 'Apprenez à rédiger une bonne description de jeu de données.',
   },
 }
 
