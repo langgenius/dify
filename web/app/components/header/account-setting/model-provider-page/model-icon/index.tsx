@@ -22,14 +22,14 @@ const ModelIcon: FC<ModelIconProps> = ({
 }) => {
   const language = useLanguage()
   if (provider?.provider.includes('openai') && modelName?.includes('gpt-4o'))
-    return <div className='flex w-6 h-6 items-center justify-center'><OpenaiBlue className={cn('w-5 h-5', className)}/></div>
+    return <div className='flex items-center justify-center'><OpenaiBlue className={cn('w-5 h-5', className)}/></div>
   if (provider?.provider.includes('openai') && modelName?.startsWith('gpt-4'))
-    return <div className='flex w-6 h-6 items-center justify-center'><OpenaiViolet className={cn('w-5 h-5', className)}/></div>
+    return <div className='flex items-center justify-center'><OpenaiViolet className={cn('w-5 h-5', className)}/></div>
 
   if (provider?.icon_small) {
     return (
 
-      <div className={`flex w-6 h-6 items-center justify-center ${isDeprecated ? 'opacity-50' : ''}`}>
+      <div className={`flex items-center justify-center ${isDeprecated ? 'opacity-50' : ''}`}>
         <img
           alt='model-icon'
           src={`${provider.icon_small[language] || provider.icon_small.en_US}`}
