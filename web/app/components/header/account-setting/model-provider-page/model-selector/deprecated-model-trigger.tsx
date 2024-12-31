@@ -26,7 +26,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
     >
       <div className='flex items-center py-[1px] gap-1 grow'>
         <ModelIcon
-          className="m-0.5"
+          className="m-0.5 w-4 h-4"
           provider={currentProvider}
           modelName={modelName}
         />
