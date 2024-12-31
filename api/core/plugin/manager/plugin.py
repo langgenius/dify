@@ -76,7 +76,11 @@ class PluginInstallationManager(BasePluginManager):
         )
 
     def install_from_identifiers(
-        self, tenant_id: str, identifiers: Sequence[str], source: PluginInstallationSource, meta: dict
+        self,
+        tenant_id: str,
+        identifiers: Sequence[str],
+        source: PluginInstallationSource,
+        metas: list[dict],
     ) -> PluginInstallTaskStartResponse:
         """
         Install a plugin from an identifier.
@@ -89,7 +93,7 @@ class PluginInstallationManager(BasePluginManager):
             data={
                 "plugin_unique_identifiers": identifiers,
                 "source": source,
-                "meta": meta,
+                "metas": metas,
             },
             headers={"Content-Type": "application/json"},
         )

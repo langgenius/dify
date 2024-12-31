@@ -232,7 +232,7 @@ class PluginService:
             tenant_id,
             plugin_unique_identifiers,
             PluginInstallationSource.Package,
-            {},
+            [{}],
         )
 
     @staticmethod
@@ -246,11 +246,13 @@ class PluginService:
             tenant_id,
             [plugin_unique_identifier],
             PluginInstallationSource.Github,
-            {
-                "repo": repo,
-                "version": version,
-                "package": package,
-            },
+            [
+                {
+                    "repo": repo,
+                    "version": version,
+                    "package": package,
+                }
+            ],
         )
 
     @staticmethod
@@ -277,9 +279,12 @@ class PluginService:
             tenant_id,
             plugin_unique_identifiers,
             PluginInstallationSource.Marketplace,
-            {
-                "plugin_unique_identifier": plugin_unique_identifier,
-            },
+            [
+                {
+                    "plugin_unique_identifier": plugin_unique_identifier,
+                }
+                for plugin_unique_identifier in plugin_unique_identifiers
+            ],
         )
 
     @staticmethod

@@ -677,3 +677,42 @@ def extract_plugins(output_file: str, workers: int):
     PluginMigration.extract_plugins(output_file, workers)
 
     click.echo(click.style("Extract plugins completed.", fg="green"))
+
+
+@click.command("extract-unique-identifiers", help="Extract unique identifiers.")
+@click.option(
+    "--output_file",
+    prompt=True,
+    help="The file to store the extracted unique identifiers.",
+    default="unique_identifiers.json",
+)
+@click.option(
+    "--input_file", prompt=True, help="The file to store the extracted unique identifiers.", default="plugins.jsonl"
+)
+def extract_unique_plugins(output_file: str, input_file: str):
+    """
+    Extract unique plugins.
+    """
+    click.echo(click.style("Starting extract unique plugins.", fg="white"))
+
+    PluginMigration.extract_unique_plugins(input_file, output_file)
+
+    click.echo(click.style("Extract unique plugins completed.", fg="green"))
+
+
+@click.command("install-plugins", help="Install plugins.")
+@click.option(
+    "--input_file", prompt=True, help="The file to store the extracted unique identifiers.", default="plugins.jsonl"
+)
+@click.option(
+    "--output_file", prompt=True, help="The file to store the installed plugins.", default="installed_plugins.jsonl"
+)
+def install_plugins(input_file: str, output_file: str):
+    """
+    Install plugins.
+    """
+    click.echo(click.style("Starting install plugins.", fg="white"))
+
+    PluginMigration.install_plugins(input_file, output_file)
+
+    click.echo(click.style("Install plugins completed.", fg="green"))

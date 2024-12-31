@@ -7,6 +7,7 @@ def init_app(app: DifyApp):
         convert_to_agent_apps,
         create_tenant,
         extract_plugins,
+        extract_unique_plugins,
         fix_app_site_missing,
         migrate_data_for_plugin,
         reset_email,
@@ -14,6 +15,7 @@ def init_app(app: DifyApp):
         reset_password,
         upgrade_db,
         vdb_migrate,
+        install_plugins,
     )
 
     cmds_to_register = [
@@ -28,6 +30,8 @@ def init_app(app: DifyApp):
         fix_app_site_missing,
         migrate_data_for_plugin,
         extract_plugins,
+        extract_unique_plugins,
+        install_plugins,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)
