@@ -1,0 +1,42 @@
+model: ernie-lite-pro-128k
+label:
+  en_US: Ernie-Lite-Pro-128K
+model_type: llm
+features:
+  - agent-thought
+model_properties:
+  mode: chat
+  context_size: 128000
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+    min: 0.1
+    max: 1.0
+    default: 0.8
+  - name: top_p
+    use_template: top_p
+  - name: min_output_tokens
+    label:
+      en_US: "Min Output Tokens"
+      zh_Hans: "最小输出Token数"
+    use_template: max_tokens
+    min: 2
+    max: 2048
+    help:
+      zh_Hans: 指定模型最小输出token数
+      en_US: Specifies the lower limit on the length of generated results.
+  - name: max_output_tokens
+    label:
+      en_US: "Max Output Tokens"
+      zh_Hans: "最大输出Token数"
+    use_template: max_tokens
+    min: 2
+    max: 2048
+    default: 2048
+    help:
+      zh_Hans: 指定模型最大输出token数
+      en_US: Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.
+  - name: presence_penalty
+    use_template: presence_penalty
+  - name: frequency_penalty
+    use_template: frequency_penalty

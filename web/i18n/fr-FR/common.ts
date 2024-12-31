@@ -42,6 +42,11 @@ const translation = {
     zoomIn: 'Zoom avant',
     openInNewTab: 'Ouvrir dans un nouvel onglet',
     copyImage: 'Copier l’image',
+    view: 'Vue',
+    viewMore: 'VOIR PLUS',
+    close: 'Fermer',
+    saveAndRegenerate: 'Enregistrer et régénérer des morceaux enfants',
+    regenerate: 'Régénérer',
   },
   placeholder: {
     input: 'Veuillez entrer',
@@ -474,6 +479,7 @@ const translation = {
     emptyTip: 'La Connaissance n\'a pas été associée, veuillez aller à l\'application ou au plug-in pour compléter l\'association.',
     viewDoc: 'Voir la documentation',
     relatedApp: 'applications liées',
+    noRelatedApp: 'Pas d’applications liées',
   },
   voiceInput: {
     speaking: 'Parle maintenant...',

@@ -5,6 +5,8 @@ from datetime import UTC, datetime
 from typing import Any, Optional, cast
 from uuid import uuid4
 
+from sqlalchemy import desc
+
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -75,6 +77,28 @@ class WorkflowService:
         )
 
         return workflow
+
+    def get_all_published_workflow(self, app_model: App, page: int, limit: int) -> tuple[list[Workflow], bool]:
+        """
+        Get published workflow with pagination
+        """
+        if not app_model.workflow_id:
+            return [], False
+
+        workflows = (
+            db.session.query(Workflow)
+            .filter(Workflow.app_id == app_model.id)
+            .order_by(desc(Workflow.version))
+            .offset((page - 1) * limit)
+            .limit(limit + 1)
+            .all()
+        )
+
+        has_more = len(workflows) > limit
+        if has_more:
+            workflows = workflows[:-1]
+
+        return workflows, has_more
 
     def sync_draft_workflow(
         self,

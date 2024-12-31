@@ -147,6 +147,26 @@ const translation = {
   mixtureInternalAndExternalTip: 'Модель Rerank необхідна для поєднання внутрішніх і зовнішніх знань.',
   externalKnowledgeIdPlaceholder: 'Будь ласка, введіть Knowledge ID',
   externalAPIPanelDescription: 'API зовнішніх знань використовується для підключення до бази знань за межами Dify і отримання знань із цієї бази знань.',
+  chunkingMode: {
+    parentChild: 'Батьки-діти',
+    general: 'Загальне',
+  },
+  parentMode: {
+    fullDoc: 'Повний документ',
+    paragraph: 'Абзац',
+  },
+  batchAction: {
+    delete: 'Видалити',
+    enable: 'Вмикати',
+    disable: 'Вимкнути',
+    archive: 'Архів',
+    selected: 'Вибрані',
+    cancel: 'Скасувати',
+  },
+  preprocessDocument: '{{num}} Попередня обробка документів',
+  documentsDisabled: 'Документи {{num}} вимкнені - неактивні понад 30 днів',
+  localDocs: 'Локальні документи',
+  enable: 'Вмикати',
 }
 
 export default translation

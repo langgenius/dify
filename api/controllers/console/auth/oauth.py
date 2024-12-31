@@ -16,7 +16,7 @@ from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models import Account
 from models.account import AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
-from services.errors.account import AccountNotFoundError
+from services.errors.account import AccountNotFoundError, AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
 from services.feature_service import FeatureService
 
@@ -99,6 +99,8 @@ class OAuthCallback(Resource):
                 f"{dify_config.CONSOLE_WEB_URL}/signin"
                 "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
             )
+        except AccountRegisterError as e:
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={e.description}")
 
         # Check account status
         if account.status == AccountStatus.BANNED.value:
