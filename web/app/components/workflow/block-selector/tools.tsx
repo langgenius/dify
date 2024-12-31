@@ -71,7 +71,12 @@ const Blocks = ({
     const result: ToolWithProvider[] = []
     letters.forEach((letter) => {
       Object.keys(withLetterAndGroupViewToolsData[letter]).forEach((groupName) => {
-        result.push(...withLetterAndGroupViewToolsData[letter][groupName])
+        result.push(...withLetterAndGroupViewToolsData[letter][groupName].map((item) => {
+          return {
+            ...item,
+            letter,
+          }
+        }))
       })
     })
 
@@ -95,6 +100,8 @@ const Blocks = ({
       {!!tools.length && (
         isFlatView ? (
           <ToolListFlatView
+            toolRefs={toolRefs}
+            letters={letters}
             payload={listViewToolData}
             isShowLetterIndex={isShowLetterIndex}
             hasSearchText={hasSearchText}
