@@ -104,6 +104,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
             modelList={modelList}
             onSelect={handleSelect}
             scopeFeatures={scopeFeatures}
+            onHide={() => setOpen(false)}
           />
         </PortalToFollowElemContent>
       </div>
