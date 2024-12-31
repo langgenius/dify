@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
@@ -133,6 +133,14 @@ class ProviderEntity(BaseModel):
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
+
+    @field_validator("models", mode="before")
+    @classmethod
+    def validate_models(cls, v):
+        # returns EmptyList if v is empty
+        if not v:
+            return []
+        return v
 
     def to_simple_provider(self) -> SimpleProviderEntity:
         """

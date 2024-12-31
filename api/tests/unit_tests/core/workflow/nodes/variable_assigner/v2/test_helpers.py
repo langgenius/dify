@@ -1,5 +1,3 @@
-import pytest
-
 from core.variables import SegmentType
 from core.workflow.nodes.variable_assigner.v2.enums import Operation
 from core.workflow.nodes.variable_assigner.v2.helpers import is_input_value_valid

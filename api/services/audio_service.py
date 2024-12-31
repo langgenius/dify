@@ -139,7 +139,7 @@ class AudioService:
                     return Response(stream_with_context(response), content_type="audio/mpeg")
                 return response
         else:
-            if not text:
+            if text is None:
                 raise ValueError("Text is required")
             response = invoke_tts(text, app_model, voice)
             if isinstance(response, Generator):

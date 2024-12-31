@@ -86,25 +86,30 @@ class DatasetService:
                 else:
                     return [], 0
             else:
-                # show all datasets that the user has permission to access
-                if permitted_dataset_ids:
-                    query = query.filter(
-                        db.or_(
-                            Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                            db.and_(Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id),
-                            db.and_(
-                                Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
-                                Dataset.id.in_(permitted_dataset_ids),
-                            ),
+                if user.current_role not in (TenantAccountRole.OWNER, TenantAccountRole.ADMIN):
+                    # show all datasets that the user has permission to access
+                    if permitted_dataset_ids:
+                        query = query.filter(
+                            db.or_(
+                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                                db.and_(
+                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
+                                ),
+                                db.and_(
+                                    Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
+                                    Dataset.id.in_(permitted_dataset_ids),
+                                ),
+                            )
                         )
-                    )
-                else:
-                    query = query.filter(
-                        db.or_(
-                            Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                            db.and_(Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id),
+                    else:
+                        query = query.filter(
+                            db.or_(
+                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                                db.and_(
+                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
+                                ),
+                            )
                         )
-                    )
         else:
             # if no user, only show datasets that are shared with all team members
             query = query.filter(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
@@ -377,14 +382,19 @@ class DatasetService:
         if dataset.tenant_id != user.current_tenant_id:
             logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
             raise NoPermissionError("You do not have permission to access this dataset.")
-        if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.created_by != user.id:
-            logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
-            raise NoPermissionError("You do not have permission to access this dataset.")
-        if dataset.permission == "partial_members":
-            user_permission = DatasetPermission.query.filter_by(dataset_id=dataset.id, account_id=user.id).first()
-            if not user_permission and dataset.tenant_id != user.current_tenant_id and dataset.created_by != user.id:
+        if user.current_role not in (TenantAccountRole.OWNER, TenantAccountRole.ADMIN):
+            if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.created_by != user.id:
                 logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
                 raise NoPermissionError("You do not have permission to access this dataset.")
+            if dataset.permission == "partial_members":
+                user_permission = DatasetPermission.query.filter_by(dataset_id=dataset.id, account_id=user.id).first()
+                if (
+                    not user_permission
+                    and dataset.tenant_id != user.current_tenant_id
+                    and dataset.created_by != user.id
+                ):
+                    logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
+                    raise NoPermissionError("You do not have permission to access this dataset.")
 
     @staticmethod
     def check_dataset_operator_permission(user: Optional[Account] = None, dataset: Optional[Dataset] = None):
@@ -394,15 +404,16 @@ class DatasetService:
         if not user:
             raise ValueError("User not found")
 
-        if dataset.permission == DatasetPermissionEnum.ONLY_ME:
-            if dataset.created_by != user.id:
-                raise NoPermissionError("You do not have permission to access this dataset.")
+        if user.current_role not in (TenantAccountRole.OWNER, TenantAccountRole.ADMIN):
+            if dataset.permission == DatasetPermissionEnum.ONLY_ME:
+                if dataset.created_by != user.id:
+                    raise NoPermissionError("You do not have permission to access this dataset.")
 
-        elif dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
-            if not any(
-                dp.dataset_id == dataset.id for dp in DatasetPermission.query.filter_by(account_id=user.id).all()
-            ):
-                raise NoPermissionError("You do not have permission to access this dataset.")
+            elif dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
+                if not any(
+                    dp.dataset_id == dataset.id for dp in DatasetPermission.query.filter_by(account_id=user.id).all()
+                ):
+                    raise NoPermissionError("You do not have permission to access this dataset.")
 
     @staticmethod
     def get_dataset_queries(dataset_id: str, page: int, per_page: int):
@@ -441,7 +452,7 @@ class DatasetService:
 
 
 class DocumentService:
-    DEFAULT_RULES = {
+    DEFAULT_RULES: dict[str, Any] = {
         "mode": "custom",
         "rules": {
             "pre_processing_rules": [
@@ -455,7 +466,7 @@ class DocumentService:
         },
     }
 
-    DOCUMENT_METADATA_SCHEMA = {
+    DOCUMENT_METADATA_SCHEMA: dict[str, Any] = {
         "book": {
             "title": str,
             "language": str,

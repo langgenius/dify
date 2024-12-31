@@ -330,13 +330,13 @@ class BaseAgentRunner(AppRunner):
         if not updated_agent_thought:
             raise ValueError("agent thought not found")
 
-        if thought is not None:
-            updated_agent_thought.thought = thought
+        if thought:
+            agent_thought.thought = thought
 
-        if tool_name is not None:
-            updated_agent_thought.tool = tool_name
+        if tool_name:
+            agent_thought.tool = tool_name
 
-        if tool_input is not None:
+        if tool_input:
             if isinstance(tool_input, dict):
                 try:
                     tool_input = json.dumps(tool_input, ensure_ascii=False)
@@ -345,7 +345,7 @@ class BaseAgentRunner(AppRunner):
 
             updated_agent_thought.tool_input = tool_input
 
-        if observation is not None:
+        if observation:
             if isinstance(observation, dict):
                 try:
                     observation = json.dumps(observation, ensure_ascii=False)
@@ -354,8 +354,8 @@ class BaseAgentRunner(AppRunner):
 
             updated_agent_thought.observation = observation
 
-        if answer is not None:
-            updated_agent_thought.answer = answer
+        if answer:
+            agent_thought.answer = answer
 
         if messages_ids is not None and len(messages_ids) > 0:
             updated_agent_thought.message_files = json.dumps(messages_ids)

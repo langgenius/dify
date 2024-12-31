@@ -23,19 +23,19 @@ const Switch = React.forwardRef<HTMLButtonElement>(({ onChange, size = 'md', def
     sm: 'h-3 w-5',
   }
 
-  const circleStyle = {
-    lg: 'h-5 w-5',
-    l: 'h-4 w-4',
-    md: 'h-3 w-3',
-    sm: 'h-2 w-2',
-  }
+  //   const circleStyle = {
+  //     lg: 'h-5 w-5',
+  //     l: 'h-4 w-4',
+  //     md: 'h-3 w-3',
+  //     sm: 'h-2 w-2',
+  //   }
 
-  const translateLeft = {
-    lg: 'translate-x-5',
-    l: 'translate-x-4',
-    md: 'translate-x-3',
-    sm: 'translate-x-2',
-  }
+  // const translateLeft = {
+  //   lg: 'translate-x-5',
+  //   l: 'translate-x-4',
+  //   md: 'translate-x-3',
+  //   sm: 'translate-x-2',
+  // }
   return (
     <OriginalSwitch
       ref={ref}
@@ -57,9 +57,11 @@ const Switch = React.forwardRef<HTMLButtonElement>(({ onChange, size = 'md', def
       <span
         aria-hidden="true"
         className={classNames(
-          circleStyle[size],
-          enabled ? translateLeft[size] : 'translate-x-0',
-          'pointer-events-none inline-block transform rounded-[3px] bg-components-toggle-knob shadow ring-0 transition duration-200 ease-in-out',
+          wrapStyle[size],
+          enabled ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked',
+          'relative inline-flex  flex-shrink-0 cursor-pointer rounded-[5px] border-2 border-transparent transition-colors duration-200 ease-in-out',
+          disabled ? '!opacity-50 !cursor-not-allowed' : '',
+          className,
         )}
       />
     </OriginalSwitch>
