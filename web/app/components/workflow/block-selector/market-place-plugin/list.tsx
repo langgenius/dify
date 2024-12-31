@@ -74,11 +74,13 @@ const List = ({
     )
   }
 
+  const maxWidthClassName = 'max-w-[300px]'
+
   return (
     <>
       {hasRes && (
         <div
-          className={cn('sticky z-10 flex justify-between h-8 px-4 py-1 text-text-primary system-sm-medium cursor-pointer', stickyClassName)}
+          className={cn('sticky z-10 flex justify-between h-8 px-4 py-1 text-text-primary system-sm-medium cursor-pointer', stickyClassName, maxWidthClassName)}
           onClick={handleHeadClick}
         >
           <span>{t('plugin.fromMarketplace')}</span>
@@ -93,7 +95,7 @@ const List = ({
           </Link>
         </div>
       )}
-      <div className='p-1' ref={nextToStickyELemRef}>
+      <div className={cn('p-1', maxWidthClassName)} ref={nextToStickyELemRef}>
         {list.map((item, index) => (
           <Item
             key={index}
