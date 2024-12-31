@@ -40,7 +40,7 @@ const SearchBox = ({
         locale={locale}
       />
       <div className='mx-1 w-[1px] h-3.5 bg-divider-regular'></div>
-      <div className='grow flex items-center p-1 pl-2'>
+      <div className='relative grow flex items-center p-1 pl-2'>
         <div className='flex items-center mr-2 w-full'>
           <input
             className={cn(
@@ -54,9 +54,11 @@ const SearchBox = ({
           />
           {
             search && (
-              <ActionButton onClick={() => onSearchChange('')}>
-                <RiCloseLine className='w-4 h-4' />
-              </ActionButton>
+              <div className='absolute right-2 top-1/2 -translate-y-1/2'>
+                <ActionButton onClick={() => onSearchChange('')}>
+                  <RiCloseLine className='w-4 h-4' />
+                </ActionButton>
+              </div>
             )
           }
         </div>

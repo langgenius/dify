@@ -39,6 +39,7 @@ export type AgentModelTriggerProps = {
   providerName?: string
   modelId?: string
   hasDeprecated?: boolean
+  scope?: string
 }
 
 const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
@@ -48,6 +49,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
   providerName,
   modelId,
   hasDeprecated,
+  scope,
 }) => {
   const { t } = useTranslation()
   const { modelProviders } = useProviderContext()
@@ -136,9 +138,19 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
     try {
       const { all_installed } = await installPackageFromMarketPlace(pluginInfo.latest_package_identifier)
       if (all_installed) {
-        setInstalled(true)
+        [
+          ModelTypeEnum.textGeneration,
+          ModelTypeEnum.textEmbedding,
+          ModelTypeEnum.rerank,
+          ModelTypeEnum.moderation,
+          ModelTypeEnum.speech2text,
+          ModelTypeEnum.tts,
+        ].forEach((type: ModelTypeEnum) => {
+          if (scope?.includes(type))
+            updateModelList(type)
+        })
         updateModelProviders()
-        updateModelList(ModelTypeEnum.textGeneration)
+        setInstalled(true)
       }
     }
     catch (error) {
@@ -190,7 +202,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
               t={t}
             />
           )}
-          {modelProvider && !disabled && (
+          {modelProvider && !disabled && !needsConfiguration && (
             <div className="flex pr-1 items-center">
               <RiEqualizer2Line className="w-4 h-4 text-text-tertiary group-hover:text-text-secondary" />
             </div>
