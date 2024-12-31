@@ -36,7 +36,7 @@ jobs:
           no-cache: true # Disable cache
           tags: |
             ${{ secrets.DOCKERHUB_USER }}/dify-api:weekly-${{ github.run_number }}
-      
+
       - name: Build web image without cache
         uses: docker/build-push-action@v6
         with:
