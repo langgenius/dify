@@ -15,6 +15,8 @@ import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/befo
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import { useToolIcon } from '@/app/components/workflow/hooks'
+import { useLogs } from '@/app/components/workflow/run/hooks'
+import formatToTracingNodeList from '@/app/components/workflow/run/utils/format-log'
 
 const i18nPrefix = 'workflow.nodes.tool'
 
@@ -51,6 +53,8 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     outputSchema,
   } = useConfig(id, data)
   const toolIcon = useToolIcon(data)
+  const logsParams = useLogs()
+  const nodeInfo = formatToTracingNodeList([runResult], t)[0]
 
   if (isLoading) {
     return <div className='flex h-[200px] items-center justify-center'>
@@ -161,7 +165,8 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}
-          result={<ResultPanel {...runResult} showSteps={false} />}
+          {...logsParams}
+          result={<ResultPanel {...runResult} showSteps={false} {...logsParams} nodeInfo={nodeInfo} />}
         />
       )}
     </div>

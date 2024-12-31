@@ -1,6 +1,7 @@
 import { useStrategyProviderDetail } from '@/service/use-strategy'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import useVarList from '../_base/hooks/use-var-list'
+import useOneStepRun from '../_base/hooks/use-one-step-run'
 import type { AgentNodeType } from './types'
 import {
   useNodesReadOnly,
@@ -19,6 +20,27 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   const strategyProvider = useStrategyProviderDetail(
     inputs.agent_strategy_provider_name || '',
   )
+
+  // single run
+  const agentInputKey = `${id}.input_selector`
+  const {
+    isShowSingleRun,
+    showSingleRun,
+    hideSingleRun,
+    toVarInputs,
+    runningStatus,
+    handleRun,
+    handleStop,
+    runInputData,
+    setRunInputData,
+    runResult,
+  } = useOneStepRun<AgentNodeType>({
+    id,
+    data: inputs,
+    defaultRunInputData: {
+      [agentInputKey]: [''],
+    },
+  })
   const currentStrategy = strategyProvider.data?.declaration.strategies.find(
     str => str.identity.name === inputs.agent_strategy_name,
   )
@@ -59,6 +81,18 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     onFormChange,
     currentStrategyStatus,
     strategyProvider: strategyProvider.data,
+
+    isShowSingleRun,
+    showSingleRun,
+    hideSingleRun,
+    toVarInputs,
+    runningStatus,
+    handleRun,
+    handleStop,
+    runInputData,
+    setRunInputData,
+    runResult,
+    agentInputKey,
   }
 }
 

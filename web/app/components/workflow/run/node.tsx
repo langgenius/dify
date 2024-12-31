@@ -81,6 +81,7 @@ const NodePanel: FC<Props> = ({
   const isIterationNode = nodeInfo.node_type === BlockEnum.Iteration
   const isRetryNode = hasRetryNode(nodeInfo.node_type) && nodeInfo.retryDetail
   const isAgentNode = nodeInfo.node_type === BlockEnum.Agent
+  const isToolNode = nodeInfo.node_type === BlockEnum.Tool
 
   return (
     <div className={cn('px-2 py-1', className)}>
@@ -144,7 +145,7 @@ const NodePanel: FC<Props> = ({
               />
             )}
             {
-              isAgentNode && onShowAgentOrToolLog && (
+              (isAgentNode || isToolNode) && onShowAgentOrToolLog && (
                 <AgentLogTrigger
                   nodeInfo={nodeInfo}
                   onShowAgentOrToolLog={onShowAgentOrToolLog}

@@ -17,7 +17,7 @@ export type SpecialResultPanelProps = {
   iterationResultList?: NodeTracing[][]
   iterationResultDurationMap?: IterationDurationMap
 
-  agentOrToolLogItemStack?: { id: string; label: string }[]
+  agentOrToolLogItemStack?: AgentLogItemWithChildren[]
   agentOrToolLogListMap?: Record<string, AgentLogItemWithChildren[]>
   handleShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
 }
