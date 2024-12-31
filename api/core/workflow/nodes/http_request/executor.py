@@ -158,7 +158,10 @@ class Executor:
                     if len(data) != 1:
                         raise RequestBodyError("json body type should have exactly one item")
                     json_string = self.variable_pool.convert_template(data[0].value).text
-                    json_object = json.loads(json_string, strict=False)
+                    try:
+                        json_object = json.loads(json_string, strict=False)
+                    except json.JSONDecodeError as e:
+                        raise RequestBodyError(f"Failed to parse JSON: {json_string}") from e
                     self.json = json_object
                     # self.json = self._parse_object_contains_variables(json_object)
                 case "binary":
