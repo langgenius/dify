@@ -1,0 +1,41 @@
+identity:
+  name: get_user_timeline
+  author: Yash Parmar
+  label:
+    en_US: Get User Timeline
+    zh_Hans: 获取用户时间线
+  icon: icon.svg
+
+description:
+  human:
+    en_US: Get comprehensive tweet data from a user's timeline including media, polls, metrics, and more
+    zh_Hans: 获取用户时间线上的完整推文数据，包括媒体、投票、指标等
+  llm: A tool for retrieving detailed tweet data from a specified user's timeline on X (Twitter), including comprehensive metadata, media attachments, polls, metrics, and related content.
+
+parameters:
+  - name: username
+    type: string
+    required: true
+    label:
+      en_US: Username
+      zh_Hans: 用户名
+    human_description:
+      en_US: The username of the account to get tweets from (without @ symbol)
+      zh_Hans: 要获取推文的账户用户名（不带@符号）
+    llm_description: The username of the account to get tweets from. Do not include the @ symbol.
+    form: llm
+
+  - name: max_results
+    type: number
+    required: false
+    default: 10
+    minimum: 5
+    maximum: 100
+    label:
+      en_US: Maximum Results
+      zh_Hans: 最大结果数
+    human_description:
+      en_US: Number of tweets to return (5-100, default 10)
+      zh_Hans: 要返回的推文数量（5-100，默认10）
+    llm_description: Number of tweets to retrieve. Must be between 5 and 100. Default is 10.
+    form: llm

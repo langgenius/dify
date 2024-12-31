@@ -1,0 +1,120 @@
+identity:
+  name: post_tweet
+  author: Yash Parmar
+  label:
+    en_US: Post Tweet
+    zh_Hans: 发布推文
+  icon: icon.svg
+
+description:
+  human:
+    en_US: Post a new tweet to X (Twitter) with support for media, polls, quotes, and replies
+    zh_Hans: 在 X (Twitter) 上发布新推文，支持媒体、投票、引用和回复
+  llm: A comprehensive tool for posting tweets with support for all Twitter features including media attachments, polls, quote tweets, and replies.
+
+parameters:
+  - name: text
+    type: string
+    required: true
+    label:
+      en_US: Tweet Text
+      zh_Hans: 推文内容
+    human_description:
+      en_US: The text content of your tweet (max 280 characters)
+      zh_Hans: 推文的文本内容（最多280个字符）
+    llm_description: The main text content of the tweet, limited to 280 characters
+    form: llm
+
+  - name: reply_to_tweet_id
+    type: string
+    required: false
+    label:
+      en_US: Reply To Tweet ID
+      zh_Hans: 回复推文ID
+    human_description:
+      en_US: Tweet ID to reply to
+      zh_Hans: 要回复的推文ID
+    llm_description: ID of a tweet to reply to. Creates a threaded reply.
+    form: llm
+
+  - name: media_ids
+    type: string
+    required: false
+    label:
+      en_US: Media IDs
+      zh_Hans: 媒体ID
+    human_description:
+      en_US: Comma-separated list of media IDs to attach to the tweet
+      zh_Hans: 要附加到推文的媒体ID（逗号分隔）
+    llm_description: Comma-separated string of media IDs to attach to the tweet (photos, videos, GIFs)
+    form: llm
+
+  - name: poll_options
+    type: string
+    required: false
+    label:
+      en_US: Poll Options
+      zh_Hans: 投票选项
+    human_description:
+      en_US: Poll options separated by commas (2-4 options)
+      zh_Hans: 投票选项（2-4个选项，用逗号分隔）
+    llm_description: Comma-separated string of poll choices, must contain 2-4 options
+    form: llm
+
+  - name: poll_duration_minutes
+    type: number
+    required: false
+    label:
+      en_US: Poll Duration (minutes)
+      zh_Hans: 投票持续时间（分钟）
+    human_description:
+      en_US: Duration of the poll in minutes (1-10080)
+      zh_Hans: 投票持续时间（1-10080分钟）
+    llm_description: How long the poll should remain open, in minutes (max 7 days/10080 minutes)
+    form: llm
+
+  - name: quote_tweet_id
+    type: string
+    required: false
+    label:
+      en_US: Quote Tweet ID
+      zh_Hans: 引用推文ID
+    human_description:
+      en_US: ID of tweet to quote
+      zh_Hans: 要引用的推文ID
+    llm_description: ID of a tweet to quote. Creates a quote tweet.
+    form: llm
+
+  - name: reply_settings
+    type: select
+    required: false
+    options:
+      - value: mentionedUsers
+        label:
+          en_US: Mentioned Users Only
+          zh_Hans: 仅被提及的用户
+      - value: following
+        label:
+          en_US: Following Only
+          zh_Hans: 仅关注的用户
+    label:
+      en_US: Reply Settings
+      zh_Hans: 回复设置
+    human_description:
+      en_US: Who can reply to this tweet
+      zh_Hans: 谁可以回复此推文
+    llm_description: Controls who can reply to the tweet
+    form: llm
+
+  - name: for_super_followers_only
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Super Followers Only
+      zh_Hans: 仅限超级关注者
+    human_description:
+      en_US: Make tweet visible only to Super Followers
+      zh_Hans: 使推文仅对超级关注者可见
+    llm_description: Whether the tweet should be visible only to Super Followers
+    form: llm
