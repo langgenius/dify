@@ -1,7 +1,61 @@
 import { BlockEnum } from '@/app/components/workflow/types'
 import type { AgentLogItem, AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
+import { cloneDeep } from 'lodash-es'
 
 const supportedAgentLogNodes = [BlockEnum.Agent, BlockEnum.Tool]
+
+const remove = (node: AgentLogItemWithChildren, removeId: string) => {
+  const { children } = node
+  if (!children || children.length === 0) {
+    return
+  }
+  children.forEach((child, index) => {
+    if (child.id === removeId) {
+      node.hasCircle = true
+      children.splice(index, 1)
+      return
+    }
+    remove(child, removeId)
+  })
+}
+
+const removeRepeatedSiblings = (list: AgentLogItemWithChildren[]) => {
+  if (!list || list.length === 0) {
+    return []
+  }
+  const result: AgentLogItemWithChildren[] = []
+  const addedItemIds: string[] = []
+  list.forEach((item) => {
+    if (!addedItemIds.includes(item.id)) {
+      result.push(item)
+      addedItemIds.push(item.id)
+    }
+  })
+  return result
+}
+
+const removeCircleLogItem = (log: AgentLogItemWithChildren) => {
+  let newLog = cloneDeep(log)
+  newLog.children = removeRepeatedSiblings(newLog.children)
+  let { id, children } = newLog
+  if (!children || children.length === 0) {
+    return log
+  }
+  // check one step circle
+  const hasOneStepCircle = !!children.find(c => c.id === id)
+  if (hasOneStepCircle) {
+    newLog.hasCircle = true
+    newLog.children = newLog.children.filter(c => c.id !== id)
+    children = newLog.children
+
+  }
+
+  children.forEach((child, index) => {
+    remove(child, id) // check multi steps circle
+    children[index] = removeCircleLogItem(child)
+  })
+  return newLog
+}
 
 const listToTree = (logs: AgentLogItem[]) => {
   if (!logs || logs.length === 0)
@@ -24,10 +78,15 @@ const listToTree = (logs: AgentLogItem[]) => {
   })
   return tree
 }
+
 const format = (list: NodeTracing[]): NodeTracing[] => {
   const result: NodeTracing[] = list.map((item) => {
+    let treeList: AgentLogItemWithChildren[] = []
+    let removedCircleTree: AgentLogItemWithChildren[] = []
     if (supportedAgentLogNodes.includes(item.node_type) && item.execution_metadata?.agent_log && item.execution_metadata?.agent_log.length > 0)
-      item.agentLog = listToTree(item.execution_metadata.agent_log)
+      treeList = listToTree(item.execution_metadata.agent_log)
+    removedCircleTree = treeList.length > 0 ? treeList.map(t => removeCircleLogItem(t)) : []
+    item.agentLog = removedCircleTree
 
     return item
   })

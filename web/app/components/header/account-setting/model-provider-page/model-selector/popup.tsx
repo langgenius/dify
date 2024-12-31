@@ -1,6 +1,8 @@
 import type { FC } from 'react'
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
+  RiArrowRightUpLine,
   RiSearchLine,
 } from '@remixicon/react'
 import type {
@@ -12,21 +14,26 @@ import { ModelFeatureEnum } from '../declarations'
 import { useLanguage } from '../hooks'
 import PopupItem from './popup-item'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import { useModalContext } from '@/context/modal-context'
 
 type PopupProps = {
   defaultModel?: DefaultModel
   modelList: Model[]
   onSelect: (provider: string, model: ModelItem) => void
   scopeFeatures?: string[]
+  onHide: () => void
 }
 const Popup: FC<PopupProps> = ({
   defaultModel,
   modelList,
   onSelect,
   scopeFeatures = [],
+  onHide,
 }) => {
+  const { t } = useTranslation()
   const language = useLanguage()
   const [searchText, setSearchText] = useState('')
+  const { setShowAccountSettingModal } = useModalContext()
 
   const filteredModelList = useMemo(() => {
     return modelList.map((model) => {
@@ -98,6 +105,13 @@ const Popup: FC<PopupProps> = ({
             </div>
           )
         }
+      </div>
+      <div className='sticky bottom-0 px-4 py-2 flex items-center border-t border-divider-subtle cursor-pointer text-text-accent-light-mode-only' onClick={() => {
+        onHide()
+        setShowAccountSettingModal({ payload: 'provider' })
+      }}>
+        <span className='system-xs-medium'>{t('common.model.settingsLink')}</span>
+        <RiArrowRightUpLine className='ml-0.5 w-3 h-3' />
       </div>
     </div>
   )

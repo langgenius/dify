@@ -1,5 +1,5 @@
 import type { CredentialFormSchemaNumberInput } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { type CredentialFormSchema, FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { type CredentialFormSchema, FormTypeEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolVarInputs } from '../../tool/types'
 import ListEmpty from '@/app/components/base/list-empty'
 import { AgentStrategySelector } from './agent-strategy-selector'
@@ -13,14 +13,14 @@ import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-sele
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
 import Field from './field'
 import type { ComponentProps } from 'react'
-import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useDefaultModel, useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import Editor from './prompt/editor'
+import { useWorkflowStore } from '../../../store'
 
 export type Strategy = {
   agent_strategy_provider_name: string
   agent_strategy_name: string
   agent_strategy_label: string
-  agent_configurations?: Record<string, any>
-  agent_parameters?: Record<string, ToolVarInputs>
   agent_output_schema: Record<string, any>
 }
 
@@ -36,85 +36,26 @@ type CustomSchema<Type, Field = {}> = Omit<CredentialFormSchema, 'type'> & { typ
 
 type ToolSelectorSchema = CustomSchema<'tool-selector'>
 type MultipleToolSelectorSchema = CustomSchema<'array[tools]'>
-
-type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema
-
-const devMockForm = [{
-  name: 'instruction',
-  label: {
-    en_US: 'Instruction',
-    zh_Hans: '指令',
-    pt_BR: 'Instruction',
-    ja_JP: 'Instruction',
+type StringSchema = CustomSchema<'string', {
+  template?: {
+    enabled: boolean
   },
-  placeholder: null,
-  scope: null,
-  auto_generate: {
-    type: 'prompt_instruction',
-  },
-  template: {
-    enabled: true,
-  },
-  required: true,
-  default: null,
-  min: null,
-  max: null,
-  options: [],
-  type: 'string',
-},
-{
-  name: 'query',
-  label: {
-    en_US: 'Query',
-    zh_Hans: '查询',
-    pt_BR: 'Query',
-    ja_JP: 'Query',
-  },
-  placeholder: null,
-  scope: null,
-  auto_generate: null,
-  template: null,
-  required: true,
-  default: null,
-  min: null,
-  max: null,
-  options: [],
-  type: 'string',
-},
-{
-  name: 'max iterations',
-  label: {
-    en_US: 'Max Iterations',
-    zh_Hans: '最大迭代次数',
-    pt_BR: 'Max Iterations',
-    ja_JP: 'Max Iterations',
-  },
-  placeholder: null,
-  scope: null,
-  auto_generate: null,
-  template: null,
-  required: true,
-  default: '1',
-  min: 1,
-  max: 10,
-  type: FormTypeEnum.textNumber,
-  tooltip: {
-    en_US: 'The maximum number of iterations to run',
-    zh_Hans: '运行的最大迭代次数',
-    pt_BR: 'The maximum number of iterations to run',
-    ja_JP: 'The maximum number of iterations to run',
-  },
-}].map((item) => {
-  return {
-    ...item,
-    variable: item.name,
+  auto_generate?: {
+    type: string
   }
-})
+}>
+
+type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema | StringSchema
 
 export const AgentStrategy = (props: AgentStrategyProps) => {
   const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange } = props
   const { t } = useTranslation()
   const language = useLanguage()
+  const defaultModel = useDefaultModel(ModelTypeEnum.textGeneration)
+  const workflowStore = useWorkflowStore()
+  const {
+    setControlPromptEditorRerenderKey,
+  } = workflowStore.getState()
   const override: ComponentProps<typeof Form<CustomField>>['override'] = [
     [FormTypeEnum.textNumber],
     (schema, props) => {
@@ -188,6 +129,41 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
           />
         )
       }
+      case 'string': {
+        const value = props.value[schema.variable]
+        const onChange = (value: string) => {
+          props.onChange({ ...props.value, [schema.variable]: value })
+        }
+        const handleGenerated = (value: string) => {
+          onChange(value)
+          setControlPromptEditorRerenderKey(Math.random())
+        }
+        return <Editor
+          value={value}
+          onChange={onChange}
+          onGenerated={handleGenerated}
+          title={schema.label[language]}
+          headerClassName='bg-transparent px-0 text-text-secondary system-sm-semibold-uppercase'
+          containerClassName='bg-transparent'
+          gradientBorder={false}
+          isSupportPromptGenerator={!!schema.auto_generate?.type}
+          titleTooltip={schema.tooltip?.[language]}
+          editorContainerClassName='px-0'
+          isSupportJinja={schema.template?.enabled}
+          varList={[]}
+          modelConfig={
+            defaultModel.data
+              ? {
+                mode: 'chat',
+                name: defaultModel.data.model,
+                provider: defaultModel.data.provider.provider,
+                completion_params: {},
+              } : undefined
+          }
+          placeholderClassName='px-2 py-1'
+          inputClassName='px-2 py-1 bg-components-input-bg-normal focus:bg-components-input-bg-active focus:border-components-input-border-active focus:border rounded-lg'
+        />
+      }
     }
   }
   return <div className='space-y-2'>
@@ -196,10 +172,7 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
       strategy
         ? <div>
           <Form<CustomField>
-            formSchemas={[
-              ...formSchema,
-              ...devMockForm as any,
-            ]}
+            formSchemas={formSchema}
             value={formValue}
             onChange={onFormValueChange}
             validating={false}

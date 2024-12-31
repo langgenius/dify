@@ -126,6 +126,8 @@ const translation = {
       Custom: 'Custom',
     },
     addMoreModel: 'Go to settings to add more models',
+    settingsLink: 'Model Provider Settings',
+    capabilities: 'MultiModal Capabilities',
   },
   menus: {
     status: 'beta',

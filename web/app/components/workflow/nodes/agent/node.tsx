@@ -21,7 +21,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     const models = currentStrategy?.parameters
       .filter(param => param.type === FormTypeEnum.modelSelector)
       .reduce((acc, param) => {
-        const item = inputs.agent_configurations?.[param.name]
+        const item = inputs.agent_parameters?.[param.name]?.value
         if (!item) {
           if (param.required) {
             acc.push({ param: param.name })
@@ -40,7 +40,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     currentStrategy?.parameters.forEach((param) => {
       if (param.type === FormTypeEnum.toolSelector) {
         const field = param.name
-        const value = inputs.agent_configurations?.[field]
+        const value = inputs.agent_parameters?.[field]?.value
         if (value) {
           tools.push({
             providerName: value.provider_name as any,
@@ -49,7 +49,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
       }
       if (param.type === FormTypeEnum.multiToolSelector) {
         const field = param.name
-        const value = inputs.agent_configurations?.[field]
+        const value = inputs.agent_parameters?.[field]?.value
         if (value) {
           (value as unknown as any[]).forEach((item) => {
             tools.push({
@@ -60,7 +60,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
       }
     })
     return tools
-  }, [currentStrategy?.parameters, inputs.agent_configurations])
+  }, [currentStrategy?.parameters, inputs.agent_parameters])
   return <div className='mb-1 px-3 py-1 space-y-1'>
     {inputs.agent_strategy_name
       ? <SettingItem

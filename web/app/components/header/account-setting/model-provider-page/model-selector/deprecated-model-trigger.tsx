@@ -22,19 +22,21 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
 
   return (
     <div
-      className={cn('group flex items-center px-2 h-8 rounded-lg bg-components-input-bg-disabled cursor-pointer', className)}
+      className={cn('group flex flex-grow items-center p-[3px] pl-1 h-6 gap-1 rounded-lg bg-components-input-bg-disabled cursor-pointer', className)}
     >
-      <ModelIcon
-        className='shrink-0 mr-1.5'
-        provider={currentProvider}
-        modelName={modelName}
-      />
-      <div className='mr-1 text-[13px] font-medium text-text-secondary truncate'>
-        {modelName}
+      <div className='flex items-center py-[1px] gap-1 grow'>
+        <ModelIcon
+          className="m-0.5 w-4 h-4"
+          provider={currentProvider}
+          modelName={modelName}
+        />
+        <div className='system-sm-regular text-components-input-text-filled truncate'>
+          {modelName}
+        </div>
       </div>
       <div className='shrink-0 flex items-center justify-center w-4 h-4'>
         <Tooltip popupContent={t('common.modelProvider.deprecated')}>
-          <AlertTriangle className='w-4 h-4 text-[#F79009]' />
+          <AlertTriangle className='w-4 h-4 text-text-warning-secondary' />
         </Tooltip>
       </div>
     </div>

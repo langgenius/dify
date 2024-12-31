@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   CustomConfigurationModelFixedFields,
@@ -9,6 +9,7 @@ import type {
 import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
+  ModelTypeEnum,
 } from '../declarations'
 import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from '../provider-added-card'
 import type { PluginInfoFromMarketPlace } from '@/app/components/plugins/types'
@@ -38,6 +39,7 @@ export type AgentModelTriggerProps = {
   providerName?: string
   modelId?: string
   hasDeprecated?: boolean
+  scope?: string
 }
 
 const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
@@ -47,6 +49,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
   providerName,
   modelId,
   hasDeprecated,
+  scope,
 }) => {
   const { t } = useTranslation()
   const { modelProviders } = useProviderContext()
@@ -54,13 +57,19 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
   const updateModelProviders = useUpdateModelProviders()
   const updateModelList = useUpdateModelList()
   const { eventEmitter } = useEventEmitterContextContext()
-  const modelProvider = modelProviders.find(item => item.provider === providerName)
-  const needsConfiguration = modelProvider?.custom_configuration.status === CustomConfigurationStatusEnum.noConfigure && !(
-    modelProvider.system_configuration.enabled === true
-    && modelProvider.system_configuration.quota_configurations.find(
-      item => item.quota_type === modelProvider.system_configuration.current_quota_type,
+  const { modelProvider, needsConfiguration } = useMemo(() => {
+    const modelProvider = modelProviders.find(item => item.provider === providerName)
+    const needsConfiguration = modelProvider?.custom_configuration.status === CustomConfigurationStatusEnum.noConfigure && !(
+      modelProvider.system_configuration.enabled === true
+      && modelProvider.system_configuration.quota_configurations.find(
+        item => item.quota_type === modelProvider.system_configuration.current_quota_type,
+      )
     )
-  )
+    return {
+      modelProvider,
+      needsConfiguration,
+    }
+  }, [modelProviders, providerName])
   const [pluginInfo, setPluginInfo] = useState<PluginInfoFromMarketPlace | null>(null)
   const [isPluginChecked, setIsPluginChecked] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -124,6 +133,34 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
     })
   }
 
+  const handleInstall = async (pluginInfo: PluginInfoFromMarketPlace) => {
+    setLoading(true)
+    try {
+      const { all_installed } = await installPackageFromMarketPlace(pluginInfo.latest_package_identifier)
+      if (all_installed) {
+        [
+          ModelTypeEnum.textGeneration,
+          ModelTypeEnum.textEmbedding,
+          ModelTypeEnum.rerank,
+          ModelTypeEnum.moderation,
+          ModelTypeEnum.speech2text,
+          ModelTypeEnum.tts,
+        ].forEach((type: ModelTypeEnum) => {
+          if (scope?.includes(type))
+            updateModelList(type)
+        })
+        updateModelProviders()
+        setInstalled(true)
+      }
+    }
+    catch (error) {
+      console.error('Installation failed:', error)
+    }
+    finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div
       className={cn(
@@ -158,14 +195,17 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
           {!installed && !modelProvider && pluginInfo && (
             <InstallButton
               loading={loading}
-              onInstall={async () => {
-                setLoading(true)
-                const { all_installed } = await installPackageFromMarketPlace(pluginInfo.latest_package_identifier)
-                if (all_installed)
-                  setInstalled(true)
+              onInstall={(e) => {
+                e.stopPropagation()
+                handleInstall(pluginInfo)
               }}
               t={t}
             />
+          )}
+          {modelProvider && !disabled && !needsConfiguration && (
+            <div className="flex pr-1 items-center">
+              <RiEqualizer2Line className="w-4 h-4 text-text-tertiary group-hover:text-text-secondary" />
+            </div>
           )}
         </>
       ) : (

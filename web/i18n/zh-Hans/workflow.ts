@@ -716,7 +716,7 @@ const translation = {
       },
       modelNotInMarketplace: {
         title: '模型未安装',
-        desc: '此模型未从市场安装。请转到插件重新安装。',
+        desc: '此模型安装自本地或 GitHub 仓库。请安装后使用。',
         manageInPlugins: '在插件中管理',
       },
       model: '模型',

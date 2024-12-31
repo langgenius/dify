@@ -1,4 +1,5 @@
 import { BlockEnum } from '@/app/components/workflow/types'
+import { has } from 'immer/dist/internal'
 
 export const agentNodeData = (() => {
   const node = {
@@ -88,4 +89,96 @@ export const agentNodeData = (() => {
       ],
     }],
   }
+})()
+
+export const oneStepCircle = (() => {
+  const node = {
+    node_type: BlockEnum.Agent,
+    execution_metadata: {
+      agent_log: [
+        { id: '1', label: 'Node 1' },
+        { id: '1', parent_id: '1', label: 'Node 1' },
+        { id: '1', parent_id: '1', label: 'Node 1' },
+        { id: '1', parent_id: '1', label: 'Node 1' },
+        { id: '1', parent_id: '1', label: 'Node 1' },
+        { id: '1', parent_id: '1', label: 'Node 1' },
+      ],
+    },
+  }
+
+  return {
+    in: [node],
+    expect: [{
+      ...node,
+      agentLog: [
+        {
+          id: '1',
+          label: 'Node 1',
+          hasCircle: true,
+          children: [],
+        },
+      ],
+    }],
+  }
+
+})()
+
+export const multiStepsCircle = (() => {
+  const node = {
+    node_type: BlockEnum.Agent,
+    execution_metadata: {
+      agent_log: [
+        // 1 -> [2 -> 4 -> 1, 3]
+        { id: '1', label: 'Node 1' },
+        { id: '2', parent_id: '1', label: 'Node 2' },
+        { id: '3', parent_id: '1', label: 'Node 3' },
+        { id: '4', parent_id: '2', label: 'Node 4' },
+
+        // Loop
+        { id: '1', parent_id: '4', label: 'Node 1' },
+        { id: '2', parent_id: '1', label: 'Node 2' },
+        { id: '4', parent_id: '2', label: 'Node 4' },
+        // { id: '1', parent_id: '4', label: 'Node 1' },
+        // { id: '2', parent_id: '1', label: 'Node 2' },
+        // { id: '4', parent_id: '2', label: 'Node 4' },
+      ],
+    },
+  }
+
+  return {
+    in: [node],
+    expect: [{
+      ...node,
+      agentLog: [
+        {
+          id: '1',
+          label: 'Node 1',
+          children: [
+            {
+              id: '2',
+              parent_id: '1',
+              label: 'Node 2',
+              children: [
+                {
+                  id: '4',
+                  parent_id: '2',
+                  label: 'Node 4',
+                  children: [],
+                  hasCircle: true,
+                }
+              ],
+            },
+            {
+              id: '3',
+              parent_id: '1',
+              label: 'Node 3',
+            },
+          ],
+        },
+      ],
+    }],
+  }
+})()
+
+export const CircleNestCircle = (() => {
 })()

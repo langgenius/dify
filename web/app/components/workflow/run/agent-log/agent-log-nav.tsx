@@ -4,7 +4,7 @@ import Button from '@/app/components/base/button'
 import type { AgentLogItemWithChildren } from '@/types/workflow'
 
 type AgentLogNavProps = {
-  agentOrToolLogItemStack: { id: string; label: string }[]
+  agentOrToolLogItemStack: AgentLogItemWithChildren[]
   onShowAgentOrToolLog: (detail?: AgentLogItemWithChildren) => void
 }
 const AgentLogNav = ({

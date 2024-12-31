@@ -3,7 +3,7 @@ import { RiInstallLine, RiLoader2Line } from '@remixicon/react'
 
 type InstallButtonProps = {
   loading: boolean
-  onInstall: () => void
+  onInstall: (e: React.MouseEvent) => void
   t: any
 }
 

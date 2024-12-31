@@ -12,12 +12,12 @@ export type SettingItemProps = PropsWithChildren<{
 export const SettingItem = ({ label, children, status, tooltip }: SettingItemProps) => {
   const indicator: ComponentProps<typeof Indicator>['color'] = status === 'error' ? 'red' : status === 'warning' ? 'yellow' : undefined
   const needTooltip = ['error', 'warning'].includes(status as any)
-  return <div className='flex items-center h-6 justify-between bg-workflow-block-parma-bg rounded-md  px-1 space-x-1 text-xs font-normal relative'>
-    <div className={classNames('shrink-0 truncate text-xs font-medium text-text-tertiary uppercase', !!children && 'max-w-[100px]')}>
+  return <div className='flex items-center justify-between bg-workflow-block-parma-bg rounded-md py-1 px-1.5 space-x-1 text-xs font-normal relative'>
+    <div className={classNames('shrink-0 truncate text-text-tertiary system-xs-medium-uppercase', !!children && 'max-w-[100px]')}>
       {label}
     </div>
     <Tooltip popupContent={tooltip} disabled={!needTooltip}>
-      <div className='truncate text-right text-xs font-normal text-text-secondary'>
+      <div className='truncate text-right system-xs-medium text-text-secondary'>
         {children}
       </div>
     </Tooltip>
