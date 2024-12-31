@@ -1,5 +1,5 @@
 import time
-from collections.abc import Generator, Mapping, MutableMapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
@@ -343,7 +343,7 @@ class AppRunner:
         inputs: Mapping[str, Any],
         query: str | None = None,
         message_id: str,
-    ) -> tuple[bool, MutableMapping[str, Any], str]:
+    ) -> tuple[bool, dict[str, Any], str]:
         """
         Process sensitive_word_avoidance.
         :param app_id: app id
@@ -399,7 +399,7 @@ class AppRunner:
         tenant_id: str,
         app_id: str,
         external_data_tools: list[ExternalDataVariableEntity],
-        inputs: MutableMapping[str, Any],
+        inputs: dict[str, Any],
         query: str,
     ) -> Mapping[str, Any]:
         """

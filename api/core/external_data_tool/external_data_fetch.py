@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from typing import Any, Optional
 
@@ -17,9 +17,9 @@ class ExternalDataFetch:
         tenant_id: str,
         app_id: str,
         external_data_tools: list[ExternalDataVariableEntity],
-        inputs: MutableMapping[str, Any],
+        inputs: dict[str, Any],
         query: str,
-    ) -> MutableMapping[str, Any]:
+    ) -> dict[str, Any]:
         """
         Fill in variable inputs from external data tools if exists.
 
