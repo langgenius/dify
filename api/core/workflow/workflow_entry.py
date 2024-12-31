@@ -238,7 +238,7 @@ class WorkflowEntry:
                 variable_selector
             ):
                 raise ValueError(f"Variable key {node_variable} not found in user inputs.")
-            
+
             # environment variable already exist in variable pool, not from user inputs
             if variable_pool.get(variable_selector):
                 continue
