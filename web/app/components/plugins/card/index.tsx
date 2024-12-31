@@ -65,7 +65,7 @@ const Card = ({
       {/* Header */}
       <div className="flex">
         <Icon src={icon} installed={installed} installFailed={installFailed} />
-        <div className="ml-3 grow">
+        <div className="ml-3 w-0 grow">
           <div className="flex items-center h-5">
             <Title title={getLocalizedText(label)} />
             {verified && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
