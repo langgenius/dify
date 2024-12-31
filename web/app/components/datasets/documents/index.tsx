@@ -99,7 +99,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     return { page: currPage + 1, limit, keyword: debouncedSearchValue, fetch: isDataSourceNotion ? true : '' }
   }, [currPage, debouncedSearchValue, isDataSourceNotion, limit])
 
-  const { data: documentsRes, error, mutate, isLoading: isListLoading } = useSWR(
+  const { data: documentsRes, mutate, isLoading: isListLoading } = useSWR(
     {
       action: 'fetchDocuments',
       datasetId,

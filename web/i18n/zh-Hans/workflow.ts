@@ -183,7 +183,7 @@ const translation = {
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
-    rerankModelRequired: '请选择可用的 Rerank 模型',
+    rerankModelRequired: '未配置 Rerank 模型',
     authRequired: '请先授权',
     invalidJson: '{{field}} 是非法的 JSON',
     fields: {
