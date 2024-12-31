@@ -252,11 +252,7 @@ class WeaviateVector(BaseVector):
             return {
                 "class": index_name,
                 "properties": [
-                    {
-                        "name": "text",
-                        "dataType": ["text"],
-                        "tokenization": dify_config.WEAVIATE_TOKENIZATION
-                    }
+                    {"name": "text", "dataType": ["text"], "tokenization": dify_config.WEAVIATE_TOKENIZATION}
                 ],
             }
         else:
