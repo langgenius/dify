@@ -406,7 +406,7 @@ class WorkflowRun(db.Model):  # type: ignore[name-defined]
     outputs: Mapped[Optional[str]] = mapped_column(sa.Text, default="{}")
     error: Mapped[Optional[str]] = mapped_column(db.Text)
     elapsed_time = db.Column(db.Float, nullable=False, server_default=sa.text("0"))
-    total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text('0'))
+    total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"))
     total_steps = db.Column(db.Integer, server_default=db.text("0"))
     created_by_role: Mapped[str] = mapped_column(db.String(255))  # account, end_user
     created_by = db.Column(StringUUID, nullable=False)
