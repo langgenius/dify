@@ -190,7 +190,10 @@ class DocumentAddByFileApi(DatasetApiResource):
             user=current_user,
             source="datasets",
         )
-        data_source = {"type": "upload_file", "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}}}
+        data_source = {
+            "type": "upload_file",
+            "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}}
+        }
         args["data_source"] = data_source
         # validate args
         knowledge_config = KnowledgeConfig(**args)
