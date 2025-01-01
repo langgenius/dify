@@ -22,6 +22,8 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, 
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
+    DocumentPromptMessageContent,
+    VideoPromptMessageContent,
     PromptMessage,
     PromptMessageContentType,
     PromptMessageTool,
@@ -456,7 +458,60 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                             "image": {"format": mime_type.replace("image/", ""), "source": {"bytes": image_content}}
                         }
                         sub_messages.append(sub_message_dict)
+                    elif message_content.type == PromptMessageContentType.DOCUMENT:
+                        message_content = cast(DocumentPromptMessageContent, message_content)
+                        file_name = message_content.file_name
+                        file_data = message_content.data
+                        file_format = message_content.file_type.lower()
 
+                        supported_formats = ["pdf", "csv", "doc", "docx", "xls", "xlsx", "html", "txt", "md"]
+                        if file_format not in supported_formats:
+                            raise ValueError(
+                                f"Unsupported document format {file_format}, "
+                                f"supported formats are: {', '.join(supported_formats)}"
+                            )
+
+                        # 验证文件名格式
+                        if not re.match(r'^[\w\s\-\\(\\)\[\]]+$', file_name):
+                            raise ValueError(
+                                "File name can only contain alphanumeric characters, "
+                                "whitespace, hyphens, parentheses, and square brackets"
+                            )
+
+                        sub_message_dict = {
+                            "document": {
+                                "format": file_format,
+                                "name": file_name,
+                                "source": {
+                                    "bytes": file_data
+                                }
+                            }
+                        }
+                        sub_messages.append(sub_message_dict)
+
+                        if not any(msg.get("text") for msg in sub_messages):
+                            sub_messages.append({"text": "Document content"})
+
+                    elif message_content.type == PromptMessageContentType.VIDEO:
+                        message_content = cast(VideoPromptMessageContent, message_content)
+                        video_format = message_content.format.lower()
+
+                        supported_formats = ["mkv", "mov", "mp4", "webm", "flv", "mpeg", "mpg", "wmv", "three_gp"]
+                        if video_format not in supported_formats:
+                            raise ValueError(
+                                f"Unsupported video format {video_format}, "
+                                f"supported formats are: {', '.join(supported_formats)}"
+                            )
+
+                        sub_message_dict = {
+                            "video": {
+                                "format": video_format,
+                                "source": {
+                                    "bytes": message_content.data
+                                }
+                            }
+                        }
+                        sub_messages.append(sub_message_dict)
                 message_dict = {"role": "user", "content": sub_messages}
         elif isinstance(message, AssistantPromptMessage):
             message = cast(AssistantPromptMessage, message)

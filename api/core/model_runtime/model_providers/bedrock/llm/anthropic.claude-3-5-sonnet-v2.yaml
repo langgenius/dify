@@ -7,6 +7,7 @@ features:
   - vision
   - tool-call
   - stream-tool-call
+  - document
 model_properties:
   mode: chat
   context_size: 200000
