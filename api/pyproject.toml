@@ -61,6 +61,7 @@ openai = "~1.52.0"
 openpyxl = "~3.1.5"
 pandas = { version = "~2.2.2", extras = ["performance", "excel"] }
 pandas-stubs = "~2.2.3.241009"
+psycogreen = "~1.0.2"
 psycopg2-binary = "~2.9.6"
 pycryptodome = "3.19.1"
 pydantic = "~2.9.2"
