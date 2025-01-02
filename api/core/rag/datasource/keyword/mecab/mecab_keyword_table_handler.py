@@ -2,7 +2,7 @@ from collections import defaultdict
 from operator import itemgetter
 from typing import Optional
 
-import MeCab
+import MeCab  # type: ignore
 
 from core.rag.datasource.keyword.mecab.stopwords import STOPWORDS
 
