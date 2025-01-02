@@ -52,6 +52,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           - <code>high_quality</code> 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
           - <code>economy</code> 经济：使用 keyword table index 的倒排索引进行构建
       </Property>
+      <Property name='doc_form' type='string' key='doc_form'>
+        索引内容的形式
+          - <code>text_model</code> text 文档直接 embedding，经济模式默认为该模式
+          - <code>hierarchical_model</code> parent-child 模式
+          - <code>qa_model</code> Q&A 模式：为分片文档生成 Q&A 对，然后对问题进行 embedding
+      </Property>
+      <Property name='doc_language' type='string' key='doc_language'>
+        在 Q&A 模式下，指定文档的语言，例如：<code>English</code>、<code>Chinese</code>
+      </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         处理规则
           - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义
@@ -63,8 +72,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
                   - <code>remove_urls_emails</code> 删除 URL、电子邮件地址
               - <code>enabled</code> (bool) 是否选中该规则，不传入文档 ID 时代表默认值
             - <code>segmentation</code> (object) 分段规则
-              - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
+              - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 <code>\n</code>
               - <code>max_tokens</code> 最大长度（token）默认为 1000
+            - <code>parent_mode</code> 父分段的召回模式 <code>full-doc</code> 全文召回 / <code>paragraph</code> 段落召回
+            - <code>subchunk_segmentation</code> (object) 子分段规则
+              - <code>separator</code> 分段标识符，目前仅允许设置一个分隔符。默认为 <code>***</code>
+              - <code>max_tokens</code> 最大长度 (token) 需要校验小于父级的长度
       </Property>
     </Properties>
   </Col>
@@ -155,6 +168,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           - <code>high_quality</code> 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
           - <code>economy</code> 经济：使用 keyword table index 的倒排索引进行构建
 
+        - <code>doc_form</code> 索引内容的形式
+          - <code>text_model</code> text 文档直接 embedding，经济模式默认为该模式
+          - <code>hierarchical_model</code> parent-child 模式
+          - <code>qa_model</code> Q&A 模式：为分片文档生成 Q&A 对，然后对问题进行 embedding
+
+        - <code>doc_language</code> 在 Q&A 模式下，指定文档的语言，例如：<code>English</code>、<code>Chinese</code>
+
         - <code>process_rule</code> 处理规则
           - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义
           - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
@@ -167,6 +187,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>segmentation</code> (object) 分段规则
               - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
               - <code>max_tokens</code> 最大长度（token）默认为 1000
+            - <code>parent_mode</code> 父分段的召回模式 <code>full-doc</code> 全文召回 / <code>paragraph</code> 段落召回
+            - <code>subchunk_segmentation</code> (object) 子分段规则
+              - <code>separator</code> 分段标识符，目前仅允许设置一个分隔符。默认为 <code>***</code>
+              - <code>max_tokens</code> 最大长度 (token) 需要校验小于父级的长度
       </Property>
       <Property name='file' type='multipart/form-data' key='file'>
         需要上传的文件。
@@ -411,7 +435,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/update-by-text'
   method='POST'
-  title='通过文本更新文档 '
+  title='通过文本更新文档'
   name='#update-by-text'
 />
 <Row>
@@ -449,6 +473,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>segmentation</code> (object) 分段规则
               - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
               - <code>max_tokens</code> 最大长度（token）默认为 1000
+            - <code>parent_mode</code> 父分段的召回模式 <code>full-doc</code> 全文召回 / <code>paragraph</code> 段落召回
+            - <code>subchunk_segmentation</code> (object) 子分段规则
+              - <code>separator</code> 分段标识符，目前仅允许设置一个分隔符。默认为 <code>***</code>
+              - <code>max_tokens</code> 最大长度 (token) 需要校验小于父级的长度
       </Property>
     </Properties>
   </Col>
@@ -508,7 +536,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/update-by-file'
   method='POST'
-  title='通过文件更新文档  '
+  title='通过文件更新文档'
   name='#update-by-file'
 />
 <Row>
@@ -546,6 +574,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>segmentation</code> (object) 分段规则
               - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
               - <code>max_tokens</code> 最大长度（token）默认为 1000
+            - <code>parent_mode</code> 父分段的召回模式 <code>full-doc</code> 全文召回 / <code>paragraph</code> 段落召回
+            - <code>subchunk_segmentation</code> (object) 子分段规则
+              - <code>separator</code> 分段标识符，目前仅允许设置一个分隔符。默认为 <code>***</code>
+              - <code>max_tokens</code> 最大长度 (token) 需要校验小于父级的长度
       </Property>
     </Properties>
   </Col>
@@ -1009,6 +1041,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - <code>answer</code> (text) 答案内容，非必填，如果知识库的模式为 Q&A 模式则传值
         - <code>keywords</code> (list) 关键字，非必填
         - <code>enabled</code> (bool) false/true，非必填
+        - <code>regenerate_child_chunks</code> (bool) 是否重新生成子分段，非必填
       </Property>
     </Properties>
   </Col>

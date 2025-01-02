@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, Optional, Union
@@ -38,8 +39,8 @@ class WorkflowTraceInfo(BaseTraceInfo):
     workflow_run_id: str
     workflow_run_elapsed_time: Union[int, float]
     workflow_run_status: str
-    workflow_run_inputs: dict[str, Any]
-    workflow_run_outputs: dict[str, Any]
+    workflow_run_inputs: Mapping[str, Any]
+    workflow_run_outputs: Mapping[str, Any]
     workflow_run_version: str
     error: Optional[str] = None
     total_tokens: int

@@ -5,11 +5,9 @@ import uuid
 from contextlib import contextmanager
 from typing import Any
 
-import jieba.posseg as pseg
-import nltk
+import jieba.posseg as pseg  # type: ignore
 import numpy
 import oracledb
-from nltk.corpus import stopwords
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
@@ -90,12 +88,11 @@ class OracleVector(BaseVector):
 
     def numpy_converter_out(self, value):
         if value.typecode == "b":
-            dtype = numpy.int8
+            return numpy.array(value, copy=False, dtype=numpy.int8)
         elif value.typecode == "f":
-            dtype = numpy.float32
+            return numpy.array(value, copy=False, dtype=numpy.float32)
         else:
-            dtype = numpy.float64
-        return numpy.array(value, copy=False, dtype=dtype)
+            return numpy.array(value, copy=False, dtype=numpy.float64)
 
     def output_type_handler(self, cursor, metadata):
         if metadata.type_code is oracledb.DB_TYPE_VECTOR:
@@ -137,17 +134,18 @@ class OracleVector(BaseVector):
         values = []
         pks = []
         for i, doc in enumerate(documents):
-            doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
-            pks.append(doc_id)
-            values.append(
-                (
-                    doc_id,
-                    doc.page_content,
-                    json.dumps(doc.metadata),
-                    # array.array("f", embeddings[i]),
-                    numpy.array(embeddings[i]),
+            if doc.metadata is not None:
+                doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
+                pks.append(doc_id)
+                values.append(
+                    (
+                        doc_id,
+                        doc.page_content,
+                        json.dumps(doc.metadata),
+                        # array.array("f", embeddings[i]),
+                        numpy.array(embeddings[i]),
+                    )
                 )
-            )
         # print(f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES (:1, :2, :3, :4)")
         with self._get_cursor() as cur:
             cur.executemany(
@@ -202,6 +200,10 @@ class OracleVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
+        # lazy import
+        import nltk  # type: ignore
+        from nltk.corpus import stopwords  # type: ignore
+
         top_k = kwargs.get("top_k", 5)
         # just not implement fetch by score_threshold now, may be later
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
@@ -283,10 +285,10 @@ class OracleVectorFactory(AbstractVectorFactory):
         return OracleVector(
             collection_name=collection_name,
             config=OracleVectorConfig(
-                host=dify_config.ORACLE_HOST,
+                host=dify_config.ORACLE_HOST or "localhost",
                 port=dify_config.ORACLE_PORT,
-                user=dify_config.ORACLE_USER,
-                password=dify_config.ORACLE_PASSWORD,
-                database=dify_config.ORACLE_DATABASE,
+                user=dify_config.ORACLE_USER or "system",
+                password=dify_config.ORACLE_PASSWORD or "oracle",
+                database=dify_config.ORACLE_DATABASE or "orcl",
             ),
         )

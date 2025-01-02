@@ -10,7 +10,7 @@ from configs import dify_config
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.dataset import Dataset, DatasetQuery, Document
+from models.dataset import Dataset, DatasetAutoDisableLog, DatasetQuery, Document
 from services.feature_service import FeatureService
 
 
@@ -52,8 +52,7 @@ def clean_unused_datasets_task():
 
             # Main query with join and filter
             datasets = (
-                db.session.query(Dataset)
-                .outerjoin(document_subquery_new, Dataset.id == document_subquery_new.c.dataset_id)
+                Dataset.query.outerjoin(document_subquery_new, Dataset.id == document_subquery_new.c.dataset_id)
                 .outerjoin(document_subquery_old, Dataset.id == document_subquery_old.c.dataset_id)
                 .filter(
                     Dataset.created_at < plan_sandbox_clean_day,
@@ -76,6 +75,23 @@ def clean_unused_datasets_task():
             )
             if not dataset_query or len(dataset_query) == 0:
                 try:
+                    # add auto disable log
+                    documents = (
+                        db.session.query(Document)
+                        .filter(
+                            Document.dataset_id == dataset.id,
+                            Document.enabled == True,
+                            Document.archived == False,
+                        )
+                        .all()
+                    )
+                    for document in documents:
+                        dataset_auto_disable_log = DatasetAutoDisableLog(
+                            tenant_id=dataset.tenant_id,
+                            dataset_id=dataset.id,
+                            document_id=document.id,
+                        )
+                        db.session.add(dataset_auto_disable_log)
                     # remove index
                     index_processor = IndexProcessorFactory(dataset.doc_form).init_index_processor()
                     index_processor.clean(dataset, None)
@@ -120,8 +136,7 @@ def clean_unused_datasets_task():
 
             # Main query with join and filter
             datasets = (
-                db.session.query(Dataset)
-                .outerjoin(document_subquery_new, Dataset.id == document_subquery_new.c.dataset_id)
+                Dataset.query.outerjoin(document_subquery_new, Dataset.id == document_subquery_new.c.dataset_id)
                 .outerjoin(document_subquery_old, Dataset.id == document_subquery_old.c.dataset_id)
                 .filter(
                     Dataset.created_at < plan_pro_clean_day,
@@ -153,6 +168,23 @@ def clean_unused_datasets_task():
                     else:
                         plan = plan_cache.decode()
                     if plan == "sandbox":
+                        # add auto disable log
+                        documents = (
+                            db.session.query(Document)
+                            .filter(
+                                Document.dataset_id == dataset.id,
+                                Document.enabled == True,
+                                Document.archived == False,
+                            )
+                            .all()
+                        )
+                        for document in documents:
+                            dataset_auto_disable_log = DatasetAutoDisableLog(
+                                tenant_id=dataset.tenant_id,
+                                dataset_id=dataset.id,
+                                document_id=document.id,
+                            )
+                            db.session.add(dataset_auto_disable_log)
                         # remove index
                         index_processor = IndexProcessorFactory(dataset.doc_form).init_index_processor()
                         index_processor.clean(dataset, None)

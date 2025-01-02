@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel
 
 from core.model_runtime.entities.llm_entities import LLMMode
@@ -39,6 +41,10 @@ configs: dict[str, ModelConfig] = {
     "Doubao-lite-32k": ModelConfig(
         properties=ModelProperties(context_size=32768, max_tokens=4096, mode=LLMMode.CHAT),
         features=[ModelFeature.TOOL_CALL],
+    ),
+    "Doubao-pro-256k": ModelConfig(
+        properties=ModelProperties(context_size=262144, max_tokens=4096, mode=LLMMode.CHAT),
+        features=[],
     ),
     "Doubao-pro-128k": ModelConfig(
         properties=ModelProperties(context_size=131072, max_tokens=4096, mode=LLMMode.CHAT),
@@ -98,7 +104,7 @@ def get_model_config(credentials: dict) -> ModelConfig:
 
 
 def get_v2_req_params(credentials: dict, model_parameters: dict, stop: list[str] | None = None):
-    req_params = {}
+    req_params: dict[str, Any] = {}
     # predefined properties
     model_configs = get_model_config(credentials)
     if model_configs:
@@ -126,7 +132,7 @@ def get_v2_req_params(credentials: dict, model_parameters: dict, stop: list[str]
 
 
 def get_v3_req_params(credentials: dict, model_parameters: dict, stop: list[str] | None = None):
-    req_params = {}
+    req_params: dict[str, Any] = {}
     # predefined properties
     model_configs = get_model_config(credentials)
     if model_configs:

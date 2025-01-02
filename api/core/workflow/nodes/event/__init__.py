@@ -1,4 +1,10 @@
-from .event import ModelInvokeCompletedEvent, RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
+from .event import (
+    ModelInvokeCompletedEvent,
+    RunCompletedEvent,
+    RunRetrieverResourceEvent,
+    RunRetryEvent,
+    RunStreamChunkEvent,
+)
 from .types import NodeEvent
 
 __all__ = [
@@ -6,5 +12,6 @@ __all__ = [
     "NodeEvent",
     "RunCompletedEvent",
     "RunRetrieverResourceEvent",
+    "RunRetryEvent",
     "RunStreamChunkEvent",
 ]

@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.14.0",
+  "version": "0.14.2",
   "private": true,
   "engines": {
     "node": ">=18.17.0"
@@ -50,7 +50,7 @@
     "copy-to-clipboard": "^3.3.3",
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.7",
-    "echarts": "^5.4.1",
+    "echarts": "^5.5.1",
     "echarts-for-react": "^3.0.2",
     "elkjs": "^0.9.3",
     "emoji-mart": "^5.5.2",
@@ -64,6 +64,7 @@
     "katex": "^0.16.10",
     "lamejs": "^1.2.1",
     "lexical": "^0.16.0",
+    "line-clamp": "^1.0.0",
     "lodash-es": "^4.17.21",
     "mermaid": "11.4.1",
     "mime": "^4.0.4",
@@ -102,6 +103,7 @@
     "scheduler": "^0.23.0",
     "server-only": "^0.0.1",
     "sharp": "^0.33.2",
+    "shave": "^5.0.4",
     "sortablejs": "^1.15.0",
     "swr": "^2.1.0",
     "tailwind-merge": "^2.4.0",

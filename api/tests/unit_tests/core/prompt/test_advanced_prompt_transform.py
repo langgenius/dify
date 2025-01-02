@@ -4,7 +4,7 @@ import pytest
 
 from configs import dify_config
 from core.app.app_config.entities import ModelConfigEntity
-from core.file import File, FileTransferMethod, FileType, FileUploadConfig, ImageConfig
+from core.file import File, FileTransferMethod, FileType
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -136,6 +136,7 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/image1.jpg",
+            storage_key="",
         )
     ]
 

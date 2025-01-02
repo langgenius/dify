@@ -13,7 +13,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    from pydub import AudioSegment
+    from pydub import AudioSegment  # type: ignore
 
 
 class PodcastAudioGeneratorTool(BuiltinTool):

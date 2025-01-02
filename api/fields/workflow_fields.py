@@ -1,4 +1,4 @@
-from flask_restful import fields
+from flask_restful import fields  # type: ignore
 
 from core.helper import encrypter
 from core.variables import SecretVariable, SegmentType, Variable
@@ -45,6 +45,7 @@ workflow_fields = {
     "graph": fields.Raw(attribute="graph_dict"),
     "features": fields.Raw(attribute="features_dict"),
     "hash": fields.String(attribute="unique_hash"),
+    "version": fields.String(attribute="version"),
     "created_by": fields.Nested(simple_account_fields, attribute="created_by_account"),
     "created_at": TimestampField,
     "updated_by": fields.Nested(simple_account_fields, attribute="updated_by_account", allow_null=True),
@@ -60,4 +61,11 @@ workflow_partial_fields = {
     "created_at": TimestampField,
     "updated_by": fields.String,
     "updated_at": TimestampField,
+}
+
+workflow_pagination_fields = {
+    "items": fields.List(fields.Nested(workflow_fields), attribute="items"),
+    "page": fields.Integer,
+    "limit": fields.Integer(attribute="limit"),
+    "has_more": fields.Boolean(attribute="has_more"),
 }

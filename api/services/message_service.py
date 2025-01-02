@@ -151,8 +151,14 @@ class MessageService:
 
     @classmethod
     def create_feedback(
-        cls, app_model: App, message_id: str, user: Optional[Union[Account, EndUser]], rating: Optional[str]
-    ) -> MessageFeedback:
+        cls,
+        *,
+        app_model: App,
+        message_id: str,
+        user: Optional[Union[Account, EndUser]],
+        rating: Optional[str],
+        content: Optional[str],
+    ):
         if not user:
             raise ValueError("user cannot be None")
 
@@ -164,6 +170,7 @@ class MessageService:
             db.session.delete(feedback)
         elif rating and feedback:
             feedback.rating = rating
+            feedback.content = content
         elif not rating and not feedback:
             raise ValueError("rating cannot be None when feedback not exists")
         else:
@@ -172,6 +179,7 @@ class MessageService:
                 conversation_id=message.conversation_id,
                 message_id=message.id,
                 rating=rating,
+                content=content,
                 from_source=("user" if isinstance(user, EndUser) else "admin"),
                 from_end_user_id=(user.id if isinstance(user, EndUser) else None),
                 from_account_id=(user.id if isinstance(user, Account) else None),
@@ -257,6 +265,8 @@ class MessageService:
                 )
 
                 app_model_config = app_model_config.from_model_config_dict(conversation_override_model_configs)
+            if not app_model_config:
+                raise ValueError("did not find app model config")
 
             suggested_questions_after_answer = app_model_config.suggested_questions_after_answer_dict
             if suggested_questions_after_answer.get("enabled", False) is False:
@@ -278,7 +288,7 @@ class MessageService:
         )
 
         with measure_time() as timer:
-            questions = LLMGenerator.generate_suggested_questions_after_answer(
+            questions: list[Message] = LLMGenerator.generate_suggested_questions_after_answer(
                 tenant_id=app_model.tenant_id, histories=histories
             )
 
