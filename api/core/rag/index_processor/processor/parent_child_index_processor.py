@@ -83,7 +83,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             )
             if kwargs.get("preview"):
                 if len(child_nodes) > dify_config.CHILD_CHUNKS_PREVIEW_NUMBER:
-                    child_nodes = child_nodes[:dify_config.CHILD_CHUNKS_PREVIEW_NUMBER]
+                    child_nodes = child_nodes[: dify_config.CHILD_CHUNKS_PREVIEW_NUMBER]
 
             document.children = child_nodes
             doc_id = str(uuid.uuid4())
