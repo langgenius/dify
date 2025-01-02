@@ -1,5 +1,4 @@
 import { BlockEnum } from '@/app/components/workflow/types'
-import { has } from 'immer/dist/internal'
 
 export const agentNodeData = (() => {
   const node = {
@@ -120,7 +119,6 @@ export const oneStepCircle = (() => {
       ],
     }],
   }
-
 })()
 
 export const multiStepsCircle = (() => {
@@ -138,13 +136,13 @@ export const multiStepsCircle = (() => {
         { id: '1', parent_id: '4', label: 'Node 1' },
         { id: '2', parent_id: '1', label: 'Node 2' },
         { id: '4', parent_id: '2', label: 'Node 4' },
-        // { id: '1', parent_id: '4', label: 'Node 1' },
-        // { id: '2', parent_id: '1', label: 'Node 2' },
-        // { id: '4', parent_id: '2', label: 'Node 4' },
+        { id: '1', parent_id: '4', label: 'Node 1' },
+        { id: '2', parent_id: '1', label: 'Node 2' },
+        { id: '4', parent_id: '2', label: 'Node 4' },
       ],
     },
   }
-
+  // 1 -> [2(4(1(2(4...)))), 3]
   return {
     in: [node],
     expect: [{
@@ -165,7 +163,7 @@ export const multiStepsCircle = (() => {
                   label: 'Node 4',
                   children: [],
                   hasCircle: true,
-                }
+                },
               ],
             },
             {

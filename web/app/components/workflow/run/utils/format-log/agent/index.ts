@@ -5,24 +5,26 @@ import { cloneDeep } from 'lodash-es'
 const supportedAgentLogNodes = [BlockEnum.Agent, BlockEnum.Tool]
 
 const remove = (node: AgentLogItemWithChildren, removeId: string) => {
-  const { children } = node
-  if (!children || children.length === 0) {
+  let { children } = node
+  if (!children || children.length === 0)
     return
+
+  const hasCircle = !!children.find(c => c.id === removeId)
+  if (hasCircle) {
+    node.hasCircle = true
+    node.children = node.children.filter(c => c.id !== removeId)
+    children = node.children
   }
-  children.forEach((child, index) => {
-    if (child.id === removeId) {
-      node.hasCircle = true
-      children.splice(index, 1)
-      return
-    }
+
+  children.forEach((child) => {
     remove(child, removeId)
   })
 }
 
 const removeRepeatedSiblings = (list: AgentLogItemWithChildren[]) => {
-  if (!list || list.length === 0) {
+  if (!list || list.length === 0)
     return []
-  }
+
   const result: AgentLogItemWithChildren[] = []
   const addedItemIds: string[] = []
   list.forEach((item) => {
@@ -35,19 +37,18 @@ const removeRepeatedSiblings = (list: AgentLogItemWithChildren[]) => {
 }
 
 const removeCircleLogItem = (log: AgentLogItemWithChildren) => {
-  let newLog = cloneDeep(log)
+  const newLog = cloneDeep(log)
   newLog.children = removeRepeatedSiblings(newLog.children)
   let { id, children } = newLog
-  if (!children || children.length === 0) {
+  if (!children || children.length === 0)
     return log
-  }
+
   // check one step circle
   const hasOneStepCircle = !!children.find(c => c.id === id)
   if (hasOneStepCircle) {
     newLog.hasCircle = true
     newLog.children = newLog.children.filter(c => c.id !== id)
     children = newLog.children
-
   }
 
   children.forEach((child, index) => {
@@ -85,6 +86,7 @@ const format = (list: NodeTracing[]): NodeTracing[] => {
     let removedCircleTree: AgentLogItemWithChildren[] = []
     if (supportedAgentLogNodes.includes(item.node_type) && item.execution_metadata?.agent_log && item.execution_metadata?.agent_log.length > 0)
       treeList = listToTree(item.execution_metadata.agent_log)
+    // console.log(JSON.stringify(treeList))
     removedCircleTree = treeList.length > 0 ? treeList.map(t => removeCircleLogItem(t)) : []
     item.agentLog = removedCircleTree
 
