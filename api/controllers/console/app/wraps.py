@@ -36,7 +36,7 @@ def get_app_model(view: Optional[Callable] = None, *, mode: Union[AppMode, list[
                         App.id == app_id,
                         App.status == "normal",
                         TenantAccountJoin.account_id == current_user.id,
-                        Tenant.id != current_user.current_tenant_id
+                        Tenant.id != current_user.current_tenant_id,
                     )
                     .first()
                 )
