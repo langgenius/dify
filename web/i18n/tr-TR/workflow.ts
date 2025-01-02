@@ -104,6 +104,8 @@ const translation = {
     openInExplore: 'Keşfet\'te Aç',
     onFailure: 'Başarısızlık Üzerine',
     addFailureBranch: 'Başarısız dal ekle',
+    loadMore: 'Daha Fazla İş Akışı Yükleyin',
+    noHistory: 'Tarih Yok',
   },
   env: {
     envPanelTitle: 'Çevre Değişkenleri',
