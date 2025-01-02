@@ -237,7 +237,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             except ValidationError as e:
                 logger.exception("Validation Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
-            except (ValueError, InvokeError) as e:
+            except ValueError as e:
                 if dify_config.DEBUG:
                     logger.exception("Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)

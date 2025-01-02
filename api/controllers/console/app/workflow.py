@@ -159,7 +159,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
-        except (ValueError, AppInvokeQuotaExceededError) as e:
+        except ValueError as e:
             raise e
         except Exception as e:
             logging.exception("internal server error.")

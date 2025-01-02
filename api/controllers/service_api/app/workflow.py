@@ -94,7 +94,7 @@ class WorkflowRunApi(Resource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
-        except (ValueError, AppInvokeQuotaExceededError) as e:
+        except ValueError as e:
             raise e
         except Exception as e:
             logging.exception("internal server error.")
