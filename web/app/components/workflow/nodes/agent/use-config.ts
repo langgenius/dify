@@ -75,7 +75,9 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     defaultRunInputData: {},
   })
   const allVarStrArr = (() => {
-    const arr = ['']
+    const arr = currentStrategy?.parameters.filter(item => item.type === 'string').map((item) => {
+      return formData[item.name]
+    }) || []
 
     return arr
   })()
