@@ -300,7 +300,7 @@ export const useMutationPluginsFromMarketplace = () => {
         exclude,
         type,
         page = 1,
-        pageSize = 20,
+        pageSize = 40,
       } = pluginsSearchParams
       return postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/search/basic', {
         body: {
