@@ -13,6 +13,8 @@ import type { Var } from '../../types'
 import { VarType as VarKindType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 
+export type StrategyStatus = 'loading' | 'plugin-not-found' | 'strategy-not-found' | 'success'
+
 const useConfig = (id: string, payload: AgentNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { inputs, setInputs } = useNodeCrud<AgentNodeType>(id, payload)
@@ -27,7 +29,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   const currentStrategy = strategyProvider.data?.declaration.strategies.find(
     str => str.identity.name === inputs.agent_strategy_name,
   )
-  const currentStrategyStatus: 'loading' | 'plugin-not-found' | 'strategy-not-found' | 'success' = useMemo(() => {
+  const currentStrategyStatus: StrategyStatus = useMemo(() => {
     if (strategyProvider.isLoading) return 'loading'
     if (strategyProvider.isError) return 'plugin-not-found'
     if (!currentStrategy) return 'strategy-not-found'

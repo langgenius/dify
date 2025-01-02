@@ -19,6 +19,7 @@ import { useWorkflowStore } from '../../../store'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import type { NodeOutPutVar } from '../../../types'
 import type { Node } from 'reactflow'
+import type { StrategyStatus } from '../../agent/use-config'
 
 export type Strategy = {
   agent_strategy_provider_name: string
@@ -36,6 +37,7 @@ export type AgentStrategyProps = {
   onFormValueChange: (value: ToolVarInputs) => void
   nodeOutputVars?: NodeOutPutVar[],
   availableNodes?: Node[],
+  strategyStatus: StrategyStatus
 }
 
 type CustomSchema<Type, Field = {}> = Omit<CredentialFormSchema, 'type'> & { type: Type } & Field
@@ -54,7 +56,7 @@ type StringSchema = CustomSchema<'string', {
 type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema | StringSchema
 
 export const AgentStrategy = memo((props: AgentStrategyProps) => {
-  const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange, nodeOutputVars, availableNodes } = props
+  const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange, nodeOutputVars, availableNodes, strategyStatus } = props
   const { t } = useTranslation()
   const defaultModel = useDefaultModel(ModelTypeEnum.textGeneration)
   const renderI18nObject = useRenderI18nObject()
@@ -176,7 +178,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
     }
   }
   return <div className='space-y-2'>
-    <AgentStrategySelector value={strategy} onChange={onStrategyChange} />
+    <AgentStrategySelector value={strategy} onChange={onStrategyChange} strategyStatus={strategyStatus} />
     {
       strategy
         ? <div>

@@ -22,6 +22,7 @@ import type {
   PluginsSearchParams,
 } from '@/app/components/plugins/marketplace/types'
 import { get, getMarketplace, post, postMarketplace } from './base'
+import type { MutateOptions } from '@tanstack/react-query'
 import {
   useMutation,
   useQuery,
@@ -72,8 +73,9 @@ export const useInvalidateInstalledPluginList = () => {
   }
 }
 
-export const useInstallPackageFromMarketPlace = () => {
+export const useInstallPackageFromMarketPlace = (options?: MutateOptions<InstallPackageResponse, Error, string>) => {
   return useMutation({
+    ...options,
     mutationFn: (uniqueIdentifier: string) => {
       return post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', { body: { plugin_unique_identifiers: [uniqueIdentifier] } })
     },

@@ -16,6 +16,7 @@ import type { StrategyPluginDetail } from '@/app/components/plugins/types'
 import type { ToolWithProvider } from '../../../types'
 import { CollectionType } from '@/app/components/tools/types'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
+import type { StrategyStatus } from '../../agent/use-config'
 
 const ExternalNotInstallWarn = () => {
   const { t } = useTranslation()
@@ -67,10 +68,11 @@ function formatStrategy(input: StrategyPluginDetail[], getIcon: (i: string) => s
 export type AgentStrategySelectorProps = {
   value?: Strategy,
   onChange: (value?: Strategy) => void,
+  strategyStatus?: StrategyStatus
 }
 
 export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) => {
-  const { value, onChange } = props
+  const { value, onChange, strategyStatus } = props
   const [open, setOpen] = useState(false)
   const [viewType, setViewType] = useState<ViewType>(ViewType.flat)
   const [query, setQuery] = useState('')
@@ -81,8 +83,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
     if (!list) return []
     return list.filter(tool => tool.name.toLowerCase().includes(query.toLowerCase()))
   }, [query, list])
-  // TODO: should be replaced by real data
-  const isExternalInstalled = true
+  const isShowError = (['plugin-not-found', 'strategy-not-found'] as Array<undefined | StrategyStatus>).includes(strategyStatus)
   const icon = list?.find(
     coll => coll.tools?.find(tool => tool.name === value?.agent_strategy_name),
   )?.icon as string | undefined
@@ -104,8 +105,8 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
           {value?.agent_strategy_label || t('workflow.nodes.agent.strategy.selectTip')}
         </p>
         {value && <div className='ml-auto flex items-center gap-1'>
-          <InstallPluginButton onClick={e => e.stopPropagation()} size={'small'} />
-          {isExternalInstalled ? <ExternalNotInstallWarn /> : <RiArrowDownSLine className='size-4 text-text-tertiary' />}
+          {strategyStatus === 'plugin-not-found' && <InstallPluginButton onClick={e => e.stopPropagation()} size={'small'} />}
+          {isShowError ? <ExternalNotInstallWarn /> : <RiArrowDownSLine className='size-4 text-text-tertiary' />}
         </div>}
       </div>
     </PortalToFollowElemTrigger>
@@ -143,9 +144,6 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
           </div>
         </main>
       </div>
-      {/* <div>
-        aaa
-      </div> */}
     </PortalToFollowElemContent>
   </PortalToFollowElem>
 })
