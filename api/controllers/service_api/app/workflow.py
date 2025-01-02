@@ -16,7 +16,6 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
-    AppInvokeQuotaExceededError,
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
     QuotaExceededError,

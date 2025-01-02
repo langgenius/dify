@@ -13,7 +13,6 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.errors.error import AppInvokeQuotaExceededError
 from factories import variable_factory
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields

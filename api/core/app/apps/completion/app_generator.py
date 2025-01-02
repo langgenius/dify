@@ -17,7 +17,7 @@ from core.app.apps.completion.generate_response_converter import CompletionAppGe
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
-from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory

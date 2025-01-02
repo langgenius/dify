@@ -20,7 +20,7 @@ from core.app.apps.workflow.generate_response_converter import WorkflowAppGenera
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
-from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
