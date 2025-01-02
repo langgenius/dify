@@ -1,5 +1,6 @@
 from collections import defaultdict
-from typing import Optional, Set
+from operator import itemgetter
+from typing import Optional
 
 import MeCab
 
@@ -41,7 +42,7 @@ class MeCabKeywordTableHandler:
         }
         self.min_score = 0.3
 
-    def extract_keywords(self, text: str, max_keywords_per_chunk: Optional[int] = 10) -> Set[str]:
+    def extract_keywords(self, text: str, max_keywords_per_chunk: Optional[int] = 10) -> set[str]:
         """Extract keywords from Japanese text using MeCab.
 
         Args:
@@ -80,7 +81,7 @@ class MeCabKeywordTableHandler:
                 node = node.next
 
             # Get top scoring terms
-            sorted_terms = sorted(term_scores.items(), key=lambda x: x[1], reverse=True)
+            sorted_terms = sorted(term_scores.items(), key=itemgetter(1), reverse=True)
 
             # Filter by minimum score and take top N
             keywords = {term for term, score in sorted_terms if score >= self.min_score}
@@ -96,7 +97,7 @@ class MeCabKeywordTableHandler:
         except Exception as e:
             raise RuntimeError(f"Failed to extract keywords: {str(e)}")
 
-    def _expand_tokens_with_compounds(self, keywords: Set[str], text: str) -> Set[str]:
+    def _expand_tokens_with_compounds(self, keywords: set[str], text: str) -> set[str]:
         """Expand keywords with compound terms.
 
         This method looks for adjacent keywords in the original text to capture

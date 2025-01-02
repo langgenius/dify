@@ -61,7 +61,7 @@ class MeCab(BaseKeyword):
                 self._keyword_handler.pos_weights = self._config.pos_weights
                 self._keyword_handler.min_score = self._config.score_threshold
         except Exception as e:
-            logger.error(f"Failed to initialize MeCab handler: {str(e)}")
+            logger.exception("Failed to initialize MeCab handler")
             raise KeywordProcessorError(f"MeCab initialization failed: {str(e)}")
 
     def create(self, texts: list[Document], **kwargs) -> BaseKeyword:
