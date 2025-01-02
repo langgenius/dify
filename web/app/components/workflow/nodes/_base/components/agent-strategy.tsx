@@ -13,9 +13,10 @@ import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-sele
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
 import Field from './field'
 import { type ComponentProps, memo } from 'react'
-import { useDefaultModel, useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Editor from './prompt/editor'
 import { useWorkflowStore } from '../../../store'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
 
 export type Strategy = {
   agent_strategy_provider_name: string
@@ -51,8 +52,8 @@ type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema | StringSchem
 export const AgentStrategy = memo((props: AgentStrategyProps) => {
   const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange } = props
   const { t } = useTranslation()
-  const language = useLanguage()
   const defaultModel = useDefaultModel(ModelTypeEnum.textGeneration)
+  const renderI18nObject = useRenderI18nObject()
   const workflowStore = useWorkflowStore()
   const {
     setControlPromptEditorRerenderKey,
@@ -71,7 +72,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           const onChange = (value: number) => {
             props.onChange({ ...props.value, [schema.variable]: value })
           }
-          return <Field title={def.label[language]} tooltip={def.tooltip?.[language]} inline>
+          return <Field title={renderI18nObject(def.label)} tooltip={def.tooltip && renderI18nObject(def.tooltip)} inline>
             <div className='flex w-[200px] items-center gap-3'>
               <Slider
                 value={value}
@@ -104,7 +105,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           props.onChange({ ...props.value, [schema.variable]: value })
         }
         return (
-          <Field title={schema.label[language]} tooltip={schema.tooltip?.[language]}>
+          <Field title={renderI18nObject(schema.label)} tooltip={schema.tooltip && renderI18nObject(schema.tooltip)}>
             <ToolSelector
               scope={schema.scope}
               value={value}
@@ -123,8 +124,8 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           <MultipleToolSelector
             scope={schema.scope}
             value={value || []}
-            label={schema.label[language]}
-            tooltip={schema.tooltip?.[language]}
+            label={renderI18nObject(schema.label)}
+            tooltip={schema.tooltip && renderI18nObject(schema.tooltip)}
             onChange={onChange}
             supportCollapse
           />
@@ -143,12 +144,12 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           value={value}
           onChange={onChange}
           onGenerated={handleGenerated}
-          title={schema.label[language]}
+          title={renderI18nObject(schema.label)}
           headerClassName='bg-transparent px-0 text-text-secondary system-sm-semibold-uppercase'
           containerClassName='bg-transparent'
           gradientBorder={false}
           isSupportPromptGenerator={!!schema.auto_generate?.type}
-          titleTooltip={schema.tooltip?.[language]}
+          titleTooltip={schema.tooltip && renderI18nObject(schema.tooltip)}
           editorContainerClassName='px-0'
           isSupportJinja={schema.template?.enabled}
           varList={[]}

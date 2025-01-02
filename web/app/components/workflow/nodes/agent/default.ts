@@ -2,6 +2,7 @@ import type { StrategyDetail, StrategyPluginDetail } from '@/app/components/plug
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '../../constants'
 import type { NodeDefault } from '../../types'
 import type { AgentNodeType } from './types'
+import { renderI18nObject } from '@/hooks/use-i18n'
 
 const nodeDefault: NodeDefault<AgentNodeType> = {
   defaultValue: {
@@ -32,11 +33,10 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
       if (param.required && !payload.agent_parameters?.[param.name]?.value) {
         return {
           isValid: false,
-          errorMessage: t('workflow.errorMsg.fieldRequired', { field: param.label[language] }),
+          errorMessage: t('workflow.errorMsg.fieldRequired', { field: renderI18nObject(param.label, language) }),
         }
       }
     }
-    // TODO: tool selector valid?
     return {
       isValid: true,
       errorMessage: '',
