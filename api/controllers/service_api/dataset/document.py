@@ -190,7 +190,10 @@ class DocumentAddByFileApi(DatasetApiResource):
             user=current_user,
             source="datasets",
         )
-        data_source = {"type": "upload_file", "info_list": {"file_info_list": {"file_ids": [upload_file.id]}}}
+        data_source = {
+            "type": "upload_file",
+            "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
+        }
         args["data_source"] = data_source
         # validate args
         knowledge_config = KnowledgeConfig(**args)
@@ -254,7 +257,10 @@ class DocumentUpdateByFileApi(DatasetApiResource):
                 raise FileTooLargeError(file_too_large_error.description)
             except services.errors.file.UnsupportedFileTypeError:
                 raise UnsupportedFileTypeError()
-            data_source = {"type": "upload_file", "info_list": {"file_info_list": {"file_ids": [upload_file.id]}}}
+            data_source = {
+                "type": "upload_file",
+                "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
+            }
             args["data_source"] = data_source
         # validate args
         args["original_document_id"] = str(document_id)
