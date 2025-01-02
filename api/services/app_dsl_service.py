@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from urllib.parse import urlparse
 from core.helper import ssrf_proxy
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
@@ -114,7 +115,8 @@ class AppDslService:
             try:
                 max_size = 10 * 1024 * 1024  # 10MB
                 # tricky way to handle url from github to github raw url
-                if yaml_url.startswith("https://github.com") and yaml_url.endswith((".yml", ".yaml")):
+                parsed_url = urlparse(yaml_url)
+                if parsed_url.scheme == "https" and parsed_url.netloc == "github.com" and parsed_url.path.endswith((".yml", ".yaml")):
                     yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
                     yaml_url = yaml_url.replace("/blob/", "/")
                 response = ssrf_proxy.get(yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
