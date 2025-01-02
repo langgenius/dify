@@ -53,7 +53,7 @@ import type { DefaultModel } from '@/app/components/header/account-setting/model
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Checkbox from '@/app/components/base/checkbox'
 import RadioCard from '@/app/components/base/radio-card'
-import { IS_CE_EDITION } from '@/config'
+import { FULL_DOC_PREVIEW_LENGTH, IS_CE_EDITION } from '@/config'
 import Divider from '@/app/components/base/divider'
 import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocument, useFetchDefaultProcessRule, useFetchFileIndexingEstimateForFile, useFetchFileIndexingEstimateForNotion, useFetchFileIndexingEstimateForWeb } from '@/service/knowledge/use-create-dataset'
 import Badge from '@/app/components/base/badge'
@@ -1105,6 +1105,9 @@ const StepTwo = ({
           {currentDocForm === ChunkingMode.parentChild && currentEstimateMutation.data?.preview && (
             estimate?.preview?.map((item, index) => {
               const indexForLabel = index + 1
+              const childChunks = parentChildConfig.chunkForContext === 'full-doc'
+                ? item.child_chunks.slice(0, FULL_DOC_PREVIEW_LENGTH)
+                : item.child_chunks
               return (
                 <ChunkContainer
                   key={item.content}
@@ -1112,7 +1115,7 @@ const StepTwo = ({
                   characterCount={item.content.length}
                 >
                   <FormattedText>
-                    {item.child_chunks.map((child, index) => {
+                    {childChunks.map((child, index) => {
                       const indexForLabel = index + 1
                       return (
                         <PreviewSlice
