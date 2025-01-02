@@ -19,6 +19,14 @@ class BillingService:
         billing_info = cls._send_request("GET", "/subscription/info", params=params)
 
         return billing_info
+    
+    @classmethod
+    def get_knowledge_rate_limit(cls, tenant_id: str):
+        params = {"tenant_id": tenant_id}
+
+        knowledge_rate_limit = cls._send_request("GET", "/subscription/knowledge-rate-limit", params=params)
+
+        return knowledge_rate_limit.get("limit", 10)
 
     @classmethod
     def get_subscription(cls, plan: str, interval: str, prefilled_email: str = "", tenant_id: str = ""):

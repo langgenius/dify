@@ -52,6 +52,11 @@ class FeatureModel(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
 
+class KnowledgeRateLimitModel(BaseModel):
+    enabled: bool = False
+    limit: int = 10
+
+
 class SystemFeatureModel(BaseModel):
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
@@ -78,6 +83,14 @@ class FeatureService:
             cls._fulfill_params_from_billing_api(features, tenant_id)
 
         return features
+    
+    @classmethod
+    def get_knowledge_rate_limit(cls, tenant_id: str):
+        knowledge_rate_limit = KnowledgeRateLimitModel()
+        if dify_config.BILLING_ENABLED and tenant_id:
+            knowledge_rate_limit.enabled = True
+            knowledge_rate_limit.limit = BillingService.get_knowledge_rate_limit(tenant_id)
+        return knowledge_rate_limit
 
     @classmethod
     def get_system_features(cls) -> SystemFeatureModel:

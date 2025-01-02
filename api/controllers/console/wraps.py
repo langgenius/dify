@@ -1,6 +1,8 @@
+from datetime import datetime
 import json
 import os
 from functools import wraps
+import time
 
 from flask import abort, request
 from flask_login import current_user  # type: ignore
@@ -10,6 +12,7 @@ from controllers.console.workspace.error import AccountNotInitializedError
 from models.model import DifySetup
 from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService
+from extensions.ext_redis import redis_client
 
 from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 
@@ -66,7 +69,7 @@ def cloud_edition_billing_resource_check(resource: str):
                 elif resource == "apps" and 0 < apps.limit <= apps.size:
                     abort(403, "The number of apps has reached the limit of your subscription.")
                 elif resource == "vector_space" and 0 < vector_space.limit <= vector_space.size:
-                    abort(403, "The capacity of the vector space has reached the limit of your subscription.")
+                    abort(403, "The capacity of the knowledge storage space has reached the limit of your subscription.")
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
                     # The api of file upload is used in the multiple places,
                     # so we need to check the source of the request from datasets
@@ -104,6 +107,34 @@ def cloud_edition_billing_knowledge_limit_check(resource: str):
                 else:
                     return view(*args, **kwargs)
 
+            return view(*args, **kwargs)
+
+        return decorated
+
+    return interceptor
+
+
+def cloud_edition_billing_knowledge_rate_limit_check():
+    def interceptor(view):
+        @wraps(view)
+        def decorated(*args, **kwargs):
+            knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(
+                current_user.current_tenant_id
+                )
+            if knowledge_rate_limit.enabled:
+                current_time = int(time.time() * 1000)
+                key = f"rate_limit_{current_user.current_tenant_id}"
+
+                redis_client.zadd(key, {current_time: current_time})
+
+                redis_client.zremrangebyscore(key, 0, current_time - 60000)
+
+                request_count = redis_client.zcard(key)
+
+                if request_count > knowledge_rate_limit.limit:
+                    abort(403, "The number of requests has reached the limit of your subscription.")
+
+                return view(*args, **kwargs)
             return view(*args, **kwargs)
 
         return decorated

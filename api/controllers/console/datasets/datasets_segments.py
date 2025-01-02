@@ -19,6 +19,7 @@ from controllers.console.datasets.error import (
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_knowledge_limit_check,
+    cloud_edition_billing_knowledge_rate_limit_check,
     cloud_edition_billing_resource_check,
     setup_required,
 )
