@@ -9,6 +9,10 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 package-mode = false
 
+[[tool.mypy.overrides]]
+module = ["MeCab.*"]
+ignore_missing_imports = true
+
 ############################################################
 # [ Main ] Dependency group
 ############################################################
@@ -53,6 +57,7 @@ langfuse = "~2.51.3"
 langsmith = "~0.1.77"
 mailchimp-transactional = "~1.0.50"
 markdown = "~3.5.1"
+mecab-python3 = "^1.0.6"  # MeCab Python bindings
 nomic = "~3.1.2"
 novita-client = "~0.5.7"
 numpy = "~1.26.4"
@@ -87,6 +92,7 @@ tiktoken = "~0.8.0"
 tokenizers = "~0.15.0"
 transformers = "~4.35.0"
 types-pytz = "~2024.2.0.20241003"
+unidic-lite = "^1.0.8"
 unstructured = { version = "~0.16.1", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"] }
 validators = "0.21.0"
 volcengine-python-sdk = {extras = ["ark"], version = "~1.0.98"}
