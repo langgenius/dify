@@ -65,9 +65,9 @@ const PluginItem: FC<Props> = ({
     if (PluginType.tool.includes(category))
       invalidateAllToolProviders()
   }
-  const renderI18nObject = useRenderI18nObject()
-  const title = renderI18nObject(label)
-  const descriptionText = renderI18nObject(description)
+  const getValueFromI18nObject = useRenderI18nObject()
+  const title = getValueFromI18nObject(label)
+  const descriptionText = getValueFromI18nObject(description)
 
   return (
     <div
