@@ -1,5 +1,5 @@
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import { useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import type { Strategy } from './agent-strategy'
 import classNames from '@/utils/classnames'
 import { RiArrowDownSLine, RiArrowRightUpLine, RiErrorWarningFill } from '@remixicon/react'
@@ -38,7 +38,7 @@ const ExternalNotInstallWarn = () => {
 function formatStrategy(input: StrategyPluginDetail[], getIcon: (i: string) => string): ToolWithProvider[] {
   return input.map((item) => {
     const res: ToolWithProvider = {
-      id: item.provider,
+      id: item.plugin_unique_identifier,
       author: item.declaration.identity.author,
       name: item.declaration.identity.name,
       description: item.declaration.identity.description as any,
@@ -69,7 +69,7 @@ export type AgentStrategySelectorProps = {
   onChange: (value?: Strategy) => void,
 }
 
-export const AgentStrategySelector = (props: AgentStrategySelectorProps) => {
+export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) => {
   const { value, onChange } = props
   const [open, setOpen] = useState(false)
   const [viewType, setViewType] = useState<ViewType>(ViewType.flat)
@@ -126,6 +126,7 @@ export const AgentStrategySelector = (props: AgentStrategySelectorProps) => {
                 agent_strategy_provider_name: tool!.provider_name,
                 agent_strategy_label: tool!.tool_label,
                 agent_output_schema: tool!.output_schema,
+                plugin_unique_identifier: tool!.provider_id,
               })
               setOpen(false)
             }}
@@ -147,4 +148,6 @@ export const AgentStrategySelector = (props: AgentStrategySelectorProps) => {
       </div> */}
     </PortalToFollowElemContent>
   </PortalToFollowElem>
-}
+})
+
+AgentStrategySelector.displayName = 'AgentStrategySelector'

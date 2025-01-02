@@ -22,6 +22,9 @@ import type {
 } from './types'
 import { WorkflowContext } from './context'
 import type { NodeTracing, VersionHistory } from '@/types/workflow'
+import type {
+  StrategyPluginDetail,
+} from '@/app/components/plugins/types'
 
 // #TODO chatVar#
 // const MOCK_DATA = [
@@ -98,6 +101,7 @@ type Shape = {
   setCustomTools: (tools: ToolWithProvider[]) => void
   workflowTools: ToolWithProvider[]
   setWorkflowTools: (tools: ToolWithProvider[]) => void
+  agentStrategies: StrategyPluginDetail[],
   clipboardElements: Node[]
   setClipboardElements: (clipboardElements: Node[]) => void
   showDebugAndPreviewPanel: boolean
@@ -230,6 +234,7 @@ export const createWorkflowStore = () => {
     setCustomTools: customTools => set(() => ({ customTools })),
     workflowTools: [],
     setWorkflowTools: workflowTools => set(() => ({ workflowTools })),
+    agentStrategies: [],
     clipboardElements: [],
     setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
     showDebugAndPreviewPanel: false,

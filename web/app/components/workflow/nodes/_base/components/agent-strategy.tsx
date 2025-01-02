@@ -12,16 +12,20 @@ import Slider from '@/app/components/base/slider'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
 import Field from './field'
-import type { ComponentProps } from 'react'
-import { useDefaultModel, useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { type ComponentProps, memo } from 'react'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Editor from './prompt/editor'
 import { useWorkflowStore } from '../../../store'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
+import type { NodeOutPutVar } from '../../../types'
+import type { Node } from 'reactflow'
 
 export type Strategy = {
   agent_strategy_provider_name: string
   agent_strategy_name: string
   agent_strategy_label: string
   agent_output_schema: Record<string, any>
+  plugin_unique_identifier: string
 }
 
 export type AgentStrategyProps = {
@@ -30,6 +34,8 @@ export type AgentStrategyProps = {
   formSchema: CredentialFormSchema[]
   formValue: ToolVarInputs
   onFormValueChange: (value: ToolVarInputs) => void
+  nodeOutputVars?: NodeOutPutVar[],
+  availableNodes?: Node[],
 }
 
 type CustomSchema<Type, Field = {}> = Omit<CredentialFormSchema, 'type'> & { type: Type } & Field
@@ -47,11 +53,11 @@ type StringSchema = CustomSchema<'string', {
 
 type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema | StringSchema
 
-export const AgentStrategy = (props: AgentStrategyProps) => {
-  const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange } = props
+export const AgentStrategy = memo((props: AgentStrategyProps) => {
+  const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange, nodeOutputVars, availableNodes } = props
   const { t } = useTranslation()
-  const language = useLanguage()
   const defaultModel = useDefaultModel(ModelTypeEnum.textGeneration)
+  const renderI18nObject = useRenderI18nObject()
   const workflowStore = useWorkflowStore()
   const {
     setControlPromptEditorRerenderKey,
@@ -70,7 +76,7 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
           const onChange = (value: number) => {
             props.onChange({ ...props.value, [schema.variable]: value })
           }
-          return <Field title={def.label[language]} tooltip={def.tooltip?.[language]} inline>
+          return <Field title={renderI18nObject(def.label)} tooltip={def.tooltip && renderI18nObject(def.tooltip)} inline>
             <div className='flex w-[200px] items-center gap-3'>
               <Slider
                 value={value}
@@ -103,7 +109,7 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
           props.onChange({ ...props.value, [schema.variable]: value })
         }
         return (
-          <Field title={schema.label[language]} tooltip={schema.tooltip?.[language]}>
+          <Field title={renderI18nObject(schema.label)} tooltip={schema.tooltip && renderI18nObject(schema.tooltip)}>
             <ToolSelector
               scope={schema.scope}
               value={value}
@@ -122,8 +128,8 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
           <MultipleToolSelector
             scope={schema.scope}
             value={value || []}
-            label={schema.label[language]}
-            tooltip={schema.tooltip?.[language]}
+            label={renderI18nObject(schema.label)}
+            tooltip={schema.tooltip && renderI18nObject(schema.tooltip)}
             onChange={onChange}
             supportCollapse
           />
@@ -142,13 +148,15 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
           value={value}
           onChange={onChange}
           onGenerated={handleGenerated}
-          title={schema.label[language]}
+          title={renderI18nObject(schema.label)}
           headerClassName='bg-transparent px-0 text-text-secondary system-sm-semibold-uppercase'
           containerClassName='bg-transparent'
           gradientBorder={false}
           isSupportPromptGenerator={!!schema.auto_generate?.type}
-          titleTooltip={schema.tooltip?.[language]}
+          titleTooltip={schema.tooltip && renderI18nObject(schema.tooltip)}
           editorContainerClassName='px-0'
+          availableNodes={availableNodes}
+          nodesOutputVars={nodeOutputVars}
           isSupportJinja={schema.template?.enabled}
           varList={[]}
           modelConfig={
@@ -197,4 +205,6 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
         />
     }
   </div>
-}
+})
+
+AgentStrategy.displayName = 'AgentStrategy'

@@ -1,7 +1,7 @@
 import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import classNames from '@/utils/classnames'
-import { useMemo, useRef } from 'react'
+import { memo, useMemo, useRef } from 'react'
 import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/service/use-tools'
 
 export type ToolIconProps = {
@@ -10,7 +10,7 @@ export type ToolIconProps = {
   providerName: string
 }
 
-export const ToolIcon = ({ status, tooltip, providerName }: ToolIconProps) => {
+export const ToolIcon = memo(({ status, tooltip, providerName }: ToolIconProps) => {
   const indicator = status === 'error' ? 'red' : status === 'warning' ? 'yellow' : undefined
   const containerRef = useRef<HTMLDivElement>(null)
   const notSuccess = (['error', 'warning'] as Array<ToolIconProps['status']>).includes(status)
@@ -41,4 +41,6 @@ export const ToolIcon = ({ status, tooltip, providerName }: ToolIconProps) => {
       {indicator && <Indicator color={indicator} className="absolute right-[-1px] top-[-1px]" />}
     </div>
   </Tooltip>
-}
+})
+
+ToolIcon.displayName = 'ToolIcon'

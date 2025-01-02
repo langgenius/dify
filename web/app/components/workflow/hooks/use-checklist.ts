@@ -24,6 +24,7 @@ import { useNodesExtraData } from './use-nodes-data'
 import { useToastContext } from '@/app/components/base/toast'
 import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
+import type { AgentNodeType } from '../nodes/agent/types'
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
@@ -33,6 +34,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
+  const agentStrategies = useStore(s => s.agentStrategies)
 
   const needWarningNodes = useMemo(() => {
     const list = []
@@ -55,6 +57,18 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
         if (provider_type === CollectionType.workflow)
           toolIcon = workflowTools.find(tool => tool.id === node.data.provider_id)?.icon
+      }
+
+      if (node.data.type === BlockEnum.Agent) {
+        const data = node.data as AgentNodeType
+        const provider = agentStrategies.find(s => s.plugin_unique_identifier === data.plugin_unique_identifier)
+        const strategy = provider?.declaration.strategies.find(s => s.identity.name === data.agent_strategy_name)
+        // debugger
+        moreDataForCheckValid = {
+          provider,
+          strategy,
+          language,
+        }
       }
 
       if (node.type === CUSTOM_NODE) {
@@ -92,7 +106,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     }
 
     return list
-  }, [t, nodes, edges, nodesExtraData, buildInTools, customTools, workflowTools, language, isChatMode])
+  }, [nodes, edges, isChatMode, buildInTools, customTools, workflowTools, language, nodesExtraData, t, agentStrategies])
 
   return needWarningNodes
 }

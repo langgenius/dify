@@ -218,6 +218,7 @@ const translation = {
     'transform': 'Transform',
     'utilities': 'Utilities',
     'noResult': 'No match found',
+    'agent': 'Agent Strategy',
   },
   blocks: {
     'start': 'Start',
@@ -732,6 +733,7 @@ const translation = {
       toolNotInstallTooltip: '{{tool}} is not installed',
       toolNotAuthorizedTooltip: '{{tool}} Not Authorized',
       strategyNotInstallTooltip: '{{strategy}} is not installed',
+      strategyNotFoundInPlugin: '{{strategy}} is not found in {{plugin}}',
       modelSelectorTooltips: {
         deprecated: 'This model is deprecated',
       },
@@ -746,6 +748,9 @@ const translation = {
         },
         json: 'agent generated json',
       },
+    },
+    checkList: {
+      strategyNotSelected: 'Strategy not selected',
     },
   },
   tracing: {

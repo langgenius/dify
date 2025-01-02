@@ -1,4 +1,4 @@
-import { type FC, useMemo } from 'react'
+import { type FC, memo, useMemo } from 'react'
 import type { NodeProps } from '../../types'
 import type { AgentNodeType } from './types'
 import { SettingItem } from '../_base/components/setting-item'
@@ -10,6 +10,7 @@ import useConfig from './use-config'
 import { useTranslation } from 'react-i18next'
 import { FormTypeEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
 
 const useAllModel = () => {
   const { data: textGeneration } = useModelList(ModelTypeEnum.textGeneration)
@@ -32,7 +33,8 @@ const useAllModel = () => {
 }
 
 const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
-  const { inputs, currentStrategy } = useConfig(props.id, props.data)
+  const { inputs, currentStrategy, currentStrategyStatus, pluginDetail } = useConfig(props.id, props.data)
+  const renderI18nObject = useRenderI18nObject()
   const { t } = useTranslation()
   const modelList = useAllModel()
   const models = useMemo(() => {
@@ -87,9 +89,16 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     {inputs.agent_strategy_name
       ? <SettingItem
         label={t('workflow.nodes.agent.strategy.shortLabel')}
-        status='error'
-        tooltip={t('workflow.nodes.agent.strategyNotInstallTooltip', {
+        status={
+          ['plugin-not-found', 'strategy-not-found'].includes(currentStrategyStatus)
+            ? 'error'
+            : undefined
+        }
+        tooltip={t(`workflow.nodes.agent.${currentStrategyStatus === 'plugin-not-found' ? 'strategyNotInstallTooltip' : 'strategyNotFoundInPlugin'}`, {
           strategy: inputs.agent_strategy_label,
+          plugin: pluginDetail?.declaration.label
+            ? renderI18nObject(pluginDetail?.declaration.label)
+            : undefined,
         })}
       >
         {inputs.agent_strategy_label}
@@ -126,4 +135,6 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
   </div>
 }
 
-export default AgentNode
+AgentNode.displayName = 'AgentNode'
+
+export default memo(AgentNode)

@@ -218,6 +218,7 @@ const translation = {
     'transform': '转换',
     'utilities': '工具',
     'noResult': '未找到匹配项',
+    'agent': 'Agent 策略',
   },
   blocks: {
     'start': '开始',
@@ -732,6 +733,7 @@ const translation = {
       toolNotInstallTooltip: '{{tool}} 未安装',
       toolNotAuthorizedTooltip: '{{tool}} 未授权',
       strategyNotInstallTooltip: '{{strategy}} 未安装',
+      strategyNotFoundInPlugin: '在 {{plugin}} 中未找到 {{strategy}}',
       modelSelectorTooltips: {
         deprecated: '此模型已弃用',
       },
@@ -745,6 +747,9 @@ const translation = {
           upload_file_id: '上传文件ID',
         },
         json: 'agent 生成的json',
+      },
+      checkList: {
+        strategyNotSelected: '未选择策略',
       },
     },
   },
