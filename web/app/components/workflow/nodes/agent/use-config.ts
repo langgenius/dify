@@ -6,9 +6,12 @@ import type { AgentNodeType } from './types'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { type ToolVarInputs, VarType } from '../tool/types'
 import { useCheckInstalled } from '@/service/use-plugins'
+import type { Var } from '../../types'
+import { VarType as VarKindType } from '../../types'
+import useAvailableVarList from '../_base/hooks/use-available-var-list'
 
 const useConfig = (id: string, payload: AgentNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -56,6 +59,30 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     })
   }
 
+  // vars
+
+  const filterMemoryPromptVar = useCallback((varPayload: Var) => {
+    return [
+      VarKindType.arrayObject,
+      VarKindType.array,
+      VarKindType.number,
+      VarKindType.string,
+      VarKindType.secret,
+      VarKindType.arrayString,
+      VarKindType.arrayNumber,
+      VarKindType.file,
+      VarKindType.arrayFile,
+    ].includes(varPayload.type)
+  }, [])
+
+  const {
+    availableVars,
+    availableNodesWithParent,
+  } = useAvailableVarList(id, {
+    onlyLeafNodeVar: false,
+    filterVar: filterMemoryPromptVar,
+  })
+
   // single run
   const {
     isShowSingleRun,
@@ -97,6 +124,8 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     currentStrategyStatus,
     strategyProvider: strategyProvider.data,
     pluginDetail: pluginDetail.data?.plugins.at(0),
+    availableVars,
+    availableNodesWithParent,
 
     isShowSingleRun,
     showSingleRun,

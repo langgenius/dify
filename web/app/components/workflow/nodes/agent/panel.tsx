@@ -33,6 +33,9 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
     formData,
     onFormChange,
 
+    availableNodesWithParent,
+    availableVars,
+
     isShowSingleRun,
     hideSingleRun,
     runningStatus,
@@ -90,6 +93,8 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
         formSchema={currentStrategy?.parameters?.map(strategyParamToCredientialForm) || []}
         formValue={formData}
         onFormValueChange={onFormChange}
+        nodeOutputVars={availableVars}
+        availableNodes={availableNodesWithParent}
       />
     </Field>
     <div>

@@ -17,6 +17,8 @@ import { useDefaultModel } from '@/app/components/header/account-setting/model-p
 import Editor from './prompt/editor'
 import { useWorkflowStore } from '../../../store'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import type { NodeOutPutVar } from '../../../types'
+import type { Node } from 'reactflow'
 
 export type Strategy = {
   agent_strategy_provider_name: string
@@ -32,6 +34,8 @@ export type AgentStrategyProps = {
   formSchema: CredentialFormSchema[]
   formValue: ToolVarInputs
   onFormValueChange: (value: ToolVarInputs) => void
+  nodeOutputVars?: NodeOutPutVar[],
+  availableNodes?: Node[],
 }
 
 type CustomSchema<Type, Field = {}> = Omit<CredentialFormSchema, 'type'> & { type: Type } & Field
@@ -50,7 +54,7 @@ type StringSchema = CustomSchema<'string', {
 type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema | StringSchema
 
 export const AgentStrategy = memo((props: AgentStrategyProps) => {
-  const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange } = props
+  const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange, nodeOutputVars, availableNodes } = props
   const { t } = useTranslation()
   const defaultModel = useDefaultModel(ModelTypeEnum.textGeneration)
   const renderI18nObject = useRenderI18nObject()
@@ -151,6 +155,8 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           isSupportPromptGenerator={!!schema.auto_generate?.type}
           titleTooltip={schema.tooltip && renderI18nObject(schema.tooltip)}
           editorContainerClassName='px-0'
+          availableNodes={availableNodes}
+          nodesOutputVars={nodeOutputVars}
           isSupportJinja={schema.template?.enabled}
           varList={[]}
           modelConfig={
