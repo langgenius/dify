@@ -747,6 +747,9 @@ const translation = {
         json: 'agent generated json',
       },
     },
+    checkList: {
+      strategyNotSelected: 'Strategy not selected',
+    },
   },
   tracing: {
     stopBy: 'Stop by {{user}}',

@@ -746,6 +746,9 @@ const translation = {
         },
         json: 'agent 生成的json',
       },
+      checkList: {
+        strategyNotSelected: '未选择策略',
+      },
     },
   },
   tracing: {

@@ -67,6 +67,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         moreDataForCheckValid = {
           provider,
           strategy,
+          language,
         }
       }
 
