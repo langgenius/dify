@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Optional
 
 from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.datasource.keyword.mecab.config import MeCabConfig
@@ -18,21 +18,25 @@ logger = logging.getLogger(__name__)
 
 class KeywordProcessorError(Exception):
     """Base error for keyword processing."""
+
     pass
 
 
 class KeywordExtractionError(KeywordProcessorError):
     """Error during keyword extraction."""
+
     pass
 
 
 class KeywordStorageError(KeywordProcessorError):
     """Error during storage operations."""
+
     pass
 
 
 class SetEncoder(json.JSONEncoder):
     """JSON encoder that handles sets."""
+
     def default(self, obj):
         if isinstance(obj, set):
             return list(obj)
@@ -52,8 +56,7 @@ class MeCab(BaseKeyword):
         """Initialize MeCab handler with configuration."""
         try:
             self._keyword_handler = MeCabKeywordTableHandler(
-                dictionary_path=self._config.dictionary_path,
-                user_dictionary_path=self._config.user_dictionary_path
+                dictionary_path=self._config.dictionary_path, user_dictionary_path=self._config.user_dictionary_path
             )
             if self._config.pos_weights:
                 self._keyword_handler.pos_weights = self._config.pos_weights
@@ -62,8 +65,21 @@ class MeCab(BaseKeyword):
             logger.exception("Failed to initialize MeCab handler")
             raise KeywordProcessorError("MeCab initialization failed: {}".format(str(e)))
 
-    def create(self, texts: List[Document], **kwargs: Any) -> BaseKeyword:
-        """Create keyword index for documents."""
+    def create(self, texts: list[Document], **kwargs: Any) -> BaseKeyword:
+        """Create keyword index for documents.
+
+        Args:
+            texts: List of documents to index
+            **kwargs: Additional arguments
+
+        Returns:
+            BaseKeyword: Self for method chaining
+
+        Raises:
+            KeywordProcessorError: If indexing fails
+            KeywordExtractionError: If keyword extraction fails
+            KeywordStorageError: If storage operations fail
+        """
         if not texts:
             return self
 
@@ -105,8 +121,17 @@ class MeCab(BaseKeyword):
 
         return self
 
-    def add_texts(self, texts: List[Document], **kwargs: Any) -> None:
-        """Add new texts to existing index."""
+    def add_texts(self, texts: list[Document], **kwargs: Any) -> None:
+        """Add new texts to existing index.
+
+        Args:
+            texts: List of documents to add
+            **kwargs: Additional arguments including optional keywords_list
+
+        Raises:
+            KeywordProcessorError: If indexing fails
+            KeywordStorageError: If storage operations fail
+        """
         if not texts:
             return
 
@@ -156,17 +181,38 @@ class MeCab(BaseKeyword):
             raise
 
     def text_exists(self, id: str) -> bool:
-        """Check if text exists in index."""
+        """Check if text exists in index.
+
+        Args:
+            id: Document ID to check
+
+        Returns:
+            bool: True if text exists, False otherwise
+
+        Raises:
+            KeywordProcessorError: If check fails
+        """
         if not id:
             return False
 
-        keyword_table = self._get_dataset_keyword_table()
-        if keyword_table is None:
-            return False
-        return id in set.union(*keyword_table.values()) if keyword_table else False
+        try:
+            keyword_table = self._get_dataset_keyword_table()
+            if keyword_table is None:
+                return False
+            return id in set.union(*keyword_table.values()) if keyword_table else False
+        except Exception as e:
+            logger.exception("Failed to check text existence")
+            raise KeywordProcessorError("Failed to check text existence: {}".format(str(e)))
 
-    def delete_by_ids(self, ids: List[str]) -> None:
-        """Delete texts by IDs."""
+    def delete_by_ids(self, ids: list[str]) -> None:
+        """Delete texts by IDs.
+
+        Args:
+            ids: List of document IDs to delete
+
+        Raises:
+            KeywordStorageError: If deletion fails
+        """
         if not ids:
             return
 
@@ -182,7 +228,11 @@ class MeCab(BaseKeyword):
             raise KeywordStorageError("Failed to delete documents: {}".format(str(e)))
 
     def delete(self) -> None:
-        """Delete entire index."""
+        """Delete entire index.
+
+        Raises:
+            KeywordStorageError: If deletion fails
+        """
         lock_name = "keyword_indexing_lock_{}".format(self.dataset.id)
         try:
             with redis_client.lock(lock_name, timeout=600):
@@ -197,8 +247,19 @@ class MeCab(BaseKeyword):
             logger.exception("Failed to delete index")
             raise KeywordStorageError("Failed to delete index: {}".format(str(e)))
 
-    def search(self, query: str, **kwargs: Any) -> List[Document]:
-        """Search documents using keywords."""
+    def search(self, query: str, **kwargs: Any) -> list[Document]:
+        """Search documents using keywords.
+
+        Args:
+            query: Search query string
+            **kwargs: Additional arguments including optional top_k
+
+        Returns:
+            List[Document]: List of matching documents
+
+        Raises:
+            KeywordProcessorError: If search fails
+        """
         if not query:
             return []
 
@@ -214,10 +275,7 @@ class MeCab(BaseKeyword):
             for chunk_index in sorted_chunk_indices:
                 segment = (
                     db.session.query(DocumentSegment)
-                    .filter(
-                        DocumentSegment.dataset_id == self.dataset.id,
-                        DocumentSegment.index_node_id == chunk_index
-                    )
+                    .filter(DocumentSegment.dataset_id == self.dataset.id, DocumentSegment.index_node_id == chunk_index)
                     .first()
                 )
 
@@ -239,7 +297,7 @@ class MeCab(BaseKeyword):
             logger.exception("Failed to search documents")
             raise KeywordProcessorError("Search failed: {}".format(str(e)))
 
-    def _get_dataset_keyword_table(self) -> Optional[Dict[str, Set[str]]]:
+    def _get_dataset_keyword_table(self) -> Optional[dict[str, set[str]]]:
         """Get keyword table from storage."""
         try:
             dataset_keyword_table = self.dataset.dataset_keyword_table
@@ -273,7 +331,7 @@ class MeCab(BaseKeyword):
             logger.exception("Failed to get keyword table")
             raise KeywordStorageError("Failed to get keyword table: {}".format(str(e)))
 
-    def _save_dataset_keyword_table(self, keyword_table: Dict[str, Set[str]]) -> None:
+    def _save_dataset_keyword_table(self, keyword_table: dict[str, set[str]]) -> None:
         """Save keyword table to storage."""
         if keyword_table is None:
             raise ValueError("Keyword table cannot be None")
@@ -303,8 +361,8 @@ class MeCab(BaseKeyword):
             raise KeywordStorageError("Failed to save keyword table: {}".format(str(e)))
 
     def _add_text_to_keyword_table(
-        self, keyword_table: Dict[str, Set[str]], id: str, keywords: List[str]
-    ) -> Dict[str, Set[str]]:
+        self, keyword_table: dict[str, set[str]], id: str, keywords: list[str]
+    ) -> dict[str, set[str]]:
         """Add text keywords to table."""
         if not id or not keywords:
             return keyword_table
@@ -315,9 +373,7 @@ class MeCab(BaseKeyword):
             keyword_table[keyword].add(id)
         return keyword_table
 
-    def _delete_ids_from_keyword_table(
-        self, keyword_table: Dict[str, Set[str]], ids: List[str]
-    ) -> Dict[str, Set[str]]:
+    def _delete_ids_from_keyword_table(self, keyword_table: dict[str, set[str]], ids: list[str]) -> dict[str, set[str]]:
         """Delete IDs from keyword table."""
         if not keyword_table or not ids:
             return keyword_table
@@ -336,9 +392,7 @@ class MeCab(BaseKeyword):
 
         return keyword_table
 
-    def _retrieve_ids_by_query(
-        self, keyword_table: Dict[str, Set[str]], query: str, k: int = 4
-    ) -> List[str]:
+    def _retrieve_ids_by_query(self, keyword_table: dict[str, set[str]], query: str, k: int = 4) -> list[str]:
         """Retrieve document IDs by query."""
         if not query or not keyword_table:
             return []
@@ -366,9 +420,9 @@ class MeCab(BaseKeyword):
             logger.exception("Failed to retrieve IDs by query")
             raise KeywordExtractionError("Failed to retrieve IDs: {}".format(str(e)))
 
-    def _update_segment_keywords(self, dataset_id: str, node_id: str, keywords: List[str]) -> None:
+    def _update_segment_keywords(self, dataset_id: str, node_id: str, keywords: list[str]) -> None:
         """Update segment keywords in database."""
-        if not dataset_id or not node_id:
+        if not dataset_id or not node_id or not keywords:
             return
 
         try:
@@ -386,7 +440,7 @@ class MeCab(BaseKeyword):
             logger.exception("Failed to update segment keywords")
             raise KeywordStorageError("Failed to update segment keywords: {}".format(str(e)))
 
-    def create_segment_keywords(self, node_id: str, keywords: List[str]) -> None:
+    def create_segment_keywords(self, node_id: str, keywords: list[str]) -> None:
         """Create keywords for a single segment.
 
         Args:
@@ -405,7 +459,7 @@ class MeCab(BaseKeyword):
             logger.exception("Failed to create segment keywords")
             raise KeywordProcessorError("Failed to create segment keywords: {}".format(str(e)))
 
-    def multi_create_segment_keywords(self, pre_segment_data_list: List[Dict[str, Any]]) -> None:
+    def multi_create_segment_keywords(self, pre_segment_data_list: list[dict[str, Any]]) -> None:
         """Create keywords for multiple segments in batch."""
         if not pre_segment_data_list:
             return
@@ -443,7 +497,7 @@ class MeCab(BaseKeyword):
             logger.exception("Failed to create multiple segment keywords")
             raise KeywordProcessorError("Failed to create multiple segment keywords: {}".format(str(e)))
 
-    def update_segment_keywords_index(self, node_id: str, keywords: List[str]) -> None:
+    def update_segment_keywords_index(self, node_id: str, keywords: list[str]) -> None:
         """Update keywords index for a segment.
 
         Args:
