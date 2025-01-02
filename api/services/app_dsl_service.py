@@ -103,7 +103,7 @@ class AppDslService:
             raise ValueError(f"Invalid import_mode: {import_mode}")
 
         # Get YAML content
-        content: bytes | str = b""
+        content: str = ""
         if mode == ImportMode.YAML_URL:
             if not yaml_url:
                 return Import(
@@ -119,7 +119,7 @@ class AppDslService:
                     yaml_url = yaml_url.replace("/blob/", "/")
                 response = ssrf_proxy.get(yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
-                content = response.content
+                content = response.content.decode()
 
                 if len(content) > max_size:
                     return Import(
