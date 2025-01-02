@@ -61,7 +61,7 @@ class MeCabKeywordTableHandler:
             node = self.tagger.parseToNode(text)
 
             # Calculate term frequencies and scores
-            term_scores = defaultdict(float)
+            term_scores: defaultdict[str, float] = defaultdict(float)
             while node:
                 features = node.feature.split(",")
                 if len(features) > 0:
