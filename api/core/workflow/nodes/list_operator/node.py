@@ -1,4 +1,4 @@
-﻿from collections.abc import Callable, Sequence
+from collections.abc import Callable, Sequence
 from typing import Any, Literal, Union
 
 from core.file import File

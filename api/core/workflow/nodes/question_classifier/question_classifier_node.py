@@ -1,4 +1,4 @@
-﻿import json
+import json
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 

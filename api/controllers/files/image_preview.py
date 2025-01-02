@@ -72,6 +72,7 @@ class FilePreviewApi(Resource):
             response.headers["Content-Length"] = str(upload_file.size)
         if args["as_attachment"]:
             from urllib.parse import quote
+
             safe_filename = quote(upload_file.name)
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{safe_filename}"
 
