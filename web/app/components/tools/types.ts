@@ -49,6 +49,7 @@ export type Collection = {
   allow_delete: boolean
   labels: string[]
   plugin_id?: string
+  letter?: string
 }
 
 export type ToolParameter = {

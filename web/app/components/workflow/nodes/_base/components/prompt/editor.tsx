@@ -74,6 +74,7 @@ type Props = {
   inputClassName?: string
   editorContainerClassName?: string
   placeholderClassName?: string
+  titleClassName?: string
 }
 
 const Editor: FC<Props> = ({
@@ -107,6 +108,7 @@ const Editor: FC<Props> = ({
   titleTooltip,
   inputClassName,
   placeholderClassName,
+  titleClassName,
   editorContainerClassName,
 }) => {
   const { t } = useTranslation()
@@ -145,7 +147,7 @@ const Editor: FC<Props> = ({
         <div className={cn(isFocus ? 'bg-gray-50' : 'bg-gray-100', isExpand && 'h-full flex flex-col', 'rounded-lg', containerClassName)}>
           <div className={cn('pt-1 pl-3 pr-2 flex justify-between items-center', headerClassName)}>
             <div className='flex gap-2'>
-              <div className='leading-4 text-xs font-semibold text-gray-700 uppercase'>{title}</div>
+              <div className={cn('leading-4 text-xs font-semibold text-gray-700 uppercase', titleClassName)}>{title}</div>
               {titleTooltip && <Tooltip popupContent={titleTooltip} />}
             </div>
             <div className='flex items-center'>

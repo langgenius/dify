@@ -161,6 +161,7 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
               } : undefined
           }
           placeholderClassName='px-2 py-1'
+          titleClassName='system-sm-semibold-uppercase text-text-secondary text-[13px]'
           inputClassName='px-2 py-1 bg-components-input-bg-normal focus:bg-components-input-bg-active focus:border-components-input-border-active focus:border rounded-lg'
         />
       }

@@ -69,13 +69,19 @@ const Blocks = ({
 
   const listViewToolData = useMemo(() => {
     const result: ToolWithProvider[] = []
-    Object.keys(withLetterAndGroupViewToolsData).forEach((letter) => {
+    letters.forEach((letter) => {
       Object.keys(withLetterAndGroupViewToolsData[letter]).forEach((groupName) => {
-        result.push(...withLetterAndGroupViewToolsData[letter][groupName])
+        result.push(...withLetterAndGroupViewToolsData[letter][groupName].map((item) => {
+          return {
+            ...item,
+            letter,
+          }
+        }))
       })
     })
+
     return result
-  }, [withLetterAndGroupViewToolsData])
+  }, [withLetterAndGroupViewToolsData, letters])
 
   const toolRefs = useRef({})
 
@@ -94,6 +100,8 @@ const Blocks = ({
       {!!tools.length && (
         isFlatView ? (
           <ToolListFlatView
+            toolRefs={toolRefs}
+            letters={letters}
             payload={listViewToolData}
             isShowLetterIndex={isShowLetterIndex}
             hasSearchText={hasSearchText}

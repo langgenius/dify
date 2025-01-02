@@ -78,10 +78,10 @@ const NodePanel: FC<Props> = ({
     setCollapseState(!nodeInfo.expand)
   }, [nodeInfo.expand, setCollapseState])
 
-  const isIterationNode = nodeInfo.node_type === BlockEnum.Iteration
-  const isRetryNode = hasRetryNode(nodeInfo.node_type) && nodeInfo.retryDetail
-  const isAgentNode = nodeInfo.node_type === BlockEnum.Agent
-  const isToolNode = nodeInfo.node_type === BlockEnum.Tool
+  const isIterationNode = nodeInfo.node_type === BlockEnum.Iteration && nodeInfo.details?.length
+  const isRetryNode = hasRetryNode(nodeInfo.node_type) && nodeInfo.retryDetail?.length
+  const isAgentNode = nodeInfo.node_type === BlockEnum.Agent && nodeInfo.agentLog?.length
+  const isToolNode = nodeInfo.node_type === BlockEnum.Tool && nodeInfo.agentLog?.length
 
   return (
     <div className={cn('px-2 py-1', className)}>
