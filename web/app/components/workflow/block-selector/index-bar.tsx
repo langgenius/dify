@@ -6,6 +6,7 @@ import classNames from '@/utils/classnames'
 
 export const CUSTOM_GROUP_NAME = '@@@custom@@@'
 export const WORKFLOW_GROUP_NAME = '@@@workflow@@@'
+export const AGENT_GROUP_NAME = '@@@agent@@@'
 /*
 {
   A: {
@@ -46,8 +47,10 @@ export const groupItems = (items: ToolWithProvider[], getFirstChar: (item: ToolW
       groupName = item.author
     else if (item.type === CollectionType.custom)
       groupName = CUSTOM_GROUP_NAME
-    else
+    else if (item.type === CollectionType.workflow)
       groupName = WORKFLOW_GROUP_NAME
+    else
+      groupName = AGENT_GROUP_NAME
 
     if (!acc[letter][groupName])
       acc[letter][groupName] = []

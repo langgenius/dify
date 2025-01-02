@@ -60,7 +60,6 @@ const Blocks = ({
       Object.keys(withLetterAndGroupViewToolsData[letter]).forEach((groupName) => {
         if (!result[groupName])
           result[groupName] = []
-
         result[groupName].push(...withLetterAndGroupViewToolsData[letter][groupName])
       })
     })

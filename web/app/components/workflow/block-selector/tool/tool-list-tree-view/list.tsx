@@ -6,7 +6,7 @@ import type { BlockEnum } from '../../../types'
 import type { ToolDefaultValue } from '../../types'
 import Item from './item'
 import { useTranslation } from 'react-i18next'
-import { CUSTOM_GROUP_NAME, WORKFLOW_GROUP_NAME } from '../../index-bar'
+import { AGENT_GROUP_NAME, CUSTOM_GROUP_NAME, WORKFLOW_GROUP_NAME } from '../../index-bar'
 
 type Props = {
   payload: Record<string, ToolWithProvider[]>
@@ -26,6 +26,9 @@ const ToolListTreeView: FC<Props> = ({
 
     if (name === WORKFLOW_GROUP_NAME)
       return t('workflow.tabs.workflowTool')
+
+    if (name === AGENT_GROUP_NAME)
+      return t('workflow.tabs.agent')
 
     return name
   }, [t])

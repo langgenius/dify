@@ -218,6 +218,7 @@ const translation = {
     'transform': 'Transform',
     'utilities': 'Utilities',
     'noResult': 'No match found',
+    'agent': 'Agent Strategy',
   },
   blocks: {
     'start': 'Start',
