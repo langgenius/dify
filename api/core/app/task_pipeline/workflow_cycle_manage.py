@@ -102,7 +102,8 @@ class WorkflowCycleManage:
         inputs = dict(WorkflowEntry.handle_special_values(inputs) or {})
 
         # init workflow run
-        workflow_run_id = str(self._workflow_system_variables.get(SystemVariableKey.WORKFLOW_RUN_ID, uuid4()))
+        # TODO: This workflow_run_id should always not be None, maybe we can use a more elegant way to handle this
+        workflow_run_id = str(self._workflow_system_variables.get(SystemVariableKey.WORKFLOW_RUN_ID) or uuid4())
 
         workflow_run = WorkflowRun()
         workflow_run.id = workflow_run_id

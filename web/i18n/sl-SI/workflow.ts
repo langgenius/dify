@@ -104,6 +104,8 @@ const translation = {
     openInExplore: 'Odpri v razišči',
     addFailureBranch: 'Dodajanje veje »Fail«',
     onFailure: 'O neuspehu',
+    noHistory: 'Brez zgodovine',
+    loadMore: 'Nalaganje več potekov dela',
   },
   env: {
     envPanelTitle: 'Spremenljivke okolja',

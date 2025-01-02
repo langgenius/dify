@@ -104,6 +104,8 @@ const translation = {
     openInExplore: '在“探索”中打開',
     onFailure: '失敗時',
     addFailureBranch: '添加 Fail Branch',
+    loadMore: '載入更多工作流',
+    noHistory: '無歷史記錄',
   },
   env: {
     envPanelTitle: '環境變數',
