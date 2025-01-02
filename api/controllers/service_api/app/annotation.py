@@ -1,4 +1,3 @@
-
 from flask import request
 from flask_restful import Resource, marshal, marshal_with, reqparse  # type: ignore
 from werkzeug.exceptions import Forbidden
@@ -29,6 +28,7 @@ class AnnotationReplyActionApi(Resource):
         else:
             raise ValueError("Unsupported annotation reply action")
         return result, 200
+
 
 class AnnotationReplyActionStatusApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
