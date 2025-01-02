@@ -99,8 +99,6 @@ const SettingsModal: FC<SettingsModalProps> = ({
     }
     if (
       !isReRankModelSelected({
-        rerankDefaultModel,
-        isRerankDefaultModelValid: !!isRerankDefaultModelValid,
         rerankModelList,
         retrievalConfig,
         indexMethod,

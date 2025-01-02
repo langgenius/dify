@@ -6,14 +6,10 @@ import type {
 import { RerankingModeEnum } from '@/models/datasets'
 
 export const isReRankModelSelected = ({
-  rerankDefaultModel,
-  isRerankDefaultModelValid,
   retrievalConfig,
   rerankModelList,
   indexMethod,
 }: {
-  rerankDefaultModel?: DefaultModelResponse
-  isRerankDefaultModelValid: boolean
   retrievalConfig: RetrievalConfig
   rerankModelList: Model[]
   indexMethod?: string
@@ -24,9 +20,6 @@ export const isReRankModelSelected = ({
 
       return provider?.models.find(({ model }) => model === retrievalConfig.reranking_model?.reranking_model_name)
     }
-
-    if (isRerankDefaultModelValid)
-      return !!rerankDefaultModel
 
     return false
   })()

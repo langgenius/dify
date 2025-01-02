@@ -127,7 +127,6 @@ const StepTwo = ({
   isSetting,
   documentDetail,
   isAPIKeySet,
-  onSetting,
   datasetId,
   indexingType,
   dataSourceType: inCreatePageDataSourceType,
@@ -372,13 +371,30 @@ const StepTwo = ({
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_model: {
-      reranking_provider_name: rerankDefaultModel?.provider.provider,
-      reranking_model_name: rerankDefaultModel?.model,
+      reranking_provider_name: '',
+      reranking_model_name: '',
     },
     top_k: 3,
     score_threshold_enabled: false,
     score_threshold: 0.5,
   } as RetrievalConfig)
+
+  useEffect(() => {
+    if (currentDataset?.retrieval_model_dict)
+      return
+    setRetrievalConfig({
+      search_method: RETRIEVE_METHOD.semantic,
+      reranking_enable: !!isRerankDefaultModelValid,
+      reranking_model: {
+        reranking_provider_name: isRerankDefaultModelValid ? rerankDefaultModel?.provider.provider ?? '' : '',
+        reranking_model_name: isRerankDefaultModelValid ? rerankDefaultModel?.model ?? '' : '',
+      },
+      top_k: 3,
+      score_threshold_enabled: false,
+      score_threshold: 0.5,
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rerankDefaultModel, isRerankDefaultModelValid])
 
   const getCreationParams = () => {
     let params
@@ -406,8 +422,6 @@ const StepTwo = ({
       const indexMethod = getIndexing_technique()
       if (
         !isReRankModelSelected({
-          rerankDefaultModel,
-          isRerankDefaultModelValid: !!isRerankDefaultModelValid,
           rerankModelList,
           retrievalConfig,
           indexMethod: indexMethod as string,
@@ -535,14 +549,6 @@ const StepTwo = ({
       mutateDatasetRes()
     onStepChange && onStepChange(+1)
     isSetting && onSave && onSave()
-  }
-
-  const changeToEconomicalType = () => {
-    if (docForm !== ChunkingMode.text)
-      return
-
-    if (!hasSetIndexType)
-      setIndexType(IndexingType.ECONOMICAL)
   }
 
   useEffect(() => {

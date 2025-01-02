@@ -126,7 +126,7 @@ export const getMultipleRetrievalConfig = (
     reranking_mode,
     reranking_model,
     weights,
-    reranking_enable: ((allInternal && allEconomic) || allExternal) ? reranking_enable : true,
+    reranking_enable: ((allInternal && allEconomic) || allExternal) ? reranking_enable : (selectedDatasets ?? []).length > 0,
   }
 
   const setDefaultWeights = () => {
@@ -152,16 +152,16 @@ export const getMultipleRetrievalConfig = (
 
   if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel || allExternal || mixtureInternalAndExternal) {
     result.reranking_mode = RerankingModeEnum.RerankingModel
-
-    if (rerankModelIsValid) {
-      result.reranking_mode = RerankingModeEnum.RerankingModel
-      result.reranking_model = {
-        provider: validRerankModel?.provider || '',
-        model: validRerankModel?.model || '',
+    if (!result.reranking_model?.provider || !result.reranking_model?.model) {
+      if (rerankModelIsValid) {
+        result.reranking_model = {
+          provider: validRerankModel?.provider || '',
+          model: validRerankModel?.model || '',
+        }
       }
-    }
-    else {
-      result.reranking_model = undefined
+      else {
+        result.reranking_model = undefined
+      }
     }
   }
 
@@ -201,6 +201,7 @@ export const getMultipleRetrievalConfig = (
     }
   }
 
+  console.log('🚀 ~ result:', result)
   return result
 }
 

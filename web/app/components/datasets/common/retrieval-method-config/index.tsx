@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Image from 'next/image'
 import RetrievalParamConfig from '../retrieval-param-config'
@@ -10,7 +10,7 @@ import { retrievalIcon } from '../../create/icons'
 import type { RetrievalConfig } from '@/types/app'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
-import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   DEFAULT_WEIGHTED_SCORE,
@@ -27,41 +27,70 @@ type Props = {
 
 const RetrievalMethodConfig: FC<Props> = ({
   disabled = false,
-  value: passValue,
+  value,
   onChange,
 }) => {
   const { t } = useTranslation()
   const { supportRetrievalMethods } = useProviderContext()
-  const { data: rerankDefaultModel } = useDefaultModel(ModelTypeEnum.rerank)
-  const value = useMemo(() => {
-    return {
-      ...passValue,
-      ...(!passValue.reranking_model.reranking_model_name
-        ? {
-          reranking_model: {
-            reranking_provider_name: rerankDefaultModel?.provider.provider || '',
-            reranking_model_name: rerankDefaultModel?.model || '',
-          },
-        }
-        : {}),
-      ...(passValue.search_method === RETRIEVE_METHOD.hybrid
-        ? {
-          reranking_mode: passValue.reranking_mode || (rerankDefaultModel ? RerankingModeEnum.RerankingModel : RerankingModeEnum.WeightedScore),
-          weights: passValue.weights || {
-            weight_type: WeightedScoreEnum.Customized,
-            vector_setting: {
-              vector_weight: DEFAULT_WEIGHTED_SCORE.other.semantic,
-              embedding_provider_name: '',
-              embedding_model_name: '',
+  const {
+    defaultModel: rerankDefaultModel,
+    currentModel: isRerankDefaultModelValid,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+
+  const onSwitch = useCallback((retrieveMethod: RETRIEVE_METHOD) => {
+    if ([RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText].includes(retrieveMethod)) {
+      onChange({
+        ...value,
+        search_method: retrieveMethod,
+        ...(!value.reranking_model.reranking_model_name
+          ? {
+            reranking_model: {
+              reranking_provider_name: isRerankDefaultModelValid ? rerankDefaultModel?.provider?.provider ?? '' : '',
+              reranking_model_name: isRerankDefaultModelValid ? rerankDefaultModel?.model ?? '' : '',
             },
-            keyword_setting: {
-              keyword_weight: DEFAULT_WEIGHTED_SCORE.other.keyword,
-            },
-          },
-        }
-        : {}),
+            reranking_enable: !!isRerankDefaultModelValid,
+          }
+          : {
+            reranking_enable: true,
+          }),
+      })
     }
-  }, [passValue, rerankDefaultModel])
+    if (retrieveMethod === RETRIEVE_METHOD.hybrid) {
+      onChange({
+        ...value,
+        search_method: retrieveMethod,
+        ...(!value.reranking_model.reranking_model_name
+          ? {
+            reranking_model: {
+              reranking_provider_name: isRerankDefaultModelValid ? rerankDefaultModel?.provider?.provider ?? '' : '',
+              reranking_model_name: isRerankDefaultModelValid ? rerankDefaultModel?.model ?? '' : '',
+            },
+            reranking_enable: !!isRerankDefaultModelValid,
+            reranking_mode: isRerankDefaultModelValid ? RerankingModeEnum.RerankingModel : RerankingModeEnum.WeightedScore,
+          }
+          : {
+            reranking_enable: true,
+            reranking_mode: RerankingModeEnum.RerankingModel,
+          }),
+        ...(!value.weights
+          ? {
+            weights: {
+              weight_type: WeightedScoreEnum.Customized,
+              vector_setting: {
+                vector_weight: DEFAULT_WEIGHTED_SCORE.other.semantic,
+                embedding_provider_name: '',
+                embedding_model_name: '',
+              },
+              keyword_setting: {
+                keyword_weight: DEFAULT_WEIGHTED_SCORE.other.keyword,
+              },
+            },
+          }
+          : {}),
+      })
+    }
+  }, [value, rerankDefaultModel, isRerankDefaultModelValid, onChange])
+
   return (
     <div className='space-y-2'>
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
@@ -71,11 +100,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           isActive={
             value.search_method === RETRIEVE_METHOD.semantic
           }
-          onSwitched={() => onChange({
-            ...value,
-            search_method: RETRIEVE_METHOD.semantic,
-            reranking_enable: false,
-          })}
+          onSwitched={() => onSwitch(RETRIEVE_METHOD.semantic)}
           effectImg={Effect.src}
           activeHeaderClassName='bg-dataset-option-card-purple-gradient'
         >
@@ -93,11 +118,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           isActive={
             value.search_method === RETRIEVE_METHOD.fullText
           }
-          onSwitched={() => onChange({
-            ...value,
-            search_method: RETRIEVE_METHOD.fullText,
-            reranking_enable: false,
-          })}
+          onSwitched={() => onSwitch(RETRIEVE_METHOD.fullText)}
           effectImg={Effect.src}
           activeHeaderClassName='bg-dataset-option-card-purple-gradient'
         >
@@ -119,11 +140,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           description={t('dataset.retrieval.hybrid_search.description')} isActive={
             value.search_method === RETRIEVE_METHOD.hybrid
           }
-          onSwitched={() => onChange({
-            ...value,
-            search_method: RETRIEVE_METHOD.hybrid,
-            reranking_enable: true,
-          })}
+          onSwitched={() => onSwitch(RETRIEVE_METHOD.hybrid)}
           effectImg={Effect.src}
           activeHeaderClassName='bg-dataset-option-card-purple-gradient'
         >

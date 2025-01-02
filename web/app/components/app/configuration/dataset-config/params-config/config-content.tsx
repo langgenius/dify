@@ -3,7 +3,6 @@
 import { memo, useCallback, useEffect, useMemo } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
 import WeightedScore from './weighted-score'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
@@ -60,35 +59,24 @@ const ConfigContent: FC<Props> = ({
 
   const {
     modelList: rerankModelList,
-    defaultModel: rerankDefaultModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   const {
     currentModel: currentRerankModel,
   } = useCurrentProviderAndModel(
     rerankModelList,
-    rerankDefaultModel
-      ? {
-        ...rerankDefaultModel,
-        provider: rerankDefaultModel.provider.provider,
-      }
-      : undefined,
+    {
+      provider: datasetConfigs.reranking_model?.reranking_provider_name,
+      model: datasetConfigs.reranking_model?.reranking_model_name,
+    },
   )
 
-  const rerankModel = (() => {
-    if (datasetConfigs.reranking_model?.reranking_provider_name) {
-      return {
-        provider_name: datasetConfigs.reranking_model.reranking_provider_name,
-        model_name: datasetConfigs.reranking_model.reranking_model_name,
-      }
+  const rerankModel = useMemo(() => {
+    return {
+      provider_name: datasetConfigs?.reranking_model?.reranking_provider_name ?? '',
+      model_name: datasetConfigs?.reranking_model?.reranking_model_name ?? '',
     }
-    else if (rerankDefaultModel) {
-      return {
-        provider_name: rerankDefaultModel.provider.provider,
-        model_name: rerankDefaultModel.model,
-      }
-    }
-  })()
+  }, [datasetConfigs.reranking_model])
 
   const handleParamChange = (key: string, value: number) => {
     if (key === 'top_k') {
@@ -133,6 +121,12 @@ const ConfigContent: FC<Props> = ({
   }
 
   const handleRerankModeChange = (mode: RerankingModeEnum) => {
+    if (mode === datasetConfigs.reranking_mode)
+      return
+
+    if (mode === RerankingModeEnum.RerankingModel && !currentRerankModel)
+      Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
+
     onChange({
       ...datasetConfigs,
       reranking_mode: mode,
@@ -170,13 +164,9 @@ const ConfigContent: FC<Props> = ({
       return true
 
     return datasetConfigs.reranking_enable
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManuallyToggleRerank])
-
-  const [rerankingEnable, { toggle: toggleRerankingEnable }] = useBoolean(showRerankModel)
+  }, [datasetConfigs.reranking_enable, canManuallyToggleRerank])
 
   const handleDisabledSwitchClick = useCallback((enable: boolean) => {
-    toggleRerankingEnable()
     if (!currentRerankModel && enable)
       Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
     onChange({
@@ -267,7 +257,7 @@ const ConfigContent: FC<Props> = ({
                     selectedDatasetsMode.allEconomic && !selectedDatasetsMode.mixtureInternalAndExternal && (
                       <Switch
                         size='md'
-                        defaultValue={rerankingEnable}
+                        defaultValue={showRerankModel}
                         disabled={!canManuallyToggleRerank}
                         onChange={handleDisabledSwitchClick}
                       />
@@ -285,7 +275,7 @@ const ConfigContent: FC<Props> = ({
                   />
                 </div>
                 {
-                  rerankingEnable && (
+                  showRerankModel && (
                     <div>
                       <ModelSelector
                         defaultModel={rerankModel && { provider: rerankModel?.provider_name, model: rerankModel?.model_name }}
