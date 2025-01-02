@@ -9,8 +9,8 @@ export type MultipleRetrievalConfig = {
   top_k: number
   score_threshold: number | null | undefined
   reranking_model?: {
-    reranking_provider_name: string
-    reranking_model_name: string
+    provider: string
+    model: string
   }
   reranking_mode?: RerankingModeEnum
   weights?: {

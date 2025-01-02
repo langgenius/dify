@@ -124,10 +124,7 @@ export const getMultipleRetrievalConfig = (
     top_k,
     score_threshold,
     reranking_mode,
-    reranking_model: {
-      reranking_provider_name: reranking_model?.reranking_provider_name || '',
-      reranking_model_name: reranking_model?.reranking_model_name || '',
-    },
+    reranking_model,
     weights,
     reranking_enable: ((allInternal && allEconomic) || allExternal) ? reranking_enable : shouldSetWeightDefaultValue,
   }
@@ -155,18 +152,18 @@ export const getMultipleRetrievalConfig = (
 
   if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel || allExternal || mixtureInternalAndExternal) {
     result.reranking_mode = RerankingModeEnum.RerankingModel
-    if (!result.reranking_model?.reranking_provider_name || !result.reranking_model?.reranking_model_name) {
+    if (!result.reranking_model?.provider || !result.reranking_model?.model) {
       if (rerankModelIsValid) {
         result.reranking_enable = true
         result.reranking_model = {
-          reranking_provider_name: validRerankModel?.provider || '',
-          reranking_model_name: validRerankModel?.model || '',
+          provider: validRerankModel?.provider || '',
+          model: validRerankModel?.model || '',
         }
       }
       else {
         result.reranking_model = {
-          reranking_provider_name: '',
-          reranking_model_name: '',
+          provider: '',
+          model: '',
         }
       }
     }
@@ -178,8 +175,8 @@ export const getMultipleRetrievalConfig = (
         result.reranking_mode = RerankingModeEnum.RerankingModel
         result.reranking_enable = true
         result.reranking_model = {
-          reranking_provider_name: validRerankModel.provider,
-          reranking_model_name: validRerankModel.model,
+          provider: validRerankModel.provider,
+          model: validRerankModel.model,
         }
       }
       else {
@@ -196,8 +193,8 @@ export const getMultipleRetrievalConfig = (
         result.reranking_mode = RerankingModeEnum.RerankingModel
         result.reranking_enable = true
         result.reranking_model = {
-          reranking_provider_name: validRerankModel.provider || '',
-          reranking_model_name: validRerankModel.model || '',
+          provider: validRerankModel.provider || '',
+          model: validRerankModel.model || '',
         }
       }
       else {
@@ -211,8 +208,8 @@ export const getMultipleRetrievalConfig = (
     if (reranking_mode === RerankingModeEnum.RerankingModel && rerankModelIsValid) {
       result.reranking_enable = true
       result.reranking_model = {
-        reranking_provider_name: validRerankModel.provider || '',
-        reranking_model_name: validRerankModel.model || '',
+        provider: validRerankModel.provider || '',
+        model: validRerankModel.model || '',
       }
     }
   }
@@ -238,7 +235,7 @@ export const checkoutRerankModelConfigedInRetrievalSettings = (
     reranking_model,
   } = multipleRetrievalConfig
 
-  if (reranking_mode === RerankingModeEnum.RerankingModel && (!reranking_model?.reranking_provider_name || !reranking_model?.reranking_model_name)) {
+  if (reranking_mode === RerankingModeEnum.RerankingModel && (!reranking_model?.provider || !reranking_model?.model)) {
     if ((allEconomic || allExternal) && !reranking_enable)
       return true
 

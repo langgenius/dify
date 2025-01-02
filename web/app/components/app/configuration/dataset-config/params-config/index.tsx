@@ -86,7 +86,10 @@ const ParamsConfig = ({
     const retrievalConfig = getMultipleRetrievalConfig({
       top_k: restConfigs.top_k,
       score_threshold: restConfigs.score_threshold,
-      reranking_model: restConfigs.reranking_model,
+      reranking_model: restConfigs.reranking_model && {
+        provider: restConfigs.reranking_model.reranking_provider_name,
+        model: restConfigs.reranking_model.reranking_model_name,
+      },
       reranking_mode: restConfigs.reranking_mode,
       weights: restConfigs.weights,
       reranking_enable: restConfigs.reranking_enable,
@@ -97,6 +100,10 @@ const ParamsConfig = ({
 
     setTempDataSetConfigs({
       ...retrievalConfig,
+      reranking_model: {
+        reranking_provider_name: retrievalConfig.reranking_model?.provider || '',
+        reranking_model_name: retrievalConfig.reranking_model?.model || '',
+      },
       retrieval_model,
       score_threshold_enabled,
       datasets,

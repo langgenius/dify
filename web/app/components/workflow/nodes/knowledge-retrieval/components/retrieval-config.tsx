@@ -76,12 +76,12 @@ const RetrievalConfig: FC<Props> = ({
         ? undefined
         : (!configs.reranking_model?.reranking_provider_name
           ? {
-            reranking_provider_name: validRerankDefaultProvider?.provider || '',
-            reranking_model_name: validRerankDefaultModel?.model || '',
+            provider: validRerankDefaultProvider?.provider || '',
+            model: validRerankDefaultModel?.model || '',
           }
           : {
-            reranking_provider_name: configs.reranking_model?.reranking_provider_name,
-            reranking_model_name: configs.reranking_model?.reranking_model_name,
+            provider: configs.reranking_model?.reranking_provider_name,
+            model: configs.reranking_model?.reranking_model_name,
           }),
       reranking_mode: configs.reranking_mode,
       weights: configs.weights as any,
@@ -121,10 +121,10 @@ const RetrievalConfig: FC<Props> = ({
             datasetConfigs={
               {
                 retrieval_model: payload.retrieval_mode,
-                reranking_model: multiple_retrieval_config?.reranking_model?.reranking_model_name
+                reranking_model: multiple_retrieval_config?.reranking_model?.provider
                   ? {
-                    reranking_provider_name: multiple_retrieval_config.reranking_model?.reranking_provider_name,
-                    reranking_model_name: multiple_retrieval_config.reranking_model?.reranking_model_name,
+                    reranking_provider_name: multiple_retrieval_config.reranking_model?.provider,
+                    reranking_model_name: multiple_retrieval_config.reranking_model?.model,
                   }
                   : {
                     reranking_provider_name: '',
