@@ -107,7 +107,7 @@ const ToolSelector: FC<Props> = ({
 
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
   const handleSelectTool = (tool: ToolDefaultValue) => {
-    const paramValues = addDefaultValue(tool.params, toolParametersToFormSchemas(tool.paramSchemas as any))
+    const paramValues = addDefaultValue(tool.params, toolParametersToFormSchemas(tool.paramSchemas.filter(param => param.form !== 'llm') as any))
     const toolValue = {
       provider_name: tool.provider_id,
       tool_name: tool.tool_name,
@@ -133,7 +133,7 @@ const ToolSelector: FC<Props> = ({
 
   const currentToolParams = useMemo(() => {
     if (!currentProvider) return []
-    return currentProvider.tools.find(tool => tool.name === value?.tool_name)?.parameters || []
+    return currentProvider.tools.find(tool => tool.name === value?.tool_name)?.parameters.filter(param => param.form !== 'llm') || []
   }, [currentProvider, value])
 
   const formSchemas = useMemo(() => toolParametersToFormSchemas(currentToolParams), [currentToolParams])
