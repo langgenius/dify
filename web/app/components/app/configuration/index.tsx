@@ -273,10 +273,7 @@ const Configuration: FC = () => {
     const retrievalConfig = getMultipleRetrievalConfig({
       top_k: restConfigs.top_k,
       score_threshold: restConfigs.score_threshold,
-      reranking_model: restConfigs.reranking_model && {
-        provider: restConfigs.reranking_model.reranking_provider_name,
-        model: restConfigs.reranking_model.reranking_model_name,
-      },
+      reranking_model: restConfigs.reranking_model,
       reranking_mode: restConfigs.reranking_mode,
       weights: restConfigs.weights,
       reranking_enable: restConfigs.reranking_enable,
@@ -287,10 +284,6 @@ const Configuration: FC = () => {
 
     setDatasetConfigs({
       ...retrievalConfig,
-      reranking_model: restConfigs.reranking_model && {
-        reranking_provider_name: restConfigs.reranking_model.reranking_provider_name,
-        reranking_model_name: restConfigs.reranking_model.reranking_model_name,
-      },
       retrieval_model,
       score_threshold_enabled,
       datasets,

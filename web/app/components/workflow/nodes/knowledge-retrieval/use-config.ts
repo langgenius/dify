@@ -122,7 +122,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   // set defaults models
   useEffect(() => {
     const inputs = inputRef.current
-    if (inputs.retrieval_mode === RETRIEVE_TYPE.multiWay && inputs.multiple_retrieval_config?.reranking_model?.provider && currentRerankModel && rerankDefaultModel)
+    if (inputs.retrieval_mode === RETRIEVE_TYPE.multiWay && inputs.multiple_retrieval_config?.reranking_model?.reranking_provider_name && currentRerankModel && rerankDefaultModel)
       return
 
     if (inputs.retrieval_mode === RETRIEVE_TYPE.oneWay && inputs.single_retrieval_config?.model?.provider)
