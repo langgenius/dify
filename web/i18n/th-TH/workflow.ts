@@ -104,6 +104,8 @@ const translation = {
     openInExplore: 'เปิดใน Explore',
     onFailure: 'เมื่อล้มเหลว',
     addFailureBranch: 'เพิ่มสาขา Fail',
+    loadMore: 'โหลดเวิร์กโฟลว์เพิ่มเติม',
+    noHistory: 'ไม่มีประวัติ',
   },
   env: {
     envPanelTitle: 'ตัวแปรสภาพแวดล้อม',
