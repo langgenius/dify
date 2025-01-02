@@ -14,7 +14,10 @@ if is_db_command():
 
     app = create_migrations_app()
 else:
-    if os.environ.get("FLASK_DEBUG", "False") != "True":
+    # It seems that JetBrains Python debugger does not work well with gevent,
+    # so we need to disable gevent in debug mode.
+    # If you are using debugpy and set GEVENT_SUPPORT=True, you can debug with gevent.
+    if (flask_debug := os.environ.get("FLASK_DEBUG", "0")) and flask_debug.lower() not in {"false", "0", "no"}:
         from gevent import monkey  # type: ignore
 
         # gevent
