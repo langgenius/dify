@@ -22,9 +22,11 @@ class Keyword:
         match keyword_type:
             case KeyWordType.JIEBA:
                 from core.rag.datasource.keyword.jieba.jieba import Jieba
+
                 return Jieba
             case KeyWordType.MECAB:
                 from core.rag.datasource.keyword.mecab.mecab import MeCab
+
                 return MeCab
             case _:
                 raise ValueError(f"Keyword store {keyword_type} is not supported.")
