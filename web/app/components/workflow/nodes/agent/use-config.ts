@@ -8,6 +8,7 @@ import {
 } from '@/app/components/workflow/hooks'
 import { useMemo } from 'react'
 import { type ToolVarInputs, VarType } from '../tool/types'
+import { useCheckInstalled } from '@/service/use-plugins'
 
 const useConfig = (id: string, payload: AgentNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -20,16 +21,20 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   const strategyProvider = useStrategyProviderDetail(
     inputs.agent_strategy_provider_name || '',
   )
-
   const currentStrategy = strategyProvider.data?.declaration.strategies.find(
     str => str.identity.name === inputs.agent_strategy_name,
   )
-  const currentStrategyStatus = useMemo(() => {
+  const currentStrategyStatus: 'loading' | 'plugin-not-found' | 'strategy-not-found' | 'success' = useMemo(() => {
     if (strategyProvider.isLoading) return 'loading'
     if (strategyProvider.isError) return 'plugin-not-found'
     if (!currentStrategy) return 'strategy-not-found'
     return 'success'
   }, [currentStrategy, strategyProvider])
+  const pluginId = inputs.agent_strategy_provider_name?.split('/').splice(0, 2).join('/')
+  const pluginDetail = useCheckInstalled({
+    pluginIds: [pluginId || ''],
+    enabled: Boolean(pluginId),
+  })
   const formData = useMemo(() => {
     return Object.fromEntries(
       Object.entries(inputs.agent_parameters || {}).map(([key, value]) => {
@@ -91,6 +96,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     onFormChange,
     currentStrategyStatus,
     strategyProvider: strategyProvider.data,
+    pluginDetail: pluginDetail.data?.plugins.at(0),
 
     isShowSingleRun,
     showSingleRun,
