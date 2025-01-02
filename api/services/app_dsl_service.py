@@ -114,7 +114,6 @@ class AppDslService:
                 )
             try:
                 max_size = 10 * 1024 * 1024  # 10MB
-                # tricky way to handle url from github to github raw url
                 parsed_url = urlparse(yaml_url)
                 if (
                     parsed_url.scheme == "https"
