@@ -17,11 +17,11 @@ import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { updateDatasetSetting } from '@/service/datasets'
-import { type DataSetListResponse, RerankingModeEnum } from '@/models/datasets'
+import { type DataSetListResponse } from '@/models/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { type RetrievalConfig } from '@/types/app'
 import { useAppContext } from '@/context/app-context'
-import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import {
   useModelList,
@@ -74,8 +74,6 @@ const Form = () => {
   )
   const {
     modelList: rerankModelList,
-    defaultModel: rerankDefaultModel,
-    currentModel: isRerankDefaultModelValid,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
 
@@ -109,8 +107,6 @@ const Form = () => {
     }
     if (
       !isReRankModelSelected({
-        rerankDefaultModel,
-        isRerankDefaultModelValid: !!isRerankDefaultModelValid,
         rerankModelList,
         retrievalConfig,
         indexMethod,
@@ -119,17 +115,9 @@ const Form = () => {
       notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
       return
     }
-    const postRetrievalConfig = ensureRerankModelSelected({
-      rerankDefaultModel: rerankDefaultModel!,
-      retrievalConfig: {
-        ...retrievalConfig,
-        reranking_enable: retrievalConfig.reranking_mode === RerankingModeEnum.RerankingModel,
-      },
-      indexMethod,
-    })
-    if (postRetrievalConfig.weights) {
-      postRetrievalConfig.weights.vector_setting.embedding_provider_name = currentDataset?.embedding_model_provider || ''
-      postRetrievalConfig.weights.vector_setting.embedding_model_name = currentDataset?.embedding_model || ''
+    if (retrievalConfig.weights) {
+      retrievalConfig.weights.vector_setting.embedding_provider_name = currentDataset?.embedding_model_provider || ''
+      retrievalConfig.weights.vector_setting.embedding_model_name = currentDataset?.embedding_model || ''
     }
     try {
       setLoading(true)
@@ -141,8 +129,8 @@ const Form = () => {
           permission,
           indexing_technique: indexMethod,
           retrieval_model: {
-            ...postRetrievalConfig,
-            score_threshold: postRetrievalConfig.score_threshold_enabled ? postRetrievalConfig.score_threshold : 0,
+            ...retrievalConfig,
+            score_threshold: retrievalConfig.score_threshold_enabled ? retrievalConfig.score_threshold : 0,
           },
           embedding_model: embeddingModel.model,
           embedding_model_provider: embeddingModel.provider,

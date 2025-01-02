@@ -232,6 +232,16 @@ const Completed: FC<ICompletedProps> = ({
     setFullScreen(false)
   }, [])
 
+  const onCloseNewSegmentModal = useCallback(() => {
+    onNewSegmentModalChange(false)
+    setFullScreen(false)
+  }, [onNewSegmentModalChange])
+
+  const onCloseNewChildChunkModal = useCallback(() => {
+    setShowNewChildSegmentModal(false)
+    setFullScreen(false)
+  }, [])
+
   const { mutateAsync: enableSegment } = useEnableSegment()
   const { mutateAsync: disableSegment } = useDisableSegment()
 
@@ -623,6 +633,7 @@ const Completed: FC<ICompletedProps> = ({
       <FullScreenDrawer
         isOpen={currSegment.showModal}
         fullScreen={fullScreen}
+        onClose={onCloseSegmentDetail}
       >
         <SegmentDetail
           segInfo={currSegment.segInfo ?? { id: '' }}
@@ -636,13 +647,11 @@ const Completed: FC<ICompletedProps> = ({
       <FullScreenDrawer
         isOpen={showNewSegmentModal}
         fullScreen={fullScreen}
+        onClose={onCloseNewSegmentModal}
       >
         <NewSegment
           docForm={docForm}
-          onCancel={() => {
-            onNewSegmentModalChange(false)
-            setFullScreen(false)
-          }}
+          onCancel={onCloseNewSegmentModal}
           onSave={resetList}
           viewNewlyAddedChunk={viewNewlyAddedChunk}
         />
@@ -651,6 +660,7 @@ const Completed: FC<ICompletedProps> = ({
       <FullScreenDrawer
         isOpen={currChildChunk.showModal}
         fullScreen={fullScreen}
+        onClose={onCloseChildSegmentDetail}
       >
         <ChildSegmentDetail
           chunkId={currChunkId}
@@ -664,13 +674,11 @@ const Completed: FC<ICompletedProps> = ({
       <FullScreenDrawer
         isOpen={showNewChildSegmentModal}
         fullScreen={fullScreen}
+        onClose={onCloseNewChildChunkModal}
       >
         <NewChildSegment
           chunkId={currChunkId}
-          onCancel={() => {
-            setShowNewChildSegmentModal(false)
-            setFullScreen(false)
-          }}
+          onCancel={onCloseNewChildChunkModal}
           onSave={onSaveNewChildChunk}
           viewNewlyAddedChildChunk={viewNewlyAddedChildChunk}
         />

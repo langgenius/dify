@@ -36,6 +36,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
       className={classNames(
         'group flex items-center px-2 h-8 rounded-lg bg-components-input-bg-normal',
         !readonly && 'hover:bg-components-input-bg-hover cursor-pointer',
+        !!readonly && 'opacity-50',
         className,
         open && '!bg-components-input-bg-hover',
         model.status !== ModelStatusEnum.active && '!bg-[#FFFAEB]',
