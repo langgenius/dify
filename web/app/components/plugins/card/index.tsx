@@ -12,6 +12,7 @@ import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
 import { useCategories } from '../hooks'
+import { renderI18nObject } from '@/hooks/use-i18n'
 
 export type Props = {
   className?: string
@@ -47,7 +48,7 @@ const Card = ({
   const isBundle = !['plugin', 'model', 'tool', 'extension', 'agent_strategy'].includes(type)
   const cornerMark = isBundle ? categoriesMap.bundle?.label : categoriesMap[category]?.label
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
-    obj?.[locale] || obj?.['en-US'] || obj?.en_US || ''
+    obj ? renderI18nObject(obj, locale) : ''
 
   const wrapClassName = cn('relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)
   if (isLoading) {
