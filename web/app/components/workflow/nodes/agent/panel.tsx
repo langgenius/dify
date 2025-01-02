@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import type { NodePanelProps } from '../../types'
 import type { AgentNodeType } from './types'
 import Field from '../_base/components/field'
@@ -75,6 +75,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
           agent_strategy_name: inputs.agent_strategy_name!,
           agent_strategy_label: inputs.agent_strategy_label!,
           agent_output_schema: inputs.output_schema,
+          plugin_unique_identifier: inputs.plugin_unique_identifier!,
         } : undefined}
         onStrategyChange={(strategy) => {
           setInputs({
@@ -83,6 +84,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
             agent_strategy_name: strategy?.agent_strategy_name,
             agent_strategy_label: strategy?.agent_strategy_label,
             output_schema: strategy!.agent_output_schema,
+            plugin_unique_identifier: strategy!.plugin_unique_identifier,
           })
         }}
         formSchema={currentStrategy?.parameters?.map(strategyParamToCredientialForm) || []}
@@ -135,4 +137,6 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
   </div>
 }
 
-export default AgentPanel
+AgentPanel.displayName = 'AgentPanel'
+
+export default memo(AgentPanel)

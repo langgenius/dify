@@ -1,7 +1,7 @@
 import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import classNames from '@/utils/classnames'
-import type { ComponentProps, PropsWithChildren, ReactNode } from 'react'
+import { type ComponentProps, type PropsWithChildren, type ReactNode, memo } from 'react'
 
 export type SettingItemProps = PropsWithChildren<{
   label: string
@@ -9,7 +9,7 @@ export type SettingItemProps = PropsWithChildren<{
   tooltip?: ReactNode
 }>
 
-export const SettingItem = ({ label, children, status, tooltip }: SettingItemProps) => {
+export const SettingItem = memo(({ label, children, status, tooltip }: SettingItemProps) => {
   const indicator: ComponentProps<typeof Indicator>['color'] = status === 'error' ? 'red' : status === 'warning' ? 'yellow' : undefined
   const needTooltip = ['error', 'warning'].includes(status as any)
   return <div className='flex items-center justify-between bg-workflow-block-parma-bg rounded-md py-1 px-1.5 space-x-1 text-xs font-normal relative'>
@@ -23,4 +23,6 @@ export const SettingItem = ({ label, children, status, tooltip }: SettingItemPro
     </Tooltip>
     {indicator && <Indicator color={indicator} className='absolute -right-0.5 -top-0.5' />}
   </div>
-}
+})
+
+SettingItem.displayName = 'SettingItem'

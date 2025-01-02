@@ -12,7 +12,7 @@ import Slider from '@/app/components/base/slider'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
 import Field from './field'
-import type { ComponentProps } from 'react'
+import { type ComponentProps, memo } from 'react'
 import { useDefaultModel, useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Editor from './prompt/editor'
 import { useWorkflowStore } from '../../../store'
@@ -22,6 +22,7 @@ export type Strategy = {
   agent_strategy_name: string
   agent_strategy_label: string
   agent_output_schema: Record<string, any>
+  plugin_unique_identifier: string
 }
 
 export type AgentStrategyProps = {
@@ -47,7 +48,7 @@ type StringSchema = CustomSchema<'string', {
 
 type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema | StringSchema
 
-export const AgentStrategy = (props: AgentStrategyProps) => {
+export const AgentStrategy = memo((props: AgentStrategyProps) => {
   const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange } = props
   const { t } = useTranslation()
   const language = useLanguage()
@@ -197,4 +198,6 @@ export const AgentStrategy = (props: AgentStrategyProps) => {
         />
     }
   </div>
-}
+})
+
+AgentStrategy.displayName = 'AgentStrategy'

@@ -1,4 +1,4 @@
-import { type FC, useMemo } from 'react'
+import { type FC, memo, useMemo } from 'react'
 import type { NodeProps } from '../../types'
 import type { AgentNodeType } from './types'
 import { SettingItem } from '../_base/components/setting-item'
@@ -126,4 +126,6 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
   </div>
 }
 
-export default AgentNode
+AgentNode.displayName = 'AgentNode'
+
+export default memo(AgentNode)

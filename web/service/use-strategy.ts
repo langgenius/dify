@@ -1,4 +1,3 @@
-import { get } from './base'
 import type {
   StrategyPluginDetail,
 } from '@/app/components/plugins/types'
@@ -6,6 +5,7 @@ import { useInvalid } from './use-base'
 import {
   useQuery,
 } from '@tanstack/react-query'
+import { fetchStrategyDetail, fetchStrategyList } from './strategy'
 
 const NAME_SPACE = 'agent_strategy'
 
@@ -13,7 +13,7 @@ const useStrategyListKey = [NAME_SPACE, 'strategyList']
 export const useStrategyProviders = () => {
   return useQuery<StrategyPluginDetail[]>({
     queryKey: useStrategyListKey,
-    queryFn: () => get<StrategyPluginDetail[]>('/workspaces/current/agent-providers'),
+    queryFn: fetchStrategyList,
   })
 }
 
@@ -24,7 +24,7 @@ export const useInvalidateStrategyProviders = () => {
 export const useStrategyProviderDetail = (agentProvider: string) => {
   return useQuery<StrategyPluginDetail>({
     queryKey: [NAME_SPACE, 'detail', agentProvider],
-    queryFn: () => get<StrategyPluginDetail>(`/workspaces/current/agent-provider/${agentProvider}`),
+    queryFn: () => fetchStrategyDetail(agentProvider),
     enabled: !!agentProvider,
   })
 }

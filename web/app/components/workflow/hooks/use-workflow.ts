@@ -58,6 +58,7 @@ import I18n from '@/context/i18n'
 import { CollectionType } from '@/app/components/tools/types'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { useWorkflowConfig } from '@/service/use-workflow'
+import { fetchStrategyList } from '@/service/strategy'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
@@ -459,6 +460,21 @@ export const useFetchToolsData = () => {
   }
 }
 
+export const useFetchAgentStrategy = () => {
+  const workflowStore = useWorkflowStore()
+  const handleFetchAllAgentStrategies = useCallback(async () => {
+    const agentStrategies = await fetchStrategyList()
+
+    workflowStore.setState({
+      agentStrategies: agentStrategies || [],
+    })
+  }, [workflowStore])
+
+  return {
+    handleFetchAllAgentStrategies,
+  }
+}
+
 export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()
   const {
@@ -466,6 +482,7 @@ export const useWorkflowInit = () => {
     edges: edgesTemplate,
   } = useWorkflowTemplate()
   const { handleFetchAllTools } = useFetchToolsData()
+  const { handleFetchAllAgentStrategies } = useFetchAgentStrategy()
   const appDetail = useAppStore(state => state.appDetail)!
   const setSyncWorkflowDraftHash = useStore(s => s.setSyncWorkflowDraftHash)
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
@@ -545,7 +562,8 @@ export const useWorkflowInit = () => {
     handleFetchAllTools('builtin')
     handleFetchAllTools('custom')
     handleFetchAllTools('workflow')
-  }, [handleFetchPreloadData, handleFetchAllTools])
+    handleFetchAllAgentStrategies()
+  }, [handleFetchPreloadData, handleFetchAllTools, handleFetchAllAgentStrategies])
 
   useEffect(() => {
     if (data) {
