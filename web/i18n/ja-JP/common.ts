@@ -48,7 +48,7 @@ const translation = {
     viewMore: 'さらに表示',
     regenerate: '再生成',
     submit: '送信',
-    skip: '船',
+    skip: 'スキップ',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',
