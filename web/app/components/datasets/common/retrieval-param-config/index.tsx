@@ -241,10 +241,8 @@ const RetrievalParamConfig: FC<Props> = ({
             {
               value.reranking_mode !== RerankingModeEnum.WeightedScore && (
                 <ModelSelector
-                  triggerClassName={`${!value.reranking_enable && '!opacity-60 !cursor-not-allowed'}`}
                   defaultModel={rerankModel && { provider: rerankModel.provider_name, model: rerankModel.model_name }}
                   modelList={rerankModelList}
-                  readonly={!value.reranking_enable}
                   onSelect={(v) => {
                     onChange({
                       ...value,
