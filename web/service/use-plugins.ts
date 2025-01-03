@@ -22,7 +22,7 @@ import type {
   PluginsSearchParams,
 } from '@/app/components/plugins/marketplace/types'
 import { get, getMarketplace, post, postMarketplace } from './base'
-import type { MutateOptions } from '@tanstack/react-query'
+import type { MutateOptions, QueryOptions } from '@tanstack/react-query'
 import {
   useMutation,
   useQuery,
@@ -321,8 +321,9 @@ export const useMutationPluginsFromMarketplace = () => {
   })
 }
 
-export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[]) => {
+export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[], options?: QueryOptions<{ data: PluginsFromMarketplaceResponse }>) => {
   return useQuery({
+    ...options,
     queryKey: [NAME_SPACE, 'fetchPluginsInMarketPlaceByIds', unique_identifiers],
     queryFn: () => postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/identifier/batch', {
       body: {

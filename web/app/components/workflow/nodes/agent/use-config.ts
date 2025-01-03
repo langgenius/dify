@@ -8,12 +8,12 @@ import {
 } from '@/app/components/workflow/hooks'
 import { useCallback, useMemo } from 'react'
 import { type ToolVarInputs, VarType } from '../tool/types'
-import { useCheckInstalled } from '@/service/use-plugins'
+import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
 import type { Var } from '../../types'
 import { VarType as VarKindType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 
-export type StrategyStatus = 'loading' | 'plugin-not-found' | 'strategy-not-found' | 'success'
+export type StrategyStatus = 'loading' | 'plugin-not-found' | 'plugin-not-found-and-not-in-marketplace' | 'strategy-not-found' | 'success'
 
 const useConfig = (id: string, payload: AgentNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -25,16 +25,26 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   })
   const strategyProvider = useStrategyProviderDetail(
     inputs.agent_strategy_provider_name || '',
+    { retry: false },
   )
   const currentStrategy = strategyProvider.data?.declaration.strategies.find(
     str => str.identity.name === inputs.agent_strategy_name,
   )
+  const marketplace = useFetchPluginsInMarketPlaceByIds([inputs.agent_strategy_provider_name!], {
+    retry: false,
+  })
   const currentStrategyStatus: StrategyStatus = useMemo(() => {
-    if (strategyProvider.isLoading) return 'loading'
-    if (strategyProvider.isError) return 'plugin-not-found'
+    if (strategyProvider.isLoading || marketplace.isLoading) return 'loading'
+    if (strategyProvider.isError) {
+      if (marketplace.data && marketplace.data.data.plugins.length === 0)
+        return 'plugin-not-found-and-not-in-marketplace'
+
+      return 'plugin-not-found'
+    }
     if (!currentStrategy) return 'strategy-not-found'
     return 'success'
-  }, [currentStrategy, strategyProvider])
+  }, [currentStrategy, marketplace, strategyProvider.isError, strategyProvider.isLoading])
+  console.log('currentStrategyStatus', currentStrategyStatus)
   const pluginId = inputs.agent_strategy_provider_name?.split('/').splice(0, 2).join('/')
   const pluginDetail = useCheckInstalled({
     pluginIds: [pluginId || ''],
