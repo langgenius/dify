@@ -104,6 +104,8 @@ const translation = {
     openInExplore: 'Abrir en Explorar',
     onFailure: 'Sobre el fracaso',
     addFailureBranch: 'Agregar rama de error',
+    noHistory: 'Sin historia',
+    loadMore: 'Cargar más flujos de trabajo',
   },
   env: {
     envPanelTitle: 'Variables de Entorno',

@@ -601,7 +601,7 @@ class RagEtlConfig(BaseSettings):
 
     UNSTRUCTURED_API_KEY: Optional[str] = Field(
         description="API key for Unstructured.io service",
-        default=None,
+        default="",
     )
 
     SCARF_NO_ANALYTICS: Optional[str] = Field(
@@ -765,6 +765,13 @@ class LoginConfig(BaseSettings):
     )
 
 
+class AccountConfig(BaseSettings):
+    ACCOUNT_DELETION_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default=5,
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -792,6 +799,7 @@ class FeatureConfig(
     WorkflowNodeExecutionConfig,
     WorkspaceConfig,
     LoginConfig,
+    AccountConfig,
     # hosted services config
     HostedServiceConfig,
     CeleryBeatConfig,

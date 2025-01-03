@@ -45,14 +45,14 @@
     .content ul li {
       margin-bottom: 10px;
     }
-    .cta-button {
+    .cta-button, .cta-button:hover, .cta-button:active, .cta-button:visited, .cta-button:focus {
       display: block;
       margin: 20px auto;
       padding: 10px 20px;
       background-color: #4e89f9;
-      color: #ffffff;
+      color: #ffffff !important;
       text-align: center;
-      text-decoration: none;
+      text-decoration: none !important;
       border-radius: 5px;
       width: fit-content;
     }
@@ -69,7 +69,7 @@
   <div class="email-container">
     <!-- Header -->
     <div class="header">
-      <img src="https://via.placeholder.com/150x40?text=Dify" alt="Dify Logo">
+      <img src="https://img.mailinblue.com/6365111/images/content_library/original/64cb67ca60532312c211dc72.png" alt="Dify Logo">
     </div>
 
     <!-- Content -->
@@ -78,11 +78,13 @@
       <p>Dear {{userName}},</p>
       <p>
         We're sorry for the inconvenience. To ensure optimal performance, documents 
-        that haven’t been updated or accessed in the past 7 days have been disabled in 
+        that haven’t been updated or accessed in the past 30 days have been disabled in
         your knowledge bases:
       </p>
       <ul>
-        {{knowledge_details}}
+          {% for item in knowledge_details %}
+            <li>{{ item }}</li>
+          {% endfor %}
       </ul>
       <p>You can re-enable them anytime.</p>
       <a href={{url}} class="cta-button">Re-enable in Dify</a>

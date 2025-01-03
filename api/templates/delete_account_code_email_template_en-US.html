@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      line-height: 16pt;
+      color: #101828;
+      background-color: #e9ebf0;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      width: 600px;
+      min-height: 605px;
+      margin: 40px auto;
+      padding: 36px 48px;
+      background-color: #fcfcfd;
+      border-radius: 16px;
+      border: 1px solid #ffffff;
+      box-shadow: 0 2px 4px -2px rgba(9, 9, 11, 0.08);
+    }
+
+    .header {
+      margin-bottom: 24px;
+    }
+
+    .header img {
+      max-width: 100px;
+      height: auto;
+    }
+
+    .title {
+      font-weight: 600;
+      font-size: 24px;
+      line-height: 28.8px;
+    }
+
+    .description {
+      font-size: 13px;
+      line-height: 16px;
+      color: #676f83;
+      margin-top: 12px;
+    }
+
+    .code-content {
+      padding: 16px 32px;
+      text-align: center;
+      border-radius: 16px;
+      background-color: #f2f4f7;
+      margin: 16px auto;
+    }
+
+    .code {
+      line-height: 36px;
+      font-weight: 700;
+      font-size: 30px;
+    }
+
+    .tips {
+      line-height: 16px;
+      color: #676f83;
+      font-size: 13px;
+    }
+
+    .typography {
+      letter-spacing: -0.07px;
+      font-weight: 400;
+      font-style: normal;
+      font-size: 14px;
+      line-height: 20px;
+      color: #354052;
+      margin-top: 12px;
+      margin-bottom: 12px;
+    }
+    .typography p{
+      margin: 0 auto;
+    }
+
+    .typography-title {
+      color: #101828;
+      font-size: 14px;
+      font-style: normal;
+      font-weight: 600;
+      line-height: 20px;
+      margin-top: 12px;
+      margin-bottom: 4px;
+    }
+    .tip-list{
+      margin: 0;
+      padding-left: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <!-- Optional: Add a logo or a header image here -->
+      <img src="https://cloud.dify.ai/logo/logo-site.png" alt="Dify Logo" />
+    </div>
+    <p class="title">Dify.AI Account Deletion and Verification</p>
+    <p class="typography">We received a request to delete your Dify account. To ensure the security of your account and
+      confirm this action, please use the verification code below:</p>
+    <div class="code-content">
+      <span class="code">{{code}}</span>
+    </div>
+    <div class="typography">
+      <p style="margin-bottom:4px">To complete the account deletion process:</p>
+      <p>1. Return to the account deletion page on our website</p>
+      <p>2. Enter the verification code above</p>
+      <p>3. Click "Confirm Deletion"</p>
+    </div>
+    <p class="typography-title">Please note:</p>
+    <ul class="typography tip-list">
+      <li>This code is valid for 5 minutes</li>
+      <li>As the Owner of any Workspaces, your workspaces will be scheduled in a queue for permanent deletion.</li>
+      <li>All your user data will be queued for permanent deletion.</li>
+    </ul>
+  </div>
+</body>
+
+</html>

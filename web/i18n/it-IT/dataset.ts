@@ -153,6 +153,26 @@ const translation = {
   allExternalTip: 'Quando si utilizzano solo conoscenze esterne, l\'utente può scegliere se abilitare il modello Rerank. Se non è abilitato, i blocchi recuperati verranno ordinati in base ai punteggi. Quando le strategie di recupero di diverse basi di conoscenza sono incoerenti, saranno imprecise.',
   externalKnowledgeDescriptionPlaceholder: 'Descrivi cosa c\'è in questa Knowledge Base (facoltativo)',
   noExternalKnowledge: 'Non esiste ancora un\'API di conoscenza esterna, fai clic qui per creare',
+  chunkingMode: {
+    general: 'Generale',
+    parentChild: 'Genitore-figlio',
+  },
+  parentMode: {
+    paragraph: 'Paragrafo',
+    fullDoc: 'Full-doc',
+  },
+  batchAction: {
+    archive: 'Archivio',
+    enable: 'Abilitare',
+    cancel: 'Annulla',
+    selected: 'Selezionato',
+    disable: 'Disabilitare',
+    delete: 'Cancellare',
+  },
+  preprocessDocument: '{{num}} Pre-elaborazione dei documenti',
+  enable: 'Abilitare',
+  documentsDisabled: '{{num}} documenti disabilitati - inattivi da oltre 30 giorni',
+  localDocs: 'Documenti locali',
 }
 
 export default translation

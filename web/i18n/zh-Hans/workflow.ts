@@ -104,6 +104,8 @@ const translation = {
     onFailure: '异常时',
     addFailureBranch: '添加异常分支',
     openInExplore: '在“探索”中打开',
+    loadMore: '加载更多',
+    noHistory: '没有历史版本',
   },
   env: {
     envPanelTitle: '环境变量',
@@ -181,7 +183,7 @@ const translation = {
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
-    rerankModelRequired: '开启 Rerank 模型前，请务必确认模型已在设置中成功配置。',
+    rerankModelRequired: '未配置 Rerank 模型',
     authRequired: '请先授权',
     invalidJson: '{{field}} 是非法的 JSON',
     fields: {

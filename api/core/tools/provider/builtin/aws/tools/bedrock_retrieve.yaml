@@ -73,9 +73,9 @@ parameters:
     llm_description: AWS region where the Bedrock Knowledge Base is located
     form: form
 
-  - name: metadata_filter
-    type: string
-    required: false
+  - name: metadata_filter   # Additional parameter for metadata filtering
+    type: string            # String type, expects JSON-formatted filter conditions
+    required: false         # Optional field - can be omitted
     label:
       en_US: Metadata Filter
       zh_Hans: 元数据过滤器

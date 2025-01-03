@@ -145,6 +145,26 @@ const translation = {
   nTo1RetrievalLegacy: 'การดึงข้อมูล N-to-1 จะเลิกใช้อย่างเป็นทางการตั้งแต่เดือนกันยายน ขอแนะนําให้ใช้การดึงข้อมูลหลายเส้นทางล่าสุดเพื่อให้ได้ผลลัพธ์ที่ดีขึ้น',
   nTo1RetrievalLegacyLink: 'ศึกษาเพิ่มเติม',
   nTo1RetrievalLegacyLinkText: 'การดึงข้อมูล N-to-1 จะเลิกใช้อย่างเป็นทางการในเดือนกันยายน',
+  chunkingMode: {
+    general: 'ทั่วไป',
+    parentChild: 'พ่อแม่ลูก',
+  },
+  parentMode: {
+    paragraph: 'วรรค',
+    fullDoc: 'เอกสารฉบับเต็ม',
+  },
+  batchAction: {
+    selected: 'เลือก',
+    archive: 'หอจดหมายเหตุ',
+    delete: 'ลบ',
+    enable: 'เปิด',
+    cancel: 'ยกเลิก',
+    disable: 'เก',
+  },
+  localDocs: 'เอกสารท้องถิ่น',
+  preprocessDocument: '{{num}} เอกสารการประมวลผลล่วงหน้า',
+  documentsDisabled: '{{num}} เอกสารถูกปิดใช้งาน - ไม่ได้ใช้งานนานกว่า 30 วัน',
+  enable: 'เปิด',
 }
 
 export default translation
