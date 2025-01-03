@@ -10,12 +10,12 @@ import Icon from './card/base/card-icon'
 import Title from './card/base/title'
 import DownloadCount from './card/base/download-count'
 import Button from '@/app/components/base/button'
-import { useGetLanguage } from '@/context/i18n'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import cn from '@/utils/classnames'
 import { useBoolean } from 'ahooks'
 import { getPluginLinkInMarketplace } from '@/app/components/plugins/marketplace/utils'
 import { useI18N } from '@/context/i18n'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
 
 type Props = {
   className?: string
@@ -26,12 +26,12 @@ const ProviderCard: FC<Props> = ({
   className,
   payload,
 }) => {
+  const getValueFromI18nObject = useRenderI18nObject()
   const { t } = useTranslation()
   const [isShowInstallFromMarketplace, {
     setTrue: showInstallFromMarketplace,
     setFalse: hideInstallFromMarketplace,
   }] = useBoolean(false)
-  const language = useGetLanguage()
   const { org, label } = payload
   const { locale } = useI18N()
 
@@ -42,7 +42,7 @@ const ProviderCard: FC<Props> = ({
         <Icon src={payload.icon} />
         <div className="ml-3 w-0 grow">
           <div className="flex items-center h-5">
-            <Title title={label[language] || label.en_US} />
+            <Title title={getValueFromI18nObject(label)} />
             {/* <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" /> */}
           </div>
           <div className='mb-1 flex justify-between items-center h-4'>
@@ -54,7 +54,7 @@ const ProviderCard: FC<Props> = ({
           </div>
         </div>
       </div>
-      <Description className='mt-3' text={payload.brief[language] || payload.brief.en_US} descriptionLineRows={2}></Description>
+      <Description className='mt-3' text={getValueFromI18nObject(payload.brief)} descriptionLineRows={2}></Description>
       <div className='mt-3 flex space-x-0.5'>
         {payload.tags.map(tag => (
           <Badge key={tag.name} text={tag.name} />
