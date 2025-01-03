@@ -82,7 +82,7 @@ scikit-learn = "~1.5.1"
 sentry-sdk = { version = "~1.44.1", extras = ["flask"] }
 sqlalchemy = "~2.0.29"
 starlette = "0.41.0"
-tencentcloud-sdk-python-hunyuan = "~3.0.1158"
+tencentcloud-sdk-python-hunyuan = "~3.0.1294"
 tiktoken = "~0.8.0"
 tokenizers = "~0.15.0"
 transformers = "~4.35.0"
