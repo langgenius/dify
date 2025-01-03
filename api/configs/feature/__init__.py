@@ -667,6 +667,11 @@ class IndexingConfig(BaseSettings):
         default=4000,
     )
 
+    CHILD_CHUNKS_PREVIEW_NUMBER: PositiveInt = Field(
+        description="Maximum number of child chunks to preview",
+        default=50,
+    )
+
 
 class MultiModalTransferConfig(BaseSettings):
     MULTIMODAL_SEND_FORMAT: Literal["base64", "url"] = Field(
