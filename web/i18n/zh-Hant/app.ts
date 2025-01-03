@@ -182,6 +182,7 @@ const translation = {
     searchAllTemplate: '搜尋所有樣本...',
     byCategories: '按類別',
   },
+  showMyCreatedAppsOnly: '我创建的',
 }
 
 export default translation
