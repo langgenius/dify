@@ -21,7 +21,7 @@ class InitiatePrintOrExportTool(BuiltinTool):
         download_url = ""
 
         for x in range(14):
-            time.sleep(20 if k < 6 else 60)
+            time.sleep(20 if x < 6 else 60)
             exported_file = client.get_export_document_file(export_id)
             if "downloadUrl" in exported_file:
                 download_url = exported_file.get("downloadUrl")
