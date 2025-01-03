@@ -14,17 +14,15 @@ export type PlanInfo = {
   level: number
   price: number
   modelProviders: string
+  teamWorkspace: number
   teamMembers: number
   buildApps: number
-  vectorSpace: number
-  documentsUploadQuota: number
+  documents: number
+  vectorSpace: string
+  documentsRequestQuota: number
   documentProcessingPriority: Priority
   logHistory: number
-  customTools: string | number
-  messageRequest: {
-    en: string | number
-    zh: string | number
-  }
+  messageRequest: number
   annotatedResponse: number
 }
 
