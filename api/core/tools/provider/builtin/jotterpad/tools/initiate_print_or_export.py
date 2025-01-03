@@ -5,7 +5,6 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.utils.jotterpad_api_utils import JotterPadRequest
 
-
 class InitiatePrintOrExportTool(BuiltinTool):
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage:
         jotterpad_api_key = self.runtime.credentials.get("jotterpad_api_key")
@@ -21,11 +20,15 @@ class InitiatePrintOrExportTool(BuiltinTool):
 
         download_url = ""
 
-        for x in range(10):
-            time.sleep(20)
+        for x in range(14):
+            time.sleep(20 if k < 6 else 60)
             exported_file = client.get_export_document_file(export_id)
             if "downloadUrl" in exported_file:
                 download_url = exported_file.get("downloadUrl")
-                break
+                if download_url:
+                    break
+
+        if not download_url:
+            raise Exception("Print or export timeout.")
 
         return self.create_text_message(download_url)
