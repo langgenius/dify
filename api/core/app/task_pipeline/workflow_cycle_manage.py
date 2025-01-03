@@ -307,6 +307,8 @@ class WorkflowCycleManage:
         workflow_node_execution.created_at = datetime.now(UTC).replace(tzinfo=None)
 
         session.add(workflow_node_execution)
+
+        self._workflow_node_executions[workflow_node_execution.id] = workflow_node_execution
         return workflow_node_execution
 
     def _handle_workflow_node_execution_success(
@@ -424,6 +426,8 @@ class WorkflowCycleManage:
         workflow_node_execution.index = event.node_run_index
 
         session.add(workflow_node_execution)
+
+        self._workflow_node_executions[workflow_node_execution.id] = workflow_node_execution
         return workflow_node_execution
 
     #################################################
