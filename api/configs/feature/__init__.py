@@ -488,6 +488,11 @@ class AuthConfig(BaseSettings):
         default=60,
     )
 
+    REFRESH_TOKEN_EXPIRE_DAYS: PositiveFloat = Field(
+        description="Expiration time for refresh tokens in days",
+        default=30,
+    )
+
     LOGIN_LOCKOUT_DURATION: PositiveInt = Field(
         description="Time (in seconds) a user must wait before retrying login after exceeding the rate limit.",
         default=86400,
