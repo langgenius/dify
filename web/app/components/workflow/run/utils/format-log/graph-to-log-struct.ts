@@ -2,17 +2,26 @@ const STEP_SPLIT = '->'
 
 const toNodeData = (step: string, info: Record<string, any> = {}): any => {
   const [nodeId, title] = step.split('@')
-  const data = {
+  const data: Record<string, any> = {
     id: nodeId,
     node_id: nodeId,
     title: title || nodeId,
     execution_metadata: {},
     status: 'succeeded',
   }
-  // const executionMetadata = data.execution_metadata
-  const { isRetry } = info
+
+  const executionMetadata = data.execution_metadata
+  const { isRetry, isIteration, inIterationInfo } = info
   if (isRetry)
     data.status = 'retry'
+
+  if (isIteration)
+    data.node_type = 'iteration'
+
+  if (inIterationInfo) {
+    executionMetadata.iteration_id = inIterationInfo.iterationId
+    executionMetadata.iteration_index = inIterationInfo.iterationIndex
+  }
 
   return data
 }
@@ -30,6 +39,21 @@ const toRetryNodeData = ({
   return res
 }
 
+const toIterationNodeData = ({
+  nodeId,
+  children,
+}: {
+  nodeId: string,
+  children: number[],
+}) => {
+  const res = [toNodeData(nodeId, { isIteration: true })]
+  // TODO: handle inner node structure
+  for (let i = 0; i < children.length; i++)
+    res.push(toNodeData(`${children[i]}`, { inIterationInfo: { iterationId: nodeId, iterationIndex: i } }))
+
+  return res
+}
+
 type NodeStructure = {
   node: string;
   params: Array<string | NodeStructure>;
@@ -43,6 +67,7 @@ export function parseNodeString(input: string): NodeStructure {
   const parts: Array<string | NodeStructure> = []
   let current = ''
   let depth = 0
+  let inArrayDepth = 0
 
   for (let i = 0; i < input.length; i++) {
     const char = input[i]
@@ -52,7 +77,14 @@ export function parseNodeString(input: string): NodeStructure {
     else if (char === ')')
       depth--
 
-    if (char === ',' && depth === 0) {
+    if (char === '[')
+      inArrayDepth++
+    else if (char === ']')
+      inArrayDepth--
+
+    const isInArray = inArrayDepth > 0
+
+    if (char === ',' && depth === 0 && !isInArray) {
       parts.push(current.trim())
       current = ''
     }
@@ -97,6 +129,12 @@ const toNodes = (input: string): any[] => {
 
     const { node, params } = parseNodeString(step)
     switch (node) {
+      case 'iteration':
+        res.push(...toIterationNodeData({
+          nodeId: params[0] as string,
+          children: JSON.parse(params[1] as string) as number[],
+        }))
+        break
       case 'retry':
         res.push(...toRetryNodeData({
           nodeId: params[0] as string,
