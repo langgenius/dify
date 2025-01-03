@@ -78,6 +78,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>subchunk_segmentation</code> (object) 子分段规则
               - <code>separator</code> 分段标识符，目前仅允许设置一个分隔符。默认为 <code>***</code>
               - <code>max_tokens</code> 最大长度 (token) 需要校验小于父级的长度
+              - <code>chunk_overlap</code> 分段重叠指的是在对数据进行分段时，段与段之间存在一定的重叠部分（选填）
       </Property>
     </Properties>
   </Col>
@@ -191,6 +192,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>subchunk_segmentation</code> (object) 子分段规则
               - <code>separator</code> 分段标识符，目前仅允许设置一个分隔符。默认为 <code>***</code>
               - <code>max_tokens</code> 最大长度 (token) 需要校验小于父级的长度
+              - <code>chunk_overlap</code> 分段重叠指的是在对数据进行分段时，段与段之间存在一定的重叠部分（选填）
       </Property>
       <Property name='file' type='multipart/form-data' key='file'>
         需要上传的文件。
@@ -477,6 +479,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>subchunk_segmentation</code> (object) 子分段规则
               - <code>separator</code> 分段标识符，目前仅允许设置一个分隔符。默认为 <code>***</code>
               - <code>max_tokens</code> 最大长度 (token) 需要校验小于父级的长度
+              - <code>chunk_overlap</code> 分段重叠指的是在对数据进行分段时，段与段之间存在一定的重叠部分（选填）
       </Property>
     </Properties>
   </Col>
@@ -578,6 +581,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>subchunk_segmentation</code> (object) 子分段规则
               - <code>separator</code> 分段标识符，目前仅允许设置一个分隔符。默认为 <code>***</code>
               - <code>max_tokens</code> 最大长度 (token) 需要校验小于父级的长度
+              - <code>chunk_overlap</code> 分段重叠指的是在对数据进行分段时，段与段之间存在一定的重叠部分（选填）
       </Property>
     </Properties>
   </Col>
