@@ -12,7 +12,7 @@ import Toast from '@/app/components/base/toast'
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
 import Loading from '@/app/components/base/loading'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
-import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -26,8 +26,8 @@ const ToolCredentialForm: FC<Props> = ({
   onCancel,
   onSaved,
 }) => {
+  const getValueFromI18nObject = useRenderI18nObject()
   const { t } = useTranslation()
-  const language = useLanguage()
   const [credentialSchema, setCredentialSchema] = useState<any>(null)
   const { name: collectionName } = collection
   const [tempCredential, setTempCredential] = React.useState<any>({})
@@ -45,7 +45,7 @@ const ToolCredentialForm: FC<Props> = ({
   const handleSave = () => {
     for (const field of credentialSchema) {
       if (field.required && !tempCredential[field.name]) {
-        Toast.notify({ type: 'error', message: t('common.errorMsg.fieldRequired', { field: field.label[language] || field.label.en_US }) })
+        Toast.notify({ type: 'error', message: t('common.errorMsg.fieldRequired', { field: getValueFromI18nObject(field.label) }) })
         return
       }
     }
