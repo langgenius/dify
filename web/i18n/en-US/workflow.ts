@@ -733,8 +733,10 @@ const translation = {
       toolNotInstallTooltip: '{{tool}} is not installed',
       toolNotAuthorizedTooltip: '{{tool}} Not Authorized',
       strategyNotInstallTooltip: '{{strategy}} is not installed',
-      strategyNotFoundInPlugin: '{{strategy}} is not found in {{plugin}}',
-      strategyNotInstallAndNotInMarketplace: '{{strategy}} is not installed and not found in Marketplace',
+      unsupportedStrategy: 'Unsupported strategy',
+      pluginNotFoundDesc: 'This plugin is installed from GitHub. Please go to Plugins to reinstall',
+      strategyNotFoundDesc: 'The installed plugin version does not provide this strategy.',
+      strategyNotFoundDescAndSwitchVersion: 'The installed plugin version does not provide this strategy. Click to switch version.',
       modelSelectorTooltips: {
         deprecated: 'This model is deprecated',
       },

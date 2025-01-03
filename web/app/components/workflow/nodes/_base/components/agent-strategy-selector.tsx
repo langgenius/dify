@@ -1,4 +1,5 @@
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import type { ReactNode } from 'react'
 import { memo, useMemo, useState } from 'react'
 import type { Strategy } from './agent-strategy'
 import classNames from '@/utils/classnames'
@@ -16,30 +17,31 @@ import type { StrategyPluginDetail } from '@/app/components/plugins/types'
 import type { ToolWithProvider } from '../../../types'
 import { CollectionType } from '@/app/components/tools/types'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
-import type { StrategyStatus } from '../../agent/use-config'
 import { useStrategyInfo } from '../../agent/use-config'
 
-const NotInstallWarn = (props: {
-  strategyStatus: StrategyStatus
+const NotFoundWarn = (props: {
+  title: ReactNode,
+  description: ReactNode
 }) => {
-  // strategyStatus can be 'plugin-not-found-and-not-in-marketplace' | 'strategy-not-found'
-  const { strategyStatus } = props
+  const { title, description } = props
 
   const { t } = useTranslation()
   return <Tooltip
-    popupContent={<div className='space-y-1 text-xs'>
-      <h3 className='text-text-primary font-semibold'>
-        {t('workflow.nodes.agent.pluginNotInstalled')}
-      </h3>
-      <p className='text-text-secondary tracking-tight'>
-        {t('workflow.nodes.agent.pluginNotInstalledDesc')}
-      </p>
-      <p>
-        <Link href={'/plugins'} className='text-text-accent tracking-tight'>
-          {t('workflow.nodes.agent.linkToPlugin')}
-        </Link>
-      </p>
-    </div>}
+    popupContent={
+      <div className='space-y-1 text-xs'>
+        <h3 className='text-text-primary font-semibold'>
+          {title}
+        </h3>
+        <p className='text-text-secondary tracking-tight'>
+          {description}
+        </p>
+        <p>
+          <Link href={'/plugins'} className='text-text-accent tracking-tight'>
+            {t('workflow.nodes.agent.linkToPlugin')}
+          </Link>
+        </p>
+      </div>
+    }
     needsDelay
   >
     <div>
@@ -98,8 +100,18 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
     value?.agent_strategy_provider_name,
     value?.agent_strategy_name,
   )
-  const showError = ['strategy-not-found', 'plugin-not-found-and-not-in-marketplace']
-    .includes(strategyStatus)
+  const showPluginNotInstalledWarn = strategyStatus?.plugin?.source === 'external'
+    && !strategyStatus.plugin.installed
+
+  const showUnsupportedStrategy = strategyStatus?.plugin.source === 'external'
+    && strategyStatus.strategy === 'not-found'
+
+  const showSwitchVersion = strategyStatus?.strategy === 'not-found'
+    && strategyStatus.plugin.source === 'marketplace' && strategyStatus.plugin.installed
+
+  const showInstallButton = strategyStatus?.strategy === 'not-found'
+    && strategyStatus.plugin.source === 'marketplace' && !strategyStatus.plugin.installed
+
   const icon = list?.find(
     coll => coll.tools?.find(tool => tool.name === value?.agent_strategy_name),
   )?.icon as string | undefined
@@ -125,16 +137,23 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
           {value?.agent_strategy_label || t('workflow.nodes.agent.strategy.selectTip')}
         </p>
         {value && <div className='ml-auto flex items-center gap-1'>
-          {strategyStatus === 'plugin-not-found' && <InstallPluginButton
+          {showInstallButton && <InstallPluginButton
             onClick={e => e.stopPropagation()}
             size={'small'}
             uniqueIdentifier={value.plugin_unique_identifier}
           />}
-          {showError
-            ? <NotInstallWarn
-              strategyStatus={strategyStatus}
+          {showPluginNotInstalledWarn
+            ? <NotFoundWarn
+              title={t('workflow.nodes.agent.pluginNotInstalled')}
+              description={t('workflow.nodes.agent.pluginNotInstalledDesc')}
             />
-            : <RiArrowDownSLine className='size-4 text-text-tertiary' />}
+            : showUnsupportedStrategy
+              ? <NotFoundWarn
+                title={t('workflow.nodes.agent.unsupportedStrategy')}
+                description={t('workflow.nodes.agent.strategyNotFoundDesc')}
+              />
+              : <RiArrowDownSLine className='size-4 text-text-tertiary' />
+          }
         </div>}
       </div>
     </PortalToFollowElemTrigger>

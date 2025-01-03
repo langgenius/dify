@@ -13,7 +13,13 @@ import type { Var } from '../../types'
 import { VarType as VarKindType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 
-export type StrategyStatus = 'loading' | 'plugin-not-found' | 'plugin-not-found-and-not-in-marketplace' | 'strategy-not-found' | 'success'
+export type StrategyStatus = {
+  plugin: {
+    source: 'external' | 'marketplace'
+    installed: boolean
+  }
+  strategy: 'not-found' | 'normal'
+}
 
 export const useStrategyInfo = (
   strategyProviderName?: string,
@@ -29,16 +35,19 @@ export const useStrategyInfo = (
   const marketplace = useFetchPluginsInMarketPlaceByIds([strategyProviderName!], {
     retry: false,
   })
-  const strategyStatus: StrategyStatus = useMemo(() => {
-    if (strategyProvider.isLoading || marketplace.isLoading) return 'loading'
-    if (strategyProvider.isError) {
-      if (marketplace.data && marketplace.data.data.plugins.length === 0)
-        return 'plugin-not-found-and-not-in-marketplace'
-
-      return 'plugin-not-found'
+  const strategyStatus: StrategyStatus | undefined = useMemo(() => {
+    if (strategyProvider.isLoading || marketplace.isLoading)
+      return undefined
+    const strategyExist = !!strategy
+    const isPluginInstalled = !strategyProvider.isError
+    const isInMarketplace = !!marketplace.data?.data.plugins.at(0)
+    return {
+      plugin: {
+        source: isInMarketplace ? 'marketplace' : 'external',
+        installed: isPluginInstalled,
+      },
+      strategy: strategyExist ? 'normal' : 'not-found',
     }
-    if (!strategy) return 'strategy-not-found'
-    return 'success'
   }, [strategy, marketplace, strategyProvider.isError, strategyProvider.isLoading])
   return {
     strategyProvider,

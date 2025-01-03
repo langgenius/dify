@@ -89,20 +89,14 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     {inputs.agent_strategy_name
       ? <SettingItem
         label={t('workflow.nodes.agent.strategy.shortLabel')}
-        status={
-          ['plugin-not-found', 'strategy-not-found', 'plugin-not-found-and-not-in-marketplace'].includes(currentStrategyStatus)
-            ? 'error'
-            : undefined
-        }
+        status={currentStrategyStatus?.strategy === 'not-found' ? 'error' : undefined}
         tooltip={
-          ['plugin-not-found', 'strategy-not-found', 'plugin-not-found-and-not-in-marketplace'].includes(currentStrategyStatus)
-            ? t('workflow.nodes.agent.strategyNotInstallTooltip', {
-              plugin: pluginDetail?.declaration.label
-                ? renderI18nObject(pluginDetail?.declaration.label)
-                : undefined,
-              strategy: inputs.agent_strategy_label,
-            })
-            : undefined
+          currentStrategyStatus?.strategy === 'not-found' ? t('workflow.nodes.agent.strategyNotInstallTooltip', {
+            plugin: pluginDetail?.declaration.label
+              ? renderI18nObject(pluginDetail?.declaration.label)
+              : undefined,
+            strategy: inputs.agent_strategy_label,
+          }) : undefined
         }
       >
         {inputs.agent_strategy_label}
