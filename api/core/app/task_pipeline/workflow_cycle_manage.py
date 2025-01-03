@@ -246,7 +246,7 @@ class WorkflowCycleManage:
         workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
         workflow_run.exceptions_count = exceptions_count
 
-        stmt = select(WorkflowNodeExecution.id).where(
+        stmt = select(WorkflowNodeExecution.node_execution_id).where(
             WorkflowNodeExecution.tenant_id == workflow_run.tenant_id,
             WorkflowNodeExecution.app_id == workflow_run.app_id,
             WorkflowNodeExecution.workflow_id == workflow_run.workflow_id,
@@ -257,7 +257,7 @@ class WorkflowCycleManage:
         ids = session.scalars(stmt).all()
         # Use self._get_workflow_node_execution here to make sure the cache is updated
         running_workflow_node_executions = [
-            self._get_workflow_node_execution(session=session, node_execution_id=id) for id in ids
+            self._get_workflow_node_execution(session=session, node_execution_id=id) for id in ids if id
         ]
 
         for workflow_node_execution in running_workflow_node_executions:
