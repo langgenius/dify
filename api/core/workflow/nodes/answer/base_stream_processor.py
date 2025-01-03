@@ -49,7 +49,8 @@ class StreamProcessor(ABC):
                     # there is not effect on the answer node and the workflow, when we have a better solution
                     # we can open this code. Issues: #11542 #9560 #10638 #10564
                     ids = self._fetch_node_ids_in_reachable_branch(edge.target_node_id)
-                    if "answer" in ids:
+                    # special case for only answer in it for issue #11985
+                    if "answer" in ids and len(list(set(ids))) > 1:
                         continue
                     else:
                         reachable_node_ids.extend(ids)
