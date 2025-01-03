@@ -159,14 +159,14 @@ class BuiltinToolManageService:
                 encrypted_credentials=json.dumps(credentials),
             )
 
-            session.add(provider)
-
+            db.session.add(provider)
         else:
             provider.encrypted_credentials = json.dumps(credentials)
 
             # delete cache
             tool_configuration.delete_tool_credentials_cache()
 
+        db.session.commit()
         return {"result": "success"}
 
     @staticmethod
