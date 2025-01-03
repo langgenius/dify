@@ -507,7 +507,7 @@ const translation = {
       optionName: {
         image: '圖像',
         url: '網址',
-        doc: '醫生',
+        doc: '文檔',
         localUpload: '本地上傳',
         video: '視頻',
         audio: '音訊',
