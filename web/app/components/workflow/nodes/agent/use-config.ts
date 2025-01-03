@@ -15,6 +15,38 @@ import useAvailableVarList from '../_base/hooks/use-available-var-list'
 
 export type StrategyStatus = 'loading' | 'plugin-not-found' | 'plugin-not-found-and-not-in-marketplace' | 'strategy-not-found' | 'success'
 
+export const useStrategyInfo = (
+  strategyProviderName?: string,
+  strategyName?: string,
+) => {
+  const strategyProvider = useStrategyProviderDetail(
+    strategyProviderName || '',
+    { retry: false },
+  )
+  const strategy = strategyProvider.data?.declaration.strategies.find(
+    str => str.identity.name === strategyName,
+  )
+  const marketplace = useFetchPluginsInMarketPlaceByIds([strategyProviderName!], {
+    retry: false,
+  })
+  const strategyStatus: StrategyStatus = useMemo(() => {
+    if (strategyProvider.isLoading || marketplace.isLoading) return 'loading'
+    if (strategyProvider.isError) {
+      if (marketplace.data && marketplace.data.data.plugins.length === 0)
+        return 'plugin-not-found-and-not-in-marketplace'
+
+      return 'plugin-not-found'
+    }
+    if (!strategy) return 'strategy-not-found'
+    return 'success'
+  }, [strategy, marketplace, strategyProvider.isError, strategyProvider.isLoading])
+  return {
+    strategyProvider,
+    strategy,
+    strategyStatus,
+  }
+}
+
 const useConfig = (id: string, payload: AgentNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { inputs, setInputs } = useNodeCrud<AgentNodeType>(id, payload)
@@ -23,27 +55,14 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     inputs,
     setInputs,
   })
-  const strategyProvider = useStrategyProviderDetail(
-    inputs.agent_strategy_provider_name || '',
-    { retry: false },
+  const {
+    strategyStatus: currentStrategyStatus,
+    strategy: currentStrategy,
+    strategyProvider,
+  } = useStrategyInfo(
+    inputs.agent_strategy_provider_name,
+    inputs.agent_strategy_name,
   )
-  const currentStrategy = strategyProvider.data?.declaration.strategies.find(
-    str => str.identity.name === inputs.agent_strategy_name,
-  )
-  const marketplace = useFetchPluginsInMarketPlaceByIds([inputs.agent_strategy_provider_name!], {
-    retry: false,
-  })
-  const currentStrategyStatus: StrategyStatus = useMemo(() => {
-    if (strategyProvider.isLoading || marketplace.isLoading) return 'loading'
-    if (strategyProvider.isError) {
-      if (marketplace.data && marketplace.data.data.plugins.length === 0)
-        return 'plugin-not-found-and-not-in-marketplace'
-
-      return 'plugin-not-found'
-    }
-    if (!currentStrategy) return 'strategy-not-found'
-    return 'success'
-  }, [currentStrategy, marketplace, strategyProvider.isError, strategyProvider.isLoading])
   console.log('currentStrategyStatus', currentStrategyStatus)
   const pluginId = inputs.agent_strategy_provider_name?.split('/').splice(0, 2).join('/')
   const pluginDetail = useCheckInstalled({

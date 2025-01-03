@@ -30,7 +30,6 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
     inputs,
     setInputs,
     currentStrategy,
-    currentStrategyStatus,
     formData,
     onFormChange,
 
@@ -96,7 +95,6 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
         onFormValueChange={onFormChange}
         nodeOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
-        strategyStatus={currentStrategyStatus}
       />
     </Field>
     <div>

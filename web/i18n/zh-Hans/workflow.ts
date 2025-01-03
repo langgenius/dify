@@ -733,6 +733,7 @@ const translation = {
       toolNotInstallTooltip: '{{tool}} 未安装',
       toolNotAuthorizedTooltip: '{{tool}} 未授权',
       strategyNotInstallTooltip: '{{strategy}} 未安装',
+      strategyNotInstallAndNotInMarketplace: '{{strategy}} 未安装且未在市场中找到',
       strategyNotFoundInPlugin: '在 {{plugin}} 中未找到 {{strategy}}',
       modelSelectorTooltips: {
         deprecated: '此模型已弃用',

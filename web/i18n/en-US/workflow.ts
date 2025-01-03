@@ -734,6 +734,7 @@ const translation = {
       toolNotAuthorizedTooltip: '{{tool}} Not Authorized',
       strategyNotInstallTooltip: '{{strategy}} is not installed',
       strategyNotFoundInPlugin: '{{strategy}} is not found in {{plugin}}',
+      strategyNotInstallAndNotInMarketplace: '{{strategy}} is not installed and not found in Marketplace',
       modelSelectorTooltips: {
         deprecated: 'This model is deprecated',
       },

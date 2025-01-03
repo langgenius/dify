@@ -17,15 +17,27 @@ import type { ToolWithProvider } from '../../../types'
 import { CollectionType } from '@/app/components/tools/types'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import type { StrategyStatus } from '../../agent/use-config'
+import { useStrategyInfo } from '../../agent/use-config'
 
-const ExternalNotInstallWarn = () => {
+const NotInstallWarn = (props: {
+  strategyStatus: StrategyStatus
+}) => {
+  // strategyStatus can be 'plugin-not-found-and-not-in-marketplace' | 'strategy-not-found'
+  const { strategyStatus } = props
+
   const { t } = useTranslation()
   return <Tooltip
     popupContent={<div className='space-y-1 text-xs'>
-      <h3 className='text-text-primary font-semibold'>{t('workflow.nodes.agent.pluginNotInstalled')}</h3>
-      <p className='text-text-secondary tracking-tight'>{t('workflow.nodes.agent.pluginNotInstalledDesc')}</p>
+      <h3 className='text-text-primary font-semibold'>
+        {t('workflow.nodes.agent.pluginNotInstalled')}
+      </h3>
+      <p className='text-text-secondary tracking-tight'>
+        {t('workflow.nodes.agent.pluginNotInstalledDesc')}
+      </p>
       <p>
-        <Link href={'/plugins'} className='text-text-accent tracking-tight'>{t('workflow.nodes.agent.linkToPlugin')}</Link>
+        <Link href={'/plugins'} className='text-text-accent tracking-tight'>
+          {t('workflow.nodes.agent.linkToPlugin')}
+        </Link>
       </p>
     </div>}
     needsDelay
@@ -68,11 +80,10 @@ function formatStrategy(input: StrategyPluginDetail[], getIcon: (i: string) => s
 export type AgentStrategySelectorProps = {
   value?: Strategy,
   onChange: (value?: Strategy) => void,
-  strategyStatus?: StrategyStatus
 }
 
 export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) => {
-  const { value, onChange, strategyStatus } = props
+  const { value, onChange } = props
   const [open, setOpen] = useState(false)
   const [viewType, setViewType] = useState<ViewType>(ViewType.flat)
   const [query, setQuery] = useState('')
@@ -83,14 +94,23 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
     if (!list) return []
     return list.filter(tool => tool.name.toLowerCase().includes(query.toLowerCase()))
   }, [query, list])
-  const showError = (['plugin-not-found', 'strategy-not-found'] as Array<undefined | StrategyStatus>).includes(strategyStatus)
+  const { strategyStatus } = useStrategyInfo(
+    value?.agent_strategy_provider_name,
+    value?.agent_strategy_name,
+  )
+  const showError = ['strategy-not-found', 'plugin-not-found-and-not-in-marketplace']
+    .includes(strategyStatus)
   const icon = list?.find(
     coll => coll.tools?.find(tool => tool.name === value?.agent_strategy_name),
   )?.icon as string | undefined
   const { t } = useTranslation()
+
   return <PortalToFollowElem open={open} onOpenChange={setOpen} placement='bottom'>
     <PortalToFollowElemTrigger className='w-full'>
-      <div className='h-8 p-1 gap-0.5 flex items-center rounded-lg bg-components-input-bg-normal w-full hover:bg-state-base-hover-alt select-none' onClick={() => setOpen(o => !o)}>
+      <div
+        className='h-8 p-1 gap-0.5 flex items-center rounded-lg bg-components-input-bg-normal w-full hover:bg-state-base-hover-alt select-none'
+        onClick={() => setOpen(o => !o)}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {icon && <div className='flex items-center justify-center w-6 h-6'><img
           src={icon}
@@ -105,8 +125,16 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
           {value?.agent_strategy_label || t('workflow.nodes.agent.strategy.selectTip')}
         </p>
         {value && <div className='ml-auto flex items-center gap-1'>
-          {strategyStatus === 'plugin-not-found' && <InstallPluginButton onClick={e => e.stopPropagation()} size={'small'} uniqueIdentifier={value.plugin_unique_identifier} />}
-          {showError ? <ExternalNotInstallWarn /> : <RiArrowDownSLine className='size-4 text-text-tertiary' />}
+          {strategyStatus === 'plugin-not-found' && <InstallPluginButton
+            onClick={e => e.stopPropagation()}
+            size={'small'}
+            uniqueIdentifier={value.plugin_unique_identifier}
+          />}
+          {showError
+            ? <NotInstallWarn
+              strategyStatus={strategyStatus}
+            />
+            : <RiArrowDownSLine className='size-4 text-text-tertiary' />}
         </div>}
       </div>
     </PortalToFollowElemTrigger>
