@@ -267,8 +267,8 @@ class DatasetApi(DatasetApiResource):
             )
         # clear partial member list when permission is only_me or all_team_members
         elif (
-                data.get("permission") == DatasetPermissionEnum.ONLY_ME
-                or data.get("permission") == DatasetPermissionEnum.ALL_TEAM
+            data.get("permission") == DatasetPermissionEnum.ONLY_ME
+            or data.get("permission") == DatasetPermissionEnum.ALL_TEAM
         ):
             DatasetPermissionService.clear_partial_member_list(dataset_id_str)
 

@@ -214,7 +214,7 @@ def validate_and_get_api_token(scope=None):
         .filter(
             ApiToken.token == auth_token,
             ApiToken.type == scope,
-            )
+        )
         .first()
     )
 
@@ -241,7 +241,7 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
             EndUser.app_id == app_model.id,
             EndUser.session_id == user_id,
             EndUser.type == "service_api",
-            )
+        )
         .first()
     )
 

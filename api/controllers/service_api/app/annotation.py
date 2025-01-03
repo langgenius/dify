@@ -102,8 +102,6 @@ class AnnotationUpdateDeleteApi(Resource):
 
 
 api.add_resource(AnnotationReplyActionApi, "/apps/annotation-reply/<string:action>")
-api.add_resource(
-    AnnotationReplyActionStatusApi, "/apps/annotation-reply/<string:action>/status/<uuid:job_id>"
-)
+api.add_resource(AnnotationReplyActionStatusApi, "/apps/annotation-reply/<string:action>/status/<uuid:job_id>")
 api.add_resource(AnnotationListApi, "/apps/annotations")
 api.add_resource(AnnotationUpdateDeleteApi, "/apps/annotations/<uuid:annotation_id>")
