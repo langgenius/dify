@@ -56,9 +56,9 @@ class ToolFileMessageTransformer:
                     )
             elif message.type == ToolInvokeMessage.MessageType.BLOB:
                 # get mime type and save blob to storage
-                assert message.meta
+                meta = message.meta or {}
 
-                mimetype = message.meta.get("mime_type", "octet/stream")
+                mimetype = meta.get("mime_type", "octet/stream")
                 # if message is str, encode it to bytes
 
                 if not isinstance(message.message, ToolInvokeMessage.BlobMessage):
@@ -81,17 +81,17 @@ class ToolFileMessageTransformer:
                     yield ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.IMAGE_LINK,
                         message=ToolInvokeMessage.TextMessage(text=url),
-                        meta=message.meta.copy() if message.meta is not None else {},
+                        meta=meta.copy() if meta is not None else {},
                     )
                 else:
                     yield ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.BINARY_LINK,
                         message=ToolInvokeMessage.TextMessage(text=url),
-                        meta=message.meta.copy() if message.meta is not None else {},
+                        meta=meta.copy() if meta is not None else {},
                     )
             elif message.type == ToolInvokeMessage.MessageType.FILE:
-                assert message.meta is not None
-                file = message.meta.get("file")
+                meta = message.meta or {}
+                file = meta.get("file")
                 if isinstance(file, File):
                     if file.transfer_method == FileTransferMethod.TOOL_FILE:
                         assert file.related_id is not None
@@ -100,13 +100,13 @@ class ToolFileMessageTransformer:
                             yield ToolInvokeMessage(
                                 type=ToolInvokeMessage.MessageType.IMAGE_LINK,
                                 message=ToolInvokeMessage.TextMessage(text=url),
-                                meta=message.meta.copy() if message.meta is not None else {},
+                                meta=meta.copy() if meta is not None else {},
                             )
                         else:
                             yield ToolInvokeMessage(
                                 type=ToolInvokeMessage.MessageType.LINK,
                                 message=ToolInvokeMessage.TextMessage(text=url),
-                                meta=message.meta.copy() if message.meta is not None else {},
+                                meta=meta.copy() if meta is not None else {},
                             )
                     else:
                         yield message
