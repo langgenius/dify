@@ -821,9 +821,9 @@ class WorkflowCycleManage:
 
     def _get_workflow_run(self, *, session: Session, workflow_run_id: str) -> WorkflowRun:
         if self._workflow_run and self._workflow_run.id == workflow_run_id:
-            workflow_run = self._workflow_run
-            workflow_run = session.merge(workflow_run)
-            return workflow_run
+            cached_workflow_run = self._workflow_run
+            cached_workflow_run = session.merge(cached_workflow_run)
+            return cached_workflow_run
         stmt = select(WorkflowRun).where(WorkflowRun.id == workflow_run_id)
         workflow_run = session.scalar(stmt)
         if not workflow_run:
@@ -834,9 +834,9 @@ class WorkflowCycleManage:
 
     def _get_workflow_node_execution(self, session: Session, node_execution_id: str) -> WorkflowNodeExecution:
         if node_execution_id in self._workflow_node_executions:
-            workflow_node_execution = self._workflow_node_executions[node_execution_id]
-            workflow_node_execution = session.merge(workflow_node_execution)
-            return workflow_node_execution
+            cached_workflow_node_execution = self._workflow_node_executions[node_execution_id]
+            cached_workflow_node_execution = session.merge(cached_workflow_node_execution)
+            return cached_workflow_node_execution
         stmt = select(WorkflowNodeExecution).where(WorkflowNodeExecution.node_execution_id == node_execution_id)
         workflow_node_execution = session.scalar(stmt)
         if not workflow_node_execution:

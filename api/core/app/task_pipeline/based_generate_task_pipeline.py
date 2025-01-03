@@ -35,13 +35,6 @@ class BasedGenerateTaskPipeline:
         queue_manager: AppQueueManager,
         stream: bool,
     ) -> None:
-        """
-        Initialize GenerateTaskPipeline.
-        :param application_generate_entity: application generate entity
-        :param queue_manager: queue manager
-        :param user: user
-        :param stream: stream
-        """
         self._application_generate_entity = application_generate_entity
         self._queue_manager = queue_manager
         self._start_at = time.perf_counter()
