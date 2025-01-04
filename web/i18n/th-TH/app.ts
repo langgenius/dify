@@ -179,6 +179,7 @@ const translation = {
     searchAllTemplate: 'ค้นหาเทมเพลตทั้งหมด...',
     byCategories: 'ตามหมวดหมู่',
   },
+  showMyCreatedAppsOnly: 'แสดงเฉพาะแอปที่ฉันสร้าง',
 }
 
 export default translation

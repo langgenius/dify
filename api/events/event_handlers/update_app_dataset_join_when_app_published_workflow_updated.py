@@ -17,11 +17,11 @@ def handle(sender, **kwargs):
     dataset_ids = get_dataset_ids_from_workflow(published_workflow)
     app_dataset_joins = db.session.query(AppDatasetJoin).filter(AppDatasetJoin.app_id == app.id).all()
 
-    removed_dataset_ids = []
+    removed_dataset_ids: set[str] = set()
     if not app_dataset_joins:
         added_dataset_ids = dataset_ids
     else:
-        old_dataset_ids = set()
+        old_dataset_ids: set[str] = set()
         old_dataset_ids.update(app_dataset_join.dataset_id for app_dataset_join in app_dataset_joins)
 
         added_dataset_ids = dataset_ids - old_dataset_ids
@@ -41,8 +41,8 @@ def handle(sender, **kwargs):
     db.session.commit()
 
 
-def get_dataset_ids_from_workflow(published_workflow: Workflow) -> set:
-    dataset_ids = set()
+def get_dataset_ids_from_workflow(published_workflow: Workflow) -> set[str]:
+    dataset_ids: set[str] = set()
     graph = published_workflow.graph_dict
     if not graph:
         return dataset_ids
@@ -60,7 +60,7 @@ def get_dataset_ids_from_workflow(published_workflow: Workflow) -> set:
     for node in knowledge_retrieval_nodes:
         try:
             node_data = KnowledgeRetrievalNodeData(**node.get("data", {}))
-            dataset_ids.update(node_data.dataset_ids)
+            dataset_ids.update(dataset_id for dataset_id in node_data.dataset_ids)
         except Exception as e:
             continue
 

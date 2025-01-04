@@ -25,6 +25,11 @@ const translation = {
   viewChart: '查看向量圖表',
   viewDetail: '查看詳情',
   settingTitle: '檢索設置',
+  open: '打開',
+  records: '記錄',
+  chunkDetail: '數據塊詳細資訊',
+  hitChunks: '命中 {{num}} 個子塊',
+  keyword: '關鍵字',
 }
 
 export default translation

@@ -6,10 +6,14 @@ from flask import Flask, current_app
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.embedding.retrieval import RetrievalSegments
+from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
-from models.dataset import Dataset
+from models.dataset import ChildChunk, Dataset, DocumentSegment
+from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
 
 default_retrieval_model = {
@@ -31,7 +35,7 @@ class RetrievalService:
         top_k: int,
         score_threshold: Optional[float] = 0.0,
         reranking_model: Optional[dict] = None,
-        reranking_mode: Optional[str] = "reranking_model",
+        reranking_mode: str = "reranking_model",
         weights: Optional[dict] = None,
     ):
         if not query:
@@ -42,15 +46,15 @@ class RetrievalService:
 
         if not dataset or dataset.available_document_count == 0 or dataset.available_segment_count == 0:
             return []
-        all_documents = []
-        threads = []
-        exceptions = []
+        all_documents: list[Document] = []
+        threads: list[threading.Thread] = []
+        exceptions: list[str] = []
         # retrieval_model source with keyword
         if retrieval_method == "keyword_search":
             keyword_thread = threading.Thread(
                 target=RetrievalService.keyword_search,
                 kwargs={
-                    "flask_app": current_app._get_current_object(),
+                    "flask_app": current_app._get_current_object(),  # type: ignore
                     "dataset_id": dataset_id,
                     "query": query,
                     "top_k": top_k,
@@ -65,7 +69,7 @@ class RetrievalService:
             embedding_thread = threading.Thread(
                 target=RetrievalService.embedding_search,
                 kwargs={
-                    "flask_app": current_app._get_current_object(),
+                    "flask_app": current_app._get_current_object(),  # type: ignore
                     "dataset_id": dataset_id,
                     "query": query,
                     "top_k": top_k,
@@ -84,7 +88,7 @@ class RetrievalService:
             full_text_index_thread = threading.Thread(
                 target=RetrievalService.full_text_index_search,
                 kwargs={
-                    "flask_app": current_app._get_current_object(),
+                    "flask_app": current_app._get_current_object(),  # type: ignore
                     "dataset_id": dataset_id,
                     "query": query,
                     "retrieval_method": retrieval_method,
@@ -103,7 +107,7 @@ class RetrievalService:
 
         if exceptions:
             exception_message = ";\n".join(exceptions)
-            raise Exception(exception_message)
+            raise ValueError(exception_message)
 
         if retrieval_method == RetrievalMethod.HYBRID_SEARCH.value:
             data_post_processor = DataPostProcessor(
@@ -124,7 +128,7 @@ class RetrievalService:
         if not dataset:
             return []
         all_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
-            dataset.tenant_id, dataset_id, query, external_retrieval_model
+            dataset.tenant_id, dataset_id, query, external_retrieval_model or {}
         )
         return all_documents
 
@@ -135,6 +139,8 @@ class RetrievalService:
         with flask_app.app_context():
             try:
                 dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+                if not dataset:
+                    raise ValueError("dataset not found")
 
                 keyword = Keyword(dataset=dataset)
 
@@ -159,6 +165,8 @@ class RetrievalService:
         with flask_app.app_context():
             try:
                 dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+                if not dataset:
+                    raise ValueError("dataset not found")
 
                 vector = Vector(dataset=dataset)
 
@@ -209,6 +217,8 @@ class RetrievalService:
         with flask_app.app_context():
             try:
                 dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+                if not dataset:
+                    raise ValueError("dataset not found")
 
                 vector_processor = Vector(
                     dataset=dataset,
@@ -241,3 +251,89 @@ class RetrievalService:
     @staticmethod
     def escape_query_for_search(query: str) -> str:
         return query.replace('"', '\\"')
+
+    @staticmethod
+    def format_retrieval_documents(documents: list[Document]) -> list[RetrievalSegments]:
+        records = []
+        include_segment_ids = []
+        segment_child_map = {}
+        for document in documents:
+            document_id = document.metadata.get("document_id")
+            dataset_document = db.session.query(DatasetDocument).filter(DatasetDocument.id == document_id).first()
+            if dataset_document:
+                if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                    child_index_node_id = document.metadata.get("doc_id")
+                    result = (
+                        db.session.query(ChildChunk, DocumentSegment)
+                        .join(DocumentSegment, ChildChunk.segment_id == DocumentSegment.id)
+                        .filter(
+                            ChildChunk.index_node_id == child_index_node_id,
+                            DocumentSegment.dataset_id == dataset_document.dataset_id,
+                            DocumentSegment.enabled == True,
+                            DocumentSegment.status == "completed",
+                        )
+                        .first()
+                    )
+                    if result:
+                        child_chunk, segment = result
+                        if not segment:
+                            continue
+                        if segment.id not in include_segment_ids:
+                            include_segment_ids.append(segment.id)
+                            child_chunk_detail = {
+                                "id": child_chunk.id,
+                                "content": child_chunk.content,
+                                "position": child_chunk.position,
+                                "score": document.metadata.get("score", 0.0),
+                            }
+                            map_detail = {
+                                "max_score": document.metadata.get("score", 0.0),
+                                "child_chunks": [child_chunk_detail],
+                            }
+                            segment_child_map[segment.id] = map_detail
+                            record = {
+                                "segment": segment,
+                            }
+                            records.append(record)
+                        else:
+                            child_chunk_detail = {
+                                "id": child_chunk.id,
+                                "content": child_chunk.content,
+                                "position": child_chunk.position,
+                                "score": document.metadata.get("score", 0.0),
+                            }
+                            segment_child_map[segment.id]["child_chunks"].append(child_chunk_detail)
+                            segment_child_map[segment.id]["max_score"] = max(
+                                segment_child_map[segment.id]["max_score"], document.metadata.get("score", 0.0)
+                            )
+                    else:
+                        continue
+                else:
+                    index_node_id = document.metadata["doc_id"]
+
+                    segment = (
+                        db.session.query(DocumentSegment)
+                        .filter(
+                            DocumentSegment.dataset_id == dataset_document.dataset_id,
+                            DocumentSegment.enabled == True,
+                            DocumentSegment.status == "completed",
+                            DocumentSegment.index_node_id == index_node_id,
+                        )
+                        .first()
+                    )
+
+                    if not segment:
+                        continue
+                    include_segment_ids.append(segment.id)
+                    record = {
+                        "segment": segment,
+                        "score": document.metadata.get("score", None),
+                    }
+
+                    records.append(record)
+            for record in records:
+                if record["segment"].id in segment_child_map:
+                    record["child_chunks"] = segment_child_map[record["segment"].id].get("child_chunks", None)
+                    record["score"] = segment_child_map[record["segment"].id]["max_score"]
+
+        return [RetrievalSegments(**record) for record in records]

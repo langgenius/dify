@@ -49,7 +49,6 @@ class LangSmithRunModel(LangSmithTokenUsage, LangSmithMultiModel):
     reference_example_id: Optional[str] = Field(None, description="Reference example ID associated with the run")
     input_attachments: Optional[dict[str, Any]] = Field(None, description="Input attachments of the run")
     output_attachments: Optional[dict[str, Any]] = Field(None, description="Output attachments of the run")
-    dotted_order: Optional[str] = Field(None, description="Dotted order of the run")
 
     @field_validator("inputs", "outputs")
     @classmethod

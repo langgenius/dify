@@ -25,6 +25,11 @@ const translation = {
   noRecentTip: 'ไม่มีผลการค้นหาล่าสุดที่นี่',
   viewChart: 'ดูแผนภูมิเวกเตอร์',
   viewDetail: 'ดูรายละเอียด',
+  open: 'เปิด',
+  keyword: 'คำ',
+  chunkDetail: 'รายละเอียดก้อน',
+  records: 'เรก คอร์ด',
+  hitChunks: 'กด {{num}} ก้อนลูก',
 }
 
 export default translation

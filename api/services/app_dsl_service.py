@@ -1,10 +1,11 @@
 import logging
 import uuid
 from enum import StrEnum
-from typing import Optional
+from typing import Optional, cast
+from urllib.parse import urlparse
 from uuid import uuid4
 
-import yaml
+import yaml  # type: ignore
 from packaging import version
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 IMPORT_INFO_REDIS_EXPIRY = 180  # 3 minutes
-CURRENT_DSL_VERSION = "0.1.4"
+CURRENT_DSL_VERSION = "0.1.5"
 
 
 class ImportMode(StrEnum):
@@ -103,7 +104,7 @@ class AppDslService:
             raise ValueError(f"Invalid import_mode: {import_mode}")
 
         # Get YAML content
-        content = ""
+        content: str = ""
         if mode == ImportMode.YAML_URL:
             if not yaml_url:
                 return Import(
@@ -113,13 +114,17 @@ class AppDslService:
                 )
             try:
                 max_size = 10 * 1024 * 1024  # 10MB
-                # tricky way to handle url from github to github raw url
-                if yaml_url.startswith("https://github.com") and yaml_url.endswith((".yml", ".yaml")):
+                parsed_url = urlparse(yaml_url)
+                if (
+                    parsed_url.scheme == "https"
+                    and parsed_url.netloc == "github.com"
+                    and parsed_url.path.endswith((".yml", ".yaml"))
+                ):
                     yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
                     yaml_url = yaml_url.replace("/blob/", "/")
                 response = ssrf_proxy.get(yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
-                content = response.content
+                content = response.content.decode()
 
                 if len(content) > max_size:
                     return Import(
@@ -136,7 +141,7 @@ class AppDslService:
                     )
 
                 try:
-                    content = content.decode("utf-8")
+                    content = cast(bytes, content).decode("utf-8")
                 except UnicodeDecodeError as e:
                     return Import(
                         id=import_id,
@@ -176,6 +181,9 @@ class AppDslService:
                 data["kind"] = "app"
 
             imported_version = data.get("version", "0.1.0")
+            # check if imported_version is a float-like string
+            if not isinstance(imported_version, str):
+                raise ValueError(f"Invalid version type, expected str, got {type(imported_version)}")
             status = _check_version_compatibility(imported_version)
 
             # Extract app data
@@ -340,7 +348,10 @@ class AppDslService:
     ) -> App:
         """Create a new app or update an existing one."""
         app_data = data.get("app", {})
-        app_mode = AppMode(app_data["mode"])
+        app_mode = app_data.get("mode")
+        if not app_mode:
+            raise ValueError("loss app mode")
+        app_mode = AppMode(app_mode)
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
@@ -359,6 +370,9 @@ class AppDslService:
             app.icon_background = icon_background or app_data.get("icon_background", app.icon_background)
             app.updated_by = account.id
         else:
+            if account.current_tenant_id is None:
+                raise ValueError("Current tenant is not set")
+
             # Create new app
             app = App()
             app.id = str(uuid4())
@@ -459,7 +473,7 @@ class AppDslService:
         else:
             cls._append_model_config_export_data(export_data, app_model)
 
-        return yaml.dump(export_data, allow_unicode=True)
+        return yaml.dump(export_data, allow_unicode=True)  # type: ignore
 
     @classmethod
     def _append_workflow_export_data(cls, *, export_data: dict, app_model: App, include_secret: bool) -> None:

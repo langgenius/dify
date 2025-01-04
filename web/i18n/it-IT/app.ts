@@ -195,6 +195,7 @@ const translation = {
     byCategories: 'PER CATEGORIE',
     searchAllTemplate: 'Cerca in tutti i modelli...',
   },
+  showMyCreatedAppsOnly: 'Mostra solo le mie app create',
 }
 
 export default translation

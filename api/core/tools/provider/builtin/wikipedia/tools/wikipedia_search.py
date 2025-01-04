@@ -1,6 +1,6 @@
 from typing import Any, Optional, Union
 
-import wikipedia
+import wikipedia  # type: ignore
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool

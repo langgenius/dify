@@ -67,10 +67,9 @@ ignore = [
     "SIM105", # suppressible-exception
     "SIM107", # return-in-try-except-finally
     "SIM108", # if-else-block-instead-of-if-exp
-    "SIM113", # eumerate-for-loop
+    "SIM113", # enumerate-for-loop
     "SIM117", # multiple-with-statements
     "SIM210", # if-expr-with-true-false
-    "SIM300", # yoda-conditions,
 ]
 
 [lint.per-file-ignores]
@@ -86,11 +85,11 @@ ignore = [
 ]
 "tests/*" = [
     "F811", # redefined-while-unused
-    "F401", # unused-import
 ]
 
 [lint.pyflakes]
-extend-generics = [
+allowed-unused-imports = [
     "_pytest.monkeypatch",
     "tests.integration_tests",
+    "tests.unit_tests",
 ]

@@ -104,6 +104,8 @@ const translation = {
     openInExplore: '在“探索”中打開',
     onFailure: '失敗時',
     addFailureBranch: '添加 Fail Branch',
+    loadMore: '載入更多工作流',
+    noHistory: '無歷史記錄',
   },
   env: {
     envPanelTitle: '環境變數',
@@ -322,6 +324,20 @@ const translation = {
         title: '錯誤處理',
         tip: '異常處理策略，當節點遇到異常時觸發。',
       },
+      retry: {
+        retry: '重試',
+        retryOnFailure: '失敗時重試',
+        maxRetries: '最大重試次數',
+        retryInterval: '重試間隔',
+        retryTimes: '失敗時重試 {{times}} 次',
+        retrying: '重試。。。',
+        retrySuccessful: '重試成功',
+        retryFailed: '重試失敗',
+        retryFailedTimes: '{{times}} 次重試失敗',
+        times: '次',
+        ms: '女士',
+        retries: '{{num}}重試',
+      },
     },
     start: {
       required: '必填',
@@ -491,7 +507,7 @@ const translation = {
       optionName: {
         image: '圖像',
         url: '網址',
-        doc: '醫生',
+        doc: '文檔',
         localUpload: '本地上傳',
         video: '視頻',
         audio: '音訊',

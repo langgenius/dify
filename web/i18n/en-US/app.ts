@@ -169,6 +169,7 @@ const translation = {
       removeConfirmContent: 'The current configuration is in use, removing it will turn off the Tracing feature.',
     },
   },
+  showMyCreatedAppsOnly: 'Created by me',
 }
 
 export default translation

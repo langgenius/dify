@@ -1,27 +1,32 @@
 import re
-from typing import Optional
-
-import jieba
-from jieba.analyse import default_tfidf
-
-from core.rag.datasource.keyword.jieba.stopwords import STOPWORDS
+from typing import Optional, cast
 
 
 class JiebaKeywordTableHandler:
     def __init__(self):
-        default_tfidf.stop_words = STOPWORDS
+        import jieba.analyse  # type: ignore
+
+        from core.rag.datasource.keyword.jieba.stopwords import STOPWORDS
+
+        jieba.analyse.default_tfidf.stop_words = STOPWORDS  # type: ignore
 
     def extract_keywords(self, text: str, max_keywords_per_chunk: Optional[int] = 10) -> set[str]:
         """Extract keywords with JIEBA tfidf."""
+        import jieba.analyse  # type: ignore
+
         keywords = jieba.analyse.extract_tags(
             sentence=text,
             topK=max_keywords_per_chunk,
         )
+        # jieba.analyse.extract_tags returns list[Any] when withFlag is False by default.
+        keywords = cast(list[str], keywords)
 
-        return set(self._expand_tokens_with_subtokens(keywords))
+        return set(self._expand_tokens_with_subtokens(set(keywords)))
 
     def _expand_tokens_with_subtokens(self, tokens: set[str]) -> set[str]:
         """Get subtokens from a list of tokens., filtering for stopwords."""
+        from core.rag.datasource.keyword.jieba.stopwords import STOPWORDS
+
         results = set()
         for token in tokens:
             results.add(token)
