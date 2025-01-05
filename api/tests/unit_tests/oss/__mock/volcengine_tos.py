@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from tos import TosClientV2
-from tos.clientv2 import DeleteObjectOutput, GetObjectOutput, HeadObjectOutput, PutObjectOutput
+from tos import TosClientV2  # type: ignore
+from tos.clientv2 import DeleteObjectOutput, GetObjectOutput, HeadObjectOutput, PutObjectOutput  # type: ignore
 
 from tests.unit_tests.oss.__mock.base import (
     get_example_bucket,

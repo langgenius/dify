@@ -1,5 +1,13 @@
 const translation = {
   knowledge: '知识库',
+  chunkingMode: {
+    general: '通用',
+    parentChild: '父子',
+  },
+  parentMode: {
+    paragraph: '段落',
+    fullDoc: '全文',
+  },
   externalTag: '外部',
   externalAPI: '外部 API',
   externalAPIPanelTitle: '外部知识库 API',
@@ -12,6 +20,7 @@ const translation = {
   learnHowToWriteGoodKnowledgeDescription: '了解如何编写良好的知识库描述',
   externalAPIPanelDescription: '外部知识库 API 用于连接到 Dify 之外的知识库并从中检索知识。',
   externalAPIPanelDocumentation: '了解如何创建外部知识库 API',
+  localDocs: '本地文档',
   documentCount: ' 文档',
   wordCount: ' 千字符',
   appCount: ' 关联应用',
@@ -115,8 +124,10 @@ const translation = {
     change: '更改',
     changeRetrievalMethod: '更改检索方法',
   },
-  docsFailedNotice: '文档无法被索引',
+  docsFailedNotice: '文档索引失败',
   retry: '重试',
+  documentsDisabled: '{{num}} 个文档已禁用 - 未活动超过 30 天',
+  enable: '启用',
   indexingTechnique: {
     high_quality: '高质量',
     economy: '经济',
@@ -146,6 +157,15 @@ const translation = {
   nTo1RetrievalLegacy: '9 月 1 日起我们将不再提供此能力，推荐使用最新的多路召回获得更好的检索效果。',
   nTo1RetrievalLegacyLink: '了解更多',
   nTo1RetrievalLegacyLinkText: '9 月 1 日起我们将不再提供此能力。',
+  batchAction: {
+    selected: '已选择',
+    enable: '启用',
+    disable: '禁用',
+    archive: '归档',
+    delete: '删除',
+    cancel: '取消',
+  },
+  preprocessDocument: '{{num}} 个预处理文档',
 }
 
 export default translation

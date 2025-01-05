@@ -22,6 +22,7 @@ def check_moderation(model_config: ModelConfigWithCredentialsEntity, text: str) 
         provider_name = model_config.provider
         if using_provider_type == ProviderType.SYSTEM and provider_name in moderation_config.providers:
             hosting_openai_config = hosting_configuration.provider_map["openai"]
+            assert hosting_openai_config is not None
 
             # 2000 text per chunk
             length = 2000
@@ -34,8 +35,9 @@ def check_moderation(model_config: ModelConfigWithCredentialsEntity, text: str) 
 
             try:
                 model_type_instance = OpenAIModerationModel()
+                # FIXME, for type hint using assert or raise ValueError is better here?
                 moderation_result = model_type_instance.invoke(
-                    model="text-moderation-stable", credentials=hosting_openai_config.credentials, text=text_chunk
+                    model="text-moderation-stable", credentials=hosting_openai_config.credentials or {}, text=text_chunk
                 )
 
                 if moderation_result is True:

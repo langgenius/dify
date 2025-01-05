@@ -1,10 +1,9 @@
-from flask_login import current_user
-from flask_restful import marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_login import current_user  # type: ignore
+from flask_restful import marshal_with, reqparse  # type: ignore
+from flask_restful.inputs import int_range  # type: ignore
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from controllers.console import api
 from controllers.console.explore.error import NotChatAppError
 from controllers.console.explore.wraps import InstalledAppResource
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -118,28 +117,3 @@ class ConversationUnPinApi(InstalledAppResource):
         WebConversationService.unpin(app_model, conversation_id, current_user)
 
         return {"result": "success"}
-
-
-api.add_resource(
-    ConversationRenameApi,
-    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/name",
-    endpoint="installed_app_conversation_rename",
-)
-api.add_resource(
-    ConversationListApi, "/installed-apps/<uuid:installed_app_id>/conversations", endpoint="installed_app_conversations"
-)
-api.add_resource(
-    ConversationApi,
-    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>",
-    endpoint="installed_app_conversation",
-)
-api.add_resource(
-    ConversationPinApi,
-    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/pin",
-    endpoint="installed_app_conversation_pin",
-)
-api.add_resource(
-    ConversationUnPinApi,
-    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/unpin",
-    endpoint="installed_app_conversation_unpin",
-)

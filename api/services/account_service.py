@@ -6,7 +6,7 @@ import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from pydantic import BaseModel
 from sqlalchemy import func
@@ -32,6 +32,7 @@ from models.account import (
     TenantStatus,
 )
 from models.model import DifySetup
+from services.billing_service import BillingService
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
@@ -50,6 +51,8 @@ from services.errors.account import (
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
+from tasks.delete_account_task import delete_account_task
+from tasks.mail_account_deletion_task import send_account_deletion_verification_code
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_reset_password_task import send_reset_password_mail_task
@@ -62,13 +65,16 @@ class TokenPair(BaseModel):
 
 REFRESH_TOKEN_PREFIX = "refresh_token:"
 ACCOUNT_REFRESH_TOKEN_PREFIX = "account_refresh_token:"
-REFRESH_TOKEN_EXPIRY = timedelta(days=30)
+REFRESH_TOKEN_EXPIRY = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
 
 
 class AccountService:
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
     email_code_login_rate_limiter = RateLimiter(
         prefix="email_code_login_rate_limit", max_attempts=1, time_window=60 * 1
+    )
+    email_code_account_deletion_rate_limiter = RateLimiter(
+        prefix="email_code_account_deletion_rate_limit", max_attempts=1, time_window=60 * 1
     )
     LOGIN_MAX_ERROR_LIMITS = 5
 
@@ -119,7 +125,7 @@ class AccountService:
             account.last_active_at = datetime.now(UTC).replace(tzinfo=None)
             db.session.commit()
 
-        return account
+        return cast(Account, account)
 
     @staticmethod
     def get_account_jwt_token(account: Account) -> str:
@@ -132,7 +138,7 @@ class AccountService:
             "sub": "Console API Passport",
         }
 
-        token = PassportService().issue(payload)
+        token: str = PassportService().issue(payload)
         return token
 
     @staticmethod
@@ -164,7 +170,7 @@ class AccountService:
 
         db.session.commit()
 
-        return account
+        return cast(Account, account)
 
     @staticmethod
     def update_account_password(account, password, new_password):
@@ -201,6 +207,15 @@ class AccountService:
             from controllers.console.error import AccountNotFound
 
             raise AccountNotFound()
+
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+            raise AccountRegisterError(
+                description=(
+                    "This email account has been deleted within the past "
+                    "30 days and is temporarily unavailable for new account registration"
+                )
+            )
+
         account = Account()
         account.email = email
         account.name = name
@@ -239,6 +254,42 @@ class AccountService:
         TenantService.create_owner_tenant_if_not_exist(account=account)
 
         return account
+
+    @staticmethod
+    def generate_account_deletion_verification_code(account: Account) -> tuple[str, str]:
+        code = "".join([str(random.randint(0, 9)) for _ in range(6)])
+        token = TokenManager.generate_token(
+            account=account, token_type="account_deletion", additional_data={"code": code}
+        )
+        return token, code
+
+    @classmethod
+    def send_account_deletion_verification_email(cls, account: Account, code: str):
+        email = account.email
+        if cls.email_code_account_deletion_rate_limiter.is_rate_limited(email):
+            from controllers.console.auth.error import EmailCodeAccountDeletionRateLimitExceededError
+
+            raise EmailCodeAccountDeletionRateLimitExceededError()
+
+        send_account_deletion_verification_code.delay(to=email, code=code)
+
+        cls.email_code_account_deletion_rate_limiter.increment_rate_limit(email)
+
+    @staticmethod
+    def verify_account_deletion_code(token: str, code: str) -> bool:
+        token_data = TokenManager.get_token_data(token, "account_deletion")
+        if token_data is None:
+            return False
+
+        if token_data["code"] != code:
+            return False
+
+        return True
+
+    @staticmethod
+    def delete_account(account: Account) -> None:
+        """Delete account. This method only adds a task to the queue for deletion."""
+        delete_account_task.delay(account.id)
 
     @staticmethod
     def link_account_integrate(provider: str, open_id: str, account: Account) -> None:
@@ -347,6 +398,8 @@ class AccountService:
         language: Optional[str] = "en-US",
     ):
         account_email = account.email if account else email
+        if account_email is None:
+            raise ValueError("Email must be provided.")
 
         if cls.reset_password_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import PasswordResetRateLimitExceededError
@@ -377,6 +430,9 @@ class AccountService:
     def send_email_code_login_email(
         cls, account: Optional[Account] = None, email: Optional[str] = None, language: Optional[str] = "en-US"
     ):
+        email = account.email if account else email
+        if email is None:
+            raise ValueError("Email must be provided.")
         if cls.email_code_login_rate_limiter.is_rate_limited(email):
             from controllers.console.auth.error import EmailCodeLoginRateLimitExceededError
 
@@ -404,6 +460,14 @@ class AccountService:
 
     @classmethod
     def get_user_through_email(cls, email: str):
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+            raise AccountRegisterError(
+                description=(
+                    "This email account has been deleted within the past "
+                    "30 days and is temporarily unavailable for new account registration"
+                )
+            )
+
         account = db.session.query(Account).filter(Account.email == email).first()
         if not account:
             return None
@@ -669,7 +733,7 @@ class TenantService:
     @staticmethod
     def get_tenant_count() -> int:
         """Get tenant count"""
-        return db.session.query(func.count(Tenant.id)).scalar()
+        return cast(int, db.session.query(func.count(Tenant.id)).scalar())
 
     @staticmethod
     def check_member_permission(tenant: Tenant, operator: Account, member: Account | None, action: str) -> None:
@@ -733,10 +797,10 @@ class TenantService:
         db.session.commit()
 
     @staticmethod
-    def get_custom_config(tenant_id: str) -> None:
-        tenant = db.session.query(Tenant).filter(Tenant.id == tenant_id).one_or_404()
+    def get_custom_config(tenant_id: str) -> dict:
+        tenant = Tenant.query.filter(Tenant.id == tenant_id).one_or_404()
 
-        return tenant.custom_config_dict
+        return cast(dict, tenant.custom_config_dict)
 
 
 class RegisterService:
@@ -793,6 +857,7 @@ class RegisterService:
         language: Optional[str] = None,
         status: Optional[AccountStatus] = None,
         is_setup: Optional[bool] = False,
+        create_workspace_required: Optional[bool] = True,
     ) -> Account:
         db.session.begin_nested()
         """Register account"""
@@ -807,10 +872,10 @@ class RegisterService:
             account.status = AccountStatus.ACTIVE.value if not status else status.value
             account.initialized_at = datetime.now(UTC).replace(tzinfo=None)
 
-            if open_id is not None or provider is not None:
+            if open_id is not None and provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
 
-            if FeatureService.get_system_features().is_allow_create_workspace:
+            if FeatureService.get_system_features().is_allow_create_workspace and create_workspace_required:
                 tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
                 TenantService.create_tenant_member(tenant, account, role="owner")
                 account.current_tenant = tenant
@@ -819,6 +884,10 @@ class RegisterService:
             db.session.commit()
         except WorkSpaceNotAllowedCreateError:
             db.session.rollback()
+        except AccountRegisterError as are:
+            db.session.rollback()
+            logging.exception("Register failed")
+            raise are
         except Exception as e:
             db.session.rollback()
             logging.exception("Register failed")
@@ -828,10 +897,11 @@ class RegisterService:
 
     @classmethod
     def invite_new_member(
-        cls, tenant: Tenant, email: str, language: str, role: str = "normal", inviter: Account = None
+        cls, tenant: Tenant, email: str, language: str, role: str = "normal", inviter: Optional[Account] = None
     ) -> str:
         """Invite new member"""
         account = Account.query.filter_by(email=email).first()
+        assert inviter is not None, "Inviter must be provided."
 
         if not account:
             TenantService.check_member_permission(tenant, inviter, None, "add")
@@ -894,7 +964,9 @@ class RegisterService:
             redis_client.delete(cls._get_invitation_token_key(token))
 
     @classmethod
-    def get_invitation_if_token_valid(cls, workspace_id: str, email: str, token: str) -> Optional[dict[str, Any]]:
+    def get_invitation_if_token_valid(
+        cls, workspace_id: Optional[str], email: str, token: str
+    ) -> Optional[dict[str, Any]]:
         invitation_data = cls._get_invitation_by_token(token, workspace_id, email)
         if not invitation_data:
             return None
@@ -953,7 +1025,7 @@ class RegisterService:
             if not data:
                 return None
 
-            invitation = json.loads(data)
+            invitation: dict = json.loads(data)
             return invitation
 
 

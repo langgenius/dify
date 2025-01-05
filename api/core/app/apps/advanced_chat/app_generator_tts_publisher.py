@@ -5,6 +5,7 @@ import queue
 import re
 import threading
 from collections.abc import Iterable
+from typing import Optional
 
 from core.app.entities.queue_entities import (
     MessageQueueMessage,
@@ -15,6 +16,7 @@ from core.app.entities.queue_entities import (
     WorkflowQueueMessage,
 )
 from core.model_manager import ModelInstance, ModelManager
+from core.model_runtime.entities.message_entities import TextPromptMessageContent
 from core.model_runtime.entities.model_entities import ModelType
 
 
@@ -71,8 +73,9 @@ class AppGeneratorTTSPublisher:
         if not voice or voice not in values:
             self.voice = self.voices[0].get("value")
         self.MAX_SENTENCE = 2
-        self._last_audio_event = None
-        self._runtime_thread = threading.Thread(target=self._runtime).start()
+        self._last_audio_event: Optional[AudioTrunk] = None
+        # FIXME better way to handle this threading.start
+        threading.Thread(target=self._runtime).start()
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
 
     def publish(self, message: WorkflowQueueMessage | MessageQueueMessage | None, /):
@@ -92,10 +95,21 @@ class AppGeneratorTTSPublisher:
                         future_queue.put(futures_result)
                     break
                 elif isinstance(message.event, QueueAgentMessageEvent | QueueLLMChunkEvent):
-                    self.msg_text += message.event.chunk.delta.message.content
+                    message_content = message.event.chunk.delta.message.content
+                    if not message_content:
+                        continue
+                    if isinstance(message_content, str):
+                        self.msg_text += message_content
+                    elif isinstance(message_content, list):
+                        for content in message_content:
+                            if not isinstance(content, TextPromptMessageContent):
+                                continue
+                            self.msg_text += content.data
                 elif isinstance(message.event, QueueTextChunkEvent):
                     self.msg_text += message.event.text
                 elif isinstance(message.event, QueueNodeSucceededEvent):
+                    if message.event.outputs is None:
+                        continue
                     self.msg_text += message.event.outputs.get("output", "")
                 self.last_message = message
                 sentence_arr, text_tmp = self._extract_sentence(self.msg_text)
@@ -121,11 +135,10 @@ class AppGeneratorTTSPublisher:
             if self._last_audio_event and self._last_audio_event.status == "finish":
                 if self.executor:
                     self.executor.shutdown(wait=False)
-                return self.last_message
+                return self._last_audio_event
             audio = self._audio_queue.get_nowait()
             if audio and audio.status == "finish":
                 self.executor.shutdown(wait=False)
-                self._runtime_thread = None
             if audio:
                 self._last_audio_event = audio
             return audio

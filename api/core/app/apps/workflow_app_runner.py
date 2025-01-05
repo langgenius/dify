@@ -24,6 +24,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
+from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.event import (
     GraphEngineEvent,
@@ -190,16 +191,15 @@ class WorkflowBasedAppRunner(AppRunner):
             self._publish_event(QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count))
         elif isinstance(event, NodeRunRetryEvent):
             node_run_result = event.route_node_state.node_run_result
+            inputs: Mapping[str, Any] | None = {}
+            process_data: Mapping[str, Any] | None = {}
+            outputs: Mapping[str, Any] | None = {}
+            execution_metadata: Mapping[NodeRunMetadataKey, Any] | None = {}
             if node_run_result:
                 inputs = node_run_result.inputs
                 process_data = node_run_result.process_data
                 outputs = node_run_result.outputs
                 execution_metadata = node_run_result.metadata
-            else:
-                inputs = {}
-                process_data = {}
-                outputs = {}
-                execution_metadata = {}
             self._publish_event(
                 QueueNodeRetryEvent(
                     node_execution_id=event.id,
@@ -289,7 +289,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     process_data=event.route_node_state.node_run_result.process_data
                     if event.route_node_state.node_run_result
                     else {},
-                    outputs=event.route_node_state.node_run_result.outputs
+                    outputs=event.route_node_state.node_run_result.outputs or {}
                     if event.route_node_state.node_run_result
                     else {},
                     error=event.route_node_state.node_run_result.error
@@ -349,7 +349,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     process_data=event.route_node_state.node_run_result.process_data
                     if event.route_node_state.node_run_result
                     else {},
-                    outputs=event.route_node_state.node_run_result.outputs
+                    outputs=event.route_node_state.node_run_result.outputs or {}
                     if event.route_node_state.node_run_result
                     else {},
                     execution_metadata=event.route_node_state.node_run_result.metadata

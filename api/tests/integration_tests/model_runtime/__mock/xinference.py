@@ -6,14 +6,14 @@ import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from requests import Response
 from requests.sessions import Session
-from xinference_client.client.restful.restful_client import (
+from xinference_client.client.restful.restful_client import (  # type: ignore
     Client,
     RESTfulChatModelHandle,
     RESTfulEmbeddingModelHandle,
     RESTfulGenerateModelHandle,
     RESTfulRerankModelHandle,
 )
-from xinference_client.types import Embedding, EmbeddingData, EmbeddingUsage
+from xinference_client.types import Embedding, EmbeddingData, EmbeddingUsage  # type: ignore
 
 
 class MockXinferenceClass:

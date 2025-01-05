@@ -104,6 +104,8 @@ const translation = {
     openInExplore: 'Abrir no Explore',
     onFailure: 'Em caso de falha',
     addFailureBranch: 'Adicionar ramificação com falha',
+    noHistory: 'Sem História',
+    loadMore: 'Carregar mais fluxos de trabalho',
   },
   env: {
     envPanelTitle: 'Variáveis de Ambiente',

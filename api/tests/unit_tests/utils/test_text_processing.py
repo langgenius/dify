@@ -1,5 +1,3 @@
-from textwrap import dedent
-
 import pytest
 
 from core.tools.utils.text_processing_utils import remove_leading_symbols
