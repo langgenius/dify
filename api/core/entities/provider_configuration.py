@@ -978,7 +978,7 @@ class ProviderConfiguration(BaseModel):
                     label=custom_model_schema.label,
                     model_type=custom_model_schema.model_type,
                     features=custom_model_schema.features,
-                    fetch_from=custom_model_schema.fetch_from,
+                    fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
                     model_properties=custom_model_schema.model_properties,
                     deprecated=custom_model_schema.deprecated,
                     provider=SimpleModelProviderEntity(self.provider),
