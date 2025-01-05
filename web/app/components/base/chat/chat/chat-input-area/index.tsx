@@ -176,6 +176,7 @@ const ChatInputArea = ({
                   'p-1 w-full leading-6 body-lg-regular text-text-tertiary outline-none',
                 )}
                 placeholder={t('common.chat.inputPlaceholder') || ''}
+                autoFocus
                 autoSize={{ minRows: 1 }}
                 onResize={handleTextareaResize}
                 value={query}
