@@ -41,6 +41,7 @@ class FeatureModel(BaseModel):
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     vector_space: LimitationModel = LimitationModel(size=0, limit=5)
+    knowledge_rate_limit: int = 10
     annotation_quota_limit: LimitationModel = LimitationModel(size=0, limit=10)
     documents_upload_quota: LimitationModel = LimitationModel(size=0, limit=50)
     docs_processing: str = "standard"
@@ -156,7 +157,10 @@ class FeatureService:
 
         if "model_load_balancing_enabled" in billing_info:
             features.model_load_balancing_enabled = billing_info["model_load_balancing_enabled"]
-
+        
+        if "knowledge_rate_limit" in billing_info:
+            features.knowledge_rate_limit = billing_info["knowledge_rate_limit"]["limit"]
+            
     @classmethod
     def _fulfill_params_from_enterprise(cls, features):
         enterprise_info = EnterpriseService.get_info()
