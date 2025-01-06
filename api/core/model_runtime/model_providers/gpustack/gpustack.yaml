@@ -9,6 +9,8 @@ supported_model_types:
   - llm
   - text-embedding
   - rerank
+  - speech2text
+  - tts
 configurate_methods:
   - customizable-model
 model_credential_schema:
@@ -118,3 +120,19 @@ model_credential_schema:
           label:
             en_US: Not Support
             zh_Hans: 不支持
+    - variable: voices
+      show_on:
+        - variable: __model_type
+          value: tts
+      label:
+        en_US: Available Voices (comma-separated)
+        zh_Hans: 可用声音（用英文逗号分隔）
+      type: text-input
+      required: false
+      default: "Chinese Female"
+      placeholder:
+        en_US: "Chinese Female, Chinese Male, Japanese Male, Cantonese Female, English Female, English Male, Korean Female"
+        zh_Hans: "Chinese Female, Chinese Male, Japanese Male, Cantonese Female, English Female, English Male, Korean Female"
+      help:
+        en_US: "List voice names separated by commas. First voice will be used as default."
+        zh_Hans: "用英文逗号分隔的声音列表。第一个声音将作为默认值。"
