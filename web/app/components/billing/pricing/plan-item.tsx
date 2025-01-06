@@ -4,7 +4,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiApps2Line, RiBook2Line, RiBrain2Line, RiChatAiLine, RiFileEditLine, RiFolder6Line, RiGroupLine, RiHardDrive3Line, RiHistoryLine, RiProgress3Line, RiQuestionLine, RiSeoLine } from '@remixicon/react'
 import { Plan } from '../type'
-import { ALL_PLANS, NUM_INFINITE, contactSalesUrl } from '../config'
+import { ALL_PLANS, NUM_INFINITE } from '../config'
 import Toast from '../../base/toast'
 import Tooltip from '../../base/tooltip'
 import Divider from '../../base/divider'
@@ -60,43 +60,24 @@ const style = {
     description: 'text-util-colors-indigo-indigo-600',
     btnStyle: 'bg-components-button-indigo-bg hover:bg-components-button-indigo-bg-hover border border-components-button-primary-border text-components-button-primary-text',
   },
-  [Plan.enterprise]: {
-    icon: 'text-[#DC6803]',
-    description: '',
-    btnStyle: 'hover:shadow-lg hover:!text-white hover:!bg-[#F79009] hover:!border-[#DC6803] active:!text-white active:!bg-[#DC6803] active:!border-[#DC6803]',
-  },
 }
 const PlanItem: FC<Props> = ({
   plan,
   currentPlan,
   planRange,
-  canPay,
 }) => {
   const { t } = useTranslation()
-  // const { locale } = useContext(I18n)
-
-  // const isZh = locale === LanguagesSupported[1]
   const [loading, setLoading] = React.useState(false)
   const i18nPrefix = `billing.plans.${plan}`
   const isFreePlan = plan === Plan.sandbox
-  const isEnterprisePlan = plan === Plan.enterprise
   const isMostPopularPlan = plan === Plan.professional
   const planInfo = ALL_PLANS[plan]
   const isYear = planRange === PlanRange.yearly
   const isCurrent = plan === currentPlan
-  const isPlanDisabled = planInfo.level <= ALL_PLANS[currentPlan].level || (!canPay && plan !== Plan.enterprise)
+  const isPlanDisabled = planInfo.level <= ALL_PLANS[currentPlan].level
   const { isCurrentWorkspaceManager } = useAppContext()
-  // const messagesRequest = (() => {
-  //   const value = planInfo.messageRequest[isZh ? 'zh' : 'en']
-  //   if (value === contractSales)
-  //     return t('billing.plansCommon.contractSales')
 
-  //   return value
-  // })()
   const btnText = (() => {
-    if (!canPay && plan !== Plan.enterprise)
-      return t('billing.plansCommon.contractOwner')
-
     if (isCurrent)
       return t('billing.plansCommon.currentPlan')
 
@@ -104,83 +85,9 @@ const PlanItem: FC<Props> = ({
       [Plan.sandbox]: t('billing.plansCommon.startForFree'),
       [Plan.professional]: t('billing.plansCommon.getStarted'),
       [Plan.team]: t('billing.plansCommon.getStarted'),
-      [Plan.enterprise]: t('billing.plansCommon.talkToSales'),
     })[plan]
   })()
-  // const comingSoon = (
-  //   <div className='leading-[12px] text-[9px] font-semibold text-[#3538CD] uppercase'>{t('billing.plansCommon.comingSoon')}</div>
-  // )
-  // const supportContent = (() => {
-  //   switch (plan) {
-  //     case Plan.sandbox:
-  //       return (<div className='space-y-3.5'>
-  //         <div>{t('billing.plansCommon.supportItems.communityForums')}</div>
-  //         <div>{t('billing.plansCommon.supportItems.agentMode')}</div>
-  //         <div className='flex items-center space-x-1'>
-  //           <div className='flex items-center'>
-  //             <div className='mr-0.5'>&nbsp;{t('billing.plansCommon.supportItems.workflow')}</div>
-  //           </div>
-  //         </div>
-  //       </div>)
-  //     case Plan.professional:
-  //       return (
-  //         <div>
-  //           <div>{t('billing.plansCommon.supportItems.emailSupport')}</div>
-  //           <div className='mt-3.5 flex items-center space-x-1'>
-  //             <div>+ {t('billing.plansCommon.supportItems.logoChange')}</div>
-  //           </div>
-  //           <div className='mt-3.5 flex items-center space-x-1'>
-  //             <div>+ {t('billing.plansCommon.supportItems.bulkUpload')}</div>
-  //           </div>
-  //           <div className='mt-3.5 flex items-center space-x-1'>
-  //             <span>+ </span>
-  //             <div>{t('billing.plansCommon.supportItems.llmLoadingBalancing')}</div>
-  //             <Tooltip
-  //               popupContent={
-  //                 <div className='w-[200px]'>{t('billing.plansCommon.supportItems.llmLoadingBalancingTooltip')}</div>
-  //               }
-  //             />
-  //           </div>
-  //           <div className='mt-3.5 flex items-center space-x-1'>
-  //             <div className='flex items-center'>
-  //               +
-  //               <div className='mr-0.5'>&nbsp;{t('billing.plansCommon.supportItems.ragAPIRequest')}</div>
-  //               <Tooltip
-  //                 popupContent={
-  //                   <div className='w-[200px]'>{t('billing.plansCommon.ragAPIRequestTooltip')}</div>
-  //                 }
-  //               />
-  //             </div>
-  //             <div>{comingSoon}</div>
-  //           </div>
-  //         </div>
-  //       )
-  //     case Plan.team:
-  //       return (
-  //         <div>
-  //           <div>{t('billing.plansCommon.supportItems.priorityEmail')}</div>
-  //           <div className='mt-3.5 flex items-center space-x-1'>
-  //             <div>+ {t('billing.plansCommon.supportItems.SSOAuthentication')}</div>
-  //             <div>{comingSoon}</div>
-  //           </div>
-  //         </div>
-  //       )
-  //     case Plan.enterprise:
-  //       return (
-  //         <div>
-  //           <div>{t('billing.plansCommon.supportItems.personalizedSupport')}</div>
-  //           <div className='mt-3.5 flex items-center space-x-1'>
-  //             <div>+ {t('billing.plansCommon.supportItems.dedicatedAPISupport')}</div>
-  //           </div>
-  //           <div className='mt-3.5 flex items-center space-x-1'>
-  //             <div>+ {t('billing.plansCommon.supportItems.customIntegration')}</div>
-  //           </div>
-  //         </div>
-  //       )
-  //     default:
-  //       return ''
-  //   }
-  // })()
+
   const handleGetPayUrl = async () => {
     if (loading)
       return
@@ -191,10 +98,6 @@ const PlanItem: FC<Props> = ({
     if (isFreePlan)
       return
 
-    if (isEnterprisePlan) {
-      window.location.href = contactSalesUrl
-      return
-    }
     // Only workspace manager can buy plan
     if (!isCurrentWorkspaceManager) {
       Toast.notify({
@@ -236,10 +139,7 @@ const PlanItem: FC<Props> = ({
         {isFreePlan && (
           <div className={priceClassName}>{t('billing.plansCommon.free')}</div>
         )}
-        {isEnterprisePlan && (
-          <div className={priceClassName}>{t('billing.plansCommon.contactSales')}</div>
-        )}
-        {!isFreePlan && !isEnterprisePlan && (
+        {!isFreePlan && (
           <div className='flex items-end'>
             <div className={priceClassName}>${isYear ? planInfo.price * 10 : planInfo.price}</div>
             <div className='ml-1 flex flex-col'>

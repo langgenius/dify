@@ -5,10 +5,11 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { RiArrowRightUpLine, RiCloseLine, RiCloudFill, RiTerminalBoxFill } from '@remixicon/react'
 import Link from 'next/link'
-import { Plan } from '../type'
+import { Plan, SelfHostedPlan } from '../type'
 import TabSlider from '../../base/tab-slider'
 import SelectPlanRange, { PlanRange } from './select-plan-range'
 import PlanItem from './plan-item'
+import SelfHostedPlanItem from './self-hosted-plan-item'
 import { useProviderContext } from '@/context/provider-context'
 import GridMask from '@/app/components/base/grid-mask'
 import { useAppContext } from '@/context/app-context'
@@ -26,7 +27,7 @@ const Pricing: FC<Props> = ({
   const canPay = isCurrentWorkspaceManager
   const [planRange, setPlanRange] = React.useState<PlanRange>(PlanRange.monthly)
 
-  const [currentPlan, setCurrentPlan] = React.useState<string>('cloud')
+  const [currentPlan, setCurrentPlan] = React.useState<string>('self')
 
   return createPortal(
     <div
@@ -62,10 +63,10 @@ const Pricing: FC<Props> = ({
                   { value: 'self', text: <div className='inline-flex items-center system-md-semibold-uppercase'><RiTerminalBoxFill className='size-4 mr-2' />self hosted</div> }]}
                 onChange={v => setCurrentPlan(v)} />
 
-              <SelectPlanRange
+              {currentPlan === 'cloud' && <SelectPlanRange
                 value={planRange}
                 onChange={setPlanRange}
-              />
+              />}
             </div>
             <div className='pt-3 pb-8'>
               <div className='flex justify-center flex-nowrap gap-x-4'>
@@ -90,9 +91,18 @@ const Pricing: FC<Props> = ({
                   />
                 </>}
                 {currentPlan === 'self' && <>
-                  <PlanItem
-                    currentPlan={plan.type}
-                    plan={Plan.enterprise}
+                  <SelfHostedPlanItem
+                    plan={SelfHostedPlan.community}
+                    planRange={planRange}
+                    canPay={canPay}
+                  />
+                  <SelfHostedPlanItem
+                    plan={SelfHostedPlan.premium}
+                    planRange={planRange}
+                    canPay={canPay}
+                  />
+                  <SelfHostedPlanItem
+                    plan={SelfHostedPlan.enterprise}
                     planRange={planRange}
                     canPay={canPay}
                   />
@@ -102,7 +112,7 @@ const Pricing: FC<Props> = ({
           </div>
           <div className='py-4 flex items-center justify-center'>
             <div className='px-3 py-2 flex items-center justify-center gap-x-0.5 text-components-button-secondary-accent-text'>
-              <Link href='' className='system-sm-medium'>Compare plans & features</Link>
+              <Link href='https://brave-tweak-397260.framer.app/dev/pricing-in-dev' className='system-sm-medium'>{t('billing.plansCommon.comparePlanAndFeatures')}</Link>
               <RiArrowRightUpLine className='size-4' />
             </div>
           </div>

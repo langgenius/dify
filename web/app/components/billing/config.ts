@@ -54,21 +54,6 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
     annotatedResponse: 5000,
     logHistory: NUM_INFINITE,
   },
-  enterprise: {
-    level: 4,
-    price: 0,
-    modelProviders: supportModelProviders,
-    teamMembers: NUM_INFINITE,
-    buildApps: NUM_INFINITE,
-    documents: 50,
-    vectorSpace: NUM_INFINITE,
-    documentsRequestQuota: 5000,
-    documentProcessingPriority: Priority.topPriority,
-    logHistory: NUM_INFINITE,
-    customTools: NUM_INFINITE,
-    messageRequest: contractSales,
-    annotatedResponse: NUM_INFINITE,
-  },
 }
 
 export const defaultPlan = {
