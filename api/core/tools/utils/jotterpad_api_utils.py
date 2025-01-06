@@ -56,9 +56,7 @@ class JotterPadRequest:
 
     def get_export_document_file(self, export_id) -> dict:
         url = f"{self.API_BASE_URL}/exports/get"
-        payload = {
-            "exportId": export_id
-        }
+        payload = {"exportId": export_id}
         res = self._send_request(url=url, payload=payload)
         if "exportedFile" in res:
             return res.get("exportedFile")
@@ -73,11 +71,7 @@ class JotterPadRequest:
 
     def initiate_print_or_export(self, in_type: str, out_type, input_content: str, metadata: str, name: str) -> str:
         url = f"{self.API_BASE_URL}/exports/upload/{in_type}/{out_type}"
-        payload = {
-            "input": input_content,
-            "metadata": metadata,
-            "name": name
-        }
+        payload = {"input": input_content, "metadata": metadata, "name": name}
         res = self._send_request(url=url, payload=payload)
         if "id" in res:
             return res.get("id")
