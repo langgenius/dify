@@ -58,7 +58,8 @@ CREATE TABLE IF NOT EXISTS {table_name} (
 """
 
 SQL_CREATE_INDEX = """
-CREATE INDEX IF NOT EXISTS embedding_cosine_v1_idx ON {table_name} USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS embedding_cosine_v1_idx ON {table_name} 
+USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
 """
 
 
@@ -204,8 +205,8 @@ class PGVector(BaseVector):
             with self._get_cursor() as cur:
                 cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
                 cur.execute(SQL_CREATE_TABLE.format(table_name=self.table_name, dimension=dimension))
-                # DONE: create index https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing
                 # PG hnsw index only support 2000 dimension or less
+                # ref: https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing
                 if dimension <= 2000:
                     cur.execute(SQL_CREATE_INDEX.format(table_name=self.table_name))
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
