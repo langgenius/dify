@@ -103,7 +103,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
         </div>
         {!userInputFieldCollapse && promptVariables.length > 0 && (
           <div className='px-4 pt-3 pb-4'>
-            <div className='overflow-y-auto' style={{ maxHeight: '200px' }}>
+            <div className='overflow-y-auto' style={{ maxHeight: '200px', height: '200px' }}>
               {promptVariables.map(({ key, name, type, options, max_length, required }, index) => (
                 <div
                   key={key}
@@ -117,7 +117,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                     <div className='grow'>
                       {type === 'string' && (
                         <Input
-                          value={inputs[key] ? `${inputs[key]}` : ''}
+
                           onChange={(e) => { handleInputValueChange(key, e.target.value) }}
                           placeholder={name}
                           autoFocus={index === 0}
