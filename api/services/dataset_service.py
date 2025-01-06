@@ -434,6 +434,12 @@ class DatasetService:
 
     @staticmethod
     def get_dataset_auto_disable_logs(dataset_id: str) -> dict:
+        features = FeatureService.get_features(current_user.current_tenant_id)
+        if not features.billing.enabled or features.billing.subscription.plan == "sandbox":
+            return {
+                "document_ids": [],
+                "count": 0,
+            }
         # get recent 30 days auto disable logs
         start_date = datetime.datetime.now() - datetime.timedelta(days=30)
         dataset_auto_disable_logs = DatasetAutoDisableLog.query.filter(
