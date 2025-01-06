@@ -2,6 +2,7 @@ const STEP_SPLIT = '->'
 
 const toNodeData = (step: string, info: Record<string, any> = {}): any => {
   const [nodeId, title] = step.split('@')
+
   const data: Record<string, any> = {
     id: nodeId,
     node_id: nodeId,
@@ -48,8 +49,10 @@ const toIterationNodeData = ({
 }) => {
   const res = [toNodeData(nodeId, { isIteration: true })]
   // TODO: handle inner node structure
-  for (let i = 0; i < children.length; i++)
-    res.push(toNodeData(`${children[i]}`, { inIterationInfo: { iterationId: nodeId, iterationIndex: i } }))
+  for (let i = 0; i < children.length; i++) {
+    const step = `${children[i]}`
+    res.push(toNodeData(step, { inIterationInfo: { iterationId: nodeId, iterationIndex: i } }))
+  }
 
   return res
 }
@@ -104,12 +107,21 @@ export function parseNodeString(input: string): NodeStructure {
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i]
 
-    if (typeof part === 'string' && part.startsWith('('))
-      result.params.push(parseNodeString(part))
-    else if (i === 0)
-      result.node = part as string
-    else
-      result.params.push(part as string)
+    if (typeof part === 'string') {
+      if (part.startsWith('('))
+        result.params.push(parseNodeString(part))
+
+      if (part.startsWith('[')) {
+        const content = part.slice(1, -1)
+        result.params.push(parseNodeString(content))
+      }
+    }
+    else if (i === 0) {
+      result.node = part as unknown as string
+    }
+    else {
+      result.params.push(part as unknown as string)
+    }
   }
 
   return result
@@ -130,6 +142,8 @@ const toNodes = (input: string): any[] => {
     const { node, params } = parseNodeString(step)
     switch (node) {
       case 'iteration':
+        console.log(params)
+        break
         res.push(...toIterationNodeData({
           nodeId: params[0] as string,
           children: JSON.parse(params[1] as string) as number[],
