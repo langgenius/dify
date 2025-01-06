@@ -1,95 +1,128 @@
 import { parseDSL } from './graph-to-log-struct-2'
 
 describe('parseDSL', () => {
-  test('parse plain flow', () => {
-    const dsl = 'a -> b -> c'
+  it('should parse plain nodes correctly', () => {
+    const dsl = 'plainNode1 -> plainNode2'
     const result = parseDSL(dsl)
     expect(result).toEqual([
-      { nodeType: 'plain', nodeId: 'a' },
-      { nodeType: 'plain', nodeId: 'b' },
-      { nodeType: 'plain', nodeId: 'c' },
+      { id: 'plainNode1', node_id: 'plainNode1', title: 'plainNode1', execution_metadata: {}, status: 'succeeded' },
+      { id: 'plainNode2', node_id: 'plainNode2', title: 'plainNode2', execution_metadata: {}, status: 'succeeded' },
     ])
   })
 
-  test('parse iteration node with flow', () => {
-    const dsl = '(iteration, a, b -> c)'
+  it('should parse retry nodes correctly', () => {
+    const dsl = '(retry, retryNode, 3)'
+    const result = parseDSL(dsl)
+    expect(result).toEqual([
+      { id: 'retryNode', node_id: 'retryNode', title: 'retryNode', execution_metadata: {}, status: 'succeeded' },
+      { id: 'retryNode', node_id: 'retryNode', title: 'retryNode', execution_metadata: {}, status: 'retry' },
+      { id: 'retryNode', node_id: 'retryNode', title: 'retryNode', execution_metadata: {}, status: 'retry' },
+      { id: 'retryNode', node_id: 'retryNode', title: 'retryNode', execution_metadata: {}, status: 'retry' },
+    ])
+  })
+
+  it('should parse iteration nodes correctly', () => {
+    const dsl = '(iteration, iterationNode, plainNode1 -> plainNode2)'
+    const result = parseDSL(dsl)
+    expect(result).toEqual([
+      { id: 'iterationNode', node_id: 'iterationNode', title: 'iterationNode', node_type: 'iteration', execution_metadata: {}, status: 'succeeded' },
+      { id: 'plainNode1', node_id: 'plainNode1', title: 'plainNode1', execution_metadata: { iteration_id: 'iterationNode', iteration_index: 0 }, status: 'succeeded' },
+      { id: 'plainNode2', node_id: 'plainNode2', title: 'plainNode2', execution_metadata: { iteration_id: 'iterationNode', iteration_index: 0 }, status: 'succeeded' },
+    ])
+  })
+
+  it('should parse parallel nodes correctly', () => {
+    const dsl = '(parallel, parallelNode, nodeA, nodeB -> nodeC)'
+    const result = parseDSL(dsl)
+    expect(result).toEqual([
+      { id: 'parallelNode', node_id: 'parallelNode', title: 'parallelNode', execution_metadata: { parallel_id: 'parallelNode' }, status: 'succeeded' },
+      { id: 'nodeA', node_id: 'nodeA', title: 'nodeA', execution_metadata: { parallel_id: 'parallelNode', parallel_start_node_id: 'nodeA' }, status: 'succeeded' },
+      { id: 'nodeB', node_id: 'nodeB', title: 'nodeB', execution_metadata: { parallel_id: 'parallelNode', parallel_start_node_id: 'nodeB' }, status: 'succeeded' },
+      { id: 'nodeC', node_id: 'nodeC', title: 'nodeC', execution_metadata: { parallel_id: 'parallelNode', parallel_start_node_id: 'nodeB' }, status: 'succeeded' },
+    ])
+  })
+
+  // TODO
+  it('should handle nested parallel nodes', () => {
+    const dsl = '(parallel, outerParallel, (parallel, innerParallel, plainNode1 -> plainNode2) -> plainNode3)'
     const result = parseDSL(dsl)
     expect(result).toEqual([
       {
-        nodeType: 'iteration',
-        nodeId: 'a',
-        params: [
-          [
-            { nodeType: 'plain', nodeId: 'b', iterationId: 'a', iterationIndex: 0 },
-            { nodeType: 'plain', nodeId: 'c', iterationId: 'a', iterationIndex: 0 },
-          ],
-        ],
+        id: 'outerParallel',
+        node_id: 'outerParallel',
+        title: 'outerParallel',
+        execution_metadata: { parallel_id: 'outerParallel' },
+        status: 'succeeded',
+      },
+      {
+        id: 'innerParallel',
+        node_id: 'innerParallel',
+        title: 'innerParallel',
+        execution_metadata: { parallel_id: 'outerParallel', parallel_start_node_id: 'innerParallel' },
+        status: 'succeeded',
+      },
+      {
+        id: 'plainNode1',
+        node_id: 'plainNode1',
+        title: 'plainNode1',
+        execution_metadata: {
+          parallel_id: 'innerParallel',
+          parallel_start_node_id: 'plainNode1',
+          parent_parallel_id: 'outerParallel',
+          parent_parallel_start_node_id: 'innerParallel',
+        },
+        status: 'succeeded',
+      },
+      {
+        id: 'plainNode2',
+        node_id: 'plainNode2',
+        title: 'plainNode2',
+        execution_metadata: {
+          parallel_id: 'innerParallel',
+          parallel_start_node_id: 'plainNode1',
+          parent_parallel_id: 'outerParallel',
+          parent_parallel_start_node_id: 'innerParallel',
+        },
+        status: 'succeeded',
+      },
+      {
+        id: 'plainNode3',
+        node_id: 'plainNode3',
+        title: 'plainNode3',
+        execution_metadata: {
+          parallel_id: 'outerParallel',
+          parallel_start_node_id: 'plainNode3',
+        },
+        status: 'succeeded',
       },
     ])
   })
 
-  test('parse parallel node with flow', () => {
-    const dsl = 'a -> (parallel, b, c -> d, e)'
+  // iterations not support nested iterations
+  // it('should handle nested iterations', () => {
+  //   const dsl = '(iteration, outerIteration, (iteration, innerIteration -> plainNode1 -> plainNode2))'
+  //   const result = parseDSL(dsl)
+  //   expect(result).toEqual([
+  //     { id: 'outerIteration', node_id: 'outerIteration', title: 'outerIteration', node_type: 'iteration', execution_metadata: {}, status: 'succeeded' },
+  //     { id: 'innerIteration', node_id: 'innerIteration', title: 'innerIteration', node_type: 'iteration', execution_metadata: { iteration_id: 'outerIteration', iteration_index: 0 }, status: 'succeeded' },
+  //     { id: 'plainNode1', node_id: 'plainNode1', title: 'plainNode1', execution_metadata: { iteration_id: 'innerIteration', iteration_index: 0 }, status: 'succeeded' },
+  //     { id: 'plainNode2', node_id: 'plainNode2', title: 'plainNode2', execution_metadata: { iteration_id: 'innerIteration', iteration_index: 0 }, status: 'succeeded' },
+  //   ])
+  // })
+
+  it('should handle nested iterations within parallel nodes', () => {
+    const dsl = '(parallel, parallelNode, (iteration, iterationNode, plainNode1, plainNode2))'
     const result = parseDSL(dsl)
     expect(result).toEqual([
-      {
-        nodeType: 'plain',
-        nodeId: 'a',
-      },
-      {
-        nodeType: 'parallel',
-        nodeId: 'b',
-        params: [
-          [
-            { nodeType: 'plain', nodeId: 'c' },
-            { nodeType: 'plain', nodeId: 'd' },
-          ],
-          // single node don't need to be wrapped in an array
-          { nodeType: 'plain', nodeId: 'e' },
-        ],
-      },
+      { id: 'parallelNode', node_id: 'parallelNode', title: 'parallelNode', execution_metadata: { parallel_id: 'parallelNode' }, status: 'succeeded' },
+      { id: 'iterationNode', node_id: 'iterationNode', title: 'iterationNode', node_type: 'iteration', execution_metadata: { parallel_id: 'parallelNode', parallel_start_node_id: 'iterationNode' }, status: 'succeeded' },
+      { id: 'plainNode1', node_id: 'plainNode1', title: 'plainNode1', execution_metadata: { iteration_id: 'iterationNode', iteration_index: 0, parallel_id: 'parallelNode', parallel_start_node_id: 'iterationNode' }, status: 'succeeded' },
+      { id: 'plainNode2', node_id: 'plainNode2', title: 'plainNode2', execution_metadata: { iteration_id: 'iterationNode', iteration_index: 0, parallel_id: 'parallelNode', parallel_start_node_id: 'iterationNode' }, status: 'succeeded' },
     ])
   })
 
-  test('parse retry', () => {
-    const dsl = '(retry, a, 3)'
-    const result = parseDSL(dsl)
-    expect(result).toEqual([
-      {
-        nodeType: 'retry',
-        nodeId: 'a',
-        params: [3],
-      },
-    ])
-  })
-
-  test('parse nested complex nodes', () => {
-    const dsl = '(iteration, a, b -> (parallel, e, f -> g, h))'
-    const result = parseDSL(dsl)
-    expect(result).toEqual([
-      {
-        nodeType: 'iteration',
-        nodeId: 'a',
-        params: [
-          [
-            { nodeType: 'plain', nodeId: 'b', iterationId: 'a', iterationIndex: 0 },
-            {
-              nodeType: 'parallel',
-              nodeId: 'e',
-              iterationId: 'a',
-              iterationIndex: 0,
-              params: [
-                [
-                  { nodeType: 'plain', nodeId: 'f', iterationId: 'a', iterationIndex: 0 },
-                  { nodeType: 'plain', nodeId: 'g', iterationId: 'a', iterationIndex: 0 },
-                ],
-                // single node don't need to be wrapped in an array
-                { nodeType: 'plain', nodeId: 'h', iterationId: 'a', iterationIndex: 0 },
-              ],
-            },
-          ],
-        ],
-      },
-    ])
+  it('should throw an error for unknown node types', () => {
+    const dsl = '(unknown, nodeId)'
+    expect(() => parseDSL(dsl)).toThrowError('Unknown nodeType: unknown')
   })
 })
