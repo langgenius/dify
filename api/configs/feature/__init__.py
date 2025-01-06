@@ -139,7 +139,7 @@ class PluginConfig(BaseSettings):
     Plugin configs
     """
 
-    PLUGIN_API_URL: HttpUrl = Field(
+    PLUGIN_DAEMON_URL: HttpUrl = Field(
         description="Plugin API URL",
         default="http://plugin:5002",
     )
