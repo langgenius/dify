@@ -5,6 +5,7 @@ from controllers.inner_api import api
 from controllers.inner_api.plugin.wraps import get_user_tenant, plugin_data
 from controllers.inner_api.wraps import plugin_inner_api_only
 from core.file.helpers import get_signed_file_url_for_plugin
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocationResponse
 from core.plugin.backwards_invocation.encrypt import PluginEncrypter
@@ -52,15 +53,17 @@ class PluginInvokeTextEmbeddingApi(Resource):
     @plugin_data(payload_type=RequestInvokeTextEmbedding)
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTextEmbedding):
         try:
-            return BaseBackwardsInvocationResponse(
-                data=PluginModelBackwardsInvocation.invoke_text_embedding(
-                    user_id=user_model.id,
-                    tenant=tenant_model,
-                    payload=payload,
+            return jsonable_encoder(
+                BaseBackwardsInvocationResponse(
+                    data=PluginModelBackwardsInvocation.invoke_text_embedding(
+                        user_id=user_model.id,
+                        tenant=tenant_model,
+                        payload=payload,
+                    )
                 )
-            ).model_dump()
+            )
         except Exception as e:
-            return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
+            return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
 class PluginInvokeRerankApi(Resource):
@@ -70,15 +73,17 @@ class PluginInvokeRerankApi(Resource):
     @plugin_data(payload_type=RequestInvokeRerank)
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeRerank):
         try:
-            return BaseBackwardsInvocationResponse(
-                data=PluginModelBackwardsInvocation.invoke_rerank(
-                    user_id=user_model.id,
-                    tenant=tenant_model,
-                    payload=payload,
+            return jsonable_encoder(
+                BaseBackwardsInvocationResponse(
+                    data=PluginModelBackwardsInvocation.invoke_rerank(
+                        user_id=user_model.id,
+                        tenant=tenant_model,
+                        payload=payload,
+                    )
                 )
-            ).model_dump()
+            )
         except Exception as e:
-            return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
+            return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
 class PluginInvokeTTSApi(Resource):
@@ -105,15 +110,17 @@ class PluginInvokeSpeech2TextApi(Resource):
     @plugin_data(payload_type=RequestInvokeSpeech2Text)
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeSpeech2Text):
         try:
-            return BaseBackwardsInvocationResponse(
-                data=PluginModelBackwardsInvocation.invoke_speech2text(
-                    user_id=user_model.id,
-                    tenant=tenant_model,
-                    payload=payload,
+            return jsonable_encoder(
+                BaseBackwardsInvocationResponse(
+                    data=PluginModelBackwardsInvocation.invoke_speech2text(
+                        user_id=user_model.id,
+                        tenant=tenant_model,
+                        payload=payload,
+                    )
                 )
-            ).model_dump()
+            )
         except Exception as e:
-            return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
+            return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
 class PluginInvokeModerationApi(Resource):
@@ -123,15 +130,17 @@ class PluginInvokeModerationApi(Resource):
     @plugin_data(payload_type=RequestInvokeModeration)
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeModeration):
         try:
-            return BaseBackwardsInvocationResponse(
-                data=PluginModelBackwardsInvocation.invoke_moderation(
-                    user_id=user_model.id,
-                    tenant=tenant_model,
-                    payload=payload,
+            return jsonable_encoder(
+                BaseBackwardsInvocationResponse(
+                    data=PluginModelBackwardsInvocation.invoke_moderation(
+                        user_id=user_model.id,
+                        tenant=tenant_model,
+                        payload=payload,
+                    )
                 )
-            ).model_dump()
+            )
         except Exception as e:
-            return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
+            return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
 class PluginInvokeToolApi(Resource):
@@ -162,18 +171,20 @@ class PluginInvokeParameterExtractorNodeApi(Resource):
     @plugin_data(payload_type=RequestInvokeParameterExtractorNode)
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeParameterExtractorNode):
         try:
-            return BaseBackwardsInvocationResponse(
-                data=PluginNodeBackwardsInvocation.invoke_parameter_extractor(
-                    tenant_id=tenant_model.id,
-                    user_id=user_model.id,
-                    parameters=payload.parameters,
-                    model_config=payload.model,
-                    instruction=payload.instruction,
-                    query=payload.query,
+            return jsonable_encoder(
+                BaseBackwardsInvocationResponse(
+                    data=PluginNodeBackwardsInvocation.invoke_parameter_extractor(
+                        tenant_id=tenant_model.id,
+                        user_id=user_model.id,
+                        parameters=payload.parameters,
+                        model_config=payload.model,
+                        instruction=payload.instruction,
+                        query=payload.query,
+                    )
                 )
-            ).model_dump()
+            )
         except Exception as e:
-            return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
+            return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
 class PluginInvokeQuestionClassifierNodeApi(Resource):
@@ -183,18 +194,20 @@ class PluginInvokeQuestionClassifierNodeApi(Resource):
     @plugin_data(payload_type=RequestInvokeQuestionClassifierNode)
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeQuestionClassifierNode):
         try:
-            return BaseBackwardsInvocationResponse(
-                data=PluginNodeBackwardsInvocation.invoke_question_classifier(
-                    tenant_id=tenant_model.id,
-                    user_id=user_model.id,
-                    query=payload.query,
-                    model_config=payload.model,
-                    classes=payload.classes,
-                    instruction=payload.instruction,
+            return jsonable_encoder(
+                BaseBackwardsInvocationResponse(
+                    data=PluginNodeBackwardsInvocation.invoke_question_classifier(
+                        tenant_id=tenant_model.id,
+                        user_id=user_model.id,
+                        query=payload.query,
+                        model_config=payload.model,
+                        classes=payload.classes,
+                        instruction=payload.instruction,
+                    )
                 )
-            ).model_dump()
+            )
         except Exception as e:
-            return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
+            return jsonable_encoder(BaseBackwardsInvocationResponse(error=str(e)))
 
 
 class PluginInvokeAppApi(Resource):
