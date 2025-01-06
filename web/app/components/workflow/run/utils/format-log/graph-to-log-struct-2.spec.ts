@@ -20,8 +20,8 @@ describe('parseDSL', () => {
         nodeId: 'a',
         params: [
           [
-            { nodeType: 'plain', nodeId: 'b' },
-            { nodeType: 'plain', nodeId: 'c' },
+            { nodeType: 'plain', nodeId: 'b', iterationId: 'a', iterationIndex: 0 },
+            { nodeType: 'plain', nodeId: 'c', iterationId: 'a', iterationIndex: 0 },
           ],
         ],
       },
@@ -72,17 +72,19 @@ describe('parseDSL', () => {
         nodeId: 'a',
         params: [
           [
-            { nodeType: 'plain', nodeId: 'b' },
+            { nodeType: 'plain', nodeId: 'b', iterationId: 'a', iterationIndex: 0 },
             {
               nodeType: 'parallel',
               nodeId: 'e',
+              iterationId: 'a',
+              iterationIndex: 0,
               params: [
                 [
-                  { nodeType: 'plain', nodeId: 'f' },
-                  { nodeType: 'plain', nodeId: 'g' },
+                  { nodeType: 'plain', nodeId: 'f', iterationId: 'a', iterationIndex: 0 },
+                  { nodeType: 'plain', nodeId: 'g', iterationId: 'a', iterationIndex: 0 },
                 ],
                 // single node don't need to be wrapped in an array
-                { nodeType: 'plain', nodeId: 'h' },
+                { nodeType: 'plain', nodeId: 'h', iterationId: 'a', iterationIndex: 0 },
               ],
             },
           ],

@@ -1,5 +1,6 @@
-type NodePlain = { nodeType: 'plain'; nodeId: string }
-type NodeComplex = { nodeType: string; nodeId: string; params: (NodePlain | NodeComplex | Node[])[] }
+type IterationInfo = { iterationId: string; iterationIndex: number }
+type NodePlain = { nodeType: 'plain'; nodeId: string; } & Partial<IterationInfo>
+type NodeComplex = { nodeType: string; nodeId: string; params: (NodePlain | (NodeComplex & Partial<IterationInfo>) | Node[] | number)[] } & Partial<IterationInfo>
 type Node = NodePlain | NodeComplex
 
 /**
@@ -8,7 +9,7 @@ type Node = NodePlain | NodeComplex
  * @returns An array of parsed nodes.
  */
 function parseDSL(dsl: string): Node[] {
-  return parseTopLevelFlow(dsl).map(parseNode)
+  return parseTopLevelFlow(dsl).map(nodeStr => parseNode(nodeStr))
 }
 
 /**
@@ -44,9 +45,10 @@ function parseTopLevelFlow(dsl: string): string[] {
  * Parses a single node string.
  * If the node is complex (e.g., has parentheses), it extracts the node type, node ID, and parameters.
  * @param nodeStr - The node string to parse.
+ * @param parentIterationId - The ID of the parent iteration node (if applicable).
  * @returns A parsed node object.
  */
-function parseNode(nodeStr: string): Node {
+function parseNode(nodeStr: string, parentIterationId?: string): Node {
   // Check if the node is a complex node
   if (nodeStr.startsWith('(') && nodeStr.endsWith(')')) {
     const innerContent = nodeStr.slice(1, -1).trim() // Remove outer parentheses
@@ -72,42 +74,53 @@ function parseNode(nodeStr: string): Node {
 
     // Extract nodeType, nodeId, and params
     const [nodeType, nodeId, ...paramsRaw] = parts
-    const params = parseParams(paramsRaw)
-
-    return {
+    const params = parseParams(paramsRaw, nodeType === 'iteration' ? nodeId.trim() : parentIterationId)
+    const complexNode = {
       nodeType: nodeType.trim(),
       nodeId: nodeId.trim(),
       params,
     }
+    if (parentIterationId) {
+      complexNode.iterationId = parentIterationId
+      complexNode.iterationIndex = 0 // Fixed as 0
+    }
+    return complexNode
   }
 
   // If it's not a complex node, treat it as a plain node
-  return { nodeType: 'plain', nodeId: nodeStr.trim() }
+  const plainNode: NodePlain = { nodeType: 'plain', nodeId: nodeStr.trim() }
+  if (parentIterationId) {
+    plainNode.iterationId = parentIterationId
+    plainNode.iterationIndex = 0 // Fixed as 0
+  }
+  return plainNode
 }
 
 /**
  * Parses parameters of a complex node.
  * Supports nested flows and complex sub-nodes.
+ * Adds iteration-specific metadata recursively.
  * @param paramParts - The parameters string split by commas.
+ * @param iterationId - The ID of the iteration node, if applicable.
  * @returns An array of parsed parameters (plain nodes, nested nodes, or flows).
  */
-function parseParams(paramParts: string[]): (Node | Node[])[] {
+function parseParams(paramParts: string[], iterationId?: string): (Node | Node[] | number)[] {
   return paramParts.map((part) => {
     if (part.includes('->')) {
       // Parse as a flow and return an array of nodes
-      return parseTopLevelFlow(part).map(parseNode)
+      return parseTopLevelFlow(part).map(node => parseNode(node, iterationId))
     }
     else if (part.startsWith('(')) {
       // Parse as a nested complex node
-      return parseNode(part)
+      return parseNode(part, iterationId)
     }
-    else if (!isNaN(Number(part.trim()))) {
+    else if (!Number.isNaN(Number(part.trim()))) {
       // Parse as a numeric parameter
       return Number(part.trim())
     }
     else {
       // Parse as a plain node
-      return parseNode(part)
+      return parseNode(part, iterationId)
     }
   })
 }
