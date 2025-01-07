@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from functools import wraps
 from typing import Optional
@@ -8,7 +8,7 @@ from flask import current_app, request
 from flask_login import user_logged_in  # type: ignore
 from flask_restful import Resource  # type: ignore
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
@@ -190,17 +190,24 @@ def validate_and_get_api_token(scope: str | None = None):
     if auth_scheme != "bearer":
         raise Unauthorized("Authorization scheme must be 'Bearer'")
 
+    current_time = datetime.now(UTC).replace(tzinfo=None)
+    cutoff_time = current_time - timedelta(minutes=1)
     with Session(db.engine, expire_on_commit=False) as session:
-        # Lock here to ensure that only one transaction can update the token's last_used_at field at a time.
-        stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope).with_for_update()
-        api_token = session.scalar(stmt)
+        update_stmt = (
+            update(ApiToken)
+            .where(ApiToken.token == auth_token, ApiToken.last_used_at < cutoff_time, ApiToken.type == scope)
+            .values(last_used_at=current_time)
+            .returning(ApiToken)
+        )
+        result = session.execute(update_stmt)
+        api_token = result.scalar_one_or_none()
+
         if not api_token:
-            raise Unauthorized("Access token is invalid")
-        current_time = datetime.now(UTC).replace(tzinfo=None)
-        # Update the last_used_at field if more than 1 minute has passed since last update
-        if (current_time - api_token.last_used_at).seconds > 60:
-            api_token.last_used_at = current_time
-            session.commit()
+            stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
+            api_token = session.scalar(stmt)
+            if not api_token:
+                raise Unauthorized("Access token is invalid")
+        session.commit()
 
     return api_token
 
