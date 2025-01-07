@@ -28,7 +28,6 @@ const ModelIcon: FC<ModelIconProps> = ({
 
   if (provider?.icon_small) {
     return (
-
       <div className={`flex items-center justify-center ${isDeprecated ? 'opacity-50' : ''}`}>
         <img
           alt='model-icon'
@@ -44,8 +43,8 @@ const ModelIcon: FC<ModelIconProps> = ({
       'flex items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
       className,
     )}>
-      <div className='flex w-5 h5 items-center justify-center opacity-35'>
-        <Group className='text-text-tertiary' />
+      <div className='flex w-5 h-5 items-center justify-center opacity-35'>
+        <Group className='text-text-tertiary w-3 h-3' />
       </div>
     </div>
   )
