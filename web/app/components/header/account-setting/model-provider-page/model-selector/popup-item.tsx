@@ -91,7 +91,7 @@ const PopupItem: FC<PopupItemProps> = ({
             popupClassName='p-3 !w-[206px] bg-components-panel-bg-blur backdrop-blur-sm border-[0.5px] border-components-panel-border rounded-xl'
             popupContent={
               <div className='flex flex-col gap-1'>
-                <div className='flex flex-col gap-2'>
+                <div className='flex flex-col items-start gap-2'>
                   <ModelIcon
                     className={cn('shrink-0 w-5 h-5')}
                     provider={model}
