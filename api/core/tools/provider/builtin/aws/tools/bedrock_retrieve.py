@@ -13,8 +13,13 @@ class BedrockRetrieveTool(BuiltinTool):
     knowledge_base_id: str = None
     topk: int = None
 
-    def _bedrock_retrieve(
-        self, query_input: str, knowledge_base_id: str, num_results: int, search_type: str, rerank_model_id: str, metadata_filter: Optional[dict] = None
+    def _bedrock_retrieve(self, 
+        query_input: str, 
+        knowledge_base_id: str, 
+        num_results: int, 
+        search_type: str, 
+        rerank_model_id: str, 
+        metadata_filter: Optional[dict] = None
     ):
         try:
             retrieval_query = {"text": query_input}
