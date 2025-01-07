@@ -68,7 +68,9 @@ def cloud_edition_billing_resource_check(resource: str):
                 elif resource == "apps" and 0 < apps.limit <= apps.size:
                     abort(403, "The number of apps has reached the limit of your subscription.")
                 elif resource == "vector_space" and 0 < vector_space.limit <= vector_space.size:
-                    abort(403, "The capacity of the knowledge storage space has reached the limit of your subscription.")
+                    abort(
+                        403, "The capacity of the knowledge storage space has reached the limit of your subscription."
+                    )
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
                     # The api of file upload is used in the multiple places,
                     # so we need to check the source of the request from datasets
@@ -117,10 +119,8 @@ def cloud_edition_billing_rate_limit_check(resource: str):
     def interceptor(view):
         @wraps(view)
         def decorated(*args, **kwargs):
-            if resource == "knowledge": 
-                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(
-                    current_user.current_tenant_id
-                )
+            if resource == "knowledge":
+                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(current_user.current_tenant_id)
                 if knowledge_rate_limit.enabled:
                     current_time = int(time.time() * 1000)
                     key = f"rate_limit_{current_user.current_tenant_id}"
@@ -132,7 +132,9 @@ def cloud_edition_billing_rate_limit_check(resource: str):
                     request_count = redis_client.zcard(key)
 
                     if request_count > knowledge_rate_limit.limit:
-                        abort(403, "Sorry, you have reached the rate limit of your subscription.")
+                        abort(
+                            403, "Sorry, you have reached the knowledge base request rate limit of your subscription."
+                        )
             return view(*args, **kwargs)
 
         return decorated

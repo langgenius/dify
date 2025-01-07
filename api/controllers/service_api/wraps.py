@@ -145,10 +145,8 @@ def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
         def decorated(*args, **kwargs):
             api_token = validate_and_get_api_token(api_token_type)
 
-            if resource == "knowledge": 
-                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(
-                    api_token.tenant_id
-                )
+            if resource == "knowledge":
+                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(api_token.tenant_id)
                 if knowledge_rate_limit.enabled:
                     current_time = int(time.time() * 1000)
                     key = f"rate_limit_{api_token.tenant_id}"
@@ -160,7 +158,9 @@ def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
                     request_count = redis_client.zcard(key)
 
                     if request_count > knowledge_rate_limit.limit:
-                        raise Forbidden(403, "Sorry, you have reached the rate limit of your subscription.")
+                        raise Forbidden(
+                            "Sorry, you have reached the knowledge base request rate limit of your subscription."
+                        )
             return view(*args, **kwargs)
 
         return decorated
