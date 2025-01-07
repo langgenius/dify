@@ -24,6 +24,10 @@ import { DataSourceType } from '@/models/datasets'
 import IndexFailed from '@/app/components/datasets/common/document-status-with-action/index-failed'
 import { useProviderContext } from '@/context/provider-context'
 import cn from '@/utils/classnames'
+import { useInvalidDocumentDetailKey } from '@/service/knowledge/use-document'
+import { useInvalid } from '@/service/use-base'
+import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
+
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
     <path d="M10.8332 5.83333L9.90355 3.9741C9.63601 3.439 9.50222 3.17144 9.30265 2.97597C9.12615 2.80311 8.91344 2.67164 8.6799 2.59109C8.41581 2.5 8.11668 2.5 7.51841 2.5H4.33317C3.39975 2.5 2.93304 2.5 2.57652 2.68166C2.26292 2.84144 2.00795 3.09641 1.84816 3.41002C1.6665 3.76654 1.6665 4.23325 1.6665 5.16667V5.83333M1.6665 5.83333H14.3332C15.7333 5.83333 16.4334 5.83333 16.9681 6.10582C17.4386 6.3455 17.821 6.72795 18.0607 7.19836C18.3332 7.73314 18.3332 8.4332 18.3332 9.83333V13.5C18.3332 14.9001 18.3332 15.6002 18.0607 16.135C17.821 16.6054 17.4386 16.9878 16.9681 17.2275C16.4334 17.5 15.7333 17.5 14.3332 17.5H5.6665C4.26637 17.5 3.56631 17.5 3.03153 17.2275C2.56112 16.9878 2.17867 16.6054 1.93899 16.135C1.6665 15.6002 1.6665 14.9001 1.6665 13.5V5.83333ZM9.99984 14.1667V9.16667M7.49984 11.6667H12.4998" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -99,7 +103,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     return { page: currPage + 1, limit, keyword: debouncedSearchValue, fetch: isDataSourceNotion ? true : '' }
   }, [currPage, debouncedSearchValue, isDataSourceNotion, limit])
 
-  const { data: documentsRes, error, mutate, isLoading: isListLoading } = useSWR(
+  const { data: documentsRes, mutate, isLoading: isListLoading } = useSWR(
     {
       action: 'fetchDocuments',
       datasetId,
@@ -115,10 +119,20 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       setIsMuting(false)
   }, [isListLoading, isMuting])
 
+  const invalidDocumentDetail = useInvalidDocumentDetailKey()
+  const invalidChunkList = useInvalid(useSegmentListKey)
+  const invalidChildChunkList = useInvalid(useChildSegmentListKey)
+
   const handleUpdate = useCallback(() => {
     setIsMuting(true)
     mutate()
-  }, [mutate])
+    invalidDocumentDetail()
+    setTimeout(() => {
+      invalidChunkList()
+      invalidChildChunkList()
+    }, 5000)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const documentsWithProgress = useMemo(() => {
     let completedNum = 0

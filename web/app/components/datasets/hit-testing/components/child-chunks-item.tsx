@@ -17,7 +17,7 @@ const ChildChunks: FC<Props> = ({
   const { id, score, content, position } = payload
   return (
     <div
-      className={!isShowAll ? 'line-clamp-2' : ''}
+      className={!isShowAll ? 'line-clamp-2 break-all' : ''}
     >
       <div className='inline-flex items-center relative top-[-2px]'>
         <div className='flex items-center h-[20.5px] bg-state-accent-solid  system-2xs-semibold-uppercase text-text-primary-on-surface px-1'>C-{position}</div>

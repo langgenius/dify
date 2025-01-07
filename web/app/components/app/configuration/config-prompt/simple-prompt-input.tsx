@@ -27,6 +27,7 @@ import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/confi
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/base/prompt-editor/plugins/update-block'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
 
 export type ISimplePromptInput = {
   mode: AppType
@@ -54,6 +55,11 @@ const Prompt: FC<ISimplePromptInput> = ({
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
+  const featuresStore = useFeaturesStore()
+  const {
+    features,
+    setFeatures,
+  } = featuresStore!.getState()
 
   const { eventEmitter } = useEventEmitterContextContext()
   const {
@@ -137,8 +143,18 @@ const Prompt: FC<ISimplePromptInput> = ({
     })
     setModelConfig(newModelConfig)
     setPrevPromptConfig(modelConfig.configs)
-    if (mode !== AppType.completion)
+
+    if (mode !== AppType.completion) {
       setIntroduction(res.opening_statement)
+      const newFeatures = produce(features, (draft) => {
+        draft.opening = {
+          ...draft.opening,
+          enabled: !!res.opening_statement,
+          opening_statement: res.opening_statement,
+        }
+      })
+      setFeatures(newFeatures)
+    }
     showAutomaticFalse()
   }
   const minHeight = initEditorHeight || 228

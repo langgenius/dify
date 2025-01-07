@@ -4,7 +4,7 @@ import classNames from '@/utils/classnames'
 
 const TriangleArrow: FC<ComponentProps<'svg'>> = props => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="11" viewBox="0 0 24 11" fill="none" {...props}>
-    <path d="M9.87868 1.12132C11.0503 -0.0502525 12.9497 -0.0502525 14.1213 1.12132L23.3137 10.3137H0.686292L9.87868 1.12132Z" fill="currentColor"/>
+    <path d="M9.87868 1.12132C11.0503 -0.0502525 12.9497 -0.0502525 14.1213 1.12132L23.3137 10.3137H0.686292L9.87868 1.12132Z" fill="currentColor" />
   </svg>
 )
 
@@ -65,7 +65,7 @@ export const OptionCard: FC<OptionCardProps> = forwardRef((props, ref) => {
       (isActive && !noHighlight)
         ? 'border-[1.5px] border-components-option-card-option-selected-border'
         : 'border border-components-option-card-option-border',
-      disabled && 'opacity-50 cursor-not-allowed',
+      disabled && 'opacity-50 pointer-events-none',
       className,
     )}
     style={{

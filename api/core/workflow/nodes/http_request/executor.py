@@ -37,7 +37,22 @@ BODY_TYPE_TO_CONTENT_TYPE = {
 
 
 class Executor:
-    method: Literal["get", "head", "post", "put", "delete", "patch"]
+    method: Literal[
+        "get",
+        "head",
+        "post",
+        "put",
+        "delete",
+        "patch",
+        "options",
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "HEAD",
+        "OPTIONS",
+    ]
     url: str
     params: list[tuple[str, str]] | None
     content: str | bytes | None
@@ -249,7 +264,22 @@ class Executor:
         """
         do http request depending on api bundle
         """
-        if self.method not in {"get", "head", "post", "put", "delete", "patch"}:
+        if self.method not in {
+            "get",
+            "head",
+            "post",
+            "put",
+            "delete",
+            "patch",
+            "options",
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "HEAD",
+            "OPTIONS",
+        }:
             raise InvalidHttpMethodError(f"Invalid http method {self.method}")
 
         request_args = {
@@ -266,7 +296,7 @@ class Executor:
         }
         # request_args = {k: v for k, v in request_args.items() if v is not None}
         try:
-            response = getattr(ssrf_proxy, self.method)(**request_args)
+            response = getattr(ssrf_proxy, self.method.lower())(**request_args)
         except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
             raise HttpRequestNodeError(str(e))
         # FIXME: fix type ignore, this maybe httpx type issue
