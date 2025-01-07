@@ -41,6 +41,7 @@
   gap: 4px;
 }
 .qrcodeform {
+  z-index: 50;
   border: 0.5px solid #eaecf0;
   display: flex;
   flex-direction: column;
