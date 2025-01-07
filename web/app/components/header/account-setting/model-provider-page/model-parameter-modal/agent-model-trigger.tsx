@@ -2,27 +2,25 @@ import type { FC } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
-  CustomConfigurationModelFixedFields,
   ModelItem,
   ModelProvider,
 } from '../declarations'
 import {
-  ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
   ModelTypeEnum,
 } from '../declarations'
-import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from '../provider-added-card'
 import type { PluginInfoFromMarketPlace } from '@/app/components/plugins/types'
-import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import ConfigurationButton from './configuration-button'
 import { PluginType } from '@/app/components/plugins/types'
 import {
+  useModelModalHandler,
   useUpdateModelList,
   useUpdateModelProviders,
 } from '../hooks'
 import ModelIcon from '../model-icon'
 import ModelDisplay from './model-display'
-import InstallButton from '@/app/components/base/install-button'
+import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import StatusIndicators from './status-indicators'
 import cn from '@/utils/classnames'
 import { useProviderContext } from '@/context/provider-context'
@@ -72,10 +70,9 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
   }, [modelProviders, providerName])
   const [pluginInfo, setPluginInfo] = useState<PluginInfoFromMarketPlace | null>(null)
   const [isPluginChecked, setIsPluginChecked] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [installed, setInstalled] = useState(false)
-  const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
-
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
+  const handleOpenModal = useModelModalHandler()
   useEffect(() => {
     (async () => {
       if (providerName && !modelProvider) {
@@ -100,66 +97,6 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
 
   if (modelId && !isPluginChecked)
     return null
-
-  const handleOpenModal = (
-    provider: ModelProvider,
-    configurationMethod: ConfigurationMethodEnum,
-    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
-  ) => {
-    setShowModelModal({
-      payload: {
-        currentProvider: provider,
-        currentConfigurationMethod: configurationMethod,
-        currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
-      },
-      onSaveCallback: () => {
-        updateModelProviders()
-
-        provider.supported_model_types.forEach((type) => {
-          updateModelList(type)
-        })
-
-        if (configurationMethod === ConfigurationMethodEnum.customizableModel
-            && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
-          eventEmitter?.emit({
-            type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
-            payload: provider.provider,
-          } as any)
-
-          if (CustomConfigurationModelFixedFields?.__model_type)
-            updateModelList(CustomConfigurationModelFixedFields.__model_type)
-        }
-      },
-    })
-  }
-
-  const handleInstall = async (pluginInfo: PluginInfoFromMarketPlace) => {
-    setLoading(true)
-    try {
-      const { all_installed } = await installPackageFromMarketPlace(pluginInfo.latest_package_identifier)
-      if (all_installed) {
-        [
-          ModelTypeEnum.textGeneration,
-          ModelTypeEnum.textEmbedding,
-          ModelTypeEnum.rerank,
-          ModelTypeEnum.moderation,
-          ModelTypeEnum.speech2text,
-          ModelTypeEnum.tts,
-        ].forEach((type: ModelTypeEnum) => {
-          if (scope?.includes(type))
-            updateModelList(type)
-        })
-        updateModelProviders()
-        setInstalled(true)
-      }
-    }
-    catch (error) {
-      console.error('Installation failed:', error)
-    }
-    finally {
-      setLoading(false)
-    }
-  }
 
   return (
     <div
@@ -193,13 +130,27 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
             t={t}
           />
           {!installed && !modelProvider && pluginInfo && (
-            <InstallButton
-              loading={loading}
-              onInstall={(e) => {
-                e.stopPropagation()
-                handleInstall(pluginInfo)
+            <InstallPluginButton
+              onClick={e => e.stopPropagation()}
+              size={'small'}
+              uniqueIdentifier={pluginInfo.latest_package_identifier}
+              onSuccess={() => {
+                [
+                  ModelTypeEnum.textGeneration,
+                  ModelTypeEnum.textEmbedding,
+                  ModelTypeEnum.rerank,
+                  ModelTypeEnum.moderation,
+                  ModelTypeEnum.speech2text,
+                  ModelTypeEnum.tts,
+                ].forEach((type: ModelTypeEnum) => {
+                  if (scope?.includes(type))
+                    updateModelList(type)
+                },
+                )
+                updateModelProviders()
+                invalidateInstalledPluginList()
+                setInstalled(true)
               }}
-              t={t}
             />
           )}
           {modelProvider && !disabled && !needsConfiguration && (

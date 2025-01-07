@@ -1,24 +1,25 @@
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import type { ReactNode } from 'react'
-import { memo, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { Strategy } from './agent-strategy'
 import classNames from '@/utils/classnames'
-import { RiArrowDownSLine, RiArrowRightUpLine, RiErrorWarningFill } from '@remixicon/react'
+import { RiArrowDownSLine, RiErrorWarningFill } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
 import Link from 'next/link'
 import { InstallPluginButton } from './install-plugin-button'
 import ViewTypeSelect, { ViewType } from '../../../block-selector/view-type-select'
 import SearchInput from '@/app/components/base/search-input'
-import { MARKETPLACE_URL_PREFIX } from '@/config'
 import Tools from '../../../block-selector/tools'
 import { useTranslation } from 'react-i18next'
 import { useStrategyProviders } from '@/service/use-strategy'
-import type { StrategyPluginDetail } from '@/app/components/plugins/types'
+import { PluginType, type StrategyPluginDetail } from '@/app/components/plugins/types'
 import type { ToolWithProvider } from '../../../types'
 import { CollectionType } from '@/app/components/tools/types'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { useStrategyInfo } from '../../agent/use-config'
 import { SwitchPluginVersion } from './switch-plugin-version'
+import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 
 const NotFoundWarn = (props: {
   title: ReactNode,
@@ -119,6 +120,25 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
   )?.icon as string | undefined
   const { t } = useTranslation()
 
+  const wrapElemRef = useRef<HTMLDivElement>(null)
+
+  const {
+    queryPluginsWithDebounced: fetchPlugins,
+    plugins: notInstalledPlugins = [],
+  } = useMarketplacePlugins()
+
+  useEffect(() => {
+    if (query) {
+      fetchPlugins({
+        query,
+        category: PluginType.agent,
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query])
+
+  const pluginRef = useRef(null)
+
   return <PortalToFollowElem open={open} onOpenChange={setOpen} placement='bottom'>
     <PortalToFollowElemTrigger className='w-full'>
       <div
@@ -172,8 +192,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
           <SearchInput placeholder={t('workflow.nodes.agent.strategy.searchPlaceholder')} value={query} onChange={setQuery} className={'w-full'} />
           <ViewTypeSelect viewType={viewType} onChange={setViewType} />
         </header>
-        <main className="md:h-[300px] xl:h-[400px] 2xl:h-[564px] relative overflow-hidden">
-          {/* TODO: fix when in list view show workflow as group label */}
+        <main className="md:max-h-[300px] xl:max-h-[400px] 2xl:max-h-[564px] relative overflow-hidden flex flex-col w-full" ref={wrapElemRef}>
           <Tools
             tools={filteredTools}
             viewType={viewType}
@@ -186,18 +205,16 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                 plugin_unique_identifier: tool!.provider_id,
               })
               setOpen(false)
-            }}
-            hasSearchText={false}
-            showWorkflowEmpty={false}
-            className='max-w-none'
-            indexBarClassName='top-0 xl:top-36'
+            } }
+            className='max-w-none max-h-full h-full overflow-y-auto'
+            indexBarClassName='top-0 xl:top-36' showWorkflowEmpty={false} hasSearchText={false} />
+          <PluginList
+            wrapElemRef={wrapElemRef}
+            list={notInstalledPlugins as any} ref={pluginRef}
+            searchText={query}
+            tags={[]}
+            disableMaxWidth
           />
-          <div className='absolute bottom-0 px-4 py-2 flex items-center justify-center border-t border-divider-subtle text-text-accent-light-mode-only bg-components-panel-bg text-xs'>
-            Find more in
-            <Link href={MARKETPLACE_URL_PREFIX} className='flex ml-1'>
-              Marketplace <RiArrowRightUpLine className='size-3' />
-            </Link>
-          </div>
         </main>
       </div>
     </PortalToFollowElemContent>
