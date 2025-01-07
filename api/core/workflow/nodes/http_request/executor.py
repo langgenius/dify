@@ -66,7 +66,7 @@ class Executor:
             node_data.authorization.config.api_key = variable_pool.convert_template(
                 node_data.authorization.config.api_key
             ).text
-       
+
         self.url: str = node_data.url
         self.method = node_data.method
         self.auth = node_data.authorization
