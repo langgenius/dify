@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Optional, cast
 from flask import Flask, current_app
 
 from configs import dify_config
-from core.variables import ArrayVariable, IntegerVariable, NoneVariable
+from core.variables import IntegerVariable, NoneVariable
 from core.workflow.entities.node_entities import (
     NodeRunMetadataKey,
     NodeRunResult,
