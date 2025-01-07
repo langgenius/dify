@@ -10,6 +10,7 @@ from flask import Flask, current_app
 
 from configs import dify_config
 from core.variables import ArrayVariable, IntegerVariable, NoneVariable
+from core.variables.segments import Segment, SegmentType
 from core.workflow.entities.node_entities import (
     NodeRunMetadataKey,
     NodeRunResult,
@@ -37,7 +38,6 @@ from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
 from models.workflow import WorkflowNodeExecutionStatus
-from core.variables.segments import Segment, SegmentType
 
 from .exc import (
     InvalidIteratorValueError,
@@ -79,30 +79,18 @@ class IterationNode(BaseNode[IterationNodeData]):
         variable = self.graph_runtime_state.variable_pool.get(self.node_data.iterator_selector)
 
         if not variable:
-            raise IteratorVariableNotFoundError(
-                f"iterator variable {self.node_data.iterator_selector} not found"
-            )
+            raise IteratorVariableNotFoundError(f"iterator variable {self.node_data.iterator_selector} not found")
 
-        is_array_segment_type = (
-            isinstance(variable, Segment)
-            and variable.value_type
-            in (
-                SegmentType.ARRAY_ANY,
-                SegmentType.ARRAY_FILE,
-                SegmentType.ARRAY_STRING,
-                SegmentType.ARRAY_NUMBER,
-                SegmentType.ARRAY_OBJECT,
-            )
+        is_array_segment_type = isinstance(variable, Segment) and variable.value_type in (
+            SegmentType.ARRAY_ANY,
+            SegmentType.ARRAY_FILE,
+            SegmentType.ARRAY_STRING,
+            SegmentType.ARRAY_NUMBER,
+            SegmentType.ARRAY_OBJECT,
         )
 
-        if not (
-            isinstance(variable, ArrayVariable)
-            or isinstance(variable, NoneVariable)
-            or is_array_segment_type
-        ):
-            raise InvalidIteratorValueError(
-                f"invalid iterator value: {variable}, please provide a list."
-            )
+        if not (isinstance(variable, (ArrayVariable, NoneVariable)) or is_array_segment_type):
+            raise InvalidIteratorValueError(f"invalid iterator value: {variable}, please provide a list.")
 
         if isinstance(variable, NoneVariable) or len(variable.value) == 0:
             yield RunCompletedEvent(
@@ -116,9 +104,7 @@ class IterationNode(BaseNode[IterationNodeData]):
         iterator_list_value = variable.to_object()
 
         if not isinstance(iterator_list_value, list):
-            raise InvalidIteratorValueError(
-                f"Invalid iterator value: {iterator_list_value}, please provide a list."
-            )
+            raise InvalidIteratorValueError(f"Invalid iterator value: {iterator_list_value}, please provide a list.")
 
         inputs = {"iterator_selector": iterator_list_value}
 
