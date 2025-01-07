@@ -108,7 +108,7 @@ const SelfHostedPlanItem: FC<Props> = ({
       window.location.href = contactSalesUrl
   }
   return (
-    <div className={cn(`relative flex flex-col w-[374px] min-h-[559px] border-[0.5px] rounded-2xl
+    <div className={cn(`relative flex flex-col w-[374px] border-[0.5px] rounded-2xl
       hover:shadow-lg hover:backdrop-blur-[5px] hover:border-effects-highlight overflow-hidden`, style[plan].bg)}>
       <div>
         <div className={cn(isEnterprisePlan ? 'bg-price-enterprise-background absolute left-0 top-0 right-0 bottom-0 z-1' : '')} >
@@ -116,7 +116,7 @@ const SelfHostedPlanItem: FC<Props> = ({
         {isEnterprisePlan && <div className='bg-[#09328c] opacity-15 mix-blend-plus-darker blur-[80px] size-[341px] rounded-full absolute -top-[104px] -left-[90px] z-15'></div>}
         {isEnterprisePlan && <div className='bg-[#e2eafb] opacity-15 mix-blend-plus-darker blur-[80px] size-[341px] rounded-full absolute -right-[40px] -bottom-[72px] z-15'></div>}
       </div>
-      <div className='absolute top-0 left-0 right-0 bottom-0 p-6 z-10'>
+      <div className='relative w-full p-6 z-10 min-h-[559px]'>
         <div className=' flex flex-col gap-y-1 min-h-[108px]'>
           {style[plan].icon}
           <div className='flex items-center'>
@@ -126,12 +126,11 @@ const SelfHostedPlanItem: FC<Props> = ({
         </div>
         <div className='my-3'>
           <div className='flex items-end'>
-            <div className={cn('leading-[125%] text-[28px] font-bold', style[plan].price)}>{t(`${i18nPrefix}.price`)}</div>
-            {!isFreePlan && <div className='ml-2 flex flex-col'>
-              <div className={cn('leading-normal text-[14px] font-normal', style[plan].priceTip)}>
+            <div className={cn('leading-[125%] text-[28px] font-bold shrink-0', style[plan].price)}>{t(`${i18nPrefix}.price`)}</div>
+            {!isFreePlan
+              && <span className={cn('ml-2 py-1 leading-normal text-[14px] font-normal', style[plan].priceTip)}>
                 {t(`${i18nPrefix}.priceTip`)}
-              </div>
-            </div>}
+              </span>}
           </div>
         </div>
 
@@ -142,12 +141,12 @@ const SelfHostedPlanItem: FC<Props> = ({
         >
           {t(`${i18nPrefix}.btnText`)}
           {isPremiumPlan
-            && <div className='flex items-center gap-x-1'>
-              <div className='h-4 ml-0.5'>
-                <AwsMarketplace />
+            && <>
+              <div className='pt-[6px]'>
+                <AwsMarketplace className='h-6' />
               </div>
               <RiArrowRightUpLine className='size-4' />
-            </div>}
+            </>}
         </div>
         <div className={cn('mt-6 system-sm-semibold mb-2', style[plan].values)}>{t(`${i18nPrefix}.includesTitle`)}</div>
         <div className='flex flex-col gap-y-3'>
