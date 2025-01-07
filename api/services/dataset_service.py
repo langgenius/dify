@@ -86,7 +86,7 @@ class DatasetService:
                 else:
                     return [], 0
             else:
-                if user.current_role not in (TenantAccountRole.OWNER, TenantAccountRole.ADMIN):
+                if user.current_role != TenantAccountRole.OWNER:
                     # show all datasets that the user has permission to access
                     if permitted_dataset_ids:
                         query = query.filter(
@@ -382,7 +382,7 @@ class DatasetService:
         if dataset.tenant_id != user.current_tenant_id:
             logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
             raise NoPermissionError("You do not have permission to access this dataset.")
-        if user.current_role not in (TenantAccountRole.OWNER, TenantAccountRole.ADMIN):
+        if user.current_role != TenantAccountRole.OWNER:
             if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.created_by != user.id:
                 logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
                 raise NoPermissionError("You do not have permission to access this dataset.")
@@ -404,7 +404,7 @@ class DatasetService:
         if not user:
             raise ValueError("User not found")
 
-        if user.current_role not in (TenantAccountRole.OWNER, TenantAccountRole.ADMIN):
+        if user.current_role != TenantAccountRole.OWNER:
             if dataset.permission == DatasetPermissionEnum.ONLY_ME:
                 if dataset.created_by != user.id:
                     raise NoPermissionError("You do not have permission to access this dataset.")
