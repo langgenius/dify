@@ -16,6 +16,7 @@ import type {
 } from './declarations'
 import {
   ConfigurationMethodEnum,
+  CustomConfigurationStatusEnum,
   ModelStatusEnum,
 } from './declarations'
 import I18n from '@/context/i18n'
@@ -33,6 +34,9 @@ import {
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginType } from '@/app/components/plugins/types'
 import { getMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/utils'
+import { useModalContextSelector } from '@/context/modal-context'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
@@ -302,5 +306,44 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
   return {
     plugins: allPlugins,
     isLoading,
+  }
+}
+
+export const useModelModalHandler = () => {
+  const setShowModelModal = useModalContextSelector(state => state.setShowModelModal)
+  const updateModelProviders = useUpdateModelProviders()
+  const updateModelList = useUpdateModelList()
+  const { eventEmitter } = useEventEmitterContextContext()
+
+  return (
+    provider: ModelProvider,
+    configurationMethod: ConfigurationMethodEnum,
+    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+  ) => {
+    setShowModelModal({
+      payload: {
+        currentProvider: provider,
+        currentConfigurationMethod: configurationMethod,
+        currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
+      },
+      onSaveCallback: () => {
+        updateModelProviders()
+
+        provider.supported_model_types.forEach((type) => {
+          updateModelList(type)
+        })
+
+        if (configurationMethod === ConfigurationMethodEnum.customizableModel
+            && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
+          eventEmitter?.emit({
+            type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
+            payload: provider.provider,
+          } as any)
+
+          if (CustomConfigurationModelFixedFields?.__model_type)
+            updateModelList(CustomConfigurationModelFixedFields.__model_type)
+        }
+      },
+    })
   }
 }

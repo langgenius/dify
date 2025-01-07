@@ -2,21 +2,19 @@ import type { FC } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
-  CustomConfigurationModelFixedFields,
   ModelItem,
   ModelProvider,
 } from '../declarations'
 import {
-  ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
   ModelTypeEnum,
 } from '../declarations'
-import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from '../provider-added-card'
 import type { PluginInfoFromMarketPlace } from '@/app/components/plugins/types'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import ConfigurationButton from './configuration-button'
 import { PluginType } from '@/app/components/plugins/types'
 import {
+  useModelModalHandler,
   useUpdateModelList,
   useUpdateModelProviders,
 } from '../hooks'
@@ -74,6 +72,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
   const [isPluginChecked, setIsPluginChecked] = useState(false)
   const [installed, setInstalled] = useState(false)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
+  const handleOpenModal = useModelModalHandler()
   useEffect(() => {
     (async () => {
       if (providerName && !modelProvider) {
@@ -98,38 +97,6 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
 
   if (modelId && !isPluginChecked)
     return null
-
-  const handleOpenModal = (
-    provider: ModelProvider,
-    configurationMethod: ConfigurationMethodEnum,
-    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
-  ) => {
-    setShowModelModal({
-      payload: {
-        currentProvider: provider,
-        currentConfigurationMethod: configurationMethod,
-        currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
-      },
-      onSaveCallback: () => {
-        updateModelProviders()
-
-        provider.supported_model_types.forEach((type) => {
-          updateModelList(type)
-        })
-
-        if (configurationMethod === ConfigurationMethodEnum.customizableModel
-            && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
-          eventEmitter?.emit({
-            type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
-            payload: provider.provider,
-          } as any)
-
-          if (CustomConfigurationModelFixedFields?.__model_type)
-            updateModelList(CustomConfigurationModelFixedFields.__model_type)
-        }
-      },
-    })
-  }
 
   return (
     <div

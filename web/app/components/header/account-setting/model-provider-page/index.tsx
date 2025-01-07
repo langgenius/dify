@@ -9,19 +9,21 @@ import {
   RiBrainLine,
 } from '@remixicon/react'
 import SystemModelSelector from './system-model-selector'
-import ProviderAddedCard, { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
+import ProviderAddedCard from './provider-added-card'
 import type {
+  ConfigurationMethodEnum,
   CustomConfigurationModelFixedFields,
+
   ModelProvider,
 } from './declarations'
 import {
-  ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
   ModelTypeEnum,
 } from './declarations'
 import {
   useDefaultModel,
   useMarketplaceAllPlugins,
+  useModelModalHandler,
   useUpdateModelList,
   useUpdateModelProviders,
 } from './hooks'
@@ -87,37 +89,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
     return [filteredConfiguredProviders, filteredNotConfiguredProviders]
   }, [configuredProviders, debouncedSearchText, notConfiguredProviders])
 
-  const handleOpenModal = (
-    provider: ModelProvider,
-    configurationMethod: ConfigurationMethodEnum,
-    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
-  ) => {
-    setShowModelModal({
-      payload: {
-        currentProvider: provider,
-        currentConfigurationMethod: configurationMethod,
-        currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
-      },
-      onSaveCallback: () => {
-        updateModelProviders()
-
-        provider.supported_model_types.forEach((type) => {
-          updateModelList(type)
-        })
-
-        if (configurationMethod === ConfigurationMethodEnum.customizableModel && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
-          eventEmitter?.emit({
-            type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
-            payload: provider.provider,
-          } as any)
-
-          if (CustomConfigurationModelFixedFields?.__model_type)
-            updateModelList(CustomConfigurationModelFixedFields?.__model_type)
-        }
-      },
-    })
-  }
-
+  const handleOpenModal = useModelModalHandler()
   const [collapse, setCollapse] = useState(false)
   const locale = getLocaleOnClient()
   const {
