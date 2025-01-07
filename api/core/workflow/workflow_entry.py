@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from configs import dify_config
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
@@ -237,7 +237,7 @@ class WorkflowEntry:
         if node_type not in {NodeType.PARAMETER_EXTRACTOR, NodeType.QUESTION_CLASSIFIER}:
             raise ValueError(f"Node type {node_type} not supported")
 
-        node_cls = node_type_classes_mapping.get(node_type)
+        node_cls = NODE_TYPE_CLASSES_MAPPING[node_type]["1"]
         if not node_cls:
             raise ValueError(f"Node class not found for node type {node_type}")
 
