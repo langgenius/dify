@@ -64,14 +64,16 @@ export const usePluginTaskStatus = () => {
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    if (isSuccess && opacity > 0) {
+    if (isSuccess) {
       if (timerRef.current) {
         clearTimeout(timerRef.current)
         timerRef.current = null
       }
-      timerRef.current = setTimeout(() => {
-        setOpacity(v => v - 0.1)
-      }, 200)
+      if (opacity > 0) {
+        timerRef.current = setTimeout(() => {
+          setOpacity(v => v - 0.1)
+        }, 200)
+      }
     }
 
     if (!isSuccess)

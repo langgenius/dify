@@ -5,6 +5,9 @@ import Link from 'next/link'
 import classNames from '@/utils/classnames'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import { useSelectedLayoutSegment } from 'next/navigation'
+import DownloadingIcon from './downloading-icon'
+import { usePluginTaskStatus } from '@/app/components/plugins/plugin-page/plugin-tasks/hooks'
+import Indicator from '@/app/components/header/indicator'
 
 type PluginsNavProps = {
   className?: string
@@ -16,17 +19,43 @@ const PluginsNav = ({
   const { t } = useTranslation()
   const selectedSegment = useSelectedLayoutSegment()
   const activated = selectedSegment === 'plugins'
+  const {
+    isInstalling,
+    isInstallingWithError,
+    isFailed,
+  } = usePluginTaskStatus()
 
   return (
     <Link href="/plugins" className={classNames(
       className, 'group',
     )}>
-      <div className={`flex flex-row h-8 p-1.5 gap-0.5 items-center justify-center 
-        rounded-xl system-sm-medium-uppercase ${activated
-      ? 'border border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active shadow-md text-components-main-nav-nav-button-text'
-      : 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'}`}>
+      <div
+        className={classNames(
+          'relative flex flex-row h-8 p-1.5 gap-0.5 border border-transparent items-center justify-center rounded-xl system-sm-medium-uppercase',
+          activated && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active shadow-md text-components-main-nav-nav-button-text',
+          !activated && 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+          (isInstallingWithError || isFailed) && !activated && 'border-components-panel-border-subtle',
+        )}
+      >
+        {
+          (isFailed || isInstallingWithError) && !activated && (
+            <Indicator
+              color='red'
+              className='absolute top-[-1px] left-[-1px]'
+            />
+          )
+        }
         <div className='flex mr-0.5 w-5 h-5 justify-center items-center'>
-          <Group className='w-4 h-4' />
+          {
+            (!(isInstalling || isInstallingWithError) || activated) && (
+              <Group className='w-4 h-4' />
+            )
+          }
+          {
+            (isInstalling || isInstallingWithError) && !activated && (
+              <DownloadingIcon />
+            )
+          }
         </div>
         <span className='px-0.5'>{t('common.menus.plugins')}</span>
       </div>
