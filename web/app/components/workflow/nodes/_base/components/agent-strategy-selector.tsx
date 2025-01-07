@@ -172,8 +172,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
           <SearchInput placeholder={t('workflow.nodes.agent.strategy.searchPlaceholder')} value={query} onChange={setQuery} className={'w-full'} />
           <ViewTypeSelect viewType={viewType} onChange={setViewType} />
         </header>
-        <main className="md:h-[300px] xl:h-[400px] 2xl:h-[564px] relative overflow-hidden">
-          {/* TODO: fix when in list view show workflow as group label */}
+        <main className="md:max-h-[300px] xl:max-h-[400px] 2xl:max-h-[564px] relative overflow-hidden flex flex-col">
           <Tools
             tools={filteredTools}
             viewType={viewType}
@@ -189,10 +188,10 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
             }}
             hasSearchText={false}
             showWorkflowEmpty={false}
-            className='max-w-none'
+            className='max-w-none max-h-full h-full overflow-y-auto'
             indexBarClassName='top-0 xl:top-36'
           />
-          <div className='absolute bottom-0 px-4 py-2 flex items-center justify-center border-t border-divider-subtle text-text-accent-light-mode-only bg-components-panel-bg text-xs'>
+          <div className='px-4 py-2 flex items-center border-t border-divider-subtle text-text-accent-light-mode-only bg-components-panel-bg text-xs'>
             Find more in
             <Link href={MARKETPLACE_URL_PREFIX} className='flex ml-1'>
               Marketplace <RiArrowRightUpLine className='size-3' />
