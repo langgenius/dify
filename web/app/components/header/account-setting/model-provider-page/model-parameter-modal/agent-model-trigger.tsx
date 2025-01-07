@@ -107,7 +107,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
       {modelId ? (
         <>
           <ModelIcon
-            className="m-0.5"
+            className='p-0.5'
             provider={currentProvider || modelProvider}
             modelName={currentModel?.model || modelId}
             isDeprecated={hasDeprecated}
