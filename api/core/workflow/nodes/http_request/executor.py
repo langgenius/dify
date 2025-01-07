@@ -82,12 +82,6 @@ class Executor:
                 node_data.authorization.config.api_key
             ).text
 
-        # check if node_data.url is a valid URL
-        if not node_data.url:
-            raise InvalidURLError("url is required")
-        if not node_data.url.startswith(("http://", "https://")):
-            raise InvalidURLError("url should start with http:// or https://")
-
         self.url: str = node_data.url
         self.method = node_data.method
         self.auth = node_data.authorization
@@ -113,6 +107,12 @@ class Executor:
 
     def _init_url(self):
         self.url = self.variable_pool.convert_template(self.node_data.url).text
+
+        # check if url is a valid URL
+        if not self.url:
+            raise InvalidURLError("url is required")
+        if not self.url.startswith(("http://", "https://")):
+            raise InvalidURLError("url should start with http:// or https://")
 
     def _init_params(self):
         """
