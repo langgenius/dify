@@ -74,7 +74,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   )
   const pluginId = inputs.agent_strategy_provider_name?.split('/').splice(0, 2).join('/')
   const pluginDetail = useCheckInstalled({
-    pluginIds: [pluginId || ''],
+    pluginIds: [pluginId!],
     enabled: Boolean(pluginId),
   })
   const formData = useMemo(() => {

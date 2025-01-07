@@ -30,8 +30,9 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
 
   const handleUpdatedFromMarketplace = useCallback(() => {
     hideUpdateModal()
+    pluginDetails.refetch()
     onChange?.(targetVersion!)
-  }, [hideUpdateModal, onChange, targetVersion])
+  }, [hideUpdateModal, onChange, pluginDetails, targetVersion])
   return <Tooltip popupContent={!isShow && !isShowUpdateModal && tooltip} triggerMethod='hover'>
     <div className='w-fit'>
       {isShowUpdateModal && pluginDetail && <UpdateFromMarketplace
