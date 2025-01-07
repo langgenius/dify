@@ -2,12 +2,11 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import type { PluginDeclaration } from '../../types'
-import { InstallStep, PluginType } from '../../types'
+import { InstallStep } from '../../types'
 import Install from './steps/install'
 import Installed from '../base/installed'
-import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import { useUpdateModelProviders } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useInvalidateAllToolProviders } from '@/service/use-tools'
+import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
+
 type Props = {
   step: InstallStep
   onStepChange: (step: InstallStep) => void,
@@ -27,20 +26,12 @@ const ReadyToInstall: FC<Props> = ({
   errorMsg,
   onError,
 }) => {
-  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
-  const updateModelProviders = useUpdateModelProviders()
-  const invalidateAllToolProviders = useInvalidateAllToolProviders()
+  const { refreshPluginList } = useRefreshPluginList()
 
   const handleInstalled = useCallback(() => {
     onStepChange(InstallStep.installed)
-    invalidateInstalledPluginList()
-    if (!manifest)
-      return
-    if (PluginType.model.includes(manifest.category))
-      updateModelProviders()
-    if (PluginType.tool.includes(manifest.category))
-      invalidateAllToolProviders()
-  }, [invalidateAllToolProviders, invalidateInstalledPluginList, manifest, onStepChange, updateModelProviders])
+    refreshPluginList(manifest)
+  }, [manifest, onStepChange, refreshPluginList])
 
   const handleFailed = useCallback((errorMsg?: string) => {
     onStepChange(InstallStep.installFailed)
