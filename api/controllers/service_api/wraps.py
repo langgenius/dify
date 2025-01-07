@@ -8,6 +8,8 @@ from flask import current_app, request
 from flask_login import user_logged_in  # type: ignore
 from flask_restful import Resource  # type: ignore
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from extensions.ext_database import db
@@ -174,7 +176,7 @@ def validate_dataset_token(view=None):
     return decorator
 
 
-def validate_and_get_api_token(scope=None):
+def validate_and_get_api_token(scope: str | None = None):
     """
     Validate and get API token.
     """
@@ -188,20 +190,17 @@ def validate_and_get_api_token(scope=None):
     if auth_scheme != "bearer":
         raise Unauthorized("Authorization scheme must be 'Bearer'")
 
-    api_token = (
-        db.session.query(ApiToken)
-        .filter(
-            ApiToken.token == auth_token,
-            ApiToken.type == scope,
-        )
-        .first()
-    )
-
-    if not api_token:
-        raise Unauthorized("Access token is invalid")
-
-    api_token.last_used_at = datetime.now(UTC).replace(tzinfo=None)
-    db.session.commit()
+    with Session(db.engine, expire_on_commit=False) as session:
+        # Lock here to ensure that only one transaction can update the token's last_used_at field at a time.
+        stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope).with_for_update()
+        api_token = session.scalar(stmt)
+        if not api_token:
+            raise Unauthorized("Access token is invalid")
+        current_time = datetime.now(UTC).replace(tzinfo=None)
+        # Update the last_used_at field if more than 1 minute has passed since last update
+        if (current_time - api_token.last_used_at).seconds > 60:
+            api_token.last_used_at = current_time
+            session.commit()
 
     return api_token
 
