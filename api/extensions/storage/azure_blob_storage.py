@@ -128,15 +128,15 @@ class AzureBlobStorage(BaseStorage):
                 return BlobServiceClient(account_url=self.account_url, credential=cached_token)
 
             try:
-                credential: ClientSecretCredential = DefaultAzureCredential()
-                token = credential.get_token("https://storage.azure.com/.default")
+                mi_credential = DefaultAzureCredential()
+                token = mi_credential.get_token("https://storage.azure.com/.default")
                 expires_in = 3600
                 if hasattr(token, "expires_on") and isinstance(token.expires_on, datetime):
                     time_diff = token.expires_on - datetime.now(UTC)
                     expires_in = int(time_diff.total_seconds())
                 self._cache_token(cache_key, token.token, expires_in)
 
-                return BlobServiceClient(account_url=self.account_url, credential=credential)
+                return BlobServiceClient(account_url=self.account_url, credential=token.token)
             except ClientAuthenticationError as e:
                 raise ValueError(f"Failed to authenticate with Managed Identity: {str(e)}")
         else:
