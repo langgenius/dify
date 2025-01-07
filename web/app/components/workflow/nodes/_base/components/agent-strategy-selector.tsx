@@ -192,9 +192,8 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
             indexBarClassName='top-0 xl:top-36'
           />
           <div className='px-4 py-2 flex items-center border-t border-divider-subtle text-text-accent-light-mode-only bg-components-panel-bg text-xs'>
-            Find more in
             <Link href={MARKETPLACE_URL_PREFIX} className='flex ml-1'>
-              Marketplace <RiArrowRightUpLine className='size-3' />
+              {t('plugin.findMoreInMarketplace')} <RiArrowRightUpLine className='size-3' />
             </Link>
           </div>
         </main>
