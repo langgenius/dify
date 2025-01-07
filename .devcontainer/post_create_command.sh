@@ -1,6 +1,5 @@
 #!/bin/bash
 
-cd web && npm install
 pipx install 'poetry<2.0.0'
 
 echo 'alias start-api="cd /workspaces/dify/api && poetry run python -m flask run --host 0.0.0.0 --port=5001 --debug"' >> ~/.bashrc
