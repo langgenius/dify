@@ -38,6 +38,6 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
     className={classNames('flex items-center', className)}
   >
     {!isLoading ? t('workflow.nodes.agent.pluginInstaller.install') : t('workflow.nodes.agent.pluginInstaller.installing')}
-    {!isLoading ? <RiInstallLine className='size-4 ml-1' /> : <RiLoader2Line className='size-4 ml-1 animate-spin' />}
+    {!isLoading ? <RiInstallLine className='size-3.5 ml-1' /> : <RiLoader2Line className='size-3.5 ml-1 animate-spin' />}
   </Button>
 }
