@@ -3,7 +3,12 @@ from datetime import UTC, datetime, timedelta
 
 from azure.core.exceptions import ClientAuthenticationError
 from azure.identity import ClientSecretCredential, DefaultAzureCredential
-from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
+from azure.storage.blob import (
+    AccountSasPermissions,
+    BlobServiceClient,
+    ResourceTypes,
+    generate_account_sas,
+)
 
 from configs import dify_config
 from extensions.ext_redis import redis_client
@@ -68,11 +73,16 @@ class AzureBlobStorage(BaseStorage):
                         account_key=self.account_key,
                         resource_types=ResourceTypes(service=True, container=True, object=True),
                         permission=AccountSasPermissions(
-                            read=True, write=True, delete=True, list=True, add=True, create=True
+                            read=True,
+                            write=True,
+                            delete=True,
+                            list=True,
+                            add=True,
+                            create=True,
                         ),
                         expiry=datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=1),
                     )
-                    self._cache_token(cache_key, sas_token, 3600)  
+                    self._cache_token(cache_key, sas_token, 3600)
 
                 return BlobServiceClient(account_url=self.account_url, credential=sas_token)
             else:
@@ -81,8 +91,7 @@ class AzureBlobStorage(BaseStorage):
         elif self.auth_type == "service_principal":
             if not all([self.tenant_id, self.client_id, self.client_secret]):
                 raise ValueError(
-                    "tenant_id, client_id, and client_secret are required "
-                    "for service_principal authentication"
+                    "tenant_id, client_id, and client_secret are required " "for service_principal authentication"
                 )
             cache_key = f"azure_sp_token_{self.client_id}"
             cached_token = self._get_cached_token(cache_key)
@@ -94,15 +103,15 @@ class AzureBlobStorage(BaseStorage):
                 assert self.tenant_id is not None
                 assert self.client_id is not None
                 assert self.client_secret is not None
-                
+
                 credential = ClientSecretCredential(
                     tenant_id=self.tenant_id,
                     client_id=self.client_id,
-                    client_secret=self.client_secret
+                    client_secret=self.client_secret,
                 )
                 token = credential.get_token("https://storage.azure.com/.default")
                 expires_in = 3600
-                if hasattr(token, 'expires_on') and isinstance(token.expires_on, datetime):
+                if hasattr(token, "expires_on") and isinstance(token.expires_on, datetime):
                     time_diff = token.expires_on - datetime.now(UTC)
                     expires_in = int(time_diff.total_seconds())
                 self._cache_token(cache_key, token.token, expires_in)
@@ -119,10 +128,10 @@ class AzureBlobStorage(BaseStorage):
                 return BlobServiceClient(account_url=self.account_url, credential=cached_token)
 
             try:
-                credential: ClientSecretCredential = DefaultAzureCredential()  # type: ignore
+                credential: ClientSecretCredential = DefaultAzureCredential()
                 token = credential.get_token("https://storage.azure.com/.default")
                 expires_in = 3600
-                if hasattr(token, 'expires_on') and isinstance(token.expires_on, datetime):
+                if hasattr(token, "expires_on") and isinstance(token.expires_on, datetime):
                     time_diff = token.expires_on - datetime.now(UTC)
                     expires_in = int(time_diff.total_seconds())
                 self._cache_token(cache_key, token.token, expires_in)
@@ -136,7 +145,7 @@ class AzureBlobStorage(BaseStorage):
     def save(self, filename: str, data: bytes) -> None:
         if not self.bucket_name:
             raise ValueError("bucket_name is required")
-            
+
         client = self._sync_client()
         blob_client = client.get_blob_client(container=self.bucket_name, blob=filename)
         blob_client.upload_blob(data)
@@ -144,13 +153,13 @@ class AzureBlobStorage(BaseStorage):
     def load_once(self, filename: str) -> bytes:
         if not self.bucket_name:
             raise ValueError("bucket_name is required")
-            
+
         client = self._sync_client()
         blob_client = client.get_blob_client(container=self.bucket_name, blob=filename)
         downloaded = blob_client.download_blob().readall()
         # Ensure we return bytes
         if isinstance(downloaded, str):
-            data = downloaded.encode('utf-8')
+            data = downloaded.encode("utf-8")
         else:
             data = downloaded
         return data
@@ -158,7 +167,7 @@ class AzureBlobStorage(BaseStorage):
     def load_stream(self, filename: str) -> Generator:
         if not self.bucket_name:
             raise ValueError("bucket_name is required")
-            
+
         client = self._sync_client()
         blob_client = client.get_blob_client(container=self.bucket_name, blob=filename)
         blob_data = blob_client.download_blob()
@@ -167,7 +176,7 @@ class AzureBlobStorage(BaseStorage):
     def download(self, filename: str, target_filepath: str) -> None:
         if not self.bucket_name:
             raise ValueError("bucket_name is required")
-            
+
         client = self._sync_client()
         blob_client = client.get_blob_client(container=self.bucket_name, blob=filename)
         with open(target_filepath, "wb") as my_blob:
@@ -177,7 +186,7 @@ class AzureBlobStorage(BaseStorage):
     def exists(self, filename: str) -> bool:
         if not self.bucket_name:
             raise ValueError("bucket_name is required")
-            
+
         client = self._sync_client()
         blob_client = client.get_blob_client(container=self.bucket_name, blob=filename)
         return blob_client.exists()
@@ -185,7 +194,7 @@ class AzureBlobStorage(BaseStorage):
     def delete(self, filename: str) -> None:
         if not self.bucket_name:
             raise ValueError("bucket_name is required")
-            
+
         client = self._sync_client()
         blob_client = client.get_blob_client(container=self.bucket_name, blob=filename)
         blob_client.delete_blob()
