@@ -207,7 +207,8 @@ def validate_and_get_api_token(scope: str | None = None):
             api_token = session.scalar(stmt)
             if not api_token:
                 raise Unauthorized("Access token is invalid")
-        session.commit()
+        else:
+            session.commit()
 
     return api_token
 
