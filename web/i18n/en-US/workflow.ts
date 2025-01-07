@@ -755,6 +755,7 @@ const translation = {
     checkList: {
       strategyNotSelected: 'Strategy not selected',
     },
+    switchToNewVersion: 'Switch to new version',
   },
   tracing: {
     stopBy: 'Stop by {{user}}',

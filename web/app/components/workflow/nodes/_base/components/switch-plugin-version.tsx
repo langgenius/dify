@@ -34,7 +34,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
     onSelect(targetVersion!)
   }, [hideUpdateModal, onSelect, targetVersion])
   return <Tooltip popupContent={!isShow && tooltip} triggerMethod='hover'>
-    <div>
+    <div className='w-fit'>
       {isShowUpdateModal && pluginDetail && <UpdateFromMarketplace
         payload={{
           originalPackageInfo: {
@@ -61,7 +61,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         trigger={
           <Badge
             className={cn(
-              'mx-1 hover:bg-state-base-hover',
+              'mx-1 hover:bg-state-base-hover flex',
               isShow && 'bg-state-base-hover',
             )}
             uppercase={true}

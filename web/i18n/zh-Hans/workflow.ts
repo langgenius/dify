@@ -754,6 +754,7 @@ const translation = {
       checkList: {
         strategyNotSelected: '未选择策略',
       },
+      switchToNewVersion: '切换到新版',
     },
   },
   tracing: {
