@@ -136,7 +136,8 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
                 return value
             case _:
                 return str(value)
-
+    except ValueError:
+        raise
     except Exception:
         raise ValueError(f"The tool parameter value {value} is not in correct type of {as_normal_type(typ)}.")
 

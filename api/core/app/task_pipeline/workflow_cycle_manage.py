@@ -255,10 +255,9 @@ class WorkflowCycleManage:
         for workflow_node_execution in running_workflow_node_executions:
             workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
             workflow_node_execution.error = error
-            workflow_node_execution.finished_at = datetime.now(UTC).replace(tzinfo=None)
-            workflow_node_execution.elapsed_time = (
-                workflow_node_execution.finished_at - workflow_node_execution.created_at
-            ).total_seconds()
+            finish_at = datetime.now(UTC).replace(tzinfo=None)
+            workflow_node_execution.finished_at = finish_at
+            workflow_node_execution.elapsed_time = (finish_at - workflow_node_execution.created_at).total_seconds()
 
         if trace_manager:
             trace_manager.add_trace_task(

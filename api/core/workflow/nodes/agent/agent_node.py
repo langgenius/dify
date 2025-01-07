@@ -1,15 +1,23 @@
-from collections.abc import Generator, Sequence
+from ast import literal_eval
+from collections.abc import Generator, Mapping, Sequence
 from typing import Any, cast
 
+from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.manager.exc import PluginDaemonClientSideError
+from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.tool_manager import ToolManager
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.agent.entities import AgentNodeData
+from core.workflow.nodes.base.entities import BaseNodeData
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event.event import RunCompletedEvent
 from core.workflow.nodes.tool.tool_node import ToolNode
+from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from factories.agent_factory import get_plugin_agent_strategy
 from models.workflow import WorkflowNodeExecutionStatus
 
@@ -31,7 +39,6 @@ class AgentNode(ToolNode):
         try:
             strategy = get_plugin_agent_strategy(
                 tenant_id=self.tenant_id,
-                plugin_unique_identifier=node_data.plugin_unique_identifier,
                 agent_strategy_provider_name=node_data.agent_strategy_provider_name,
                 agent_strategy_name=node_data.agent_strategy_name,
             )
@@ -48,12 +55,12 @@ class AgentNode(ToolNode):
         agent_parameters = strategy.get_parameters()
 
         # get parameters
-        parameters = self._generate_parameters(
+        parameters = self._generate_agent_parameters(
             agent_parameters=agent_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
             node_data=node_data,
         )
-        parameters_for_log = self._generate_parameters(
+        parameters_for_log = self._generate_agent_parameters(
             agent_parameters=agent_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
             node_data=node_data,
@@ -78,6 +85,7 @@ class AgentNode(ToolNode):
                     error=f"Failed to invoke agent: {str(e)}",
                 )
             )
+            return
 
         try:
             # convert tool messages
@@ -91,7 +99,7 @@ class AgentNode(ToolNode):
                 )
             )
 
-    def _generate_parameters(
+    def _generate_agent_parameters(
         self,
         *,
         agent_parameters: Sequence[AgentStrategyParameter],
@@ -130,6 +138,86 @@ class AgentNode(ToolNode):
                 parameter_value = segment_group.log if for_log else segment_group.text
             else:
                 raise ValueError(f"Unknown agent input type '{agent_input.type}'")
-            result[parameter_name] = parameter_value
+            value = parameter_value.strip()
+            if (parameter_value.startswith("{") and parameter_value.endswith("}")) or (
+                parameter_value.startswith("[") and parameter_value.endswith("]")
+            ):
+                value = literal_eval(parameter_value)  # transform string to python object
+            if parameter.type == "array[tools]":
+                value = cast(list[dict[str, Any]], value)
+                value = [tool for tool in value if tool.get("enabled", False)]
+
+            if not for_log:
+                if parameter.type == "array[tools]":
+                    value = cast(list[dict[str, Any]], value)
+                    tool_value = []
+                    for tool in value:
+                        entity = AgentToolEntity(
+                            provider_id=tool.get("provider_name", ""),
+                            provider_type=ToolProviderType.BUILT_IN,
+                            tool_name=tool.get("tool_name", ""),
+                            tool_parameters=tool.get("parameters", {}),
+                            plugin_unique_identifier=tool.get("plugin_unique_identifier", None),
+                        )
+
+                        extra = tool.get("extra", {})
+
+                        tool_runtime = ToolManager.get_agent_tool_runtime(
+                            self.tenant_id, self.app_id, entity, self.invoke_from
+                        )
+                        if tool_runtime.entity.description:
+                            tool_runtime.entity.description.llm = (
+                                extra.get("descrption", "") or tool_runtime.entity.description.llm
+                            )
+
+                        tool_value.append(tool_runtime.entity.model_dump(mode="json"))
+                    value = tool_value
+                if parameter.type == "model-selector":
+                    value = cast(dict[str, Any], value)
+                    model_instance = ModelManager().get_model_instance(
+                        tenant_id=self.tenant_id,
+                        provider=value.get("provider", ""),
+                        model_type=ModelType(value.get("model_type", "")),
+                        model=value.get("model", ""),
+                    )
+                    models = model_instance.model_type_instance.plugin_model_provider.declaration.models
+                    finded_model = next((model for model in models if model.model == value.get("model", "")), None)
+
+                    value["entity"] = finded_model.model_dump(mode="json") if finded_model else None
+
+            result[parameter_name] = value
+
+        return result
+
+    @classmethod
+    def _extract_variable_selector_to_variable_mapping(
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: BaseNodeData,
+    ) -> Mapping[str, Sequence[str]]:
+        """
+        Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
+        :param node_data: node data
+        :return:
+        """
+        node_data = cast(AgentNodeData, node_data)
+        result = {}
+        for parameter_name in node_data.agent_parameters:
+            input = node_data.agent_parameters[parameter_name]
+            if input.type == "mixed":
+                assert isinstance(input.value, str)
+                selectors = VariableTemplateParser(input.value).extract_variable_selectors()
+                for selector in selectors:
+                    result[selector.variable] = selector.value_selector
+            elif input.type == "variable":
+                result[parameter_name] = input.value
+            elif input.type == "constant":
+                pass
+
+        result = {node_id + "." + key: value for key, value in result.items()}
 
         return result

@@ -92,7 +92,7 @@ class PluginAgentManager(BasePluginManager):
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
-            f"plugin/{tenant_id}/dispatch/agent/invoke",
+            f"plugin/{tenant_id}/dispatch/agent_strategy/invoke",
             AgentInvokeMessage,
             data={
                 "user_id": user_id,
