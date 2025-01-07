@@ -21,7 +21,7 @@ import Action from './action'
 import cn from '@/utils/classnames'
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import { useInvalidateAllToolProviders } from '@/service/use-tools'
+import { useInvalidateAllBuiltInTools, useInvalidateAllToolProviders } from '@/service/use-tools'
 import { useCategories } from '../hooks'
 import { useProviderContext } from '@/context/provider-context'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
@@ -41,6 +41,7 @@ const PluginItem: FC<Props> = ({
   const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const invalidateAllToolProviders = useInvalidateAllToolProviders()
+  const invalidateAllBuiltinTools = useInvalidateAllBuiltInTools()
   const { refreshModelProviders } = useProviderContext()
 
   const {
@@ -62,8 +63,10 @@ const PluginItem: FC<Props> = ({
     invalidateInstalledPluginList()
     if (PluginType.model.includes(category))
       refreshModelProviders()
-    if (PluginType.tool.includes(category))
+    if (PluginType.tool.includes(category)) {
       invalidateAllToolProviders()
+      invalidateAllBuiltinTools()
+    }
   }
   const getValueFromI18nObject = useRenderI18nObject()
   const title = getValueFromI18nObject(label)

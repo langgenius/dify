@@ -32,7 +32,7 @@ import {
   useInvalidateAllBuiltInTools,
   useUpdateProviderCredentials,
 } from '@/service/use-tools'
-import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
+import { useInstallPackageFromMarketPlace, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { usePluginInstalledCheck } from '@/app/components/plugins/plugin-detail-panel/tool-selector/hooks'
 import { CollectionType } from '@/app/components/tools/types'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
@@ -94,6 +94,7 @@ const ToolSelector: FC<Props> = ({
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
   const invalidateAllBuiltinTools = useInvalidateAllBuiltInTools()
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
   // plugin info check
   const { inMarketPlace, manifest } = usePluginInstalledCheck(value?.provider_name)
@@ -183,6 +184,7 @@ const ToolSelector: FC<Props> = ({
     try {
       await installPackageFromMarketPlace(manifest.latest_package_identifier)
       invalidateAllBuiltinTools()
+      invalidateInstalledPluginList()
     }
     catch (e: any) {
       Toast.notify({ type: 'error', message: `${e.message || e}` })
