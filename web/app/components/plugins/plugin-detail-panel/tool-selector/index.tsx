@@ -32,7 +32,7 @@ import {
   useInvalidateAllBuiltInTools,
   useUpdateProviderCredentials,
 } from '@/service/use-tools'
-import { useInstallPackageFromMarketPlace, useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { usePluginInstalledCheck } from '@/app/components/plugins/plugin-detail-panel/tool-selector/hooks'
 import { CollectionType } from '@/app/components/tools/types'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
@@ -172,23 +172,15 @@ const ToolSelector: FC<Props> = ({
   })
 
   // install from marketplace
-  const { mutateAsync: installPackageFromMarketPlace, isPending } = useInstallPackageFromMarketPlace()
+
   const manifestIcon = useMemo(() => {
     if (!manifest)
       return ''
     return `${MARKETPLACE_API_PREFIX}/plugins/${(manifest as any).plugin_id}/icon`
   }, [manifest])
   const handleInstall = async () => {
-    if (!manifest)
-      return
-    try {
-      await installPackageFromMarketPlace(manifest.latest_package_identifier)
-      invalidateAllBuiltinTools()
-      invalidateInstalledPluginList()
-    }
-    catch (e: any) {
-      Toast.notify({ type: 'error', message: `${e.message || e}` })
-    }
+    invalidateAllBuiltinTools()
+    invalidateInstalledPluginList()
   }
 
   return (
@@ -225,7 +217,7 @@ const ToolSelector: FC<Props> = ({
               noAuth={currentProvider && !currentProvider.is_team_authorization}
               onAuth={() => setShowSettingAuth(true)}
               uninstalled={!currentProvider && inMarketPlace}
-              isInstalling={isPending}
+              installInfo={manifest?.latest_package_identifier}
               onInstall={() => handleInstall()}
               isError={!currentProvider && !inMarketPlace}
               errorTip={<div className='space-y-1 max-w-[240px] text-xs'>
