@@ -695,7 +695,7 @@ def extract_unique_plugins(output_file: str, input_file: str):
     """
     click.echo(click.style("Starting extract unique plugins.", fg="white"))
 
-    PluginMigration.extract_unique_plugins(input_file, output_file)
+    PluginMigration.extract_unique_plugins_to_file(input_file, output_file)
 
     click.echo(click.style("Extract unique plugins completed.", fg="green"))
 
