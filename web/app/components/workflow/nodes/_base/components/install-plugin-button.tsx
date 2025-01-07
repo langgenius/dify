@@ -7,10 +7,11 @@ import { useCheckInstalled, useInstallPackageFromMarketPlace } from '@/service/u
 
 type InstallPluginButtonProps = Omit<ComponentProps<typeof Button>, 'children' | 'loading'> & {
   uniqueIdentifier: string
+  onSuccess?: () => void
 }
 
 export const InstallPluginButton = (props: InstallPluginButtonProps) => {
-  const { className, uniqueIdentifier, ...rest } = props
+  const { className, uniqueIdentifier, onSuccess, ...rest } = props
   const { t } = useTranslation()
   const manifest = useCheckInstalled({
     pluginIds: [uniqueIdentifier],
@@ -19,6 +20,7 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
   const install = useInstallPackageFromMarketPlace({
     onSuccess() {
       manifest.refetch()
+      onSuccess?.()
     },
   })
   const handleInstall: MouseEventHandler = (e) => {
