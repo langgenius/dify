@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { RiArrowRightUpLine, RiCloseLine, RiCloudFill, RiTerminalBoxFill } from '@remixicon/react'
 import Link from 'next/link'
+import { useKeyPress } from 'ahooks'
 import { Plan, SelfHostedPlan } from '../type'
 import TabSlider from '../../base/tab-slider'
 import SelectPlanRange, { PlanRange } from './select-plan-range'
@@ -27,7 +28,9 @@ const Pricing: FC<Props> = ({
   const canPay = isCurrentWorkspaceManager
   const [planRange, setPlanRange] = React.useState<PlanRange>(PlanRange.monthly)
 
-  const [currentPlan, setCurrentPlan] = React.useState<string>('self')
+  const [currentPlan, setCurrentPlan] = React.useState<string>('cloud')
+
+  useKeyPress(['esc'], onCancel)
 
   return createPortal(
     <div
@@ -53,14 +56,14 @@ const Pricing: FC<Props> = ({
             </div>
           </div>
           <div className='w-[1152px] mx-auto'>
-            <div className='py-2 flex items-center justify-between'>
+            <div className='py-2 flex items-center justify-between h-[64px]'>
               <TabSlider
                 value={currentPlan}
                 itemWidth={170}
                 className='inline-flex'
                 options={[
-                  { value: 'cloud', text: <div className='inline-flex items-center system-md-semibold-uppercase'><RiCloudFill className='size-4 mr-2' />cloud service</div> },
-                  { value: 'self', text: <div className='inline-flex items-center system-md-semibold-uppercase'><RiTerminalBoxFill className='size-4 mr-2' />self hosted</div> }]}
+                  { value: 'cloud', text: <div className='inline-flex items-center system-md-semibold-uppercase'><RiCloudFill className='size-4 mr-2' />{t('billing.plansCommon.cloud')}</div> },
+                  { value: 'self', text: <div className='inline-flex items-center system-md-semibold-uppercase'><RiTerminalBoxFill className='size-4 mr-2' />{t('billing.plansCommon.self')}</div> }]}
                 onChange={v => setCurrentPlan(v)} />
 
               {currentPlan === 'cloud' && <SelectPlanRange

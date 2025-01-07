@@ -110,6 +110,7 @@ const config = {
         'price-premium-badge-background': 'var(--color-premium-badge-background)',
         'premium-yearly-tip-text-background': 'var(--color-premium-yearly-tip-text-background)',
         'price-premium-text-background': 'var(--color-premium-text-background)',
+        'price-enterprise-background': 'var(--color-price-enterprise-background)',
       },
       lineClamp: {
         '20': '20',

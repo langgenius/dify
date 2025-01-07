@@ -25,4 +25,5 @@ html[data-theme="dark"] {
         --color-premium-yearly-tip-text-background: linear-gradient(91deg, #FDB022 2.18%, #F79009 108.79%);
         --color-premium-badge-background: linear-gradient(95deg, rgba(103, 111, 131, 0.90) 0%, rgba(73, 84, 100, 0.90) 105.58%), var(--util-colors-gray-gray-200, #18222F);
         --color-premium-text-background: linear-gradient(92deg, rgba(249, 250, 251, 0.95) 0%, rgba(233, 235, 240, 0.95) 97.78%);
+        --color-price-enterprise-background: linear-gradient(180deg, rgba(185, 211, 234, 0.00) 0%, rgba(180, 209, 234, 0.92) 100%);
 }

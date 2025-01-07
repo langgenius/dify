@@ -129,7 +129,7 @@ const PlanItem: FC<Props> = ({
             <div className='pl-0.5'>
               <SparklesSoft className='size-3' />
             </div>
-            <span className='px-0.5 system-2xs-semibold-uppercase bg-clip-text bg-price-premium-text-background text-transparent'>Popular</span>
+            <span className='px-0.5 system-2xs-semibold-uppercase bg-clip-text bg-price-premium-text-background text-transparent'>{t('billing.plansCommon.mostPopular')}</span>
           </div>}
         </div>
         <div className={cn(style[plan].description, 'system-sm-regular')}>{t(`${i18nPrefix}.description`)}</div>
@@ -155,7 +155,7 @@ const PlanItem: FC<Props> = ({
       <div
         className={cn('flex py-3 px-5 rounded-full justify-center items-center h-[42px]',
           style[plan].btnStyle,
-          isPlanDisabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer ')}
+          isPlanDisabled ? 'cursor-not-allowed' : 'cursor-pointer ')}
         onClick={handleGetPayUrl}
       >
         {btnText}
@@ -203,7 +203,7 @@ const PlanItem: FC<Props> = ({
         />
         <KeyValue
           icon={<RiProgress3Line />}
-          label={[t(`billing.plansCommon.priority.${planInfo.documentProcessingPriority}`), t('billing.plansCommon.documentProcessingPriority')].join(' ')}
+          label={[t(`billing.plansCommon.priority.${planInfo.documentProcessingPriority}`), t('billing.plansCommon.documentProcessingPriority')].join('')}
         />
         <Divider bgStyle='gradient' />
         <KeyValue

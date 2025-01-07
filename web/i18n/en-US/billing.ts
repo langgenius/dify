@@ -14,6 +14,8 @@ const translation = {
     freeTrialTipSuffix: 'No credit card required',
     yearlyTip: 'Pay for 10 months, enjoy 1 Year!',
     mostPopular: 'Most Popular',
+    cloud: 'Cloud Service',
+    self: 'Self-Hosted',
     planRange: {
       monthly: 'Monthly',
       yearly: 'Yearly',
@@ -41,7 +43,6 @@ const translation = {
     documents: '{{count}} Knowledge Documents',
     documentsTooltip: 'Quota on the number of documents imported from the Knowledge Data Source.',
     vectorSpace: '{{size}} Knowledge Data Storage',
-    vectorSpaceBillingTooltip: 'Each 1MB can store about 1.2million characters of vectorized data(estimated using OpenAI Embeddings, varies across models).',
     vectorSpaceTooltip: 'Documents with the High Quality indexing mode will consume Knowledge Data Storage resources. When Knowledge Data Storage reaches the limit, new documents will not be uploaded.',
     documentsRequestQuota: '{{count}}/min Knowledge Request Rate limit',
     documentsRequestQuotaTooltip: 'Indicates the number of queries per minute the system can handle with knowledge base support, used to measure query capacity and performance.',
@@ -96,12 +97,10 @@ const translation = {
     professional: {
       name: 'Professional',
       description: 'For Independent Developers/Small Teams',
-      includesTitle: 'Everything in free plan, plus:',
     },
     team: {
       name: 'Team',
       description: 'For Medium-sized Teams',
-      includesTitle: 'Everything in Professional plan, plus:',
     },
     community: {
       name: 'Community',
@@ -120,7 +119,7 @@ const translation = {
       description: 'For Mid-sized Organizations and Teams',
       price: 'Scalable',
       priceTip: 'Based on Cloud Marketplace',
-      btnText: 'Get Premium in AWS Marketplace',
+      btnText: 'Get Premium in',
       includesTitle: 'Everything from Community, plus:',
       comingSoon: 'Microsoft Azure & Google Cloud Support Coming Soon',
       features: [
