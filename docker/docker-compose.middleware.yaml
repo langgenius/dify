@@ -66,7 +66,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:ac0e7f3d50cfa6c7cb872f2e8353e3b52a7cff0a-local
+    image: langgenius/dify-plugin-daemon:47c8bed17c22f67bd035d0979e696cb00ca45b16-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -82,7 +82,6 @@ services:
       SERVER_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
       MAX_PLUGIN_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       PPROF_ENABLED: ${PLUGIN_PPROF_ENABLED:-false}
-      DEBUGGING_PORT: ${PLUGIN_DEBUGGING_PORT:-5003}
       DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}
       DIFY_INNER_API_KEY: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
       PLUGIN_REMOTE_INSTALLING_HOST: ${PLUGIN_DEBUGGING_HOST:-0.0.0.0}
