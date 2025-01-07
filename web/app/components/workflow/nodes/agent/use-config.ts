@@ -72,7 +72,6 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     inputs.agent_strategy_provider_name,
     inputs.agent_strategy_name,
   )
-  console.log('currentStrategyStatus', currentStrategyStatus)
   const pluginId = inputs.agent_strategy_provider_name?.split('/').splice(0, 2).join('/')
   const pluginDetail = useCheckInstalled({
     pluginIds: [pluginId || ''],
