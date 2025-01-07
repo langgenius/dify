@@ -52,7 +52,7 @@ class JotterPadRequest:
         res = self._send_request(url)
         if "exportedFiles" in res:
             return res.get("exportedFiles")
-        return None
+        return res
 
     def get_export_document_file(self, export_id) -> dict:
         url = f"{self.API_BASE_URL}/exports/get"
@@ -60,7 +60,7 @@ class JotterPadRequest:
         res = self._send_request(url=url, payload=payload)
         if "exportedFile" in res:
             return res.get("exportedFile")
-        return None
+        return res
 
     def clear_export_document_files(self) -> bool:
         url = f"{self.API_BASE_URL}/exports/clear"
@@ -75,4 +75,4 @@ class JotterPadRequest:
         res = self._send_request(url=url, payload=payload)
         if "id" in res:
             return res.get("id")
-        return None
+        return ""

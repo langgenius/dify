@@ -19,6 +19,9 @@ class InitiatePrintOrExportTool(BuiltinTool):
 
         export_id = client.initiate_print_or_export(in_type, out_type, input_content, metadata, name)
 
+        if not export_id:
+            raise Exception("Print or export error.")
+
         download_url = ""
 
         for x in range(14):

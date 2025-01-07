@@ -14,8 +14,14 @@ parameters:
     label:
       en_US: Input Type
     human_description:
-      en_US: Input type of content to export. Possible values are md, fountain, html, latex. Default value is md.
-    llm_description: Input type of content to export. Possible values are md, fountain, html, latex. Default value is md.
+      en_US: >
+        Input type of content to export.
+        Possible values are md, fountain, html, latex.
+        Default value is md.
+    llm_description: >
+      Input type of content to export.
+      Possible values are md, fountain, html, latex.
+      Default value is md.
     form: llm
   - name: out_type
     type: string
@@ -23,8 +29,14 @@ parameters:
     label:
       en_US: Output Type
     human_description:
-      en_US: Output type of the exported document file. Possible values are docx, epub, fdx, pdf, zip. Default value is pdf.
-    llm_description: Output type of the exported document file. Possible values are docx, epub, fdx, pdf, zip. Default value is pdf.
+      en_US: >
+        Output type of the exported document file.
+        Possible values are docx, epub, fdx, pdf, zip.
+        Default value is pdf.
+    llm_description: >
+      Output type of the exported document file.
+      Possible values are docx, epub, fdx, pdf, zip.
+      Default value is pdf.
     form: llm
   - name: input_content
     type: string
@@ -53,4 +65,3 @@ parameters:
       en_US: Preferred file name of the document (Exclude extension).
     llm_description: Preferred file name of the document (Exclude extension).
     form: llm
-
