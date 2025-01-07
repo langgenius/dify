@@ -80,8 +80,8 @@ class IterationNode(BaseNode[IterationNodeData]):
         if not variable:
             raise IteratorVariableNotFoundError(f"iterator variable {self.node_data.iterator_selector} not found")
 
-        if not isinstance(variable, ArrayVariable) and not isinstance(variable, NoneVariable):
-            raise InvalidIteratorValueError(f"invalid iterator value: {variable}, please provide a list.")
+        if not (hasattr(variable, "value") and isinstance(variable.value, list)):
+            raise InvalidIteratorValueError(f"invalid iterator value: {variable.value}, please provide a list.")
 
         if isinstance(variable, NoneVariable) or len(variable.value) == 0:
             yield RunCompletedEvent(
