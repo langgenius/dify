@@ -95,6 +95,9 @@ class PluginModelManager(BasePluginManager):
         )
 
         for resp in response:
+            if resp.credentials and isinstance(resp.credentials, dict):
+                credentials.update(resp.credentials)
+
             return resp.result
 
         return False
@@ -132,6 +135,9 @@ class PluginModelManager(BasePluginManager):
         )
 
         for resp in response:
+            if resp.credentials and isinstance(resp.credentials, dict):
+                credentials.update(resp.credentials)
+
             return resp.result
 
         return False
