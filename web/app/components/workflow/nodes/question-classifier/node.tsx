@@ -32,6 +32,7 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
       {hasSetModel && (
         <ModelSelector
           defaultModel={{ provider, model: modelId }}
+          triggerClassName='!h-6 !rounded-md'
           modelList={textGenerationModelList}
           readonly
         />

@@ -24,8 +24,6 @@ import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/compo
 import StatusIndicators from './status-indicators'
 import cn from '@/utils/classnames'
 import { useProviderContext } from '@/context/provider-context'
-import { useModalContextSelector } from '@/context/modal-context'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 
@@ -51,10 +49,8 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
 }) => {
   const { t } = useTranslation()
   const { modelProviders } = useProviderContext()
-  const setShowModelModal = useModalContextSelector(state => state.setShowModelModal)
   const updateModelProviders = useUpdateModelProviders()
   const updateModelList = useUpdateModelList()
-  const { eventEmitter } = useEventEmitterContextContext()
   const { modelProvider, needsConfiguration } = useMemo(() => {
     const modelProvider = modelProviders.find(item => item.provider === providerName)
     const needsConfiguration = modelProvider?.custom_configuration.status === CustomConfigurationStatusEnum.noConfigure && !(

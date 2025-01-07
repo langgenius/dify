@@ -111,6 +111,7 @@ export type PluginDetail = {
 export type PluginInfoFromMarketPlace = {
   category: PluginType
   latest_package_identifier: string
+  latest_version: string
 }
 
 export type Plugin = {
