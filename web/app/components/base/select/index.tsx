@@ -245,7 +245,7 @@ const SimpleSelect: FC<ISelectProps> = ({
             leaveTo="opacity-0"
           >
 
-            <Listbox.Options className={classNames('absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-components-panel-bg-blur py-1 text-base shadow-lg border-components-panel-border border-[0.5px] focus:outline-none sm:text-sm', optionWrapClassName)}>
+            <Listbox.Options className={classNames('absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-components-panel-bg-blur backdrop-blur-sm py-1 text-base shadow-lg border-components-panel-border border-[0.5px] focus:outline-none sm:text-sm', optionWrapClassName)}>
               {items.map((item: Item) => (
                 <Listbox.Option
                   key={item.value}

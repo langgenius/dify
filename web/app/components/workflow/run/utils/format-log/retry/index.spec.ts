@@ -1,11 +1,21 @@
 import format from '.'
-import { simpleRetryData } from './data'
+import graphToLogStruct from '../graph-to-log-struct'
 
 describe('retry', () => {
+  // retry nodeId:1 3 times.
+  const steps = graphToLogStruct('start -> (retry, 1, 3)')
+  const [startNode, retryNode, ...retryDetail] = steps
+  const result = format(steps)
   test('should have no retry status nodes', () => {
-    expect(format(simpleRetryData.in as any).find(item => (item as any).status === 'retry')).toBeUndefined()
+    expect(result.find(item => (item as any).status === 'retry')).toBeUndefined()
   })
   test('should put retry nodes in retryDetail', () => {
-    expect(format(simpleRetryData.in as any)).toEqual(simpleRetryData.expect)
+    expect(result).toEqual([
+      startNode,
+      {
+        ...retryNode,
+        retryDetail,
+      },
+    ])
   })
 })

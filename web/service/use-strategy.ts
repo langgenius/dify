@@ -2,6 +2,7 @@ import type {
   StrategyPluginDetail,
 } from '@/app/components/plugins/types'
 import { useInvalid } from './use-base'
+import type { QueryOptions } from '@tanstack/react-query'
 import {
   useQuery,
 } from '@tanstack/react-query'
@@ -21,8 +22,9 @@ export const useInvalidateStrategyProviders = () => {
   return useInvalid(useStrategyListKey)
 }
 
-export const useStrategyProviderDetail = (agentProvider: string) => {
+export const useStrategyProviderDetail = (agentProvider: string, options?: QueryOptions<StrategyPluginDetail>) => {
   return useQuery<StrategyPluginDetail>({
+    ...options,
     queryKey: [NAME_SPACE, 'detail', agentProvider],
     queryFn: () => fetchStrategyDetail(agentProvider),
     enabled: !!agentProvider,

@@ -1,10 +1,11 @@
+import type { ReactNode } from 'react'
 import { memo } from 'react'
 import cn from '@/utils/classnames'
 
 type BadgeProps = {
   className?: string
-  text?: string
-  children?: React.ReactNode
+  text?: ReactNode
+  children?: ReactNode
   uppercase?: boolean
   hasRedCornerMark?: boolean
 }

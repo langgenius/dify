@@ -18,8 +18,8 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
       : ALL_COMPLETION_AVAILABLE_BLOCKS
   },
   checkValid(payload, t, moreDataForCheckValid: {
-    strategyProvider: StrategyPluginDetail | undefined,
-    strategy: StrategyDetail | undefined
+    strategyProvider?: StrategyPluginDetail,
+    strategy?: StrategyDetail
     language: string
   }) {
     const { strategy, language } = moreDataForCheckValid

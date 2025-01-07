@@ -20,11 +20,11 @@ import Title from '../card/base/title'
 import Action from './action'
 import cn from '@/utils/classnames'
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
-import { useLanguage } from '../../header/account-setting/model-provider-page/hooks'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useInvalidateAllToolProviders } from '@/service/use-tools'
 import { useCategories } from '../hooks'
 import { useProviderContext } from '@/context/provider-context'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
 
 type Props = {
   className?: string
@@ -35,7 +35,6 @@ const PluginItem: FC<Props> = ({
   className,
   plugin,
 }) => {
-  const locale = useLanguage()
   const { t } = useTranslation()
   const { categoriesMap } = useCategories()
   const currentPluginID = usePluginPageContext(v => v.currentPluginID)
@@ -66,6 +65,10 @@ const PluginItem: FC<Props> = ({
     if (PluginType.tool.includes(category))
       invalidateAllToolProviders()
   }
+  const getValueFromI18nObject = useRenderI18nObject()
+  const title = getValueFromI18nObject(label)
+  const descriptionText = getValueFromI18nObject(description)
+
   return (
     <div
       className={cn(
@@ -92,12 +95,12 @@ const PluginItem: FC<Props> = ({
           </div>
           <div className="ml-3 w-0 grow">
             <div className="flex items-center h-5">
-              <Title title={label[locale]} />
+              <Title title={title} />
               {verified && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
               <Badge className='shrink-0 ml-1' text={source === PluginSource.github ? plugin.meta!.version : plugin.version} />
             </div>
             <div className='flex items-center justify-between'>
-              <Description text={description[locale]} descriptionLineRows={1}></Description>
+              <Description text={descriptionText} descriptionLineRows={1}></Description>
               <div onClick={e => e.stopPropagation()}>
                 <Action
                   pluginUniqueIdentifier={plugin_unique_identifier}

@@ -1,4 +1,5 @@
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import type { ReactNode } from 'react'
 import { memo, useMemo, useState } from 'react'
 import type { Strategy } from './agent-strategy'
 import classNames from '@/utils/classnames'
@@ -16,17 +17,32 @@ import type { StrategyPluginDetail } from '@/app/components/plugins/types'
 import type { ToolWithProvider } from '../../../types'
 import { CollectionType } from '@/app/components/tools/types'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
+import { useStrategyInfo } from '../../agent/use-config'
+import { SwitchPluginVersion } from './switch-plugin-version'
 
-const ExternalNotInstallWarn = () => {
+const NotFoundWarn = (props: {
+  title: ReactNode,
+  description: ReactNode
+}) => {
+  const { title, description } = props
+
   const { t } = useTranslation()
   return <Tooltip
-    popupContent={<div className='space-y-1 text-xs'>
-      <h3 className='text-text-primary font-semibold'>{t('workflow.nodes.agent.pluginNotInstalled')}</h3>
-      <p className='text-text-secondary tracking-tight'>{t('workflow.nodes.agent.pluginNotInstalledDesc')}</p>
-      <p>
-        <Link href={'/plugins'} className='text-text-accent tracking-tight'>{t('workflow.nodes.agent.linkToPlugin')}</Link>
-      </p>
-    </div>}
+    popupContent={
+      <div className='space-y-1 text-xs'>
+        <h3 className='text-text-primary font-semibold'>
+          {title}
+        </h3>
+        <p className='text-text-secondary tracking-tight'>
+          {description}
+        </p>
+        <p>
+          <Link href={'/plugins'} className='text-text-accent tracking-tight'>
+            {t('workflow.nodes.agent.linkToPlugin')}
+          </Link>
+        </p>
+      </div>
+    }
     needsDelay
   >
     <div>
@@ -81,15 +97,34 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
     if (!list) return []
     return list.filter(tool => tool.name.toLowerCase().includes(query.toLowerCase()))
   }, [query, list])
-  // TODO: should be replaced by real data
-  const isExternalInstalled = true
+  const { strategyStatus } = useStrategyInfo(
+    value?.agent_strategy_provider_name,
+    value?.agent_strategy_name,
+  )
+
+  const showPluginNotInstalledWarn = strategyStatus?.plugin?.source === 'external'
+    && !strategyStatus.plugin.installed
+
+  const showUnsupportedStrategy = strategyStatus?.plugin.source === 'external'
+    && !strategyStatus?.isExistInPlugin
+
+  const showSwitchVersion = !strategyStatus?.isExistInPlugin
+    && strategyStatus?.plugin.source === 'marketplace' && strategyStatus.plugin.installed
+
+  const showInstallButton = !strategyStatus?.isExistInPlugin
+    && strategyStatus?.plugin.source === 'marketplace' && !strategyStatus.plugin.installed
+
   const icon = list?.find(
     coll => coll.tools?.find(tool => tool.name === value?.agent_strategy_name),
   )?.icon as string | undefined
   const { t } = useTranslation()
+
   return <PortalToFollowElem open={open} onOpenChange={setOpen} placement='bottom'>
     <PortalToFollowElemTrigger className='w-full'>
-      <div className='h-8 p-1 gap-0.5 flex items-center rounded-lg bg-components-input-bg-normal w-full hover:bg-state-base-hover-alt select-none' onClick={() => setOpen(o => !o)}>
+      <div
+        className='h-8 p-1 gap-0.5 flex items-center rounded-lg bg-components-input-bg-normal w-full hover:bg-state-base-hover-alt select-none'
+        onClick={() => setOpen(o => !o)}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {icon && <div className='flex items-center justify-center w-6 h-6'><img
           src={icon}
@@ -104,8 +139,30 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
           {value?.agent_strategy_label || t('workflow.nodes.agent.strategy.selectTip')}
         </p>
         {value && <div className='ml-auto flex items-center gap-1'>
-          <InstallPluginButton onClick={e => e.stopPropagation()} size={'small'} />
-          {isExternalInstalled ? <ExternalNotInstallWarn /> : <RiArrowDownSLine className='size-4 text-text-tertiary' />}
+          {showInstallButton && <InstallPluginButton
+            onClick={e => e.stopPropagation()}
+            size={'small'}
+            uniqueIdentifier={value.plugin_unique_identifier}
+          />}
+          {showPluginNotInstalledWarn
+            ? <NotFoundWarn
+              title={t('workflow.nodes.agent.pluginNotInstalled')}
+              description={t('workflow.nodes.agent.pluginNotInstalledDesc')}
+            />
+            : showUnsupportedStrategy
+              ? <NotFoundWarn
+                title={t('workflow.nodes.agent.unsupportedStrategy')}
+                description={t('workflow.nodes.agent.strategyNotFoundDesc')}
+              />
+              : <RiArrowDownSLine className='size-4 text-text-tertiary' />
+          }
+          {showSwitchVersion && <SwitchPluginVersion
+            uniqueIdentifier={'langgenius/openai:12'}
+            tooltip={t('workflow.nodes.agent.switchToNewVersion')}
+            onChange={() => {
+              // TODO: refresh all strategies
+            }}
+          />}
         </div>}
       </div>
     </PortalToFollowElemTrigger>
@@ -143,9 +200,6 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
           </div>
         </main>
       </div>
-      {/* <div>
-        aaa
-      </div> */}
     </PortalToFollowElemContent>
   </PortalToFollowElem>
 })

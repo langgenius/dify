@@ -106,7 +106,7 @@ const Popup: FC<PopupProps> = ({
           )
         }
       </div>
-      <div className='sticky bottom-0 px-4 py-2 flex items-center border-t border-divider-subtle cursor-pointer text-text-accent-light-mode-only' onClick={() => {
+      <div className='sticky bottom-0 px-4 py-2 flex items-center border-t border-divider-subtle cursor-pointer text-text-accent-light-mode-only bg-components-panel-bg rounded-b-lg' onClick={() => {
         onHide()
         setShowAccountSettingModal({ payload: 'provider' })
       }}>

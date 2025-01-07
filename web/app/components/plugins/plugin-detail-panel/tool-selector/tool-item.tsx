@@ -5,6 +5,8 @@ import {
   RiDeleteBinLine,
   RiEqualizer2Line,
   RiErrorWarningFill,
+  RiInstallLine,
+  RiLoader2Line,
 } from '@remixicon/react'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import AppIcon from '@/app/components/base/app-icon'
@@ -13,7 +15,6 @@ import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
-import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -115,10 +116,19 @@ const ToolItem = ({
         </Button>
       )}
       {!isError && uninstalled && (
-        <InstallPluginButton size={'small'} loading={isInstalling} onClick={(e) => {
-          e.stopPropagation()
-          onInstall?.()
-        }} />
+        <Button
+          className={cn('flex items-center')}
+          size='small'
+          variant='secondary'
+          disabled={isInstalling}
+          onClick={(e) => {
+            e.stopPropagation()
+            onInstall?.()
+          }}
+        >
+          {!isInstalling ? t('workflow.nodes.agent.pluginInstaller.install') : t('workflow.nodes.agent.pluginInstaller.installing')}
+          {!isInstalling ? <RiInstallLine className='size-4 ml-1' /> : <RiLoader2Line className='size-4 ml-1 animate-spin' />}
+        </Button>
       )}
       {isError && (
         <Tooltip

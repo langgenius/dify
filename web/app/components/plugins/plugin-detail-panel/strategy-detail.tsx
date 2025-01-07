@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import {
   RiArrowLeftLine,
   RiCloseLine,
@@ -16,8 +15,7 @@ import type {
   StrategyDetail,
 } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n'
-import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -38,8 +36,7 @@ const StrategyDetail: FC<Props> = ({
   detail,
   onHide,
 }) => {
-  const { locale } = useContext(I18n)
-  const language = getLanguage(locale)
+  const getValueFromI18nObject = useRenderI18nObject()
   const { t } = useTranslation()
 
   const outputSchema = useMemo(() => {
@@ -98,10 +95,10 @@ const StrategyDetail: FC<Props> = ({
           </div>
           <div className='flex items-center gap-1'>
             <Icon size='tiny' className='w-6 h-6' src={provider.icon} />
-            <div className=''>{provider.label[language]}</div>
+            <div className=''>{getValueFromI18nObject(provider.label)}</div>
           </div>
-          <div className='mt-1 text-text-primary system-md-semibold'>{detail.identity.label[language]}</div>
-          <Description className='mt-3' text={detail.description[language]} descriptionLineRows={2}></Description>
+          <div className='mt-1 text-text-primary system-md-semibold'>{getValueFromI18nObject(detail.identity.label)}</div>
+          <Description className='mt-3' text={getValueFromI18nObject(detail.description)} descriptionLineRows={2}></Description>
         </div>
         {/* form */}
         <div className='h-full'>
@@ -113,7 +110,7 @@ const StrategyDetail: FC<Props> = ({
                   {detail.parameters.map((item: any, index) => (
                     <div key={index} className='py-1'>
                       <div className='flex items-center gap-2'>
-                        <div className='text-text-secondary code-sm-semibold'>{item.label[language]}</div>
+                        <div className='text-text-secondary code-sm-semibold'>{getValueFromI18nObject(item.label)}</div>
                         <div className='text-text-tertiary system-xs-regular'>
                           {getType(item.type)}
                         </div>
@@ -123,7 +120,7 @@ const StrategyDetail: FC<Props> = ({
                       </div>
                       {item.human_description && (
                         <div className='mt-0.5 text-text-tertiary system-xs-regular'>
-                          {item.human_description?.[language]}
+                          {getValueFromI18nObject(item.human_description)}
                         </div>
                       )}
                     </div>

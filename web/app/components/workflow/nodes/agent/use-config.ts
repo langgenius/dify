@@ -8,10 +8,53 @@ import {
 } from '@/app/components/workflow/hooks'
 import { useCallback, useMemo } from 'react'
 import { type ToolVarInputs, VarType } from '../tool/types'
-import { useCheckInstalled } from '@/service/use-plugins'
+import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
 import type { Var } from '../../types'
 import { VarType as VarKindType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
+
+export type StrategyStatus = {
+  plugin: {
+    source: 'external' | 'marketplace'
+    installed: boolean
+  }
+  isExistInPlugin: boolean
+}
+
+export const useStrategyInfo = (
+  strategyProviderName?: string,
+  strategyName?: string,
+) => {
+  const strategyProvider = useStrategyProviderDetail(
+    strategyProviderName || '',
+    { retry: false },
+  )
+  const strategy = strategyProvider.data?.declaration.strategies.find(
+    str => str.identity.name === strategyName,
+  )
+  const marketplace = useFetchPluginsInMarketPlaceByIds([strategyProviderName!], {
+    retry: false,
+  })
+  const strategyStatus: StrategyStatus | undefined = useMemo(() => {
+    if (strategyProvider.isLoading || marketplace.isLoading)
+      return undefined
+    const strategyExist = !!strategy
+    const isPluginInstalled = !strategyProvider.isError
+    const isInMarketplace = !!marketplace.data?.data.plugins.at(0)
+    return {
+      plugin: {
+        source: isInMarketplace ? 'marketplace' : 'external',
+        installed: isPluginInstalled,
+      },
+      isExistInPlugin: strategyExist,
+    }
+  }, [strategy, marketplace, strategyProvider.isError, strategyProvider.isLoading])
+  return {
+    strategyProvider,
+    strategy,
+    strategyStatus,
+  }
+}
 
 const useConfig = (id: string, payload: AgentNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -21,21 +64,17 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     inputs,
     setInputs,
   })
-  const strategyProvider = useStrategyProviderDetail(
-    inputs.agent_strategy_provider_name || '',
+  const {
+    strategyStatus: currentStrategyStatus,
+    strategy: currentStrategy,
+    strategyProvider,
+  } = useStrategyInfo(
+    inputs.agent_strategy_provider_name,
+    inputs.agent_strategy_name,
   )
-  const currentStrategy = strategyProvider.data?.declaration.strategies.find(
-    str => str.identity.name === inputs.agent_strategy_name,
-  )
-  const currentStrategyStatus: 'loading' | 'plugin-not-found' | 'strategy-not-found' | 'success' = useMemo(() => {
-    if (strategyProvider.isLoading) return 'loading'
-    if (strategyProvider.isError) return 'plugin-not-found'
-    if (!currentStrategy) return 'strategy-not-found'
-    return 'success'
-  }, [currentStrategy, strategyProvider])
   const pluginId = inputs.agent_strategy_provider_name?.split('/').splice(0, 2).join('/')
   const pluginDetail = useCheckInstalled({
-    pluginIds: [pluginId || ''],
+    pluginIds: [pluginId!],
     enabled: Boolean(pluginId),
   })
   const formData = useMemo(() => {

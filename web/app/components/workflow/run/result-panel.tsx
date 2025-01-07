@@ -57,10 +57,10 @@ const ResultPanel: FC<ResultPanelProps> = ({
   handleShowAgentOrToolLog,
 }) => {
   const { t } = useTranslation()
-  const isIterationNode = nodeInfo?.node_type === BlockEnum.Iteration && nodeInfo?.details?.length
-  const isRetryNode = hasRetryNode(nodeInfo?.node_type) && nodeInfo?.retryDetail?.length
-  const isAgentNode = nodeInfo?.node_type === BlockEnum.Agent && nodeInfo?.agentLog?.length
-  const isToolNode = nodeInfo?.node_type === BlockEnum.Tool && nodeInfo?.agentLog?.length
+  const isIterationNode = nodeInfo?.node_type === BlockEnum.Iteration && !!nodeInfo?.details?.length
+  const isRetryNode = hasRetryNode(nodeInfo?.node_type) && !!nodeInfo?.retryDetail?.length
+  const isAgentNode = nodeInfo?.node_type === BlockEnum.Agent && !!nodeInfo?.agentLog?.length
+  const isToolNode = nodeInfo?.node_type === BlockEnum.Tool && !!nodeInfo?.agentLog?.length
 
   return (
     <div className='bg-components-panel-bg py-2'>
