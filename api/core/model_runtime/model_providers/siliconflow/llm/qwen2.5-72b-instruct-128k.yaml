@@ -1,12 +1,12 @@
-model: Qwen/Qwen2.5-72B-Instruct
+model: Qwen/Qwen2.5-72B-Instruct-128K
 label:
-  en_US: Qwen/Qwen2.5-72B-Instruct
+  en_US: Qwen/Qwen2.5-72B-Instruct-128K
 model_type: llm
 features:
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 32768
+  context_size: 131072
 parameter_rules:
   - name: temperature
     use_template: temperature
