@@ -15,6 +15,7 @@ type Props = {
   list: Plugin[]
   searchText: string
   tags: string[]
+  disableMaxWidth?: boolean
 }
 
 const List = ({
@@ -22,6 +23,7 @@ const List = ({
   searchText,
   tags,
   list,
+  disableMaxWidth = false,
 }: Props, ref: any) => {
   const { t } = useTranslation()
   const hasFilter = !searchText
@@ -95,7 +97,7 @@ const List = ({
           </Link>
         </div>
       )}
-      <div className={cn('p-1', maxWidthClassName)} ref={nextToStickyELemRef}>
+      <div className={cn('p-1', !disableMaxWidth && maxWidthClassName)} ref={nextToStickyELemRef}>
         {list.map((item, index) => (
           <Item
             key={index}
@@ -103,7 +105,7 @@ const List = ({
             onAction={() => { }}
           />
         ))}
-        <div className='mt-2 mb-3 flex items-center space-x-2'>
+        <div className='mt-2 mb-3 flex items-center justify-center space-x-2'>
           <div className="w-[90px] h-[2px] bg-gradient-to-l from-[rgba(16,24,40,0.08)] to-[rgba(255,255,255,0.01)]"></div>
           <Link
             href={urlWithSearchText}
