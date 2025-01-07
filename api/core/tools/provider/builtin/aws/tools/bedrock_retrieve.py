@@ -3,6 +3,7 @@ import operator
 from typing import Any, Optional, Union
 
 import boto3
+
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
@@ -13,13 +14,13 @@ class BedrockRetrieveTool(BuiltinTool):
     topk: int = None
 
     def _bedrock_retrieve(
-        self, query_input: str, knowledge_base_id: str, num_results: int, search_type:str, rerank_model_id:str, metadata_filter: Optional[dict] = None
+        self, query_input: str, knowledge_base_id: str, num_results: int, search_type: str, rerank_model_id: str, metadata_filter: Optional[dict] = None
     ):
         try:
             retrieval_query = {"text": query_input}
 
             if search_type not in ['HYBRID', 'SEMANTIC']:
-                raise RuntimeException(f"search_type should be HYBRID or SEMANTIC")
+                raise RuntimeException("search_type should be HYBRID or SEMANTIC")
 
             retrieval_configuration = {
                 "vectorSearchConfiguration": {
