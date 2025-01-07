@@ -7,7 +7,7 @@ import type { InstallState } from '@/app/components/plugins/types'
 import { useGitHubReleases } from '../hooks'
 import { convertRepoToUrl, parseGitHubUrl } from '../utils'
 import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../types'
-import { InstallStepFromGitHub, PluginType } from '../../types'
+import { InstallStepFromGitHub } from '../../types'
 import Toast from '@/app/components/base/toast'
 import SetURL from './steps/setURL'
 import SelectPackage from './steps/selectPackage'
@@ -15,8 +15,7 @@ import Installed from '../base/installed'
 import Loaded from './steps/loaded'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { useTranslation } from 'react-i18next'
-import { useUpdateModelProviders } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useInvalidateAllToolProviders } from '@/service/use-tools'
+import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
 
 const i18nPrefix = 'plugin.installFromGitHub'
 
@@ -30,8 +29,8 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
   const { t } = useTranslation()
   const { getIconUrl } = useGetIcon()
   const { fetchReleases } = useGitHubReleases()
-  const updateModelProviders = useUpdateModelProviders()
-  const invalidateAllToolProviders = useInvalidateAllToolProviders()
+  const { refreshPluginList } = useRefreshPluginList()
+
   const [state, setState] = useState<InstallState>({
     step: updatePayload ? InstallStepFromGitHub.selectPackage : InstallStepFromGitHub.setUrl,
     repoUrl: updatePayload?.originalPackageInfo?.repo
@@ -115,14 +114,9 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
 
   const handleInstalled = useCallback(() => {
     setState(prevState => ({ ...prevState, step: InstallStepFromGitHub.installed }))
-    if (!manifest)
-      return
-    if (PluginType.model.includes(manifest.category))
-      updateModelProviders()
-    if (PluginType.tool.includes(manifest.category))
-      invalidateAllToolProviders()
+    refreshPluginList(manifest)
     onSuccess()
-  }, [invalidateAllToolProviders, manifest, onSuccess, updateModelProviders])
+  }, [manifest, onSuccess, refreshPluginList])
 
   const handleFailed = useCallback((errorMsg?: string) => {
     setState(prevState => ({ ...prevState, step: InstallStepFromGitHub.installFailed }))
