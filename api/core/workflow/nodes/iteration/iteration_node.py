@@ -10,10 +10,8 @@ from flask import Flask, current_app
 
 from configs import dify_config
 from core.variables import ArrayVariable, IntegerVariable, NoneVariable
-from core.workflow.entities.node_entities import (
-    NodeRunMetadataKey,
-    NodeRunResult,
-)
+from core.variables.segments import Segment, SegmentType
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.event import (
     BaseGraphEvent,
@@ -37,7 +35,6 @@ from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
 from models.workflow import WorkflowNodeExecutionStatus
-from core.variables.segments import Segment, SegmentType
 
 from .exc import (
     InvalidIteratorValueError,
@@ -50,6 +47,7 @@ from .exc import (
 
 if TYPE_CHECKING:
     from core.workflow.graph_engine.graph_engine import GraphEngine
+
 logger = logging.getLogger(__name__)
 
 
@@ -96,8 +94,7 @@ class IterationNode(BaseNode[IterationNodeData]):
         )
 
         if not (
-            isinstance(variable, ArrayVariable)
-            or isinstance(variable, NoneVariable)
+            isinstance(variable, (ArrayVariable, NoneVariable))
             or is_array_segment_type
         ):
             raise InvalidIteratorValueError(
