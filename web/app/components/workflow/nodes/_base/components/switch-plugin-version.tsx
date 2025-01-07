@@ -13,12 +13,11 @@ import { useCheckInstalled } from '@/service/use-plugins'
 export type SwitchPluginVersionProps = {
   uniqueIdentifier: string
   tooltip?: string
-  version: string
-  onSelect: (version: string) => void
+  onChange?: (version: string) => void
 }
 
 export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
-  const { uniqueIdentifier, tooltip, onSelect, version } = props
+  const { uniqueIdentifier, tooltip, onChange } = props
   const [pluginId] = uniqueIdentifier.split(':')
   const [isShow, setIsShow] = useState(false)
   const [isShowUpdateModal, { setTrue: showUpdateModal, setFalse: hideUpdateModal }] = useBoolean(false)
@@ -31,9 +30,9 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
 
   const handleUpdatedFromMarketplace = useCallback(() => {
     hideUpdateModal()
-    onSelect(targetVersion!)
-  }, [hideUpdateModal, onSelect, targetVersion])
-  return <Tooltip popupContent={!isShow && tooltip} triggerMethod='hover'>
+    onChange?.(targetVersion!)
+  }, [hideUpdateModal, onChange, targetVersion])
+  return <Tooltip popupContent={!isShow && !isShowUpdateModal && tooltip} triggerMethod='hover'>
     <div className='w-fit'>
       {isShowUpdateModal && pluginDetail && <UpdateFromMarketplace
         payload={{
@@ -49,11 +48,11 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         onCancel={hideUpdateModal}
         onSave={handleUpdatedFromMarketplace}
       />}
-      <PluginVersionPicker
+      {pluginDetail && <PluginVersionPicker
         isShow={isShow}
         onShowChange={setIsShow}
         pluginID={pluginId}
-        currentVersion={version}
+        currentVersion={pluginDetail.version}
         onSelect={(state) => {
           setTargetVersion(state.version)
           showUpdateModal()
@@ -67,14 +66,14 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
             uppercase={true}
             text={
               <>
-                <div>{version}</div>
+                <div>{pluginDetail.version}</div>
                 <RiArrowLeftRightLine className='ml-1 w-3 h-3 text-text-tertiary' />
               </>
             }
             hasRedCornerMark={true}
           />
         }
-      />
+      />}
     </div>
   </Tooltip>
 }

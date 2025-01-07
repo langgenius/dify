@@ -158,9 +158,10 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
           }
           {showSwitchVersion && <SwitchPluginVersion
             uniqueIdentifier={'langgenius/openai:12'}
-            onSelect={console.error}
-            version={''}
             tooltip={t('workflow.nodes.agent.switchToNewVersion')}
+            onChange={() => {
+              // TODO: refresh all strategies
+            }}
           />}
         </div>}
       </div>
