@@ -5,6 +5,7 @@ on:
     branches:
       - "main"
       - "deploy/dev"
+      - "feat/reduce-db-updates-from-APIToken.last_used_at"
   release:
     types: [published]
 
