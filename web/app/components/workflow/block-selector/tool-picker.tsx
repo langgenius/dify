@@ -150,6 +150,7 @@ const ToolPicker: FC<Props> = ({
           </div>
           <AllTools
             className='mt-1'
+            toolContentClassName='max-w-[360px]'
             tags={tags}
             searchText={searchText}
             onSelect={handleSelect}
