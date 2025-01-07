@@ -18,13 +18,13 @@ type Props = {
   disableMaxWidth?: boolean
 }
 
-const List = ({
+const List = forwardRef<{ handleScroll: () => void }, Props>(({
   wrapElemRef,
   searchText,
   tags,
   list,
   disableMaxWidth = false,
-}: Props, ref: any) => {
+}, ref) => {
   const { t } = useTranslation()
   const hasFilter = !searchText
   const hasRes = list.length > 0
@@ -120,5 +120,8 @@ const List = ({
       </div>
     </>
   )
-}
-export default forwardRef(List)
+})
+
+List.displayName = 'List'
+
+export default List
