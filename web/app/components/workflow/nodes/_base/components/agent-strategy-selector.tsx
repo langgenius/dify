@@ -18,6 +18,7 @@ import type { ToolWithProvider } from '../../../types'
 import { CollectionType } from '@/app/components/tools/types'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { useStrategyInfo } from '../../agent/use-config'
+import { SwitchPluginVersion } from './switch-plugin-version'
 
 const NotFoundWarn = (props: {
   title: ReactNode,
@@ -100,17 +101,18 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
     value?.agent_strategy_provider_name,
     value?.agent_strategy_name,
   )
+
   const showPluginNotInstalledWarn = strategyStatus?.plugin?.source === 'external'
     && !strategyStatus.plugin.installed
 
   const showUnsupportedStrategy = strategyStatus?.plugin.source === 'external'
-    && strategyStatus.strategy === 'not-found'
+    && !strategyStatus?.isExistInPlugin
 
-  const showSwitchVersion = strategyStatus?.strategy === 'not-found'
-    && strategyStatus.plugin.source === 'marketplace' && strategyStatus.plugin.installed
+  const showSwitchVersion = !strategyStatus?.isExistInPlugin
+    && strategyStatus?.plugin.source === 'marketplace' && strategyStatus.plugin.installed
 
-  const showInstallButton = strategyStatus?.strategy === 'not-found'
-    && strategyStatus.plugin.source === 'marketplace' && !strategyStatus.plugin.installed
+  const showInstallButton = !strategyStatus?.isExistInPlugin
+    && strategyStatus?.plugin.source === 'marketplace' && !strategyStatus.plugin.installed
 
   const icon = list?.find(
     coll => coll.tools?.find(tool => tool.name === value?.agent_strategy_name),
@@ -154,6 +156,11 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
               />
               : <RiArrowDownSLine className='size-4 text-text-tertiary' />
           }
+          {showSwitchVersion && <SwitchPluginVersion
+            uniqueIdentifier={'langgenius/openai:12'}
+            onSelect={console.error}
+            version={''}
+          />}
         </div>}
       </div>
     </PortalToFollowElemTrigger>

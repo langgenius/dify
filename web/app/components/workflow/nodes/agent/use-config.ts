@@ -18,7 +18,7 @@ export type StrategyStatus = {
     source: 'external' | 'marketplace'
     installed: boolean
   }
-  strategy: 'not-found' | 'normal'
+  isExistInPlugin: boolean
 }
 
 export const useStrategyInfo = (
@@ -46,7 +46,7 @@ export const useStrategyInfo = (
         source: isInMarketplace ? 'marketplace' : 'external',
         installed: isPluginInstalled,
       },
-      strategy: strategyExist ? 'normal' : 'not-found',
+      isExistInPlugin: strategyExist,
     }
   }, [strategy, marketplace, strategyProvider.isError, strategyProvider.isLoading])
   return {
