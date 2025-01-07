@@ -13,25 +13,23 @@ class BedrockRetrieveTool(BuiltinTool):
     knowledge_base_id: str = None
     topk: int = None
 
-    def _bedrock_retrieve(self, 
-        query_input: str, 
-        knowledge_base_id: str, 
-        num_results: int, 
-        search_type: str, 
-        rerank_model_id: str, 
-        metadata_filter: Optional[dict] = None
+    def _bedrock_retrieve(
+        self,
+        query_input: str,
+        knowledge_base_id: str,
+        num_results: int,
+        search_type: str,
+        rerank_model_id: str,
+        metadata_filter: Optional[dict] = None,
     ):
         try:
             retrieval_query = {"text": query_input}
 
-            if search_type not in ['HYBRID', 'SEMANTIC']:
+            if search_type not in ["HYBRID", "SEMANTIC"]:
                 raise RuntimeException("search_type should be HYBRID or SEMANTIC")
 
             retrieval_configuration = {
-                "vectorSearchConfiguration": {
-                    "numberOfResults": num_results, 
-                    "overrideSearchType": search_type
-                }
+                "vectorSearchConfiguration": {"numberOfResults": num_results, "overrideSearchType": search_type}
             }
 
             if rerank_model_id != "default":
@@ -39,11 +37,9 @@ class BedrockRetrieveTool(BuiltinTool):
                 rerankingConfiguration = {
                     "bedrockRerankingConfiguration": {
                         "numberOfRerankedResults": num_results,
-                        "modelConfiguration": {
-                            "modelArn": model_for_rerank_arn
-                        },
+                        "modelConfiguration": {"modelArn": model_for_rerank_arn},
                     },
-                    "type": "BEDROCK_RERANKING_MODEL"
+                    "type": "BEDROCK_RERANKING_MODEL",
                 }
 
                 retrieval_configuration["vectorSearchConfiguration"]["rerankingConfiguration"] = rerankingConfiguration
@@ -56,7 +52,7 @@ class BedrockRetrieveTool(BuiltinTool):
             response = self.bedrock_client.retrieve(
                 knowledgeBaseId=knowledge_base_id,
                 retrievalQuery=retrieval_query,
-                retrievalConfiguration=retrieval_configuration
+                retrievalConfiguration=retrieval_configuration,
             )
 
             results = []
@@ -119,7 +115,7 @@ class BedrockRetrieveTool(BuiltinTool):
                 num_results=self.topk,
                 search_type=search_type,
                 rerank_model_id=rerank_model_id,
-                metadata_filter=metadata_filter
+                metadata_filter=metadata_filter,
             )
 
             line = 5
