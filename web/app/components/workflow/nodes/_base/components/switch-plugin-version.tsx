@@ -4,6 +4,7 @@ import Badge from '@/app/components/base/badge'
 import Tooltip from '@/app/components/base/tooltip'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
 import { RiArrowLeftRightLine } from '@remixicon/react'
+import type { ReactNode } from 'react'
 import { type FC, useCallback, useState } from 'react'
 import cn from '@/utils/classnames'
 import UpdateFromMarketplace from '@/app/components/plugins/update-plugin/from-market-place'
@@ -12,7 +13,7 @@ import { useCheckInstalled } from '@/service/use-plugins'
 
 export type SwitchPluginVersionProps = {
   uniqueIdentifier: string
-  tooltip?: string
+  tooltip?: ReactNode
   onChange?: (version: string) => void
 }
 
