@@ -111,6 +111,7 @@ const config = {
         'premium-yearly-tip-text-background': 'var(--color-premium-yearly-tip-text-background)',
         'price-premium-text-background': 'var(--color-premium-text-background)',
         'price-enterprise-background': 'var(--color-price-enterprise-background)',
+        'grid-mask-background': 'var(--color-grid-mask-background)',
       },
       lineClamp: {
         '20': '20',

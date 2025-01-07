@@ -53,7 +53,7 @@ const style = {
   [Plan.professional]: {
     icon: <Keyframe className='text-util-colors-blue-brand-blue-brand-600 size-7' />,
     description: 'text-util-colors-blue-brand-blue-brand-600',
-    btnStyle: 'bg-components-button-primary-bg hover:bg-components-button-primary-bg-hover border border-component-button-primary-border text-components-button-primary-text',
+    btnStyle: 'bg-components-button-primary-bg hover:bg-components-button-primary-bg-hover border border-components-button-primary-border text-components-button-primary-text',
   },
   [Plan.team]: {
     icon: <Group2 className='text-util-colors-indigo-indigo-600 size-7' />,

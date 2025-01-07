@@ -62,8 +62,8 @@ const Pricing: FC<Props> = ({
                 itemWidth={170}
                 className='inline-flex'
                 options={[
-                  { value: 'cloud', text: <div className='inline-flex items-center system-md-semibold-uppercase'><RiCloudFill className='size-4 mr-2' />{t('billing.plansCommon.cloud')}</div> },
-                  { value: 'self', text: <div className='inline-flex items-center system-md-semibold-uppercase'><RiTerminalBoxFill className='size-4 mr-2' />{t('billing.plansCommon.self')}</div> }]}
+                  { value: 'cloud', text: <div className='inline-flex items-center system-md-semibold-uppercase text-text-secondary'><RiCloudFill className='size-4 mr-2' />{t('billing.plansCommon.cloud')}</div> },
+                  { value: 'self', text: <div className='inline-flex items-center system-md-semibold-uppercase text-text-secondary'><RiTerminalBoxFill className='size-4 mr-2' />{t('billing.plansCommon.self')}</div> }]}
                 onChange={v => setCurrentPlan(v)} />
 
               {currentPlan === 'cloud' && <SelectPlanRange
