@@ -20,7 +20,7 @@ const ModelIcon: FC<ModelIconProps> = ({
   className,
   modelName,
   isDeprecated = false,
-  isInModelList = false,
+  isInModelList = true,
 }) => {
   const language = useLanguage()
   if (provider?.provider.includes('openai') && modelName?.includes('gpt-4o'))
