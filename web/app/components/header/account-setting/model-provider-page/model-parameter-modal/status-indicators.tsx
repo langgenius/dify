@@ -1,5 +1,7 @@
 import Tooltip from '@/app/components/base/tooltip'
 import Link from 'next/link'
+import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
+import { useInstalledPluginList } from '@/service/use-plugins'
 import { RiErrorWarningFill } from '@remixicon/react'
 
 type StatusIndicatorsProps = {
@@ -12,9 +14,10 @@ type StatusIndicatorsProps = {
 }
 
 const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disabled, pluginInfo, t }: StatusIndicatorsProps) => {
+  const { data: pluginList } = useInstalledPluginList()
   const renderTooltipContent = (title: string, description?: string, linkText?: string, linkHref?: string) => {
     return (
-      <div className='flex w-[240px] max-w-[240px] gap-1 flex-col px-1 py-1.5'>
+      <div className='flex w-[240px] max-w-[240px] gap-1 flex-col px-1 py-1.5' onClick={e => e.stopPropagation()}>
         <div className='text-text-primary title-xs-semi-bold'>{title}</div>
         {description && (
           <div className='min-w-[200px] text-text-secondary body-xs-regular'>
@@ -36,6 +39,7 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
       </div>
     )
   }
+  // const installedPluginUniqueIdentifier = pluginList?.plugins.find(plugin => plugin.name === pluginInfo.name)?.plugin_unique_identifier
   return (
     <>
       {/* plugin installed and model is in model list but disabled */}
@@ -45,7 +49,7 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
           popupContent={inModelList ? t('workflow.nodes.agent.modelSelectorTooltips.deprecated')
             : renderTooltipContent(
               t('workflow.nodes.agent.modelNotSupport.title'),
-              t('workflow.nodes.agent.modelNotSupport.desc'),
+              !pluginInfo ? t('workflow.nodes.agent.modelNotSupport.desc') : t('workflow.nodes.agent.modelNotSupport.descForVersionSwitch'),
               !pluginInfo ? t('workflow.nodes.agent.linkToPlugin') : '',
               !pluginInfo ? '/plugins' : '',
             )
@@ -53,7 +57,7 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
           asChild={false}
           needsDelay={!inModelList}
         >
-          <RiErrorWarningFill className='w-4 h-4 text-text-destructive' />
+          {!pluginInfo ? <RiErrorWarningFill className='w-4 h-4 text-text-destructive' /> : <SwitchPluginVersion uniqueIdentifier={pluginList?.plugins.find(plugin => plugin.name === pluginInfo.name)?.plugin_unique_identifier ?? ''} />}
         </Tooltip>
       )}
       {!modelProvider && !pluginInfo && (

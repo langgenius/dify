@@ -61,7 +61,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   }
   const { t } = useTranslation()
   return <Tooltip popupContent={!isShow && !isShowUpdateModal && tooltip} triggerMethod='hover'>
-    <div className={cn('w-fit', className)}>
+    <div className={cn('w-fit flex items-center justify-center', className)}>
       {isShowUpdateModal && pluginDetail && <PluginMutationModel
         onCancel={hideUpdateModal}
         plugin={pluginManifestToCardPluginProps({
