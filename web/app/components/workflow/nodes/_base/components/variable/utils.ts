@@ -807,10 +807,17 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
 
     case BlockEnum.Agent: {
       const payload = data as AgentNodeType
-      const params = payload.agent_parameters || {}
-      const mixVars = matchNotSystemVars(Object.keys(params)?.filter(key => params[key].type === ToolVarType.mixed).map(key => params[key].value) as string[])
-      const vars = Object.keys(params).filter(key => params[key].type === ToolVarType.variable).map(key => params[key].value as string) || []
-      res = [...(mixVars as ValueSelector[]), ...(vars as any)]
+      const valueSelectors: ValueSelector[] = []
+      if (!payload.agent_parameters)
+        break
+
+      Object.keys(payload.agent_parameters || {}).forEach((key) => {
+        const { value } = payload.agent_parameters![key]
+        if (typeof value === 'string')
+          valueSelectors.push(...matchNotSystemVars([value]))
+      })
+      res = valueSelectors
+      break
     }
   }
   return res || []
