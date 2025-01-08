@@ -546,7 +546,7 @@ class IndexingRunner:
                 # Distribute documents into multiple groups based on the hash values of page_content
                 # This is done to prevent multiple threads from processing the same document,
                 # Thereby avoiding potential database insertion deadlocks
-                document_groups = [[] for _ in range(max_workers)]
+                document_groups: list[list[Document]] = [[] for _ in range(max_workers)]
                 for document in documents:
                     hash = helper.generate_text_hash(document.page_content)
                     group_index = int(hash, 16) % max_workers
