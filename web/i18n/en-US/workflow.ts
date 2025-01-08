@@ -725,6 +725,7 @@ const translation = {
       modelNotSupport: {
         title: 'Unsupported Model',
         desc: 'The installed plugin version does not provide this model.',
+        descForVersionSwitch: 'The installed plugin version does not provide this model. Click to switch version.',
       },
       configureModel: 'Configure Model',
       notAuthorized: 'Not Authorized',

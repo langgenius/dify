@@ -83,7 +83,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
           // pass
         }
       }
-      if (providerName && !modelProvider) {
+      if (providerName) {
         const parts = providerName.split('/')
         const org = parts[0]
         const name = parts[1]
@@ -101,7 +101,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
         setIsPluginChecked(true)
       }
     })()
-  }, [providerName, modelProvider, modelId, currentProvider])
+  }, [providerName, modelId, currentProvider])
 
   if (modelId && !isPluginChecked)
     return null

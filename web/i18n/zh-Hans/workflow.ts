@@ -725,6 +725,7 @@ const translation = {
       modelNotSupport: {
         title: '不支持的模型',
         desc: '已安装的插件版本不提供此模型。',
+        descForVersionSwitch: '已安装的插件版本不提供此模型。点击切换版本。',
       },
       model: '模型',
       toolbox: '工具箱',
