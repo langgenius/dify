@@ -112,7 +112,6 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
             provider={currentProvider || modelProvider}
             modelName={currentModel?.model || modelId}
             isDeprecated={hasDeprecated}
-            isInModelList={inModelList}
           />
           <ModelDisplay
             currentModel={currentModel}
