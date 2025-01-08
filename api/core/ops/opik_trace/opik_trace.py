@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
+from typing import Optional, cast
 
 from opik import Opik, Trace
 from opik.id_helpers import uuid4_to_uuid7
@@ -252,13 +253,18 @@ class OpikDataTrace(BaseTraceInstance):
 
     def message_trace(self, trace_info: MessageTraceInfo):
         # get message file data
-        file_list = trace_info.file_list
-        message_file_data: MessageFile = trace_info.message_file_data
-        file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
-        file_list.append(file_url)
+        file_list = cast(list[str], trace_info.file_list) or []
+        message_file_data: Optional[MessageFile] = trace_info.message_file_data
+
+        if message_file_data is not None:
+            file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
+            file_list.append(file_url)
+
+        message_data = trace_info.message_data
+        if message_data is None:
+            return
 
         metadata = trace_info.metadata
-        message_data = trace_info.message_data
         message_id = trace_info.message_id
 
         user_id = message_data.from_account_id
@@ -266,7 +272,7 @@ class OpikDataTrace(BaseTraceInstance):
         metadata["file_list"] = file_list
 
         if message_data.from_end_user_id:
-            end_user_data: EndUser = (
+            end_user_data: Optional[EndUser] = (
                 db.session.query(EndUser).filter(EndUser.id == message_data.from_end_user_id).first()
             )
             if end_user_data is not None:
@@ -306,6 +312,9 @@ class OpikDataTrace(BaseTraceInstance):
         self.add_span(span_data)
 
     def moderation_trace(self, trace_info: ModerationTraceInfo):
+        if trace_info.message_data is None:
+            return
+
         start_time = trace_info.start_time or trace_info.message_data.created_at
 
         span_data = {
@@ -328,14 +337,18 @@ class OpikDataTrace(BaseTraceInstance):
         self.add_span(span_data)
 
     def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo):
-        start_time = trace_info.start_time or trace_info.message_data.created_at
+        message_data = trace_info.message_data
+        if message_data is None:
+            return
+
+        start_time = trace_info.start_time or message_data.created_at
 
         span_data = {
             "trace_id": uuid4_to_uuid7(start_time, trace_info.message_id),
             "name": TraceTaskName.SUGGESTED_QUESTION_TRACE.value,
             "type": "tool",
             "start_time": start_time,
-            "end_time": trace_info.end_time or trace_info.message_data.updated_at,
+            "end_time": trace_info.end_time or message_data.updated_at,
             "metadata": wrap_metadata(trace_info.metadata),
             "input": wrap_dict("input", trace_info.inputs),
             "output": wrap_dict("output", trace_info.suggested_question),
@@ -345,6 +358,9 @@ class OpikDataTrace(BaseTraceInstance):
         self.add_span(span_data)
 
     def dataset_retrieval_trace(self, trace_info: DatasetRetrievalTraceInfo):
+        if trace_info.message_data is None:
+            return
+
         start_time = trace_info.start_time or trace_info.message_data.created_at
 
         span_data = {
@@ -385,7 +401,7 @@ class OpikDataTrace(BaseTraceInstance):
             "metadata": wrap_metadata(trace_info.metadata),
             "input": trace_info.inputs,
             "output": trace_info.outputs,
-            "tags": ["message", str(trace_info.conversation_mode)],
+            "tags": ["generate_name"],
             "project_name": self.project,
         }
 
@@ -394,8 +410,8 @@ class OpikDataTrace(BaseTraceInstance):
         span_data = {
             "trace_id": trace.id,
             "name": TraceTaskName.GENERATE_NAME_TRACE.value,
-            "start_time": trace_info.start_time or trace_info.message_data.created_at,
-            "end_time": trace_info.end_time or trace_info.message_data.updated_at,
+            "start_time": trace_info.start_time,
+            "end_time": trace_info.end_time,
             "metadata": wrap_metadata(trace_info.metadata),
             "input": wrap_dict("input", trace_info.inputs),
             "output": wrap_dict("output", trace_info.outputs),
