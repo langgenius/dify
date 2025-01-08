@@ -24,7 +24,6 @@ import Toast from '../../base/toast'
 import InputsPanel from './inputs-panel'
 import cn from '@/utils/classnames'
 import Loading from '@/app/components/base/loading'
-import formatNodeList from '@/app/components/workflow/run/utils/format-log'
 
 const WorkflowPreview = () => {
   const { t } = useTranslation()
@@ -161,7 +160,7 @@ const WorkflowPreview = () => {
           {currentTab === 'TRACING' && (
             <TracingPanel
               className='bg-background-section-burn'
-              list={formatNodeList(workflowRunningData?.tracing || [], t)}
+              list={workflowRunningData?.tracing || []}
             />
           )}
           {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (

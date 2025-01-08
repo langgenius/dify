@@ -23,6 +23,7 @@ export type NodeTracing = {
   index: number
   predecessor_node_id: string
   node_id: string
+  iteration_id?: string
   node_type: BlockEnum
   title: string
   inputs: any

@@ -22,7 +22,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { useStore } from '@/app/components/workflow/store'
 
-export interface ChatWrapperRefType {
+export type ChatWrapperRefType = {
   handleRestart: () => void
 }
 const DebugAndPreview = () => {

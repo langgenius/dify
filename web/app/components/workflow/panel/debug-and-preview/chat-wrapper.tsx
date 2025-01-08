@@ -28,7 +28,7 @@ import {
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { getLastAnswer } from '@/app/components/base/chat/utils'
 
-interface ChatWrapperProps {
+type ChatWrapperProps = {
   showConversationVariableModal: boolean
   onConversationModalHide: () => void
   showInputsFieldsPanel: boolean
