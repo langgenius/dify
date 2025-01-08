@@ -12,6 +12,7 @@ import {
 import type { PluginInfoFromMarketPlace } from '@/app/components/plugins/types'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import ConfigurationButton from './configuration-button'
+import Loading from '@/app/components/base/loading'
 import { PluginType } from '@/app/components/plugins/types'
 import {
   useModelModalHandler,
@@ -104,7 +105,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
   }, [providerName, modelId, currentProvider])
 
   if (modelId && !isPluginChecked)
-    return null
+    return <Loading />
 
   return (
     <div
