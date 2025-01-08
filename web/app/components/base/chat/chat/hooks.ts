@@ -305,7 +305,7 @@ export const useChat = (
       else
         ttsUrl = `/apps/${params.appId}/text-to-audio`
     }
-    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', (_: any): any => {})
+    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', (_: any): any => { })
     ssePost(
       url,
       {
@@ -533,8 +533,43 @@ export const useChat = (
             parentId: data.parent_message_id,
           })
         },
+        // TODO: LOOP CHANGE
+        onLoopStart: ({ data }) => {
+          responseItem.workflowProcess!.tracing!.push({
+            ...data,
+            status: WorkflowRunningStatus.Running,
+          } as any)
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
+        },
+        onLoopFinish: ({ data }) => {
+          const tracing = responseItem.workflowProcess!.tracing!
+          const loopIndex = tracing.findIndex(item => item.node_id === data.node_id
+            && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
+          tracing[loopIndex] = {
+            ...tracing[loopIndex],
+            ...data,
+            status: WorkflowRunningStatus.Succeeded,
+          } as any
+
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
+        },
         onNodeStarted: ({ data: nodeStartedData }) => {
           if (nodeStartedData.iteration_id)
+            return
+
+          if (data.loop_id)
             return
 
           responseItem.workflowProcess!.tracing!.push({
@@ -550,6 +585,9 @@ export const useChat = (
         },
         onNodeFinished: ({ data: nodeFinishedData }) => {
           if (nodeFinishedData.iteration_id)
+            return
+
+          if (data.loop_id)
             return
 
           const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {
