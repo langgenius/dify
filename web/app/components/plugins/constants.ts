@@ -1,4 +1,5 @@
 export const tagKeys = [
+  'agent',
   'search',
   'image',
   'videos',

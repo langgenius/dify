@@ -24,6 +24,8 @@ const translation = {
     link: '详细信息面板',
     tipRight: '查看它。',
   },
+  actionLogs: 'Action 日志',
+  circularInvocationTip: '当前工作流中存在工具/节点的循环调用。',
 }
 
 export default translation

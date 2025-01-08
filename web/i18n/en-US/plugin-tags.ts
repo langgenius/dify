@@ -2,6 +2,7 @@ const translation = {
   allTags: 'All Tags',
   searchTags: 'Search Tags',
   tags: {
+    agent: 'Agent',
     search: 'Search',
     image: 'Image',
     videos: 'Videos',
