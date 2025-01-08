@@ -34,6 +34,11 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
     pluginDetails.refetch()
     onChange?.(targetVersion!)
   }, [hideUpdateModal, onChange, pluginDetails, targetVersion])
+
+  const targetUniqueIdentifier = (() => {
+    if (!targetVersion || !pluginDetail) return uniqueIdentifier
+    return uniqueIdentifier.replaceAll(pluginDetail.version, targetVersion)
+  })()
   return <Tooltip popupContent={!isShow && !isShowUpdateModal && tooltip} triggerMethod='hover'>
     <div className='w-fit'>
       {isShowUpdateModal && pluginDetail && <UpdateFromMarketplace
@@ -43,7 +48,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
             payload: pluginDetail.declaration,
           },
           targetPackageInfo: {
-            id: uniqueIdentifier,
+            id: targetUniqueIdentifier,
             version: targetVersion!,
           },
         }}
