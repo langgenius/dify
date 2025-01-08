@@ -980,22 +980,16 @@ Chat applications support session persistence, allowing previous chat history to
 <Row>
   <Col>
   Used to get basic information about this application
-  ### Query
-    <Properties>
 
-   <Property name='user' type='string' key='user'>
-        User identifier, defined by the developer's rules, must be unique within the application.
-    </Property>
-      </Properties>
   ### Response
   - `name` (string) application name
   - `description` (string) application description
   - `tags` (array[string]) application tags
   </Col>
   <Col>
-    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
+    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
       ```bash {{ title: 'cURL' }}
-      curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \
+      curl -X GET '${props.appDetail.api_base_url}/info' \
       -H 'Authorization: Bearer {api_key}'
       ```
     </CodeGroup>
@@ -1077,10 +1071,10 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
+    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
+    curl -X GET '${props.appDetail.api_base_url}/parameters' \
     --header 'Authorization: Bearer {api_key}'
     ```
 
@@ -1145,13 +1139,7 @@ Chat applications support session persistence, allowing previous chat history to
 <Row>
   <Col>
   Used to get icons of tools in this application
-  ### Query
-    <Properties>
 
-   <Property name='user' type='string' key='user'>
-        User identifier, defined by the developer's rules, must be unique within the application.
-    </Property>
-      </Properties>
   ### Response
   - `tool_icons`(object[string]) tool icons
     - `tool_name` (string)
@@ -1162,9 +1150,9 @@ Chat applications support session persistence, allowing previous chat history to
         - (string) url of icon
   </Col>
   <Col>
-  <CodeGroup title="Request" tag="GET" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/meta?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
+  <CodeGroup title="Request" tag="GET" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/meta' \\\n-H 'Authorization: Bearer {api_key}'`}>
     ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/meta?user=abc-123' \
+    curl -X GET '${props.appDetail.api_base_url}/meta' \
     -H 'Authorization: Bearer {api_key}'
     ```
 
