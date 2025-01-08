@@ -740,7 +740,6 @@ const translation = {
       unsupportedStrategy: '不支持的策略',
       strategyNotFoundDesc: '安装的插件版本不提供此策略。',
       pluginNotFoundDesc: '此插件安装自 GitHub。请转到插件重新安装。',
-      strategyNotFoundDescAndSwitchVersion: '安装的插件版本不提供此策略。点击切换版本。',
       modelSelectorTooltips: {
         deprecated: '此模型已弃用',
       },

@@ -740,7 +740,6 @@ const translation = {
       unsupportedStrategy: 'Unsupported strategy',
       pluginNotFoundDesc: 'This plugin is installed from GitHub. Please go to Plugins to reinstall',
       strategyNotFoundDesc: 'The installed plugin version does not provide this strategy.',
-      strategyNotFoundDescAndSwitchVersion: 'The installed plugin version does not provide this strategy. Click to switch version.',
       modelSelectorTooltips: {
         deprecated: 'This model is deprecated',
       },

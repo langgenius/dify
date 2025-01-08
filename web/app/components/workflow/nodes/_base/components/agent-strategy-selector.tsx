@@ -17,10 +17,8 @@ import type { ToolWithProvider } from '../../../types'
 import { CollectionType } from '@/app/components/tools/types'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { useStrategyInfo } from '../../agent/use-config'
-import { SwitchPluginVersion } from './switch-plugin-version'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
-import { ToolTipContent } from '@/app/components/base/tooltip/content'
 
 const NotFoundWarn = (props: {
   title: ReactNode,
@@ -104,15 +102,14 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
     value?.agent_strategy_name,
   )
 
-  const showPluginNotInstalledWarn = strategyStatus?.plugin?.source === 'external'
+  // plugin not found and is not found in marketplace
+  const showPluginNotInstalledWarn = !strategyStatus?.isExistInPlugin && strategyStatus?.plugin?.source === 'external'
     && !strategyStatus.plugin.installed
 
-  const showUnsupportedStrategy = strategyStatus?.plugin.source === 'external'
-    && !strategyStatus?.isExistInPlugin
+  // strategy not found
+  const showUnsupportedStrategy = !strategyStatus?.isExistInPlugin
 
-  const showSwitchVersion = !strategyStatus?.isExistInPlugin
-    && strategyStatus?.plugin.source === 'marketplace' && strategyStatus.plugin.installed
-
+  // plugin not found and is founded in marketplace
   const showInstallButton = !strategyStatus?.isExistInPlugin
     && strategyStatus?.plugin.source === 'marketplace' && !strategyStatus.plugin.installed
 
@@ -177,16 +174,6 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
               />
               : <RiArrowDownSLine className='size-4 text-text-tertiary' />
           }
-          {showSwitchVersion && <SwitchPluginVersion
-            uniqueIdentifier={'langgenius/openai:12'}
-            tooltip={<ToolTipContent
-              title={t('workflow.nodes.agent.unsupportedStrategy')}>
-              {t('workflow.nodes.agent.strategyNotFoundDescAndSwitchVersion')}
-            </ToolTipContent>}
-            onChange={() => {
-              // TODO: refresh all strategies
-            }}
-          />}
         </div>}
       </div>
     </PortalToFollowElemTrigger>
