@@ -5,15 +5,41 @@ import { RiErrorWarningFill } from '@remixicon/react'
 type StatusIndicatorsProps = {
   needsConfiguration: boolean
   modelProvider: boolean
+  inModelList: boolean
   disabled: boolean
   pluginInfo: any
   t: any
 }
 
-const StatusIndicators = ({ needsConfiguration, modelProvider, disabled, pluginInfo, t }: StatusIndicatorsProps) => {
+const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disabled, pluginInfo, t }: StatusIndicatorsProps) => {
+  const renderTooltipContent = (title: string, description?: string, linkText?: string, linkHref?: string) => {
+    return (
+      <div className='flex w-[240px] max-w-[240px] gap-1 flex-col px-1 py-1.5'>
+        <div className='text-text-primary title-xs-semi-bold'>{title}</div>
+        {description && (
+          <div className='min-w-[200px] text-text-secondary body-xs-regular'>
+            {description}
+          </div>
+        )}
+        {linkText && linkHref && (
+          <div className='text-text-accent body-xs-regular cursor-pointer z-[100]'>
+            <Link
+              href={linkHref}
+              onClick={(e) => {
+                e.stopPropagation()
+              }}
+            >
+              {linkText}
+            </Link>
+          </div>
+        )}
+      </div>
+    )
+  }
   return (
     <>
-      {!needsConfiguration && modelProvider && disabled && (
+      {/* plugin installed and model is in model list but disabled */}
+      {!needsConfiguration && modelProvider && disabled && inModelList && (
         <Tooltip
           popupContent={t('workflow.nodes.agent.modelSelectorTooltips.deprecated')}
           asChild={false}
@@ -21,26 +47,32 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, disabled, pluginI
           <RiErrorWarningFill className='w-4 h-4 text-text-destructive' />
         </Tooltip>
       )}
+      {/* plugin installed from github/local and model is not in model list */}
+      {
+        modelProvider && !inModelList && (
+          <Tooltip
+            popupContent={renderTooltipContent(
+              t('workflow.nodes.agent.modelNotSupport.title'),
+              t('workflow.nodes.agent.modelNotSupport.desc'),
+              !pluginInfo ? t('workflow.nodes.agent.linkToPlugin') : '',
+              !pluginInfo ? '/plugins' : '',
+            )}
+            asChild={false}
+            needsDelay
+          >
+            <RiErrorWarningFill className='w-4 h-4 text-text-destructive' />
+          </Tooltip>
+        )
+      }
+      {/* plugin not installed and not in marketplace */}
       {!modelProvider && !pluginInfo && (
         <Tooltip
-          popupContent={
-            <div className='flex w-[240px] max-w-[240px] gap-1 flex-col px-1 py-1.5'>
-              <div className='text-text-primary title-xs-semi-bold'>{t('workflow.nodes.agent.modelNotInMarketplace.title')}</div>
-              <div className='min-w-[200px] text-text-secondary body-xs-regular'>
-                {t('workflow.nodes.agent.modelNotInMarketplace.desc')}
-              </div>
-              <div className='text-text-accent body-xs-regular cursor-pointer z-[100]'>
-                <Link
-                  href={'/plugins'}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                  }}
-                >
-                  {t('workflow.nodes.agent.linkToPlugin')}
-                </Link>
-              </div>
-            </div>
-          }
+          popupContent={renderTooltipContent(
+            t('workflow.nodes.agent.modelNotInMarketplace.title'),
+            t('workflow.nodes.agent.modelNotInMarketplace.desc'),
+            t('workflow.nodes.agent.linkToPlugin'),
+            '/plugins',
+          )}
           asChild={false}
           needsDelay
         >

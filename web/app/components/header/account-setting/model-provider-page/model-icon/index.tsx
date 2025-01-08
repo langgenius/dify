@@ -13,12 +13,14 @@ type ModelIconProps = {
   modelName?: string
   className?: string
   isDeprecated?: boolean
+  isInModelList?: boolean
 }
 const ModelIcon: FC<ModelIconProps> = ({
   provider,
   className,
   modelName,
   isDeprecated = false,
+  isInModelList = false,
 }) => {
   const language = useLanguage()
   if (provider?.provider.includes('openai') && modelName?.includes('gpt-4o'))
@@ -26,7 +28,7 @@ const ModelIcon: FC<ModelIconProps> = ({
   if (provider?.provider.includes('openai') && modelName?.startsWith('gpt-4'))
     return <div className='flex items-center justify-center'><OpenaiViolet className={cn('w-5 h-5', className)}/></div>
 
-  if (provider?.icon_small) {
+  if (provider?.icon_small && isInModelList) {
     return (
       <div className={`flex items-center justify-center w-5 h-5 ${isDeprecated ? 'opacity-50' : ''}`}>
         <img
@@ -40,7 +42,7 @@ const ModelIcon: FC<ModelIconProps> = ({
 
   return (
     <div className={cn(
-      'flex items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
+      'flex items-center justify-center rounded-md border-[0.5px] w-5 h-5 border-components-panel-border-subtle bg-background-default-subtle',
       className,
     )}>
       <div className='flex w-5 h-5 items-center justify-center opacity-35'>

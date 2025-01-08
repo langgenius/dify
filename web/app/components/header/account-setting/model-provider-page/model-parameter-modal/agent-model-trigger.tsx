@@ -26,6 +26,7 @@ import cn from '@/utils/classnames'
 import { useProviderContext } from '@/context/provider-context'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
+import { fetchModelProviderModelList } from '@/service/common'
 
 export type AgentModelTriggerProps = {
   open?: boolean
@@ -67,6 +68,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
   const [pluginInfo, setPluginInfo] = useState<PluginInfoFromMarketPlace | null>(null)
   const [isPluginChecked, setIsPluginChecked] = useState(false)
   const [installed, setInstalled] = useState(false)
+  const [inModelList, setInModelList] = useState(false)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const handleOpenModal = useModelModalHandler()
   useEffect(() => {
@@ -77,6 +79,9 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
         const name = parts[1]
         try {
           const pluginInfo = await fetchPluginInfoFromMarketPlace({ org, name })
+          const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${providerName}/models`)
+          if (modelId && modelsData.data.find(item => item.model === modelId))
+            setInModelList(true)
           if (pluginInfo.data.plugin.category === PluginType.model)
             setPluginInfo(pluginInfo.data.plugin)
         }
@@ -89,7 +94,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
         setIsPluginChecked(true)
       }
     })()
-  }, [providerName, modelProvider])
+  }, [providerName, modelProvider, modelId])
 
   if (modelId && !isPluginChecked)
     return null
@@ -107,6 +112,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
             provider={currentProvider || modelProvider}
             modelName={currentModel?.model || modelId}
             isDeprecated={hasDeprecated}
+            isInModelList={inModelList}
           />
           <ModelDisplay
             currentModel={currentModel}
@@ -121,6 +127,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
           <StatusIndicators
             needsConfiguration={needsConfiguration}
             modelProvider={!!modelProvider}
+            inModelList={inModelList}
             disabled={!!disabled}
             pluginInfo={pluginInfo}
             t={t}
