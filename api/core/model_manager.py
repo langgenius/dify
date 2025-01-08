@@ -178,7 +178,7 @@ class ModelInstance:
 
     def get_llm_num_tokens(
         self, prompt_messages: list[PromptMessage], tools: Optional[list[PromptMessageTool]] = None
-    ) -> list[int]:
+    ) -> int:
         """
         Get number of tokens for llm
 
@@ -191,7 +191,7 @@ class ModelInstance:
 
         self.model_type_instance = cast(LargeLanguageModel, self.model_type_instance)
         return cast(
-            list[int],
+            int,
             self._round_robin_invoke(
                 function=self.model_type_instance.get_num_tokens,
                 model=self.model,

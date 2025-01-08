@@ -644,7 +644,9 @@ class AdvancedChatAppGenerateTaskPipeline:
 
                 yield self._message_end_to_stream_response()
             elif isinstance(event, QueueAgentLogEvent):
-                yield self._handle_agent_log(task_id=self._application_generate_entity.task_id, event=event)
+                yield self._workflow_cycle_manager._handle_agent_log(
+                    task_id=self._application_generate_entity.task_id, event=event
+                )
             else:
                 continue
 

@@ -147,7 +147,7 @@ class ToolInvokeMessage(BaseModel):
 
         @field_validator("variable_name", mode="before")
         @classmethod
-        def transform_variable_name(cls, value) -> str:
+        def transform_variable_name(cls, value: str) -> str:
             """
             The variable name must be a string.
             """

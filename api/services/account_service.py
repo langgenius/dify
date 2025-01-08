@@ -900,6 +900,9 @@ class RegisterService:
     def invite_new_member(
         cls, tenant: Tenant, email: str, language: str, role: str = "normal", inviter: Account | None = None
     ) -> str:
+        if not inviter:
+            raise ValueError("Inviter is required")
+
         """Invite new member"""
         with Session(db.engine) as session:
             account = session.query(Account).filter_by(email=email).first()

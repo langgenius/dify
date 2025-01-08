@@ -268,7 +268,7 @@ Here is the extra instruction you need to follow:
             return summary.message.content
 
         lines = content.split("\n")
-        new_lines = []
+        new_lines: list[str] = []
         # split long line into multiple lines
         for i in range(len(lines)):
             line = lines[i]
@@ -286,16 +286,16 @@ Here is the extra instruction you need to follow:
 
         # merge lines into messages with max tokens
         messages: list[str] = []
-        for i in new_lines:
+        for i in new_lines:  # type: ignore
             if len(messages) == 0:
-                messages.append(i)
+                messages.append(i)  # type: ignore
             else:
-                if len(messages[-1]) + len(i) < max_tokens * 0.5:
-                    messages[-1] += i
-                if get_prompt_tokens(messages[-1] + i) > max_tokens * 0.7:
-                    messages.append(i)
+                if len(messages[-1]) + len(i) < max_tokens * 0.5:  # type: ignore
+                    messages[-1] += i  # type: ignore
+                if get_prompt_tokens(messages[-1] + i) > max_tokens * 0.7:  # type: ignore
+                    messages.append(i)  # type: ignore
                 else:
-                    messages[-1] += i
+                    messages[-1] += i  # type: ignore
 
         summaries = []
         for i in range(len(messages)):
