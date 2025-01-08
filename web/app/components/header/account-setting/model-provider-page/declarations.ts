@@ -116,7 +116,16 @@ export type CredentialFormSchemaBase = {
   scope?: string
 }
 
-export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & { max_length?: number; placeholder?: TypeWithI18N }
+export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & {
+  max_length?: number;
+  placeholder?: TypeWithI18N,
+  template?: {
+    enabled: boolean
+  },
+  auto_generate?: {
+    type: string
+  }
+}
 export type CredentialFormSchemaNumberInput = CredentialFormSchemaBase & { min?: number; max?: number; placeholder?: TypeWithI18N }
 export type CredentialFormSchemaSelect = CredentialFormSchemaBase & { options: FormOption[]; placeholder?: TypeWithI18N }
 export type CredentialFormSchemaRadio = CredentialFormSchemaBase & { options: FormOption[] }

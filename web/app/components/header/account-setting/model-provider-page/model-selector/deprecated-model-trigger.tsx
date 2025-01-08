@@ -22,22 +22,24 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
 
   return (
     <div
-      className={cn('group flex flex-grow items-center p-[3px] pl-1 h-8 gap-1 rounded-lg bg-components-input-bg-disabled cursor-pointer', className)}
+      className={cn('group flex flex-grow box-content items-center p-[3px] pl-1 h-8 gap-1 rounded-lg bg-components-input-bg-disabled cursor-pointer', className)}
     >
-      <div className='flex items-center py-[1px] gap-1 grow'>
-        <ModelIcon
-          className="w-4 h-4"
-          provider={currentProvider}
-          modelName={modelName}
-        />
-        <div className='system-sm-regular text-components-input-text-filled truncate'>
-          {modelName}
+      <div className='flex items-center w-full'>
+        <div className='flex items-center py-[1px] gap-1 min-w-0 flex-1'>
+          <ModelIcon
+            className="w-4 h-4"
+            provider={currentProvider}
+            modelName={modelName}
+          />
+          <div className='system-sm-regular text-components-input-text-filled truncate'>
+            {modelName}
+          </div>
         </div>
-      </div>
-      <div className='shrink-0 flex items-center justify-center w-4 h-4'>
-        <Tooltip popupContent={t('common.modelProvider.deprecated')}>
-          <AlertTriangle className='w-4 h-4 text-text-warning-secondary' />
-        </Tooltip>
+        <div className='shrink-0 flex items-center justify-center'>
+          <Tooltip popupContent={t('common.modelProvider.deprecated')}>
+            <AlertTriangle className='w-4 h-4 text-text-warning-secondary' />
+          </Tooltip>
+        </div>
       </div>
     </div>
   )
