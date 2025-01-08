@@ -377,10 +377,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                 for tool in tools:
                     formatted_tools.append(helper.dump_model(PromptMessageFunction(function=tool)))
 
-                if prompt_messages[-1].role.value == "tool":
-                    data["tools"] = None
-                else:
-                    data["tools"] = formatted_tools
+                data["tools"] = formatted_tools
 
         if stop:
             data["stop"] = stop
