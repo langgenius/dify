@@ -26,6 +26,7 @@ import cn from '@/utils/classnames'
 import { useProviderContext } from '@/context/provider-context'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
+import { fetchModelProviderModelList } from '@/service/common'
 
 export type AgentModelTriggerProps = {
   open?: boolean
@@ -67,11 +68,22 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
   const [pluginInfo, setPluginInfo] = useState<PluginInfoFromMarketPlace | null>(null)
   const [isPluginChecked, setIsPluginChecked] = useState(false)
   const [installed, setInstalled] = useState(false)
+  const [inModelList, setInModelList] = useState(false)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const handleOpenModal = useModelModalHandler()
   useEffect(() => {
     (async () => {
-      if (providerName && !modelProvider) {
+      if (modelId && currentProvider) {
+        try {
+          const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${currentProvider?.provider}/models`)
+          if (modelId && modelsData.data.find(item => item.model === modelId))
+            setInModelList(true)
+        }
+        catch (error) {
+          // pass
+        }
+      }
+      if (providerName) {
         const parts = providerName.split('/')
         const org = parts[0]
         const name = parts[1]
@@ -89,7 +101,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
         setIsPluginChecked(true)
       }
     })()
-  }, [providerName, modelProvider])
+  }, [providerName, modelId, currentProvider])
 
   if (modelId && !isPluginChecked)
     return null
@@ -121,6 +133,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
           <StatusIndicators
             needsConfiguration={needsConfiguration}
             modelProvider={!!modelProvider}
+            inModelList={inModelList}
             disabled={!!disabled}
             pluginInfo={pluginInfo}
             t={t}

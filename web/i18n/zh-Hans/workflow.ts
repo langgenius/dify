@@ -725,6 +725,7 @@ const translation = {
       modelNotSupport: {
         title: '不支持的模型',
         desc: '已安装的插件版本不提供此模型。',
+        descForVersionSwitch: '已安装的插件版本不提供此模型。点击切换版本。',
       },
       model: '模型',
       toolbox: '工具箱',
@@ -757,6 +758,13 @@ const translation = {
       },
       checkList: {
         strategyNotSelected: '未选择策略',
+      },
+      installPlugin: {
+        title: '安装插件',
+        desc: '即将安装以下插件',
+        changelog: '更新日志',
+        install: '安装',
+        cancel: '取消',
       },
     },
   },

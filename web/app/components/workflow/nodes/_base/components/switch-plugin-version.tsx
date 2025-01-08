@@ -3,13 +3,19 @@
 import Badge from '@/app/components/base/badge'
 import Tooltip from '@/app/components/base/tooltip'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
-import { RiArrowLeftRightLine } from '@remixicon/react'
+import { RiArrowLeftRightLine, RiExternalLinkLine } from '@remixicon/react'
 import type { ReactNode } from 'react'
 import { type FC, useCallback, useState } from 'react'
-import UpdateFromMarketplace from '@/app/components/plugins/update-plugin/from-market-place'
 import { useBoolean } from 'ahooks'
-import { useCheckInstalled } from '@/service/use-plugins'
+import { useCheckInstalled, useUpdatePackageFromMarketPlace } from '@/service/use-plugins'
 import cn from '@/utils/classnames'
+import PluginMutationModel from '@/app/components/plugins/plugin-mutation-model'
+import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
+import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
+import { Badge as Badge2, BadgeState } from '@/app/components/base/badge/index'
+import Link from 'next/link'
+import { useTranslation } from 'react-i18next'
+import { marketplaceUrlPrefix } from '@/config'
 
 export type SwitchPluginVersionProps = {
   uniqueIdentifier: string
@@ -23,7 +29,10 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const [pluginId] = uniqueIdentifier.split(':')
   const [isShow, setIsShow] = useState(false)
   const [isShowUpdateModal, { setTrue: showUpdateModal, setFalse: hideUpdateModal }] = useBoolean(false)
-  const [targetVersion, setTargetVersion] = useState<string>()
+  const [target, setTarget] = useState<{
+    version: string,
+    pluginUniqueIden: string;
+  }>()
   const pluginDetails = useCheckInstalled({
     pluginIds: [pluginId],
     enabled: true,
@@ -33,28 +42,55 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const handleUpdatedFromMarketplace = useCallback(() => {
     hideUpdateModal()
     pluginDetails.refetch()
-    onChange?.(targetVersion!)
-  }, [hideUpdateModal, onChange, pluginDetails, targetVersion])
-
-  const targetUniqueIdentifier = (() => {
-    if (!targetVersion || !pluginDetail) return uniqueIdentifier
-    return uniqueIdentifier.replaceAll(pluginDetail.version, targetVersion)
-  })()
+    onChange?.(target!.version)
+  }, [hideUpdateModal, onChange, pluginDetails, target])
+  const { getIconUrl } = useGetIcon()
+  const icon = pluginDetail?.declaration.icon ? getIconUrl(pluginDetail.declaration.icon) : undefined
+  const mutation = useUpdatePackageFromMarketPlace()
+  const install = () => {
+    mutation.mutate(
+      {
+        new_plugin_unique_identifier: target!.pluginUniqueIden,
+        original_plugin_unique_identifier: uniqueIdentifier,
+      },
+      {
+        onSuccess() {
+          handleUpdatedFromMarketplace()
+        },
+      })
+  }
+  const { t } = useTranslation()
   return <Tooltip popupContent={!isShow && !isShowUpdateModal && tooltip} triggerMethod='hover'>
-    <div className={cn('w-fit', className)}>
-      {isShowUpdateModal && pluginDetail && <UpdateFromMarketplace
-        payload={{
-          originalPackageInfo: {
-            id: uniqueIdentifier,
-            payload: pluginDetail.declaration,
-          },
-          targetPackageInfo: {
-            id: targetUniqueIdentifier,
-            version: targetVersion!,
-          },
-        }}
+    <div className={cn('w-fit flex items-center justify-center', className)}>
+      {isShowUpdateModal && pluginDetail && <PluginMutationModel
         onCancel={hideUpdateModal}
-        onSave={handleUpdatedFromMarketplace}
+        plugin={pluginManifestToCardPluginProps({
+          ...pluginDetail.declaration,
+          icon: icon!,
+        })}
+        mutation={mutation}
+        mutate={install}
+        confirmButtonText={t('workflow.nodes.agent.installPlugin.install')}
+        cancelButtonText={t('workflow.nodes.agent.installPlugin.cancel')}
+        modelTitle={t('workflow.nodes.agent.installPlugin.title')}
+        description={t('workflow.nodes.agent.installPlugin.desc')}
+        cardTitleLeft={<>
+          <Badge2 className='mx-1' size="s" state={BadgeState.Warning}>
+            {`${pluginDetail.version} -> ${target!.version}`}
+          </Badge2>
+        </>}
+        modalBottomLeft={
+          <Link
+            className='flex justify-center items-center gap-1'
+            href={`${marketplaceUrlPrefix}/plugins/${pluginDetail.declaration.author}/${pluginDetail.declaration.name}`}
+            target='_blank'
+          >
+            <span className='text-text-accent system-xs-regular text-xs'>
+              {t('workflow.nodes.agent.installPlugin.changelog')}
+            </span>
+            <RiExternalLinkLine className='text-text-accent size-3' />
+          </Link>
+        }
       />}
       {pluginDetail && <PluginVersionPicker
         isShow={isShow}
@@ -62,7 +98,10 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         pluginID={pluginId}
         currentVersion={pluginDetail.version}
         onSelect={(state) => {
-          setTargetVersion(state.version)
+          setTarget({
+            pluginUniqueIden: state.unique_identifier,
+            version: state.version,
+          })
           showUpdateModal()
         }}
         trigger={

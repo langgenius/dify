@@ -365,7 +365,7 @@ export const usePluginTaskList = () => {
     queryKey: usePluginTaskListKey,
     queryFn: async () => {
       const currentData = await get<{ tasks: PluginTask[] }>('/workspaces/current/plugin/tasks?page=1&page_size=100')
-      const taskDone = currentData.tasks.every(task => task.status === TaskStatus.success)
+      const taskDone = currentData.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
 
       if (taskDone)
         setEnabled(false)
@@ -423,10 +423,10 @@ export const useDownloadPlugin = (info: { organization: string; pluginName: stri
   })
 }
 
-export const useMutationCheckDependecies = () => {
+export const useMutationCheckDependencies = () => {
   return useMutation({
     mutationFn: (appId: string) => {
-      return get<{ leaked_dependencies: Dependency[] }>(`/apps/import/${appId}/check-dependencies`)
+      return get<{ leaked_dependencies: Dependency[] }>(`/apps/imports/${appId}/check-dependencies`)
     },
   })
 }

@@ -64,3 +64,31 @@ export const useCategories = (translateFromOut?: TFunction) => {
     categoriesMap,
   }
 }
+
+export const useSingleCategories = (translateFromOut?: TFunction) => {
+  const { t: translation } = useTranslation()
+  const t = translateFromOut || translation
+
+  const categories = categoryKeys.map((category) => {
+    if (category === 'agent') {
+      return {
+        name: 'agent_strategy',
+        label: t(`plugin.categorySingle.${category}`),
+      }
+    }
+    return {
+      name: category,
+      label: t(`plugin.categorySingle.${category}`),
+    }
+  })
+
+  const categoriesMap = categories.reduce((acc, category) => {
+    acc[category.name] = category
+    return acc
+  }, {} as Record<string, Category>)
+
+  return {
+    categories,
+    categoriesMap,
+  }
+}
