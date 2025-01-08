@@ -23,7 +23,7 @@ const AppsInfo: FC<Props> = ({
     <UsageInfo
       className={className}
       Icon={ChatBot}
-      name={t('billing.plansCommon.buildApps')}
+      name={t('billing.usagePage.buildApps')}
       usage={usage.buildApps}
       total={total.buildApps}
     />

@@ -1,5 +1,13 @@
 const translation = {
   currentPlan: '現在のプラン',
+  usagePage: {
+    teamMembers: 'チームメンバー',
+    buildApps: 'アプリを作成する',
+    annotationQuota: 'アノテーション・クォータ',
+    documentsUploadQuota: 'ドキュメント・アップロード・クォータ',
+    vectorSpace: 'ベクトルスペース',
+    vectorSpaceTooltip: 'ベクトルスペースは、LLMがデータを理解するために必要な長期記憶システムです。',
+  },
   upgradeBtn: {
     plain: 'プランをアップグレード',
     encourage: '今すぐアップグレード',

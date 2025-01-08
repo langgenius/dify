@@ -23,8 +23,8 @@ const VectorSpaceInfo: FC<Props> = ({
     <UsageInfo
       className={className}
       Icon={ArtificialBrain}
-      name={t('billing.plansCommon.vectorSpace')}
-      tooltip={t('billing.plansCommon.vectorSpaceTooltip') as string}
+      name={t('billing.usagePage.vectorSpace')}
+      tooltip={t('billing.usagePage.vectorSpaceTooltip') as string}
       usage={usage.vectorSpace}
       total={total.vectorSpace}
       unit='MB'

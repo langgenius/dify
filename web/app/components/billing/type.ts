@@ -17,6 +17,7 @@ export type PlanInfo = {
   buildApps: number
   documents: number
   vectorSpace: string
+  documentsUploadQuota: number
   documentsRequestQuota: number
   documentProcessingPriority: Priority
   logHistory: number
@@ -46,7 +47,7 @@ export type SelfHostedPlanInfo = {
   annotatedResponse: number
 }
 
-export type UsagePlanInfo = Pick<PlanInfo, 'vectorSpace' | 'buildApps' | 'teamMembers' | 'annotatedResponse'>
+export type UsagePlanInfo = Pick<PlanInfo, 'buildApps' | 'teamMembers' | 'annotatedResponse' | 'documentsUploadQuota'> & { vectorSpace: number }
 
 export enum DocumentProcessingPriority {
   standard = 'standard',

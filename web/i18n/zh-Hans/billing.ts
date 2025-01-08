@@ -1,5 +1,13 @@
 const translation = {
   currentPlan: '当前套餐',
+  usagePage: {
+    teamMembers: '团队成员',
+    buildApps: '构建应用程序数',
+    annotationQuota: '标注回复数',
+    documentsUploadQuota: '文档上传配额',
+    vectorSpace: '向量空间',
+    vectorSpaceTooltip: '向量空间是 LLMs 理解您的数据所需的长期记忆系统。',
+  },
   upgradeBtn: {
     plain: '升级套餐',
     encourage: '立即升级',

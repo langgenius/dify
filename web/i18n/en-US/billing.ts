@@ -1,5 +1,14 @@
 const translation = {
   currentPlan: 'Current Plan',
+  usagePage: {
+    teamMembers: 'Team Members',
+    buildApps: 'Build Apps',
+    annotationQuota: 'Annotation Quota',
+    documentsUploadQuota: 'Documents Upload Quota',
+    vectorSpace: 'Vector Space',
+    vectorSpaceTooltip: 'Vector Space is the long-term memory system required for LLMs  to comprehend your data.',
+  },
+  teamMembers: 'Team Members',
   upgradeBtn: {
     plain: 'Upgrade Plan',
     encourage: 'Upgrade Now',
