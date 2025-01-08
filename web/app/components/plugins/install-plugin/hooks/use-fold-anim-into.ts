@@ -1,7 +1,8 @@
 import { sleep } from '@/utils'
 
-// modalElem fold into plugin install task btn
 const animTime = 2000
+const modalClassName = 'install-modal'
+const COUNT_DOWN_TIME = 15000 // 15s
 
 function getElemCenter(elem: HTMLElement) {
   const rect = elem.getBoundingClientRect()
@@ -12,7 +13,13 @@ function getElemCenter(elem: HTMLElement) {
 }
 
 const useFoldAnimInto = (onClose: () => void) => {
-  return async function foldIntoAnim(modalClassName: string) {
+  let countDownRunId: number
+  const clearCountDown = () => {
+    clearTimeout(countDownRunId)
+  }
+  // modalElem fold into plugin install task btn
+  const foldIntoAnim = async () => {
+    clearCountDown()
     const modalElem = document.querySelector(`.${modalClassName}`) as HTMLElement
     const pluginTaskTriggerElem = document.getElementById('plugin-task-trigger')
 
@@ -31,6 +38,19 @@ const useFoldAnimInto = (onClose: () => void) => {
     modalElem.style.transform = `translate(${xDiff}px, ${yDiff}px) scale(${scale})`
     await sleep(animTime)
     onClose()
+  }
+
+  const countDownFoldIntoAnim = async () => {
+    countDownRunId = window.setTimeout(() => {
+      foldIntoAnim()
+    }, COUNT_DOWN_TIME)
+  }
+
+  return {
+    modalClassName,
+    foldIntoAnim,
+    clearCountDown,
+    countDownFoldIntoAnim,
   }
 }
 

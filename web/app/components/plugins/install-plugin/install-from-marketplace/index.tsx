@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import Modal from '@/app/components/base/modal'
 import type { Dependency, Plugin, PluginManifestInMarket } from '../../types'
 import { InstallStep } from '../../types'
@@ -37,8 +37,27 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const { refreshPluginList } = useRefreshPluginList()
 
-  const modalRef = useRef<HTMLElement>(null)
-  const foldAnimInto = useFoldAnimInto(onClose)
+  const {
+    modalClassName,
+    foldIntoAnim: doFoldAnimInto,
+    clearCountDown,
+    countDownFoldIntoAnim,
+  } = useFoldAnimInto(onClose)
+
+  const [isInstalling, setIsInstalling] = useState(false)
+
+  const foldAnimInto = useCallback(() => {
+    if (isInstalling) {
+      doFoldAnimInto()
+      return
+    }
+    onClose()
+  }, [doFoldAnimInto, isInstalling, onClose])
+
+  const handleStartToInstall = useCallback(() => {
+    setIsInstalling(true)
+    countDownFoldIntoAnim()
+  }, [countDownFoldIntoAnim])
 
   const getTitle = useCallback(() => {
     if (isBundle && step === InstallStep.installed)
@@ -61,12 +80,10 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
       setErrorMsg(errorMsg)
   }, [])
 
-  const modalClassName = 'install-modal'
-
   return (
     <Modal
       isShow={true}
-      onClose={() => step === InstallStep.readyToInstall ? foldAnimInto(modalClassName) : onClose()}
+      onClose={foldAnimInto}
       wrapperClassName='z-[9999]'
       className={cn(modalClassName, 'flex min-w-[560px] p-0 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadows-shadow-xl')}
       closable
@@ -94,6 +111,8 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
                 onCancel={onClose}
                 onInstalled={handleInstalled}
                 onFailed={handleFailed}
+                onStartToInstall={handleStartToInstall}
+                clearCountDown={clearCountDown}
               />
             )}
           {

@@ -22,6 +22,7 @@ type Props = {
   onCancel: () => void
   onStartToInstall?: () => void
   onInstalled: () => void
+  clearCountDown: () => void
   onFailed: (message?: string) => void
 }
 
@@ -31,6 +32,7 @@ const Installed: FC<Props> = ({
   onCancel,
   onStartToInstall,
   onInstalled,
+  clearCountDown,
   onFailed,
 }) => {
   const { t } = useTranslation()
@@ -56,6 +58,7 @@ const Installed: FC<Props> = ({
   useEffect(() => {
     if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier)
       onInstalled()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasInstalled])
 
   const handleCancel = () => {
@@ -67,7 +70,6 @@ const Installed: FC<Props> = ({
     if (isInstalling) return
     onStartToInstall?.()
     setIsInstalling(true)
-
     try {
       let taskId
       let isInstalled
@@ -90,6 +92,8 @@ const Installed: FC<Props> = ({
         taskId = task_id
         isInstalled = all_installed
       }
+
+      clearCountDown()
 
       if (isInstalled) {
         onInstalled()
