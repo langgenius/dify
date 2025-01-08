@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Generator
-from typing import Any, Mapping, Union
+from collections.abc import Generator, Mapping
+from typing import Any, Union
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
