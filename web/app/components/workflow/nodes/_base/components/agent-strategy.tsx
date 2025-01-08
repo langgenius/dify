@@ -1,4 +1,4 @@
-import type { CredentialFormSchemaNumberInput } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { CredentialFormSchemaNumberInput, CredentialFormSchemaTextInput } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { type CredentialFormSchema, FormTypeEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolVarInputs } from '../../tool/types'
 import ListEmpty from '@/app/components/base/list-empty'
@@ -19,7 +19,6 @@ import { useWorkflowStore } from '../../../store'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import type { NodeOutPutVar } from '../../../types'
 import type { Node } from 'reactflow'
-import { toType } from '@/app/components/tools/utils/to-form-schema'
 
 export type Strategy = {
   agent_strategy_provider_name: string
@@ -43,16 +42,8 @@ type CustomSchema<Type, Field = {}> = Omit<CredentialFormSchema, 'type'> & { typ
 
 type ToolSelectorSchema = CustomSchema<'tool-selector'>
 type MultipleToolSelectorSchema = CustomSchema<'array[tools]'>
-type StringSchema = CustomSchema<'string', {
-  template?: {
-    enabled: boolean
-  },
-  auto_generate?: {
-    type: string
-  }
-}>
 
-type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema | StringSchema
+type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema
 
 export const AgentStrategy = memo((props: AgentStrategyProps) => {
   const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange, nodeOutputVars, availableNodes } = props
@@ -64,9 +55,48 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
     setControlPromptEditorRerenderKey,
   } = workflowStore.getState()
   const override: ComponentProps<typeof Form<CustomField>>['override'] = [
-    [FormTypeEnum.textNumber],
+    [FormTypeEnum.textNumber, FormTypeEnum.textInput],
     (schema, props) => {
       switch (schema.type) {
+        case FormTypeEnum.textInput: {
+          const def = schema as CredentialFormSchemaTextInput
+          const value = props.value[schema.variable]
+          const onChange = (value: string) => {
+            props.onChange({ ...props.value, [schema.variable]: value })
+          }
+          const handleGenerated = (value: string) => {
+            onChange(value)
+            setControlPromptEditorRerenderKey(Math.random())
+          }
+          return <Editor
+            value={value}
+            onChange={onChange}
+            onGenerated={handleGenerated}
+            title={renderI18nObject(schema.label)}
+            headerClassName='bg-transparent px-0 text-text-secondary system-sm-semibold-uppercase'
+            containerBackgroundClassName='bg-transparent'
+            gradientBorder={false}
+            isSupportPromptGenerator={!!def.auto_generate?.type}
+            titleTooltip={schema.tooltip && renderI18nObject(schema.tooltip)}
+            editorContainerClassName='px-0'
+            availableNodes={availableNodes}
+            nodesOutputVars={nodeOutputVars}
+            isSupportJinja={def.template?.enabled}
+            varList={[]}
+            modelConfig={
+              defaultModel.data
+                ? {
+                  mode: 'chat',
+                  name: defaultModel.data.model,
+                  provider: defaultModel.data.provider.provider,
+                  completion_params: {},
+                } : undefined
+            }
+            placeholderClassName='px-2 py-1'
+            titleClassName='system-sm-semibold-uppercase text-text-secondary text-[13px]'
+            inputClassName='px-2 py-1 bg-components-input-bg-normal focus:bg-components-input-bg-active focus:border-components-input-border-active focus:border rounded-lg'
+          />
+        }
         case FormTypeEnum.textNumber: {
           const def = schema as CredentialFormSchemaNumberInput
           if (!def.max || !def.min)
@@ -136,44 +166,6 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           />
         )
       }
-      case 'string': {
-        const value = props.value[schema.variable]
-        const onChange = (value: string) => {
-          props.onChange({ ...props.value, [schema.variable]: value })
-        }
-        const handleGenerated = (value: string) => {
-          onChange(value)
-          setControlPromptEditorRerenderKey(Math.random())
-        }
-        return <Editor
-          value={value}
-          onChange={onChange}
-          onGenerated={handleGenerated}
-          title={renderI18nObject(schema.label)}
-          headerClassName='bg-transparent px-0 text-text-secondary system-sm-semibold-uppercase'
-          containerBackgroundClassName='bg-transparent'
-          gradientBorder={false}
-          isSupportPromptGenerator={!!schema.auto_generate?.type}
-          titleTooltip={schema.tooltip && renderI18nObject(schema.tooltip)}
-          editorContainerClassName='px-0'
-          availableNodes={availableNodes}
-          nodesOutputVars={nodeOutputVars}
-          isSupportJinja={schema.template?.enabled}
-          varList={[]}
-          modelConfig={
-            defaultModel.data
-              ? {
-                mode: 'chat',
-                name: defaultModel.data.model,
-                provider: defaultModel.data.provider.provider,
-                completion_params: {},
-              } : undefined
-          }
-          placeholderClassName='px-2 py-1'
-          titleClassName='system-sm-semibold-uppercase text-text-secondary text-[13px]'
-          inputClassName='px-2 py-1 bg-components-input-bg-normal focus:bg-components-input-bg-active focus:border-components-input-border-active focus:border rounded-lg'
-        />
-      }
     }
   }
   return <div className='space-y-2'>
@@ -182,18 +174,9 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
       strategy
         ? <div>
           <Form<CustomField>
-            formSchemas={[...formSchema, {
-              name: 'max_iteration',
-              type: toType('number'),
-              required: true,
-              label: {
-                en_US: 'Max Iteration',
-                zh_Hans: '最大迭代次数',
-                pt_BR: 'Max Iteration',
-              },
-              show_on: [],
-              variable: 'max-ite',
-            }]}
+            formSchemas={[
+              ...formSchema,
+            ]}
             value={formValue}
             onChange={onFormValueChange}
             validating={false}
