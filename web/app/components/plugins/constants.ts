@@ -21,7 +21,7 @@ export const tagKeys = [
 export const categoryKeys = [
   'model',
   'tool',
-  'agent',
+  'agent-strategy',
   'extension',
   'bundle',
 ]

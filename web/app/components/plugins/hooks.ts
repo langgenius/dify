@@ -42,10 +42,10 @@ export const useCategories = (translateFromOut?: TFunction) => {
   const t = translateFromOut || translation
 
   const categories = categoryKeys.map((category) => {
-    if (category === 'agent') {
+    if (category === 'agent-strategy') {
       return {
-        name: 'agent_strategy',
-        label: t(`plugin.category.${category}s`),
+        name: 'agent-strategy',
+        label: t('plugin.category.agents'),
       }
     }
     return {
@@ -70,10 +70,10 @@ export const useSingleCategories = (translateFromOut?: TFunction) => {
   const t = translateFromOut || translation
 
   const categories = categoryKeys.map((category) => {
-    if (category === 'agent') {
+    if (category === 'agent-strategy') {
       return {
-        name: 'agent_strategy',
-        label: t(`plugin.categorySingle.${category}`),
+        name: 'agent-strategy',
+        label: t('plugin.categorySingle.agent'),
       }
     }
     return {

@@ -68,7 +68,7 @@ type Props = {
   onEditionTypeChange?: (editionType: EditionType) => void
   varList?: Variable[]
   handleAddVariable?: (payload: any) => void
-  containerClassName?: string
+  containerBackgroundClassName?: string
   gradientBorder?: boolean
   titleTooltip?: ReactNode
   inputClassName?: string
@@ -103,7 +103,7 @@ const Editor: FC<Props> = ({
   handleAddVariable,
   onGenerated,
   modelConfig,
-  containerClassName,
+  containerBackgroundClassName: containerClassName,
   gradientBorder = true,
   titleTooltip,
   inputClassName,

@@ -14,6 +14,7 @@ import ResultPanel from '@/app/components/workflow/run/result-panel'
 import formatTracing from '@/app/components/workflow/run/utils/format-log'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
+import { toType } from '@/app/components/tools/utils/to-form-schema'
 
 const i18nPrefix = 'workflow.nodes.agent'
 
@@ -22,6 +23,7 @@ export function strategyParamToCredientialForm(param: StrategyParamItem): Creden
     ...param as any,
     variable: param.name,
     show_on: [],
+    type: toType(param.type),
   }
 }
 
