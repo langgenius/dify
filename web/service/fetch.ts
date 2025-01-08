@@ -108,10 +108,6 @@ const beforeRequestAuthorization: BeforeRequestHook = (request) => {
   request.headers.set('Authorization', `Bearer ${accessToken}`)
 }
 
-const beforeRequestDeleteContentType: BeforeRequestHook = (request) => {
-  request.headers.delete('Content-Type')
-}
-
 const baseHooks: Hooks = {
   afterResponse: [
     afterResponse204,
@@ -134,7 +130,7 @@ export const baseOptions: RequestInit = {
 }
 
 async function base<T>(url: string, options: FetchOptionType = {}, otherOptions: IOtherOptions = {}): Promise<T> {
-  const { params, body, ...init } = Object.assign({}, baseOptions, options)
+  const { params, body, headers, ...init } = Object.assign({}, baseOptions, options)
   const {
     isPublicAPI = false,
     isMarketplaceAPI = false,
@@ -159,6 +155,9 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
 
   const fetchPathname = `${base}${url.startsWith('/') ? url : `/${url}`}`
 
+  if (deleteContentType)
+    (headers as any).delete('Content-Type')
+
   const client = baseClient.extend({
     hooks: {
       ...baseHooks,
@@ -170,8 +169,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
         ...baseHooks.beforeRequest || [],
         isPublicAPI && beforeRequestPublicAuthorization,
         !isPublicAPI && !isMarketplaceAPI && beforeRequestAuthorization,
-        deleteContentType && beforeRequestDeleteContentType,
-      ].filter(i => !!i),
+      ].filter(Boolean),
       afterResponse: [
         ...baseHooks.afterResponse || [],
         afterResponseErrorCode(otherOptions),
@@ -181,6 +179,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
 
   const res = await client(fetchPathname, {
     ...init,
+    headers,
     credentials: isMarketplaceAPI
       ? 'omit'
       : (options.credentials || 'include'),
