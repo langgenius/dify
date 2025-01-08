@@ -6,9 +6,9 @@ from collections.abc import Generator
 from typing import Optional, Union, cast
 
 # 3rd import
-import boto3
-from botocore.config import Config
-from botocore.exceptions import (
+import boto3  # type: ignore
+from botocore.config import Config  # type: ignore
+from botocore.exceptions import (  # type: ignore
     ClientError,
     EndpointConnectionError,
     NoRegionError,
@@ -40,6 +40,7 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.bedrock.get_bedrock_client import get_bedrock_client
 
 logger = logging.getLogger(__name__)
 ANTHROPIC_BLOCK_MODE_PROMPT = """You should always follow the instructions and output a valid {{block}} object.
@@ -70,6 +71,8 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         {"prefix": "cohere.command-r", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "amazon.titan", "support_system_prompts": False, "support_tool_use": False},
         {"prefix": "ai21.jamba-1-5", "support_system_prompts": True, "support_tool_use": False},
+        {"prefix": "amazon.nova", "support_system_prompts": True, "support_tool_use": False},
+        {"prefix": "us.amazon.nova", "support_system_prompts": True, "support_tool_use": False},
     ]
 
     @staticmethod
@@ -171,13 +174,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         :param stream: is stream response
         :return: full response or stream response chunk generator result
         """
-        bedrock_client = boto3.client(
-            service_name="bedrock-runtime",
-            aws_access_key_id=credentials.get("aws_access_key_id"),
-            aws_secret_access_key=credentials.get("aws_secret_access_key"),
-            region_name=credentials["aws_region"],
-        )
-
+        bedrock_client = get_bedrock_client("bedrock-runtime", credentials)
         system, prompt_message_dicts = self._convert_converse_prompt_messages(prompt_messages)
         inference_config, additional_model_fields = self._convert_converse_api_model_parameters(model_parameters, stop)
 
@@ -194,6 +191,13 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         if model_info["support_tool_use"] and tools:
             parameters["toolConfig"] = self._convert_converse_tool_config(tools=tools)
         try:
+            # for issue #10976
+            conversations_list = parameters["messages"]
+            # if two consecutive user messages found, combine them into one message
+            for i in range(len(conversations_list) - 2, -1, -1):
+                if conversations_list[i]["role"] == conversations_list[i + 1]["role"]:
+                    conversations_list[i]["content"].extend(conversations_list.pop(i + 1)["content"])
+
             if stream:
                 response = bedrock_client.converse_stream(**parameters)
                 return self._handle_converse_stream_response(

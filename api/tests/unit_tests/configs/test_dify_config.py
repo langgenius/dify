@@ -37,7 +37,11 @@ def test_dify_config_undefined_entry(example_env_file):
         assert config["LOG_LEVEL"] == "INFO"
 
 
+# NOTE: If there is a `.env` file in your Workspace, this test might not succeed as expected.
+# This is due to `pymilvus` loading all the variables from the `.env` file into `os.environ`.
 def test_dify_config(example_env_file):
+    # clear system environment variables
+    os.environ.clear()
     # load dotenv file with pydantic-settings
     config = DifyConfig(_env_file=example_env_file)
 
@@ -54,6 +58,8 @@ def test_dify_config(example_env_file):
 
     # annotated field with configured value
     assert config.HTTP_REQUEST_MAX_WRITE_TIMEOUT == 30
+
+    assert config.WORKFLOW_PARALLEL_DEPTH_LIMIT == 3
 
 
 # NOTE: If there is a `.env` file in your Workspace, this test might not succeed as expected.

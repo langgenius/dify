@@ -1,6 +1,6 @@
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource, marshal, marshal_with, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, marshal, marshal_with, reqparse  # type: ignore
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
@@ -110,7 +110,7 @@ class AnnotationListApi(Resource):
 
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
-        keyword = request.args.get("keyword", default=None, type=str)
+        keyword = request.args.get("keyword", default="", type=str)
 
         app_id = str(app_id)
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(app_id, page, limit, keyword)

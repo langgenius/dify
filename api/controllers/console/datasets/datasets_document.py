@@ -1,12 +1,13 @@
 import logging
 from argparse import ArgumentTypeError
 from datetime import UTC, datetime
+from typing import cast
 
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource, fields, marshal, marshal_with, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, fields, marshal, marshal_with, reqparse  # type: ignore
 from sqlalchemy import asc, desc
-from transformers.hf_argparser import string_to_bool
+from transformers.hf_argparser import string_to_bool  # type: ignore
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -51,6 +52,7 @@ from fields.document_fields import (
 from libs.login import login_required
 from models import Dataset, DatasetProcessRule, Document, DocumentSegment, UploadFile
 from services.dataset_service import DatasetService, DocumentService
+from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.remove_document_from_index_task import remove_document_from_index_task
 
@@ -254,20 +256,22 @@ class DatasetDocumentListApi(Resource):
         parser.add_argument("duplicate", type=bool, default=True, nullable=False, location="json")
         parser.add_argument("original_document_id", type=str, required=False, location="json")
         parser.add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
+        parser.add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
+
         parser.add_argument(
             "doc_language", type=str, default="English", required=False, nullable=False, location="json"
         )
-        parser.add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
         args = parser.parse_args()
+        knowledge_config = KnowledgeConfig(**args)
 
-        if not dataset.indexing_technique and not args["indexing_technique"]:
+        if not dataset.indexing_technique and not knowledge_config.indexing_technique:
             raise ValueError("indexing_technique is required.")
 
         # validate args
-        DocumentService.document_create_args_validate(args)
+        DocumentService.document_create_args_validate(knowledge_config)
 
         try:
-            documents, batch = DocumentService.save_document_with_dataset_id(dataset, args, current_user)
+            documents, batch = DocumentService.save_document_with_dataset_id(dataset, knowledge_config, current_user)
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -276,6 +280,25 @@ class DatasetDocumentListApi(Resource):
             raise ProviderModelCurrentlyNotSupportError()
 
         return {"documents": documents, "batch": batch}
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, dataset_id):
+        dataset_id = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+        # check user's model setting
+        DatasetService.check_dataset_model_setting(dataset)
+
+        try:
+            document_ids = request.args.getlist("document_id")
+            DocumentService.delete_documents(dataset, document_ids)
+        except services.errors.document.DocumentIndexingError:
+            raise DocumentIndexingError("Cannot delete document during indexing.")
+
+        return {"result": "success"}, 204
 
 
 class DatasetInitApi(Resource):
@@ -312,9 +335,9 @@ class DatasetInitApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
-
-        if args["indexing_technique"] == "high_quality":
-            if args["embedding_model"] is None or args["embedding_model_provider"] is None:
+        knowledge_config = KnowledgeConfig(**args)
+        if knowledge_config.indexing_technique == "high_quality":
+            if knowledge_config.embedding_model is None or knowledge_config.embedding_model_provider is None:
                 raise ValueError("embedding model and embedding model provider are required for high quality indexing.")
             try:
                 model_manager = ModelManager()
@@ -333,11 +356,11 @@ class DatasetInitApi(Resource):
                 raise ProviderNotInitializeError(ex.description)
 
         # validate args
-        DocumentService.document_create_args_validate(args)
+        DocumentService.document_create_args_validate(knowledge_config)
 
         try:
             dataset, documents, batch = DocumentService.save_document_without_dataset_id(
-                tenant_id=current_user.current_tenant_id, document_data=args, account=current_user
+                tenant_id=current_user.current_tenant_id, knowledge_config=knowledge_config, account=current_user
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -390,7 +413,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
                 indexing_runner = IndexingRunner()
 
                 try:
-                    response = indexing_runner.indexing_estimate(
+                    estimate_response = indexing_runner.indexing_estimate(
                         current_user.current_tenant_id,
                         [extract_setting],
                         data_process_rule_dict,
@@ -398,6 +421,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
                         "English",
                         dataset_id,
                     )
+                    return estimate_response.model_dump(), 200
                 except LLMBadRequestError:
                     raise ProviderNotInitializeError(
                         "No Embedding Model available. Please configure a valid provider "
@@ -408,7 +432,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
                 except Exception as e:
                     raise IndexingEstimateError(str(e))
 
-        return response
+        return response, 200
 
 
 class DocumentBatchIndexingEstimateApi(DocumentResource):
@@ -419,9 +443,8 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
         dataset_id = str(dataset_id)
         batch = str(batch)
         documents = self.get_batch_documents(dataset_id, batch)
-        response = {"tokens": 0, "total_price": 0, "currency": "USD", "total_segments": 0, "preview": []}
         if not documents:
-            return response
+            return {"tokens": 0, "total_price": 0, "currency": "USD", "total_segments": 0, "preview": []}, 200
         data_process_rule = documents[0].dataset_process_rule
         data_process_rule_dict = data_process_rule.to_dict()
         info_list = []
@@ -499,6 +522,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     "English",
                     dataset_id,
                 )
+                return response.model_dump(), 200
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
                     "No Embedding Model available. Please configure a valid provider "
@@ -508,7 +532,6 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 raise ProviderNotInitializeError(ex.description)
             except Exception as e:
                 raise IndexingEstimateError(str(e))
-        return response
 
 
 class DocumentBatchIndexingStatusApi(DocumentResource):
@@ -581,7 +604,8 @@ class DocumentDetailApi(DocumentResource):
         if metadata == "only":
             response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata}
         elif metadata == "without":
-            process_rules = DatasetService.get_process_rules(dataset_id)
+            dataset_process_rules = DatasetService.get_process_rules(dataset_id)
+            document_process_rules = document.dataset_process_rule.to_dict()
             data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,
@@ -589,7 +613,8 @@ class DocumentDetailApi(DocumentResource):
                 "data_source_type": document.data_source_type,
                 "data_source_info": data_source_info,
                 "dataset_process_rule_id": document.dataset_process_rule_id,
-                "dataset_process_rule": process_rules,
+                "dataset_process_rule": dataset_process_rules,
+                "document_process_rule": document_process_rules,
                 "name": document.name,
                 "created_from": document.created_from,
                 "created_by": document.created_by,
@@ -612,7 +637,8 @@ class DocumentDetailApi(DocumentResource):
                 "doc_language": document.doc_language,
             }
         else:
-            process_rules = DatasetService.get_process_rules(dataset_id)
+            dataset_process_rules = DatasetService.get_process_rules(dataset_id)
+            document_process_rules = document.dataset_process_rule.to_dict()
             data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,
@@ -620,7 +646,8 @@ class DocumentDetailApi(DocumentResource):
                 "data_source_type": document.data_source_type,
                 "data_source_info": data_source_info,
                 "dataset_process_rule_id": document.dataset_process_rule_id,
-                "dataset_process_rule": process_rules,
+                "dataset_process_rule": dataset_process_rules,
+                "document_process_rule": document_process_rules,
                 "name": document.name,
                 "created_from": document.created_from,
                 "created_by": document.created_by,
@@ -733,8 +760,7 @@ class DocumentMetadataApi(DocumentResource):
 
         if not isinstance(doc_metadata, dict):
             raise ValueError("doc_metadata must be a dictionary.")
-
-        metadata_schema = DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type]
+        metadata_schema: dict = cast(dict, DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type])
 
         document.doc_metadata = {}
         if doc_type == "others":
@@ -757,9 +783,8 @@ class DocumentStatusApi(DocumentResource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
-    def patch(self, dataset_id, document_id, action):
+    def patch(self, dataset_id, action):
         dataset_id = str(dataset_id)
-        document_id = str(document_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
@@ -774,84 +799,79 @@ class DocumentStatusApi(DocumentResource):
         # check user's permission
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        document = self.get_document(dataset_id, document_id)
+        document_ids = request.args.getlist("document_id")
+        for document_id in document_ids:
+            document = self.get_document(dataset_id, document_id)
 
-        indexing_cache_key = "document_{}_indexing".format(document.id)
-        cache_result = redis_client.get(indexing_cache_key)
-        if cache_result is not None:
-            raise InvalidActionError("Document is being indexed, please try again later")
+            indexing_cache_key = "document_{}_indexing".format(document.id)
+            cache_result = redis_client.get(indexing_cache_key)
+            if cache_result is not None:
+                raise InvalidActionError(f"Document:{document.name} is being indexed, please try again later")
 
-        if action == "enable":
-            if document.enabled:
-                raise InvalidActionError("Document already enabled.")
+            if action == "enable":
+                if document.enabled:
+                    continue
+                document.enabled = True
+                document.disabled_at = None
+                document.disabled_by = None
+                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
+                db.session.commit()
 
-            document.enabled = True
-            document.disabled_at = None
-            document.disabled_by = None
-            document.updated_at = datetime.now(UTC).replace(tzinfo=None)
-            db.session.commit()
+                # Set cache to prevent indexing the same document multiple times
+                redis_client.setex(indexing_cache_key, 600, 1)
 
-            # Set cache to prevent indexing the same document multiple times
-            redis_client.setex(indexing_cache_key, 600, 1)
+                add_document_to_index_task.delay(document_id)
 
-            add_document_to_index_task.delay(document_id)
+            elif action == "disable":
+                if not document.completed_at or document.indexing_status != "completed":
+                    raise InvalidActionError(f"Document: {document.name} is not completed.")
+                if not document.enabled:
+                    continue
 
-            return {"result": "success"}, 200
+                document.enabled = False
+                document.disabled_at = datetime.now(UTC).replace(tzinfo=None)
+                document.disabled_by = current_user.id
+                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
+                db.session.commit()
 
-        elif action == "disable":
-            if not document.completed_at or document.indexing_status != "completed":
-                raise InvalidActionError("Document is not completed.")
-            if not document.enabled:
-                raise InvalidActionError("Document already disabled.")
-
-            document.enabled = False
-            document.disabled_at = datetime.now(UTC).replace(tzinfo=None)
-            document.disabled_by = current_user.id
-            document.updated_at = datetime.now(UTC).replace(tzinfo=None)
-            db.session.commit()
-
-            # Set cache to prevent indexing the same document multiple times
-            redis_client.setex(indexing_cache_key, 600, 1)
-
-            remove_document_from_index_task.delay(document_id)
-
-            return {"result": "success"}, 200
-
-        elif action == "archive":
-            if document.archived:
-                raise InvalidActionError("Document already archived.")
-
-            document.archived = True
-            document.archived_at = datetime.now(UTC).replace(tzinfo=None)
-            document.archived_by = current_user.id
-            document.updated_at = datetime.now(UTC).replace(tzinfo=None)
-            db.session.commit()
-
-            if document.enabled:
                 # Set cache to prevent indexing the same document multiple times
                 redis_client.setex(indexing_cache_key, 600, 1)
 
                 remove_document_from_index_task.delay(document_id)
 
-            return {"result": "success"}, 200
-        elif action == "un_archive":
-            if not document.archived:
-                raise InvalidActionError("Document is not archived.")
+            elif action == "archive":
+                if document.archived:
+                    continue
 
-            document.archived = False
-            document.archived_at = None
-            document.archived_by = None
-            document.updated_at = datetime.now(UTC).replace(tzinfo=None)
-            db.session.commit()
+                document.archived = True
+                document.archived_at = datetime.now(UTC).replace(tzinfo=None)
+                document.archived_by = current_user.id
+                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
+                db.session.commit()
 
-            # Set cache to prevent indexing the same document multiple times
-            redis_client.setex(indexing_cache_key, 600, 1)
+                if document.enabled:
+                    # Set cache to prevent indexing the same document multiple times
+                    redis_client.setex(indexing_cache_key, 600, 1)
 
-            add_document_to_index_task.delay(document_id)
+                    remove_document_from_index_task.delay(document_id)
 
-            return {"result": "success"}, 200
-        else:
-            raise InvalidActionError()
+            elif action == "un_archive":
+                if not document.archived:
+                    continue
+                document.archived = False
+                document.archived_at = None
+                document.archived_by = None
+                document.updated_at = datetime.now(UTC).replace(tzinfo=None)
+                db.session.commit()
+
+                # Set cache to prevent indexing the same document multiple times
+                redis_client.setex(indexing_cache_key, 600, 1)
+
+                add_document_to_index_task.delay(document_id)
+
+            else:
+                raise InvalidActionError()
+        return {"result": "success"}, 200
 
 
 class DocumentPauseApi(DocumentResource):
@@ -948,7 +968,7 @@ class DocumentRetryApi(DocumentResource):
                 if document.indexing_status == "completed":
                     raise DocumentAlreadyFinishedError()
                 retry_documents.append(document)
-            except Exception as e:
+            except Exception:
                 logging.exception(f"Failed to retry document, document id: {document_id}")
                 continue
         # retry document
@@ -1022,7 +1042,7 @@ api.add_resource(
 )
 api.add_resource(DocumentDeleteApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
 api.add_resource(DocumentMetadataApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/metadata")
-api.add_resource(DocumentStatusApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/status/<string:action>")
+api.add_resource(DocumentStatusApi, "/datasets/<uuid:dataset_id>/documents/status/<string:action>/batch")
 api.add_resource(DocumentPauseApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/pause")
 api.add_resource(DocumentRecoverApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/resume")
 api.add_resource(DocumentRetryApi, "/datasets/<uuid:dataset_id>/retry")

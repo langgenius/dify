@@ -25,6 +25,11 @@ const translation = {
   viewChart: 'Xem BIỂU ĐỒ VECTOR',
   settingTitle: 'Cài đặt truy xuất',
   viewDetail: 'Xem chi tiết',
+  records: 'Hồ sơ',
+  open: 'Mở',
+  keyword: 'Từ khoá',
+  hitChunks: 'Nhấn {{num}} đoạn con',
+  chunkDetail: 'Chi tiết khối',
 }
 
 export default translation

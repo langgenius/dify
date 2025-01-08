@@ -3,7 +3,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional, Union
+from typing import Any, Literal, Optional, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -20,7 +20,7 @@ from core.app.apps.workflow.generate_response_converter import WorkflowAppGenera
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
-from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
@@ -30,6 +30,35 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowAppGenerator(BaseAppGenerator):
+    @overload
+    def generate(
+        self,
+        *,
+        app_model: App,
+        workflow: Workflow,
+        user: Account | EndUser,
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: Literal[True],
+        call_depth: int = 0,
+        workflow_thread_pool_id: Optional[str] = None,
+    ) -> Generator[str, None, None]: ...
+
+    @overload
+    def generate(
+        self,
+        *,
+        app_model: App,
+        workflow: Workflow,
+        user: Account | EndUser,
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: Literal[False],
+        call_depth: int = 0,
+        workflow_thread_pool_id: Optional[str] = None,
+    ) -> Mapping[str, Any]: ...
+
+    @overload
     def generate(
         self,
         *,
@@ -41,7 +70,20 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
-    ) -> Mapping[str, Any] | Generator[str, None, None]:
+    ) -> Mapping[str, Any] | Generator[str, None, None]: ...
+
+    def generate(
+        self,
+        *,
+        app_model: App,
+        workflow: Workflow,
+        user: Account | EndUser,
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: bool = True,
+        call_depth: int = 0,
+        workflow_thread_pool_id: Optional[str] = None,
+    ):
         files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
         # parse files
@@ -74,7 +116,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             inputs=self._prepare_user_inputs(
                 user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
             ),
-            files=system_files,
+            files=list(system_files),
             user_id=user.id,
             stream=streaming,
             invoke_from=invoke_from,
@@ -179,6 +221,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             single_iteration_run=WorkflowAppGenerateEntity.SingleIterationRunEntity(
                 node_id=node_id, inputs=args["inputs"]
             ),
+            workflow_run_id=str(uuid.uuid4()),
         )
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
 
@@ -228,7 +271,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             except ValidationError as e:
                 logger.exception("Validation Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
-            except (ValueError, InvokeError) as e:
+            except ValueError as e:
                 if dify_config.DEBUG:
                     logger.exception("Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
@@ -267,7 +310,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         try:
             return generate_task_pipeline.process()
         except ValueError as e:
-            if e.args[0] == "I/O operation on closed file.":  # ignore this error
+            if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedError()
             else:
                 logger.exception(

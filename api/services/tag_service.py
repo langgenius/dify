@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 from sqlalchemy import func
 from werkzeug.exceptions import NotFound
 
@@ -21,7 +21,7 @@ class TagService:
         if keyword:
             query = query.filter(db.and_(Tag.name.ilike(f"%{keyword}%")))
         query = query.group_by(Tag.id)
-        results = query.order_by(Tag.created_at.desc()).all()
+        results: list = query.order_by(Tag.created_at.desc()).all()
         return results
 
     @staticmethod

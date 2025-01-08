@@ -101,6 +101,11 @@ const translation = {
     addParallelNode: '添加并行节点',
     parallel: '并行',
     branch: '分支',
+    onFailure: '异常时',
+    addFailureBranch: '添加异常分支',
+    openInExplore: '在“探索”中打开',
+    loadMore: '加载更多',
+    noHistory: '没有历史版本',
   },
   env: {
     envPanelTitle: '环境变量',
@@ -178,7 +183,7 @@ const translation = {
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
-    rerankModelRequired: '开启 Rerank 模型前，请务必确认模型已在设置中成功配置。',
+    rerankModelRequired: '未配置 Rerank 模型',
     authRequired: '请先授权',
     invalidJson: '{{field}} 是非法的 JSON',
     fields: {
@@ -300,6 +305,45 @@ const translation = {
         title: '记忆',
         tip: '聊天记忆',
         builtIn: '内置',
+      },
+      errorHandle: {
+        title: '异常处理',
+        tip: '配置异常处理策略，当节点发生异常时触发。',
+        none: {
+          title: '无',
+          desc: '当发生异常且未处理时，节点将停止运行',
+        },
+        defaultValue: {
+          title: '默认值',
+          desc: '当发生异常时，指定默认输出内容。',
+          tip: '当发生异常时，将返回以下值。',
+          inLog: '节点异常，根据默认值输出。',
+          output: '输出默认值',
+        },
+        failBranch: {
+          title: '异常分支',
+          desc: '当发生异常时，将执行异常分支',
+          customize: '在画布自定义失败分支逻辑。',
+          customizeTip: '当节点发生异常时，将自动执行失败分支。失败分支允许您灵活地提供错误消息、报告、修复或跳过操作。',
+          inLog: '节点异常，将自动执行失败分支。节点输出将返回错误类型和错误信息，并传递给下游。',
+        },
+        partialSucceeded: {
+          tip: '流程中有 {{num}} 个节点运行异常，请前往追踪查看日志。',
+        },
+      },
+      retry: {
+        retry: '重试',
+        retryOnFailure: '失败时重试',
+        maxRetries: '最大重试次数',
+        retryInterval: '重试间隔',
+        retryTimes: '失败时重试 {{times}} 次',
+        retrying: '重试中...',
+        retrySuccessful: '重试成功',
+        retryFailed: '重试失败',
+        retryFailedTimes: '{{times}} 次重试失败',
+        times: '次',
+        ms: '毫秒',
+        retries: '{{num}} 重试次数',
       },
     },
     start: {

@@ -1,3 +1,5 @@
+from typing import Any
+
 FUNCTION_CALLING_EXTRACTOR_NAME = "extract_parameters"
 
 FUNCTION_CALLING_EXTRACTOR_SYSTEM_PROMPT = f"""You are a helpful assistant tasked with extracting structured information based on specific criteria provided. Follow the guidelines below to ensure consistency and accuracy.
@@ -35,7 +37,7 @@ FUNCTION_CALLING_EXTRACTOR_USER_TEMPLATE = f"""extract structured information fr
 </structure>
 """  # noqa: E501
 
-FUNCTION_CALLING_EXTRACTOR_EXAMPLE = [
+FUNCTION_CALLING_EXTRACTOR_EXAMPLE: list[dict[str, Any]] = [
     {
         "user": {
             "query": "What is the weather today in SF?",
@@ -98,7 +100,7 @@ Step 3: Structure the extracted parameters to JSON object as specified in <struc
 Step 4: Ensure that the JSON object is properly formatted and valid. The output should not contain any XML tags. Only the JSON object should be outputted.
 
 ### Memory
-Here is the chat histories between human and assistant, inside <histories></histories> XML tags.
+Here are the chat histories between human and assistant, inside <histories></histories> XML tags.
 <histories>
 {histories}
 </histories>
@@ -125,7 +127,7 @@ CHAT_GENERATE_JSON_PROMPT = """You should always follow the instructions and out
 The structure of the JSON object you can found in the instructions.
 
 ### Memory
-Here is the chat histories between human and assistant, inside <histories></histories> XML tags.
+Here are the chat histories between human and assistant, inside <histories></histories> XML tags.
 <histories>
 {histories}
 </histories>

@@ -19,6 +19,7 @@ export type IDrawerProps = {
   onClose: () => void
   onCancel?: () => void
   onOk?: () => void
+  unmount?: boolean
 }
 
 export default function Drawer({
@@ -35,11 +36,12 @@ export default function Drawer({
   onClose,
   onCancel,
   onOk,
+  unmount = false,
 }: IDrawerProps) {
   const { t } = useTranslation()
   return (
     <Dialog
-      unmount={false}
+      unmount={unmount}
       open={isOpen}
       onClose={() => !clickOutsideNotOpen && onClose()}
       className="fixed z-30 inset-0 overflow-y-auto"
@@ -49,7 +51,7 @@ export default function Drawer({
         <Dialog.Overlay
           className={cn('z-40 fixed inset-0', mask && 'bg-black bg-opacity-30')}
         />
-        <div className={cn('relative z-50 flex flex-col justify-between bg-white w-full max-w-sm p-6 overflow-hidden text-left align-middle shadow-xl', panelClassname)}>
+        <div className={cn('relative z-50 flex flex-col justify-between bg-background-body w-full max-w-sm p-6 overflow-hidden text-left align-middle shadow-xl', panelClassname)}>
           <>
             {title && <Dialog.Title
               as="h3"

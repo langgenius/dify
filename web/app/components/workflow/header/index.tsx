@@ -20,6 +20,7 @@ import type { StartNodeType } from '../nodes/start/types'
 import {
   useChecklistBeforePublish,
   useIsChatMode,
+  useNodesInteractions,
   useNodesReadOnly,
   useNodesSyncDraft,
   useWorkflowMode,
@@ -27,6 +28,7 @@ import {
 } from '../hooks'
 import AppPublisher from '../../app/app-publisher'
 import { ToastContext } from '../../base/toast'
+import Divider from '../../base/divider'
 import RunAndHistory from './run-and-history'
 import EditingTitle from './editing-title'
 import RunningTitle from './running-title'
@@ -34,6 +36,7 @@ import RestoringTitle from './restoring-title'
 import ViewHistory from './view-history'
 import ChatVariableButton from './chat-variable-button'
 import EnvButton from './env-button'
+import VersionHistoryModal from './version-history-modal'
 import Button from '@/app/components/base/button'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { publishWorkflow } from '@/service/workflow'
@@ -48,11 +51,13 @@ const Header: FC = () => {
   const appID = appDetail?.id
   const isChatMode = useIsChatMode()
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
+  const { handleNodeSelect } = useNodesInteractions()
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const toolPublished = useStore(s => s.toolPublished)
   const nodes = useNodes<StartNodeType>()
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+  const selectedNode = nodes.find(node => node.data.selected)
   const startVariables = startNode?.data.variables
   const fileSettings = useFeatures(s => s.features.file)
   const variables = useMemo(() => {
@@ -75,7 +80,6 @@ const Header: FC = () => {
   const {
     handleLoadBackupDraft,
     handleBackupDraft,
-    handleRestoreFromPublishedWorkflow,
   } = useWorkflowRun()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -125,8 +129,10 @@ const Header: FC = () => {
   const onStartRestoring = useCallback(() => {
     workflowStore.setState({ isRestoring: true })
     handleBackupDraft()
-    handleRestoreFromPublishedWorkflow()
-  }, [handleBackupDraft, handleRestoreFromPublishedWorkflow, workflowStore])
+    // clear right panel
+    if (selectedNode)
+      handleNodeSelect(selectedNode.id, true)
+  }, [handleBackupDraft, workflowStore, handleNodeSelect, selectedNode])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)
@@ -144,15 +150,12 @@ const Header: FC = () => {
 
   return (
     <div
-      className='absolute top-0 left-0 z-10 flex items-center justify-between w-full px-3 h-14'
-      style={{
-        background: 'linear-gradient(180deg, #F9FAFB 0%, rgba(249, 250, 251, 0.00) 100%)',
-      }}
+      className='absolute top-0 left-0 z-10 flex items-center justify-between w-full px-3 h-14 bg-mask-top2bottom-gray-50-to-transparent'
     >
       <div>
         {
           appSidebarExpand === 'collapse' && (
-            <div className='text-xs font-medium text-gray-700'>{appDetail?.name}</div>
+            <div className='system-xs-regular text-text-tertiary'>{appDetail?.name}</div>
           )
         }
         {
@@ -171,7 +174,7 @@ const Header: FC = () => {
             {/* <GlobalVariableButton disabled={nodesReadOnly} /> */}
             {isChatMode && <ChatVariableButton disabled={nodesReadOnly} />}
             <EnvButton disabled={nodesReadOnly} />
-            <div className='w-[1px] h-3.5 bg-gray-200'></div>
+            <Divider type='vertical' className='h-3.5 mx-auto' />
             <RunAndHistory />
             <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
               <RiApps2AddLine className='w-4 h-4 mr-1 text-components-button-secondary-text' />
@@ -196,12 +199,11 @@ const Header: FC = () => {
       }
       {
         viewHistory && (
-          <div className='flex items-center'>
+          <div className='flex items-center space-x-2'>
             <ViewHistory withText />
-            <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
+            <Divider type='vertical' className='h-3.5 mx-auto' />
             <Button
               variant='primary'
-              className='mr-2'
               onClick={handleGoBackToEdit}
             >
               <ArrowNarrowLeft className='w-4 h-4 mr-1' />
@@ -212,24 +214,27 @@ const Header: FC = () => {
       }
       {
         restoring && (
-          <div className='flex items-center'>
-            <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
-              <RiApps2AddLine className='w-4 h-4 mr-1 text-components-button-secondary-text' />
-              {t('workflow.common.features')}
-            </Button>
-            <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
-            <Button
-              className='mr-2'
-              onClick={handleCancelRestore}
-            >
-              {t('common.operation.cancel')}
-            </Button>
-            <Button
-              onClick={handleRestore}
-              variant='primary'
-            >
-              {t('workflow.common.restore')}
-            </Button>
+          <div className='flex flex-col mt-auto'>
+            <div className='flex items-center justify-end my-4'>
+              <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
+                <RiApps2AddLine className='w-4 h-4 mr-1 text-components-button-secondary-text' />
+                {t('workflow.common.features')}
+              </Button>
+              <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
+              <Button
+                className='mr-2'
+                onClick={handleCancelRestore}
+              >
+                {t('common.operation.cancel')}
+              </Button>
+              <Button
+                onClick={handleRestore}
+                variant='primary'
+              >
+                {t('workflow.common.restore')}
+              </Button>
+            </div>
+            <VersionHistoryModal />
           </div>
         )
       }

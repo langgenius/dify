@@ -5,7 +5,7 @@ from core.workflow.utils.condition.processor import ConditionProcessor
 
 
 class ConditionRunConditionHandlerHandler(RunConditionHandler):
-    def check(self, graph_runtime_state: GraphRuntimeState, previous_route_node_state: RouteNodeState) -> bool:
+    def check(self, graph_runtime_state: GraphRuntimeState, previous_route_node_state: RouteNodeState):
         """
         Check if the condition can be executed
 

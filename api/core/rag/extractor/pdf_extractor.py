@@ -1,7 +1,7 @@
 """Abstract interface for document loader implementations."""
 
 from collections.abc import Iterator
-from typing import Optional
+from typing import Optional, cast
 
 from core.rag.extractor.blob.blob import Blob
 from core.rag.extractor.extractor_base import BaseExtractor
@@ -23,11 +23,10 @@ class PdfExtractor(BaseExtractor):
         self._file_cache_key = file_cache_key
 
     def extract(self) -> list[Document]:
-        plaintext_file_key = ""
         plaintext_file_exists = False
         if self._file_cache_key:
             try:
-                text = storage.load(self._file_cache_key).decode("utf-8")
+                text = cast(bytes, storage.load(self._file_cache_key)).decode("utf-8")
                 plaintext_file_exists = True
                 return [Document(page_content=text)]
             except FileNotFoundError:
@@ -39,8 +38,8 @@ class PdfExtractor(BaseExtractor):
         text = "\n\n".join(text_list)
 
         # save plaintext file for caching
-        if not plaintext_file_exists and plaintext_file_key:
-            storage.save(plaintext_file_key, text.encode("utf-8"))
+        if not plaintext_file_exists and self._file_cache_key:
+            storage.save(self._file_cache_key, text.encode("utf-8"))
 
         return documents
 
@@ -53,7 +52,7 @@ class PdfExtractor(BaseExtractor):
 
     def parse(self, blob: Blob) -> Iterator[Document]:
         """Lazily parse the blob."""
-        import pypdfium2
+        import pypdfium2  # type: ignore
 
         with blob.as_bytes_io() as file_path:
             pdf_reader = pypdfium2.PdfDocument(file_path, autoclose=True)

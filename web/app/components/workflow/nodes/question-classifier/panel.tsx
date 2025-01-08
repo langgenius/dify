@@ -14,6 +14,7 @@ import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/befo
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
 
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
@@ -55,8 +56,8 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
   const model = inputs.model
 
   return (
-    <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+    <div className='pt-2'>
+      <div className='px-4 space-y-4'>
         <Field
           title={t(`${i18nPrefix}.model`)}
         >
@@ -107,27 +108,27 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
             readonly={readOnly}
           />
         </Field>
-        <Field
-          title={t(`${i18nPrefix}.advancedSetting`)}
-          supportFold
-        >
-          <AdvancedSetting
-            hideMemorySetting={!isChatMode}
-            instruction={inputs.instruction}
-            onInstructionChange={handleInstructionChange}
-            memory={inputs.memory}
-            onMemoryChange={handleMemoryChange}
-            readonly={readOnly}
-            isChatApp={isChatMode}
-            isChatModel={isChatModel}
-            hasSetBlockStatus={hasSetBlockStatus}
-            nodesOutputVars={availableVars}
-            availableNodes={availableNodesWithParent}
-          />
-        </Field>
+        <Split />
       </div>
+      <FieldCollapse
+        title={t(`${i18nPrefix}.advancedSetting`)}
+      >
+        <AdvancedSetting
+          hideMemorySetting={!isChatMode}
+          instruction={inputs.instruction}
+          onInstructionChange={handleInstructionChange}
+          memory={inputs.memory}
+          onMemoryChange={handleMemoryChange}
+          readonly={readOnly}
+          isChatApp={isChatMode}
+          isChatModel={isChatModel}
+          hasSetBlockStatus={hasSetBlockStatus}
+          nodesOutputVars={availableVars}
+          availableNodes={availableNodesWithParent}
+        />
+      </FieldCollapse>
       <Split />
-      <div className='px-4 pt-4 pb-2'>
+      <div>
         <OutputVars>
           <>
             <VarItem

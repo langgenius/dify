@@ -108,6 +108,9 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
         except RateLimitError as e:
             raise InvokeRateLimitError(str(e))
+        except Exception:
+            rate_limit.exit(request_id)
+            raise
         finally:
             if not streaming:
                 rate_limit.exit(request_id)
@@ -115,7 +118,7 @@ class AppGenerateService:
     @staticmethod
     def _get_max_active_requests(app_model: App) -> int:
         max_active_requests = app_model.max_active_requests
-        if app_model.max_active_requests is None:
+        if max_active_requests is None:
             max_active_requests = int(dify_config.APP_MAX_ACTIVE_REQUESTS)
         return max_active_requests
 
@@ -147,7 +150,7 @@ class AppGenerateService:
         message_id: str,
         invoke_from: InvokeFrom,
         streaming: bool = True,
-    ) -> Union[dict, Generator]:
+    ) -> Union[Mapping, Generator]:
         """
         Generate more like this
         :param app_model: app model

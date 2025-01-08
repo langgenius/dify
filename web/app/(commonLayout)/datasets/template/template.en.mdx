@@ -52,6 +52,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           - <code>high_quality</code> High quality: embedding using embedding model, built as vector database index
           - <code>economy</code> Economy: Build using inverted index of keyword table index
       </Property>
+      <Property name='doc_form' type='string' key='doc_form'>
+        Format of indexed content
+          - <code>text_model</code> Text documents are directly embedded; `economy` mode defaults to using this form
+          - <code>hierarchical_model</code> Parent-child mode
+          - <code>qa_model</code> Q&A Mode: Generates Q&A pairs for segmented documents and then embeds the questions
+      </Property>
+      <Property name='doc_language' type='string' key='doc_language'>
+        In Q&A mode, specify the language of the document, for example: <code>English</code>, <code>Chinese</code>
+      </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         Processing rules
           - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom
@@ -65,6 +74,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>segmentation</code> (object) Segmentation rules
               - <code>separator</code> Custom segment identifier, currently only allows one delimiter to be set. Default is \n
               - <code>max_tokens</code> Maximum length (token) defaults to 1000
+            - <code>parent_mode</code> Retrieval mode of parent chunks: <code>full-doc</code> full text retrieval / <code>paragraph</code> paragraph retrieval
+            - <code>subchunk_segmentation</code> (object) Child chunk rules
+              - <code>separator</code> Segmentation identifier. Currently, only one delimiter is allowed. The default is <code>***</code>
+              - <code>max_tokens</code> The maximum length (tokens) must be validated to be shorter than the length of the parent chunk
+              - <code>chunk_overlap</code> Define the overlap between adjacent chunks (optional)
       </Property>
     </Properties>
   </Col>
@@ -155,6 +169,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           - <code>high_quality</code> High quality: embedding using embedding model, built as vector database index
           - <code>economy</code> Economy: Build using inverted index of keyword table index
 
+        - <code>doc_form</code> Format of indexed content
+          - <code>text_model</code> Text documents are directly embedded; `economy` mode defaults to using this form
+          - <code>hierarchical_model</code> Parent-child mode
+          - <code>qa_model</code> Q&A Mode: Generates Q&A pairs for segmented documents and then embeds the questions
+
+        - <code>doc_language</code> In Q&A mode, specify the language of the document, for example: <code>English</code>, <code>Chinese</code>
+
         - <code>process_rule</code> Processing rules
           - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom
           - <code>rules</code> (object) Custom rules (in automatic mode, this field is empty)
@@ -167,6 +188,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>segmentation</code> (object) Segmentation rules
               - <code>separator</code> Custom segment identifier, currently only allows one delimiter to be set. Default is \n
               - <code>max_tokens</code> Maximum length (token) defaults to 1000
+            - <code>parent_mode</code> Retrieval mode of parent chunks: <code>full-doc</code> full text retrieval / <code>paragraph</code> paragraph retrieval
+            - <code>subchunk_segmentation</code> (object) Child chunk rules
+              - <code>separator</code> Segmentation identifier. Currently, only one delimiter is allowed. The default is <code>***</code>
+              - <code>max_tokens</code> The maximum length (tokens) must be validated to be shorter than the length of the parent chunk
+              - <code>chunk_overlap</code> Define the overlap between adjacent chunks (optional)
       </Property>
       <Property name='file' type='multipart/form-data' key='file'>
         Files that need to be uploaded.
@@ -449,6 +475,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>segmentation</code> (object) Segmentation rules
               - <code>separator</code> Custom segment identifier, currently only allows one delimiter to be set. Default is \n
               - <code>max_tokens</code> Maximum length (token) defaults to 1000
+            - <code>parent_mode</code> Retrieval mode of parent chunks: <code>full-doc</code> full text retrieval / <code>paragraph</code> paragraph retrieval
+            - <code>subchunk_segmentation</code> (object) Child chunk rules
+              - <code>separator</code> Segmentation identifier. Currently, only one delimiter is allowed. The default is <code>***</code>
+              - <code>max_tokens</code> The maximum length (tokens) must be validated to be shorter than the length of the parent chunk
+              - <code>chunk_overlap</code> Define the overlap between adjacent chunks (optional)
       </Property>
     </Properties>
   </Col>
@@ -546,6 +577,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>segmentation</code> (object) Segmentation rules
               - <code>separator</code> Custom segment identifier, currently only allows one delimiter to be set. Default is \n
               - <code>max_tokens</code> Maximum length (token) defaults to 1000
+            - <code>parent_mode</code> Retrieval mode of parent chunks: <code>full-doc</code> full text retrieval / <code>paragraph</code> paragraph retrieval
+            - <code>subchunk_segmentation</code> (object) Child chunk rules
+              - <code>separator</code> Segmentation identifier. Currently, only one delimiter is allowed. The default is <code>***</code>
+              - <code>max_tokens</code> The maximum length (tokens) must be validated to be shorter than the length of the parent chunk
+              - <code>chunk_overlap</code> Define the overlap between adjacent chunks (optional)
       </Property>
     </Properties>
   </Col>
@@ -984,7 +1020,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
   method='POST'
-  title='Update a Chunk in a Document '
+  title='Update a Chunk in a Document'
   name='#update_segment'
 />
 <Row>
@@ -1009,6 +1045,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - <code>answer</code> (text) Answer content, passed if the knowledge is in Q&A mode (optional)
         - <code>keywords</code> (list) Keyword (optional)
         - <code>enabled</code> (bool) False / true (optional)
+        - <code>regenerate_child_chunks</code> (bool) Whether to regenerate child chunks (optional)
       </Property>
     </Properties>
   </Col>

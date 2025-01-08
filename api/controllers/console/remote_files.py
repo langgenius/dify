@@ -2,11 +2,12 @@ import urllib.parse
 from typing import cast
 
 import httpx
-from flask_login import current_user
-from flask_restful import Resource, marshal_with, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, marshal_with, reqparse  # type: ignore
 
 import services
 from controllers.common import helpers
+from controllers.common.errors import RemoteFileUploadError
 from core.file import helpers as file_helpers
 from core.helper import ssrf_proxy
 from fields.file_fields import file_fields_with_signed_url, remote_file_info_fields
@@ -43,10 +44,14 @@ class RemoteFileUploadApi(Resource):
 
         url = args["url"]
 
-        resp = ssrf_proxy.head(url=url)
-        if resp.status_code != httpx.codes.OK:
-            resp = ssrf_proxy.get(url=url, timeout=3, follow_redirects=True)
-        resp.raise_for_status()
+        try:
+            resp = ssrf_proxy.head(url=url)
+            if resp.status_code != httpx.codes.OK:
+                resp = ssrf_proxy.get(url=url, timeout=3, follow_redirects=True)
+            if resp.status_code != httpx.codes.OK:
+                raise RemoteFileUploadError(f"Failed to fetch file from {url}: {resp.text}")
+        except httpx.RequestError as e:
+            raise RemoteFileUploadError(f"Failed to fetch file from {url}: {str(e)}")
 
         file_info = helpers.guess_file_info_from_response(resp)
 

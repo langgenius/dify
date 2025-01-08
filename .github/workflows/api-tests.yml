@@ -50,8 +50,17 @@ jobs:
       - name: Run ModelRuntime
         run: poetry run -C api bash dev/pytest/pytest_model_runtime.sh
 
+      - name: Run dify config tests
+        run: poetry run -C api python dev/pytest/pytest_config_tests.py
+
       - name: Run Tool
         run: poetry run -C api bash dev/pytest/pytest_tools.sh
+
+      - name: Run mypy
+        run: |
+          pushd api
+          poetry run python -m mypy --install-types --non-interactive .
+          popd
 
       - name: Set up dotenvs
         run: |

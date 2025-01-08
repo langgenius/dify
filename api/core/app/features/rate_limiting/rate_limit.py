@@ -17,7 +17,7 @@ class RateLimit:
     _UNLIMITED_REQUEST_ID = "unlimited_request_id"
     _REQUEST_MAX_ALIVE_TIME = 10 * 60  # 10 minutes
     _ACTIVE_REQUESTS_COUNT_FLUSH_INTERVAL = 5 * 60  # recalculate request_count from request_detail every 5 minutes
-    _instance_dict = {}
+    _instance_dict: dict[str, "RateLimit"] = {}
 
     def __new__(cls: type["RateLimit"], client_id: str, max_active_requests: int):
         if client_id not in cls._instance_dict:
@@ -110,7 +110,7 @@ class RateLimitGenerator:
             raise StopIteration
         try:
             return next(self.generator)
-        except StopIteration:
+        except Exception:
             self.close()
             raise
 

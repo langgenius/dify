@@ -2,8 +2,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from configs import dify_config
 from core.app.app_config.entities import ModelConfigEntity
-from core.file import File, FileTransferMethod, FileType, FileUploadConfig, ImageConfig
+from core.file import File, FileTransferMethod, FileType
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -126,6 +127,7 @@ def test__get_chat_model_prompt_messages_no_memory(get_chat_model_args):
 
 def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_args):
     model_config_mock, _, messages, inputs, context = get_chat_model_args
+    dify_config.MULTIMODAL_SEND_FORMAT = "url"
 
     files = [
         File(
@@ -134,13 +136,16 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/image1.jpg",
+            storage_key="",
         )
     ]
 
     prompt_transform = AdvancedPromptTransform()
     prompt_transform._calculate_rest_token = MagicMock(return_value=2000)
     with patch("core.file.file_manager.to_prompt_message_content") as mock_get_encoded_string:
-        mock_get_encoded_string.return_value = ImagePromptMessageContent(data=str(files[0].remote_url))
+        mock_get_encoded_string.return_value = ImagePromptMessageContent(
+            url=str(files[0].remote_url), format="jpg", mime_type="image/jpg"
+        )
         prompt_messages = prompt_transform._get_chat_model_prompt_messages(
             prompt_template=messages,
             inputs=inputs,

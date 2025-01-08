@@ -16,6 +16,7 @@ class VectorType(StrEnum):
     TENCENT = "tencent"
     ORACLE = "oracle"
     ELASTICSEARCH = "elasticsearch"
+    ELASTICSEARCH_JA = "elasticsearch-ja"
     LINDORM = "lindorm"
     COUCHBASE = "couchbase"
     BAIDU = "baidu"

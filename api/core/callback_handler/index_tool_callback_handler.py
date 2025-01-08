@@ -40,17 +40,18 @@ class DatasetIndexToolCallbackHandler:
     def on_tool_end(self, documents: list[Document]) -> None:
         """Handle tool end."""
         for document in documents:
-            query = db.session.query(DocumentSegment).filter(
-                DocumentSegment.index_node_id == document.metadata["doc_id"]
-            )
+            if document.metadata is not None:
+                query = db.session.query(DocumentSegment).filter(
+                    DocumentSegment.index_node_id == document.metadata["doc_id"]
+                )
 
-            if "dataset_id" in document.metadata:
-                query = query.filter(DocumentSegment.dataset_id == document.metadata["dataset_id"])
+                if "dataset_id" in document.metadata:
+                    query = query.filter(DocumentSegment.dataset_id == document.metadata["dataset_id"])
 
-            # add hit count to document segment
-            query.update({DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False)
+                # add hit count to document segment
+                query.update({DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False)
 
-            db.session.commit()
+                db.session.commit()
 
     def return_retriever_resource_info(self, resource: list):
         """Handle return_retriever_resource_info."""

@@ -1,0 +1,36 @@
+model: o1
+label:
+  zh_Hans: o1
+  en_US: o1
+model_type: llm
+features:
+  - multi-tool-call
+  - agent-thought
+  - stream-tool-call
+  - vision
+model_properties:
+  mode: chat
+  context_size: 200000
+parameter_rules:
+  - name: max_tokens
+    use_template: max_tokens
+    default: 50000
+    min: 1
+    max: 50000
+  - name: response_format
+    label:
+      zh_Hans: 回复格式
+      en_US: response_format
+    type: string
+    help:
+      zh_Hans: 指定模型必须输出的格式
+      en_US: specifying the format that the model must output
+    required: false
+    options:
+      - text
+      - json_object
+pricing:
+  input: '15.00'
+  output: '60.00'
+  unit: '0.000001'
+  currency: USD
