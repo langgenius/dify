@@ -41,7 +41,7 @@ export const useCheckInstalled = ({
   enabled: boolean
 }) => {
   return useQuery<{ plugins: PluginDetail[] }>({
-    queryKey: [NAME_SPACE, 'checkInstalled'],
+    queryKey: [NAME_SPACE, 'checkInstalled', pluginIds],
     queryFn: () => post<{ plugins: PluginDetail[] }>('/workspaces/current/plugin/list/installations/ids', {
       body: {
         plugin_ids: pluginIds,
@@ -82,8 +82,9 @@ export const useInstallPackageFromMarketPlace = (options?: MutateOptions<Install
   })
 }
 
-export const useUpdatePackageFromMarketPlace = () => {
+export const useUpdatePackageFromMarketPlace = (options?: MutateOptions<InstallPackageResponse, Error, object>) => {
   return useMutation({
+    ...options,
     mutationFn: (body: object) => {
       return post<InstallPackageResponse>('/workspaces/current/plugin/upgrade/marketplace', {
         body,
