@@ -5,7 +5,8 @@ import logging
 import operator
 import os
 import tempfile
-from typing import cast
+from collections.abc import Mapping, Sequence
+from typing import Any, cast
 
 import docx
 import pandas as pd
@@ -80,6 +81,23 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
                 inputs=inputs,
                 process_data=process_data,
             )
+
+    @classmethod
+    def _extract_variable_selector_to_variable_mapping(
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: DocumentExtractorNodeData,
+    ) -> Mapping[str, Sequence[str]]:
+        """
+        Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
+        :param node_data: node data
+        :return:
+        """
+        return {node_id + ".files": node_data.variable_selector}
 
 
 def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
