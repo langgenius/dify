@@ -39,32 +39,23 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
   return (
     <>
       {/* plugin installed and model is in model list but disabled */}
-      {!needsConfiguration && modelProvider && disabled && inModelList && (
-        <Tooltip
-          popupContent={t('workflow.nodes.agent.modelSelectorTooltips.deprecated')}
-          asChild={false}
-        >
-          <RiErrorWarningFill className='w-4 h-4 text-text-destructive' />
-        </Tooltip>
-      )}
       {/* plugin installed from github/local and model is not in model list */}
-      {
-        modelProvider && !inModelList && (
-          <Tooltip
-            popupContent={renderTooltipContent(
+      {!needsConfiguration && modelProvider && disabled && (
+        <Tooltip
+          popupContent={inModelList ? t('workflow.nodes.agent.modelSelectorTooltips.deprecated')
+            : renderTooltipContent(
               t('workflow.nodes.agent.modelNotSupport.title'),
               t('workflow.nodes.agent.modelNotSupport.desc'),
               !pluginInfo ? t('workflow.nodes.agent.linkToPlugin') : '',
               !pluginInfo ? '/plugins' : '',
-            )}
-            asChild={false}
-            needsDelay
-          >
-            <RiErrorWarningFill className='w-4 h-4 text-text-destructive' />
-          </Tooltip>
-        )
-      }
-      {/* plugin not installed and not in marketplace */}
+            )
+          }
+          asChild={false}
+          needsDelay={!inModelList}
+        >
+          <RiErrorWarningFill className='w-4 h-4 text-text-destructive' />
+        </Tooltip>
+      )}
       {!modelProvider && !pluginInfo && (
         <Tooltip
           popupContent={renderTooltipContent(

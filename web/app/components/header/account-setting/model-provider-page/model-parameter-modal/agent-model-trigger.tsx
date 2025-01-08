@@ -73,15 +73,22 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
   const handleOpenModal = useModelModalHandler()
   useEffect(() => {
     (async () => {
+      if (modelId && currentProvider) {
+        try {
+          const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${currentProvider?.provider}/models`)
+          if (modelId && modelsData.data.find(item => item.model === modelId))
+            setInModelList(true)
+        }
+        catch (error) {
+          // pass
+        }
+      }
       if (providerName && !modelProvider) {
         const parts = providerName.split('/')
         const org = parts[0]
         const name = parts[1]
         try {
           const pluginInfo = await fetchPluginInfoFromMarketPlace({ org, name })
-          const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${providerName}/models`)
-          if (modelId && modelsData.data.find(item => item.model === modelId))
-            setInModelList(true)
           if (pluginInfo.data.plugin.category === PluginType.model)
             setPluginInfo(pluginInfo.data.plugin)
         }
@@ -94,7 +101,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
         setIsPluginChecked(true)
       }
     })()
-  }, [providerName, modelProvider, modelId])
+  }, [providerName, modelProvider, modelId, currentProvider])
 
   if (modelId && !isPluginChecked)
     return null
