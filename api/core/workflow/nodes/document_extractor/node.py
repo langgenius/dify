@@ -5,9 +5,8 @@ import logging
 import operator
 import os
 import tempfile
-from typing import cast
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, cast
 
 import docx
 import pandas as pd
