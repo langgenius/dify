@@ -1,5 +1,5 @@
 import type { ToolCredential, ToolParameter } from '../types'
-const toType = (type: string) => {
+export const toType = (type: string) => {
   switch (type) {
     case 'string':
       return 'text-input'

@@ -19,6 +19,7 @@ import { useWorkflowStore } from '../../../store'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import type { NodeOutPutVar } from '../../../types'
 import type { Node } from 'reactflow'
+import { toType } from '@/app/components/tools/utils/to-form-schema'
 
 export type Strategy = {
   agent_strategy_provider_name: string
@@ -150,7 +151,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           onGenerated={handleGenerated}
           title={renderI18nObject(schema.label)}
           headerClassName='bg-transparent px-0 text-text-secondary system-sm-semibold-uppercase'
-          containerClassName='bg-transparent'
+          containerBackgroundClassName='bg-transparent'
           gradientBorder={false}
           isSupportPromptGenerator={!!schema.auto_generate?.type}
           titleTooltip={schema.tooltip && renderI18nObject(schema.tooltip)}
@@ -181,7 +182,18 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
       strategy
         ? <div>
           <Form<CustomField>
-            formSchemas={formSchema}
+            formSchemas={[...formSchema, {
+              name: 'max_iteration',
+              type: toType('number'),
+              required: true,
+              label: {
+                en_US: 'Max Iteration',
+                zh_Hans: '最大迭代次数',
+                pt_BR: 'Max Iteration',
+              },
+              show_on: [],
+              variable: 'max-ite',
+            }]}
             value={formValue}
             onChange={onFormValueChange}
             validating={false}
