@@ -41,7 +41,7 @@ export const useCheckInstalled = ({
   enabled: boolean
 }) => {
   return useQuery<{ plugins: PluginDetail[] }>({
-    queryKey: [NAME_SPACE, 'checkInstalled'],
+    queryKey: [NAME_SPACE, 'checkInstalled', pluginIds],
     queryFn: () => post<{ plugins: PluginDetail[] }>('/workspaces/current/plugin/list/installations/ids', {
       body: {
         plugin_ids: pluginIds,
@@ -82,8 +82,9 @@ export const useInstallPackageFromMarketPlace = (options?: MutateOptions<Install
   })
 }
 
-export const useUpdatePackageFromMarketPlace = () => {
+export const useUpdatePackageFromMarketPlace = (options?: MutateOptions<InstallPackageResponse, Error, object>) => {
   return useMutation({
+    ...options,
     mutationFn: (body: object) => {
       return post<InstallPackageResponse>('/workspaces/current/plugin/upgrade/marketplace', {
         body,
@@ -364,7 +365,7 @@ export const usePluginTaskList = () => {
     queryKey: usePluginTaskListKey,
     queryFn: async () => {
       const currentData = await get<{ tasks: PluginTask[] }>('/workspaces/current/plugin/tasks?page=1&page_size=100')
-      const taskDone = currentData.tasks.every(task => task.status === TaskStatus.success)
+      const taskDone = currentData.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
 
       if (taskDone)
         setEnabled(false)

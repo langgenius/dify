@@ -102,7 +102,7 @@ const ToolSelector: FC<Props> = ({
   const currentProvider = useMemo(() => {
     const mergedTools = [...(buildInTools || []), ...(customTools || []), ...(workflowTools || [])]
     return mergedTools.find((toolWithProvider) => {
-      return toolWithProvider.id === value?.provider_name && toolWithProvider.tools.some(tool => tool.name === value?.tool_name)
+      return toolWithProvider.id === value?.provider_name
     })
   }, [value, buildInTools, customTools, workflowTools])
 
@@ -172,7 +172,9 @@ const ToolSelector: FC<Props> = ({
   })
 
   // install from marketplace
-
+  const currentTool = useMemo(() => {
+    return currentProvider?.tools.find(tool => tool.name === value?.tool_name)
+  }, [currentProvider?.tools, value?.tool_name])
   const manifestIcon = useMemo(() => {
     if (!manifest)
       return ''
@@ -193,7 +195,10 @@ const ToolSelector: FC<Props> = ({
       >
         <PortalToFollowElemTrigger
           className='w-full'
-          onClick={handleTriggerClick}
+          onClick={() => {
+            if (!currentProvider || !currentTool) return
+            handleTriggerClick()
+          }}
         >
           {trigger}
           {!trigger && !value?.provider_name && (
@@ -214,19 +219,22 @@ const ToolSelector: FC<Props> = ({
               switchValue={value.enabled}
               onSwitchChange={handleEnabledChange}
               onDelete={onDelete}
-              noAuth={currentProvider && !currentProvider.is_team_authorization}
+              noAuth={currentProvider && currentTool && !currentProvider.is_team_authorization}
               onAuth={() => setShowSettingAuth(true)}
               uninstalled={!currentProvider && inMarketPlace}
+              versionMismatch={currentProvider && inMarketPlace && !currentTool}
               installInfo={manifest?.latest_package_identifier}
               onInstall={() => handleInstall()}
-              isError={!currentProvider && !inMarketPlace}
-              errorTip={<div className='space-y-1 max-w-[240px] text-xs'>
-                <h3 className='text-text-primary font-semibold'>{t('plugin.detailPanel.toolSelector.uninstalledTitle')}</h3>
-                <p className='text-text-secondary tracking-tight'>{t('plugin.detailPanel.toolSelector.uninstalledContent')}</p>
-                <p>
-                  <Link href={'/plugins'} className='text-text-accent tracking-tight'>{t('plugin.detailPanel.toolSelector.uninstalledLink')}</Link>
-                </p>
-              </div>}
+              isError={(!currentProvider || !currentTool) && !inMarketPlace}
+              errorTip={
+                <div className='space-y-1 max-w-[240px] text-xs'>
+                  <h3 className='text-text-primary font-semibold'>{currentTool ? t('plugin.detailPanel.toolSelector.uninstalledTitle') : t('plugin.detailPanel.toolSelector.unsupportedTitle')}</h3>
+                  <p className='text-text-secondary tracking-tight'>{currentTool ? t('plugin.detailPanel.toolSelector.uninstalledContent') : t('plugin.detailPanel.toolSelector.unsupportedContent')}</p>
+                  <p>
+                    <Link href={'/plugins'} className='text-text-accent tracking-tight'>{t('plugin.detailPanel.toolSelector.uninstalledLink')}</Link>
+                  </p>
+                </div>
+              }
             />
           )}
         </PortalToFollowElemTrigger>

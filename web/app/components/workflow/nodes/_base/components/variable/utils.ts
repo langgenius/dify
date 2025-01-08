@@ -319,16 +319,13 @@ const formatItem = (
     case BlockEnum.Agent: {
       const payload = data as AgentNodeType
       const outputs: Var[] = []
-      Object.keys(payload.output_schema.properties).forEach((outputKey) => {
+      Object.keys(payload.output_schema?.properties || {}).forEach((outputKey) => {
         const output = payload.output_schema.properties[outputKey]
         outputs.push({
           variable: outputKey,
           type: output.type === 'array'
             ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]` as VarType
             : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}` as VarType,
-          // TODO: is this required?
-          // @ts-expect-error todo added
-          description: output.description,
         })
       })
       res.vars = [

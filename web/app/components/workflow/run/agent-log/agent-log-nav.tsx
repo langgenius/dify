@@ -19,7 +19,9 @@ const AgentLogNav = ({
         className='shrink-0 px-[5px]'
         size='small'
         variant='ghost-accent'
-        onClick={() => onShowAgentOrToolLog()}
+        onClick={() => {
+          onShowAgentOrToolLog()
+        }}
       >
         <RiArrowLeftLine className='mr-1 w-3.5 h-3.5' />
         Agent
@@ -31,7 +33,6 @@ const AgentLogNav = ({
         variant='ghost-accent'
         onClick={() => {}}
       >
-        <RiArrowLeftLine className='mr-1 w-3.5 h-3.5' />
         Agent strategy
       </Button>
       {
