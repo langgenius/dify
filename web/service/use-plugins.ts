@@ -423,10 +423,10 @@ export const useDownloadPlugin = (info: { organization: string; pluginName: stri
   })
 }
 
-export const useMutationCheckDependecies = () => {
+export const useMutationCheckDependencies = () => {
   return useMutation({
     mutationFn: (appId: string) => {
-      return get<{ leaked_dependencies: Dependency[] }>(`/apps/import/${appId}/check-dependencies`)
+      return get<{ leaked_dependencies: Dependency[] }>(`/apps/imports/${appId}/check-dependencies`)
     },
   })
 }

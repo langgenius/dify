@@ -725,6 +725,7 @@ const translation = {
       modelNotSupport: {
         title: 'Unsupported Model',
         desc: 'The installed plugin version does not provide this model.',
+        descForVersionSwitch: 'The installed plugin version does not provide this model. Click to switch version.',
       },
       configureModel: 'Configure Model',
       notAuthorized: 'Not Authorized',
@@ -755,9 +756,16 @@ const translation = {
         },
         json: 'agent generated json',
       },
-    },
-    checkList: {
-      strategyNotSelected: 'Strategy not selected',
+      checkList: {
+        strategyNotSelected: 'Strategy not selected',
+      },
+      installPlugin: {
+        title: 'Install Plugin',
+        desc: 'About to install the following plugin',
+        changelog: 'Change log',
+        install: 'Install',
+        cancel: 'Cancel',
+      },
     },
   },
   tracing: {

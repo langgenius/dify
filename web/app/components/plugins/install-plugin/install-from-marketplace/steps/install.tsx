@@ -12,6 +12,7 @@ import { useInstallPackageFromMarketPlace, useUpdatePackageFromMarketPlace } fro
 import checkTaskStatus from '../../base/check-task-status'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import Version from '../../base/version'
+import { usePluginTaskList } from '@/service/use-plugins'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -50,6 +51,7 @@ const Installed: FC<Props> = ({
     check,
     stop,
   } = checkTaskStatus()
+  const { handleRefetch } = usePluginTaskList()
 
   useEffect(() => {
     if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier)
@@ -93,6 +95,9 @@ const Installed: FC<Props> = ({
         onInstalled()
         return
       }
+
+      handleRefetch()
+
       const { status, error } = await check({
         taskId,
         pluginUniqueIdentifier: uniqueIdentifier,

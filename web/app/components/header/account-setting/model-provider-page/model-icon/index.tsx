@@ -40,7 +40,7 @@ const ModelIcon: FC<ModelIconProps> = ({
 
   return (
     <div className={cn(
-      'flex items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
+      'flex items-center justify-center rounded-md border-[0.5px] w-5 h-5 border-components-panel-border-subtle bg-background-default-subtle',
       className,
     )}>
       <div className='flex w-5 h-5 items-center justify-center opacity-35'>

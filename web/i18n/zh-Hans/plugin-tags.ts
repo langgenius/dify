@@ -2,6 +2,7 @@ const translation = {
   allTags: '所有标签',
   searchTags: '搜索标签',
   tags: {
+    agent: 'Agent',
     search: '搜索',
     image: '图片',
     videos: '视频',

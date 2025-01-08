@@ -26,7 +26,7 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
     if (!strategy) {
       return {
         isValid: false,
-        errorMessage: t('workflow.checkList.strategyNotSelected'),
+        errorMessage: t('workflow.nodes.agent.checkList.strategyNotSelected'),
       }
     }
     for (const param of strategy.parameters) {
