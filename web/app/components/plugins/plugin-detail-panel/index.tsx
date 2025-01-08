@@ -9,7 +9,6 @@ import AgentStrategyList from './agent-strategy-list'
 import Drawer from '@/app/components/base/drawer'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import cn from '@/utils/classnames'
-import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 
 type Props = {
   detail?: PluginDetail
@@ -26,16 +25,6 @@ const PluginDetailPanel: FC<Props> = ({
     if (isDelete)
       onHide()
     onUpdate()
-  }
-
-  const [value, setValue] = React.useState({
-    provider_name: 'langgenius/google/google',
-    tool_name: 'google_search',
-  })
-
-  const testHandle = (item: any) => {
-    console.log(item)
-    setValue(item)
   }
 
   if (!detail)
@@ -63,17 +52,6 @@ const PluginDetailPanel: FC<Props> = ({
             {!!detail.declaration.agent_strategy && <AgentStrategyList detail={detail} />}
             {!!detail.declaration.endpoint && <EndpointList detail={detail} />}
             {!!detail.declaration.model && <ModelList detail={detail} />}
-            {false && (
-              <div className='px-4'>
-                <ToolSelector
-                  scope={'all'}
-                  value={value}
-                  onSelect={item => testHandle(item)}
-                  onDelete={() => testHandle(null)}
-                  supportEnableSwitch
-                />
-              </div>
-            )}
           </div>
         </>
       )}

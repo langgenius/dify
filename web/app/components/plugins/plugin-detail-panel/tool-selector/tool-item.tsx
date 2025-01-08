@@ -13,7 +13,9 @@ import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
+import { ToolTipContent } from '@/app/components/base/tooltip/content'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
+import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -31,6 +33,7 @@ type Props = {
   uninstalled?: boolean
   installInfo?: string
   onInstall?: () => void
+  versionMismatch?: boolean
   open: boolean
 }
 
@@ -50,10 +53,11 @@ const ToolItem = ({
   onInstall,
   isError,
   errorTip,
+  versionMismatch,
 }: Props) => {
   const { t } = useTranslation()
   const providerNameText = providerName?.split('/').pop()
-  const isTransparent = uninstalled || isError
+  const isTransparent = uninstalled || versionMismatch || isError
   const [isDeleting, setIsDeleting] = useState(false)
 
   return (
@@ -82,7 +86,7 @@ const ToolItem = ({
         <div className='text-text-secondary system-xs-medium'>{toolName}</div>
       </div>
       <div className='hidden group-hover:flex items-center gap-1'>
-        {!noAuth && !isError && !uninstalled && (
+        {!noAuth && !isError && !uninstalled && !versionMismatch && (
           <ActionButton>
             <RiEqualizer2Line className='w-4 h-4' />
           </ActionButton>
@@ -99,7 +103,7 @@ const ToolItem = ({
           <RiDeleteBinLine className='w-4 h-4' />
         </div>
       </div>
-      {!isError && !uninstalled && !noAuth && showSwitch && (
+      {!isError && !uninstalled && !noAuth && !versionMismatch && showSwitch && (
         <div className='mr-1' onClick={e => e.stopPropagation()}>
           <Switch
             size='md'
@@ -108,11 +112,29 @@ const ToolItem = ({
           />
         </div>
       )}
-      {!isError && !uninstalled && noAuth && (
+      {!isError && !uninstalled && !versionMismatch && noAuth && (
         <Button variant='secondary' size='small' onClick={onAuth}>
           {t('tools.notAuthorized')}
           <Indicator className='ml-2' color='orange' />
         </Button>
+      )}
+      {!isError && !uninstalled && versionMismatch && installInfo && (
+        <div onClick={e => e.stopPropagation()}>
+          <SwitchPluginVersion
+            className='-mt-1'
+            uniqueIdentifier={installInfo}
+            tooltip={
+              <ToolTipContent
+                title={t('plugin.detailPanel.toolSelector.unsupportedTitle')}
+              >
+                {`${t('plugin.detailPanel.toolSelector.unsupportedContent')} ${t('plugin.detailPanel.toolSelector.unsupportedContent2')}`}
+              </ToolTipContent>
+            }
+            onChange={() => {
+              onInstall?.()
+            }}
+          />
+        </div>
       )}
       {!isError && uninstalled && installInfo && (
         <InstallPluginButton

@@ -6,19 +6,20 @@ import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-v
 import { RiArrowLeftRightLine } from '@remixicon/react'
 import type { ReactNode } from 'react'
 import { type FC, useCallback, useState } from 'react'
-import cn from '@/utils/classnames'
 import UpdateFromMarketplace from '@/app/components/plugins/update-plugin/from-market-place'
 import { useBoolean } from 'ahooks'
 import { useCheckInstalled } from '@/service/use-plugins'
+import cn from '@/utils/classnames'
 
 export type SwitchPluginVersionProps = {
   uniqueIdentifier: string
   tooltip?: ReactNode
   onChange?: (version: string) => void
+  className?: string
 }
 
 export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
-  const { uniqueIdentifier, tooltip, onChange } = props
+  const { uniqueIdentifier, tooltip, onChange, className } = props
   const [pluginId] = uniqueIdentifier.split(':')
   const [isShow, setIsShow] = useState(false)
   const [isShowUpdateModal, { setTrue: showUpdateModal, setFalse: hideUpdateModal }] = useBoolean(false)
@@ -40,7 +41,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
     return uniqueIdentifier.replaceAll(pluginDetail.version, targetVersion)
   })()
   return <Tooltip popupContent={!isShow && !isShowUpdateModal && tooltip} triggerMethod='hover'>
-    <div className='w-fit'>
+    <div className={cn('w-fit', className)}>
       {isShowUpdateModal && pluginDetail && <UpdateFromMarketplace
         payload={{
           originalPackageInfo: {
