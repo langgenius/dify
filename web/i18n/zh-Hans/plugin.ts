@@ -7,6 +7,13 @@ const translation = {
     extensions: '扩展',
     bundles: '插件集',
   },
+  categorySingle: {
+    model: '模型',
+    tool: '工具',
+    agent: 'Agent 策略',
+    extension: '扩展',
+    bundle: '插件集',
+  },
   search: '搜索',
   allCategories: '所有类别',
   searchCategories: '搜索类别',

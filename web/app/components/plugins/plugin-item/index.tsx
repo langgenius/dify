@@ -22,7 +22,7 @@ import cn from '@/utils/classnames'
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useInvalidateAllBuiltInTools, useInvalidateAllToolProviders } from '@/service/use-tools'
-import { useCategories } from '../hooks'
+import { useSingleCategories } from '../hooks'
 import { useProviderContext } from '@/context/provider-context'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 
@@ -36,7 +36,7 @@ const PluginItem: FC<Props> = ({
   plugin,
 }) => {
   const { t } = useTranslation()
-  const { categoriesMap } = useCategories()
+  const { categoriesMap } = useSingleCategories()
   const currentPluginID = usePluginPageContext(v => v.currentPluginID)
   const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
