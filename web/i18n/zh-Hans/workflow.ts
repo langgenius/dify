@@ -722,6 +722,10 @@ const translation = {
         desc: '此模型安装自本地或 GitHub 仓库。请安装后使用。',
         manageInPlugins: '在插件中管理',
       },
+      modelNotSupport: {
+        title: '不支持的模型',
+        desc: '已安装的插件版本不提供此模型。',
+      },
       model: '模型',
       toolbox: '工具箱',
       strategyNotSet: '代理策略未设置',

@@ -24,16 +24,12 @@ import {
   useDefaultModel,
   useMarketplaceAllPlugins,
   useModelModalHandler,
-  useUpdateModelList,
-  useUpdateModelProviders,
 } from './hooks'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import ProviderCard from '@/app/components/plugins/provider-card'
 import List from '@/app/components/plugins/marketplace/list'
 import { useProviderContext } from '@/context/provider-context'
-import { useModalContextSelector } from '@/context/modal-context'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
 import type { Plugin } from '@/app/components/plugins/types'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
@@ -46,16 +42,12 @@ type Props = {
 const ModelProviderPage = ({ searchText }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
-  const { eventEmitter } = useEventEmitterContextContext()
-  const updateModelProviders = useUpdateModelProviders()
-  const updateModelList = useUpdateModelList()
   const { data: textGenerationDefaultModel } = useDefaultModel(ModelTypeEnum.textGeneration)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
   const { data: rerankDefaultModel } = useDefaultModel(ModelTypeEnum.rerank)
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: ttsDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
   const { modelProviders: providers } = useProviderContext()
-  const setShowModelModal = useModalContextSelector(state => state.setShowModelModal)
   const defaultModelNotConfigured = !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel && !ttsDefaultModel
   const [configuredProviders, notConfiguredProviders] = useMemo(() => {
     const configuredProviders: ModelProvider[] = []

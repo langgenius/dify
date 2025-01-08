@@ -722,6 +722,10 @@ const translation = {
         desc: 'This model is installed from Local or GitHub repository. Please use after installation.',
         manageInPlugins: 'Manage in Plugins',
       },
+      modelNotSupport: {
+        title: 'Unsupported Model',
+        desc: 'The installed plugin version does not provide this model.',
+      },
       configureModel: 'Configure Model',
       notAuthorized: 'Not Authorized',
       model: 'model',
