@@ -932,6 +932,7 @@ const StepTwo = ({
             <div className={cn('system-md-semibold mb-1', datasetId && 'flex justify-between items-center')}>{t('datasetSettings.form.embeddingModel')}</div>
             <ModelSelector
               readonly={!!datasetId}
+              triggerClassName={datasetId ? 'opacity-50' : ''}
               defaultModel={embeddingModel}
               modelList={embeddingModelList}
               onSelect={(model: DefaultModel) => {
