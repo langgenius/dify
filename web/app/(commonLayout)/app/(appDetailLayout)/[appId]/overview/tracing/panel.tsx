@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect, useState } from 'react'
 import {
   RiArrowDownDoubleLine,
-  RiEqualizer2Line,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { usePathname } from 'next/navigation'
@@ -151,8 +150,21 @@ const Panel: FC = () => {
           <>
             <TracingIcon size='md' />
             <div className='mx-2 system-sm-semibold text-text-secondary'>{t(`${I18N_PREFIX}.title`)}</div>
-            <div className='p-1 rounded-md'>
-              <RiEqualizer2Line className='w-4 h-4 text-text-tertiary' />
+            <div className='flex items-center' onClick={e => e.stopPropagation()}>
+              <ConfigButton
+                appId={appId}
+                readOnly={readOnly}
+                hasConfigured={false}
+                enabled={enabled}
+                onStatusChange={handleTracingEnabledChange}
+                chosenProvider={inUseTracingProvider}
+                onChooseProvider={handleChooseProvider}
+                langSmithConfig={langSmithConfig}
+                langFuseConfig={langFuseConfig}
+                onConfigUpdated={handleTracingConfigUpdated}
+                onConfigRemoved={handleTracingConfigRemoved}
+                controlShowPopup={controlShowPopup}
+              />
             </div>
             <Divider type='vertical' className='h-3.5' />
             <div className='p-1 rounded-md'>

@@ -4,18 +4,14 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   RiEqualizer2Line,
 } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
 import type { PopupProps } from './config-popup'
 import ConfigPopup from './config-popup'
 import cn from '@/utils/classnames'
-import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-
-const I18N_PREFIX = 'app.tracing'
 
 type Props = {
   readOnly: boolean
@@ -30,7 +26,6 @@ const ConfigBtn: FC<Props> = ({
   controlShowPopup,
   ...popupProps
 }) => {
-  const { t } = useTranslation()
   const [open, doSetOpen] = useState(false)
   const openRef = useRef(open)
   const setOpen = useCallback((v: boolean) => {
@@ -52,21 +47,6 @@ const ConfigBtn: FC<Props> = ({
   if (popupProps.readOnly && !hasConfigured)
     return null
 
-  const triggerContent = hasConfigured
-    ? (
-      <div className={cn(className, 'p-1 rounded-md')}>
-        <RiEqualizer2Line className='w-4 h-4 text-text-tertiary' />
-      </div>
-    )
-    : (
-      <Button variant='primary'
-        className={cn(className, '!h-8 !px-3 select-none')}
-      >
-        <RiEqualizer2Line className='mr-1 w-4 h-4' />
-        <span className='text-[13px]'>{t(`${I18N_PREFIX}.config`)}</span>
-      </Button>
-    )
-
   return (
     <PortalToFollowElem
       open={open}
@@ -74,11 +54,13 @@ const ConfigBtn: FC<Props> = ({
       placement='bottom-end'
       offset={{
         mainAxis: 12,
-        crossAxis: hasConfigured ? 8 : 0,
+        crossAxis: hasConfigured ? 8 : 49,
       }}
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>
-        {triggerContent}
+        <div className={cn(className, 'p-1 rounded-md')}>
+          <RiEqualizer2Line className='w-4 h-4 text-text-tertiary' />
+        </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>
         <ConfigPopup {...popupProps} />
