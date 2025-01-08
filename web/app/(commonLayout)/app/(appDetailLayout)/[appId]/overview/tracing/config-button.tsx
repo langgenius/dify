@@ -1,12 +1,14 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  RiEqualizer2Line,
+} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import type { PopupProps } from './config-popup'
 import ConfigPopup from './config-popup'
 import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
-import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -52,15 +54,15 @@ const ConfigBtn: FC<Props> = ({
 
   const triggerContent = hasConfigured
     ? (
-      <div className={cn(className, 'p-1 rounded-md hover:bg-black/5 cursor-pointer')}>
-        <Settings04 className='w-4 h-4 text-gray-500' />
+      <div className={cn(className, 'p-1 rounded-md')}>
+        <RiEqualizer2Line className='w-4 h-4 text-text-tertiary' />
       </div>
     )
     : (
       <Button variant='primary'
         className={cn(className, '!h-8 !px-3 select-none')}
       >
-        <Settings04 className='mr-1 w-4 h-4' />
+        <RiEqualizer2Line className='mr-1 w-4 h-4' />
         <span className='text-[13px]'>{t(`${I18N_PREFIX}.config`)}</span>
       </Button>
     )
