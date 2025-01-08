@@ -1,4 +1,5 @@
 import { RiArrowLeftLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import AgentLogNavMore from './agent-log-nav-more'
 import Button from '@/app/components/base/button'
 import type { AgentLogItemWithChildren } from '@/types/workflow'
@@ -11,10 +12,14 @@ const AgentLogNav = ({
   agentOrToolLogItemStack,
   onShowAgentOrToolLog,
 }: AgentLogNavProps) => {
-  const options = agentOrToolLogItemStack.slice(2)
+  const { t } = useTranslation()
+  const agentOrToolLogItemStackLength = agentOrToolLogItemStack.length
+  const first = agentOrToolLogItemStack[0]
+  const mid = agentOrToolLogItemStack.slice(1, -1)
+  const end = agentOrToolLogItemStack.at(-1)
 
   return (
-    <div className='flex items-center p-1 pr-3 h-8'>
+    <div className='flex items-center p-1 pr-3 h-8 bg-components-panel-bg'>
       <Button
         className='shrink-0 px-[5px]'
         size='small'
@@ -24,32 +29,48 @@ const AgentLogNav = ({
         }}
       >
         <RiArrowLeftLine className='mr-1 w-3.5 h-3.5' />
-        Agent
+        AGENT
       </Button>
       <div className='shrink-0 mx-0.5 system-xs-regular text-divider-deep'>/</div>
-      <Button
-        className='shrink-0 px-[5px]'
-        size='small'
-        variant='ghost-accent'
-        onClick={() => {}}
-      >
-        Agent strategy
-      </Button>
       {
-        !!options.length && (
+        agentOrToolLogItemStackLength > 1
+          ? (
+            <Button
+              className='shrink-0 px-[5px]'
+              size='small'
+              variant='ghost-accent'
+              onClick={() => onShowAgentOrToolLog(first)}
+            >
+              {t('workflow.nodes.agent.strategy.label')}
+            </Button>
+          )
+          : (
+            <div className='flex items-center px-[5px] system-xs-medium-uppercase text-text-tertiary'>
+              {t('workflow.nodes.agent.strategy.label')}
+            </div>
+          )
+      }
+      {
+        !!mid.length && (
           <>
             <div className='shrink-0 mx-0.5 system-xs-regular text-divider-deep'>/</div>
             <AgentLogNavMore
-              options={options}
+              options={mid}
               onShowAgentOrToolLog={onShowAgentOrToolLog}
             />
           </>
         )
       }
-      <div className='shrink-0 mx-0.5 system-xs-regular text-divider-deep'>/</div>
-      <div className='flex items-center px-[5px] system-xs-medium-uppercase text-text-tertiary'>
-        Run Actions
-      </div>
+      {
+        !!end && agentOrToolLogItemStackLength > 2 && (
+          <>
+            <div className='shrink-0 mx-0.5 system-xs-regular text-divider-deep'>/</div>
+            <div className='flex items-center px-[5px] system-xs-medium-uppercase text-text-tertiary'>
+              {end.label}
+            </div>
+          </>
+        )
+      }
     </div>
   )
 }

@@ -27,7 +27,7 @@ const AgentLogItem = ({
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <div className='border-[0.5px] border-components-panel-border rounded-[10px]'>
+    <div className='bg-background-default border-[0.5px] border-components-panel-border rounded-[10px]'>
       <div
         className={cn(
           'flex items-center pl-1.5 pt-2 pr-3 pb-2 cursor-pointer',
