@@ -404,6 +404,7 @@ export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.HttpRequest, BlockEnum.Tool, BlockEnum.VariableAssigner, BlockEnum.VariableAggregator, BlockEnum.QuestionClassifier,
   BlockEnum.ParameterExtractor, BlockEnum.Iteration,
   BlockEnum.DocExtractor, BlockEnum.ListFilter,
+  BlockEnum.Agent,
 ]
 
 export const LLM_OUTPUT_STRUCT: Var[] = [

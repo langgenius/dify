@@ -11,7 +11,7 @@ import Placeholder from './base/placeholder'
 import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
-import { useCategories } from '../hooks'
+import { useSingleCategories } from '../hooks'
 import { renderI18nObject } from '@/hooks/use-i18n'
 
 export type Props = {
@@ -43,7 +43,7 @@ const Card = ({
 }: Props) => {
   const defaultLocale = useGetLanguage()
   const locale = localeFromProps ? getLanguage(localeFromProps) : defaultLocale
-  const { categoriesMap } = useCategories()
+  const { categoriesMap } = useSingleCategories()
   const { category, type, name, org, label, brief, icon, verified } = payload
   const isBundle = !['plugin', 'model', 'tool', 'extension', 'agent_strategy'].includes(type)
   const cornerMark = isBundle ? categoriesMap.bundle?.label : categoriesMap[category]?.label

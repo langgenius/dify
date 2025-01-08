@@ -25,6 +25,7 @@ const Node: FC<NodeProps<LLMNodeType>> = ({
         <ModelSelector
           defaultModel={{ provider, model: modelId }}
           modelList={textGenerationModelList}
+          triggerClassName='!h-6 !rounded-md'
           readonly
         />
       )}

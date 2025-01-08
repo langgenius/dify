@@ -111,7 +111,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
         return <ModelSelector
           key={model.param}
           modelList={modelList}
-          triggerClassName='bg-workflow-block-parma-bg'
+          triggerClassName='bg-workflow-block-parma-bg !h-6 !rounded-md'
           defaultModel={
             'provider' in model
               ? {

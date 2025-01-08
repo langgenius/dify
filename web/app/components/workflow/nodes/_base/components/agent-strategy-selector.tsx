@@ -20,6 +20,7 @@ import { useStrategyInfo } from '../../agent/use-config'
 import { SwitchPluginVersion } from './switch-plugin-version'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
+import { ToolTipContent } from '@/app/components/base/tooltip/content'
 
 const NotFoundWarn = (props: {
   title: ReactNode,
@@ -178,7 +179,10 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
           }
           {showSwitchVersion && <SwitchPluginVersion
             uniqueIdentifier={'langgenius/openai:12'}
-            tooltip={t('workflow.nodes.agent.switchToNewVersion')}
+            tooltip={<ToolTipContent
+              title={t('workflow.nodes.agent.unsupportedStrategy')}>
+              {t('workflow.nodes.agent.strategyNotFoundDescAndSwitchVersion')}
+            </ToolTipContent>}
             onChange={() => {
               // TODO: refresh all strategies
             }}

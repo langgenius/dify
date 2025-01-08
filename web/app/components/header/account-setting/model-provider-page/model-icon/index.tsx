@@ -28,11 +28,11 @@ const ModelIcon: FC<ModelIconProps> = ({
 
   if (provider?.icon_small) {
     return (
-      <div className={`flex items-center justify-center ${isDeprecated ? 'opacity-50' : ''}`}>
+      <div className={`flex items-center justify-center w-5 h-5 ${isDeprecated ? 'opacity-50' : ''}`}>
         <img
           alt='model-icon'
           src={`${provider.icon_small[language] || provider.icon_small.en_US}`}
-          className={cn('w-5 h-5', className)}
+          className={cn('w-4.5 h-4.5', className)}
         />
       </div>
     )

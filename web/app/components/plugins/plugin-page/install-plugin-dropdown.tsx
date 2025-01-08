@@ -15,7 +15,6 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
-import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useTranslation } from 'react-i18next'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 
@@ -31,7 +30,6 @@ const InstallPluginDropdown = ({
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
-  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -120,7 +118,7 @@ const InstallPluginDropdown = ({
         </PortalToFollowElemContent>
       </div>
       {selectedAction === 'github' && <InstallFromGitHub
-        onSuccess={() => { invalidateInstalledPluginList() }}
+        onSuccess={() => { }}
         onClose={() => setSelectedAction(null)}
       />}
       {selectedAction === 'local' && selectedFile

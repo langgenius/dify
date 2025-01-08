@@ -8,7 +8,7 @@ import { usePluginPageContext } from '../context'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import Line from '../../marketplace/empty/line'
-import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useInstalledPluginList } from '@/service/use-plugins'
 import { useTranslation } from 'react-i18next'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 
@@ -29,14 +29,13 @@ const Empty = () => {
   }
   const filters = usePluginPageContext(v => v.filters)
   const { data: pluginList } = useInstalledPluginList()
-  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
   const text = useMemo(() => {
     if (pluginList?.plugins.length === 0)
       return t('plugin.list.noInstalled')
     if (filters.categories.length > 0 || filters.tags.length > 0 || filters.searchQuery)
       return t('plugin.list.notFound')
-  }, [pluginList, filters])
+  }, [pluginList?.plugins.length, t, filters.categories.length, filters.tags.length, filters.searchQuery])
 
   return (
     <div className='grow w-full relative z-0'>
@@ -100,7 +99,7 @@ const Empty = () => {
           </div>
         </div>
         {selectedAction === 'github' && <InstallFromGitHub
-          onSuccess={() => { invalidateInstalledPluginList() }}
+          onSuccess={() => { }}
           onClose={() => setSelectedAction(null)}
         />}
         {selectedAction === 'local' && selectedFile

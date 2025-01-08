@@ -7,7 +7,7 @@ import { RiLoader2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import InstallMulti from './install-multi'
 import { useInstallOrUpdate } from '@/service/use-plugins'
-import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import useRefreshPluginList from '../../hooks/use-refresh-plugin-list'
 const i18nPrefix = 'plugin.installModal'
 
 type Props = {
@@ -29,7 +29,7 @@ const Install: FC<Props> = ({
   const [selectedPlugins, setSelectedPlugins] = React.useState<Plugin[]>([])
   const [selectedIndexes, setSelectedIndexes] = React.useState<number[]>([])
   const selectedPluginsNum = selectedPlugins.length
-  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
+  const { refreshPluginList } = useRefreshPluginList()
   const handleSelect = (plugin: Plugin, selectedIndex: number) => {
     const isSelected = !!selectedPlugins.find(p => p.plugin_id === plugin.plugin_id)
     let nextSelectedPlugins
@@ -61,7 +61,7 @@ const Install: FC<Props> = ({
       }))
       const hasInstallSuccess = res.some(r => r.success)
       if (hasInstallSuccess)
-        invalidateInstalledPluginList()
+        refreshPluginList(undefined, true)
     },
   })
   const handleInstall = () => {

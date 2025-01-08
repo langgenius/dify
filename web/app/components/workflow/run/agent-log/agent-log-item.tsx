@@ -30,26 +30,26 @@ const AgentLogItem = ({
     <div className='border-[0.5px] border-components-panel-border rounded-[10px]'>
       <div
         className={cn(
-          'flex items-center pl-1.5 pt-2 pr-3 pb-2',
+          'flex items-center pl-1.5 pt-2 pr-3 pb-2 cursor-pointer',
           expanded && 'pb-1',
         )}
         onClick={() => setExpanded(!expanded)}
       >
         {
           expanded
-            ? <RiArrowRightSLine className='shrink-0 w-4 h-4 rotate-90' />
-            : <RiArrowRightSLine className='shrink-0 w-4 h-4' />
+            ? <RiArrowRightSLine className='shrink-0 w-4 h-4 rotate-90 text-text-quaternary' />
+            : <RiArrowRightSLine className='shrink-0 w-4 h-4 text-text-quaternary' />
         }
         <div className='shrink-0 mr-1.5 w-5 h-5'></div>
         <div className='grow system-sm-semibold-uppercase text-text-secondary truncate'>{label}</div>
-        <div className='shrink-0 mr-2 system-xs-regular text-text-tertiary'>0.02s</div>
+        {/* <div className='shrink-0 mr-2 system-xs-regular text-text-tertiary'>0.02s</div> */}
         <NodeStatusIcon status={status} />
       </div>
       {
         expanded && (
           <div className='p-1 pt-0'>
             {
-              !!children.length && (
+              !!children?.length && (
                 <Button
                   className='flex items-center justify-between mb-1 w-full'
                   variant='tertiary'

@@ -166,7 +166,13 @@ const TracingPanel: FC<TracingPanelProps> = ({
   }
 
   return (
-    <div className={cn(className || 'bg-components-panel-bg', 'py-2')}>
+    <div
+      className={cn(className || 'bg-components-panel-bg', 'py-2')}
+      onClick={(e) => {
+        e.stopPropagation()
+        e.nativeEvent.stopImmediatePropagation()
+      }}
+    >
       {treeNodes.map(renderNode)}
     </div>
   )

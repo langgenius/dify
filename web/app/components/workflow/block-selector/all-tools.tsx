@@ -22,6 +22,7 @@ import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 
 type AllToolsProps = {
   className?: string
+  toolContentClassName?: string
   searchText: string
   tags: string[]
   buildInTools: ToolWithProvider[]
@@ -34,6 +35,7 @@ type AllToolsProps = {
 }
 const AllTools = ({
   className,
+  toolContentClassName,
   searchText,
   tags = [],
   onSelect,
@@ -130,6 +132,7 @@ const AllTools = ({
         onScroll={(pluginRef.current as any)?.handleScroll}
       >
         <Tools
+          className={toolContentClassName}
           showWorkflowEmpty={activeTab === ToolTypeEnum.Workflow}
           tools={tools}
           onSelect={onSelect}
