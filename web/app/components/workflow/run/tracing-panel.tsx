@@ -11,10 +11,12 @@ import {
   RiArrowDownSLine,
   RiMenu4Line,
 } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import { useLogs } from './hooks'
 import NodePanel from './node'
 import SpecialResultPanel from './special-result-panel'
 import type { NodeTracing } from '@/types/workflow'
+import formatNodeList from '@/app/components/workflow/run/utils/format-log'
 
 type TracingPanelProps = {
   list: NodeTracing[]
@@ -29,7 +31,8 @@ const TracingPanel: FC<TracingPanelProps> = ({
   hideNodeInfo = false,
   hideNodeProcessDetail = false,
 }) => {
-  const treeNodes = list
+  const { t } = useTranslation()
+  const treeNodes = formatNodeList(list, t)
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
   const [hoveredParallel, setHoveredParallel] = useState<string | null>(null)
 

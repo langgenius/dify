@@ -1,5 +1,4 @@
 import {
-  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -15,9 +14,8 @@ import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import cn from '@/utils/classnames'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { useStore as useAppStore } from '@/app/components/app/store'
 
-interface WorkflowProcessProps {
+type WorkflowProcessProps = {
   data: WorkflowProcess
   item?: ChatItem
   expand?: boolean
@@ -26,7 +24,6 @@ interface WorkflowProcessProps {
 }
 const WorkflowProcessItem = ({
   data,
-  item,
   expand = false,
   hideInfo = false,
   hideProcessDetail = false,
@@ -53,22 +50,6 @@ const WorkflowProcessItem = ({
   useEffect(() => {
     setCollapse(!expand)
   }, [expand])
-
-  const setCurrentLogItem = useAppStore(s => s.setCurrentLogItem)
-  const setShowMessageLogModal = useAppStore(s => s.setShowMessageLogModal)
-  const setCurrentLogModalActiveTab = useAppStore(s => s.setCurrentLogModalActiveTab)
-
-  const showIterationDetail = useCallback(() => {
-    setCurrentLogItem(item)
-    setCurrentLogModalActiveTab('TRACING')
-    setShowMessageLogModal(true)
-  }, [item, setCurrentLogItem, setCurrentLogModalActiveTab, setShowMessageLogModal])
-
-  const showRetryDetail = useCallback(() => {
-    setCurrentLogItem(item)
-    setCurrentLogModalActiveTab('TRACING')
-    setShowMessageLogModal(true)
-  }, [item, setCurrentLogItem, setCurrentLogModalActiveTab, setShowMessageLogModal])
 
   return (
     <div
@@ -110,8 +91,6 @@ const WorkflowProcessItem = ({
             {
               <TracingPanel
                 list={data.tracing}
-                onShowIterationDetail={showIterationDetail}
-                onShowRetryDetail={showRetryDetail}
                 hideNodeInfo={hideInfo}
                 hideNodeProcessDetail={hideProcessDetail}
               />
