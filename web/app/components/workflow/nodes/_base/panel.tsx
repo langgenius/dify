@@ -68,7 +68,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const { handleNodeSelect } = useNodesInteractions()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { nodesReadOnly } = useNodesReadOnly()
-  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration)
+  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration, data.isInLoop)
   const toolIcon = useToolIcon(data)
 
   const handleResize = useCallback((width: number) => {

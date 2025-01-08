@@ -82,6 +82,12 @@ const TracingPanel: FC<TracingPanelProps> = ({
     iterationResultDurationMap,
     handleShowIterationResultList,
 
+    showLoopingDetail,
+    setShowLoopingDetailFalse,
+    loopResultList,
+    loopResultDurationMap,
+    handleShowLoopResultList,
+
     agentOrToolLogItemStack,
     agentOrToolLogListMap,
     handleShowAgentOrToolLog,

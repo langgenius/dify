@@ -10,7 +10,7 @@ import { uniqBy } from 'lodash-es'
 import { useWorkflowRun } from '../../hooks'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 import { useWorkflowStore } from '../../store'
-import { DEFAULT_ITER_TIMES } from '../../constants'
+import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../constants'
 import type {
   ChatItem,
   Inputs,
@@ -57,6 +57,7 @@ export const useChat = (
 
   const {
     setIterTimes,
+    setLoopTimes,
   } = workflowStore.getState()
   useEffect(() => {
     setAutoFreeze(false)
@@ -78,6 +79,7 @@ export const useChat = (
   const getIntroduction = useCallback((str: string) => {
     return processOpeningStatement(str, formSettings?.inputs || {}, formSettings?.inputsForm || [])
   }, [formSettings?.inputs, formSettings?.inputsForm])
+
   useEffect(() => {
     if (config?.opening_statement) {
       handleUpdateChatList(produce(chatListRef.current, (draft) => {
@@ -109,15 +111,17 @@ export const useChat = (
     if (stopChat && taskIdRef.current)
       stopChat(taskIdRef.current)
     setIterTimes(DEFAULT_ITER_TIMES)
+    setLoopTimes(DEFAULT_LOOP_TIMES)
     if (suggestedQuestionsAbortControllerRef.current)
       suggestedQuestionsAbortControllerRef.current.abort()
-  }, [handleResponding, setIterTimes, stopChat])
+  }, [handleResponding, setIterTimes, setLoopTimes, stopChat])
 
   const handleRestart = useCallback(() => {
     conversationId.current = ''
     taskIdRef.current = ''
     handleStop()
     setIterTimes(DEFAULT_ITER_TIMES)
+    setLoopTimes(DEFAULT_LOOP_TIMES)
     const newChatList = config?.opening_statement
       ? [{
         id: `${Date.now()}`,
@@ -134,6 +138,7 @@ export const useChat = (
     handleStop,
     handleUpdateChatList,
     setIterTimes,
+    setLoopTimes,
   ])
 
   const updateCurrentQA = useCallback(({
@@ -356,8 +361,37 @@ export const useChat = (
             }))
           }
         },
+        onLoopStart: ({ data }) => {
+          responseItem.workflowProcess!.tracing!.push({
+            ...data,
+            status: NodeRunningStatus.Running,
+          })
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
+        },
+        onLoopFinish: ({ data }) => {
+          const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.id)
+          if (currentTracingIndex > -1) {
+            responseItem.workflowProcess!.tracing[currentTracingIndex] = {
+              ...responseItem.workflowProcess!.tracing[currentTracingIndex],
+              ...data,
+            }
+            handleUpdateChatList(produce(chatListRef.current, (draft) => {
+              const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+              draft[currentIndex] = {
+                ...draft[currentIndex],
+                ...responseItem,
+              }
+            }))
+          }
+        },
         onNodeStarted: ({ data }) => {
-          if (data.iteration_id)
+          if (data.iteration_id || data.loop_id)
             return
 
           responseItem.workflowProcess!.tracing!.push({
@@ -373,7 +407,7 @@ export const useChat = (
           }))
         },
         onNodeRetry: ({ data }) => {
-          if (data.iteration_id)
+          if (data.iteration_id || data.loop_id)
             return
 
           responseItem.workflowProcess!.tracing!.push(data)
@@ -386,7 +420,7 @@ export const useChat = (
           }))
         },
         onNodeFinished: ({ data }) => {
-          if (data.iteration_id)
+          if (data.iteration_id || data.loop_id)
             return
 
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.id)

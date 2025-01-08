@@ -30,7 +30,9 @@ import {
   hasRetryNode,
 } from '../../utils'
 import { useNodeIterationInteractions } from '../iteration/use-interactions'
+import { useNodeLoopInteractions } from '../loop/use-interactions'
 import type { IterationNodeType } from '../iteration/types'
+import type { SleepNodeType } from '../sleep/types'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
@@ -57,6 +59,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
+  const { handleNodeLoopChildSizeChange } = useNodeLoopInteractions()
   const toolIcon = useToolIcon(data)
 
   useEffect(() => {
@@ -72,6 +75,20 @@ const BaseNode: FC<BaseNodeProps> = ({
       }
     }
   }, [data.isInIteration, data.selected, id, handleNodeIterationChildSizeChange])
+
+  useEffect(() => {
+    if (nodeRef.current && data.selected && data.isInLoop) {
+      const resizeObserver = new ResizeObserver(() => {
+        handleNodeLoopChildSizeChange(id)
+      })
+
+      resizeObserver.observe(nodeRef.current)
+
+      return () => {
+        resizeObserver.disconnect()
+      }
+    }
+  }, [data.isInLoop, data.selected, id, handleNodeLoopChildSizeChange])
 
   const showSelectedBorder = data.selected || data._isBundled || data._isEntering
   const {
@@ -98,16 +115,16 @@ const BaseNode: FC<BaseNodeProps> = ({
       )}
       ref={nodeRef}
       style={{
-        width: data.type === BlockEnum.Iteration ? data.width : 'auto',
-        height: data.type === BlockEnum.Iteration ? data.height : 'auto',
+        width: (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) ? data.width : 'auto',
+        height: (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) ? data.height : 'auto',
       }}
     >
       <div
         className={cn(
           'group relative pb-1 shadow-xs',
           'border border-transparent rounded-[15px]',
-          data.type !== BlockEnum.Iteration && 'w-[240px] bg-workflow-block-bg',
-          data.type === BlockEnum.Iteration && 'flex flex-col w-full h-full bg-[#fcfdff]/80',
+          (data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop) && 'w-[240px] bg-workflow-block-bg',
+          (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && 'flex flex-col w-full h-full bg-[#fcfdff]/80',
           !data._runningStatus && 'hover:shadow-lg',
           showRunningBorder && '!border-state-accent-solid',
           showSuccessBorder && '!border-state-success-solid',
@@ -133,6 +150,14 @@ const BaseNode: FC<BaseNodeProps> = ({
         }
         {
           data.type === BlockEnum.Iteration && (
+            <NodeResizer
+              nodeId={id}
+              nodeData={data}
+            />
+          )
+        }
+        {
+          data.type === BlockEnum.Loop && (
             <NodeResizer
               nodeId={id}
               nodeData={data}
@@ -169,7 +194,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         }
         <div className={cn(
           'flex items-center px-3 pt-3 pb-2 rounded-t-2xl',
-          data.type === BlockEnum.Iteration && 'bg-[rgba(250,252,255,0.9)]',
+          (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && 'bg-[rgba(250,252,255,0.9)]',
         )}>
           <BlockIcon
             className='shrink-0 mr-2'
@@ -183,6 +208,15 @@ const BaseNode: FC<BaseNodeProps> = ({
           >
             <div>
               {data.title}
+              {
+                data.type === BlockEnum.Sleep
+                && <span>
+                  &nbsp;
+                  {(data as SleepNodeType).sleep_time_ms}
+                  {t('workflow.nodes.sleep.unit')}
+                  &nbsp;
+                </span>
+              }
             </div>
             {
               data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
@@ -209,6 +243,13 @@ const BaseNode: FC<BaseNodeProps> = ({
             )
           }
           {
+            data._loopLength && data._loopIndex && data._runningStatus === NodeRunningStatus.Running && (
+              <div className='mr-1.5 text-xs font-medium text-primary-600'>
+                {data._loopIndex > data._loopLength ? data._loopLength : data._loopIndex}/{data._loopLength}
+              </div>
+            )
+          }
+          {
             (data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running) && (
               <RiLoader2Line className='w-3.5 h-3.5 text-text-accent animate-spin' />
             )
@@ -230,12 +271,12 @@ const BaseNode: FC<BaseNodeProps> = ({
           }
         </div>
         {
-          data.type !== BlockEnum.Iteration && (
+          data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop && (
             cloneElement(children, { id, data })
           )
         }
         {
-          data.type === BlockEnum.Iteration && (
+          (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && (
             <div className='grow pl-1 pr-1 pb-1'>
               {cloneElement(children, { id, data })}
             </div>
