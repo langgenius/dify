@@ -21,6 +21,7 @@ import CardIcon from '@/app/components/plugins/card/base/card-icon'
 import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
+import DownloadingIcon from '@/app/components/header/plugins-nav/downloading-icon'
 
 const PluginTasks = () => {
   const { t } = useTranslation()
@@ -87,12 +88,21 @@ const PluginTasks = () => {
                 (isInstallingWithError || isFailed) && 'border-components-button-destructive-secondary-border-hover bg-state-destructive-hover hover:bg-state-destructive-hover-alt cursor-pointer',
               )}
             >
-              <RiInstallLine
-                className={cn(
-                  'w-4 h-4 text-components-button-secondary-text',
-                  (isInstallingWithError || isFailed) && 'text-components-button-destructive-secondary-text',
-                )}
-              />
+              {
+                (isInstalling || isInstallingWithError) && (
+                  <DownloadingIcon />
+                )
+              }
+              {
+                !(isInstalling || isInstallingWithError) && (
+                  <RiInstallLine
+                    className={cn(
+                      'w-4 h-4 text-components-button-secondary-text',
+                      (isInstallingWithError || isFailed) && 'text-components-button-destructive-secondary-text',
+                    )}
+                  />
+                )
+              }
               <div className='absolute -right-1 -top-1'>
                 {
                   (isInstalling || isInstallingWithSuccess) && (
