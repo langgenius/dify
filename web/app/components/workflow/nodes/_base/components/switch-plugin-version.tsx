@@ -23,7 +23,10 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const [pluginId] = uniqueIdentifier.split(':')
   const [isShow, setIsShow] = useState(false)
   const [isShowUpdateModal, { setTrue: showUpdateModal, setFalse: hideUpdateModal }] = useBoolean(false)
-  const [targetVersion, setTargetVersion] = useState<string>()
+  const [target, setTarget] = useState<{
+    version: string,
+    pluginUniqueIden: string;
+  }>()
   const pluginDetails = useCheckInstalled({
     pluginIds: [pluginId],
     enabled: true,
@@ -33,13 +36,8 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const handleUpdatedFromMarketplace = useCallback(() => {
     hideUpdateModal()
     pluginDetails.refetch()
-    onChange?.(targetVersion!)
-  }, [hideUpdateModal, onChange, pluginDetails, targetVersion])
-
-  const targetUniqueIdentifier = (() => {
-    if (!targetVersion || !pluginDetail) return uniqueIdentifier
-    return uniqueIdentifier.replaceAll(pluginDetail.version, targetVersion)
-  })()
+    onChange?.(target!.version)
+  }, [hideUpdateModal, onChange, pluginDetails, target])
   return <Tooltip popupContent={!isShow && !isShowUpdateModal && tooltip} triggerMethod='hover'>
     <div className={cn('w-fit', className)}>
       {isShowUpdateModal && pluginDetail && <UpdateFromMarketplace
@@ -49,8 +47,8 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
             payload: pluginDetail.declaration,
           },
           targetPackageInfo: {
-            id: targetUniqueIdentifier,
-            version: targetVersion!,
+            id: target!.pluginUniqueIden,
+            version: target!.version,
           },
         }}
         onCancel={hideUpdateModal}
@@ -62,7 +60,10 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         pluginID={pluginId}
         currentVersion={pluginDetail.version}
         onSelect={(state) => {
-          setTargetVersion(state.version)
+          setTarget({
+            pluginUniqueIden: state.unique_identifier,
+            version: state.version,
+          })
           showUpdateModal()
         }}
         trigger={
