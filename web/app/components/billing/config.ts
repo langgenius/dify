@@ -6,7 +6,7 @@ export const NUM_INFINITE = 99999999
 export const contractSales = 'contractSales'
 export const unAvailable = 'unAvailable'
 
-export const contactSalesUrl = 'mailto:business@dify.ai'
+export const contactSalesUrl = 'https://vikgc6bnu1s.typeform.com/to/mowuXTQH'
 export const getStartedWithCommunityUrl = 'https://github.com/langgenius/dify'
 export const getWithPremiumUrl = 'https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6'
 

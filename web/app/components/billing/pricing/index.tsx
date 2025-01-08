@@ -115,7 +115,7 @@ const Pricing: FC<Props> = ({
           </div>
           <div className='py-4 flex items-center justify-center'>
             <div className='px-3 py-2 flex items-center justify-center gap-x-0.5 text-components-button-secondary-accent-text'>
-              <Link href='https://brave-tweak-397260.framer.app/dev/pricing-in-dev' className='system-sm-medium'>{t('billing.plansCommon.comparePlanAndFeatures')}</Link>
+              <Link href='https://dify.ai/pricing#plans-and-features' className='system-sm-medium'>{t('billing.plansCommon.comparePlanAndFeatures')}</Link>
               <RiArrowRightUpLine className='size-4' />
             </div>
           </div>
