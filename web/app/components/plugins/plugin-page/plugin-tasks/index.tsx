@@ -87,6 +87,7 @@ const PluginTasks = () => {
                 'relative flex items-center justify-center w-8 h-8 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs hover:bg-components-button-secondary-bg-hover',
                 (isInstallingWithError || isFailed) && 'border-components-button-destructive-secondary-border-hover bg-state-destructive-hover hover:bg-state-destructive-hover-alt cursor-pointer',
               )}
+              id="plugin-task-trigger"
             >
               {
                 (isInstalling || isInstallingWithError) && (

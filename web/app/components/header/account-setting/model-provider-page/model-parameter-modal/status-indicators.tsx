@@ -45,20 +45,38 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
       {/* plugin installed and model is in model list but disabled */}
       {/* plugin installed from github/local and model is not in model list */}
       {!needsConfiguration && modelProvider && disabled && (
-        <Tooltip
-          popupContent={inModelList ? t('workflow.nodes.agent.modelSelectorTooltips.deprecated')
-            : renderTooltipContent(
-              t('workflow.nodes.agent.modelNotSupport.title'),
-              !pluginInfo ? t('workflow.nodes.agent.modelNotSupport.desc') : t('workflow.nodes.agent.modelNotSupport.descForVersionSwitch'),
-              !pluginInfo ? t('workflow.nodes.agent.linkToPlugin') : '',
-              !pluginInfo ? '/plugins' : '',
-            )
-          }
-          asChild={false}
-          needsDelay={!inModelList}
-        >
-          {!pluginInfo ? <RiErrorWarningFill className='w-4 h-4 text-text-destructive' /> : <SwitchPluginVersion uniqueIdentifier={pluginList?.plugins.find(plugin => plugin.name === pluginInfo.name)?.plugin_unique_identifier ?? ''} />}
-        </Tooltip>
+        <>
+          {inModelList ? (
+            <Tooltip
+              popupContent={t('workflow.nodes.agent.modelSelectorTooltips.deprecated')}
+              asChild={false}
+              needsDelay={false}
+            >
+              <RiErrorWarningFill className='w-4 h-4 text-text-destructive' />
+            </Tooltip>
+          ) : !pluginInfo ? (
+            <Tooltip
+              popupContent={renderTooltipContent(
+                t('workflow.nodes.agent.modelNotSupport.title'),
+                t('workflow.nodes.agent.modelNotSupport.desc'),
+                t('workflow.nodes.agent.linkToPlugin'),
+                '/plugins',
+              )}
+              asChild={false}
+              needsDelay={true}
+            >
+              <RiErrorWarningFill className='w-4 h-4 text-text-destructive' />
+            </Tooltip>
+          ) : (
+            <SwitchPluginVersion
+              tooltip={renderTooltipContent(
+                t('workflow.nodes.agent.modelNotSupport.title'),
+                t('workflow.nodes.agent.modelNotSupport.descForVersionSwitch'),
+              )}
+              uniqueIdentifier={pluginList?.plugins.find(plugin => plugin.name === pluginInfo.name)?.plugin_unique_identifier ?? ''}
+            />
+          )}
+        </>
       )}
       {!modelProvider && !pluginInfo && (
         <Tooltip

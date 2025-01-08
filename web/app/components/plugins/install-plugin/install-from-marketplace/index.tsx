@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import Modal from '@/app/components/base/modal'
 import type { Dependency, Plugin, PluginManifestInMarket } from '../../types'
 import { InstallStep } from '../../types'
@@ -9,6 +9,8 @@ import Installed from '../base/installed'
 import { useTranslation } from 'react-i18next'
 import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
 import ReadyToInstallBundle from '../install-bundle/ready-to-install'
+import useFoldAnimInto from '../hooks/use-fold-anim-into'
+import cn from '@/utils/classnames'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -35,6 +37,9 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const { refreshPluginList } = useRefreshPluginList()
 
+  const modalRef = useRef<HTMLElement>(null)
+  const foldAnimInto = useFoldAnimInto(onClose)
+
   const getTitle = useCallback(() => {
     if (isBundle && step === InstallStep.installed)
       return t(`${i18nPrefix}.installComplete`)
@@ -56,12 +61,14 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
       setErrorMsg(errorMsg)
   }, [])
 
+  const modalClassName = 'install-modal'
+
   return (
     <Modal
       isShow={true}
-      onClose={onClose}
+      onClose={() => step === InstallStep.readyToInstall ? foldAnimInto(modalClassName) : onClose()}
       wrapperClassName='z-[9999]'
-      className='flex min-w-[560px] p-0 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadows-shadow-xl'
+      className={cn(modalClassName, 'flex min-w-[560px] p-0 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadows-shadow-xl')}
       closable
     >
       <div className='flex pt-6 pl-6 pb-3 pr-14 items-start gap-2 self-stretch'>
