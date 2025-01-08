@@ -146,7 +146,7 @@ const PluginPage = ({
     >
       <div
         className={cn(
-          'sticky top-0 flex min-h-[60px] px-12 pt-4 pb-2 items-center self-stretch gap-1 z-10', activeTab === 'discover' && 'bg-background-body',
+          'sticky top-0 flex min-h-[60px] px-12 pt-4 pb-2 items-center self-stretch gap-1 z-10 bg-components-panel-bg', activeTab === 'discover' && 'bg-background-body',
         )}
       >
         <div className='flex justify-between items-center w-full'>
