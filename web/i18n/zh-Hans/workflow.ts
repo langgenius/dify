@@ -758,6 +758,13 @@ const translation = {
       checkList: {
         strategyNotSelected: '未选择策略',
       },
+      installPlugin: {
+        title: '安装插件',
+        desc: '即将安装以下插件',
+        changelog: '更新日志',
+        install: '安装',
+        cancel: '取消',
+      },
     },
   },
   tracing: {

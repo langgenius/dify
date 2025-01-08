@@ -8,14 +8,15 @@ import type { UseMutationResult } from '@tanstack/react-query'
 
 type Props = {
   plugin: Plugin
-  onSave: () => void
   onCancel: () => void
-  mutation: UseMutationResult
+  mutation: Pick<UseMutationResult, 'isSuccess' | 'isPending'>
+  mutate: () => void
   confirmButtonText: ReactNode
   cancelButtonText: ReactNode
   modelTitle: ReactNode
   description: ReactNode
   cardTitleLeft: ReactNode
+  modalBottomLeft?: ReactNode
 }
 
 const PluginMutationModal: FC<Props> = ({
@@ -27,6 +28,8 @@ const PluginMutationModal: FC<Props> = ({
   modelTitle,
   description,
   cardTitleLeft,
+  mutate,
+  modalBottomLeft,
 }: Props) => {
   return (
     <Modal
@@ -47,20 +50,25 @@ const PluginMutationModal: FC<Props> = ({
           titleLeft={cardTitleLeft}
         />
       </div>
-      <div className='flex pt-5 justify-end items-center gap-2 self-stretch'>
-        {mutation.isPending && (
-          <Button onClick={onCancel}>
-            {cancelButtonText}
+      <div className='flex pt-5 items-center gap-2 self-stretch'>
+        <div>
+          {modalBottomLeft}
+        </div>
+        <div className='ml-auto flex gap-2'>
+          {!mutation.isPending && (
+            <Button onClick={onCancel}>
+              {cancelButtonText}
+            </Button>
+          )}
+          <Button
+            variant='primary'
+            loading={mutation.isPending}
+            onClick={mutate}
+            disabled={mutation.isPending}
+          >
+            {confirmButtonText}
           </Button>
-        )}
-        <Button
-          variant='primary'
-          loading={mutation.isPending}
-          onClick={mutation.mutate}
-          disabled={mutation.isPending}
-        >
-          {confirmButtonText}
-        </Button>
+        </div>
       </div>
     </Modal>
   )
