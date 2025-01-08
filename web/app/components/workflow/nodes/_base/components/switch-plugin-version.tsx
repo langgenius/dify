@@ -15,6 +15,7 @@ import { pluginManifestToCardPluginProps } from '@/app/components/plugins/instal
 import { Badge as Badge2, BadgeState } from '@/app/components/base/badge/index'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
+import { marketplaceUrlPrefix } from '@/config'
 
 export type SwitchPluginVersionProps = {
   uniqueIdentifier: string
@@ -79,7 +80,11 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
           </Badge2>
         </>}
         modalBottomLeft={
-          <Link className='flex justify-center items-center gap-1' href={'TODO: add changelog url'} target='_blank'>
+          <Link
+            className='flex justify-center items-center gap-1'
+            href={`${marketplaceUrlPrefix}/plugins/${pluginDetail.declaration.author}/${pluginDetail.declaration.name}`}
+            target='_blank'
+          >
             <span className='text-text-accent system-xs-regular text-xs'>
               {t('workflow.nodes.agent.installPlugin.changelog')}
             </span>
