@@ -183,6 +183,7 @@ const translation = {
     byCategories: 'ЗА КАТЕГОРІЯМИ',
     searchAllTemplate: 'Пошук по всіх шаблонах...',
   },
+  showMyCreatedAppsOnly: 'Показати лише створені мною додатки',
 }
 
 export default translation

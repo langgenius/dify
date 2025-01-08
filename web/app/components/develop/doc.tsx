@@ -61,6 +61,23 @@ const Doc = ({ appDetail }: IDocProps) => {
     // Run after component has rendered
     setTimeout(extractTOC, 0)
   }, [appDetail, locale])
+
+  const handleTocClick = (e: React.MouseEvent<HTMLAnchorElement>, item: { href: string; text: string }) => {
+    e.preventDefault()
+    const targetId = item.href.replace('#', '')
+    const element = document.getElementById(targetId)
+    if (element) {
+      const scrollContainer = document.querySelector('.overflow-auto')
+      if (scrollContainer) {
+        const headerOffset = 80
+        const elementTop = element.offsetTop - headerOffset
+        scrollContainer.scrollTo({
+          top: elementTop,
+          behavior: 'smooth',
+        })
+      }
+    }
+  }
   return (
     <div className="flex">
       <div className={`fixed right-8 top-32 z-10 transition-all ${isTocExpanded ? 'w-64' : 'w-10'}`}>
@@ -82,6 +99,7 @@ const Doc = ({ appDetail }: IDocProps) => {
                     <a
                       href={item.href}
                       className="text-gray-600 hover:text-gray-900 hover:underline transition-colors duration-200"
+                      onClick={e => handleTocClick(e, item)}
                     >
                       {item.text}
                     </a>

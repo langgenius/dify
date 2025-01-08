@@ -31,10 +31,19 @@ from services.annotation_service import AppAnnotationService
 
 
 class MessageCycleManage:
-    _application_generate_entity: Union[
-        ChatAppGenerateEntity, CompletionAppGenerateEntity, AgentChatAppGenerateEntity, AdvancedChatAppGenerateEntity
-    ]
-    _task_state: Union[EasyUITaskState, WorkflowTaskState]
+    def __init__(
+        self,
+        *,
+        application_generate_entity: Union[
+            ChatAppGenerateEntity,
+            CompletionAppGenerateEntity,
+            AgentChatAppGenerateEntity,
+            AdvancedChatAppGenerateEntity,
+        ],
+        task_state: Union[EasyUITaskState, WorkflowTaskState],
+    ) -> None:
+        self._application_generate_entity = application_generate_entity
+        self._task_state = task_state
 
     def _generate_conversation_name(self, *, conversation_id: str, query: str) -> Optional[Thread]:
         """

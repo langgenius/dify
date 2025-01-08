@@ -107,6 +107,8 @@ const translation = {
     openInExplore: 'एक्सप्लोर में खोलें',
     onFailure: 'असफलता पर',
     addFailureBranch: 'असफल शाखा जोड़ें',
+    noHistory: 'कोई इतिहास नहीं',
+    loadMore: 'अधिक वर्कफ़्लोज़ लोड करें',
   },
   env: {
     envPanelTitle: 'पर्यावरण चर',

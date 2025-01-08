@@ -33,3 +33,9 @@ class MilvusConfig(BaseSettings):
         description="Name of the Milvus database to connect to (default is 'default')",
         default="default",
     )
+
+    MILVUS_ENABLE_HYBRID_SEARCH: bool = Field(
+        description="Enable hybrid search features (requires Milvus >= 2.5.0). Set to false for compatibility with "
+        "older versions",
+        default=True,
+    )

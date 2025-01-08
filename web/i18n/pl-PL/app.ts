@@ -190,6 +190,7 @@ const translation = {
     searchAllTemplate: 'Przeszukaj wszystkie szablony...',
     byCategories: 'WEDŁUG KATEGORII',
   },
+  showMyCreatedAppsOnly: 'Pokaż tylko moje utworzone aplikacje',
 }
 
 export default translation

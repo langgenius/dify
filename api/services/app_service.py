@@ -26,9 +26,10 @@ from tasks.remove_app_and_related_data_task import remove_app_and_related_data_t
 
 
 class AppService:
-    def get_paginate_apps(self, tenant_id: str, args: dict) -> Pagination | None:
+    def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict) -> Pagination | None:
         """
         Get app list with pagination
+        :param user_id: user id
         :param tenant_id: tenant id
         :param args: request args
         :return:
@@ -44,6 +45,8 @@ class AppService:
         elif args["mode"] == "channel":
             filters.append(App.mode == AppMode.CHANNEL.value)
 
+        if args.get("is_created_by_me", False):
+            filters.append(App.created_by == user_id)
         if args.get("name"):
             name = args["name"][:30]
             filters.append(App.name.ilike(f"%{name}%"))
