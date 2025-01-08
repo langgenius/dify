@@ -22,7 +22,6 @@ type Props = {
   onCancel: () => void
   onStartToInstall?: () => void
   onInstalled: () => void
-  clearCountDown: () => void
   onFailed: (message?: string) => void
 }
 
@@ -32,7 +31,6 @@ const Installed: FC<Props> = ({
   onCancel,
   onStartToInstall,
   onInstalled,
-  clearCountDown,
   onFailed,
 }) => {
   const { t } = useTranslation()
@@ -92,8 +90,6 @@ const Installed: FC<Props> = ({
         taskId = task_id
         isInstalled = all_installed
       }
-
-      clearCountDown()
 
       if (isInstalled) {
         onInstalled()

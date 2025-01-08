@@ -72,10 +72,12 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   const handleInstalled = useCallback(() => {
     setStep(InstallStep.installed)
     refreshPluginList(manifest)
+    setIsInstalling(false)
   }, [manifest, refreshPluginList])
 
   const handleFailed = useCallback((errorMsg?: string) => {
     setStep(InstallStep.installFailed)
+    setIsInstalling(false)
     if (errorMsg)
       setErrorMsg(errorMsg)
   }, [])
@@ -112,7 +114,6 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
                 onInstalled={handleInstalled}
                 onFailed={handleFailed}
                 onStartToInstall={handleStartToInstall}
-                clearCountDown={clearCountDown}
               />
             )}
           {
