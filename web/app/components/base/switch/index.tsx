@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { Switch as OriginalSwitch } from '@headlessui/react'
 import classNames from '@/utils/classnames'
 
-interface SwitchProps {
+type SwitchProps = {
   onChange?: (value: boolean) => void
   size?: 'sm' | 'md' | 'lg' | 'l'
   defaultValue?: boolean
