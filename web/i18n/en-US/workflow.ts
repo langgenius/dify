@@ -703,6 +703,7 @@ const translation = {
     agent: {
       strategy: {
         label: 'Agentic Strategy',
+        tooltip: 'Different Agentic strategies determine how the system plans and executes multi-step tool calls',
         shortLabel: 'Strategy',
         configureTip: 'Please configure agentic strategy.',
         configureTipDesc: 'After configuring the agentic strategy, this node will automatically load the remaining configurations. The strategy will affect the mechanism of multi-step tool reasoning. ',

@@ -703,6 +703,7 @@ const translation = {
     agent: {
       strategy: {
         label: 'Agent 策略',
+        tooltip: '不同的 Agent 策略决定了系统如何规划和执行多步工具调用',
         shortLabel: '策略',
         configureTip: '请配置 Agent 策略。',
         configureTipDesc: '配置完成后，此节点将自动加载剩余配置。策略将影响多步工具推理的机制。',
