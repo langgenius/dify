@@ -106,7 +106,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
     def _merge_splits(self, splits: Iterable[str], separator: str, lengths: list[int]) -> list[str]:
         # We now want to combine these smaller pieces into medium size
         # chunks to send to the LLM.
-        separator_len = self._length_function(separator)
+        separator_len = self._length_function([separator])[0]
 
         docs = []
         current_doc: list[str] = []
@@ -129,7 +129,9 @@ class TextSplitter(BaseDocumentTransformer, ABC):
                     while total > self._chunk_overlap or (
                         total + _len + (separator_len if len(current_doc) > 0 else 0) > self._chunk_size and total > 0
                     ):
-                        total -= self._length_function(current_doc[0]) + (separator_len if len(current_doc) > 1 else 0)
+                        total -= self._length_function([current_doc[0]])[0] + (
+                            separator_len if len(current_doc) > 1 else 0
+                        )
                         current_doc = current_doc[1:]
             current_doc.append(d)
             total += _len + (separator_len if len(current_doc) > 1 else 0)
@@ -155,7 +157,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
             raise ValueError(
                 "Could not import transformers python package. Please install it with `pip install transformers`."
             )
-        return cls(length_function=_huggingface_tokenizer_length, **kwargs)
+        return cls(length_function=lambda x: [_huggingface_tokenizer_length(text) for text in x], **kwargs)
 
     @classmethod
     def from_tiktoken_encoder(
@@ -199,7 +201,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
             }
             kwargs = {**kwargs, **extra_kwargs}
 
-        return cls(length_function=_tiktoken_encoder, **kwargs)
+        return cls(length_function=lambda x: [_tiktoken_encoder(text) for text in x], **kwargs)
 
     def transform_documents(self, documents: Sequence[Document], **kwargs: Any) -> Sequence[Document]:
         """Transform sequence of documents by splitting them."""

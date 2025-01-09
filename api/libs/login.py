@@ -102,6 +102,6 @@ def _get_user() -> EndUser | Account | None:
         if "_login_user" not in g:
             current_app.login_manager._load_user()  # type: ignore
 
-        return g._login_user
+        return g._login_user  # type: ignore
 
     return None

@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 
 import sqlalchemy as sa
 from flask import request
-from flask_login import UserMixin
+from flask_login import UserMixin  # type: ignore
 from sqlalchemy import Float, Index, PrimaryKeyConstraint, func, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 

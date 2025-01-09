@@ -30,14 +30,14 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
         disallowed_special: Union[Literal["all"], Collection[str]] = "all",  # noqa: UP037
         **kwargs: Any,
     ):
-        def _token_encoder(text: str) -> int:
-            if not text:
-                return 0
+        def _token_encoder(texts: list[str]) -> list[int]:
+            if not texts:
+                return []
 
             if embedding_model_instance:
-                return embedding_model_instance.get_text_embedding_num_tokens(texts=[text])
+                return embedding_model_instance.get_text_embedding_num_tokens(texts=texts)
             else:
-                return GPT2Tokenizer.get_num_tokens(text)
+                return [GPT2Tokenizer.get_num_tokens(text) for text in texts]
 
         if issubclass(cls, TokenTextSplitter):
             extra_kwargs = {
@@ -96,7 +96,6 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
         _good_splits_lengths = []  # cache the lengths of the splits
         s_lens = self._length_function(splits)
         for s, s_len in zip(splits, s_lens):
-            s_len = self._length_function(s)
             if s_len < self._chunk_size:
                 _good_splits.append(s)
                 _good_splits_lengths.append(s_len)

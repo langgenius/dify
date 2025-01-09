@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Optional, Union
+from typing import Optional, Union, cast
 
 from yarl import URL
 
@@ -44,7 +44,7 @@ class ToolTransformService:
         elif provider_type in {ToolProviderType.API.value, ToolProviderType.WORKFLOW.value}:
             try:
                 if isinstance(icon, str):
-                    return json.loads(icon)
+                    return cast(dict, json.loads(icon))
                 return icon
             except Exception:
                 return {"background": "#252525", "content": "\ud83d\ude01"}

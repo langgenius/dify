@@ -439,7 +439,7 @@ class ApiToolManageService:
                     tenant_id=tenant_id,
                 )
             )
-            result = runtime_tool.validate_credentials(credentials, parameters)
+            result = tool.validate_credentials(credentials, parameters)
         except Exception as e:
             return {"error": str(e)}
 

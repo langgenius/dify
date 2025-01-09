@@ -27,7 +27,7 @@ class AgentNode(ToolNode):
     Agent Node
     """
 
-    _node_data_cls = AgentNodeData
+    _node_data_cls = AgentNodeData  # type: ignore
     _node_type = NodeType.AGENT
 
     def _run(self) -> Generator:
@@ -125,7 +125,7 @@ class AgentNode(ToolNode):
         """
         agent_parameters_dictionary = {parameter.name: parameter for parameter in agent_parameters}
 
-        result = {}
+        result: dict[str, Any] = {}
         for parameter_name in node_data.agent_parameters:
             parameter = agent_parameters_dictionary.get(parameter_name)
             if not parameter:
@@ -214,7 +214,7 @@ class AgentNode(ToolNode):
         :return:
         """
         node_data = cast(AgentNodeData, node_data)
-        result = {}
+        result: dict[str, Any] = {}
         for parameter_name in node_data.agent_parameters:
             input = node_data.agent_parameters[parameter_name]
             if input.type == "mixed":

@@ -284,8 +284,6 @@ class WorkflowEntry:
                 user_inputs=user_inputs,
                 variable_pool=variable_pool,
                 tenant_id=tenant_id,
-                node_type=node_type,
-                node_data=node_instance.node_data,
             )
 
             # run node

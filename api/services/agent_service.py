@@ -23,7 +23,7 @@ class AgentService:
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
 
-        conversation: Conversation = (
+        conversation: Conversation | None = (
             db.session.query(Conversation)
             .filter(
                 Conversation.id == conversation_id,

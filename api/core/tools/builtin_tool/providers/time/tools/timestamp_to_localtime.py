@@ -21,7 +21,7 @@ class TimestampToLocaltimeTool(BuiltinTool):
         """
         Convert timestamp to localtime
         """
-        timestamp = tool_parameters.get("timestamp")
+        timestamp: int = tool_parameters.get("timestamp", 0)
         timezone = tool_parameters.get("timezone", "Asia/Shanghai")
         if not timezone:
             timezone = None

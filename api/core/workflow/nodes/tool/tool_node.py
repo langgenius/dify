@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -197,7 +197,7 @@ class ToolNode(BaseNode[ToolNodeData]):
         json: list[dict] = []
 
         agent_logs: list[AgentLogEvent] = []
-        agent_execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = {}
+        agent_execution_metadata: Mapping[NodeRunMetadataKey, Any] = {}
 
         variables: dict[str, Any] = {}
 

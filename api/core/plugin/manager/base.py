@@ -119,7 +119,7 @@ class BasePluginManager:
         Make a request to the plugin daemon inner API and return the response as a model.
         """
         response = self._request(method, path, headers, data, params, files)
-        return type(**response.json())
+        return type(**response.json())  # type: ignore
 
     def _request_with_plugin_daemon_response(
         self,
@@ -140,7 +140,7 @@ class BasePluginManager:
         if transformer:
             json_response = transformer(json_response)
 
-        rep = PluginDaemonBasicResponse[type](**json_response)
+        rep = PluginDaemonBasicResponse[type](**json_response)  # type: ignore
         if rep.code != 0:
             try:
                 error = PluginDaemonError(**json.loads(rep.message))
@@ -171,7 +171,7 @@ class BasePluginManager:
             line_data = None
             try:
                 line_data = json.loads(line)
-                rep = PluginDaemonBasicResponse[type](**line_data)
+                rep = PluginDaemonBasicResponse[type](**line_data)  # type: ignore
             except Exception:
                 # TODO modify this when line_data has code and message
                 if line_data and "error" in line_data:

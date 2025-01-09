@@ -173,9 +173,8 @@ class PluginMigration:
         """
         Extract model tables.
 
-        NOTE: rename google to gemini
         """
-        models = []
+        models: list[str] = []
         table_pairs = [
             ("providers", "provider_name"),
             ("provider_models", "provider_name"),

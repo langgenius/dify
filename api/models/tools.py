@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import sqlalchemy as sa
 from deprecated import deprecated
@@ -48,7 +48,7 @@ class BuiltinToolProvider(Base):
 
     @property
     def credentials(self) -> dict:
-        return json.loads(self.encrypted_credentials)
+        return cast(dict, json.loads(self.encrypted_credentials))
 
 
 class ApiToolProvider(Base):
@@ -302,13 +302,9 @@ class DeprecatedPublishedAppTool(Base):
         db.UniqueConstraint("app_id", "user_id", name="unique_published_app_tool"),
     )
 
-    # id of the tool provider
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     # id of the app
     app_id = db.Column(StringUUID, ForeignKey("apps.id"), nullable=False)
     # who published this tool
-    user_id = db.Column(StringUUID, nullable=False)
-    # description of the tool, stored in i18n format, for human
     description = db.Column(db.Text, nullable=False)
     # llm_description of the tool, for LLM
     llm_description = db.Column(db.Text, nullable=False)
@@ -327,10 +323,6 @@ class DeprecatedPublishedAppTool(Base):
     @property
     def description_i18n(self) -> I18nObject:
         return I18nObject(**json.loads(self.description))
-
-    @property
-    def app(self) -> App:
-        return db.session.query(App).filter(App.id == self.app_id).first()
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     user_id: Mapped[str] = db.Column(StringUUID, nullable=False)

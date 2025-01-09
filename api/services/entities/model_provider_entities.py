@@ -156,7 +156,7 @@ class DefaultModelResponse(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
 
-class ModelWithProviderEntityResponse(ModelWithProviderEntity):
+class ModelWithProviderEntityResponse(ProviderModelWithStatusEntity):
     """
     Model with provider entity.
     """

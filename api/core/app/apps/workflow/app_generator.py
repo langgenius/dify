@@ -149,7 +149,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool = True,
         workflow_thread_pool_id: Optional[str] = None,
-    ) -> Union[dict, Generator[str | dict, None, None]]:
+    ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
         """
         Generate App response.
 
@@ -200,9 +200,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow: Workflow,
         node_id: str,
         user: Account | EndUser,
-        args: dict,
+        args: Mapping[str, Any],
         streaming: bool = True,
-    ) -> dict[str, Any] | Generator[str | dict, Any, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 

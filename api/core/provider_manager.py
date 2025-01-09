@@ -742,7 +742,7 @@ class ProviderManager:
                     try:
                         provider_credentials: dict[str, Any] = json.loads(provider_record.encrypted_config)
                     except JSONDecodeError:
-                        provider_credentials: dict[str, Any] = {}
+                        provider_credentials = {}
 
                     # Get provider credential secret variables
                     provider_credential_secret_variables = self._extract_secret_variables(

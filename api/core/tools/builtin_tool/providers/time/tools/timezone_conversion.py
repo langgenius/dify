@@ -24,7 +24,7 @@ class TimezoneConversionTool(BuiltinTool):
         current_time = tool_parameters.get("current_time")
         current_timezone = tool_parameters.get("current_timezone", "Asia/Shanghai")
         target_timezone = tool_parameters.get("target_timezone", "Asia/Tokyo")
-        target_time = self.timezone_convert(current_time, current_timezone, target_timezone)
+        target_time = self.timezone_convert(current_time, current_timezone, target_timezone)  # type: ignore
         if not target_time:
             yield self.create_text_message(
                 f"Invalid datatime and timezone: {current_time},{current_timezone},{target_timezone}"

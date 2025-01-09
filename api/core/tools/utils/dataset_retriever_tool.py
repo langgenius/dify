@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any
+from typing import Any, Optional
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -83,7 +83,12 @@ class DatasetRetrieverTool(Tool):
 
         return tools
 
-    def get_runtime_parameters(self) -> list[ToolParameter]:
+    def get_runtime_parameters(
+        self,
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
+    ) -> list[ToolParameter]:
         return [
             ToolParameter(
                 name="query",
@@ -101,7 +106,14 @@ class DatasetRetrieverTool(Tool):
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.DATASET_RETRIEVAL
 
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
+    def _invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
+    ) -> Generator[ToolInvokeMessage, None, None]:
         """
         invoke dataset retriever tool
         """

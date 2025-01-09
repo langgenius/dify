@@ -6,7 +6,6 @@ from pydantic import Field
 from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.plugin.entities.parameters import PluginParameterOption
-from core.tools.__base.tool import Tool
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -101,7 +100,7 @@ class WorkflowToolProviderController(ToolProviderController):
         variables = WorkflowToolConfigurationUtils.get_workflow_graph_variables(graph)
 
         def fetch_workflow_variable(variable_name: str) -> VariableEntity | None:
-            return next(filter(lambda x: x.variable == variable_name, variables), None)
+            return next(filter(lambda x: x.variable == variable_name, variables), None)  # type: ignore
 
         user = db_provider.user
 
@@ -212,7 +211,7 @@ class WorkflowToolProviderController(ToolProviderController):
 
         return self.tools
 
-    def get_tool(self, tool_name: str) -> Optional[Tool]:
+    def get_tool(self, tool_name: str) -> Optional[WorkflowTool]:  # type: ignore
         """
         get tool by name
 

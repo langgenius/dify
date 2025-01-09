@@ -44,7 +44,7 @@ class PluginToolProviderController(BuiltinToolProviderController):
         ):
             raise ToolProviderCredentialValidationError("Invalid credentials")
 
-    def get_tool(self, tool_name: str) -> PluginTool:
+    def get_tool(self, tool_name: str) -> PluginTool:  # type: ignore
         """
         return tool with given name
         """
@@ -61,7 +61,7 @@ class PluginToolProviderController(BuiltinToolProviderController):
             plugin_unique_identifier=self.plugin_unique_identifier,
         )
 
-    def get_tools(self) -> list[PluginTool]:
+    def get_tools(self) -> list[PluginTool]:  # type: ignore
         """
         get all tools
         """
