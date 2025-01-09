@@ -67,71 +67,40 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
     }
   }, [modelProviders, providerName])
   const [pluginInfo, setPluginInfo] = useState<PluginInfoFromMarketPlace | null>(null)
-  const [isPluginChecked, setIsPluginChecked] = useState(!!modelProvider)
+  const [isPluginChecked, setIsPluginChecked] = useState(false)
   const [installed, setInstalled] = useState(false)
   const [inModelList, setInModelList] = useState(false)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const handleOpenModal = useModelModalHandler()
-  const checkPluginInfo = useMemo(async () => {
-    if (!providerName || !modelId)
-      return null
-
-    const parts = providerName.split('/')
-    try {
-      const pluginInfo = await fetchPluginInfoFromMarketPlace({
-        org: parts[0],
-        name: parts[1],
-      })
-      if (pluginInfo.data.plugin.category === PluginType.model)
-        return pluginInfo.data.plugin
-    }
-    catch (error) {
-      // pass
-    }
-    return null
-  }, [providerName, modelId])
-
-  const checkModelList = useMemo(async () => {
-    if (!modelId || !currentProvider)
-      return false
-
-    try {
-      const modelsData = await fetchModelProviderModelList(
-        `/workspaces/current/model-providers/${currentProvider?.provider}/models`,
-      )
-      return !!modelsData.data.find(item => item.model === modelId)
-    }
-    catch (error) {
-      // pass
-    }
-    return false
-  }, [modelId, currentProvider])
 
   useEffect(() => {
-    let isSubscribed = true
-
-    const initializeChecks = async () => {
-      if (!isPluginChecked) {
-        const [pluginResult, modelListResult] = await Promise.all([
-          checkPluginInfo,
-          checkModelList,
-        ])
-
-        if (isSubscribed) {
-          if (pluginResult)
-            setPluginInfo(pluginResult)
-          setInModelList(modelListResult)
-          setIsPluginChecked(true)
+    (async () => {
+      if (modelId && currentProvider) {
+        try {
+          const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${currentProvider?.provider}/models`)
+          if (modelId && modelsData.data.find(item => item.model === modelId))
+            setInModelList(true)
+        }
+        catch (error) {
+          // pass
         }
       }
-    }
-
-    initializeChecks()
-
-    return () => {
-      isSubscribed = false
-    }
-  }, [checkPluginInfo, checkModelList, isPluginChecked, modelId, currentProvider])
+      if (providerName) {
+        const parts = providerName.split('/')
+        const org = parts[0]
+        const name = parts[1]
+        try {
+          const pluginInfo = await fetchPluginInfoFromMarketPlace({ org, name })
+          if (pluginInfo.data.plugin.category === PluginType.model)
+            setPluginInfo(pluginInfo.data.plugin)
+        }
+        catch (error) {
+          // pass
+        }
+      }
+      setIsPluginChecked(true)
+    })()
+  }, [providerName, modelId, currentProvider])
 
   if (modelId && !isPluginChecked)
     return <Loading />
