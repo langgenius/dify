@@ -736,6 +736,7 @@ const translation = {
       tools: '工具',
       maxIterations: '最大迭代次数',
       modelNotInstallTooltip: '此模型未安装',
+      modelNotSelected: '未选择模型',
       toolNotInstallTooltip: '{{tool}} 未安装',
       toolNotAuthorizedTooltip: '{{tool}} 未授权',
       strategyNotInstallTooltip: '{{strategy}} 未安装',

@@ -735,6 +735,7 @@ const translation = {
       strategyNotSet: 'Agentic strategy Not Set',
       tools: 'Tools',
       maxIterations: 'Max Iterations',
+      modelNotSelected: 'Model not selected',
       modelNotInstallTooltip: 'This model is not installed',
       toolNotInstallTooltip: '{{tool}} is not installed',
       toolNotAuthorizedTooltip: '{{tool}} Not Authorized',
