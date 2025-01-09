@@ -82,7 +82,7 @@ const List = forwardRef<{ handleScroll: () => void }, Props>(({
     <>
       {hasRes && (
         <div
-          className={cn('sticky z-10 flex justify-between h-8 px-4 py-1 text-text-primary system-sm-medium cursor-pointer', stickyClassName, maxWidthClassName)}
+          className={cn('sticky z-10 flex justify-between h-8 px-4 py-1 text-text-primary system-sm-medium cursor-pointer', stickyClassName, !disableMaxWidth && maxWidthClassName)}
           onClick={handleHeadClick}
         >
           <span>{t('plugin.fromMarketplace')}</span>

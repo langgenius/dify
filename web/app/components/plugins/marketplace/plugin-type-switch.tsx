@@ -8,7 +8,10 @@ import {
 } from '@remixicon/react'
 import { PluginType } from '../types'
 import { useMarketplaceContext } from './context'
-import { useMixedTranslation } from './hooks'
+import {
+  useMixedTranslation,
+  useSearchBoxAutoAnimate,
+} from './hooks'
 import cn from '@/utils/classnames'
 
 export const PLUGIN_TYPE_SEARCH_MAP = {
@@ -22,14 +25,17 @@ export const PLUGIN_TYPE_SEARCH_MAP = {
 type PluginTypeSwitchProps = {
   locale?: string
   className?: string
+  searchBoxAutoAnimate?: boolean
 }
 const PluginTypeSwitch = ({
   locale,
   className,
+  searchBoxAutoAnimate,
 }: PluginTypeSwitchProps) => {
   const { t } = useMixedTranslation(locale)
   const activePluginType = useMarketplaceContext(s => s.activePluginType)
   const handleActivePluginTypeChange = useMarketplaceContext(s => s.handleActivePluginTypeChange)
+  const { searchBoxCanAnimate } = useSearchBoxAutoAnimate(searchBoxAutoAnimate)
 
   const options = [
     {
@@ -66,7 +72,8 @@ const PluginTypeSwitch = ({
 
   return (
     <div className={cn(
-      'sticky top-[56px] shrink-0 flex items-center justify-center py-3 bg-background-body space-x-2 z-10',
+      'shrink-0 flex items-center justify-center py-3 bg-background-body space-x-2',
+      searchBoxCanAnimate && 'sticky top-[56px] z-10',
       className,
     )}>
       {
