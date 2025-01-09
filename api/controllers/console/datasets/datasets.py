@@ -52,8 +52,7 @@ class DatasetListApi(Resource):
         # provider = request.args.get("provider", default="vendor")
         search = request.args.get("keyword", default=None, type=str)
         tag_ids = request.args.getlist("tag_ids")
-        include_all = request.args.get("include_all", default=False, type=bool)
-
+        include_all = request.args.get("include_all", default="false").lower() == "true"
         if ids:
             datasets, total = DatasetService.get_datasets_by_ids(ids, current_user.current_tenant_id)
         else:
