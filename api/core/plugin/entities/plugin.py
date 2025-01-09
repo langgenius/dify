@@ -60,7 +60,7 @@ class PluginCategory(enum.StrEnum):
     Tool = "tool"
     Model = "model"
     Extension = "extension"
-    AgentStrategy = "agent_strategy"
+    AgentStrategy = "agent-strategy"
 
 
 class PluginDeclaration(BaseModel):
