@@ -24,7 +24,6 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
       .filter(param => param.type === FormTypeEnum.modelSelector)
       .reduce((acc, param) => {
         const item = inputs.agent_parameters?.[param.name]?.value
-        console.log({ item })
         if (!item) {
           if (param.required) {
             acc.push({ param: param.name })
