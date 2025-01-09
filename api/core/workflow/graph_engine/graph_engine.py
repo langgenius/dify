@@ -3,6 +3,7 @@ import queue
 import time
 import uuid
 from collections.abc import Generator, Mapping
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, wait
 from copy import copy, deepcopy
 from datetime import UTC, datetime
@@ -440,10 +441,8 @@ class GraphEngine:
         handle_exceptions: list[str] = [],
     ) -> Generator[GraphEngineEvent | str, None, None]:
         
-        target_nodes: dict[str, list[GraphEdge]] = {}
+        target_nodes: defaultdict[str, list[GraphEdge]] = defaultdict(list)
         for edge in edge_mappings:
-            if edge.target_node_id not in target_nodes:
-                target_nodes[edge.target_node_id] = []
             target_nodes[edge.target_node_id].append(edge)
 
         for target_node_id, edges in target_nodes.items():
