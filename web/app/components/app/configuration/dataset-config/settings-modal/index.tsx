@@ -12,7 +12,7 @@ import Divider from '@/app/components/base/divider'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { type DataSet, RerankingModeEnum } from '@/models/datasets'
+import { type DataSet } from '@/models/datasets'
 import { useToastContext } from '@/app/components/base/toast'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useAppContext } from '@/context/app-context'
@@ -21,7 +21,7 @@ import type { RetrievalConfig } from '@/types/app'
 import RetrievalSettings from '@/app/components/datasets/external-knowledge-base/create/RetrievalSettings'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
-import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -99,8 +99,6 @@ const SettingsModal: FC<SettingsModalProps> = ({
     }
     if (
       !isReRankModelSelected({
-        rerankDefaultModel,
-        isRerankDefaultModelValid: !!isRerankDefaultModelValid,
         rerankModelList,
         retrievalConfig,
         indexMethod,
@@ -109,14 +107,6 @@ const SettingsModal: FC<SettingsModalProps> = ({
       notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
       return
     }
-    const postRetrievalConfig = ensureRerankModelSelected({
-      rerankDefaultModel: rerankDefaultModel!,
-      retrievalConfig: {
-        ...retrievalConfig,
-        reranking_enable: retrievalConfig.reranking_mode === RerankingModeEnum.RerankingModel,
-      },
-      indexMethod,
-    })
     try {
       setLoading(true)
       const { id, name, description, permission } = localeCurrentDataset
@@ -128,8 +118,8 @@ const SettingsModal: FC<SettingsModalProps> = ({
           permission,
           indexing_technique: indexMethod,
           retrieval_model: {
-            ...postRetrievalConfig,
-            score_threshold: postRetrievalConfig.score_threshold_enabled ? postRetrievalConfig.score_threshold : 0,
+            ...retrievalConfig,
+            score_threshold: retrievalConfig.score_threshold_enabled ? retrievalConfig.score_threshold : 0,
           },
           embedding_model: localeCurrentDataset.embedding_model,
           embedding_model_provider: localeCurrentDataset.embedding_model_provider,
@@ -157,7 +147,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       onSave({
         ...localeCurrentDataset,
         indexing_technique: indexMethod,
-        retrieval_model_dict: postRetrievalConfig,
+        retrieval_model_dict: retrievalConfig,
       })
     }
     catch (e) {

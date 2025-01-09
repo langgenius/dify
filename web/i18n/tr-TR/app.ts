@@ -179,6 +179,7 @@ const translation = {
     searchAllTemplate: 'Tüm şablonlarda ara...',
     byCategories: 'KATEGORILERE GÖRE',
   },
+  showMyCreatedAppsOnly: 'Sadece oluşturduğum uygulamaları göster',
 }
 
 export default translation

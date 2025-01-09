@@ -176,6 +176,7 @@ const translation = {
     noParams: '无需参数',
   },
   openInExplore: '在“探索”中打开',
+  showMyCreatedAppsOnly: '我创建的',
 }
 
 export default translation

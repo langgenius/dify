@@ -1,0 +1,37 @@
+model: fishaudio/fish-speech-1.5
+model_type: tts
+model_properties:
+  default_voice: 'fishaudio/fish-speech-1.5:alex'
+  voices:
+    - mode: "fishaudio/fish-speech-1.5:alex"
+      name: "Alex（男声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "fishaudio/fish-speech-1.5:benjamin"
+      name: "Benjamin（男声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "fishaudio/fish-speech-1.5:charles"
+      name: "Charles（男声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "fishaudio/fish-speech-1.5:david"
+      name: "David（男声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "fishaudio/fish-speech-1.5:anna"
+      name: "Anna（女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "fishaudio/fish-speech-1.5:bella"
+      name: "Bella（女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "fishaudio/fish-speech-1.5:claire"
+      name: "Claire（女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "fishaudio/fish-speech-1.5:diana"
+      name: "Diana（女声）"
+      language: [ "zh-Hans", "en-US" ]
+  audio_type: 'mp3'
+  max_workers: 5
+  # stream: false
+pricing:
+  input: '0.015'
+  output: '0'
+  unit: '0.001'
+  currency: RMB

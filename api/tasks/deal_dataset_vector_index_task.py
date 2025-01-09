@@ -28,7 +28,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
 
         if not dataset:
             raise Exception("Dataset not found")
-        index_type = dataset.doc_form
+        index_type = dataset.doc_form or IndexType.PARAGRAPH_INDEX
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
         if action == "remove":
             index_processor.clean(dataset, None, with_keywords=False)
@@ -157,6 +157,9 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                             {"indexing_status": "error", "error": str(e)}, synchronize_session=False
                         )
                         db.session.commit()
+            else:
+                # clean collection
+                index_processor.clean(dataset, None, with_keywords=False, delete_child_chunks=False)
 
         end_at = time.perf_counter()
         logging.info(

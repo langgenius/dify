@@ -183,6 +183,7 @@ const translation = {
     byCategories: 'श्रेणियों द्वारा',
     searchAllTemplate: 'सभी टेम्पलेट्स खोजें...',
   },
+  showMyCreatedAppsOnly: 'केवल मेरे बनाए गए ऐप्स दिखाएं',
 }
 
 export default translation
