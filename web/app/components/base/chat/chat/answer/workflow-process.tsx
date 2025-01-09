@@ -23,6 +23,7 @@ type WorkflowProcessProps = {
   expand?: boolean
   hideInfo?: boolean
   hideProcessDetail?: boolean
+  readonly?: boolean
 }
 const WorkflowProcessItem = ({
   data,
@@ -30,6 +31,7 @@ const WorkflowProcessItem = ({
   expand = false,
   hideInfo = false,
   hideProcessDetail = false,
+  readonly = false,
 }: WorkflowProcessProps) => {
   const { t } = useTranslation()
   const [collapse, setCollapse] = useState(!expand)
@@ -81,8 +83,8 @@ const WorkflowProcessItem = ({
       }}
     >
       <div
-        className={cn('flex items-center cursor-pointer', !collapse && 'px-1.5')}
-        onClick={() => setCollapse(!collapse)}
+        className={cn('flex items-center cursor-pointer', !collapse && 'px-1.5', readonly && 'cursor-default')}
+        onClick={() => !readonly && setCollapse(!collapse)}
       >
         {
           running && (
@@ -102,10 +104,10 @@ const WorkflowProcessItem = ({
         <div className={cn('system-xs-medium text-text-secondary', !collapse && 'grow')}>
           {t('workflow.common.workflowProcess')}
         </div>
-        <RiArrowRightSLine className={`'ml-1 w-4 h-4 text-text-tertiary' ${collapse ? '' : 'rotate-90'}`} />
+        {!readonly && <RiArrowRightSLine className={`'ml-1 w-4 h-4 text-text-tertiary' ${collapse ? '' : 'rotate-90'}`} />}
       </div>
       {
-        !collapse && (
+        !collapse && !readonly && (
           <div className='mt-1.5'>
             {
               <TracingPanel
