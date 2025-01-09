@@ -24,6 +24,11 @@ server {
       include proxy.conf;
     }
 
+    location /e {
+      proxy_pass http://plugin_daemon:5002;
+      include proxy.conf;
+    }
+
     location / {
       proxy_pass http://web:3000;
       include proxy.conf;

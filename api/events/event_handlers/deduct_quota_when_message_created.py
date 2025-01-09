@@ -22,6 +22,9 @@ def handle(sender, **kwargs):
 
     system_configuration = provider_configuration.system_configuration
 
+    if not system_configuration.current_quota_type:
+        return
+
     quota_unit = None
     for quota_configuration in system_configuration.quota_configurations:
         if quota_configuration.quota_type == system_configuration.current_quota_type:

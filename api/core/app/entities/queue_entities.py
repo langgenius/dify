@@ -41,6 +41,7 @@ class QueueEvent(StrEnum):
     PARALLEL_BRANCH_RUN_STARTED = "parallel_branch_run_started"
     PARALLEL_BRANCH_RUN_SUCCEEDED = "parallel_branch_run_succeeded"
     PARALLEL_BRANCH_RUN_FAILED = "parallel_branch_run_failed"
+    AGENT_LOG = "agent_log"
     ERROR = "error"
     PING = "ping"
     STOP = "stop"
@@ -313,6 +314,22 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     error: Optional[str] = None
     """single iteration duration map"""
     iteration_duration_map: Optional[dict[str, float]] = None
+
+
+class QueueAgentLogEvent(AppQueueEvent):
+    """
+    QueueAgentLogEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.AGENT_LOG
+    id: str
+    label: str
+    node_execution_id: str
+    parent_id: str | None
+    error: str | None
+    status: str
+    data: Mapping[str, Any]
+    metadata: Optional[Mapping[str, Any]] = None
 
 
 class QueueNodeRetryEvent(QueueNodeStartedEvent):

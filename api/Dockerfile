@@ -69,6 +69,10 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 # Download nltk data
 RUN python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger')"
 
+ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
+
+RUN python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')"
+
 # Copy source code
 COPY . /app/api/
 

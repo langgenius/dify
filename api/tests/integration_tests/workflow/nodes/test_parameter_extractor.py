@@ -34,23 +34,27 @@ def get_mocked_fetch_model_config(
     mode: str,
     credentials: dict,
 ):
-    provider_instance = ModelProviderFactory().get_provider_instance(provider)
-    model_type_instance = provider_instance.get_model_instance(ModelType.LLM)
+    model_provider_factory = ModelProviderFactory(tenant_id="test_tenant")
+    model_type_instance = model_provider_factory.get_model_type_instance(provider, ModelType.LLM)
     provider_model_bundle = ProviderModelBundle(
         configuration=ProviderConfiguration(
             tenant_id="1",
-            provider=provider_instance.get_provider_schema(),
+            provider=model_provider_factory.get_provider_schema(provider),
             preferred_provider_type=ProviderType.CUSTOM,
             using_provider_type=ProviderType.CUSTOM,
             system_configuration=SystemConfiguration(enabled=False),
             custom_configuration=CustomConfiguration(provider=CustomProviderConfiguration(credentials=credentials)),
             model_settings=[],
         ),
-        provider_instance=provider_instance,
         model_type_instance=model_type_instance,
     )
     model_instance = ModelInstance(provider_model_bundle=provider_model_bundle, model=model)
-    model_schema = model_type_instance.get_model_schema(model)
+    model_schema = model_provider_factory.get_model_schema(
+        provider=provider,
+        model_type=model_type_instance.model_type,
+        model=model,
+        credentials=credentials,
+    )
     assert model_schema is not None
     model_config = ModelConfigWithCredentialsEntity(
         model=model,

@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -123,6 +123,17 @@ class File(BaseModel):
                 return ToolFileParser.get_tool_file_manager().sign_file(
                     tool_file_id=self.related_id, extension=self.extension
                 )
+
+    def to_plugin_parameter(self) -> dict[str, Any]:
+        return {
+            "dify_model_identity": FILE_MODEL_IDENTITY,
+            "mime_type": self.mime_type,
+            "filename": self.filename,
+            "extension": self.extension,
+            "size": self.size,
+            "type": self.type,
+            "url": self.generate_url(),
+        }
 
     @model_validator(mode="after")
     def validate_after(self):

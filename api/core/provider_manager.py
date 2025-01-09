@@ -1,7 +1,7 @@
 import json
 from collections import defaultdict
 from json import JSONDecodeError
-from typing import Optional, cast
+from typing import Any, Optional, cast
 
 from sqlalchemy.exc import IntegrityError
 
@@ -14,6 +14,7 @@ from core.entities.provider_entities import (
     CustomProviderConfiguration,
     ModelLoadBalancingConfiguration,
     ModelSettings,
+    ProviderQuotaType,
     QuotaConfiguration,
     QuotaUnit,
     SystemConfiguration,
@@ -23,7 +24,7 @@ from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderC
 from core.helper.position_helper import is_filtered
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.provider_entities import CredentialFormSchema, FormType, ProviderEntity
-from core.model_runtime.model_providers import model_provider_factory
+from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -32,7 +33,6 @@ from models.provider import (
     Provider,
     ProviderModel,
     ProviderModelSetting,
-    ProviderQuotaType,
     ProviderType,
     TenantDefaultModel,
     TenantPreferredModelProvider,
@@ -98,6 +98,7 @@ class ProviderManager:
         provider_name_to_provider_model_records_dict = self._get_all_provider_models(tenant_id)
 
         # Get all provider entities
+        model_provider_factory = ModelProviderFactory(tenant_id)
         provider_entities = model_provider_factory.get_providers()
 
         # Get All preferred provider types of the workspace
@@ -205,12 +206,10 @@ class ProviderManager:
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
 
-        provider_instance = provider_configuration.get_provider_instance()
-        model_type_instance = provider_instance.get_model_instance(model_type)
+        model_type_instance = provider_configuration.get_model_type_instance(model_type)
 
         return ProviderModelBundle(
             configuration=provider_configuration,
-            provider_instance=provider_instance,
             model_type_instance=model_type_instance,
         )
 
@@ -246,20 +245,19 @@ class ProviderManager:
                     (model for model in available_models if model.model == "gpt-4"), available_models[0]
                 )
 
-                default_model = TenantDefaultModel(
-                    tenant_id=tenant_id,
-                    model_type=model_type.to_origin_model_type(),
-                    provider_name=available_model.provider.provider,
-                    model_name=available_model.model,
-                )
+                default_model = TenantDefaultModel()
+                default_model.tenant_id = tenant_id
+                default_model.model_type = model_type.to_origin_model_type()
+                default_model.provider_name = available_model.provider.provider
+                default_model.model_name = available_model.model
                 db.session.add(default_model)
                 db.session.commit()
 
         if not default_model:
             return None
 
-        provider_instance = model_provider_factory.get_provider_instance(default_model.provider_name)
-        provider_schema = provider_instance.get_provider_schema()
+        model_provider_factory = ModelProviderFactory(tenant_id)
+        provider_schema = model_provider_factory.get_provider_schema(provider=default_model.provider_name)
 
         return DefaultModelEntity(
             model=default_model.model_name,
@@ -273,7 +271,7 @@ class ProviderManager:
             ),
         )
 
-    def get_first_provider_first_model(self, tenant_id: str, model_type: ModelType) -> tuple[str, str]:
+    def get_first_provider_first_model(self, tenant_id: str, model_type: ModelType) -> tuple[str | None, str | None]:
         """
         Get names of first model and its provider
 
@@ -285,6 +283,9 @@ class ProviderManager:
 
         # get available models from provider_configurations
         all_models = provider_configurations.get_models(model_type=model_type, only_active=False)
+
+        if not all_models:
+            return None, None
 
         return all_models[0].provider.provider, all_models[0].model
 
@@ -734,11 +735,12 @@ class ProviderManager:
                 )
 
                 # Get cached provider credentials
+                # error occurs
                 cached_provider_credentials = provider_credentials_cache.get()
 
                 if not cached_provider_credentials:
                     try:
-                        provider_credentials = json.loads(provider_record.encrypted_config)
+                        provider_credentials: dict[str, Any] = json.loads(provider_record.encrypted_config)
                     except JSONDecodeError:
                         provider_credentials = {}
 
@@ -757,7 +759,9 @@ class ProviderManager:
                         if variable in provider_credentials:
                             try:
                                 provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
-                                    provider_credentials.get(variable), self.decoding_rsa_key, self.decoding_cipher_rsa
+                                    provider_credentials.get(variable, ""),
+                                    self.decoding_rsa_key,
+                                    self.decoding_cipher_rsa,
                                 )
                             except ValueError:
                                 pass

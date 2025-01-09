@@ -115,7 +115,6 @@ def test_execute_llm(setup_openai_mock):
             custom_configuration=CustomConfiguration(provider=CustomProviderConfiguration(credentials=credentials)),
             model_settings=[],
         ),
-        provider_instance=provider_instance,
         model_type_instance=model_type_instance,
     )
     model_instance = ModelInstance(provider_model_bundle=provider_model_bundle, model="gpt-3.5-turbo")
@@ -203,7 +202,6 @@ def test_execute_llm_with_jinja2(setup_code_executor_mock, setup_openai_mock):
             custom_configuration=CustomConfiguration(provider=CustomProviderConfiguration(credentials=credentials)),
             model_settings=[],
         ),
-        provider_instance=provider_instance,
         model_type_instance=model_type_instance,
     )
 

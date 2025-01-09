@@ -22,6 +22,7 @@ class NodeType(StrEnum):
     VARIABLE_ASSIGNER = "assigner"
     DOCUMENT_EXTRACTOR = "document-extractor"
     LIST_OPERATOR = "list-operator"
+    AGENT = "agent"
 
 
 class ErrorStrategy(StrEnum):
