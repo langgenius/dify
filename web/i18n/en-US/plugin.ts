@@ -162,12 +162,12 @@ const translation = {
     selectPackagePlaceholder: 'Please select a package',
   },
   upgrade: {
-    title: 'Upgrade Plugin',
-    successfulTitle: 'Upgrade successful',
-    description: 'About to upgrade the following plugin',
+    title: 'Install Plugin',
+    successfulTitle: 'Install successful',
+    description: 'About to install the following plugin',
     usedInApps: 'Used in {{num}} apps',
-    upgrade: 'Upgrade',
-    upgrading: 'Upgrading...',
+    upgrade: 'Install',
+    upgrading: 'Installing...',
     close: 'Close',
   },
   error: {

@@ -162,12 +162,12 @@ const translation = {
     selectPackagePlaceholder: '请选择一个包',
   },
   upgrade: {
-    title: '升级插件',
-    successfulTitle: '升级成功',
-    description: '即将升级以下插件',
+    title: '安装插件',
+    successfulTitle: '安装成功',
+    description: '即将安装以下插件',
     usedInApps: '在 {{num}} 个应用中使用',
-    upgrade: '升级',
-    upgrading: '升级中...',
+    upgrade: '安装',
+    upgrading: '安装中...',
     close: '关闭',
   },
   error: {

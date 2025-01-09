@@ -13,6 +13,7 @@ type Props = {
     author: string
     name: string
     description: Record<Locale, string>
+    tenant_id: string
     icon: string
     label: Record<Locale, string>
     tags: string[]
