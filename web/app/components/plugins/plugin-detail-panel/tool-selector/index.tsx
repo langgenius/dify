@@ -119,7 +119,7 @@ const ToolSelector: FC<Props> = ({
       },
     }
     onSelect(toolValue)
-    setIsShowChooseTool(false)
+    // setIsShowChooseTool(false)
   }
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
