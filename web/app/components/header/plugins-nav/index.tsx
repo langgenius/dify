@@ -27,7 +27,7 @@ const PluginsNav = ({
 
   return (
     <Link href="/plugins" className={classNames(
-      className, 'group',
+      className, 'group', 'plugins-nav-button', // used for use-fold-anim-into.ts
     )}>
       <div
         className={classNames(

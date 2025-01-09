@@ -15,6 +15,7 @@ type Props = {
   list: Plugin[]
   searchText: string
   tags: string[]
+  toolContentClassName?: string
   disableMaxWidth?: boolean
 }
 
@@ -23,6 +24,7 @@ const List = forwardRef<{ handleScroll: () => void }, Props>(({
   searchText,
   tags,
   list,
+  toolContentClassName,
   disableMaxWidth = false,
 }, ref) => {
   const { t } = useTranslation()
@@ -76,7 +78,7 @@ const List = forwardRef<{ handleScroll: () => void }, Props>(({
     )
   }
 
-  const maxWidthClassName = 'max-w-[300px]'
+  const maxWidthClassName = toolContentClassName || 'max-w-[300px]'
 
   return (
     <>

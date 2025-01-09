@@ -1,6 +1,6 @@
 import { sleep } from '@/utils'
 
-const animTime = 2000
+const animTime = 750
 const modalClassName = 'install-modal'
 const COUNT_DOWN_TIME = 15000 // 15s
 
@@ -21,7 +21,7 @@ const useFoldAnimInto = (onClose: () => void) => {
   const foldIntoAnim = async () => {
     clearCountDown()
     const modalElem = document.querySelector(`.${modalClassName}`) as HTMLElement
-    const pluginTaskTriggerElem = document.getElementById('plugin-task-trigger')
+    const pluginTaskTriggerElem = document.getElementById('plugin-task-trigger') || document.querySelector('.plugins-nav-button')
 
     if (!modalElem || !pluginTaskTriggerElem) {
       onClose()
