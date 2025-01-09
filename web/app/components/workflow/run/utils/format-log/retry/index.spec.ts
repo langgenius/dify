@@ -3,7 +3,7 @@ import graphToLogStruct from '../graph-to-log-struct'
 
 describe('retry', () => {
   // retry nodeId:1 3 times.
-  const steps = graphToLogStruct('start -> (retry, 1, 3)')
+  const steps = graphToLogStruct('start -> (retry, retryNode, 3)')
   const [startNode, retryNode, ...retryDetail] = steps
   const result = format(steps)
   test('should have no retry status nodes', () => {
