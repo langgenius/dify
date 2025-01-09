@@ -601,6 +601,9 @@ class DatasetRetrieval:
         elif retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
             from core.tools.utils.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
 
+            if retrieve_config.reranking_model is None:
+                raise ValueError("Reranking model is required for multiple retrieval")
+
             tool = DatasetMultiRetrieverTool.from_dataset(
                 dataset_ids=[dataset.id for dataset in available_datasets],
                 tenant_id=tenant_id,

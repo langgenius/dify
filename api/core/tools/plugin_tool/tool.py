@@ -59,7 +59,12 @@ class PluginTool(Tool):
             plugin_unique_identifier=self.plugin_unique_identifier,
         )
 
-    def get_runtime_parameters(self) -> list[ToolParameter]:
+    def get_runtime_parameters(
+        self,
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
+    ) -> list[ToolParameter]:
         """
         get the runtime parameters
         """
@@ -76,6 +81,9 @@ class PluginTool(Tool):
             provider=self.entity.identity.provider,
             tool=self.entity.identity.name,
             credentials=self.runtime.credentials,
+            conversation_id=conversation_id,
+            app_id=app_id,
+            message_id=message_id,
         )
 
         return self.runtime_parameters

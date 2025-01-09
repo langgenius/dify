@@ -71,13 +71,13 @@ class Tool(ABC):
 
         if isinstance(result, ToolInvokeMessage):
 
-            def single_generator():
+            def single_generator() -> Generator[ToolInvokeMessage, None, None]:
                 yield result
 
             return single_generator()
         elif isinstance(result, list):
 
-            def generator():
+            def generator() -> Generator[ToolInvokeMessage, None, None]:
                 yield from result
 
             return generator()

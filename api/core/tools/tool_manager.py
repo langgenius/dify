@@ -4,7 +4,7 @@ import mimetypes
 from collections.abc import Generator
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Union, cast
 
 from yarl import URL
 
@@ -57,7 +57,7 @@ logger = logging.getLogger(__name__)
 
 class ToolManager:
     _builtin_provider_lock = Lock()
-    _hardcoded_providers = {}
+    _hardcoded_providers: dict[str, BuiltinToolProviderController] = {}
     _builtin_providers_loaded = False
     _builtin_tools_labels: dict[str, Union[I18nObject, None]] = {}
 
@@ -203,7 +203,7 @@ class ToolManager:
                 if builtin_provider is None:
                     raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
             else:
-                builtin_provider: BuiltinToolProvider | None = (
+                builtin_provider = (
                     db.session.query(BuiltinToolProvider)
                     .filter(BuiltinToolProvider.tenant_id == tenant_id, (BuiltinToolProvider.provider == provider_id))
                     .first()
@@ -270,9 +270,7 @@ class ToolManager:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
             controller = ToolTransformService.workflow_provider_to_controller(db_provider=workflow_provider)
-            controller_tools: Optional[list[Tool]] = controller.get_tools(
-                user_id="", tenant_id=workflow_provider.tenant_id
-            )
+            controller_tools: list[WorkflowTool] = controller.get_tools(tenant_id=workflow_provider.tenant_id)
             if controller_tools is None or len(controller_tools) == 0:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
@@ -747,18 +745,21 @@ class ToolManager:
         # add tool labels
         labels = ToolLabelManager.get_tool_labels(controller)
 
-        return jsonable_encoder(
-            {
-                "schema_type": provider_obj.schema_type,
-                "schema": provider_obj.schema,
-                "tools": provider_obj.tools,
-                "icon": icon,
-                "description": provider_obj.description,
-                "credentials": masked_credentials,
-                "privacy_policy": provider_obj.privacy_policy,
-                "custom_disclaimer": provider_obj.custom_disclaimer,
-                "labels": labels,
-            }
+        return cast(
+            dict,
+            jsonable_encoder(
+                {
+                    "schema_type": provider_obj.schema_type,
+                    "schema": provider_obj.schema,
+                    "tools": provider_obj.tools,
+                    "icon": icon,
+                    "description": provider_obj.description,
+                    "credentials": masked_credentials,
+                    "privacy_policy": provider_obj.privacy_policy,
+                    "custom_disclaimer": provider_obj.custom_disclaimer,
+                    "labels": labels,
+                }
+            ),
         )
 
     @classmethod
@@ -795,7 +796,8 @@ class ToolManager:
             if workflow_provider is None:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
 
-            return json.loads(workflow_provider.icon)
+            icon: dict = json.loads(workflow_provider.icon)
+            return icon
         except Exception:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 
@@ -811,7 +813,8 @@ class ToolManager:
             if api_provider is None:
                 raise ToolProviderNotFoundError(f"api provider {provider_id} not found")
 
-            return json.loads(api_provider.icon)
+            icon: dict = json.loads(api_provider.icon)
+            return icon
         except Exception:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 

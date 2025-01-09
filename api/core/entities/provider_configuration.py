@@ -157,7 +157,7 @@ class ProviderConfiguration(BaseModel):
         """
         return self.custom_configuration.provider is not None or len(self.custom_configuration.models) > 0
 
-    def get_custom_credentials(self, obfuscated: bool = False):
+    def get_custom_credentials(self, obfuscated: bool = False) -> dict | None:
         """
         Get custom credentials.
 
@@ -741,11 +741,11 @@ class ProviderConfiguration(BaseModel):
         model_provider_factory = ModelProviderFactory(self.tenant_id)
         provider_schema = model_provider_factory.get_provider_schema(self.provider.provider)
 
-        model_types = []
+        model_types: list[ModelType] = []
         if model_type:
             model_types.append(model_type)
         else:
-            model_types = provider_schema.supported_model_types
+            model_types = list(provider_schema.supported_model_types)
 
         # Group model settings by model type and model
         model_setting_map: defaultdict[ModelType, dict[str, ModelSettings]] = defaultdict(dict)
@@ -1065,11 +1065,11 @@ class ProviderConfigurations(BaseModel):
     def values(self) -> Iterator[ProviderConfiguration]:
         return iter(self.configurations.values())
 
-    def get(self, key, default=None):
+    def get(self, key, default=None) -> ProviderConfiguration | None:
         if "/" not in key:
             key = f"{DEFAULT_PLUGIN_ID}/{key}/{key}"
 
-        return self.configurations.get(key, default)
+        return self.configurations.get(key, default)  # type: ignore
 
 
 class ProviderModelBundle(BaseModel):

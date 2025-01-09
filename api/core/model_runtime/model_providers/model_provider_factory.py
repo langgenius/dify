@@ -285,17 +285,17 @@ class ModelProviderFactory:
         }
 
         if model_type == ModelType.LLM:
-            return LargeLanguageModel(**init_params)
+            return LargeLanguageModel(**init_params)  # type: ignore
         elif model_type == ModelType.TEXT_EMBEDDING:
-            return TextEmbeddingModel(**init_params)
+            return TextEmbeddingModel(**init_params)  # type: ignore
         elif model_type == ModelType.RERANK:
-            return RerankModel(**init_params)
+            return RerankModel(**init_params)  # type: ignore
         elif model_type == ModelType.SPEECH2TEXT:
-            return Speech2TextModel(**init_params)
+            return Speech2TextModel(**init_params)  # type: ignore
         elif model_type == ModelType.MODERATION:
-            return ModerationModel(**init_params)
+            return ModerationModel(**init_params)  # type: ignore
         elif model_type == ModelType.TTS:
-            return TTSModel(**init_params)
+            return TTSModel(**init_params)  # type: ignore
 
     def get_provider_icon(self, provider: str, icon_type: str, lang: str) -> tuple[bytes, str]:
         """

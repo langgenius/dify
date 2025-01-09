@@ -91,7 +91,7 @@ class ToolFileMessageTransformer:
                     )
             elif message.type == ToolInvokeMessage.MessageType.FILE:
                 meta = message.meta or {}
-                file = meta.get("file")
+                file = meta.get("file", None)
                 if isinstance(file, File):
                     if file.transfer_method == FileTransferMethod.TOOL_FILE:
                         assert file.related_id is not None

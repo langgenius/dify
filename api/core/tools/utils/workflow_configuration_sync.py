@@ -27,7 +27,7 @@ class WorkflowToolConfigurationUtils:
     @classmethod
     def check_is_synced(
         cls, variables: list[VariableEntity], tool_configurations: list[WorkflowToolParameterConfiguration]
-    ) -> bool:
+    ):
         """
         check is synced
 

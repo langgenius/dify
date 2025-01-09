@@ -31,7 +31,7 @@ class ApiToolProviderController(ToolProviderController):
         self.tools = []
 
     @classmethod
-    def from_db(cls, db_provider: ApiToolProvider, auth_type: ApiProviderAuthType):
+    def from_db(cls, db_provider: ApiToolProvider, auth_type: ApiProviderAuthType) -> "ApiToolProviderController":
         credentials_schema = [
             ProviderConfig(
                 name="auth_type",

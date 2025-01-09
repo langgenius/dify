@@ -56,7 +56,7 @@ class AppGenerateResponseConverter(ABC):
     @abstractmethod
     def convert_stream_simple_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[str, None, None]:
+    ) -> Generator[dict | str, None, None]:
         raise NotImplementedError
 
     @classmethod

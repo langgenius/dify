@@ -20,7 +20,7 @@ class UploadFileParser:
         if upload_file.extension not in IMAGE_EXTENSIONS:
             return None
 
-        if dify_config.MULTIMODAL_SEND_IMAGE_FORMAT == "url" or force_url:
+        if dify_config.MULTIMODAL_SEND_FORMAT == "url" or force_url:
             return cls.get_signed_temp_image_url(upload_file.id)
         else:
             # get image file base64

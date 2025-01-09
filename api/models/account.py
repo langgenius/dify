@@ -1,7 +1,7 @@
 import enum
 import json
 
-from flask_login import UserMixin
+from flask_login import UserMixin  # type: ignore
 from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -56,7 +56,7 @@ class Account(UserMixin, Base):
         if ta:
             tenant.current_role = ta.role
         else:
-            tenant = None
+            tenant = None  # type: ignore
 
         self._current_tenant = tenant
 

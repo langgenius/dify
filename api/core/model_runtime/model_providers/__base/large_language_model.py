@@ -84,6 +84,8 @@ class LargeLanguageModel(AIModel):
             callbacks=callbacks,
         )
 
+        result: Union[LLMResult, Generator[LLMResultChunk, None, None]]
+
         try:
             plugin_model_manager = PluginModelManager()
             result = plugin_model_manager.invoke_llm(
