@@ -4,17 +4,16 @@ import classNames from '@/utils/classnames'
 import { memo, useMemo, useRef } from 'react'
 import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/service/use-tools'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
+import { useTranslation } from 'react-i18next'
+
+type Status = 'not-installed' | 'not-authorized' | undefined
 
 export type ToolIconProps = {
-  status?: 'error' | 'warning'
-  tooltip?: string
   providerName: string
 }
 
-export const ToolIcon = memo(({ status, tooltip, providerName }: ToolIconProps) => {
-  const indicator = status === 'error' ? 'red' : status === 'warning' ? 'yellow' : undefined
+export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
-  const notSuccess = (['error', 'warning'] as Array<ToolIconProps['status']>).includes(status)
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
@@ -23,15 +22,29 @@ export const ToolIcon = memo(({ status, tooltip, providerName }: ToolIconProps) 
     return mergedTools.find((toolWithProvider) => {
       return toolWithProvider.name === providerName
     })
-  }, [providerName, buildInTools, customTools, workflowTools])
+  }, [buildInTools, customTools, providerName, workflowTools])
+  const providerNameParts = providerName.split('/')
+  const author = providerNameParts[0]
+  const name = providerNameParts[1]
   const icon = useMemo(() => {
     if (currentProvider) return currentProvider.icon as string
-    const providerNameParts = providerName.split('/')
-    const author = providerNameParts[0]
-    const name = providerNameParts[1]
     const iconFromMarketPlace = getIconFromMarketPlace(`${author}/${name}`)
     return iconFromMarketPlace
-  }, [currentProvider, providerName])
+  }, [author, currentProvider, name])
+  const status: Status = useMemo(() => {
+    if (!currentProvider) return 'not-installed'
+    if (currentProvider.is_team_authorization === false) return 'not-authorized'
+    return undefined
+  }, [currentProvider])
+  const indicator = status === 'not-installed' ? 'red' : status === 'not-authorized' ? 'yellow' : undefined
+  const notSuccess = (['not-installed', 'not-authorized'] as Array<Status>).includes(status)
+  const { t } = useTranslation()
+  const tooltip = useMemo(() => {
+    if (!notSuccess) return undefined
+    if (status === 'not-installed') return t('workflow.nodes.agent.toolNotInstallTooltip', { tool: name })
+    if (status === 'not-authorized') return t('workflow.nodes.agent.toolNotAuthorizedTooltip', { tool: name })
+    throw new Error('Unknown status')
+  }, [name, notSuccess, status, t])
   return <Tooltip triggerMethod='hover' popupContent={tooltip} disabled={!notSuccess}>
     <div className={classNames(
       'size-5 border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge relative flex items-center justify-center rounded-[6px]',
