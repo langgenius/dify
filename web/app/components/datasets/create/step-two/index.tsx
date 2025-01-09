@@ -575,6 +575,8 @@ const StepTwo = ({
   const economyDomRef = useRef<HTMLDivElement>(null)
   const isHoveringEconomy = useHover(economyDomRef)
 
+  const isModelAndRetrievalConfigDisabled = !!datasetId && !!currentDataset?.data_source_type
+
   return (
     <div className='flex w-full h-full'>
       <div className={cn('relative h-full w-1/2 py-6 overflow-y-auto', isMobile ? 'px-4' : 'px-12')}>
@@ -931,15 +933,15 @@ const StepTwo = ({
           <div className='mt-5'>
             <div className={cn('system-md-semibold mb-1', datasetId && 'flex justify-between items-center')}>{t('datasetSettings.form.embeddingModel')}</div>
             <ModelSelector
-              readonly={!!datasetId}
-              triggerClassName={datasetId ? 'opacity-50' : ''}
+              readonly={isModelAndRetrievalConfigDisabled}
+              triggerClassName={isModelAndRetrievalConfigDisabled ? 'opacity-50' : ''}
               defaultModel={embeddingModel}
               modelList={embeddingModelList}
               onSelect={(model: DefaultModel) => {
                 setEmbeddingModel(model)
               }}
             />
-            {!!datasetId && (
+            {isModelAndRetrievalConfigDisabled && (
               <div className='mt-2 system-xs-medium'>
                 {t('datasetCreation.stepTwo.indexSettingTip')}
                 <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
@@ -950,7 +952,7 @@ const StepTwo = ({
         <Divider className='my-5' />
         {/* Retrieval Method Config */}
         <div>
-          {!datasetId
+          {!isModelAndRetrievalConfigDisabled
             ? (
               <div className={'mb-1'}>
                 <div className='system-md-semibold mb-0.5'>{t('datasetSettings.form.retrievalSetting.title')}</div>
@@ -971,14 +973,14 @@ const StepTwo = ({
               getIndexing_technique() === IndexingType.QUALIFIED
                 ? (
                   <RetrievalMethodConfig
-                    disabled={!!datasetId}
+                    disabled={isModelAndRetrievalConfigDisabled}
                     value={retrievalConfig}
                     onChange={setRetrievalConfig}
                   />
                 )
                 : (
                   <EconomicalRetrievalMethodConfig
-                    disabled={!!datasetId}
+                    disabled={isModelAndRetrievalConfigDisabled}
                     value={retrievalConfig}
                     onChange={setRetrievalConfig}
                   />

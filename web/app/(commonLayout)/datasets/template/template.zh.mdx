@@ -1,5 +1,5 @@
 import { CodeGroup } from '@/app/components/develop/code.tsx'
-import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '@/app/components/develop/md.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstruction, Paragraph } from '@/app/components/develop/md.tsx'
 
 # 知识库 API
 
@@ -79,6 +79,27 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
               - <code>separator</code> 分段标识符，目前仅允许设置一个分隔符。默认为 <code>***</code>
               - <code>max_tokens</code> 最大长度 (token) 需要校验小于父级的长度
               - <code>chunk_overlap</code> 分段重叠指的是在对数据进行分段时，段与段之间存在一定的重叠部分（选填）
+      </Property>
+      <PropertyInstruction>当知识库未设置任何参数的时候，首次上传需要提供以下参数，未提供则使用默认选项：</PropertyInstruction>
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        检索模式
+          - <code>search_method</code> (string) 检索方法
+            - <code>hybrid_search</code> 混合检索
+            - <code>semantic_search</code> 语义检索
+            - <code>full_text_search</code> 全文检索
+          - <code>reranking_enable</code> (bool) 是否开启rerank
+          - <code>reranking_model</code> (object) Rerank 模型配置
+            - <code>reranking_provider_name</code> (string) Rerank 模型的提供商
+            - <code>reranking_model_name</code> (string) Rerank 模型的名称
+          - <code>top_k</code> (int) 召回条数
+          - <code>score_threshold_enabled</code> (bool)是否开启召回分数限制
+          - <code>score_threshold</code> (float) 召回分数限制
+      </Property>
+      <Property name='embedding_model' type='string' key='embedding_model'>
+        Embedding 模型名称
+      </Property>
+      <Property name='embedding_model_provider' type='string' key='embedding_model_provider'>
+        Embedding 模型供应商
       </Property>
     </Properties>
   </Col>
@@ -196,6 +217,27 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       </Property>
       <Property name='file' type='multipart/form-data' key='file'>
         需要上传的文件。
+      </Property>
+      <PropertyInstruction>当知识库未设置任何参数的时候，首次上传需要提供以下参数，未提供则使用默认选项：</PropertyInstruction>
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        检索模式
+          - <code>search_method</code> (string) 检索方法
+            - <code>hybrid_search</code> 混合检索
+            - <code>semantic_search</code> 语义检索
+            - <code>full_text_search</code> 全文检索
+          - <code>reranking_enable</code> (bool) 是否开启rerank
+          - <code>reranking_model</code> (object) Rerank 模型配置
+            - <code>reranking_provider_name</code> (string) Rerank 模型的提供商
+            - <code>reranking_model_name</code> (string) Rerank 模型的名称
+          - <code>top_k</code> (int) 召回条数
+          - <code>score_threshold_enabled</code> (bool)是否开启召回分数限制
+          - <code>score_threshold</code> (float) 召回分数限制
+      </Property>
+      <Property name='embedding_model' type='string' key='embedding_model'>
+        Embedding 模型名称
+      </Property>
+      <Property name='embedding_model_provider' type='string' key='embedding_model_provider'>
+        Embedding 模型供应商
       </Property>
     </Properties>
   </Col>
@@ -1186,13 +1228,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           - <code>full_text_search</code> 全文检索
           - <code>hybrid_search</code> 混合检索
         - <code>reranking_enable</code> (bool) 是否启用 Reranking，非必填，如果检索模式为 semantic_search 模式或者 hybrid_search 则传值
-        - <code>reranking_mode</code> (object) Rerank模型配置，非必填，如果启用了 reranking 则传值
+        - <code>reranking_mode</code> (object) Rerank 模型配置，非必填，如果启用了 reranking 则传值
             - <code>reranking_provider_name</code> (string) Rerank 模型提供商
             - <code>reranking_model_name</code> (string) Rerank 模型名称
-        - <code>weights</code> (double) 混合检索模式下语意检索的权重设置
+        - <code>weights</code> (float) 混合检索模式下语意检索的权重设置
         - <code>top_k</code> (integer) 返回结果数量，非必填
         - <code>score_threshold_enabled</code> (bool) 是否开启 score 阈值
-        - <code>score_threshold</code> (double) Score 阈值
+        - <code>score_threshold</code> (float) Score 阈值
       </Property>
       <Property name='external_retrieval_model' type='object' key='external_retrieval_model'>
           未启用字段

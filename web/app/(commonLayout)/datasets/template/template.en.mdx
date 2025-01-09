@@ -1,5 +1,5 @@
 import { CodeGroup } from '@/app/components/develop/code.tsx'
-import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '@/app/components/develop/md.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstruction, Paragraph } from '@/app/components/develop/md.tsx'
 
 # Knowledge API
 
@@ -79,6 +79,27 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
               - <code>separator</code> Segmentation identifier. Currently, only one delimiter is allowed. The default is <code>***</code>
               - <code>max_tokens</code> The maximum length (tokens) must be validated to be shorter than the length of the parent chunk
               - <code>chunk_overlap</code> Define the overlap between adjacent chunks (optional)
+      </Property>
+      <PropertyInstruction>When no parameters are set for the knowledge base, the first upload requires the following parameters to be provided; if not provided, the default parameters will be used.</PropertyInstruction>
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        Retrieval model
+          - <code>search_method</code> (string) Search method
+            - <code>hybrid_search</code> Hybrid search
+            - <code>semantic_search</code> Semantic search
+            - <code>full_text_search</code> Full-text search
+          - <code>reranking_enable</code> (bool) Whether to enable reranking
+          - <code>reranking_mode</code> (object) Rerank model configuration
+            - <code>reranking_provider_name</code> (string) Rerank model provider
+            - <code>reranking_model_name</code> (string) Rerank model name
+          - <code>top_k</code> (int) Number of results to return
+          - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
+          - <code>score_threshold</code> (float) Score threshold
+      </Property>
+      <Property name='embedding_model' type='string' key='embedding_model'>
+        Embedding model name
+      </Property>
+      <Property name='embedding_model_provider' type='string' key='embedding_model_provider'>
+        Embedding model provider
       </Property>
     </Properties>
   </Col>
@@ -196,6 +217,27 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       </Property>
       <Property name='file' type='multipart/form-data' key='file'>
         Files that need to be uploaded.
+      </Property>
+      <PropertyInstruction>When no parameters are set for the knowledge base, the first upload requires the following parameters to be provided; if not provided, the default parameters will be used.</PropertyInstruction>
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        Retrieval model
+          - <code>search_method</code> (string) Search method
+            - <code>hybrid_search</code> Hybrid search
+            - <code>semantic_search</code> Semantic search
+            - <code>full_text_search</code> Full-text search
+          - <code>reranking_enable</code> (bool) Whether to enable reranking
+          - <code>reranking_mode</code> (object) Rerank model configuration
+            - <code>reranking_provider_name</code> (string) Rerank model provider
+            - <code>reranking_model_name</code> (string) Rerank model name
+          - <code>top_k</code> (int) Number of results to return
+          - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
+          - <code>score_threshold</code> (float) Score threshold
+      </Property>
+      <Property name='embedding_model' type='string' key='embedding_model'>
+        Embedding model name
+      </Property>
+      <Property name='embedding_model_provider' type='string' key='embedding_model_provider'>
+        Embedding model provider
       </Property>
     </Properties>
   </Col>
@@ -1188,10 +1230,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - <code>reranking_mode</code> (object) Rerank model configuration, required if reranking is enabled
             - <code>reranking_provider_name</code> (string) Rerank model provider
             - <code>reranking_model_name</code> (string) Rerank model name
-        - <code>weights</code> (double) Semantic search weight setting in hybrid search mode
+        - <code>weights</code> (float) Semantic search weight setting in hybrid search mode
         - <code>top_k</code> (integer) Number of results to return (optional)
         - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
-        - <code>score_threshold</code> (double) Score threshold
+        - <code>score_threshold</code> (float) Score threshold
       </Property>
       <Property name='external_retrieval_model' type='object' key='external_retrieval_model'>
           Unused field
