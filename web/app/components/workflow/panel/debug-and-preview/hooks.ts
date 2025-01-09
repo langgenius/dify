@@ -404,6 +404,63 @@ export const useChat = (
             }))
           }
         },
+        onAgentLog: ({ data }) => {
+          const currentNodeIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
+          if (currentNodeIndex > -1) {
+            const current = responseItem.workflowProcess!.tracing![currentNodeIndex]
+
+            if (current.execution_metadata) {
+              if (current.execution_metadata.agent_log) {
+                const currentLogIndex = current.execution_metadata.agent_log.findIndex(log => log.id === data.id)
+                if (currentLogIndex > -1) {
+                  current.execution_metadata.agent_log[currentLogIndex] = {
+                    ...current.execution_metadata.agent_log[currentLogIndex],
+                    ...data,
+                  }
+                }
+                else {
+                  current.execution_metadata.agent_log.push(data)
+                }
+              }
+              else {
+                current.execution_metadata.agent_log = [data]
+              }
+            }
+            else {
+              current.execution_metadata = {
+                agent_log: [data],
+              } as any
+            }
+            // if (current.agentLog) {
+            //   const currentLogIndex = current.agentLog.findIndex(log => log.id === data.id)
+
+            //   if (currentLogIndex > -1) {
+            //     current.agentLog[currentLogIndex] = {
+            //       ...current.agentLog[currentLogIndex],
+            //       ...data,
+            //     }
+            //   }
+            //   else {
+            //     current.agentLog.push(data)
+            //   }
+            // }
+            // else {
+            //   current.agentLog = [data]
+            // }
+
+            responseItem.workflowProcess!.tracing[currentNodeIndex] = {
+              ...current,
+            }
+
+            handleUpdateChatList(produce(chatListRef.current, (draft) => {
+              const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+              draft[currentIndex] = {
+                ...draft[currentIndex],
+                ...responseItem,
+              }
+            }))
+          }
+        },
       },
     )
   }, [handleRun, handleResponding, handleUpdateChatList, notify, t, updateCurrentQA, config.suggested_questions_after_answer?.enabled, formSettings])

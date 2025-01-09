@@ -1,4 +1,5 @@
 import {
+  useWorkflowAgentLog,
   useWorkflowFailed,
   useWorkflowFinished,
   useWorkflowNodeFinished,
@@ -24,6 +25,7 @@ export const useWorkflowRunEvent = () => {
   const { handleWorkflowNodeRetry } = useWorkflowNodeRetry()
   const { handleWorkflowTextChunk } = useWorkflowTextChunk()
   const { handleWorkflowTextReplace } = useWorkflowTextReplace()
+  const { handleWorkflowAgentLog } = useWorkflowAgentLog()
 
   return {
     handleWorkflowStarted,
@@ -37,5 +39,6 @@ export const useWorkflowRunEvent = () => {
     handleWorkflowNodeRetry,
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
+    handleWorkflowAgentLog,
   }
 }

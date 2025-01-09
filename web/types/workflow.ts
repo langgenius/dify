@@ -6,6 +6,7 @@ import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/
 export type AgentLogItem = {
   node_execution_id: string,
   id: string,
+  node_id: string,
   parent_id?: string,
   label: string,
   data: object, // debug data
@@ -14,6 +15,7 @@ export type AgentLogItem = {
   metadata?: {
     elapsed_time?: number
     provider?: string
+    icon?: string
   },
 }
 
@@ -51,6 +53,10 @@ export type NodeTracing = {
     iteration_duration_map?: IterationDurationMap
     error_strategy?: ErrorHandleTypeEnum
     agent_log?: AgentLogItem[]
+    tool_info?: {
+      agent_strategy?: string
+      icon?: string
+    }
   }
   metadata: {
     iterator_length: number
@@ -228,6 +234,12 @@ export type TextReplaceResponse = {
   data: {
     text: string
   }
+}
+
+export type AgentLogResponse = {
+  task_id: string
+  event: string
+  data: AgentLogItemWithChildren
 }
 
 export type WorkflowRunHistory = {
