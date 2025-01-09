@@ -86,13 +86,28 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
       })
       return
     }
-    await fetchReleases(owner, repo).then((fetchedReleases) => {
-      setState(prevState => ({
-        ...prevState,
-        releases: fetchedReleases,
-        step: InstallStepFromGitHub.selectPackage,
-      }))
-    })
+    try {
+      const fetchedReleases = await fetchReleases(owner, repo)
+      if (fetchedReleases.length > 0) {
+        setState(prevState => ({
+          ...prevState,
+          releases: fetchedReleases,
+          step: InstallStepFromGitHub.selectPackage,
+        }))
+      }
+      else {
+        Toast.notify({
+          type: 'error',
+          message: t('plugin.error.noReleasesFound'),
+        })
+      }
+    }
+    catch (error) {
+      Toast.notify({
+        type: 'error',
+        message: t('plugin.error.fetchReleasesError'),
+      })
+    }
   }
 
   const handleError = (e: any, isInstall: boolean) => {
