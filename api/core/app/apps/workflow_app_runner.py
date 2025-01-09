@@ -386,6 +386,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     status=event.status,
                     data=event.data,
                     metadata=event.metadata,
+                    node_id=event.node_id,
                 )
             )
         elif isinstance(event, ParallelBranchRunStartedEvent):
