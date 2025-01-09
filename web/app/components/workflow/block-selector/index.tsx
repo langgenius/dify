@@ -22,6 +22,8 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Input from '@/app/components/base/input'
+import SearchBox from '@/app/components/plugins/marketplace/search-box'
+
 import {
   Plus02,
 } from '@/app/components/base/icons/src/vender/line/general'
@@ -61,6 +63,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
+  const [tags, setTags] = useState<string[]>([])
   const [localOpen, setLocalOpen] = useState(false)
   const open = openFromProps === undefined ? localOpen : openFromProps
   const handleOpenChange = useCallback((newOpen: boolean) => {
@@ -126,25 +129,37 @@ const NodeSelector: FC<NodeSelectorProps> = ({
         }
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className={
-          classNames(`rounded-lg border-[0.5px] backdrop-blur-[5px]
-          border-components-panel-border bg-components-panel-bg-blur shadow-lg`, popupClassName)}>
-          <div className='p-2 pb-1' onClick={e => e.stopPropagation()}>
-            <Input
-              showLeftIcon
-              showClearIcon
-              autoFocus
-              value={searchText}
-              placeholder={searchPlaceholder}
-              onChange={e => setSearchText(e.target.value)}
-              onClear={() => setSearchText('')}
-            />
+        <div className={`rounded-lg border-[0.5px] border-gray-200 bg-white shadow-lg ${popupClassName}`}>
+          <div className='px-2 pt-2' onClick={e => e.stopPropagation()}>
+            {activeTab === TabsEnum.Blocks && (
+              <Input
+                showLeftIcon
+                showClearIcon
+                autoFocus
+                value={searchText}
+                placeholder={searchPlaceholder}
+                onChange={e => setSearchText(e.target.value)}
+                onClear={() => setSearchText('')}
+              />
+            )}
+            {activeTab === TabsEnum.Tools && (
+              <SearchBox
+                search={searchText}
+                onSearchChange={setSearchText}
+                tags={tags}
+                onTagsChange={setTags}
+                size='small'
+                placeholder={t('plugin.searchTools')!}
+              />
+            )}
+
           </div>
           <Tabs
             activeTab={activeTab}
             onActiveTabChange={handleActiveTabChange}
             onSelect={handleSelect}
             searchText={searchText}
+            tags={tags}
             availableBlocksTypes={availableBlocksTypes}
             noBlocks={noBlocks}
           />

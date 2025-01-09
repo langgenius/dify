@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
@@ -7,7 +7,7 @@ import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/
 type Props = {
   className?: string
   title?: string
-  children: JSX.Element
+  children: ReactNode
 }
 
 const OutputVars: FC<Props> = ({

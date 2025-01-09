@@ -7,11 +7,13 @@ import cn from '@/utils/classnames'
 import { useProviderContext } from '@/context/provider-context'
 
 type Props = {
-  onClick: () => void
+  onClick?: () => void
+  isDisplayOnly?: boolean
 }
 
 const HeaderBillingBtn: FC<Props> = ({
   onClick,
+  isDisplayOnly = false,
 }) => {
   const { plan, enableBilling, isFetchedPlan } = useProviderContext()
   const {
@@ -25,9 +27,9 @@ const HeaderBillingBtn: FC<Props> = ({
   })()
   const classNames = (() => {
     if (type === Plan.professional)
-      return 'border-[#E0F2FE] hover:border-[#B9E6FE] bg-[#E0F2FE] text-[#026AA2]'
+      return `border-[#E0F2FE] ${!isDisplayOnly ? 'hover:border-[#B9E6FE]' : ''} bg-[#E0F2FE] text-[#026AA2]`
     if (type === Plan.team)
-      return 'border-[#E0EAFF] hover:border-[#C7D7FE] bg-[#E0EAFF] text-[#3538CD]'
+      return `border-[#E0EAFF] ${!isDisplayOnly ? 'hover:border-[#C7D7FE]' : ''} bg-[#E0EAFF] text-[#3538CD]`
     return ''
   })()
 
@@ -35,10 +37,22 @@ const HeaderBillingBtn: FC<Props> = ({
     return null
 
   if (type === Plan.sandbox)
-    return <UpgradeBtn onClick={onClick} isShort />
+    return <UpgradeBtn onClick={isDisplayOnly ? undefined : onClick} isShort />
+
+  const handleClick = () => {
+    if (!isDisplayOnly && onClick)
+      onClick()
+  }
 
   return (
-    <div onClick={onClick} className={cn(classNames, 'flex items-center h-[22px] px-2 rounded-md border text-xs font-semibold uppercase cursor-pointer')}>
+    <div
+      onClick={handleClick}
+      className={cn(
+        classNames,
+        'flex items-center h-[22px] px-2 rounded-md border text-xs font-semibold uppercase',
+        isDisplayOnly ? 'cursor-default' : 'cursor-pointer',
+      )}
+    >
       {name}
     </div>
   )

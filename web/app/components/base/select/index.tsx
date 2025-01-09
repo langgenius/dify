@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { Fragment, useEffect, useState } from 'react'
 import { Combobox, Listbox, Transition } from '@headlessui/react'
 import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/20/solid'
+import Badge from '../badge/index'
 import { RiCheckLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import classNames from '@/utils/classnames'
@@ -244,7 +245,7 @@ const SimpleSelect: FC<ISelectProps> = ({
             leaveTo="opacity-0"
           >
 
-            <Listbox.Options className={classNames('absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-components-panel-bg-blur py-1 text-base shadow-lg border-components-panel-border border-[0.5px] focus:outline-none sm:text-sm', optionWrapClassName)}>
+            <Listbox.Options className={classNames('absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-components-panel-bg-blur backdrop-blur-sm py-1 text-base shadow-lg border-components-panel-border border-[0.5px] focus:outline-none sm:text-sm', optionWrapClassName)}>
               {items.map((item: Item) => (
                 <Listbox.Option
                   key={item.value}
@@ -290,6 +291,7 @@ type PortalSelectProps = {
   onSelect: (value: Item) => void
   items: Item[]
   placeholder?: string
+  installedValue?: string | number
   renderTrigger?: (value?: Item) => JSX.Element | null
   triggerClassName?: string
   triggerClassNameFn?: (open: boolean) => string
@@ -303,6 +305,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
   onSelect,
   items,
   placeholder,
+  installedValue,
   renderTrigger,
   triggerClassName,
   triggerClassNameFn,
@@ -314,7 +317,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const localPlaceholder = placeholder || t('common.placeholder.select')
-  const selectedItem = items.find(item => item.value === value)
+  const selectedItem = value ? items.find(item => item.value === value) : undefined
 
   return (
     <PortalToFollowElem
@@ -329,33 +332,34 @@ const PortalSelect: FC<PortalSelectProps> = ({
           : (
             <div
               className={classNames(`
-            flex items-center justify-between px-2.5 h-9 rounded-lg border-0 bg-gray-100 text-sm ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'} 
+            group flex items-center justify-between px-2.5 h-9 rounded-lg border-0 bg-components-input-bg-normal hover:bg-state-base-hover-alt text-sm ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'} 
           `, triggerClassName, triggerClassNameFn?.(open))}
               title={selectedItem?.name}
             >
               <span
                 className={`
               grow truncate
-              ${!selectedItem?.name && 'text-gray-400'}
+              ${!selectedItem?.name && 'text-components-input-text-placeholder'}
             `}
               >
                 {selectedItem?.name ?? localPlaceholder}
               </span>
-              <ChevronDownIcon className='shrink-0 h-4 w-4 text-gray-400' />
+              <div className='mx-0.5'>{installedValue && selectedItem && selectedItem.value !== installedValue && <Badge>{installedValue} {'->'} {selectedItem.value} </Badge>}</div>
+              <ChevronDownIcon className='shrink-0 h-4 w-4 text-text-quaternary group-hover:text-text-secondary' />
             </div>
           )}
 
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={`z-20 ${popupClassName}`}>
         <div
-          className={classNames('px-1 py-1 max-h-60 overflow-auto rounded-md bg-white text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm', popupInnerClassName)}
+          className={classNames('px-1 py-1 max-h-60 overflow-auto rounded-md text-base shadow-lg border-components-panel-border bg-components-panel-bg border-[0.5px] focus:outline-none sm:text-sm', popupInnerClassName)}
         >
           {items.map((item: Item) => (
             <div
               key={item.value}
               className={`
-                flex items-center justify-between px-2.5 h-9 cursor-pointer rounded-lg hover:bg-gray-100 text-gray-700
-                ${item.value === value && 'bg-gray-100'}
+                flex items-center justify-between px-2.5 h-9 cursor-pointer rounded-lg hover:bg-state-base-hover text-text-secondary
+                ${item.value === value && 'bg-state-base-hover'}
               `}
               title={item.name}
               onClick={() => {
@@ -367,7 +371,10 @@ const PortalSelect: FC<PortalSelectProps> = ({
                 className='w-0 grow truncate'
                 title={item.name}
               >
-                {item.name}
+                <span className='truncate'>{item.name}</span>
+                {item.value === installedValue && (
+                  <Badge uppercase={true} className='shrink-0 ml-1'>INSTALLED</Badge>
+                )}
               </span>
               {!hideChecked && item.value === value && (
                 <RiCheckLine className='shrink-0 h-4 w-4 text-text-accent' />

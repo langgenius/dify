@@ -27,10 +27,10 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import { getLastAnswer } from '@/app/components/base/chat/utils'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 
-type DebugWithSingleModelProps = {
+interface DebugWithSingleModelProps {
   checkCanSend?: () => boolean
 }
-export type DebugWithSingleModelRefType = {
+export interface DebugWithSingleModelRefType {
   handleRestart: () => void
 }
 const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSingleModelProps>(({
