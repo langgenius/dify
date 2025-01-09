@@ -39,6 +39,8 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => 
 }
 
 export const MaxLengthInput: FC<InputNumberProps> = (props) => {
+  const maxValue = parseInt(globalThis.document?.body?.getAttribute('data-public-indexing-max-segmentation-tokens-length') || '4000', 10)
+
   const { t } = useTranslation()
   return <FormField label={<div className='system-sm-semibold mb-1'>
     {t('datasetCreation.stepTwo.maxLength')}
@@ -46,8 +48,8 @@ export const MaxLengthInput: FC<InputNumberProps> = (props) => {
     <InputNumber
       type="number"
       className='h-9'
-      placeholder={'≤ 4000'}
-      max={4000}
+      placeholder={`≤ ${maxValue}`}
+      max={maxValue}
       min={1}
       {...props}
     />
