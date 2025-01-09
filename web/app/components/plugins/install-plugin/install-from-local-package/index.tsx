@@ -9,6 +9,8 @@ import { useTranslation } from 'react-i18next'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import ReadyToInstallPackage from './ready-to-install'
 import ReadyToInstallBundle from '../install-bundle/ready-to-install'
+import useHideLogic from '../hooks/use-hide-logic'
+import cn from '@/utils/classnames'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -30,6 +32,13 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const isBundle = file.name.endsWith('.difybndl')
   const [dependencies, setDependencies] = useState<Dependency[]>([])
+
+  const {
+    modalClassName,
+    foldAnimInto,
+    setIsInstalling,
+    handleStartToInstall,
+  } = useHideLogic(onClose)
 
   const getTitle = useCallback(() => {
     if (step === InstallStep.uploadFailed)
@@ -76,8 +85,8 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   return (
     <Modal
       isShow={true}
-      onClose={onClose}
-      className='flex min-w-[560px] p-0 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadows-shadow-xl'
+      onClose={foldAnimInto}
+      className={cn(modalClassName, 'flex min-w-[560px] p-0 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadows-shadow-xl')}
       closable
     >
       <div className='flex pt-6 pl-6 pb-3 pr-14 items-start gap-2 self-stretch'>
@@ -99,6 +108,8 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
         <ReadyToInstallBundle
           step={step}
           onStepChange={setStep}
+          onStartToInstall={handleStartToInstall}
+          setIsInstalling={setIsInstalling}
           onClose={onClose}
           allPlugins={dependencies}
         />
@@ -106,6 +117,8 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
         <ReadyToInstallPackage
           step={step}
           onStepChange={setStep}
+          onStartToInstall={handleStartToInstall}
+          setIsInstalling={setIsInstalling}
           onClose={onClose}
           uniqueIdentifier={uniqueIdentifier}
           manifest={manifest}

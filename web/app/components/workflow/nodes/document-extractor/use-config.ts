@@ -3,8 +3,8 @@ import produce from 'immer'
 import { useStoreApi } from 'reactflow'
 
 import type { ValueSelector, Var } from '../../types'
-import type { DocExtractorNodeType } from './types'
 import { InputVarType, VarType } from '../../types'
+import type { DocExtractorNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import {

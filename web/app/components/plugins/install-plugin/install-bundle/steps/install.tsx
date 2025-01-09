@@ -12,6 +12,7 @@ const i18nPrefix = 'plugin.installModal'
 
 type Props = {
   allPlugins: Dependency[]
+  onStartToInstall?: () => void
   onInstalled: (plugins: Plugin[], installStatus: InstallStatusResponse[]) => void
   onCancel: () => void
   isFromMarketPlace?: boolean
@@ -20,6 +21,7 @@ type Props = {
 
 const Install: FC<Props> = ({
   allPlugins,
+  onStartToInstall,
   onInstalled,
   onCancel,
   isFromMarketPlace,
@@ -65,6 +67,7 @@ const Install: FC<Props> = ({
     },
   })
   const handleInstall = () => {
+    onStartToInstall?.()
     installOrUpdate({
       payload: allPlugins.filter((_d, index) => selectedIndexes.includes(index)),
       plugin: selectedPlugins,

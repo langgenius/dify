@@ -9,6 +9,8 @@ import type { Dependency, InstallStatusResponse, Plugin } from '../../types'
 type Props = {
   step: InstallStep
   onStepChange: (step: InstallStep) => void,
+  onStartToInstall: () => void
+  setIsInstalling: (isInstalling: boolean) => void
   allPlugins: Dependency[]
   onClose: () => void
   isFromMarketPlace?: boolean
@@ -17,6 +19,8 @@ type Props = {
 const ReadyToInstall: FC<Props> = ({
   step,
   onStepChange,
+  onStartToInstall,
+  setIsInstalling,
   allPlugins,
   onClose,
   isFromMarketPlace,
@@ -27,13 +31,15 @@ const ReadyToInstall: FC<Props> = ({
     setInstallStatus(installStatus)
     setInstalledPlugins(plugins)
     onStepChange(InstallStep.installed)
-  }, [onStepChange])
+    setIsInstalling(false)
+  }, [onStepChange, setIsInstalling])
   return (
     <>
       {step === InstallStep.readyToInstall && (
         <Install
           allPlugins={allPlugins}
           onCancel={onClose}
+          onStartToInstall={onStartToInstall}
           onInstalled={handleInstalled}
           isFromMarketPlace={isFromMarketPlace}
         />

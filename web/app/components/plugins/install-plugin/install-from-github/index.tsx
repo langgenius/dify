@@ -16,6 +16,8 @@ import Loaded from './steps/loaded'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { useTranslation } from 'react-i18next'
 import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
+import cn from '@/utils/classnames'
+import useHideLogic from '../hooks/use-hide-logic'
 
 const i18nPrefix = 'plugin.installFromGitHub'
 
@@ -30,6 +32,13 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
   const { getIconUrl } = useGetIcon()
   const { fetchReleases } = useGitHubReleases()
   const { refreshPluginList } = useRefreshPluginList()
+
+  const {
+    modalClassName,
+    foldAnimInto,
+    setIsInstalling,
+    handleStartToInstall,
+  } = useHideLogic(onClose)
 
   const [state, setState] = useState<InstallState>({
     step: updatePayload ? InstallStepFromGitHub.selectPackage : InstallStepFromGitHub.setUrl,
@@ -77,13 +86,28 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
       })
       return
     }
-    await fetchReleases(owner, repo).then((fetchedReleases) => {
-      setState(prevState => ({
-        ...prevState,
-        releases: fetchedReleases,
-        step: InstallStepFromGitHub.selectPackage,
-      }))
-    })
+    try {
+      const fetchedReleases = await fetchReleases(owner, repo)
+      if (fetchedReleases.length > 0) {
+        setState(prevState => ({
+          ...prevState,
+          releases: fetchedReleases,
+          step: InstallStepFromGitHub.selectPackage,
+        }))
+      }
+      else {
+        Toast.notify({
+          type: 'error',
+          message: t('plugin.error.noReleasesFound'),
+        })
+      }
+    }
+    catch (error) {
+      Toast.notify({
+        type: 'error',
+        message: t('plugin.error.fetchReleasesError'),
+      })
+    }
   }
 
   const handleError = (e: any, isInstall: boolean) => {
@@ -115,14 +139,16 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
   const handleInstalled = useCallback(() => {
     setState(prevState => ({ ...prevState, step: InstallStepFromGitHub.installed }))
     refreshPluginList(manifest)
+    setIsInstalling(false)
     onSuccess()
-  }, [manifest, onSuccess, refreshPluginList])
+  }, [manifest, onSuccess, refreshPluginList, setIsInstalling])
 
   const handleFailed = useCallback((errorMsg?: string) => {
     setState(prevState => ({ ...prevState, step: InstallStepFromGitHub.installFailed }))
+    setIsInstalling(false)
     if (errorMsg)
       setErrorMsg(errorMsg)
-  }, [])
+  }, [setIsInstalling])
 
   const handleBack = () => {
     setState((prevState) => {
@@ -140,9 +166,9 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
   return (
     <Modal
       isShow={true}
-      onClose={onClose}
-      className='flex min-w-[560px] p-0 flex-col items-start rounded-2xl border-[0.5px]
-        border-components-panel-border bg-components-panel-bg shadows-shadow-xl'
+      onClose={foldAnimInto}
+      className={cn(modalClassName, `flex min-w-[560px] p-0 flex-col items-start rounded-2xl border-[0.5px]
+        border-components-panel-border bg-components-panel-bg shadows-shadow-xl`)}
       closable
     >
       <div className='flex pt-6 pl-6 pb-3 pr-14 items-start gap-2 self-stretch'>
@@ -195,6 +221,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
               selectedVersion={state.selectedVersion}
               selectedPackage={state.selectedPackage}
               onBack={handleBack}
+              onStartToInstall={handleStartToInstall}
               onInstalled={handleInstalled}
               onFailed={handleFailed}
             />

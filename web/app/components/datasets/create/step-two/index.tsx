@@ -393,7 +393,7 @@ const StepTwo = ({
       score_threshold_enabled: false,
       score_threshold: 0.5,
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rerankDefaultModel, isRerankDefaultModelValid])
 
   const getCreationParams = () => {
@@ -412,7 +412,6 @@ const StepTwo = ({
         doc_form: currentDocForm,
         doc_language: docLanguage,
         process_rule: getProcessRule(),
-
         retrieval_model: retrievalConfig, // Readonly. If want to changed, just go to settings page.
         embedding_model: embeddingModel.model, // Readonly
         embedding_model_provider: embeddingModel.provider, // Readonly
@@ -424,7 +423,6 @@ const StepTwo = ({
       if (
         !isReRankModelSelected({
           rerankModelList,
-
           retrievalConfig,
           indexMethod: indexMethod as string,
         })

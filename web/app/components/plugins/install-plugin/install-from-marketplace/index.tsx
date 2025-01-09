@@ -9,8 +9,8 @@ import Installed from '../base/installed'
 import { useTranslation } from 'react-i18next'
 import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
 import ReadyToInstallBundle from '../install-bundle/ready-to-install'
-import useFoldAnimInto from '../hooks/use-fold-anim-into'
 import cn from '@/utils/classnames'
+import useHideLogic from '../hooks/use-hide-logic'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -39,25 +39,10 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
 
   const {
     modalClassName,
-    foldIntoAnim: doFoldAnimInto,
-    clearCountDown,
-    countDownFoldIntoAnim,
-  } = useFoldAnimInto(onClose)
-
-  const [isInstalling, setIsInstalling] = useState(false)
-
-  const foldAnimInto = useCallback(() => {
-    if (isInstalling) {
-      doFoldAnimInto()
-      return
-    }
-    onClose()
-  }, [doFoldAnimInto, isInstalling, onClose])
-
-  const handleStartToInstall = useCallback(() => {
-    setIsInstalling(true)
-    countDownFoldIntoAnim()
-  }, [countDownFoldIntoAnim])
+    foldAnimInto,
+    setIsInstalling,
+    handleStartToInstall,
+  } = useHideLogic(onClose)
 
   const getTitle = useCallback(() => {
     if (isBundle && step === InstallStep.installed)
@@ -73,14 +58,14 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
     setStep(InstallStep.installed)
     refreshPluginList(manifest)
     setIsInstalling(false)
-  }, [manifest, refreshPluginList])
+  }, [manifest, refreshPluginList, setIsInstalling])
 
   const handleFailed = useCallback((errorMsg?: string) => {
     setStep(InstallStep.installFailed)
     setIsInstalling(false)
     if (errorMsg)
       setErrorMsg(errorMsg)
-  }, [])
+  }, [setIsInstalling])
 
   return (
     <Modal
@@ -100,6 +85,8 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
           <ReadyToInstallBundle
             step={step}
             onStepChange={setStep}
+            onStartToInstall={handleStartToInstall}
+            setIsInstalling={setIsInstalling}
             onClose={onClose}
             allPlugins={dependencies!}
             isFromMarketPlace
