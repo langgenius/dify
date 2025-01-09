@@ -175,6 +175,7 @@ const translation = {
     params: 'APP PARAMETERS',
     noParams: 'No parameters needed',
   },
+  showMyCreatedAppsOnly: 'Created by me',
 }
 
 export default translation

@@ -610,22 +610,16 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Row>
   <Col>
   このアプリケーションの基本情報を取得するために使用されます
-  ### Query
-    <Properties>
 
-   <Property name='user' type='string' key='user'>
-        ユーザー識別子、開発者のルールによって定義され、アプリケーション内で一意でなければなりません。
-    </Property>
-      </Properties>
   ### Response
   - `name` (string) アプリケーションの名前
   - `description` (string) アプリケーションの説明
   - `tags` (array[string]) アプリケーションのタグ
   </Col>
   <Col>
-    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
+    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
       ```bash {{ title: 'cURL' }}
-      curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \
+      curl -X GET '${props.appDetail.api_base_url}/info' \
       -H 'Authorization: Bearer {api_key}'
       ```
     </CodeGroup>
@@ -655,14 +649,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Row>
   <Col>
     ページに入る際に、機能、入力パラメータ名、タイプ、デフォルト値などの情報を取得するために使用されます。
-
-    ### クエリ
-
-    <Properties>
-      <Property name='user' type='string' key='user'>
-          ユーザー識別子、開発者のルールで定義され、アプリケーション内で一意でなければなりません。
-      </Property>
-    </Properties>
 
     ### 応答
     - `user_input_form` (array[object]) ユーザー入力フォームの設定
@@ -697,10 +683,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="リクエスト" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
+    <CodeGroup title="リクエスト" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
+    curl -X GET '${props.appDetail.api_base_url}/parameters' \
     --header 'Authorization: Bearer {api_key}'
     ```
 

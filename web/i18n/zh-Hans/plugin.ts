@@ -172,6 +172,8 @@ const translation = {
   },
   error: {
     inValidGitHubUrl: '无效的 GitHub URL。请输入格式为 https://github.com/owner/repo 的有效 URL',
+    fetchReleasesError: '无法获取发布版本。请稍后再试。',
+    noReleasesFound: '未找到发布版本。请检查 GitHub 仓库或输入的 URL。',
   },
   marketplace: {
     empower: '助力您的 AI 开发',
@@ -198,6 +200,7 @@ const translation = {
     installedError: '{{errorLength}} 个插件安装失败',
     clearAll: '清除所有',
   },
+  submitPlugin: '上传插件',
 }
 
 export default translation

@@ -172,6 +172,8 @@ const translation = {
   },
   error: {
     inValidGitHubUrl: 'Invalid GitHub URL. Please enter a valid URL in the format: https://github.com/owner/repo',
+    fetchReleasesError: 'Unable to retrieve releases. Please try again later.',
+    noReleasesFound: 'No releases found. Please check the GitHub repository or the input URL.',
   },
   marketplace: {
     empower: 'Empower your AI development',
@@ -198,6 +200,7 @@ const translation = {
     installedError: '{{errorLength}} plugins failed to install',
     clearAll: 'Clear all',
   },
+  submitPlugin: 'Submit plugin',
 }
 
 export default translation

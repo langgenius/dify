@@ -1,4 +1,3 @@
-- Tencent/Hunyuan-A52B-Instruct
 - Qwen/QwQ-32B-Preview
 - Qwen/Qwen2.5-72B-Instruct
 - Qwen/Qwen2.5-32B-Instruct
@@ -6,11 +5,11 @@
 - Qwen/Qwen2.5-7B-Instruct
 - Qwen/Qwen2.5-Coder-32B-Instruct
 - Qwen/Qwen2.5-Coder-7B-Instruct
-- Qwen/Qwen2.5-Math-72B-Instruct
 - Qwen/Qwen2-VL-72B-Instruct
 - Qwen/Qwen2-1.5B-Instruct
+- Qwen/Qwen2.5-72B-Instruct-128K
+- Vendor-A/Qwen/Qwen2.5-72B-Instruct
 - Pro/Qwen/Qwen2-VL-7B-Instruct
-- OpenGVLab/InternVL2-Llama3-76B
 - OpenGVLab/InternVL2-26B
 - Pro/OpenGVLab/InternVL2-8B
 - deepseek-ai/DeepSeek-V2.5

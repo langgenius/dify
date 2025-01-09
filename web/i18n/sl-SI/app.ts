@@ -183,6 +183,7 @@ const translation = {
     byCategories: 'PO KATEGORIJAH',
     searchAllTemplate: 'Preišči vse predloge ...',
   },
+  showMyCreatedAppsOnly: 'Prikaži samo aplikacije, ki sem jih ustvaril',
 }
 
 export default translation

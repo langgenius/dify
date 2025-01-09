@@ -10,6 +10,7 @@ import { TanstackQueryIniter } from '@/context/query-client'
 
 type MarketplaceProps = {
   locale: string
+  searchBoxAutoAnimate?: boolean
   showInstallButton?: boolean
   shouldExclude?: boolean
   searchParams?: SearchParams
@@ -19,6 +20,7 @@ type MarketplaceProps = {
 }
 const Marketplace = async ({
   locale,
+  searchBoxAutoAnimate = true,
   showInstallButton = true,
   shouldExclude,
   searchParams,
@@ -43,10 +45,14 @@ const Marketplace = async ({
       >
         <Description locale={locale} />
         <IntersectionLine intersectionContainerId={intersectionContainerId} />
-        <SearchBoxWrapper locale={locale} />
+        <SearchBoxWrapper
+          locale={locale}
+          searchBoxAutoAnimate={searchBoxAutoAnimate}
+        />
         <PluginTypeSwitch
           locale={locale}
           className={pluginTypeSwitchClassName}
+          searchBoxAutoAnimate={searchBoxAutoAnimate}
         />
         <ListWrapper
           locale={locale}

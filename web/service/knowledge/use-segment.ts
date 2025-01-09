@@ -14,6 +14,9 @@ import type {
 const NAME_SPACE = 'segment'
 
 export const useSegmentListKey = [NAME_SPACE, 'chunkList']
+export const useChunkListEnabledKey = [NAME_SPACE, 'chunkList', { enabled: true }]
+export const useChunkListDisabledKey = [NAME_SPACE, 'chunkList', { enabled: false }]
+export const useChunkListAllKey = [NAME_SPACE, 'chunkList', { enabled: 'all' }]
 
 export const useSegmentList = (
   payload: {
@@ -23,7 +26,7 @@ export const useSegmentList = (
       page: number
       limit: number
       keyword: string
-      enabled: boolean | 'all'
+      enabled: boolean | 'all' | ''
     }
   },
   disable?: boolean,
@@ -31,7 +34,7 @@ export const useSegmentList = (
   const { datasetId, documentId, params } = payload
   const { page, limit, keyword, enabled } = params
   return useQuery<SegmentsResponse>({
-    queryKey: [...useSegmentListKey, datasetId, documentId, page, limit, keyword, enabled],
+    queryKey: [...useSegmentListKey, { datasetId, documentId, page, limit, keyword, enabled }],
     queryFn: () => {
       return get<SegmentsResponse>(`/datasets/${datasetId}/documents/${documentId}/segments`, { params })
     },
@@ -110,7 +113,7 @@ export const useChildSegmentList = (
   const { datasetId, documentId, segmentId, params } = payload
   const { page, limit, keyword } = params
   return useQuery({
-    queryKey: [...useChildSegmentListKey, datasetId, documentId, segmentId, page, limit, keyword],
+    queryKey: [...useChildSegmentListKey, { datasetId, documentId, segmentId, page, limit, keyword }],
     queryFn: () => {
       return get<ChildSegmentsResponse>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}/child_chunks`, { params })
     },

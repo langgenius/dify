@@ -1,3 +1,4 @@
+import json
 from collections.abc import Generator
 from typing import Optional, Union
 
@@ -187,6 +188,23 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
                 model_parameters["tools"].append(web_search_params)
             else:
                 model_parameters["tools"] = [web_search_params]
+
+        response_format = model_parameters.get("response_format")
+        if response_format:
+            if response_format == "json_schema":
+                json_schema = model_parameters.get("json_schema")
+                if not json_schema:
+                    raise ValueError("Must define JSON Schema when the response format is json_schema")
+                try:
+                    schema = json.loads(json_schema)
+                except:
+                    raise ValueError(f"not correct json_schema format: {json_schema}")
+                model_parameters.pop("json_schema")
+                model_parameters["response_format"] = {"type": "json_schema", "json_schema": schema}
+            else:
+                model_parameters["response_format"] = {"type": response_format}
+        elif "json_schema" in model_parameters:
+            del model_parameters["json_schema"]
 
         if model.startswith("glm-4v"):
             params = self._construct_glm_4v_parameter(model, new_prompt_messages, model_parameters)
