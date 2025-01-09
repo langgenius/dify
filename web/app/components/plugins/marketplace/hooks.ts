@@ -151,7 +151,7 @@ export const useSearchBoxAutoAnimate = (searchBoxAutoAnimate?: boolean) => {
     if (!searchBoxAutoAnimate) {
       const clientWidth = document.documentElement.clientWidth
 
-      if (clientWidth < 1350)
+      if (clientWidth < 1400)
         setSearchBoxCanAnimate(false)
       else
         setSearchBoxCanAnimate(true)

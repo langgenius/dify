@@ -79,7 +79,7 @@ const MultipleToolSelector = ({
           onClick={handleCollapse}
         >
           <div className='h-6 flex items-center text-text-secondary system-sm-semibold-uppercase'>{label}</div>
-          {required && <div className='text-error-main'>*</div>}
+          {required && <div className='text-red-500'>*</div>}
           {tooltip && (
             <Tooltip
               popupContent={tooltip}

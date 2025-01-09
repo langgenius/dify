@@ -62,7 +62,7 @@ const AgentLogNav = ({
         )
       }
       {
-        !!end && agentOrToolLogItemStackLength > 2 && (
+        !!end && agentOrToolLogItemStackLength > 1 && (
           <>
             <div className='shrink-0 mx-0.5 system-xs-regular text-divider-deep'>/</div>
             <div className='flex items-center px-[5px] system-xs-medium-uppercase text-text-tertiary'>
