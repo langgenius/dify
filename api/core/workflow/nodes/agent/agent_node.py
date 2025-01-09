@@ -7,6 +7,7 @@ from core.agent.plugin_entities import AgentStrategyParameter
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.manager.exc import PluginDaemonClientSideError
+from core.plugin.manager.plugin import PluginInstallationManager
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.workflow.entities.node_entities import NodeRunResult
@@ -89,9 +90,20 @@ class AgentNode(ToolNode):
 
         try:
             # convert tool messages
+            manager = PluginInstallationManager()
+            plugins = manager.list_plugins(self.tenant_id)
+            current_plugin = next(
+                plugin
+                for plugin in plugins
+                if f"{plugin.plugin_id}/{plugin.name}"
+                == cast(AgentNodeData, self.node_data).agent_strategy_provider_name
+            )
             yield from self._transform_message(
                 message_stream,
-                {"provider": (cast(AgentNodeData, self.node_data)).agent_strategy_provider_name},
+                {
+                    "icon": current_plugin.declaration.icon,
+                    "agent_strategy": cast(AgentNodeData, self.node_data).agent_strategy_name,
+                },
                 parameters_for_log,
             )
         except PluginDaemonClientSideError as e:
