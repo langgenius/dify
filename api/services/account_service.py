@@ -67,7 +67,7 @@ class TokenPair(BaseModel):
 
 REFRESH_TOKEN_PREFIX = "refresh_token:"
 ACCOUNT_REFRESH_TOKEN_PREFIX = "account_refresh_token:"
-REFRESH_TOKEN_EXPIRY = timedelta(days=30)
+REFRESH_TOKEN_EXPIRY = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
 
 
 class AccountService:
@@ -921,6 +921,9 @@ class RegisterService:
     def invite_new_member(
         cls, tenant: Tenant, email: str, language: str, role: str = "normal", inviter: Account | None = None
     ) -> str:
+        if not inviter:
+            raise ValueError("Inviter is required")
+
         """Invite new member"""
         with Session(db.engine) as session:
             account = session.query(Account).filter_by(email=email).first()

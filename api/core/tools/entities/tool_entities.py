@@ -147,7 +147,7 @@ class ToolInvokeMessage(BaseModel):
 
         @field_validator("variable_name", mode="before")
         @classmethod
-        def transform_variable_name(cls, value) -> str:
+        def transform_variable_name(cls, value: str) -> str:
             """
             The variable name must be a string.
             """
@@ -167,6 +167,7 @@ class ToolInvokeMessage(BaseModel):
         error: Optional[str] = Field(default=None, description="The error message")
         status: LogStatus = Field(..., description="The status of the log")
         data: Mapping[str, Any] = Field(..., description="Detailed log data")
+        metadata: Optional[Mapping[str, Any]] = Field(default=None, description="The metadata of the log")
 
     class MessageType(Enum):
         TEXT = "text"

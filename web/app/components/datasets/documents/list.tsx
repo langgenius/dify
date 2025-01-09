@@ -134,6 +134,16 @@ export const StatusItem: FC<{
       {DOC_INDEX_STATUS_MAP[localStatus]?.text}
     </span>
     {
+      errorMessage && (
+        <Tooltip
+          popupContent={
+            <div className='max-w-[260px] break-all'>{errorMessage}</div>
+          }
+          triggerClassName='ml-1 w-4 h-4'
+        />
+      )
+    }
+    {
       scene === 'detail' && (
         <div className='flex justify-between items-center ml-1.5'>
           <Tooltip
@@ -150,16 +160,6 @@ export const StatusItem: FC<{
             />
           </Tooltip>
         </div>
-      )
-    }
-    {
-      errorMessage && (
-        <Tooltip
-          popupContent={
-            <div className='max-w-[260px] break-all'>{errorMessage}</div>
-          }
-          triggerClassName='ml-1 w-4 h-4'
-        />
       )
     }
   </div>
@@ -561,18 +561,14 @@ const DocumentList: FC<IDocumentListProps> = ({
                 </div>
               </td>
               <td>
-                <div className={'group flex items-center justify-between mr-6 hover:mr-0'}>
-                  <span className={cn(s.tdValue, 'flex items-center')}>
-                    {doc?.data_source_type === DataSourceType.NOTION && <NotionIcon className='inline-flex -mt-[3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />
-                    }
+                <div className={'group flex items-center mr-6 hover:mr-0 max-w-[460px]'}>
+                  <div className='shrink-0'>
+                    {doc?.data_source_type === DataSourceType.NOTION && <NotionIcon className='inline-flex -mt-[3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />}
                     {doc?.data_source_type === DataSourceType.FILE && <FileTypeIcon type={extensionToFileType(doc?.data_source_info?.upload_file?.extension ?? fileType)} className='mr-1.5' />}
-                    {doc?.data_source_type === DataSourceType.WEB && <Globe01 className='inline-flex -mt-[3px] mr-1.5 align-middle' />
-                    }
-                    {
-                      doc.name
-                    }
-                  </span>
-                  <div className='group-hover:flex hidden'>
+                    {doc?.data_source_type === DataSourceType.WEB && <Globe01 className='inline-flex -mt-[3px] mr-1.5 align-middle' />}
+                  </div>
+                  <span className='text-sm truncate grow-1'>{doc.name}</span>
+                  <div className='group-hover:flex group-hover:ml-auto hidden shrink-0'>
                     <Tooltip
                       popupContent={t('datasetDocuments.list.table.rename')}
                     >

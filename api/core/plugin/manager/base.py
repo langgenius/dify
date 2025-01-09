@@ -103,7 +103,7 @@ class BasePluginManager:
         Make a stream request to the plugin daemon inner API and yield the response as a model.
         """
         for line in self._stream_request(method, path, params, headers, data, files):
-            yield type(**json.loads(line))
+            yield type(**json.loads(line))  # type: ignore
 
     def _request_with_model(
         self,

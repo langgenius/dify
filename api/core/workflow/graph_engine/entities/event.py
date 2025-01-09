@@ -203,6 +203,7 @@ class AgentLogEvent(BaseAgentEvent):
     error: str | None = Field(..., description="error")
     status: str = Field(..., description="status")
     data: Mapping[str, Any] = Field(..., description="data")
+    metadata: Optional[Mapping[str, Any]] = Field(default=None, description="metadata")
 
 
 InNodeEvent = BaseNodeEvent | BaseParallelBranchEvent | BaseIterationEvent | BaseAgentEvent

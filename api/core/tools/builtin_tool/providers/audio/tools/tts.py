@@ -62,7 +62,12 @@ class TTSTool(BuiltinTool):
                 items.append((provider, model.model, voices))
         return items
 
-    def get_runtime_parameters(self) -> list[ToolParameter]:
+    def get_runtime_parameters(
+        self,
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
+    ) -> list[ToolParameter]:
         parameters = []
 
         options = []

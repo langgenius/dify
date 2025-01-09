@@ -298,7 +298,7 @@ class WorkflowService:
         start_at: float,
         tenant_id: str,
         node_id: str,
-    ):
+    ) -> WorkflowNodeExecution:
         """
         Handle node run result
 

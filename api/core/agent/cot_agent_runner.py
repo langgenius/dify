@@ -119,7 +119,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 callbacks=[],
             )
 
-            usage_dict = {}
+            usage_dict: dict[str, Optional[LLMUsage]] = {}
             react_chunks = CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict)
             scratchpad = AgentScratchpadUnit(
                 agent_response="",

@@ -168,23 +168,6 @@ def clean_unused_datasets_task():
                     else:
                         plan = plan_cache.decode()
                     if plan == "sandbox":
-                        # add auto disable log
-                        documents = (
-                            db.session.query(Document)
-                            .filter(
-                                Document.dataset_id == dataset.id,
-                                Document.enabled == True,
-                                Document.archived == False,
-                            )
-                            .all()
-                        )
-                        for document in documents:
-                            dataset_auto_disable_log = DatasetAutoDisableLog(
-                                tenant_id=dataset.tenant_id,
-                                dataset_id=dataset.id,
-                                document_id=document.id,
-                            )
-                            db.session.add(dataset_auto_disable_log)
                         # remove index
                         index_processor = IndexProcessorFactory(dataset.doc_form).init_index_processor()
                         index_processor.clean(dataset, None)

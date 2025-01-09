@@ -9,7 +9,7 @@ import RemarkGfm from 'remark-gfm'
 import RehypeRaw from 'rehype-raw'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
-import { Component, createContext, memo, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { Component, createContext, memo, useContext, useMemo, useRef, useState } from 'react'
 import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
 import SVGBtn from '@/app/components/base/svg'
@@ -127,9 +127,9 @@ const CodeBlock: Components['code'] = memo(({ className, children, ...props }) =
     }
     else if (language === 'echarts') {
       return (
-        <div style={{ minHeight: '350px', minWidth: '700px' }}>
+        <div style={{ minHeight: '350px', minWidth: '100%', overflowX: 'scroll' }}>
           <ErrorBoundary>
-            <ReactEcharts option={chartData} />
+            <ReactEcharts option={chartData} style={{ minWidth: '700px' }} />
           </ErrorBoundary>
         </div>
       )

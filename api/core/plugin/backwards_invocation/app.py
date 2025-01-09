@@ -119,7 +119,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         stream: bool,
         inputs: Mapping,
         files: list[dict],
-    ):
+    ) -> Generator[Mapping | str, None, None] | Mapping:
         """
         invoke workflow app
         """
@@ -146,7 +146,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         stream: bool,
         inputs: Mapping,
         files: list[dict],
-    ):
+    ) -> Generator[Mapping | str, None, None] | Mapping:
         """
         invoke completion app
         """

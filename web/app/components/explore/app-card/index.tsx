@@ -52,11 +52,11 @@ const AppCard = ({
           </span>
         </div>
         <div className='grow w-0 py-[1px]'>
-          <div className='flex items-center text-sm leading-5 font-semibold text-gray-800'>
+          <div className='flex items-center text-sm leading-5 font-semibold text-text-secondary'>
             <div className='truncate' title={appBasicInfo.name}>{appBasicInfo.name}</div>
           </div>
-          <div className='flex items-center text-[10px] leading-[18px] text-gray-500 font-medium'>
-            {appBasicInfo.mode === 'advanced-chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
+          <div className='flex items-center text-[10px] leading-[18px] text-text-tertiary font-medium'>
+            {appBasicInfo.mode === 'advanced-chat' && <div className='truncate'>{t('app.types.advanced').toUpperCase()}</div>}
             {appBasicInfo.mode === 'chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
             {appBasicInfo.mode === 'agent-chat' && <div className='truncate'>{t('app.types.agent').toUpperCase()}</div>}
             {appBasicInfo.mode === 'workflow' && <div className='truncate'>{t('app.types.workflow').toUpperCase()}</div>}
@@ -64,7 +64,7 @@ const AppCard = ({
           </div>
         </div>
       </div>
-      <div className="description-wrapper h-[90px] px-[14px] text-xs leading-normal text-gray-500 ">
+      <div className="description-wrapper h-[90px] px-[14px] text-xs leading-normal text-text-tertiary ">
         <div className='line-clamp-4 group-hover:line-clamp-2'>
           {app.description}
         </div>

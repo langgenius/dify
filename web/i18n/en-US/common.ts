@@ -42,6 +42,7 @@ const translation = {
     audioSourceUnavailable: 'AudioSource is unavailable',
     close: 'Close',
     copyImage: 'Copy Image',
+    imageCopied: 'Image copied',
     zoomOut: 'Zoom Out',
     zoomIn: 'Zoom In',
     openInNewTab: 'Open in new tab',
