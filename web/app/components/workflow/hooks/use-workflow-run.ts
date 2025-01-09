@@ -37,6 +37,7 @@ export const useWorkflowRun = () => {
     handleWorkflowNodeIterationNext,
     handleWorkflowNodeIterationFinished,
     handleWorkflowNodeRetry,
+    handleWorkflowAgentLog,
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
   } = useWorkflowRunEvent()
@@ -118,6 +119,7 @@ export const useWorkflowRun = () => {
       onIterationNext,
       onIterationFinish,
       onNodeRetry,
+      onAgentLog,
       onError,
       ...restCallback
     } = callback || {}
@@ -234,6 +236,12 @@ export const useWorkflowRun = () => {
           if (onNodeRetry)
             onNodeRetry(params)
         },
+        onAgentLog: (params) => {
+          handleWorkflowAgentLog(params)
+
+          if (onAgentLog)
+            onAgentLog(params)
+        },
         onTextChunk: (params) => {
           handleWorkflowTextChunk(params)
         },
@@ -252,7 +260,7 @@ export const useWorkflowRun = () => {
         ...restCallback,
       },
     )
-  }, [store, workflowStore, doSyncWorkflowDraft, handleWorkflowStarted, handleWorkflowFinished, handleWorkflowFailed, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeRetry, handleWorkflowTextChunk, handleWorkflowTextReplace, pathname])
+  }, [store, workflowStore, doSyncWorkflowDraft, handleWorkflowStarted, handleWorkflowFinished, handleWorkflowFailed, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeRetry, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowAgentLog, pathname])
 
   const handleStopRun = useCallback((taskId: string) => {
     const appId = useAppStore.getState().appDetail?.id

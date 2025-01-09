@@ -18,6 +18,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
+  const isDataReady = !!buildInTools && !!customTools && !!workflowTools
   const currentProvider = useMemo(() => {
     const mergedTools = [...(buildInTools || []), ...(customTools || []), ...(workflowTools || [])]
     return mergedTools.find((toolWithProvider) => {
@@ -33,10 +34,11 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
     return iconFromMarketPlace
   }, [author, currentProvider, name])
   const status: Status = useMemo(() => {
+    if (!isDataReady) return undefined
     if (!currentProvider) return 'not-installed'
     if (currentProvider.is_team_authorization === false) return 'not-authorized'
     return undefined
-  }, [currentProvider])
+  }, [currentProvider, isDataReady])
   const indicator = status === 'not-installed' ? 'red' : status === 'not-authorized' ? 'yellow' : undefined
   const notSuccess = (['not-installed', 'not-authorized'] as Array<Status>).includes(status)
   const { t } = useTranslation()

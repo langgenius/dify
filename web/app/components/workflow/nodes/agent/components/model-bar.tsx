@@ -35,14 +35,22 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
   const { t } = useTranslation()
   const modelList = useAllModel()
   if (!('provider' in props)) {
-    return <ModelSelector
-      modelList={[]}
-      triggerClassName='bg-workflow-block-parma-bg !h-6 !rounded-md'
-      defaultModel={undefined}
-      showDeprecatedWarnIcon={false}
-      readonly
-      deprecatedClassName='opacity-50'
-    />
+    return <Tooltip
+      popupContent={t('workflow.nodes.agent.modelNotSelected')}
+      triggerMethod='hover'
+    >
+      <div className='relative'>
+        <ModelSelector
+          modelList={[]}
+          triggerClassName='bg-workflow-block-parma-bg !h-6 !rounded-md'
+          defaultModel={undefined}
+          showDeprecatedWarnIcon={false}
+          readonly
+          deprecatedClassName='opacity-50'
+        />
+        <Indicator color={'red'} className='absolute -right-0.5 -top-0.5' />
+      </div>
+    </Tooltip>
   }
   const modelInstalled = modelList?.some(
     provider => provider.provider === props.provider && provider.models.some(model => model.model === props.model))

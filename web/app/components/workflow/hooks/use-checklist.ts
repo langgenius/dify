@@ -35,7 +35,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
-  const { data: agentStrategies } = useStrategyProviders()
+  const { data: strategyProviders } = useStrategyProviders()
 
   const needWarningNodes = useMemo(() => {
     const list = []
@@ -62,12 +62,14 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
       if (node.data.type === BlockEnum.Agent) {
         const data = node.data as AgentNodeType
-        const provider = agentStrategies?.find(s => s.plugin_unique_identifier === data.plugin_unique_identifier)
+        const isReadyForCheckValid = !!strategyProviders
+        const provider = strategyProviders?.find(provider => provider.declaration.identity.name === data.agent_strategy_provider_name)
         const strategy = provider?.declaration.strategies?.find(s => s.identity.name === data.agent_strategy_name)
         moreDataForCheckValid = {
           provider,
           strategy,
           language,
+          isReadyForCheckValid,
         }
       }
 
@@ -106,7 +108,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     }
 
     return list
-  }, [nodes, edges, isChatMode, buildInTools, customTools, workflowTools, language, nodesExtraData, t, agentStrategies])
+  }, [nodes, edges, isChatMode, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders])
 
   return needWarningNodes
 }

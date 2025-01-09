@@ -72,6 +72,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
   const [inModelList, setInModelList] = useState(false)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const handleOpenModal = useModelModalHandler()
+
   useEffect(() => {
     (async () => {
       if (modelId && currentProvider) {
@@ -96,11 +97,8 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
         catch (error) {
           // pass
         }
-        setIsPluginChecked(true)
       }
-      else {
-        setIsPluginChecked(true)
-      }
+      setIsPluginChecked(true)
     })()
   }, [providerName, modelId, currentProvider])
 

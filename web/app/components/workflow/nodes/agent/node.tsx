@@ -24,7 +24,6 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
       .filter(param => param.type === FormTypeEnum.modelSelector)
       .reduce((acc, param) => {
         const item = inputs.agent_parameters?.[param.name]?.value
-        console.log({ item })
         if (!item) {
           if (param.required) {
             acc.push({ param: param.name })
@@ -68,20 +67,26 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     {inputs.agent_strategy_name
       ? <SettingItem
         label={t('workflow.nodes.agent.strategy.shortLabel')}
-        status={!currentStrategyStatus?.isExistInPlugin ? 'error' : undefined}
+        status={
+          currentStrategyStatus && !currentStrategyStatus.isExistInPlugin
+            ? 'error'
+            : undefined
+        }
         tooltip={
-          !currentStrategyStatus?.isExistInPlugin ? t('workflow.nodes.agent.strategyNotInstallTooltip', {
-            plugin: pluginDetail?.declaration.label
-              ? renderI18nObject(pluginDetail?.declaration.label)
-              : undefined,
-            strategy: inputs.agent_strategy_label,
-          }) : undefined
+          (currentStrategyStatus && !currentStrategyStatus.isExistInPlugin)
+            ? t('workflow.nodes.agent.strategyNotInstallTooltip', {
+              plugin: pluginDetail?.declaration.label
+                ? renderI18nObject(pluginDetail?.declaration.label)
+                : undefined,
+              strategy: inputs.agent_strategy_label,
+            })
+            : undefined
         }
       >
         {inputs.agent_strategy_label}
       </SettingItem>
       : <SettingItem label={t('workflow.nodes.agent.strategyNotSet')} />}
-    <Group
+    {models.length > 0 && <Group
       label={<GroupLabel className='mt-1'>
         {t('workflow.nodes.agent.model')}
       </GroupLabel>}
@@ -92,7 +97,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
           key={model.param}
         />
       })}
-    </Group>
+    </Group>}
     {tools.length > 0 && <Group label={<GroupLabel className='mt-1'>
       {t('workflow.nodes.agent.toolbox')}
     </GroupLabel>}>

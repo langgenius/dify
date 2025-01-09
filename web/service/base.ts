@@ -4,6 +4,7 @@ import Toast from '@/app/components/base/toast'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
+  AgentLogResponse,
   IterationFinishedResponse,
   IterationNextResponse,
   IterationStartedResponse,
@@ -53,6 +54,7 @@ export type IOnTextChunk = (textChunk: TextChunkResponse) => void
 export type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
 export type IOnTTSEnd = (messageId: string, audioStr: string, audioType?: string) => void
 export type IOnTextReplace = (textReplace: TextReplaceResponse) => void
+export type IOnAgentLog = (agentLog: AgentLogResponse) => void
 
 export type IOtherOptions = {
   isPublicAPI?: boolean
@@ -84,6 +86,7 @@ export type IOtherOptions = {
   onTTSChunk?: IOnTTSChunk
   onTTSEnd?: IOnTTSEnd
   onTextReplace?: IOnTextReplace
+  onAgentLog?: IOnAgentLog
 }
 
 function unicodeToChar(text: string) {
@@ -129,6 +132,7 @@ const handleStream = (
   onTTSChunk?: IOnTTSChunk,
   onTTSEnd?: IOnTTSEnd,
   onTextReplace?: IOnTextReplace,
+  onAgentLog?: IOnAgentLog,
 ) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
@@ -229,6 +233,9 @@ const handleStream = (
             else if (bufferObj.event === 'text_replace') {
               onTextReplace?.(bufferObj as TextReplaceResponse)
             }
+            else if (bufferObj.event === 'agent_log') {
+              onAgentLog?.(bufferObj as AgentLogResponse)
+            }
             else if (bufferObj.event === 'tts_message') {
               onTTSChunk?.(bufferObj.message_id, bufferObj.audio, bufferObj.audio_type)
             }
@@ -322,6 +329,7 @@ export const ssePost = (
     onTTSChunk,
     onTTSEnd,
     onTextReplace,
+    onAgentLog,
     onError,
     getAbortController,
   } = otherOptions
@@ -392,7 +400,7 @@ export const ssePost = (
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
-      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile, onWorkflowStarted, onWorkflowFinished, onNodeStarted, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onNodeRetry, onParallelBranchStarted, onParallelBranchFinished, onTextChunk, onTTSChunk, onTTSEnd, onTextReplace)
+      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile, onWorkflowStarted, onWorkflowFinished, onNodeStarted, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onNodeRetry, onParallelBranchStarted, onParallelBranchFinished, onTextChunk, onTTSChunk, onTTSEnd, onTextReplace, onAgentLog)
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
         Toast.notify({ type: 'error', message: e })

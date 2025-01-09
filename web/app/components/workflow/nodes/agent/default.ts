@@ -21,8 +21,15 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
     strategyProvider?: StrategyPluginDetail,
     strategy?: StrategyDetail
     language: string
+    isReadyForCheckValid: boolean
   }) {
-    const { strategy, language } = moreDataForCheckValid
+    const { strategy, language, isReadyForCheckValid } = moreDataForCheckValid
+    if (!isReadyForCheckValid) {
+      return {
+        isValid: true,
+        errorMessage: '',
+      }
+    }
     if (!strategy) {
       return {
         isValid: false,
