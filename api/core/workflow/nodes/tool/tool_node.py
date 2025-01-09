@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file import File, FileTransferMethod
 from core.plugin.manager.exc import PluginDaemonClientSideError
+from core.plugin.manager.plugin import PluginInstallationManager
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.tool_engine import ToolEngine
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
@@ -24,6 +25,7 @@ from extensions.ext_database import db
 from factories import file_factory
 from models import ToolFile
 from models.workflow import WorkflowNodeExecutionStatus
+from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .entities import ToolNodeData
 from .exc import (
@@ -297,6 +299,36 @@ class ToolNode(BaseNode[ToolNodeData]):
                 files.append(message.meta["file"])
             elif message.type == ToolInvokeMessage.MessageType.LOG:
                 assert isinstance(message.message, ToolInvokeMessage.LogMessage)
+                if message.message.metadata:
+                    icon = tool_info.get("icon", "")
+                    dict_metadata = dict(message.message.metadata)
+                    if dict_metadata.get("provider"):
+                        manager = PluginInstallationManager()
+                        plugins = manager.list_plugins(self.tenant_id)
+                        try:
+                            current_plugin = next(
+                                plugin
+                                for plugin in plugins
+                                if f"{plugin.plugin_id}/{plugin.name}" == dict_metadata["provider"]
+                            )
+                            icon = current_plugin.declaration.icon
+                        except StopIteration:
+                            pass
+                        try:
+                            builtin_tool = next(
+                                provider
+                                for provider in BuiltinToolManageService.list_builtin_tools(
+                                    self.user_id,
+                                    self.tenant_id,
+                                )
+                                if provider.name == dict_metadata["provider"]
+                            )
+                            icon = builtin_tool.icon
+                        except StopIteration:
+                            pass
+
+                        dict_metadata["icon"] = icon
+                        message.message.metadata = dict_metadata
                 agent_log = AgentLogEvent(
                     id=message.message.id,
                     node_execution_id=self.id,
