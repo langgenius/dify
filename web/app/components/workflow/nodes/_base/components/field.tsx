@@ -1,18 +1,17 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import React from 'react'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import type { DefaultTFuncReturn } from 'i18next'
 import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   className?: string
-  title: JSX.Element | string | DefaultTFuncReturn
-  tooltip?: React.ReactNode
+  title: ReactNode
+  tooltip?: ReactNode
   isSubTitle?: boolean
   supportFold?: boolean
   children?: JSX.Element | string | null

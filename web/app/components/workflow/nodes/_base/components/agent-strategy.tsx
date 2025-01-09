@@ -82,6 +82,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             availableNodes={availableNodes}
             nodesOutputVars={nodeOutputVars}
             isSupportJinja={def.template?.enabled}
+            required={def.required}
             varList={[]}
             modelConfig={
               defaultModel.data
@@ -107,7 +108,13 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           const onChange = (value: number) => {
             props.onChange({ ...props.value, [schema.variable]: value })
           }
-          return <Field title={renderI18nObject(def.label)} tooltip={def.tooltip && renderI18nObject(def.tooltip)} inline>
+          return <Field
+            title={<>
+              {renderI18nObject(def.label)} {def.required && <span className='text-red-500'>*</span>}
+            </>}
+            tooltip={def.tooltip && renderI18nObject(def.tooltip)}
+            inline
+          >
             <div className='flex w-[200px] items-center gap-3'>
               <Slider
                 value={value}
@@ -140,7 +147,12 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           props.onChange({ ...props.value, [schema.variable]: value })
         }
         return (
-          <Field title={renderI18nObject(schema.label)} tooltip={schema.tooltip && renderI18nObject(schema.tooltip)}>
+          <Field
+            title={<>
+              {renderI18nObject(schema.label)} {schema.required && <span className='text-red-500'>*</span>}
+            </>}
+            tooltip={schema.tooltip && renderI18nObject(schema.tooltip)}
+          >
             <ToolSelector
               scope={schema.scope}
               value={value}
@@ -163,6 +175,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             tooltip={schema.tooltip && renderI18nObject(schema.tooltip)}
             onChange={onChange}
             supportCollapse
+            required={schema.required}
           />
         )
       }
