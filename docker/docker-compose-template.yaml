@@ -2,7 +2,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:dev-plugin-deploy
+    image: langgenius/dify-api:13f0c01f933d80b559f4f3bd56cb3ef8dafa7b9a
     restart: always
     environment:
       # Use the shared environment variables.
@@ -16,8 +16,8 @@ services:
       PLUGIN_API_URL: ${PLUGIN_DAEMON_URL:-http://plugin_daemon:5002}
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
-      MARKETPLACE_ENABLED: ${MARKETPLACE_ENABLED:-false}
-      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace-plugin.dify.dev}
+      MARKETPLACE_ENABLED: ${MARKETPLACE_ENABLED:-true}
+      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
       PLUGIN_REMOTE_INSTALL_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
       PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
       ENDPOINT_URL_TEMPLATE: ${ENDPOINT_URL_TEMPLATE:-http://localhost/e/{hook_id}}
@@ -34,7 +34,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:dev-plugin-deploy
+    image: langgenius/dify-api:13f0c01f933d80b559f4f3bd56cb3ef8dafa7b9a
     restart: always
     environment:
       # Use the shared environment variables.
@@ -49,7 +49,7 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
       MARKETPLACE_ENABLED: ${MARKETPLACE_ENABLED:-false}
-      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace-plugin.dify.dev}
+      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
     depends_on:
       - db
       - redis
@@ -62,7 +62,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:dev-plugin-deploy
+    image: langgenius/dify-web:13f0c01f933d80b559f4f3bd56cb3ef8dafa7b9a
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -71,8 +71,8 @@ services:
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
-      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace-plugin.dify.dev}
-      MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace-plugin.dify.dev}
+      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
+      MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
       TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
 
   # The postgres database.
@@ -138,7 +138,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:47c8bed17c22f67bd035d0979e696cb00ca45b16-local
+    image: langgenius/dify-plugin-daemon:0.0.1-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -451,7 +451,7 @@ services:
 
   milvus-standalone:
     container_name: milvus-standalone
-    image: milvusdb/milvus:v2.3.1
+    image: milvusdb/milvus:v2.5.0-beta
     profiles:
       - milvus
     command: [ 'milvus', 'run', 'standalone' ]
@@ -535,20 +535,28 @@ services:
     container_name: elasticsearch
     profiles:
       - elasticsearch
+      - elasticsearch-ja
     restart: always
     volumes:
+      - ./elasticsearch/docker-entrypoint.sh:/docker-entrypoint-mount.sh
       - dify_es01_data:/usr/share/elasticsearch/data
     environment:
       ELASTIC_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
+      VECTOR_STORE: ${VECTOR_STORE:-}
       cluster.name: dify-es-cluster
       node.name: dify-es0
       discovery.type: single-node
-      xpack.license.self_generated.type: trial
+      xpack.license.self_generated.type: basic
       xpack.security.enabled: 'true'
       xpack.security.enrollment.enabled: 'false'
       xpack.security.http.ssl.enabled: 'false'
     ports:
       - ${ELASTICSEARCH_PORT:-9200}:9200
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    entrypoint: [ 'sh', '-c', "sh /docker-entrypoint-mount.sh" ]
     healthcheck:
       test: [ 'CMD', 'curl', '-s', 'http://localhost:9200/_cluster/health?pretty' ]
       interval: 30s
