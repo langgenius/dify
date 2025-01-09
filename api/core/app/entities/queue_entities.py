@@ -329,6 +329,7 @@ class QueueAgentLogEvent(AppQueueEvent):
     error: str | None
     status: str
     data: Mapping[str, Any]
+    metadata: Optional[Mapping[str, Any]] = None
 
 
 class QueueNodeRetryEvent(QueueNodeStartedEvent):

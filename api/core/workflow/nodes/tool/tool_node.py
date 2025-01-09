@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -197,6 +197,7 @@ class ToolNode(BaseNode[ToolNodeData]):
         json: list[dict] = []
 
         agent_logs: list[AgentLogEvent] = []
+        agent_execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = {}
 
         variables: dict[str, Any] = {}
 
@@ -264,6 +265,11 @@ class ToolNode(BaseNode[ToolNodeData]):
                 )
             elif message.type == ToolInvokeMessage.MessageType.JSON:
                 assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
+                if self.node_type == NodeType.AGENT:
+                    msg_metadata = message.message.json_object.pop("execution_metadata", {})
+                    agent_execution_metadata = {
+                        key: value for key, value in msg_metadata.items() if key in NodeRunMetadataKey
+                    }
                 json.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
@@ -299,6 +305,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                     status=message.message.status.value,
                     data=message.message.data,
                     label=message.message.label,
+                    metadata=message.message.metadata,
                 )
 
                 # check if the agent log is already in the list
@@ -309,6 +316,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                         log.status = agent_log.status
                         log.error = agent_log.error
                         log.label = agent_log.label
+                        log.metadata = agent_log.metadata
                         break
                 else:
                     agent_logs.append(agent_log)
@@ -319,7 +327,11 @@ class ToolNode(BaseNode[ToolNodeData]):
             run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs={"text": text, "files": files, "json": json, **variables},
-                metadata={NodeRunMetadataKey.TOOL_INFO: tool_info, NodeRunMetadataKey.AGENT_LOG: agent_logs},
+                metadata={
+                    **agent_execution_metadata,
+                    NodeRunMetadataKey.TOOL_INFO: tool_info,
+                    NodeRunMetadataKey.AGENT_LOG: agent_logs,
+                },
                 inputs=parameters_for_log,
             )
         )

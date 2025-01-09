@@ -716,6 +716,7 @@ class AgentLogStreamResponse(StreamResponse):
         error: str | None
         status: str
         data: Mapping[str, Any]
+        metadata: Optional[Mapping[str, Any]] = None
 
     event: StreamEvent = StreamEvent.AGENT_LOG
     data: Data

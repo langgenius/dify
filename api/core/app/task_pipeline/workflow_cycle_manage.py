@@ -862,5 +862,6 @@ class WorkflowCycleManage:
                 error=event.error,
                 status=event.status,
                 data=event.data,
+                metadata=event.metadata,
             ),
         )

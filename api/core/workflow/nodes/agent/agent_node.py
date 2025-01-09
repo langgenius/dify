@@ -89,7 +89,11 @@ class AgentNode(ToolNode):
 
         try:
             # convert tool messages
-            yield from self._transform_message(message_stream, {}, parameters_for_log)
+            yield from self._transform_message(
+                message_stream,
+                {"provider": (cast(AgentNodeData, self.node_data)).agent_strategy_provider_name},
+                parameters_for_log,
+            )
         except PluginDaemonClientSideError as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
@@ -170,7 +174,12 @@ class AgentNode(ToolNode):
                                 extra.get("descrption", "") or tool_runtime.entity.description.llm
                             )
 
-                        tool_value.append(tool_runtime.entity.model_dump(mode="json"))
+                        tool_value.append(
+                            {
+                                **tool_runtime.entity.model_dump(mode="json"),
+                                "runtime_parameters": tool_runtime.runtime.runtime_parameters,
+                            }
+                        )
                     value = tool_value
                 if parameter.type == "model-selector":
                     value = cast(dict[str, Any], value)
