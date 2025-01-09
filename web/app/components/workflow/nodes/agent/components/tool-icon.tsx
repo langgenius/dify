@@ -3,6 +3,7 @@ import Indicator from '@/app/components/header/indicator'
 import classNames from '@/utils/classnames'
 import { memo, useMemo, useRef } from 'react'
 import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/service/use-tools'
+import { getIconFromMarketPlace } from '@/utils/get-icon'
 
 export type ToolIconProps = {
   status?: 'error' | 'warning'
@@ -23,6 +24,14 @@ export const ToolIcon = memo(({ status, tooltip, providerName }: ToolIconProps) 
       return toolWithProvider.name === providerName
     })
   }, [providerName, buildInTools, customTools, workflowTools])
+  const icon = useMemo(() => {
+    if (currentProvider) return currentProvider.icon as string
+    const providerNameParts = providerName.split('/')
+    const author = providerNameParts[0]
+    const name = providerNameParts[1]
+    const iconFromMarketPlace = getIconFromMarketPlace(`${author}/${name}`)
+    return iconFromMarketPlace
+  }, [currentProvider, providerName])
   return <Tooltip triggerMethod='hover' popupContent={tooltip} disabled={!notSuccess}>
     <div className={classNames(
       'size-5 border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge relative flex items-center justify-center rounded-[6px]',
@@ -31,7 +40,7 @@ export const ToolIcon = memo(({ status, tooltip, providerName }: ToolIconProps) 
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={currentProvider?.icon as string}
+        src={icon}
         alt='tool icon'
         className={classNames(
           'w-full h-full size-3.5 object-cover',
