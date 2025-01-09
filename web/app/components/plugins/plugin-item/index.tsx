@@ -130,11 +130,15 @@ const PluginItem: FC<Props> = ({
             packageName={name}
             packageNameClassName='w-auto max-w-[150px]'
           />
-          <div className='mx-2 text-text-quaternary system-xs-regular'>·</div>
-          <div className='flex text-text-tertiary system-xs-regular space-x-1'>
-            <RiLoginCircleLine className='w-4 h-4' />
-            <span>{t('plugin.endpointsEnabled', { num: endpoints_active })}</span>
-          </div>
+          {category === PluginType.extension && (
+            <>
+              <div className='mx-2 text-text-quaternary system-xs-regular'>·</div>
+              <div className='flex text-text-tertiary system-xs-regular space-x-1'>
+                <RiLoginCircleLine className='w-4 h-4' />
+                <span>{t('plugin.endpointsEnabled', { num: endpoints_active })}</span>
+              </div>
+            </>
+          )}
         </div>
 
         <div className='flex items-center'>
@@ -154,7 +158,7 @@ const PluginItem: FC<Props> = ({
             && <>
               <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}`} target='_blank' className='flex items-center gap-0.5'>
                 <div className='text-text-tertiary system-2xs-medium-uppercase'>{t('plugin.from')} <span className='text-text-secondary'>marketplace</span></div>
-                <RiArrowRightUpLine className='w-3 h-3' />
+                <RiArrowRightUpLine className='w-3 h-3 text-text-tertiary' />
               </a>
             </>
           }
