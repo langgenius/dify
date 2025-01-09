@@ -2,7 +2,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:dev-plugin-deploy
+    image: langgenius/dify-api:1.0.0-beta1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -34,7 +34,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:dev-plugin-deploy
+    image: langgenius/dify-api:1.0.0-beta1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -138,7 +138,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:47c8bed17c22f67bd035d0979e696cb00ca45b16-local
+    image: langgenius/dify-plugin-daemon:1.0.0-beta1-local
     restart: always
     environment:
       # Use the shared environment variables.
