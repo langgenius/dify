@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "1.0.0-beta1",
+  "version": "1.0.0-beta.1",
   "private": true,
   "engines": {
     "node": ">=18.17.0"
