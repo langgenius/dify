@@ -6,6 +6,8 @@ import { InstallStep } from '../../types'
 import type { Dependency } from '../../types'
 import ReadyToInstall from './ready-to-install'
 import { useTranslation } from 'react-i18next'
+import useHideLogic from '../hooks/use-hide-logic'
+import cn from '@/utils/classnames'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -30,6 +32,13 @@ const InstallBundle: FC<Props> = ({
   const { t } = useTranslation()
   const [step, setStep] = useState<InstallStep>(installType === InstallType.fromMarketplace ? InstallStep.readyToInstall : InstallStep.uploading)
 
+  const {
+    modalClassName,
+    foldAnimInto,
+    setIsInstalling,
+    handleStartToInstall,
+  } = useHideLogic(onClose)
+
   const getTitle = useCallback(() => {
     if (step === InstallStep.uploadFailed)
       return t(`${i18nPrefix}.uploadFailed`)
@@ -42,8 +51,8 @@ const InstallBundle: FC<Props> = ({
   return (
     <Modal
       isShow={true}
-      onClose={onClose}
-      className='flex min-w-[560px] p-0 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadows-shadow-xl'
+      onClose={foldAnimInto}
+      className={cn(modalClassName, 'flex min-w-[560px] p-0 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadows-shadow-xl')}
       closable
     >
       <div className='flex pt-6 pl-6 pb-3 pr-14 items-start gap-2 self-stretch'>
@@ -54,6 +63,8 @@ const InstallBundle: FC<Props> = ({
       <ReadyToInstall
         step={step}
         onStepChange={setStep}
+        onStartToInstall={handleStartToInstall}
+        setIsInstalling={setIsInstalling}
         allPlugins={fromDSLPayload}
         onClose={onClose}
       />

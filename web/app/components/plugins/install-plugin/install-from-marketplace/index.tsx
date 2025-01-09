@@ -85,6 +85,8 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
           <ReadyToInstallBundle
             step={step}
             onStepChange={setStep}
+            onStartToInstall={handleStartToInstall}
+            setIsInstalling={setIsInstalling}
             onClose={onClose}
             allPlugins={dependencies!}
             isFromMarketPlace

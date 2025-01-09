@@ -10,6 +10,8 @@ import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
 type Props = {
   step: InstallStep
   onStepChange: (step: InstallStep) => void,
+  onStartToInstall: () => void
+  setIsInstalling: (isInstalling: boolean) => void
   onClose: () => void
   uniqueIdentifier: string | null,
   manifest: PluginDeclaration | null,
@@ -20,6 +22,8 @@ type Props = {
 const ReadyToInstall: FC<Props> = ({
   step,
   onStepChange,
+  onStartToInstall,
+  setIsInstalling,
   onClose,
   uniqueIdentifier,
   manifest,
@@ -31,13 +35,15 @@ const ReadyToInstall: FC<Props> = ({
   const handleInstalled = useCallback(() => {
     onStepChange(InstallStep.installed)
     refreshPluginList(manifest)
-  }, [manifest, onStepChange, refreshPluginList])
+    setIsInstalling(false)
+  }, [manifest, onStepChange, refreshPluginList, setIsInstalling])
 
   const handleFailed = useCallback((errorMsg?: string) => {
     onStepChange(InstallStep.installFailed)
+    setIsInstalling(false)
     if (errorMsg)
       onError(errorMsg)
-  }, [onError, onStepChange])
+  }, [onError, onStepChange, setIsInstalling])
 
   return (
     <>
@@ -49,6 +55,7 @@ const ReadyToInstall: FC<Props> = ({
             onCancel={onClose}
             onInstalled={handleInstalled}
             onFailed={handleFailed}
+            onStartToInstall={onStartToInstall}
           />
         )
       }
