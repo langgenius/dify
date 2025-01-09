@@ -198,6 +198,7 @@ const translation = {
     installedError: '{{errorLength}} plugins failed to install',
     clearAll: 'Clear all',
   },
+  submitPlugin: 'Submit plugin',
 }
 
 export default translation

@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Link from 'next/link'
 import {
+  RiBookOpenLine,
   RiDragDropLine,
   RiEqualizer2Line,
 } from '@remixicon/react'
@@ -158,6 +160,25 @@ const PluginPage = ({
             />
           </div>
           <div className='flex shrink-0 items-center gap-1'>
+            {
+              activeTab === 'discover' && (
+                <>
+                  <Link
+                    href='https://docs.dify.ai/plugins/publish-plugins/publish-to-dify-marketplace'
+                    target='_blank'
+                  >
+                    <Button
+                      className='px-3'
+                      variant='secondary-accent'
+                    >
+                      <RiBookOpenLine className='mr-1 w-4 h-4' />
+                      {t('plugin.submitPlugin')}
+                    </Button>
+                  </Link>
+                  <div className='mx-2 w-[1px] h-3.5 bg-divider-regular'></div>
+                </>
+              )
+            }
             <PluginTasks />
             {canManagement && (
               <InstallPluginDropdown

@@ -198,6 +198,7 @@ const translation = {
     installedError: '{{errorLength}} 个插件安装失败',
     clearAll: '清除所有',
   },
+  submitPlugin: '上传插件',
 }
 
 export default translation
