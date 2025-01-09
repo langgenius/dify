@@ -205,240 +205,240 @@ def test_fetch_files_with_non_existent_variable(llm_node):
     assert result == []
 
 
-def test_fetch_prompt_messages__vison_disabled(faker, llm_node, model_config):
-    # TODO: Add test
-    pass
-    # prompt_template = []
-    # llm_node.node_data.prompt_template = prompt_template
+# def test_fetch_prompt_messages__vison_disabled(faker, llm_node, model_config):
+# TODO: Add test
+# pass
+# prompt_template = []
+# llm_node.node_data.prompt_template = prompt_template
 
-    # fake_vision_detail = faker.random_element(
-    #     [ImagePromptMessageContent.DETAIL.HIGH, ImagePromptMessageContent.DETAIL.LOW]
-    # )
-    # fake_remote_url = faker.url()
-    # files = [
-    #     File(
-    #         id="1",
-    #         tenant_id="test",
-    #         type=FileType.IMAGE,
-    #         filename="test1.jpg",
-    #         transfer_method=FileTransferMethod.REMOTE_URL,
-    #         remote_url=fake_remote_url,
-    #         storage_key="",
-    #     )
-    # ]
+# fake_vision_detail = faker.random_element(
+#     [ImagePromptMessageContent.DETAIL.HIGH, ImagePromptMessageContent.DETAIL.LOW]
+# )
+# fake_remote_url = faker.url()
+# files = [
+#     File(
+#         id="1",
+#         tenant_id="test",
+#         type=FileType.IMAGE,
+#         filename="test1.jpg",
+#         transfer_method=FileTransferMethod.REMOTE_URL,
+#         remote_url=fake_remote_url,
+#         storage_key="",
+#     )
+# ]
 
-    # fake_query = faker.sentence()
+# fake_query = faker.sentence()
 
-    # prompt_messages, _ = llm_node._fetch_prompt_messages(
-    #     sys_query=fake_query,
-    #     sys_files=files,
-    #     context=None,
-    #     memory=None,
-    #     model_config=model_config,
-    #     prompt_template=prompt_template,
-    #     memory_config=None,
-    #     vision_enabled=False,
-    #     vision_detail=fake_vision_detail,
-    #     variable_pool=llm_node.graph_runtime_state.variable_pool,
-    #     jinja2_variables=[],
-    # )
+# prompt_messages, _ = llm_node._fetch_prompt_messages(
+#     sys_query=fake_query,
+#     sys_files=files,
+#     context=None,
+#     memory=None,
+#     model_config=model_config,
+#     prompt_template=prompt_template,
+#     memory_config=None,
+#     vision_enabled=False,
+#     vision_detail=fake_vision_detail,
+#     variable_pool=llm_node.graph_runtime_state.variable_pool,
+#     jinja2_variables=[],
+# )
 
-    # assert prompt_messages == [UserPromptMessage(content=fake_query)]
+# assert prompt_messages == [UserPromptMessage(content=fake_query)]
 
 
-def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
-    # TODO: Add test
-    pass
-    # Setup dify config
-    # dify_config.MULTIMODAL_SEND_FORMAT = "url"
+# def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
+# TODO: Add test
+# pass
+# Setup dify config
+# dify_config.MULTIMODAL_SEND_FORMAT = "url"
 
-    # # Generate fake values for prompt template
-    # fake_assistant_prompt = faker.sentence()
-    # fake_query = faker.sentence()
-    # fake_context = faker.sentence()
-    # fake_window_size = faker.random_int(min=1, max=3)
-    # fake_vision_detail = faker.random_element(
-    #     [ImagePromptMessageContent.DETAIL.HIGH, ImagePromptMessageContent.DETAIL.LOW]
-    # )
-    # fake_remote_url = faker.url()
+# # Generate fake values for prompt template
+# fake_assistant_prompt = faker.sentence()
+# fake_query = faker.sentence()
+# fake_context = faker.sentence()
+# fake_window_size = faker.random_int(min=1, max=3)
+# fake_vision_detail = faker.random_element(
+#     [ImagePromptMessageContent.DETAIL.HIGH, ImagePromptMessageContent.DETAIL.LOW]
+# )
+# fake_remote_url = faker.url()
 
-    # # Setup mock memory with history messages
-    # mock_history = [
-    #     UserPromptMessage(content=faker.sentence()),
-    #     AssistantPromptMessage(content=faker.sentence()),
-    #     UserPromptMessage(content=faker.sentence()),
-    #     AssistantPromptMessage(content=faker.sentence()),
-    #     UserPromptMessage(content=faker.sentence()),
-    #     AssistantPromptMessage(content=faker.sentence()),
-    # ]
+# # Setup mock memory with history messages
+# mock_history = [
+#     UserPromptMessage(content=faker.sentence()),
+#     AssistantPromptMessage(content=faker.sentence()),
+#     UserPromptMessage(content=faker.sentence()),
+#     AssistantPromptMessage(content=faker.sentence()),
+#     UserPromptMessage(content=faker.sentence()),
+#     AssistantPromptMessage(content=faker.sentence()),
+# ]
 
-    # # Setup memory configuration
-    # memory_config = MemoryConfig(
-    #     role_prefix=MemoryConfig.RolePrefix(user="Human", assistant="Assistant"),
-    #     window=MemoryConfig.WindowConfig(enabled=True, size=fake_window_size),
-    #     query_prompt_template=None,
-    # )
+# # Setup memory configuration
+# memory_config = MemoryConfig(
+#     role_prefix=MemoryConfig.RolePrefix(user="Human", assistant="Assistant"),
+#     window=MemoryConfig.WindowConfig(enabled=True, size=fake_window_size),
+#     query_prompt_template=None,
+# )
 
-    # memory = MockTokenBufferMemory(history_messages=mock_history)
+# memory = MockTokenBufferMemory(history_messages=mock_history)
 
-    # # Test scenarios covering different file input combinations
-    # test_scenarios = [
-    #     LLMNodeTestScenario(
-    #         description="No files",
-    #         sys_query=fake_query,
-    #         sys_files=[],
-    #         features=[],
-    #         vision_enabled=False,
-    #         vision_detail=None,
-    #         window_size=fake_window_size,
-    #         prompt_template=[
-    #             LLMNodeChatModelMessage(
-    #                 text=fake_context,
-    #                 role=PromptMessageRole.SYSTEM,
-    #                 edition_type="basic",
-    #             ),
-    #             LLMNodeChatModelMessage(
-    #                 text="{#context#}",
-    #                 role=PromptMessageRole.USER,
-    #                 edition_type="basic",
-    #             ),
-    #             LLMNodeChatModelMessage(
-    #                 text=fake_assistant_prompt,
-    #                 role=PromptMessageRole.ASSISTANT,
-    #                 edition_type="basic",
-    #             ),
-    #         ],
-    #         expected_messages=[
-    #             SystemPromptMessage(content=fake_context),
-    #             UserPromptMessage(content=fake_context),
-    #             AssistantPromptMessage(content=fake_assistant_prompt),
-    #         ]
-    #         + mock_history[fake_window_size * -2 :]
-    #         + [
-    #             UserPromptMessage(content=fake_query),
-    #         ],
-    #     ),
-    #     LLMNodeTestScenario(
-    #         description="User files",
-    #         sys_query=fake_query,
-    #         sys_files=[
-    #             File(
-    #                 tenant_id="test",
-    #                 type=FileType.IMAGE,
-    #                 filename="test1.jpg",
-    #                 transfer_method=FileTransferMethod.REMOTE_URL,
-    #                 remote_url=fake_remote_url,
-    #                 extension=".jpg",
-    #                 mime_type="image/jpg",
-    #                 storage_key="",
-    #             )
-    #         ],
-    #         vision_enabled=True,
-    #         vision_detail=fake_vision_detail,
-    #         features=[ModelFeature.VISION],
-    #         window_size=fake_window_size,
-    #         prompt_template=[
-    #             LLMNodeChatModelMessage(
-    #                 text=fake_context,
-    #                 role=PromptMessageRole.SYSTEM,
-    #                 edition_type="basic",
-    #             ),
-    #             LLMNodeChatModelMessage(
-    #                 text="{#context#}",
-    #                 role=PromptMessageRole.USER,
-    #                 edition_type="basic",
-    #             ),
-    #             LLMNodeChatModelMessage(
-    #                 text=fake_assistant_prompt,
-    #                 role=PromptMessageRole.ASSISTANT,
-    #                 edition_type="basic",
-    #             ),
-    #         ],
-    #         expected_messages=[
-    #             SystemPromptMessage(content=fake_context),
-    #             UserPromptMessage(content=fake_context),
-    #             AssistantPromptMessage(content=fake_assistant_prompt),
-    #         ]
-    #         + mock_history[fake_window_size * -2 :]
-    #         + [
-    #             UserPromptMessage(
-    #                 content=[
-    #                     TextPromptMessageContent(data=fake_query),
-    #                     ImagePromptMessageContent(
-    #                         url=fake_remote_url, mime_type="image/jpg", format="jpg", detail=fake_vision_detail
-    #                     ),
-    #                 ]
-    #             ),
-    #         ],
-    #     ),
-    #     LLMNodeTestScenario(
-    #         description="Prompt template with variable selector of File",
-    #         sys_query=fake_query,
-    #         sys_files=[],
-    #         vision_enabled=False,
-    #         vision_detail=fake_vision_detail,
-    #         features=[ModelFeature.VISION],
-    #         window_size=fake_window_size,
-    #         prompt_template=[
-    #             LLMNodeChatModelMessage(
-    #                 text="{{#input.image#}}",
-    #                 role=PromptMessageRole.USER,
-    #                 edition_type="basic",
-    #             ),
-    #         ],
-    #         expected_messages=[
-    #             UserPromptMessage(
-    #                 content=[
-    #                     ImagePromptMessageContent(
-    #                         url=fake_remote_url, mime_type="image/jpg", format="jpg", detail=fake_vision_detail
-    #                     ),
-    #                 ]
-    #             ),
-    #         ]
-    #         + mock_history[fake_window_size * -2 :]
-    #         + [UserPromptMessage(content=fake_query)],
-    #         file_variables={
-    #             "input.image": File(
-    #                 tenant_id="test",
-    #                 type=FileType.IMAGE,
-    #                 filename="test1.jpg",
-    #                 transfer_method=FileTransferMethod.REMOTE_URL,
-    #                 remote_url=fake_remote_url,
-    #                 extension=".jpg",
-    #                 mime_type="image/jpg",
-    #                 storage_key="",
-    #             )
-    #         },
-    #     ),
-    # ]
+# # Test scenarios covering different file input combinations
+# test_scenarios = [
+#     LLMNodeTestScenario(
+#         description="No files",
+#         sys_query=fake_query,
+#         sys_files=[],
+#         features=[],
+#         vision_enabled=False,
+#         vision_detail=None,
+#         window_size=fake_window_size,
+#         prompt_template=[
+#             LLMNodeChatModelMessage(
+#                 text=fake_context,
+#                 role=PromptMessageRole.SYSTEM,
+#                 edition_type="basic",
+#             ),
+#             LLMNodeChatModelMessage(
+#                 text="{#context#}",
+#                 role=PromptMessageRole.USER,
+#                 edition_type="basic",
+#             ),
+#             LLMNodeChatModelMessage(
+#                 text=fake_assistant_prompt,
+#                 role=PromptMessageRole.ASSISTANT,
+#                 edition_type="basic",
+#             ),
+#         ],
+#         expected_messages=[
+#             SystemPromptMessage(content=fake_context),
+#             UserPromptMessage(content=fake_context),
+#             AssistantPromptMessage(content=fake_assistant_prompt),
+#         ]
+#         + mock_history[fake_window_size * -2 :]
+#         + [
+#             UserPromptMessage(content=fake_query),
+#         ],
+#     ),
+#     LLMNodeTestScenario(
+#         description="User files",
+#         sys_query=fake_query,
+#         sys_files=[
+#             File(
+#                 tenant_id="test",
+#                 type=FileType.IMAGE,
+#                 filename="test1.jpg",
+#                 transfer_method=FileTransferMethod.REMOTE_URL,
+#                 remote_url=fake_remote_url,
+#                 extension=".jpg",
+#                 mime_type="image/jpg",
+#                 storage_key="",
+#             )
+#         ],
+#         vision_enabled=True,
+#         vision_detail=fake_vision_detail,
+#         features=[ModelFeature.VISION],
+#         window_size=fake_window_size,
+#         prompt_template=[
+#             LLMNodeChatModelMessage(
+#                 text=fake_context,
+#                 role=PromptMessageRole.SYSTEM,
+#                 edition_type="basic",
+#             ),
+#             LLMNodeChatModelMessage(
+#                 text="{#context#}",
+#                 role=PromptMessageRole.USER,
+#                 edition_type="basic",
+#             ),
+#             LLMNodeChatModelMessage(
+#                 text=fake_assistant_prompt,
+#                 role=PromptMessageRole.ASSISTANT,
+#                 edition_type="basic",
+#             ),
+#         ],
+#         expected_messages=[
+#             SystemPromptMessage(content=fake_context),
+#             UserPromptMessage(content=fake_context),
+#             AssistantPromptMessage(content=fake_assistant_prompt),
+#         ]
+#         + mock_history[fake_window_size * -2 :]
+#         + [
+#             UserPromptMessage(
+#                 content=[
+#                     TextPromptMessageContent(data=fake_query),
+#                     ImagePromptMessageContent(
+#                         url=fake_remote_url, mime_type="image/jpg", format="jpg", detail=fake_vision_detail
+#                     ),
+#                 ]
+#             ),
+#         ],
+#     ),
+#     LLMNodeTestScenario(
+#         description="Prompt template with variable selector of File",
+#         sys_query=fake_query,
+#         sys_files=[],
+#         vision_enabled=False,
+#         vision_detail=fake_vision_detail,
+#         features=[ModelFeature.VISION],
+#         window_size=fake_window_size,
+#         prompt_template=[
+#             LLMNodeChatModelMessage(
+#                 text="{{#input.image#}}",
+#                 role=PromptMessageRole.USER,
+#                 edition_type="basic",
+#             ),
+#         ],
+#         expected_messages=[
+#             UserPromptMessage(
+#                 content=[
+#                     ImagePromptMessageContent(
+#                         url=fake_remote_url, mime_type="image/jpg", format="jpg", detail=fake_vision_detail
+#                     ),
+#                 ]
+#             ),
+#         ]
+#         + mock_history[fake_window_size * -2 :]
+#         + [UserPromptMessage(content=fake_query)],
+#         file_variables={
+#             "input.image": File(
+#                 tenant_id="test",
+#                 type=FileType.IMAGE,
+#                 filename="test1.jpg",
+#                 transfer_method=FileTransferMethod.REMOTE_URL,
+#                 remote_url=fake_remote_url,
+#                 extension=".jpg",
+#                 mime_type="image/jpg",
+#                 storage_key="",
+#             )
+#         },
+#     ),
+# ]
 
-    # for scenario in test_scenarios:
-    #     model_config.model_schema.features = scenario.features
+# for scenario in test_scenarios:
+#     model_config.model_schema.features = scenario.features
 
-    #     for k, v in scenario.file_variables.items():
-    #         selector = k.split(".")
-    #         llm_node.graph_runtime_state.variable_pool.add(selector, v)
+#     for k, v in scenario.file_variables.items():
+#         selector = k.split(".")
+#         llm_node.graph_runtime_state.variable_pool.add(selector, v)
 
-    #     # Call the method under test
-    #     prompt_messages, _ = llm_node._fetch_prompt_messages(
-    #         sys_query=scenario.sys_query,
-    #         sys_files=scenario.sys_files,
-    #         context=fake_context,
-    #         memory=memory,
-    #         model_config=model_config,
-    #         prompt_template=scenario.prompt_template,
-    #         memory_config=memory_config,
-    #         vision_enabled=scenario.vision_enabled,
-    #         vision_detail=scenario.vision_detail,
-    #         variable_pool=llm_node.graph_runtime_state.variable_pool,
-    #         jinja2_variables=[],
-    #     )
+#     # Call the method under test
+#     prompt_messages, _ = llm_node._fetch_prompt_messages(
+#         sys_query=scenario.sys_query,
+#         sys_files=scenario.sys_files,
+#         context=fake_context,
+#         memory=memory,
+#         model_config=model_config,
+#         prompt_template=scenario.prompt_template,
+#         memory_config=memory_config,
+#         vision_enabled=scenario.vision_enabled,
+#         vision_detail=scenario.vision_detail,
+#         variable_pool=llm_node.graph_runtime_state.variable_pool,
+#         jinja2_variables=[],
+#     )
 
-    #     # Verify the result
-    #     assert len(prompt_messages) == len(scenario.expected_messages), f"Scenario failed: {scenario.description}"
-    #     assert (
-    #         prompt_messages == scenario.expected_messages
-    #     ), f"Message content mismatch in scenario: {scenario.description}"
+#     # Verify the result
+#     assert len(prompt_messages) == len(scenario.expected_messages), f"Scenario failed: {scenario.description}"
+#     assert (
+#         prompt_messages == scenario.expected_messages
+#     ), f"Message content mismatch in scenario: {scenario.description}"
 
 
 def test_handle_list_messages_basic(llm_node):
