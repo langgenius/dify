@@ -62,12 +62,14 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
       if (node.data.type === BlockEnum.Agent) {
         const data = node.data as AgentNodeType
+        const isReadyForCheckValid = !!strategyProviders
         const provider = strategyProviders?.find(provider => provider.declaration.identity.name === data.agent_strategy_provider_name)
         const strategy = provider?.declaration.strategies?.find(s => s.identity.name === data.agent_strategy_name)
         moreDataForCheckValid = {
           provider,
           strategy,
           language,
+          isReadyForCheckValid,
         }
       }
 
