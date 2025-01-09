@@ -71,7 +71,7 @@ from tasks.sync_website_document_indexing_task import sync_website_document_inde
 
 class DatasetService:
     @staticmethod
-    def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None):
+    def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
         query = Dataset.query.filter(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc())
 
         if user:
@@ -86,7 +86,7 @@ class DatasetService:
                 else:
                     return [], 0
             else:
-                if user.current_role != TenantAccountRole.OWNER:
+                if user.current_role != TenantAccountRole.OWNER or not include_all:
                     # show all datasets that the user has permission to access
                     if permitted_dataset_ids:
                         query = query.filter(
