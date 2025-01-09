@@ -166,6 +166,8 @@ const translation = {
   documentsDisabled: '{{num}} dokumenti onemogočeni - neaktivni več kot 30 dni',
   preprocessDocument: '{{num}} Predobdelava dokumentov',
   enable: 'Omogočiti',
+  allKnowledge: 'Vse znanje',
+  allKnowledgeDescription: 'Izberite, če želite prikazati vse znanje v tem delovnem prostoru. Samo lastnik delovnega prostora lahko upravlja vse znanje.',
 }
 
 export default translation

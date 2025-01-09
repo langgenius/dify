@@ -166,6 +166,8 @@ const translation = {
   enable: 'Habilitar',
   preprocessDocument: '{{num}} Documentos de pré-processamento',
   localDocs: 'Documentos locais',
+  allKnowledgeDescription: 'Selecione para exibir todo o conhecimento neste espaço de trabalho. Somente o proprietário do espaço de trabalho pode gerenciar todo o conhecimento.',
+  allKnowledge: 'Todo o conhecimento',
 }
 
 export default translation

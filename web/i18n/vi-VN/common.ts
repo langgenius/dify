@@ -49,6 +49,7 @@ const translation = {
     viewMore: 'XEM THÊM',
     submit: 'Trình',
     skip: 'Tàu',
+    imageCopied: 'Hình ảnh sao chép',
   },
   placeholder: {
     input: 'Vui lòng nhập',

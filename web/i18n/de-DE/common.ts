@@ -49,6 +49,7 @@ const translation = {
     view: 'Ansehen',
     submit: 'Senden',
     skip: 'Schiff',
+    imageCopied: 'Kopiertes Bild',
   },
   placeholder: {
     input: 'Bitte eingeben',
