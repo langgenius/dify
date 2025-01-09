@@ -1,4 +1,3 @@
-/* eslint-disable multiline-ternary */
 'use client'
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'

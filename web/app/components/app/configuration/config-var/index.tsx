@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import type { Timeout } from 'ahooks/lib/useRequest/src/types'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import {
@@ -34,7 +33,7 @@ import { InputVarType } from '@/app/components/workflow/types'
 
 export const ADD_EXTERNAL_DATA_TOOL = 'ADD_EXTERNAL_DATA_TOOL'
 
-type ExternalDataToolParams = {
+interface ExternalDataToolParams {
   key: string
   type: string
   index: number
@@ -44,13 +43,13 @@ type ExternalDataToolParams = {
   icon_background?: string
 }
 
-export type IConfigVarProps = {
+export interface IConfigVarProps {
   promptVariables: PromptVariable[]
   readonly?: boolean
   onPromptVariablesChange?: (promptVariables: PromptVariable[]) => void
 }
 
-let conflictTimer: Timeout
+let conflictTimer: number
 
 const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVariablesChange }) => {
   const { t } = useTranslation()
@@ -107,7 +106,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     onPromptVariablesChange?.(newPromptVariables)
   }
   const updatePromptKey = (index: number, newKey: string) => {
-    clearTimeout(conflictTimer)
+    window.clearTimeout(conflictTimer)
     const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
     if (!isValid) {
       Toast.notify({
@@ -127,7 +126,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       return item
     })
 
-    conflictTimer = setTimeout(() => {
+    conflictTimer = window.setTimeout(() => {
       const isKeyExists = promptVariables.some(item => item.key?.trim() === newKey.trim())
       if (isKeyExists) {
         Toast.notify({

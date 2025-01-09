@@ -61,7 +61,7 @@ import {
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import cn from '@/utils/classnames'
 
-export type PromptEditorProps = {
+export interface PromptEditorProps {
   instanceId?: string
   compact?: boolean
   className?: string

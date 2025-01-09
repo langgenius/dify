@@ -16,7 +16,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 
-export type ChatWithHistoryContextValue = {
+export interface ChatWithHistoryContextValue {
   appInfoError?: any
   appInfoLoading?: boolean
   appMeta?: AppMeta

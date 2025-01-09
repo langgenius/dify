@@ -60,18 +60,18 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
   return (
     <div className="flex items-start p-1">
       {icon && icon_background && iconType === 'app' && (
-        <div className='flex-shrink-0 mr-3'>
+        <div className='shrink-0 mr-3'>
           <AppIcon icon={icon} background={icon_background} />
         </div>
       )}
       {iconType !== 'app'
-        && <div className='flex-shrink-0 mr-3'>
+        && <div className='shrink-0 mr-3'>
           {ICON_MAP[iconType]}
         </div>
 
       }
       {mode === 'expand' && <div className="group">
-        <div className={`flex flex-row items-center text-sm font-semibold text-gray-700 group-hover:text-gray-900 break-all ${textStyle?.main ?? ''}`}>
+        <div className={`flex flex-row items-center text-sm font-semibold text-text-secondary group-hover:text-text-primary break-all ${textStyle?.main ?? ''}`}>
           {name}
           {hoverTip
             && <Tooltip
@@ -86,7 +86,7 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
             />
           }
         </div>
-        <div className={`text-xs font-normal text-gray-500 group-hover:text-gray-700 break-all ${textStyle?.extra ?? ''}`}>{type}</div>
+        <div className={`text-xs font-normal text-text-tertiary group-hover:text-text-secondary break-all ${textStyle?.extra ?? ''}`}>{type}</div>
         <div className='text-text-tertiary system-2xs-medium-uppercase'>{isExternal ? t('dataset.externalTag') : ''}</div>
       </div>}
     </div>

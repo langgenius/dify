@@ -29,8 +29,9 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   /*
   * tool_configurations: tool setting, not dynamic setting
   * tool_parameters: tool dynamic setting(by user)
+  * output_schema: tool dynamic output
   */
-  const { provider_id, provider_type, tool_name, tool_configurations } = inputs
+  const { provider_id, provider_type, tool_name, tool_configurations, output_schema } = inputs
   const isBuiltIn = provider_type === CollectionType.builtIn
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
@@ -91,7 +92,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         const value = newConfig[key]
         if (schema?.type === 'boolean') {
           if (typeof value === 'string')
-            newConfig[key] = parseInt(value, 10)
+            newConfig[key] = Number.parseInt(value, 10)
 
           if (typeof value === 'boolean')
             newConfig[key] = value ? 1 : 0
@@ -99,7 +100,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
         if (schema?.type === 'number-input') {
           if (typeof value === 'string' && value !== '')
-            newConfig[key] = parseFloat(value)
+            newConfig[key] = Number.parseFloat(value)
         }
       })
       draft.tool_configurations = newConfig
@@ -162,7 +163,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const [inputVarValues, doSetInputVarValues] = useState<Record<string, any>>({})
   const setInputVarValues = (value: Record<string, any>) => {
     doSetInputVarValues(value)
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    // eslint-disable-next-line ts/no-use-before-define
     setRunInputData(value)
   }
   // fill single run form variable with constant value first time
@@ -254,6 +255,23 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     doHandleRun(addMissedVarData)
   }
 
+  const outputSchema = useMemo(() => {
+    const res: any[] = []
+    if (!output_schema)
+      return []
+    Object.keys(output_schema.properties).forEach((outputKey) => {
+      const output = output_schema.properties[outputKey]
+      res.push({
+        name: outputKey,
+        type: output.type === 'array'
+          ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]`
+          : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}`,
+        description: output.description,
+      })
+    })
+    return res
+  }, [output_schema])
+
   return {
     readOnly,
     inputs,
@@ -282,6 +300,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     handleRun,
     handleStop,
     runResult,
+    outputSchema,
   }
 }
 

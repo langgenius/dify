@@ -18,6 +18,14 @@ from models.enums import UserFrom
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 
 
+def test_plain_text_to_dict():
+    assert _plain_text_to_dict("aa\n cc:") == {"aa": "", "cc": ""}
+    assert _plain_text_to_dict("aa:bb\n cc:dd") == {"aa": "bb", "cc": "dd"}
+    assert _plain_text_to_dict("aa:bb\n cc:dd\n") == {"aa": "bb", "cc": "dd"}
+    assert _plain_text_to_dict("aa:bb\n\n cc : dd\n\n") == {
+        "aa": "bb", "cc": "dd"}
+
+
 def test_http_request_node_binary_file(monkeypatch):
     data = HttpRequestNodeData(
         title="test",
@@ -183,7 +191,8 @@ def test_http_request_node_form_with_file(monkeypatch):
 
     def attr_checker(*args, **kwargs):
         assert kwargs["data"] == {"name": "test"}
-        assert kwargs["files"] == {"file": (None, b"test", "application/octet-stream")}
+        assert kwargs["files"] == {
+            "file": (None, b"test", "application/octet-stream")}
         return httpx.Response(200, content=b"")
 
     monkeypatch.setattr(

@@ -32,7 +32,7 @@ import type { PickerBlockMenuOption } from './menu'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 
-type ComponentPickerProps = {
+interface ComponentPickerProps {
   triggerString: string
   contextBlock?: ContextBlockType
   queryBlock?: QueryBlockType

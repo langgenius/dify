@@ -15,7 +15,11 @@ const useTimestamp = () => {
     return dayjs.unix(value).tz(timezone).format(format)
   }, [timezone])
 
-  return { formatTime }
+  const formatDate = useCallback((value: string, format: string) => {
+    return dayjs(value).tz(timezone).format(format)
+  }, [timezone])
+
+  return { formatTime, formatDate }
 }
 
 export default useTimestamp

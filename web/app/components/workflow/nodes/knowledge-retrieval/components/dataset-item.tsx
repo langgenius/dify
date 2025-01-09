@@ -18,7 +18,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
 
-type Props = {
+interface Props {
   payload: DataSet
   onRemove: () => void
   onChange: (dataSet: DataSet) => void

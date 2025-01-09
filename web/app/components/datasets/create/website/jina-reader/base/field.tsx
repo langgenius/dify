@@ -5,7 +5,7 @@ import Input from './input'
 import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 
-type Props = {
+interface Props {
   className?: string
   label: string
   labelClassName?: string

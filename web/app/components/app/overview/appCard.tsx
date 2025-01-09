@@ -2,6 +2,9 @@
 import type { HTMLProps } from 'react'
 import React, { useMemo, useState } from 'react'
 import {
+  RiLoopLeftLine,
+} from '@remixicon/react'
+import {
   Cog8ToothIcon,
   DocumentTextIcon,
   PaintBrushIcon,
@@ -16,24 +19,25 @@ import style from './style.module.css'
 import type { ConfigParams } from './settings'
 import Tooltip from '@/app/components/base/tooltip'
 import AppBasic from '@/app/components/app-sidebar/basic'
-import { asyncRunSafe, randomString } from '@/utils'
+import { asyncRunSafe } from '@/utils'
 import Button from '@/app/components/base/button'
 import Tag from '@/app/components/base/tag'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import CopyFeedback from '@/app/components/base/copy-feedback'
+import ActionButton from '@/app/components/base/action-button'
 import Confirm from '@/app/components/base/confirm'
 import ShareQRCode from '@/app/components/base/qrcode'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 import type { AppDetailResponse } from '@/models/app'
 import { useAppContext } from '@/context/app-context'
 import type { AppSSO } from '@/types/app'
+import cn from '@/utils/classnames'
 
 export type IAppCardProps = {
   className?: string
   appInfo: AppDetailResponse & Partial<AppSSO>
   cardType?: 'api' | 'webapp'
-  customBgColor?: string
   onChangeStatus: (val: boolean) => Promise<void>
   onSaveSiteConfig?: (params: ConfigParams) => Promise<void>
   onGenerateCode?: () => Promise<void>
@@ -46,7 +50,6 @@ const EmbedIcon = ({ className = '' }: HTMLProps<HTMLDivElement>) => {
 function AppCard({
   appInfo,
   cardType = 'webapp',
-  customBgColor,
   onChangeStatus,
   onSaveSiteConfig,
   onGenerateCode,
@@ -92,10 +95,6 @@ function AppCard({
   const appUrl = `${app_base_url}/${appMode}/${access_token}`
   const apiUrl = appInfo?.api_base_url
 
-  let bgColor = 'bg-primary-50 bg-opacity-40'
-  if (cardType === 'api')
-    bgColor = 'bg-purple-50'
-
   const genClickFuncByName = (opName: string) => {
     switch (opName) {
       case t('appOverview.overview.appInfo.preview'):
@@ -133,11 +132,8 @@ function AppCard({
   }
 
   return (
-    <div
-      className={
-        `shadow-xs border-[0.5px] rounded-lg border-gray-200 ${className ?? ''}`}
-    >
-      <div className={`px-6 py-5 ${customBgColor ?? bgColor} rounded-lg`}>
+    <div className={cn('rounded-xl border-effects-highlight border-t border-l-[0.5px] bg-background-default', className)}>
+      <div className={cn('px-6 py-5')}>
         <div className="mb-2.5 flex flex-row items-start justify-between">
           <AppBasic
             iconType={cardType}
@@ -161,23 +157,20 @@ function AppCard({
         </div>
         <div className="flex flex-col justify-center py-2">
           <div className="py-1">
-            <div className="pb-1 text-xs text-gray-500">
+            <div className="pb-1 text-xs text-text-tertiary">
               {isApp
                 ? t('appOverview.overview.appInfo.accessibleAddress')
                 : t('appOverview.overview.apiInfo.accessibleAddress')}
             </div>
-            <div className="w-full h-9 pl-2 pr-0.5 py-0.5 bg-black bg-opacity-2 rounded-lg border border-black border-opacity-5 justify-start items-center inline-flex">
+            <div className="w-full h-9 px-2 py-0.5 bg-components-input-bg-normal  rounded-lg justify-start items-center inline-flex">
               <div className="h-4 px-2 justify-start items-start gap-2 flex flex-1 min-w-0">
-                <div className="text-gray-700 text-xs font-medium text-ellipsis overflow-hidden whitespace-nowrap">
+                <div className="text-text-secondary system-xs-medium truncate">
                   {isApp ? appUrl : apiUrl}
                 </div>
               </div>
-              <Divider type="vertical" className="!h-3.5 shrink-0 !mx-0.5" />
-              {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} selectorId={randomString(8)} className={'hover:bg-gray-200'} />}
-              <CopyFeedback
-                content={isApp ? appUrl : apiUrl}
-                className={'hover:bg-gray-200'}
-              />
+              <Divider type="vertical" className="!h-3.5 shrink-0" />
+              {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} />}
+              <CopyFeedback content={isApp ? appUrl : apiUrl}/>
               {/* button copy link/ button regenerate */}
               {showConfirmDelete && (
                 <Confirm
@@ -196,22 +189,16 @@ function AppCard({
                 <Tooltip
                   popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
                 >
-                  <div
-                    className="w-8 h-8 ml-0.5 cursor-pointer hover:bg-gray-200 rounded-lg"
-                    onClick={() => setShowConfirmDelete(true)}
-                  >
-                    <div
-                      className={
-                        `w-full h-full ${style.refreshIcon} ${genLoading ? style.generateLogo : ''}`}
-                    ></div>
-                  </div>
+                  <ActionButton onClick={() => setShowConfirmDelete(true)}>
+                    <RiLoopLeftLine className={cn('w-4 h-4', genLoading && 'animate-spin')} />
+                  </ActionButton>
                 </Tooltip>
               )}
             </div>
           </div>
         </div>
         <div className={'pt-2 flex flex-row items-center flex-wrap gap-y-2'}>
-          {!isApp && <SecretKeyButton className='flex-shrink-0 !h-8 bg-white mr-2' textCls='!text-gray-700 font-medium' iconCls='stroke-[1.2px]' appId={appInfo.id} />}
+          {!isApp && <SecretKeyButton className='shrink-0 !h-8 mr-2' textCls='!text-text-secondary font-medium' iconCls='stroke-[1.2px]' appId={appInfo.id} />}
           {OPERATIONS_MAP[cardType].map((op) => {
             const disabled
               = op.opName === t('appOverview.overview.appInfo.settings.entry')
