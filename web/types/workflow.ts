@@ -11,6 +11,10 @@ export type AgentLogItem = {
   data: object, // debug data
   error?: string,
   status: string,
+  metadata?: {
+    elapsed_time?: number
+    provider?: string
+  },
 }
 
 export type AgentLogItemWithChildren = AgentLogItem & {
