@@ -44,7 +44,12 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
     countDownFoldIntoAnim,
   } = useFoldAnimInto(onClose)
 
-  const [isInstalling, setIsInstalling] = useState(false)
+  const [isInstalling, doSetIsInstalling] = useState(false)
+  const setIsInstalling = useCallback((isInstalling: boolean) => {
+    if (!isInstalling)
+      clearCountDown()
+    doSetIsInstalling(isInstalling)
+  }, [clearCountDown])
 
   const foldAnimInto = useCallback(() => {
     if (isInstalling) {
@@ -57,7 +62,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   const handleStartToInstall = useCallback(() => {
     setIsInstalling(true)
     countDownFoldIntoAnim()
-  }, [countDownFoldIntoAnim])
+  }, [countDownFoldIntoAnim, setIsInstalling])
 
   const getTitle = useCallback(() => {
     if (isBundle && step === InstallStep.installed)
@@ -73,14 +78,14 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
     setStep(InstallStep.installed)
     refreshPluginList(manifest)
     setIsInstalling(false)
-  }, [manifest, refreshPluginList])
+  }, [manifest, refreshPluginList, setIsInstalling])
 
   const handleFailed = useCallback((errorMsg?: string) => {
     setStep(InstallStep.installFailed)
     setIsInstalling(false)
     if (errorMsg)
       setErrorMsg(errorMsg)
-  }, [])
+  }, [setIsInstalling])
 
   return (
     <Modal
