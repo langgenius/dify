@@ -107,7 +107,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         env:
           BASH_SEVERITY: warning
-          DEFAULT_BRANCH: ${{ github.ref_name }}
+          DEFAULT_BRANCH: plugins/beta
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IGNORE_GENERATED_FILES: true
           IGNORE_GITIGNORED_FILES: true
