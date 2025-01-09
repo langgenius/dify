@@ -1,5 +1,8 @@
+import logging
 from threading import Lock
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 _tokenizer: Any = None
 _lock = Lock()
@@ -43,5 +46,6 @@ class GPT2Tokenizer:
                     base_path = abspath(__file__)
                     gpt2_tokenizer_path = join(dirname(base_path), "gpt2")
                     _tokenizer = TransformerGPT2Tokenizer.from_pretrained(gpt2_tokenizer_path)
+                    logger.info("Fallback to Transformers' GPT-2 tokenizer from tiktoken")
 
             return _tokenizer
