@@ -2,7 +2,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.0.0-beta1
+    image: langgenius/dify-api:13f0c01f933d80b559f4f3bd56cb3ef8dafa7b9a
     restart: always
     environment:
       # Use the shared environment variables.
@@ -16,8 +16,8 @@ services:
       PLUGIN_API_URL: ${PLUGIN_DAEMON_URL:-http://plugin_daemon:5002}
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
-      MARKETPLACE_ENABLED: ${MARKETPLACE_ENABLED:-false}
-      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace-plugin.dify.dev}
+      MARKETPLACE_ENABLED: ${MARKETPLACE_ENABLED:-true}
+      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
       PLUGIN_REMOTE_INSTALL_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
       PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
       ENDPOINT_URL_TEMPLATE: ${ENDPOINT_URL_TEMPLATE:-http://localhost/e/{hook_id}}
@@ -34,7 +34,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.0.0-beta1
+    image: langgenius/dify-api:13f0c01f933d80b559f4f3bd56cb3ef8dafa7b9a
     restart: always
     environment:
       # Use the shared environment variables.
@@ -49,7 +49,7 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
       MARKETPLACE_ENABLED: ${MARKETPLACE_ENABLED:-false}
-      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace-plugin.dify.dev}
+      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
     depends_on:
       - db
       - redis
@@ -62,7 +62,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:dev-plugin-deploy
+    image: langgenius/dify-web:13f0c01f933d80b559f4f3bd56cb3ef8dafa7b9a
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -71,8 +71,8 @@ services:
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
-      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace-plugin.dify.dev}
-      MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace-plugin.dify.dev}
+      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
+      MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
       TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
 
   # The postgres database.
@@ -138,7 +138,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:1.0.0-beta1-local
+    image: langgenius/dify-plugin-daemon:0.0.1-local
     restart: always
     environment:
       # Use the shared environment variables.
