@@ -5,7 +5,7 @@ describe('retry', () => {
   // retry nodeId:1 3 times.
   const steps = graphToLogStruct('start -> (retry, retryNode, 3)')
   const [startNode, retryNode, ...retryDetail] = steps
-  const result = format(steps)
+  const result = format(steps as any)
   test('should have no retry status nodes', () => {
     expect(result.find(item => (item as any).status === 'retry')).toBeUndefined()
   })
