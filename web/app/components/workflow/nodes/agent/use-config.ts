@@ -49,10 +49,15 @@ export const useStrategyInfo = (
       isExistInPlugin: strategyExist,
     }
   }, [strategy, marketplace, strategyProvider.isError, strategyProvider.isLoading])
+  const refetch = useCallback(() => {
+    strategyProvider.refetch()
+    marketplace.refetch()
+  }, [marketplace, strategyProvider])
   return {
     strategyProvider,
     strategy,
     strategyStatus,
+    refetch,
   }
 }
 

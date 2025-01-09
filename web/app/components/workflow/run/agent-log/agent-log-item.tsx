@@ -23,6 +23,7 @@ const AgentLogItem = ({
     status,
     children,
     data,
+    metadata,
   } = item
   const [expanded, setExpanded] = useState(false)
 
@@ -41,8 +42,17 @@ const AgentLogItem = ({
             : <RiArrowRightSLine className='shrink-0 w-4 h-4 text-text-quaternary' />
         }
         <div className='shrink-0 mr-1.5 w-5 h-5'></div>
-        <div className='grow system-sm-semibold-uppercase text-text-secondary truncate'>{label}</div>
-        {/* <div className='shrink-0 mr-2 system-xs-regular text-text-tertiary'>0.02s</div> */}
+        <div
+          className='grow system-sm-semibold-uppercase text-text-secondary truncate'
+          title={label}
+        >
+          {label}
+        </div>
+        {
+          metadata?.elapsed_time && (
+            <div className='shrink-0 mr-2 system-xs-regular text-text-tertiary'>{metadata?.elapsed_time?.toFixed(3)}s</div>
+          )
+        }
         <NodeStatusIcon status={status} />
       </div>
       {

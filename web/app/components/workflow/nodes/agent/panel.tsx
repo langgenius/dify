@@ -73,7 +73,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
   })()
 
   return <div className='my-2'>
-    <Field title={t('workflow.nodes.agent.strategy.label')} className='px-4 py-2' >
+    <Field title={t('workflow.nodes.agent.strategy.label')} className='px-4 py-2' tooltip={t('workflow.nodes.agent.strategy.tooltip')} >
       <AgentStrategy
         strategy={inputs.agent_strategy_name ? {
           agent_strategy_provider_name: inputs.agent_strategy_provider_name!,

@@ -75,6 +75,7 @@ type Props = {
   editorContainerClassName?: string
   placeholderClassName?: string
   titleClassName?: string
+  required?: boolean
 }
 
 const Editor: FC<Props> = ({
@@ -110,6 +111,7 @@ const Editor: FC<Props> = ({
   placeholderClassName,
   titleClassName,
   editorContainerClassName,
+  required,
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -147,7 +149,7 @@ const Editor: FC<Props> = ({
         <div className={cn(isFocus ? 'bg-gray-50' : 'bg-gray-100', isExpand && 'h-full flex flex-col', 'rounded-lg', containerClassName)}>
           <div className={cn('pt-1 pl-3 pr-2 flex justify-between items-center', headerClassName)}>
             <div className='flex gap-2'>
-              <div className={cn('leading-4 text-xs font-semibold text-gray-700 uppercase', titleClassName)}>{title}</div>
+              <div className={cn('leading-4 text-xs font-semibold text-gray-700 uppercase', titleClassName)}>{title} {required && <span className='text-red-500'>*</span>}</div>
               {titleTooltip && <Tooltip popupContent={titleTooltip} />}
             </div>
             <div className='flex items-center'>

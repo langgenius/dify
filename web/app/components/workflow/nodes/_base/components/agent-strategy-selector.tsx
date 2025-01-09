@@ -99,22 +99,22 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
     if (!list) return []
     return list.filter(tool => tool.name.toLowerCase().includes(query.toLowerCase()))
   }, [query, list])
-  const { strategyStatus } = useStrategyInfo(
+  const { strategyStatus, refetch: refetchStrategyInfo } = useStrategyInfo(
     value?.agent_strategy_provider_name,
     value?.agent_strategy_name,
   )
 
   const showPluginNotInstalledWarn = strategyStatus?.plugin?.source === 'external'
-    && !strategyStatus.plugin.installed
+    && !strategyStatus.plugin.installed && !!value
 
   const showUnsupportedStrategy = strategyStatus?.plugin.source === 'external'
-    && !strategyStatus?.isExistInPlugin
+    && !strategyStatus?.isExistInPlugin && !!value
 
   const showSwitchVersion = !strategyStatus?.isExistInPlugin
-    && strategyStatus?.plugin.source === 'marketplace' && strategyStatus.plugin.installed
+    && strategyStatus?.plugin.source === 'marketplace' && strategyStatus.plugin.installed && !!value
 
   const showInstallButton = !strategyStatus?.isExistInPlugin
-    && strategyStatus?.plugin.source === 'marketplace' && !strategyStatus.plugin.installed
+    && strategyStatus?.plugin.source === 'marketplace' && !strategyStatus.plugin.installed && !!value
 
   const icon = list?.find(
     coll => coll.tools?.find(tool => tool.name === value?.agent_strategy_name),
@@ -159,8 +159,8 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
         >
           {value?.agent_strategy_label || t('workflow.nodes.agent.strategy.selectTip')}
         </p>
-        {value && <div className='ml-auto flex items-center gap-1'>
-          {showInstallButton && <InstallPluginButton
+        <div className='ml-auto flex items-center gap-1'>
+          {showInstallButton && value && <InstallPluginButton
             onClick={e => e.stopPropagation()}
             size={'small'}
             uniqueIdentifier={value.plugin_unique_identifier}
@@ -178,16 +178,16 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
               : <RiArrowDownSLine className='size-4 text-text-tertiary' />
           }
           {showSwitchVersion && <SwitchPluginVersion
-            uniqueIdentifier={'langgenius/openai:12'}
+            uniqueIdentifier={value.plugin_unique_identifier}
             tooltip={<ToolTipContent
               title={t('workflow.nodes.agent.unsupportedStrategy')}>
               {t('workflow.nodes.agent.strategyNotFoundDescAndSwitchVersion')}
             </ToolTipContent>}
             onChange={() => {
-              // TODO: refresh all strategies
+              refetchStrategyInfo()
             }}
           />}
-        </div>}
+        </div>
       </div>
     </PortalToFollowElemTrigger>
     <PortalToFollowElemContent className='z-10'>

@@ -1,10 +1,11 @@
 import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import classNames from '@/utils/classnames'
-import { memo, useMemo, useRef } from 'react'
+import { memo, useMemo, useRef, useState } from 'react'
 import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/service/use-tools'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { useTranslation } from 'react-i18next'
+import { Group } from '@/app/components/base/icons/src/vender/other'
 
 type Status = 'not-installed' | 'not-authorized' | undefined
 
@@ -45,21 +46,31 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
     if (status === 'not-authorized') return t('workflow.nodes.agent.toolNotAuthorizedTooltip', { tool: name })
     throw new Error('Unknown status')
   }, [name, notSuccess, status, t])
-  return <Tooltip triggerMethod='hover' popupContent={tooltip} disabled={!notSuccess}>
-    <div className={classNames(
-      'size-5 border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge relative flex items-center justify-center rounded-[6px]',
-    )}
-    ref={containerRef}
+  const [iconFetchError, setIconFetchError] = useState(false)
+  return <Tooltip
+    triggerMethod='hover'
+    popupContent={tooltip}
+    disabled={!notSuccess}
+  >
+    <div
+      className={classNames(
+        'size-5 border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge relative flex items-center justify-center rounded-[6px]',
+      )}
+      ref={containerRef}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={icon}
-        alt='tool icon'
-        className={classNames(
-          'w-full h-full size-3.5 object-cover',
-          notSuccess && 'opacity-50',
-        )}
-      />
+      {!iconFetchError
+        // eslint-disable-next-line @next/next/no-img-element
+        ? <img
+          src={icon}
+          alt='tool icon'
+          className={classNames(
+            'w-full h-full size-3.5 object-cover',
+            notSuccess && 'opacity-50',
+          )}
+          onError={() => setIconFetchError(true)}
+        />
+        : <Group className="w-3 h-3 opacity-35" />
+      }
       {indicator && <Indicator color={indicator} className="absolute right-[-1px] top-[-1px]" />}
     </div>
   </Tooltip>

@@ -1,174 +1,304 @@
-const STEP_SPLIT = '->'
+type IterationInfo = { iterationId: string; iterationIndex: number }
+type NodePlain = { nodeType: 'plain'; nodeId: string; } & Partial<IterationInfo>
+type NodeComplex = { nodeType: string; nodeId: string; params: (NodePlain | (NodeComplex & Partial<IterationInfo>) | Node[] | number)[] } & Partial<IterationInfo>
+type Node = NodePlain | NodeComplex
 
-const toNodeData = (step: string, info: Record<string, any> = {}): any => {
-  const [nodeId, title] = step.split('@')
-
-  const data: Record<string, any> = {
-    id: nodeId,
-    node_id: nodeId,
-    title: title || nodeId,
-    execution_metadata: {},
-    status: 'succeeded',
-  }
-
-  const executionMetadata = data.execution_metadata
-  const { isRetry, isIteration, inIterationInfo } = info
-  if (isRetry)
-    data.status = 'retry'
-
-  if (isIteration)
-    data.node_type = 'iteration'
-
-  if (inIterationInfo) {
-    executionMetadata.iteration_id = inIterationInfo.iterationId
-    executionMetadata.iteration_index = inIterationInfo.iterationIndex
-  }
-
-  return data
+/**
+ * Parses a DSL string into an array of node objects.
+ * @param dsl - The input DSL string.
+ * @returns An array of parsed nodes.
+ */
+function parseDSL(dsl: string): NodeData[] {
+  return convertToNodeData(parseTopLevelFlow(dsl).map(nodeStr => parseNode(nodeStr)))
 }
 
-const toRetryNodeData = ({
-  nodeId,
-  repeatTimes,
-}: {
-  nodeId: string,
-  repeatTimes: number,
-}): any => {
-  const res = [toNodeData(nodeId)]
-  for (let i = 0; i < repeatTimes; i++)
-    res.push(toNodeData(nodeId, { isRetry: true }))
-  return res
-}
+/**
+ * Splits a top-level flow string by "->", respecting nested structures.
+ * @param dsl - The DSL string to split.
+ * @returns An array of top-level segments.
+ */
+function parseTopLevelFlow(dsl: string): string[] {
+  const segments: string[] = []
+  let buffer = ''
+  let nested = 0
 
-const toIterationNodeData = ({
-  nodeId,
-  children,
-}: {
-  nodeId: string,
-  children: number[],
-}) => {
-  const res = [toNodeData(nodeId, { isIteration: true })]
-  // TODO: handle inner node structure
-  for (let i = 0; i < children.length; i++) {
-    const step = `${children[i]}`
-    res.push(toNodeData(step, { inIterationInfo: { iterationId: nodeId, iterationIndex: i } }))
-  }
-
-  return res
-}
-
-type NodeStructure = {
-  node: string;
-  params: Array<string | NodeStructure>;
-}
-
-export function parseNodeString(input: string): NodeStructure {
-  input = input.trim()
-  if (input.startsWith('(') && input.endsWith(')'))
-    input = input.slice(1, -1)
-
-  const parts: Array<string | NodeStructure> = []
-  let current = ''
-  let depth = 0
-  let inArrayDepth = 0
-
-  for (let i = 0; i < input.length; i++) {
-    const char = input[i]
-
-    if (char === '(')
-      depth++
-    else if (char === ')')
-      depth--
-
-    if (char === '[')
-      inArrayDepth++
-    else if (char === ']')
-      inArrayDepth--
-
-    const isInArray = inArrayDepth > 0
-
-    if (char === ',' && depth === 0 && !isInArray) {
-      parts.push(current.trim())
-      current = ''
+  for (let i = 0; i < dsl.length; i++) {
+    const char = dsl[i]
+    if (char === '(') nested++
+    if (char === ')') nested--
+    if (char === '-' && dsl[i + 1] === '>' && nested === 0) {
+      segments.push(buffer.trim())
+      buffer = ''
+      i++ // Skip the ">" character
     }
     else {
-      current += char
+      buffer += char
     }
   }
+  if (buffer.trim())
+    segments.push(buffer.trim())
 
-  if (current)
-    parts.push(current.trim())
+  return segments
+}
 
-  const result: NodeStructure = {
-    node: '',
-    params: [],
-  }
+/**
+ * Parses a single node string.
+ * If the node is complex (e.g., has parentheses), it extracts the node type, node ID, and parameters.
+ * @param nodeStr - The node string to parse.
+ * @param parentIterationId - The ID of the parent iteration node (if applicable).
+ * @returns A parsed node object.
+ */
+function parseNode(nodeStr: string, parentIterationId?: string): Node {
+  // Check if the node is a complex node
+  if (nodeStr.startsWith('(') && nodeStr.endsWith(')')) {
+    const innerContent = nodeStr.slice(1, -1).trim() // Remove outer parentheses
+    let nested = 0
+    let buffer = ''
+    const parts: string[] = []
 
-  for (let i = 0; i < parts.length; i++) {
-    const part = parts[i]
+    // Split the inner content by commas, respecting nested parentheses
+    for (let i = 0; i < innerContent.length; i++) {
+      const char = innerContent[i]
+      if (char === '(') nested++
+      if (char === ')') nested--
 
-    if (typeof part === 'string') {
-      if (part.startsWith('('))
-        result.params.push(parseNodeString(part))
-
-      if (part.startsWith('[')) {
-        const content = part.slice(1, -1)
-        result.params.push(parseNodeString(content))
+      if (char === ',' && nested === 0) {
+        parts.push(buffer.trim())
+        buffer = ''
+      }
+      else {
+        buffer += char
       }
     }
-    else if (i === 0) {
-      result.node = part as unknown as string
+    parts.push(buffer.trim())
+
+    // Extract nodeType, nodeId, and params
+    const [nodeType, nodeId, ...paramsRaw] = parts
+    const params = parseParams(paramsRaw, nodeType === 'iteration' ? nodeId.trim() : parentIterationId)
+    const complexNode = {
+      nodeType: nodeType.trim(),
+      nodeId: nodeId.trim(),
+      params,
+    }
+    if (parentIterationId) {
+      (complexNode as any).iterationId = parentIterationId;
+      (complexNode as any).iterationIndex = 0 // Fixed as 0
+    }
+    return complexNode
+  }
+
+  // If it's not a complex node, treat it as a plain node
+  const plainNode: NodePlain = { nodeType: 'plain', nodeId: nodeStr.trim() }
+  if (parentIterationId) {
+    plainNode.iterationId = parentIterationId
+    plainNode.iterationIndex = 0 // Fixed as 0
+  }
+  return plainNode
+}
+
+/**
+ * Parses parameters of a complex node.
+ * Supports nested flows and complex sub-nodes.
+ * Adds iteration-specific metadata recursively.
+ * @param paramParts - The parameters string split by commas.
+ * @param iterationId - The ID of the iteration node, if applicable.
+ * @returns An array of parsed parameters (plain nodes, nested nodes, or flows).
+ */
+function parseParams(paramParts: string[], iterationId?: string): (Node | Node[] | number)[] {
+  return paramParts.map((part) => {
+    if (part.includes('->')) {
+      // Parse as a flow and return an array of nodes
+      return parseTopLevelFlow(part).map(node => parseNode(node, iterationId))
+    }
+    else if (part.startsWith('(')) {
+      // Parse as a nested complex node
+      return parseNode(part, iterationId)
+    }
+    else if (!Number.isNaN(Number(part.trim()))) {
+      // Parse as a numeric parameter
+      return Number(part.trim())
     }
     else {
-      result.params.push(part as unknown as string)
+      // Parse as a plain node
+      return parseNode(part, iterationId)
     }
+  })
+}
+
+type NodeData = {
+  id: string;
+  node_id: string;
+  title: string;
+  node_type?: string;
+  execution_metadata: Record<string, any>;
+  status: string;
+}
+
+/**
+ * Converts a plain node to node data.
+ */
+function convertPlainNode(node: Node): NodeData[] {
+  return [
+    {
+      id: node.nodeId,
+      node_id: node.nodeId,
+      title: node.nodeId,
+      execution_metadata: {},
+      status: 'succeeded',
+    },
+  ]
+}
+
+/**
+ * Converts a retry node to node data.
+ */
+function convertRetryNode(node: Node): NodeData[] {
+  const { nodeId, iterationId, iterationIndex, params } = node as NodeComplex
+  const retryCount = params ? Number.parseInt(params[0] as unknown as string, 10) : 0
+  const result: NodeData[] = [
+    {
+      id: nodeId,
+      node_id: nodeId,
+      title: nodeId,
+      execution_metadata: {},
+      status: 'succeeded',
+    },
+  ]
+
+  for (let i = 0; i < retryCount; i++) {
+    result.push({
+      id: nodeId,
+      node_id: nodeId,
+      title: nodeId,
+      execution_metadata: iterationId ? {
+        iteration_id: iterationId,
+        iteration_index: iterationIndex || 0,
+      } : {},
+      status: 'retry',
+    })
   }
 
   return result
 }
 
-const toNodes = (input: string): any[] => {
-  const list = input.split(STEP_SPLIT)
-    .map(step => step.trim())
+/**
+ * Converts an iteration node to node data.
+ */
+function convertIterationNode(node: Node): NodeData[] {
+  const { nodeId, params } = node as NodeComplex
+  const result: NodeData[] = [
+    {
+      id: nodeId,
+      node_id: nodeId,
+      title: nodeId,
+      node_type: 'iteration',
+      status: 'succeeded',
+      execution_metadata: {},
+    },
+  ]
 
-  const res: any[] = []
-  list.forEach((step) => {
-    const isPlainStep = !step.includes('(')
-    if (isPlainStep) {
-      res.push(toNodeData(step))
-      return
-    }
-
-    const { node, params } = parseNodeString(step)
-    switch (node) {
-      case 'iteration':
-        console.log(params)
-        break
-        res.push(...toIterationNodeData({
-          nodeId: params[0] as string,
-          children: JSON.parse(params[1] as string) as number[],
-        }))
-        break
-      case 'retry':
-        res.push(...toRetryNodeData({
-          nodeId: params[0] as string,
-          repeatTimes: Number.parseInt(params[1] as string),
-        }))
-        break
+  params?.forEach((param: any) => {
+    if (Array.isArray(param)) {
+      param.forEach((childNode: Node) => {
+        const childData = convertToNodeData([childNode])
+        childData.forEach((data) => {
+          data.execution_metadata = {
+            ...data.execution_metadata,
+            iteration_id: nodeId,
+            iteration_index: 0,
+          }
+        })
+        result.push(...childData)
+      })
     }
   })
-  return res
+
+  return result
 }
 
-/*
-* : 1 -> 2 -> 3
-* iteration: (iteration, 1, [2, 3]) -> 4.  (1, [2, 3]) means 1 is parent, [2, 3] is children
-* parallel: 1 -> (parallel, [1,2,3], [4, (parallel: (6,7))]).
-* retry: (retry, 1, 3). 1 is parent, 3 is retry times
-*/
-const graphToLogStruct = (input: string): any[] => {
-  const list = toNodes(input)
-  return list
+/**
+ * Converts a parallel node to node data.
+ */
+function convertParallelNode(node: Node, parentParallelId?: string, parentStartNodeId?: string): NodeData[] {
+  const { nodeId, params } = node as NodeComplex
+  const result: NodeData[] = [
+    {
+      id: nodeId,
+      node_id: nodeId,
+      title: nodeId,
+      execution_metadata: {
+        parallel_id: nodeId,
+      },
+      status: 'succeeded',
+    },
+  ]
+
+  params?.forEach((param) => {
+    if (Array.isArray(param)) {
+      const startNodeId = param[0]?.nodeId
+      param.forEach((childNode: Node) => {
+        const childData = convertToNodeData([childNode])
+        childData.forEach((data) => {
+          data.execution_metadata = {
+            ...data.execution_metadata,
+            parallel_id: nodeId,
+            parallel_start_node_id: startNodeId,
+            ...(parentParallelId && {
+              parent_parallel_id: parentParallelId,
+              parent_parallel_start_node_id: parentStartNodeId,
+            }),
+          }
+        })
+        result.push(...childData)
+      })
+    }
+    else if (param && typeof param === 'object') {
+      const startNodeId = param.nodeId
+      const childData = convertToNodeData([param])
+      childData.forEach((data) => {
+        data.execution_metadata = {
+          ...data.execution_metadata,
+          parallel_id: nodeId,
+          parallel_start_node_id: startNodeId,
+          ...(parentParallelId && {
+            parent_parallel_id: parentParallelId,
+            parent_parallel_start_node_id: parentStartNodeId,
+          }),
+        }
+      })
+      result.push(...childData)
+    }
+  })
+
+  return result
 }
 
-export default graphToLogStruct
+/**
+ * Main function to convert nodes to node data.
+ */
+function convertToNodeData(nodes: Node[], parentParallelId?: string, parentStartNodeId?: string): NodeData[] {
+  const result: NodeData[] = []
+
+  nodes.forEach((node) => {
+    switch (node.nodeType) {
+      case 'plain':
+        result.push(...convertPlainNode(node))
+        break
+      case 'retry':
+        result.push(...convertRetryNode(node))
+        break
+      case 'iteration':
+        result.push(...convertIterationNode(node))
+        break
+      case 'parallel':
+        result.push(...convertParallelNode(node, parentParallelId, parentStartNodeId))
+        break
+      default:
+        throw new Error(`Unknown nodeType: ${node.nodeType}`)
+    }
+  })
+
+  return result
+}
+
+export default parseDSL

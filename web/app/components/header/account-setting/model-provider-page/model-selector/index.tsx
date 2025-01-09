@@ -15,6 +15,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import classNames from '@/utils/classnames'
 
 type ModelSelectorProps = {
   defaultModel?: DefaultModel
@@ -24,6 +25,8 @@ type ModelSelectorProps = {
   onSelect?: (model: DefaultModel) => void
   readonly?: boolean
   scopeFeatures?: string[]
+  deprecatedClassName?: string
+  showDeprecatedWarnIcon?: boolean
 }
 const ModelSelector: FC<ModelSelectorProps> = ({
   defaultModel,
@@ -33,6 +36,8 @@ const ModelSelector: FC<ModelSelectorProps> = ({
   onSelect,
   readonly,
   scopeFeatures = [],
+  deprecatedClassName,
+  showDeprecatedWarnIcon = false,
 }) => {
   const [open, setOpen] = useState(false)
   const {
@@ -64,7 +69,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
       placement='bottom-start'
       offset={4}
     >
-      <div className='relative'>
+      <div className={classNames('relative')}>
         <PortalToFollowElemTrigger
           onClick={handleToggle}
           className='block'
@@ -86,6 +91,8 @@ const ModelSelector: FC<ModelSelectorProps> = ({
                 modelName={defaultModel?.model || ''}
                 providerName={defaultModel?.provider || ''}
                 className={triggerClassName}
+                showWarnIcon={showDeprecatedWarnIcon}
+                contentClassName={deprecatedClassName}
               />
             )
           }
