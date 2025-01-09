@@ -144,6 +144,7 @@ const AllTools = ({
           wrapElemRef={wrapElemRef}
           list={notInstalledPlugins as any} ref={pluginRef}
           searchText={searchText}
+          toolContentClassName={toolContentClassName}
           tags={tags}
         />
       </div>
