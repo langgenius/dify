@@ -33,7 +33,7 @@ import {
 } from '@/app/components/base/file-uploader/utils'
 
 type GetAbortController = (abortController: AbortController) => void
-type SendCallback = {
+interface SendCallback {
   onGetConversationMessages?: (conversationId: string, getAbortController: GetAbortController) => Promise<any>
   onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
   onConversationComplete?: (conversationId: string) => void

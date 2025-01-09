@@ -23,7 +23,7 @@ import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import cn from '@/utils/classnames'
 
-export type IPromptValuePanelProps = {
+export interface IPromptValuePanelProps {
   appType: AppType
   onSend?: () => void
   inputs: Inputs

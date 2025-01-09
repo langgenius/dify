@@ -59,7 +59,7 @@ import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { fetchCollectionList } from '@/service/tools'
-import { type Collection } from '@/app/components/tools/types'
+import type { Collection } from '@/app/components/tools/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   getMultipleRetrievalConfig,
@@ -71,6 +71,8 @@ import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import { fetchFileUploadConfig } from '@/service/common'
+import { correctProvider } from '@/utils'
+import PluginDependency from '@/app/components/workflow/plugin-dependency'
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -156,7 +158,7 @@ const Configuration: FC = () => {
   const setCompletionParams = (value: FormValue) => {
     const params = { ...value }
 
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    // eslint-disable-next-line ts/no-use-before-define
     if ((!params.stop || params.stop.length === 0) && (modeModeTypeRef.current === ModelModeType.completion)) {
       params.stop = getTempStop()
       setTempStop([])
@@ -165,7 +167,7 @@ const Configuration: FC = () => {
   }
 
   const [modelConfig, doSetModelConfig] = useState<ModelConfig>({
-    provider: 'openai',
+    provider: 'langgenius/openai/openai',
     model_id: 'gpt-3.5-turbo',
     mode: ModelModeType.unset,
     configs: {
@@ -188,7 +190,7 @@ const Configuration: FC = () => {
 
   const isAgent = mode === 'agent-chat'
 
-  const isOpenAI = modelConfig.provider === 'openai'
+  const isOpenAI = modelConfig.provider === 'langgenius/openai/openai'
 
   const [collectionList, setCollectionList] = useState<Collection[]>([])
   useEffect(() => {
@@ -361,7 +363,7 @@ const Configuration: FC = () => {
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
   const setPromptMode = async (mode: PromptMode) => {
     if (mode === PromptMode.advanced) {
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      // eslint-disable-next-line ts/no-use-before-define
       await migrateToDefaultPrompt()
       setCanReturnToSimpleMode(true)
     }
@@ -547,8 +549,19 @@ const Configuration: FC = () => {
         if (modelConfig.retriever_resource)
           setCitationConfig(modelConfig.retriever_resource)
 
-        if (modelConfig.annotation_reply)
-          setAnnotationConfig(modelConfig.annotation_reply, true)
+        if (modelConfig.annotation_reply) {
+          let annotationConfig = modelConfig.annotation_reply
+          if (modelConfig.annotation_reply.enabled) {
+            annotationConfig = {
+              ...modelConfig.annotation_reply,
+              embedding_model: {
+                ...modelConfig.annotation_reply.embedding_model,
+                embedding_provider_name: correctProvider(modelConfig.annotation_reply.embedding_model.embedding_provider_name),
+              },
+            }
+          }
+          setAnnotationConfig(annotationConfig, true)
+        }
 
         if (modelConfig.sensitive_word_avoidance)
           setModerationConfig(modelConfig.sensitive_word_avoidance)
@@ -558,7 +571,7 @@ const Configuration: FC = () => {
 
         const config = {
           modelConfig: {
-            provider: model.provider,
+            provider: correctProvider(model.provider),
             model_id: model.name,
             mode: model.mode,
             configs: {
@@ -600,7 +613,6 @@ const Configuration: FC = () => {
             annotation_reply: modelConfig.annotation_reply,
             external_data_tools: modelConfig.external_data_tools,
             dataSets: datasets || [],
-            // eslint-disable-next-line multiline-ternary
             agentConfig: res.mode === 'agent-chat' ? {
               max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
               ...modelConfig.agent_mode,
@@ -611,8 +623,12 @@ const Configuration: FC = () => {
               }).map((tool: any) => {
                 return {
                   ...tool,
-                  isDeleted: res.deleted_tools?.includes(tool.tool_name),
+                  isDeleted: res.deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name),
                   notAuthor: collectionList.find(c => tool.provider_id === c.id)?.is_team_authorization === false,
+                  ...(tool.provider_type === 'builtin' ? {
+                    provider_id: correctProvider(tool.provider_name),
+                    provider_name: correctProvider(tool.provider_name),
+                  } : {}),
                 }
               }),
             } : DEFAULT_AGENT_SETTING,
@@ -633,6 +649,12 @@ const Configuration: FC = () => {
           retrieval_model: RETRIEVE_TYPE.multiWay,
           ...modelConfig.dataset_configs,
           ...retrievalConfig,
+          ...(retrievalConfig.reranking_model ? {
+            reranking_model: {
+              ...retrievalConfig.reranking_model,
+              reranking_provider_name: correctProvider(modelConfig.dataset_configs.reranking_model.reranking_provider_name),
+            },
+          } : {}),
         })
         setHasFetchedDetail(true)
       })
@@ -1020,6 +1042,7 @@ const Configuration: FC = () => {
               onAutoAddPromptVariable={handleAddPromptVariable}
             />
           )}
+          <PluginDependency />
         </>
       </FeaturesProvider>
     </ConfigContext.Provider>

@@ -23,7 +23,7 @@ import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 
 const TEXT_MAX_LENGTH = 256
 
-export type IConfigModalProps = {
+export interface IConfigModalProps {
   isCreate?: boolean
   payload?: InputVar
   isShow: boolean

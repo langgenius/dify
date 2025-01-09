@@ -50,38 +50,38 @@ jobs:
         if: failure()
         run: echo "Please run 'dev/reformat' to fix the fixable linting errors."
 
-  # web-style:
-  #   name: Web Style
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: ./web
+  web-style:
+    name: Web Style
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./web
 
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  #     - name: Check changed files
-  #       id: changed-files
-  #       uses: tj-actions/changed-files@v45
-  #       with:
-  #         files: web/**
+      - name: Check changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          files: web/**
 
-  #     - name: Setup NodeJS
-  #       uses: actions/setup-node@v4
-  #       if: steps.changed-files.outputs.any_changed == 'true'
-  #       with:
-  #         node-version: 20
-  #         cache: yarn
-  #         cache-dependency-path: ./web/package.json
+      - name: Setup NodeJS
+        uses: actions/setup-node@v4
+        if: steps.changed-files.outputs.any_changed == 'true'
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: ./web/package.json
 
-  #     - name: Web dependencies
-  #       if: steps.changed-files.outputs.any_changed == 'true'
-  #       run: yarn install --frozen-lockfile
+      - name: Web dependencies
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: pnpm install --frozen-lockfile
 
-  #     - name: Web style check
-  #       if: steps.changed-files.outputs.any_changed == 'true'
-  #       run: yarn run lint
+      - name: Web style check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: pnpm run lint
 
   superlinter:
     name: SuperLinter

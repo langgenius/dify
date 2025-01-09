@@ -14,6 +14,7 @@ import { createWorkflowToolProvider, fetchWorkflowToolDetailByAppID, saveWorkflo
 import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '@/app/components/tools/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import { useAppContext } from '@/context/app-context'
+import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
 
 type Props = {
   disabled: boolean
@@ -46,6 +47,7 @@ const WorkflowToolConfigureButton = ({
   const [isLoading, setIsLoading] = useState(false)
   const [detail, setDetail] = useState<WorkflowToolProviderResponse>()
   const { isCurrentWorkspaceManager } = useAppContext()
+  const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
 
   const outdated = useMemo(() => {
     if (!detail)
@@ -135,6 +137,7 @@ const WorkflowToolConfigureButton = ({
   const createHandle = async (data: WorkflowToolProviderRequest & { workflow_app_id: string }) => {
     try {
       await createWorkflowToolProvider(data)
+      invalidateAllWorkflowTools()
       onRefreshData?.()
       getDetail(workflowAppId)
       Toast.notify({
@@ -156,6 +159,7 @@ const WorkflowToolConfigureButton = ({
       await handlePublish()
       await saveWorkflowToolProvider(data)
       onRefreshData?.()
+      invalidateAllWorkflowTools()
       getDetail(workflowAppId)
       Toast.notify({
         type: 'success',

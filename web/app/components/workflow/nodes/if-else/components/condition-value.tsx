@@ -20,7 +20,7 @@ import type {
   Node,
 } from '@/app/components/workflow/types'
 
-type ConditionValueProps = {
+interface ConditionValueProps {
   variableSelector: string[]
   labelName?: string
   operator: ComparisonOperator

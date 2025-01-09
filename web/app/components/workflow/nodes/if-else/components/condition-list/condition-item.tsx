@@ -39,7 +39,7 @@ import { SimpleSelect as Select } from '@/app/components/base/select'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
 
-type ConditionItemProps = {
+interface ConditionItemProps {
   className?: string
   disabled?: boolean
   caseId: string

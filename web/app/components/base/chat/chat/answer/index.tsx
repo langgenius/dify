@@ -23,7 +23,7 @@ import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows
 import cn from '@/utils/classnames'
 import { FileList } from '@/app/components/base/file-uploader'
 
-type AnswerProps = {
+interface AnswerProps {
   item: ChatItem
   question: string
   index: number

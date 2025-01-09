@@ -68,7 +68,8 @@ def test_executor_with_json_body_and_object_variable():
         system_variables={},
         user_inputs={},
     )
-    variable_pool.add(["pre_node_id", "object"], {"name": "John Doe", "age": 30, "email": "john@example.com"})
+    variable_pool.add(["pre_node_id", "object"], {
+                      "name": "John Doe", "age": 30, "email": "john@example.com"})
 
     # Prepare the node data
     node_data = HttpRequestNodeData(
@@ -123,7 +124,8 @@ def test_executor_with_json_body_and_nested_object_variable():
         system_variables={},
         user_inputs={},
     )
-    variable_pool.add(["pre_node_id", "object"], {"name": "John Doe", "age": 30, "email": "john@example.com"})
+    variable_pool.add(["pre_node_id", "object"], {
+                      "name": "John Doe", "age": 30, "email": "john@example.com"})
 
     # Prepare the node data
     node_data = HttpRequestNodeData(

@@ -15,7 +15,7 @@ import { Users01, UsersPlus } from '@/app/components/base/icons/src/vender/solid
 import type { DatasetPermission } from '@/models/datasets'
 import { useAppContext } from '@/context/app-context'
 import type { Member } from '@/models/common'
-export type RoleSelectorProps = {
+export interface RoleSelectorProps {
   disabled?: boolean
   permission?: DatasetPermission
   value: string[]
