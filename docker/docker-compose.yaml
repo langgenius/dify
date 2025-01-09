@@ -416,6 +416,8 @@ services:
       <<: *shared-api-worker-env
       # Startup mode, 'api' starts the API server.
       MODE: api
+      CONSOLE_API_URL: ${CONSOLE_API_URL:-http://localhost:5001}
+      CONSOLE_WEB_URL: ${CONSOLE_WEB_URL:-http://localhost:3000}
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
