@@ -165,6 +165,8 @@ const translation = {
   preprocessDocument: '{{num}} เอกสารการประมวลผลล่วงหน้า',
   documentsDisabled: '{{num}} เอกสารถูกปิดใช้งาน - ไม่ได้ใช้งานนานกว่า 30 วัน',
   enable: 'เปิด',
+  allKnowledge: 'ความรู้ทั้งหมด',
+  allKnowledgeDescription: 'เลือกเพื่อแสดงความรู้ทั้งหมดในพื้นที่ทํางานนี้ เฉพาะเจ้าของพื้นที่ทํางานเท่านั้นที่สามารถจัดการความรู้ทั้งหมดได้',
 }
 
 export default translation

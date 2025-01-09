@@ -49,6 +49,7 @@ const translation = {
     saveAndRegenerate: '저장 및 자식 청크 재생성',
     submit: '전송',
     skip: '배',
+    imageCopied: '복사된 이미지',
   },
   placeholder: {
     input: '입력해주세요',

@@ -49,6 +49,7 @@ const translation = {
     saveAndRegenerate: 'ذخیره و بازسازی تکه های فرزند',
     submit: 'ارسال',
     skip: 'کشتی',
+    imageCopied: 'تصویر کپی شده',
   },
   errorMsg: {
     fieldRequired: '{{field}} الزامی است',

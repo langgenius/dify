@@ -49,6 +49,7 @@ const translation = {
     close: 'Zamykać',
     submit: 'Prześlij',
     skip: 'Statek',
+    imageCopied: 'Skopiowany obraz',
   },
   placeholder: {
     input: 'Proszę wprowadzić',

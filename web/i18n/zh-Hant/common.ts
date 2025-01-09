@@ -49,6 +49,7 @@ const translation = {
     regenerate: '再生',
     submit: '提交',
     skip: '船',
+    imageCopied: '複製的圖片',
   },
   placeholder: {
     input: '請輸入',
