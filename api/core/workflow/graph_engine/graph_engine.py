@@ -350,7 +350,6 @@ class GraphEngine:
                 next_node_id = edge.target_node_id
             else:
                 if any(edge.run_condition for edge in edge_mappings):
-
                     condition_edge_mappings: dict[str, list[GraphEdge]] = {}
                     for edge in edge_mappings:
                         if edge.run_condition:
@@ -465,7 +464,6 @@ class GraphEngine:
         parallel_start_node_id: Optional[str] = None,
         handle_exceptions: list[str] = [],
     ) -> Generator[GraphEngineEvent | str, None, None]:
-        
         target_nodes: defaultdict[str, list[GraphEdge]] = defaultdict(list)
         for edge in edge_mappings:
             target_nodes[edge.target_node_id].append(edge)
@@ -477,7 +475,7 @@ class GraphEngine:
         for target_node_id, edges in target_nodes.items():
             if target_node_id in executed_node_ids:
                 continue
-                
+
             parallel_id = self.graph.node_parallel_mapping.get(target_node_id)
             if not parallel_id:
                 raise GraphRunFailedError(f"Node {target_node_id} parallel not found")
@@ -489,8 +487,10 @@ class GraphEngine:
             for edge in edges:
                 if edge.target_node_id in executed_node_ids:
                     continue
-                if (edge.target_node_id not in self.graph.node_parallel_mapping 
-                    or self.graph.node_parallel_mapping.get(edge.target_node_id, "") != parallel_id):
+                if (
+                    edge.target_node_id not in self.graph.node_parallel_mapping
+                    or self.graph.node_parallel_mapping.get(edge.target_node_id, "") != parallel_id
+                ):
                     continue
 
                 executed_node_ids.add(edge.target_node_id)
@@ -505,14 +505,14 @@ class GraphEngine:
                         "parent_parallel_id": in_parallel_id,
                         "parent_parallel_start_node_id": parallel_start_node_id,
                         "handle_exceptions": handle_exceptions,
-                    }
+                    },
                 )
                 future.add_done_callback(self.thread_pool.task_done_callback)
                 all_futures.append((parallel_id, future))
 
         succeeded_count = 0
         branch_results = []
-        
+
         while succeeded_count < len(all_futures):
             try:
                 event = q.get(timeout=1)
@@ -520,23 +520,23 @@ class GraphEngine:
                     break
 
                 yield event
-                
+
                 if isinstance(event, ParallelBranchRunSucceededEvent):
                     succeeded_count += 1
                     branch_results.append(event)
-                    
+
                     if succeeded_count == len(all_futures):
                         q.put(None)
-                        
+
                         for parallel_id, _ in all_futures:
                             parallel = self.graph.parallel_mapping[parallel_id]
                             final_node_id = parallel.end_to_node_id
                             if final_node_id:
                                 yield final_node_id
-                                
+
                 elif isinstance(event, ParallelBranchRunFailedEvent):
                     raise GraphRunFailedError(event.error)
-                    
+
             except queue.Empty:
                 continue
 
