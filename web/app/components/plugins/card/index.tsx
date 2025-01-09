@@ -45,7 +45,7 @@ const Card = ({
   const locale = localeFromProps ? getLanguage(localeFromProps) : defaultLocale
   const { categoriesMap } = useSingleCategories()
   const { category, type, name, org, label, brief, icon, verified } = payload
-  const isBundle = !['plugin', 'model', 'tool', 'extension', 'agent_strategy'].includes(type)
+  const isBundle = !['plugin', 'model', 'tool', 'extension', 'agent-strategy'].includes(type)
   const cornerMark = isBundle ? categoriesMap.bundle?.label : categoriesMap[category]?.label
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj ? renderI18nObject(obj, locale) : ''
