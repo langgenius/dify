@@ -80,7 +80,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
         {inputs.agent_strategy_label}
       </SettingItem>
       : <SettingItem label={t('workflow.nodes.agent.strategyNotSet')} />}
-    <Group
+    {models.length > 0 && <Group
       label={<GroupLabel className='mt-1'>
         {t('workflow.nodes.agent.model')}
       </GroupLabel>}
@@ -91,7 +91,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
           key={model.param}
         />
       })}
-    </Group>
+    </Group>}
     {tools.length > 0 && <Group label={<GroupLabel className='mt-1'>
       {t('workflow.nodes.agent.toolbox')}
     </GroupLabel>}>
