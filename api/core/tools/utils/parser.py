@@ -112,7 +112,7 @@ class ApiBasedToolSchemaParser:
                                 llm_description=property.get("description", ""),
                                 default=property.get("default", None),
                                 placeholder=I18nObject(
-                                    en_US=parameter.get("description", ""), zh_Hans=parameter.get("description", "")
+                                    en_US=property.get("description", ""), zh_Hans=property.get("description", "")
                                 ),
                             )
 
