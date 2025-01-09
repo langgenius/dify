@@ -223,7 +223,7 @@ const Form = () => {
               <IndexMethodRadio
                 disable={!currentDataset?.embedding_available}
                 value={indexMethod}
-                onChange={v => setIndexMethod(v)}
+                onChange={v => setIndexMethod(v!)}
                 docForm={currentDataset.doc_form}
                 currentValue={currentDataset.indexing_technique}
               />
@@ -300,35 +300,37 @@ const Form = () => {
             </div>
           </div>
         </>
-        : <>
-          <div className='w-full h-0 border-b border-divider-subtle my-1' />
-          <div className={rowClass}>
-            <div className={labelClass}>
-              <div>
-                <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.retrievalSetting.title')}</div>
-                <div className='body-xs-regular text-text-tertiary'>
-                  <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
-                  {t('datasetSettings.form.retrievalSetting.description')}
+        : indexMethod
+          ? <>
+            <div className='w-full h-0 border-b border-divider-subtle my-1' />
+            <div className={rowClass}>
+              <div className={labelClass}>
+                <div>
+                  <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.retrievalSetting.title')}</div>
+                  <div className='body-xs-regular text-text-tertiary'>
+                    <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                    {t('datasetSettings.form.retrievalSetting.description')}
+                  </div>
                 </div>
               </div>
+              <div className='grow'>
+                {indexMethod === IndexingType.QUALIFIED
+                  ? (
+                    <RetrievalMethodConfig
+                      value={retrievalConfig}
+                      onChange={setRetrievalConfig}
+                    />
+                  )
+                  : (
+                    <EconomicalRetrievalMethodConfig
+                      value={retrievalConfig}
+                      onChange={setRetrievalConfig}
+                    />
+                  )}
+              </div>
             </div>
-            <div className='grow'>
-              {indexMethod === 'high_quality'
-                ? (
-                  <RetrievalMethodConfig
-                    value={retrievalConfig}
-                    onChange={setRetrievalConfig}
-                  />
-                )
-                : (
-                  <EconomicalRetrievalMethodConfig
-                    value={retrievalConfig}
-                    onChange={setRetrievalConfig}
-                  />
-                )}
-            </div>
-          </div>
-        </>
+          </>
+          : null
       }
       <div className='w-full h-0 border-b border-divider-subtle my-1' />
       <div className={rowClass}>

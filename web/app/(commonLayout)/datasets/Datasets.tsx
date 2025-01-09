@@ -6,7 +6,7 @@ import { debounce } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
 import NewDatasetCard from './NewDatasetCard'
 import DatasetCard from './DatasetCard'
-import type { DataSetListResponse } from '@/models/datasets'
+import type { DataSetListResponse, FetchDatasetsParams } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
 import { useAppContext } from '@/context/app-context'
 
@@ -15,13 +15,15 @@ const getKey = (
   previousPageData: DataSetListResponse,
   tags: string[],
   keyword: string,
+  includeAll: boolean,
 ) => {
   if (!pageIndex || previousPageData.has_more) {
-    const params: any = {
+    const params: FetchDatasetsParams = {
       url: 'datasets',
       params: {
         page: pageIndex + 1,
         limit: 30,
+        include_all: includeAll,
       },
     }
     if (tags.length)
@@ -37,16 +39,18 @@ type Props = {
   containerRef: React.RefObject<HTMLDivElement>
   tags: string[]
   keywords: string
+  includeAll: boolean
 }
 
 const Datasets = ({
   containerRef,
   tags,
   keywords,
+  includeAll,
 }: Props) => {
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { data, isLoading, setSize, mutate } = useSWRInfinite(
-    (pageIndex: number, previousPageData: DataSetListResponse) => getKey(pageIndex, previousPageData, tags, keywords),
+    (pageIndex: number, previousPageData: DataSetListResponse) => getKey(pageIndex, previousPageData, tags, keywords, includeAll),
     fetchDatasets,
     { revalidateFirstPage: false, revalidateAll: true },
   )

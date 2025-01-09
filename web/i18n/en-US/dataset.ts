@@ -166,6 +166,8 @@ const translation = {
     cancel: 'Cancel',
   },
   preprocessDocument: '{{num}} Preprocess Documents',
+  allKnowledge: 'All Knowledge',
+  allKnowledgeDescription: 'Select to display all knowledge in this workspace. Only the Workspace Owner can manage all knowledge.',
 }
 
 export default translation
