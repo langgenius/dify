@@ -18,6 +18,13 @@ const AgentStrategyList = ({
   const providerKey = `${detail.plugin_id}/${providerBriefInfo.name}`
   const { data: strategyProviderDetail } = useStrategyProviderDetail(providerKey)
 
+  const providerDetail = useMemo(() => {
+    return {
+      ...strategyProviderDetail?.declaration.identity,
+      tenant_id: detail.tenant_id,
+    }
+  }, [detail.tenant_id, strategyProviderDetail?.declaration.identity])
+
   const strategyList = useMemo(() => {
     if (!strategyProviderDetail)
       return []
@@ -39,7 +46,7 @@ const AgentStrategyList = ({
         {strategyList.map(strategyDetail => (
           <StrategyItem
             key={`${strategyDetail.identity.provider}${strategyDetail.identity.name}`}
-            provider={strategyProviderDetail.declaration.identity}
+            provider={providerDetail as any}
             detail={strategyDetail}
           />
         ))}

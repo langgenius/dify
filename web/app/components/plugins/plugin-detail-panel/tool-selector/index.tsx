@@ -280,7 +280,7 @@ const ToolSelector: FC<Props> = ({
                 {currentProvider && currentProvider.type === CollectionType.builtIn && currentProvider.allow_delete && (
                   <div className='px-4 pt-3 flex flex-col'>
                     <div className='flex items-center gap-2'>
-                      <div className='text-text-tertiary system-xs-medium-uppercase'>{t('plugin.detailPanel.toolSelector.auth')}</div>
+                      <div className='shrink-0 text-text-tertiary system-xs-medium-uppercase'>{t('plugin.detailPanel.toolSelector.auth')}</div>
                       <Divider bgStyle='gradient' className='grow' />
                     </div>
                     <div className='py-2'>
@@ -312,7 +312,7 @@ const ToolSelector: FC<Props> = ({
                 {currentToolParams.length > 0 && currentProvider?.is_team_authorization && (
                   <div className='px-4 pt-3'>
                     <div className='flex items-center gap-2'>
-                      <div className='text-text-tertiary system-xs-medium-uppercase'>{t('plugin.detailPanel.toolSelector.settings')}</div>
+                      <div className='shrink-0 text-text-tertiary system-xs-medium-uppercase'>{t('plugin.detailPanel.toolSelector.settings')}</div>
                       <Divider bgStyle='gradient' className='grow' />
                     </div>
                     <div className='py-2'>
