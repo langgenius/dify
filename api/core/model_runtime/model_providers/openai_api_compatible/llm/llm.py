@@ -412,6 +412,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
         """
         full_assistant_content = ""
         chunk_index = 0
+        completion_type = LLMMode.value_of(credentials["mode"])
 
         def create_final_llm_result_chunk(
             id: Optional[str], index: int, message: AssistantPromptMessage, finish_reason: str, usage: dict
@@ -419,7 +420,10 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
             # calculate num tokens
             prompt_tokens = usage and usage.get("prompt_tokens")
             if prompt_tokens is None:
-                prompt_tokens = self._num_tokens_from_string(model, prompt_messages[0].content)
+                if completion_type is LLMMode.CHAT:
+                    prompt_tokens = self._num_tokens_from_messages(model, prompt_messages, credentials=credentials)
+                else:
+                    prompt_tokens = self._num_tokens_from_string(model, prompt_messages[0].content)
             completion_tokens = usage and usage.get("completion_tokens")
             if completion_tokens is None:
                 completion_tokens = self._num_tokens_from_string(model, full_assistant_content)
@@ -624,7 +628,10 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
             completion_tokens = usage["completion_tokens"]
         else:
             # calculate num tokens
-            prompt_tokens = self._num_tokens_from_string(model, prompt_messages[0].content)
+            if completion_type is LLMMode.CHAT:
+                prompt_tokens = self._num_tokens_from_messages(model, prompt_messages, credentials=credentials)
+            else:
+                prompt_tokens = self._num_tokens_from_string(model, prompt_messages[0].content)
             completion_tokens = self._num_tokens_from_string(model, assistant_message.content)
 
         # transform usage
