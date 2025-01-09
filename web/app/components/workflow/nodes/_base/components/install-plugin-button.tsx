@@ -17,17 +17,19 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
     pluginIds: [uniqueIdentifier],
     enabled: !!uniqueIdentifier,
   })
-  const install = useInstallPackageFromMarketPlace({
-    onSuccess() {
-      manifest.refetch()
-      onSuccess?.()
-    },
-  })
+  const install = useInstallPackageFromMarketPlace()
+  const isLoading = manifest.isLoading || install.isPending
+  // await for refetch to get the new installed plugin, when manifest refetch, this component will unmount
+  || install.isSuccess
   const handleInstall: MouseEventHandler = (e) => {
     e.stopPropagation()
-    install.mutate(uniqueIdentifier)
+    install.mutate(uniqueIdentifier, {
+      onSuccess: async () => {
+        await manifest.refetch()
+        onSuccess?.()
+      },
+    })
   }
-  const isLoading = manifest.isLoading || install.isPending
   if (!manifest.data) return null
   if (manifest.data.plugins.some(plugin => plugin.id === uniqueIdentifier)) return null
   return <Button
