@@ -5,8 +5,8 @@ const translation = {
     buildApps: '构建应用程序数',
     annotationQuota: '标注回复数',
     documentsUploadQuota: '文档上传配额',
-    vectorSpace: '向量空间',
-    vectorSpaceTooltip: '向量空间是 LLMs 理解您的数据所需的长期记忆系统。',
+    vectorSpace: '知识库数据存储空间',
+    vectorSpaceTooltip: '采用高质量索引模式的文档会消耗知识数据存储资源。当知识数据存储达到限制时，将不会上传新文档。',
   },
   upgradeBtn: {
     plain: '升级套餐',
@@ -158,7 +158,7 @@ const translation = {
     },
   },
   vectorSpace: {
-    fullTip: '向量空间已满。',
+    fullTip: '知识库数据存储空间已满。',
     fullSolution: '升级您的套餐以获得更多空间。',
   },
   apps: {

@@ -5,8 +5,8 @@ const translation = {
     buildApps: 'アプリを作成する',
     annotationQuota: 'アノテーション・クォータ',
     documentsUploadQuota: 'ドキュメント・アップロード・クォータ',
-    vectorSpace: 'ベクトルスペース',
-    vectorSpaceTooltip: 'ベクトルスペースは、LLMがデータを理解するために必要な長期記憶システムです。',
+    vectorSpace: '知識データストレージ',
+    vectorSpaceTooltip: '高品質インデックスモードのドキュメントは、知識データストレージのリソースを消費します。知識データストレージの上限に達すると、新しいドキュメントはアップロードされません。',
   },
   upgradeBtn: {
     plain: 'プランをアップグレード',
@@ -51,7 +51,7 @@ const translation = {
     documents: '{{count}}の知識文書',
     documentsTooltip: 'ナレッジデータソースからインポートされたドキュメントの数に対するクォータ。',
     vectorSpace: '{{size}}の知識データストレージ',
-    vectorSpaceTooltip: '高品質インデックスモードのドキュメントは、Knowledge Data Storageのリソースを消費します。Knowledge Data Storageの上限に達すると、新しいドキュメントはアップロードされません。',
+    vectorSpaceTooltip: '高品質インデックスモードのドキュメントは、知識データストレージのリソースを消費します。知識データストレージの上限に達すると、新しいドキュメントはアップロードされません。',
     documentsRequestQuota: '{{count}}100/分のナレッジ リクエストのレート制限',
     documentsRequestQuotaTooltip: 'システムがナレッジベースサポートで処理できる1分あたりのクエリ数を示し、クエリの容量とパフォーマンスを測定するために使用されます。、クエリの容量とパフォーマンスを測定するために使用されます。',
     documentProcessingPriority: '文書処理',
@@ -158,7 +158,7 @@ const translation = {
     },
   },
   vectorSpace: {
-    fullTip: 'ベクトルスペースがいっぱいです。',
+    fullTip: '知識データストレージがいっぱいです。',
     fullSolution: 'より多くのスペースを得るためにプランをアップグレードしてください。',
   },
   apps: {

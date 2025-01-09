@@ -5,8 +5,8 @@ const translation = {
     buildApps: 'Build Apps',
     annotationQuota: 'Annotation Quota',
     documentsUploadQuota: 'Documents Upload Quota',
-    vectorSpace: 'Vector Space',
-    vectorSpaceTooltip: 'Vector Space is the long-term memory system required for LLMs  to comprehend your data.',
+    vectorSpace: 'Knowledge Data Storage',
+    vectorSpaceTooltip: 'Documents with the High Quality indexing mode will consume Knowledge Data Storage resources. When Knowledge Data Storage reaches the limit, new documents will not be uploaded.',
   },
   teamMembers: 'Team Members',
   upgradeBtn: {
