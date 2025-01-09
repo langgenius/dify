@@ -409,7 +409,7 @@ services:
 
   milvus-standalone:
     container_name: milvus-standalone
-    image: milvusdb/milvus:v2.3.1
+    image: milvusdb/milvus:v2.5.0-beta
     profiles:
       - milvus
     command: [ 'milvus', 'run', 'standalone' ]
@@ -493,20 +493,28 @@ services:
     container_name: elasticsearch
     profiles:
       - elasticsearch
+      - elasticsearch-ja
     restart: always
     volumes:
+      - ./elasticsearch/docker-entrypoint.sh:/docker-entrypoint-mount.sh
       - dify_es01_data:/usr/share/elasticsearch/data
     environment:
       ELASTIC_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
+      VECTOR_STORE: ${VECTOR_STORE:-}
       cluster.name: dify-es-cluster
       node.name: dify-es0
       discovery.type: single-node
-      xpack.license.self_generated.type: trial
+      xpack.license.self_generated.type: basic
       xpack.security.enabled: 'true'
       xpack.security.enrollment.enabled: 'false'
       xpack.security.http.ssl.enabled: 'false'
     ports:
       - ${ELASTICSEARCH_PORT:-9200}:9200
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    entrypoint: [ 'sh', '-c', "sh /docker-entrypoint-mount.sh" ]
     healthcheck:
       test: [ 'CMD', 'curl', '-s', 'http://localhost:9200/_cluster/health?pretty' ]
       interval: 30s
