@@ -9,8 +9,8 @@ import Installed from '../base/installed'
 import { useTranslation } from 'react-i18next'
 import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
 import ReadyToInstallBundle from '../install-bundle/ready-to-install'
-import useFoldAnimInto from '../hooks/use-fold-anim-into'
 import cn from '@/utils/classnames'
+import useHideLogic from '../hooks/use-hide-logic'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -39,30 +39,10 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
 
   const {
     modalClassName,
-    foldIntoAnim: doFoldAnimInto,
-    clearCountDown,
-    countDownFoldIntoAnim,
-  } = useFoldAnimInto(onClose)
-
-  const [isInstalling, doSetIsInstalling] = useState(false)
-  const setIsInstalling = useCallback((isInstalling: boolean) => {
-    if (!isInstalling)
-      clearCountDown()
-    doSetIsInstalling(isInstalling)
-  }, [clearCountDown])
-
-  const foldAnimInto = useCallback(() => {
-    if (isInstalling) {
-      doFoldAnimInto()
-      return
-    }
-    onClose()
-  }, [doFoldAnimInto, isInstalling, onClose])
-
-  const handleStartToInstall = useCallback(() => {
-    setIsInstalling(true)
-    countDownFoldIntoAnim()
-  }, [countDownFoldIntoAnim, setIsInstalling])
+    foldAnimInto,
+    setIsInstalling,
+    handleStartToInstall,
+  } = useHideLogic(onClose)
 
   const getTitle = useCallback(() => {
     if (isBundle && step === InstallStep.installed)
