@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+      - plugins/beta
 
 concurrency:
   group: style-${{ github.head_ref || github.run_id }}
@@ -81,7 +82,6 @@ jobs:
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
         run: yarn run lint
-
 
   superlinter:
     name: SuperLinter
