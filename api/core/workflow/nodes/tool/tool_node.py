@@ -338,6 +338,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                     data=message.message.data,
                     label=message.message.label,
                     metadata=message.message.metadata,
+                    node_id=self.node_id,
                 )
 
                 # check if the agent log is already in the list
