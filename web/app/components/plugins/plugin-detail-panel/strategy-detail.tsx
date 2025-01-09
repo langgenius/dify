@@ -16,6 +16,7 @@ import type {
 } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { API_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -23,6 +24,7 @@ type Props = {
     author: string
     name: string
     description: Record<Locale, string>
+    tenant_id: string
     icon: string
     label: Record<Locale, string>
     tags: string[]
@@ -94,7 +96,7 @@ const StrategyDetail: FC<Props> = ({
             BACK
           </div>
           <div className='flex items-center gap-1'>
-            <Icon size='tiny' className='w-6 h-6' src={provider.icon} />
+            <Icon size='tiny' className='w-6 h-6' src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${provider.tenant_id}&filename=${provider.icon}`} />
             <div className=''>{getValueFromI18nObject(provider.label)}</div>
           </div>
           <div className='mt-1 text-text-primary system-md-semibold'>{getValueFromI18nObject(detail.identity.label)}</div>
@@ -135,7 +137,7 @@ const StrategyDetail: FC<Props> = ({
                 </div>
                 <div className='p-4 pb-1 text-text-primary system-sm-semibold-uppercase'>OUTPUT</div>
                 {outputSchema.length > 0 && (
-                  <div className='py-2 space-y-1'>
+                  <div className='px-4 py-2 space-y-1'>
                     {outputSchema.map((outputItem, index) => (
                       <div key={index} className='py-1'>
                         <div className='flex items-center gap-2'>
