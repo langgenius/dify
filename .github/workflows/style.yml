@@ -87,7 +87,7 @@ jobs:
 
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: pnpm run lint
+        run: npm run lint
 
   superlinter:
     name: SuperLinter
