@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock
+
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, SystemConfiguration

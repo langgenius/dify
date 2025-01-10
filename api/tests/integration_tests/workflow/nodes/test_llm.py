@@ -21,8 +21,8 @@ from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_config
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
-from tests.integration_tests.model_runtime.__mock.plugin_daemon import setup_model_mock  # noqa
-from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock  # noqa
+from tests.integration_tests.model_runtime.__mock.plugin_daemon import setup_model_mock
+from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
 
 
 def init_llm_node(config: dict) -> LLMNode:
