@@ -86,8 +86,11 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Web style check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: pnpm run lint # wait for next lint support eslint v9
+        uses: tj-actions/eslint-changed-files@v25
+        with:
+          config_path: "./web/eslint.config.mjs"
+        # if: steps.changed-files.outputs.any_changed == 'true'
+        # run: pnpm run lint # wait for next lint support eslint v9
 
   superlinter:
     name: SuperLinter
