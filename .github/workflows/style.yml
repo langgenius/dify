@@ -66,6 +66,12 @@ jobs:
         uses: tj-actions/changed-files@v45
         with:
           files: web/**
+          
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
 
       - name: Setup NodeJS
         uses: actions/setup-node@v4
@@ -81,7 +87,7 @@ jobs:
 
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: pnpm run lint
+        run: echo "${{ steps.changed-files.outputs.all_changed_files }}" | sed 's|web/||g' | xargs pnpm eslint # wait for next lint support eslint v9
 
   superlinter:
     name: SuperLinter
