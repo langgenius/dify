@@ -43,13 +43,8 @@ const ResultItem: FC<Props> = ({
     setFalse: hideDetailModal,
   }] = useBoolean(false)
 
-  const handleClickCard = () => {
-    if (!isParentChildRetrieval)
-      showDetailModal()
-  }
-
   return (
-    <div className={cn('pt-3 bg-chat-bubble-bg rounded-xl hover:shadow-lg', !isParentChildRetrieval && 'cursor-pointer')} onClick={handleClickCard}>
+    <div className={cn('pt-3 bg-chat-bubble-bg rounded-xl hover:shadow-lg cursor-pointer')} onClick={showDetailModal}>
       {/* Meta info */}
       <div className='flex justify-between items-center px-3'>
         <div className='flex items-center space-x-2'>
@@ -66,7 +61,7 @@ const ResultItem: FC<Props> = ({
 
       {/* Main */}
       <div className='mt-1 px-3'>
-        <div className='line-clamp-2 body-md-regular'>{content}</div>
+        <div className='line-clamp-2 body-md-regular break-all'>{content}</div>
         {isParentChildRetrieval && (
           <div className='mt-1'>
             <div className={cn('inline-flex items-center h-6 space-x-0.5 text-text-secondary select-none rounded-lg cursor-pointer', isFold && 'pl-1 bg-[linear-gradient(90deg,_rgba(200,_206,_218,_0.20)_0%,_rgba(200,_206,_218,_0.04)_100%)]')} onClick={toggleFold}>

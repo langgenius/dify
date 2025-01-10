@@ -2,14 +2,18 @@ import csv
 import io
 import json
 import logging
+import operator
 import os
 import tempfile
-from typing import cast
+from collections.abc import Mapping, Sequence
+from typing import Any, cast
 
 import docx
 import pandas as pd
 import pypdfium2  # type: ignore
 import yaml  # type: ignore
+from docx.table import Table
+from docx.text.paragraph import Paragraph
 
 from configs import dify_config
 from core.file import File, FileTransferMethod, file_manager
@@ -77,6 +81,23 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
                 inputs=inputs,
                 process_data=process_data,
             )
+
+    @classmethod
+    def _extract_variable_selector_to_variable_mapping(
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: DocumentExtractorNodeData,
+    ) -> Mapping[str, Sequence[str]]:
+        """
+        Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
+        :param node_data: node data
+        :return:
+        """
+        return {node_id + ".files": node_data.variable_selector}
 
 
 def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
@@ -189,35 +210,56 @@ def _extract_text_from_doc(file_content: bytes) -> str:
         doc_file = io.BytesIO(file_content)
         doc = docx.Document(doc_file)
         text = []
-        # Process paragraphs
-        for paragraph in doc.paragraphs:
-            if paragraph.text.strip():
-                text.append(paragraph.text)
 
-        # Process tables
-        for table in doc.tables:
-            # Table header
-            try:
-                # table maybe cause errors so ignore it.
-                if len(table.rows) > 0 and table.rows[0].cells is not None:
+        # Keep track of paragraph and table positions
+        content_items: list[tuple[int, str, Table | Paragraph]] = []
+
+        # Process paragraphs and tables
+        for i, paragraph in enumerate(doc.paragraphs):
+            if paragraph.text.strip():
+                content_items.append((i, "paragraph", paragraph))
+
+        for i, table in enumerate(doc.tables):
+            content_items.append((i, "table", table))
+
+        # Sort content items based on their original position
+        content_items.sort(key=operator.itemgetter(0))
+
+        # Process sorted content
+        for _, item_type, item in content_items:
+            if item_type == "paragraph":
+                if isinstance(item, Table):
+                    continue
+                text.append(item.text)
+            elif item_type == "table":
+                # Process tables
+                if not isinstance(item, Table):
+                    continue
+                try:
                     # Check if any cell in the table has text
                     has_content = False
-                    for row in table.rows:
+                    for row in item.rows:
                         if any(cell.text.strip() for cell in row.cells):
                             has_content = True
                             break
 
                     if has_content:
-                        markdown_table = "| " + " | ".join(cell.text for cell in table.rows[0].cells) + " |\n"
-                        markdown_table += "| " + " | ".join(["---"] * len(table.rows[0].cells)) + " |\n"
-                        for row in table.rows[1:]:
-                            markdown_table += "| " + " | ".join(cell.text for cell in row.cells) + " |\n"
+                        cell_texts = [cell.text.replace("\n", "<br>") for cell in item.rows[0].cells]
+                        markdown_table = f"| {' | '.join(cell_texts)} |\n"
+                        markdown_table += f"| {' | '.join(['---'] * len(item.rows[0].cells))} |\n"
+
+                        for row in item.rows[1:]:
+                            # Replace newlines with <br> in each cell
+                            row_cells = [cell.text.replace("\n", "<br>") for cell in row.cells]
+                            markdown_table += "| " + " | ".join(row_cells) + " |\n"
+
                         text.append(markdown_table)
-            except Exception as e:
-                logger.warning(f"Failed to extract table from DOC/DOCX: {e}")
-                continue
+                except Exception as e:
+                    logger.warning(f"Failed to extract table from DOC/DOCX: {e}")
+                    continue
 
         return "\n".join(text)
+
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from DOC/DOCX: {str(e)}") from e
 

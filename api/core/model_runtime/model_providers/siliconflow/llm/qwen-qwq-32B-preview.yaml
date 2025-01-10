@@ -15,9 +15,9 @@ parameter_rules:
   - name: max_tokens
     use_template: max_tokens
     type: int
-    default: 512
+    default: 4096
     min: 1
-    max: 4096
+    max: 8192
     help:
       zh_Hans: 指定生成结果长度的上限。如果生成结果截断，可以调大该参数。
       en_US: Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.

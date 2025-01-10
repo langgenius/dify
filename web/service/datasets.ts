@@ -13,6 +13,7 @@ import type {
   ExternalAPIUsage,
   ExternalKnowledgeBaseHitTestingResponse,
   ExternalKnowledgeItem,
+  FetchDatasetsParams,
   FileIndexingEstimateResponse,
   HitTestingRecordsResponse,
   HitTestingResponse,
@@ -67,7 +68,7 @@ export const fetchDatasetRelatedApps: Fetcher<RelatedAppResponse, string> = (dat
   return get<RelatedAppResponse>(`/datasets/${datasetId}/related-apps`)
 }
 
-export const fetchDatasets: Fetcher<DataSetListResponse, { url: string; params: { page: number; ids?: string[]; limit?: number } }> = ({ url, params }) => {
+export const fetchDatasets: Fetcher<DataSetListResponse, FetchDatasetsParams> = ({ url, params }) => {
   const urlParams = qs.stringify(params, { indices: false })
   return get<DataSetListResponse>(`${url}?${urlParams}`)
 }

@@ -113,6 +113,8 @@ class BaiduVector(BaseVector):
         return False
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        if not ids:
+            return
         quoted_ids = [f"'{id}'" for id in ids]
         self._db.table(self._collection_name).delete(filter=f"id IN({', '.join(quoted_ids)})")
 

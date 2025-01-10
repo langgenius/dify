@@ -292,6 +292,7 @@ const Chat: FC<ChatProps> = ({
                   inputs={inputs}
                   inputsForm={inputsForm}
                   theme={themeBuilder?.theme}
+                  isResponding={isResponding}
                 />
               )
             }

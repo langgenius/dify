@@ -179,6 +179,7 @@ const translation = {
     byCategories: '카테고리별',
     searchAllTemplate: '모든 템플릿 검색...',
   },
+  showMyCreatedAppsOnly: '내가 만든 앱만 보기',
 }
 
 export default translation

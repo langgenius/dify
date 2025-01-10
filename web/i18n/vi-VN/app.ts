@@ -183,6 +183,7 @@ const translation = {
     searchAllTemplate: 'Tìm kiếm tất cả các mẫu...',
     byCategories: 'THEO DANH MỤC',
   },
+  showMyCreatedAppsOnly: 'Chỉ hiển thị ứng dụng do tôi tạo',
 }
 
 export default translation

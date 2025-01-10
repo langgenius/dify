@@ -108,6 +108,8 @@ const translation = {
     openInExplore: 'Apri in Esplora',
     onFailure: 'In caso di guasto',
     addFailureBranch: 'Aggiungi ramo non riuscito',
+    noHistory: 'Nessuna storia',
+    loadMore: 'Carica più flussi di lavoro',
   },
   env: {
     envPanelTitle: 'Variabili d\'Ambiente',

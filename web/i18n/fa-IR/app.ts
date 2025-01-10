@@ -183,6 +183,7 @@ const translation = {
     byCategories: 'بر اساس دسته بندی ها',
     searchAllTemplate: 'همه قالب ها را جستجو کنید...',
   },
+  showMyCreatedAppsOnly: 'فقط برنامه‌های ایجاد شده توسط من را نشان بده',
 }
 
 export default translation

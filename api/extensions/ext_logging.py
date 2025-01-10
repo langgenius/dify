@@ -46,7 +46,7 @@ def init_app(app: DifyApp):
         timezone = pytz.timezone(log_tz)
 
         def time_converter(seconds):
-            return datetime.utcfromtimestamp(seconds).astimezone(timezone).timetuple()
+            return datetime.fromtimestamp(seconds, tz=timezone).timetuple()
 
         for handler in logging.root.handlers:
             if handler.formatter:
