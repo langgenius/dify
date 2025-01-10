@@ -107,11 +107,46 @@ class LargeLanguageModel(AIModel):
                 content_list = []
                 usage = LLMUsage.empty_usage()
                 system_fingerprint = None
+                tools_calls: list[AssistantPromptMessage.ToolCall] = []
+
+                def increase_tool_call(new_tool_calls: list[AssistantPromptMessage.ToolCall]):
+                    def get_tool_call(tool_name: str):
+                        if not tool_name:
+                            return tools_calls[-1]
+
+                        tool_call = next(
+                            (tool_call for tool_call in tools_calls if tool_call.function.name == tool_name), None
+                        )
+                        if tool_call is None:
+                            tool_call = AssistantPromptMessage.ToolCall(
+                                id="",
+                                type="",
+                                function=AssistantPromptMessage.ToolCall.ToolCallFunction(name=tool_name, arguments=""),
+                            )
+                            tools_calls.append(tool_call)
+
+                        return tool_call
+
+                    for new_tool_call in new_tool_calls:
+                        # get tool call
+                        tool_call = get_tool_call(new_tool_call.function.name)
+                        # update tool call
+                        if new_tool_call.id:
+                            tool_call.id = new_tool_call.id
+                        if new_tool_call.type:
+                            tool_call.type = new_tool_call.type
+                        if new_tool_call.function.name:
+                            tool_call.function.name = new_tool_call.function.name
+                        if new_tool_call.function.arguments:
+                            tool_call.function.arguments += new_tool_call.function.arguments
+
                 for chunk in result:
                     if isinstance(chunk.delta.message.content, str):
                         content += chunk.delta.message.content
                     elif isinstance(chunk.delta.message.content, list):
                         content_list.extend(chunk.delta.message.content)
+                    if chunk.delta.message.tool_calls:
+                        increase_tool_call(chunk.delta.message.tool_calls)
 
                     usage = chunk.delta.usage or LLMUsage.empty_usage()
                     system_fingerprint = chunk.system_fingerprint
@@ -120,7 +155,10 @@ class LargeLanguageModel(AIModel):
                 result = LLMResult(
                     model=model,
                     prompt_messages=prompt_messages,
-                    message=AssistantPromptMessage(content=content or content_list),
+                    message=AssistantPromptMessage(
+                        content=content or content_list,
+                        tool_calls=tools_calls,
+                    ),
                     usage=usage,
                     system_fingerprint=system_fingerprint,
                 )
