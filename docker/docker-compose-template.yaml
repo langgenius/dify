@@ -141,7 +141,7 @@ services:
     environment:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
-      DB_DATABASE: ${DB_PLUGIN_DATABASE:-dify-plugin}
+      DB_DATABASE: ${DB_PLUGIN_DATABASE:-dify_plugin}
       SERVER_PORT: ${PLUGIN_DAEMON_PORT:-5002}
       SERVER_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
       MAX_PLUGIN_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
