@@ -12,7 +12,7 @@ from core.entities.provider_configuration import ProviderConfiguration, Provider
 from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, SystemConfiguration
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.model_providers import ModelProviderFactory
+from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
@@ -26,8 +26,8 @@ from models.provider import ProviderType
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
-from tests.integration_tests.model_runtime.__mock.openai import setup_openai_mock
-from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
+from tests.integration_tests.model_runtime.__mock.plugin_daemon import setup_model_mock  # noqa
+from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock  # noqa
 
 
 def init_llm_node(config: dict) -> LLMNode:
@@ -103,7 +103,7 @@ def test_execute_llm(setup_openai_mock):
 
     credentials = {"openai_api_key": os.environ.get("OPENAI_API_KEY")}
 
-    provider_instance = ModelProviderFactory().get_provider_instance("openai")
+    provider_instance = ModelProviderFactory("aa").get_provider_instance("openai")
     model_type_instance = provider_instance.get_model_instance(ModelType.LLM)
     provider_model_bundle = ProviderModelBundle(
         configuration=ProviderConfiguration(
