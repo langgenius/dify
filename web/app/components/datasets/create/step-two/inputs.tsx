@@ -47,7 +47,7 @@ export const MaxLengthInput: FC<InputNumberProps> = (props) => {
       type="number"
       className='h-9'
       placeholder={'≤ 4000'}
-      max={4000}
+      max={props.max || 4000}
       min={1}
       {...props}
     />
