@@ -46,7 +46,7 @@ const VarList: FC<Props> = ({
 
   if (list.length === 0) {
     return (
-      <div className='flex rounded-md bg-gray-50 items-center h-[42px] justify-center leading-[18px] text-xs font-normal text-gray-500'>
+      <div className='flex rounded-md bg-background-section items-center h-10 justify-center system-xs-regular text-text-tertiary'>
         {t('workflow.nodes.start.noVarTip')}
       </div>
     )

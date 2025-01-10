@@ -33,9 +33,10 @@ export const TitleInput = memo(({
       value={localValue}
       onChange={e => setLocalValue(e.target.value)}
       className={`
-        grow mr-2 px-1 h-6 text-base text-gray-900 font-semibold rounded-lg border border-transparent appearance-none outline-none
-        hover:bg-gray-50 
-        focus:border-gray-300 focus:shadow-xs focus:bg-white caret-[#295EFF]
+        grow mr-2 px-1 h-6 system-xl-semibold text-text-primary rounded-lg border border-transparent appearance-none outline-none
+        placeholder:text-text-placeholder
+        bg-transparent hover:bg-state-base-hover
+        focus:border-components-input-border-active focus:shadow-xs shadow-shadow-shadow-3 focus:bg-components-input-active caret-[#295EFF]
         min-w-0
       `}
       placeholder={t('workflow.common.addTitle') || ''}
@@ -66,8 +67,8 @@ export const DescriptionInput = memo(({
     <div
       className={`
         group flex px-2 py-[5px] max-h-[60px] rounded-lg overflow-y-auto
-        border border-transparent hover:bg-gray-50 leading-0
-        ${focus && '!border-gray-300 shadow-xs !bg-gray-50'}
+        border border-transparent bg-transparent hover:bg-state-base-hover leading-0
+        ${focus && '!border-components-input-border-active shadow-xs shadow-shadow-shadow-3 !bg-components-input-bg-active'}
       `}
     >
       <Textarea
@@ -77,9 +78,9 @@ export const DescriptionInput = memo(({
         onFocus={handleFocus}
         onBlur={handleBlur}
         className={`
-          w-full text-xs text-gray-900 leading-[18px] bg-transparent
+          w-full text-xs text-text-primary leading-[18px] bg-transparent
           appearance-none outline-none resize-none
-          placeholder:text-gray-400 caret-[#295EFF]
+          placeholder:text-text-placeholder caret-[#295EFF]
         `}
         placeholder={t('workflow.common.addDescription') || ''}
         autoSize
