@@ -1,4 +1,3 @@
-import requests
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from linkup import LinkupClient

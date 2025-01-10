@@ -12,25 +12,45 @@ class LinkupSearchTool:
         """
         self._client = LinkupClient(api_key=api_key)
 
-    def _run(self, query: str, depth: str = "standard", output_type: str = "searchResults") -> dict:
+    def _run(self, query: str, depth: str, output_type: str, structured_output_schema: dict = None) -> dict:
         """
         Executes a search using the Linkup API.
 
         :param query: The query to search for.
         :param depth: Search depth (default is "standard").
         :param output_type: Desired result type (default is "searchResults").
+        :param structured_output_schema: JSON schema for structured output (only used if output_type is "structured").
         :return: A dictionary containing the results or an error message.
         """
         try:
-            response = self._client.search(
-                query=query,
-                depth=depth,
-                output_type=output_type
-            )
-            results = [
-                {"name": result.name, "url": result.url, "content": result.content}
-                for result in response.results
-            ]
-            return {"success": True, "results": results}
+            if output_type == "structured" and structured_output_schema:
+                response = self._client.search(
+                    query=query,
+                    depth=depth,
+                    output_type=output_type,
+                    structured_output_schema=structured_output_schema
+                )
+            else:
+                response = self._client.search(
+                    query=query,
+                    depth=depth,
+                    output_type=output_type
+                )
+            if output_type == "sourcedAnswer":
+                return {
+                    "success": True,
+                    "answer": response.answer,
+                    "sources": response.sources
+                }
+            elif output_type == "searchResults":
+                results = [
+                    {"name": result.name, "url": result.url, "content": result.content}
+                    for result in response.results
+                ]
+                return {"success": True, "results": results}
+            elif output_type == "structured":
+                return {"success": True, "structured_data": response}
+            else:
+                return {"success": False, "error": "Invalid output_type provided."}
         except Exception as e:
             return {"success": False, "error": str(e)}
