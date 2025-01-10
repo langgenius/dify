@@ -7,6 +7,7 @@ import { useLanguage } from '../hooks'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import { OpenaiBlue, OpenaiViolet } from '@/app/components/base/icons/src/public/llm'
 import cn from '@/utils/classnames'
+import { renderI18nObject } from '@/hooks/use-i18n'
 
 type ModelIconProps = {
   provider?: Model | ModelProvider
@@ -22,16 +23,16 @@ const ModelIcon: FC<ModelIconProps> = ({
 }) => {
   const language = useLanguage()
   if (provider?.provider.includes('openai') && modelName?.includes('gpt-4o'))
-    return <div className='flex items-center justify-center'><OpenaiBlue className={cn('w-5 h-5', className)}/></div>
+    return <div className='flex items-center justify-center'><OpenaiBlue className={cn('w-5 h-5', className)} /></div>
   if (provider?.provider.includes('openai') && modelName?.startsWith('gpt-4'))
-    return <div className='flex items-center justify-center'><OpenaiViolet className={cn('w-5 h-5', className)}/></div>
+    return <div className='flex items-center justify-center'><OpenaiViolet className={cn('w-5 h-5', className)} /></div>
 
   if (provider?.icon_small) {
     return (
       <div className={`flex items-center justify-center w-5 h-5 ${isDeprecated ? 'opacity-50' : ''}`}>
         <img
           alt='model-icon'
-          src={`${provider.icon_small[language] || provider.icon_small.en_US}`}
+          src={renderI18nObject(provider.icon_small, language)}
           className={cn('w-4.5 h-4.5', className)}
         />
       </div>

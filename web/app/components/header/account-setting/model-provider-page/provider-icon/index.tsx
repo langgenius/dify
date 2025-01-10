@@ -3,6 +3,7 @@ import type { ModelProvider } from '../declarations'
 import { useLanguage } from '../hooks'
 import { AnthropicText, Openai } from '@/app/components/base/icons/src/vender/other'
 import cn from '@/utils/classnames'
+import { renderI18nObject } from '@/hooks/use-i18n'
 
 type ProviderIconProps = {
   provider: ModelProvider
@@ -34,11 +35,11 @@ const ProviderIcon: FC<ProviderIconProps> = ({
     <div className={cn('inline-flex items-center gap-2', className)}>
       <img
         alt='provider-icon'
-        src={`${provider.icon_small[language] || provider.icon_small.en_US}`}
+        src={renderI18nObject(provider.icon_small, language)}
         className='w-6 h-6'
       />
       <div className='system-md-semibold text-text-primary'>
-        {provider.label[language] || provider.label.en_US}
+        {renderI18nObject(provider.label, language)}
       </div>
     </div>
   )
