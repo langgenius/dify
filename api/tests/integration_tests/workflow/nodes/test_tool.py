@@ -1,6 +1,6 @@
 import time
-from unittest.mock import MagicMock
 import uuid
+from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.utils.configuration import ToolParameterConfigurationManager
