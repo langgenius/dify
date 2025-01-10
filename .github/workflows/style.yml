@@ -87,7 +87,7 @@ jobs:
 
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: npm run lint
+        run: pnpm run lint # wait for next lint support eslint v9
 
   superlinter:
     name: SuperLinter
