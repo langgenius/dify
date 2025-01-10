@@ -12,6 +12,7 @@ import Textarea from './textarea'
 import s from './style.module.css'
 import ModifyRetrievalModal from './modify-retrieval-modal'
 import ResultItem from './components/result-item'
+import ResultItemExternal from "./components/result-item-external"
 import cn from '@/utils/classnames'
 import type { ExternalKnowledgeBaseHitTestingResponse, HitTestingResponse } from '@/models/datasets'
 import Loading from '@/app/components/base/loading'
@@ -24,6 +25,7 @@ import type { RetrievalConfig } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
+import type { HitTesting, ExternalKnowledgeBaseHitTesting } from "@/models/datasets"
 
 const limit = 10
 
@@ -68,22 +70,27 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
   const [isShowRightPanel, { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel }] = useBoolean(!isMobile)
-  const renderHitResults = (results: any[]) => (
-    <div className='h-full flex flex-col py-3 px-4 rounded-t-2xl bg-background-body'>
-      <div className='shrink-0 pl-2 text-text-primary font-semibold leading-6 mb-2'>
-        {t('datasetHitTesting.hit.title', { num: results.length })}
+  const renderHitResults = (
+    results: HitTesting[] | ExternalKnowledgeBaseHitTesting[]
+  ) => (
+    <div className="h-full flex flex-col py-3 px-4 rounded-t-2xl bg-background-body">
+      <div className="shrink-0 pl-2 text-text-primary font-semibold leading-6 mb-2">
+        {t("datasetHitTesting.hit.title", { num: results.length })}
       </div>
-      <div className='grow overflow-y-auto space-y-2'>
-        {results.map((record, idx) => (
-          <ResultItem
-            key={idx}
-            payload={record}
-            isExternal={isExternal}
-          />
-        ))}
+      <div className="grow overflow-y-auto space-y-2">
+        {results.map((record, idx) =>
+          isExternal ? (
+            <ResultItemExternal
+              key={idx}
+              payload={record as ExternalKnowledgeBaseHitTesting}
+            />
+          ) : (
+            <ResultItem key={idx} payload={record as HitTesting} />
+          )
+        )}
       </div>
     </div>
-  )
+  );
 
   const renderEmptyState = () => (
     <div className='h-full flex flex-col justify-center items-center py-3 px-4 rounded-t-2xl bg-background-body'>
