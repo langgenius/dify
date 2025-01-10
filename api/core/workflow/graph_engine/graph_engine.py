@@ -745,7 +745,8 @@ class GraphEngine:
                                 if run_result.metadata and run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS):
                                     # plus state total_tokens
                                     self.graph_runtime_state.total_tokens += int(
-                                        run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS)  # type: ignore[arg-type]
+                                        # type: ignore[arg-type]
+                                        run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS)
                                     )
 
                                 if run_result.llm_usage:
