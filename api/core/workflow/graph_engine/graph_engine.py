@@ -430,7 +430,13 @@ class GraphEngine:
                     next_node_id = final_node_id
 
             if in_parallel_id and self.graph.node_parallel_mapping.get(next_node_id, "") != in_parallel_id:
-                break
+                source_edges = self.graph.reverse_edge_mapping.get(next_node_id, [])
+                source_node_ids = {edge.source_node_id for edge in source_edges}
+                if len(source_node_ids) == 1:
+                    # if -> node1, node2, else -> node2. the current path follows the else branch.
+                    in_parallel_id = self.graph.node_parallel_mapping.get(next_node_id, "")
+                else:
+                    break
 
     def _run_parallel_branches(
         self,
