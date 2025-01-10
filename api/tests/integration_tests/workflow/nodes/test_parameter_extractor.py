@@ -16,8 +16,8 @@ from models.enums import UserFrom
 from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_config
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType  # noqa
-from tests.integration_tests.model_runtime.__mock.plugin_daemon import setup_model_mock  # noqa
+from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
+from tests.integration_tests.model_runtime.__mock.plugin_daemon import setup_model_mock
 
 
 def get_mocked_fetch_memory(memory_text: str):
