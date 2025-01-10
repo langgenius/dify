@@ -305,7 +305,8 @@ export const useMutationPluginsFromMarketplace = () => {
         page = 1,
         pageSize = 40,
       } = pluginsSearchParams
-      return postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/search/basic', {
+      const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
+      return postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/basic`, {
         body: {
           page,
           page_size: pageSize,
