@@ -21,7 +21,6 @@ const ModelIcon: FC<ModelIconProps> = ({
   modelName,
   isDeprecated = false,
 }) => {
-  console.log('test lint')
   const language = useLanguage()
   if (provider?.provider.includes('openai') && modelName?.includes('gpt-4o'))
     return <div className='flex items-center justify-center'><OpenaiBlue className={cn('w-5 h-5', className)} /></div>
