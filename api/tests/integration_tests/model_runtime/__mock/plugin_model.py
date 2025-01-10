@@ -1,11 +1,11 @@
 import datetime
+import uuid
+from collections.abc import Generator, Sequence
 from decimal import Decimal
-from collections.abc import Generator
 from json import dumps
 
 # import monkeypatch
-from typing import Optional, Sequence
-import uuid
+from typing import Optional
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -199,7 +199,7 @@ class MockModelClass(PluginModelManager):
                     delta=LLMResultChunkDelta(
                         index=0,
                         message=AssistantPromptMessage(
-                            content=full_text[i],
+                            content="",
                             tool_calls=[tool_call] if tool_call else [],
                         ),
                     ),

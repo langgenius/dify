@@ -4,7 +4,6 @@ import uuid
 from typing import Optional
 from unittest.mock import MagicMock
 
-
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, SystemConfiguration
@@ -22,8 +21,8 @@ from models.enums import UserFrom
 from models.provider import ProviderType
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType  # noqa
-from tests.integration_tests.model_runtime.__mock.plugin_daemon import setup_model_mock  # noqa
+from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
+from tests.integration_tests.model_runtime.__mock.plugin_daemon import setup_model_mock
 
 
 def get_mocked_fetch_model_config(
