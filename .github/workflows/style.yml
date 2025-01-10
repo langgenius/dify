@@ -87,7 +87,7 @@ jobs:
 
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: pnpm eslint ${{ steps.changed-files.outputs.all_changed_files }} # wait for next lint support eslint v9
+        run: echo "${{ steps.changed-files.outputs.all_changed_files }}" | sed 's|web/||g' | xargs pnpm eslint # wait for next lint support eslint v9
 
   superlinter:
     name: SuperLinter
