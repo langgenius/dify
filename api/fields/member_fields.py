@@ -23,6 +23,7 @@ account_with_role_fields = {
     "id": fields.String,
     "name": fields.String,
     "avatar": fields.String,
+    "avatar_url": AvatarUrlField,
     "email": fields.String,
     "last_login_at": TimestampField,
     "last_active_at": TimestampField,
