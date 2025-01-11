@@ -14,6 +14,7 @@ import Avatar, { type AvatarProps } from '@/app/components/base/avatar'
 import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks'
 import type { ImageFile } from '@/types/app'
 import getCroppedImg from '@/app/components/base/app-icon-picker/utils'
+import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 
 type InputImageInfo = { file: File } | { tempUrl: string; croppedAreaPixels: Area; fileName: string }
 type AvatarWithEditProps = AvatarProps & { onSave?: () => void }
@@ -69,6 +70,9 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
     const file = new File([blob], inputImageInfo.fileName, { type: blob.type })
     handleLocalFileUpload(file)
   }, [handleLocalFileUpload, inputImageInfo])
+
+  if (DISABLE_UPLOAD_IMAGE_AS_ICON)
+    return <Avatar {...props} />
 
   return (
     <>
