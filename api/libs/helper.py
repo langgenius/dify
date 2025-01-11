@@ -96,8 +96,7 @@ def timestamp_value(timestamp):
             raise ValueError
         return int_timestamp
     except ValueError:
-        error = "{timestamp} is not a valid timestamp.".format(
-            timestamp=timestamp)
+        error = "{timestamp} is not a valid timestamp.".format(timestamp=timestamp)
         raise ValueError(error)
 
 
@@ -166,8 +165,7 @@ def timezone(timezone_string):
     if timezone_string and timezone_string in available_timezones():
         return timezone_string
 
-    error = "{timezone_string} is not a valid timezone.".format(
-        timezone_string=timezone_string)
+    error = "{timezone_string} is not a valid timezone.".format(timezone_string=timezone_string)
     raise ValueError(error)
 
 
@@ -223,31 +221,26 @@ class TokenManager:
         account_email = account.email if account else email
 
         if account_id:
-            old_token = cls._get_current_token_for_account(
-                account_id, token_type)
+            old_token = cls._get_current_token_for_account(account_id, token_type)
             if old_token:
                 if isinstance(old_token, bytes):
                     old_token = old_token.decode("utf-8")
                 cls.revoke_token(old_token, token_type)
 
         token = str(uuid.uuid4())
-        token_data = {"account_id": account_id,
-                      "email": account_email, "token_type": token_type}
+        token_data = {"account_id": account_id, "email": account_email, "token_type": token_type}
         if additional_data:
             token_data.update(additional_data)
 
-        expiry_minutes = dify_config.model_dump().get(
-            f"{token_type.upper()}_TOKEN_EXPIRY_MINUTES")
+        expiry_minutes = dify_config.model_dump().get(f"{token_type.upper()}_TOKEN_EXPIRY_MINUTES")
         if expiry_minutes is None:
-            raise ValueError(f"Expiry minutes for {
-                             token_type} token is not set")
+            raise ValueError(f"Expiry minutes for {token_type} token is not set")
         token_key = cls._get_token_key(token, token_type)
         expiry_time = int(expiry_minutes * 60)
         redis_client.setex(token_key, expiry_time, json.dumps(token_data))
 
         if account_id:
-            cls._set_current_token_for_account(
-                account_id, token, token_type, expiry_minutes)
+            cls._set_current_token_for_account(account_id, token, token_type, expiry_minutes)
 
         return token
 
@@ -265,8 +258,7 @@ class TokenManager:
         key = cls._get_token_key(token, token_type)
         token_data_json = redis_client.get(key)
         if token_data_json is None:
-            logging.warning(f"{token_type} token {
-                            token} not found with key {key}")
+            logging.warning(f"{token_type} token {token} not found with key {key}")
             return None
         token_data: Optional[dict[str, Any]] = json.loads(token_data_json)
         return token_data
