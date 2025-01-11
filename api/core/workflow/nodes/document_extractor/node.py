@@ -127,6 +127,8 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
             return _extract_text_from_json(file_content)
         case "application/x-yaml" | "text/yaml":
             return _extract_text_from_yaml(file_content)
+        case "application/octet-stream":
+            return _extract_text_from_bin(file_content)
         case _:
             raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
 
@@ -158,6 +160,8 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
             return _extract_text_from_eml(file_content)
         case ".msg":
             return _extract_text_from_msg(file_content)
+        case ".bin":
+            return _extract_text_from_bin(file_content)
         case _:
             raise UnsupportedFileTypeError(f"Unsupported Extension Type: {file_extension}")
 
@@ -395,3 +399,22 @@ def _extract_text_from_msg(file_content: bytes) -> str:
         return "\n".join([str(element) for element in elements])
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from MSG: {str(e)}") from e
+
+
+def _extract_text_from_bin(file_content: bytes) -> str:
+    """Extracts text from a binary file that is confirmed to contain textual data."""
+    import string
+
+    try:
+        bin_content = file_content.decode("utf-8", "ignore")
+
+        # Count printable characters using an optimized check
+        printable_chars_count = sum(1 for c in bin_content if c in string.printable)
+
+        # If less than 90% of the content consists of printable characters, assume it's not text data
+        if printable_chars_count / len(bin_content) < 0.90:
+            raise UnsupportedFileTypeError("The binary file does not contain predominantly printable text data")
+
+        return bin_content
+    except UnicodeDecodeError as e:
+        raise TextExtractionError(f"Failed to decode text from binary file: {str(e)}") from e

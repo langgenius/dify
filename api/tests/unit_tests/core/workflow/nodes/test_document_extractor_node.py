@@ -7,7 +7,9 @@ from core.variables import ArrayFileSegment
 from core.variables.variables import StringVariable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
+from core.workflow.nodes.document_extractor.exc import UnsupportedFileTypeError
 from core.workflow.nodes.document_extractor.node import (
+    _extract_text_from_bin,
     _extract_text_from_doc,
     _extract_text_from_pdf,
     _extract_text_from_plain_text,
@@ -176,3 +178,23 @@ def test_extract_text_from_doc(mock_document):
 
 def test_node_type(document_extractor_node):
     assert document_extractor_node._node_type == NodeType.DOCUMENT_EXTRACTOR
+
+
+def test_extract_text_from_bin_valid_text():
+    binary_data = b"Hello, world!"
+    result = _extract_text_from_bin(binary_data)
+    assert result == "Hello, world!"
+
+
+def test_extract_text_from_bin_with_non_printable():
+    binary_data = b"Hello, \x00world!"
+    result = _extract_text_from_bin(binary_data)
+    assert result == "Hello, \x00world!"
+
+
+def test_extract_text_from_bin_insufficient_printable_characters():
+    binary_data = b"\x00\x01\x02\x03\x04\x05Hello!\x00\x01world!"
+    with pytest.raises(
+        UnsupportedFileTypeError, match="The binary file does not contain predominantly printable text data"
+    ):
+        _extract_text_from_bin(binary_data)
