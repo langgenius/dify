@@ -3,16 +3,17 @@ DOCKER_REGISTRY=akiyu303
 WEB_IMAGE=$(DOCKER_REGISTRY)/lefeng-web
 API_IMAGE=$(DOCKER_REGISTRY)/lefeng-api
 VERSION=latest
+PLATFORM=linux/amd64
 
 # Build Docker images
 build-web:
 	@echo "Building web Docker image: $(WEB_IMAGE):$(VERSION)..."
-	docker build -t $(WEB_IMAGE):$(VERSION) ./web
+	docker build --platform $(PLATFORM) -t $(WEB_IMAGE):$(VERSION) ./web
 	@echo "Web Docker image built successfully: $(WEB_IMAGE):$(VERSION)"
 
 build-api:
 	@echo "Building API Docker image: $(API_IMAGE):$(VERSION)..."
-	docker build -t $(API_IMAGE):$(VERSION) ./api
+	docker build --platform $(PLATFORM) -t $(API_IMAGE):$(VERSION) ./api
 	@echo "API Docker image built successfully: $(API_IMAGE):$(VERSION)"
 
 # Push Docker images
