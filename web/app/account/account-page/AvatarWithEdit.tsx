@@ -72,9 +72,7 @@ const AvatarWithEdit = ({ onSelect, ...props }: AvatarWithEditProps) => {
 
   return (
     <>
-      <div
-        onClick={() => { setIsShowAvaterIconPicker(true) }}
-      >
+      <div>
         <div className="relative group">
           <Avatar {...props} />
           <div
@@ -87,10 +85,14 @@ const AvatarWithEdit = ({ onSelect, ...props }: AvatarWithEditProps) => {
       </div>
 
       <Modal
+        closable
+        className="!w-[362px] !p-0"
         isShow={isShowAvatarIconPicker}
+        onClose={() => setIsShowAvaterIconPicker(false)}
       >
         <ImageInput onImageInput={handleImageInput} cropShape='round' />
         <Divider className='m-0' />
+
         <div className='w-full flex items-center justify-center p-3 gap-2'>
           <Button className='w-full' onClick={() => setIsShowAvaterIconPicker(false)}>
             {t('app.iconPicker.cancel')}
