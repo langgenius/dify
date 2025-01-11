@@ -1,7 +1,7 @@
 # Variables
-DOCKER_REGISTRY=langgenius
-WEB_IMAGE=$(DOCKER_REGISTRY)/dify-web
-API_IMAGE=$(DOCKER_REGISTRY)/dify-api
+DOCKER_REGISTRY=akiyu303
+WEB_IMAGE=$(DOCKER_REGISTRY)/lefeng-web
+API_IMAGE=$(DOCKER_REGISTRY)/lefeng-api
 VERSION=latest
 
 # Build Docker images
