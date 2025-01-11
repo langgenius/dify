@@ -394,6 +394,21 @@ x-shared-env: &shared-api-worker-env
   TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-10}
 
 services:
+    # SuperTokens Core service
+  supertokens:
+    image: registry.supertokens.io/supertokens/supertokens-postgresql
+    restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # Use the shared environment variables.
+      <<: *shared-api-worker-env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - default
+
   # API service
   api:
     image: langgenius/dify-api:0.15.0
