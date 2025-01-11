@@ -1,6 +1,6 @@
 from flask_restful import fields  # type: ignore
 
-from libs.helper import TimestampField, AvatarUrlField
+from libs.helper import AvatarUrlField, TimestampField
 
 simple_account_fields = {"id": fields.String, "name": fields.String, "email": fields.String}
 
