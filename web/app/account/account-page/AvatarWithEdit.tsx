@@ -16,9 +16,9 @@ import type { ImageFile } from '@/types/app'
 import getCroppedImg from '@/app/components/base/app-icon-picker/utils'
 
 type InputImageInfo = { file: File } | { tempUrl: string; croppedAreaPixels: Area; fileName: string }
-type AvatarWithEditProps = AvatarProps & { onSelect?: () => void }
+type AvatarWithEditProps = AvatarProps & { onSave?: () => void }
 
-const AvatarWithEdit = ({ onSelect, ...props }: AvatarWithEditProps) => {
+const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
 
@@ -39,12 +39,12 @@ const AvatarWithEdit = ({ onSelect, ...props }: AvatarWithEditProps) => {
       await updateUserProfile({ url: 'account/avatar', body: { avatar: uploadedFileId } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       setIsShowAvaterIconPicker(false)
-      onSelect?.()
+      onSave?.()
     }
     catch (e) {
       notify({ type: 'error', message: (e as Error).message })
     }
-  }, [notify, onSelect, t])
+  }, [notify, onSave, t])
 
   const { handleLocalFileUpload } = useLocalFileUploader({
     limit: 3,
