@@ -133,7 +133,7 @@ export default function AccountPage() {
         <h4 className='title-2xl-semi-bold text-text-primary'>{t('common.account.myAccount')}</h4>
       </div>
       <div className='mb-8 p-6 rounded-xl flex items-center bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1'>
-        <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} size={64} />
+        <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} onSelect={ mutateUserProfile } size={64} />
         <div className='ml-4'>
           <p className='system-xl-semibold text-text-primary'>{userProfile.name}</p>
           <p className='system-xs-regular text-text-tertiary'>{userProfile.email}</p>
