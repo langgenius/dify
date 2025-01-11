@@ -48,7 +48,7 @@ class AvatarUrlField(fields.Raw):
 
         from models.account import Account
 
-        if isinstance(obj, Account):
+        if isinstance(obj, Account) and obj.avatar is not None:
             return file_helpers.get_signed_file_url(obj.avatar)
         return None
 
