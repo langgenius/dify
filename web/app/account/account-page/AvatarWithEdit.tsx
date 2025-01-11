@@ -30,7 +30,15 @@ const AvatarWithEdit = ({ onSelect, ...props }: AvatarWithEditProps) => {
       <div
         onClick={() => { setIsShowAvaterIconPicker(true) }}
       >
-        <Avatar {...props} />
+        <div className="relative group">
+          <Avatar {...props} />
+          <div
+            onClick={() => { setIsShowAvaterIconPicker(true) }}
+            className="absolute inset-0 bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
+          >
+            <span className="text-white text-xs">変更</span>
+          </div>
+        </div>
       </div>
 
       { isShowAvatarIconPicker && <AvatarIconPicker onClose={() => { setIsShowAvaterIconPicker(false) }} onSelect={selectAvatarHandler} /> }
