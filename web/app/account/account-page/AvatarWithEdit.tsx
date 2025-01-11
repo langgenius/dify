@@ -89,7 +89,7 @@ const AvatarWithEdit = ({ onSelect, ...props }: AvatarWithEditProps) => {
       <Modal
         isShow={isShowAvatarIconPicker}
       >
-        <ImageInput onImageInput={handleImageInput} />
+        <ImageInput onImageInput={handleImageInput} cropShape='round' />
         <Divider className='m-0' />
         <div className='w-full flex items-center justify-center p-3 gap-2'>
           <Button className='w-full' onClick={() => setIsShowAvaterIconPicker(false)}>
