@@ -2,6 +2,14 @@
 FROM node:20-alpine3.20 AS base
 LABEL maintainer="takatost@gmail.com"
 
+# Add proxy configuration
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV NO_PROXY=${NO_PROXY}
+
 # if you located in China, you can use aliyun mirror to speed up
 # RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
@@ -10,6 +18,10 @@ RUN apk add --no-cache tzdata
 
 # install packages
 FROM base AS packages
+# Inherit proxy settings from base
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV NO_PROXY=${NO_PROXY}
 
 WORKDIR /app/web
 
@@ -23,6 +35,11 @@ RUN yarn install --frozen-lockfile
 
 # build resources
 FROM base AS builder
+# Inherit proxy settings from base
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV NO_PROXY=${NO_PROXY}
+
 WORKDIR /app/web
 COPY --from=packages /app/web/ .
 COPY . .
@@ -32,6 +49,10 @@ RUN yarn build
 
 # production stage
 FROM base AS production
+# Inherit proxy settings from base
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV NO_PROXY=${NO_PROXY}
 
 ENV NODE_ENV=production
 ENV EDITION=SELF_HOSTED

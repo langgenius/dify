@@ -1,18 +1,28 @@
 # Variables
-DOCKER_REGISTRY=langgenius
-WEB_IMAGE=$(DOCKER_REGISTRY)/dify-web
-API_IMAGE=$(DOCKER_REGISTRY)/dify-api
+DOCKER_REGISTRY=akiyu303
+WEB_IMAGE=$(DOCKER_REGISTRY)/lefeng-web
+API_IMAGE=$(DOCKER_REGISTRY)/lefeng-api
 VERSION=latest
 
 # Build Docker images
 build-web:
 	@echo "Building web Docker image: $(WEB_IMAGE):$(VERSION)..."
-	docker build -t $(WEB_IMAGE):$(VERSION) ./web
+	docker build \
+		--build-arg HTTP_PROXY=http://host.docker.internal:1081 \
+		--build-arg HTTPS_PROXY=http://host.docker.internal:1081 \
+		--build-arg NO_PROXY=localhost,127.0.0.1 \
+		--add-host=host.docker.internal:host-gateway \
+		-t $(WEB_IMAGE):$(VERSION) ./web
 	@echo "Web Docker image built successfully: $(WEB_IMAGE):$(VERSION)"
 
 build-api:
 	@echo "Building API Docker image: $(API_IMAGE):$(VERSION)..."
-	docker build -t $(API_IMAGE):$(VERSION) ./api
+	docker build \
+		--build-arg HTTP_PROXY=http://host.docker.internal:1081 \
+		--build-arg HTTPS_PROXY=http://host.docker.internal:1081 \
+		--build-arg NO_PROXY=localhost,127.0.0.1 \
+		--add-host=host.docker.internal:host-gateway \
+		-t $(API_IMAGE):$(VERSION) ./api
 	@echo "API Docker image built successfully: $(API_IMAGE):$(VERSION)"
 
 # Push Docker images

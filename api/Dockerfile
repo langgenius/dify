@@ -1,6 +1,14 @@
 # base image
 FROM python:3.12-slim-bookworm AS base
 
+# Add proxy configuration
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV NO_PROXY=${NO_PROXY}
+
 WORKDIR /app/api
 
 # Install Poetry
@@ -19,6 +27,10 @@ ENV POETRY_VIRTUALENVS_CREATE=true
 ENV POETRY_REQUESTS_TIMEOUT=15
 
 FROM base AS packages
+# Inherit proxy settings from base
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV NO_PROXY=${NO_PROXY}
 
 # if you located in China, you can use aliyun mirror to speed up
 # RUN sed -i 's@deb.debian.org@mirrors.aliyun.com@g' /etc/apt/sources.list.d/debian.sources
@@ -30,8 +42,18 @@ RUN apt-get update \
 COPY pyproject.toml poetry.lock ./
 RUN poetry install --sync --no-cache --no-root
 
+FROM base AS builder
+# Inherit proxy settings from base
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV NO_PROXY=${NO_PROXY}
+
 # production stage
 FROM base AS production
+# Inherit proxy settings from base
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV NO_PROXY=${NO_PROXY}
 
 ENV FLASK_APP=app.py
 ENV EDITION=SELF_HOSTED
