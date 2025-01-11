@@ -426,6 +426,7 @@ services:
     depends_on:
       - db
       - redis
+      - supertokens
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
@@ -468,6 +469,9 @@ services:
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
       TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
+      SUPERTOKENS_API_URL: ${SUPERTOKENS_API_URL:-http://supertokens:3567}
+      SUPERTOKENS_WEBSITE_DOMAIN: ${SUPERTOKENS_WEBSITE_DOMAIN:-http://localhost:3000}
+      SUPERTOKENS_API_DOMAIN: ${SUPERTOKENS_API_DOMAIN:-http://supertokens:3567}
 
   # The postgres database.
   db:
