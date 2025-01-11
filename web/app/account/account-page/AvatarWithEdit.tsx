@@ -4,6 +4,7 @@ import type { Area } from 'react-easy-crop'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import { RiPencilLine } from '@remixicon/react'
 import { updateUserProfile } from '@/service/common'
 import { ToastContext } from '@/app/components/base/toast'
 import ImageInput, { type OnImageInput } from '@/app/components/base/app-icon-picker/ImageInput'
@@ -83,7 +84,9 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
             onClick={() => { setIsShowAvaterIconPicker(true) }}
             className="absolute inset-0 bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
           >
-            <span className="text-white text-xs">変更</span>
+            <span className="text-white text-xs">
+              <RiPencilLine />
+            </span>
           </div>
         </div>
       </div>
