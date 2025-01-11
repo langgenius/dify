@@ -5,17 +5,10 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { updateUserProfile } from '@/service/common'
 import { ToastContext } from '@/app/components/base/toast'
-import Avatar from '@/app/components/base/avatar'
+import Avatar, { type AvatarProps } from '@/app/components/base/avatar'
 import AvatarIconPicker, { type AppIconSelection } from '@/app/components/base/app-icon-picker'
 
-type AvatarWithEditProps = {
-  name: string
-  avatar: string | null
-  size?: number
-  className?: string
-  textClassName?: string
-  onSelect?: () => void
-}
+type AvatarWithEditProps = AvatarProps & { onSelect?: () => void }
 
 const AvatarWithEdit = ({ onSelect, ...props }: AvatarWithEditProps) => {
   const { t } = useTranslation()
