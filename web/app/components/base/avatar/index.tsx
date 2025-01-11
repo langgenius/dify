@@ -4,7 +4,7 @@ import cn from '@/utils/classnames'
 
 type AvatarProps = {
   name: string
-  avatar?: string
+  avatar: string | null
   size?: number
   className?: string
   textClassName?: string
