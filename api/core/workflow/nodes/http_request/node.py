@@ -173,6 +173,13 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
         is_file = response.is_file
         content_type = response.content_type
         content = response.content
+        parsed_content_disposition = response.parsed_content_disposition
+
+        if parsed_content_disposition:
+            content_disposition_filename = parsed_content_disposition.get_filename()
+            if content_disposition_filename:
+                # If filename is available from content-disposition, use it to guess the content type
+                content_type = mimetypes.guess_type(content_disposition_filename)[0]
 
         if is_file:
             # Guess file extension from URL or Content-Type header
