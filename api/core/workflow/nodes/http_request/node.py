@@ -169,7 +169,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
         """
         Extract files from response by checking both Content-Type header and URL
         """
-        files = []
+        files: list[File] = []
         is_file = response.is_file
         content_type = response.content_type
         content = response.content
