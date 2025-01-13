@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.workflow.entities.node_entities import AgentNodeStrategyInit
 from models.workflow import WorkflowNodeExecutionStatus
 
 
@@ -248,6 +249,7 @@ class NodeStartStreamResponse(StreamResponse):
         parent_parallel_start_node_id: Optional[str] = None
         iteration_id: Optional[str] = None
         parallel_run_id: Optional[str] = None
+        agent_strategy: Optional[AgentNodeStrategyInit] = None
 
     event: StreamEvent = StreamEvent.NODE_STARTED
     workflow_run_id: str

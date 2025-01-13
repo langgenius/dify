@@ -541,6 +541,7 @@ class WorkflowCycleManage:
                 parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                 iteration_id=event.in_iteration_id,
                 parallel_run_id=event.parallel_mode_run_id,
+                agent_strategy=event.agent_strategy,
             ),
         )
 

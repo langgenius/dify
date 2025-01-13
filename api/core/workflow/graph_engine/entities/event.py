@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from core.workflow.entities.node_entities import AgentNodeStrategyInit
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNodeData
@@ -66,8 +67,10 @@ class BaseNodeEvent(GraphEngineEvent):
 
 class NodeRunStartedEvent(BaseNodeEvent):
     predecessor_node_id: Optional[str] = None
-    parallel_mode_run_id: Optional[str] = None
     """predecessor node id"""
+    parallel_mode_run_id: Optional[str] = None
+    """iteration node parallel mode run id"""
+    agent_strategy: Optional[AgentNodeStrategyInit] = None
 
 
 class NodeRunStreamChunkEvent(BaseNodeEvent):
