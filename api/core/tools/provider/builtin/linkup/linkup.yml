@@ -13,7 +13,7 @@ identity:
     - api
 
 dependencies:
-  - linkup_sdk
+  - linkup_sdk: "0.2.2"
 
 commands:
   - name: search
@@ -35,7 +35,7 @@ commands:
           zh_Hans: 查询字符串。
       - name: depth
         type: string
-        required: false
+        required: true
         label:
           en_US: Search Depth
           zh_Hans: 搜索深度
@@ -44,10 +44,19 @@ commands:
           zh_Hans: 搜索深度（例如：基础、标准）。
       - name: output_type
         type: string
-        required: false
+        required: true
         label:
           en_US: Output Type
           zh_Hans: 输出类型
         description:
           en_US: The desired type of output (e.g., searchResults).
           zh_Hans: 所需的输出类型（例如：searchResults）。
+              - name: output_type
+        type: string
+        required: false
+        label:
+          en_US: Structured Output Schema
+          zh_Hans: 结构化输出模式
+        description:
+          en_US: The output schema (only if output_type is structured).
+          zh_Hans: 输出模式（仅当 output_type 为结构化时）。

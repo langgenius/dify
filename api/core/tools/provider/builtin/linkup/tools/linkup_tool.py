@@ -36,21 +36,10 @@ class LinkupSearchTool:
                     depth=depth,
                     output_type=output_type
                 )
-            if output_type == "sourcedAnswer":
-                return {
-                    "success": True,
-                    "answer": response.answer,
-                    "sources": response.sources
-                }
-            elif output_type == "searchResults":
-                results = [
-                    {"name": result.name, "url": result.url, "content": result.content}
-                    for result in response.results
-                ]
-                return {"success": True, "results": results}
-            elif output_type == "structured":
-                return {"success": True, "structured_data": response}
+            if output_type == "structured" :
+                return response
             else:
-                return {"success": False, "error": "Invalid output_type provided."}
+                return {"success": True, **vars(response)}
         except Exception as e:
             return {"success": False, "error": str(e)}
+
