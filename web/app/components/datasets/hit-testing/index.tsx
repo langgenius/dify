@@ -12,9 +12,9 @@ import Textarea from './textarea'
 import s from './style.module.css'
 import ModifyRetrievalModal from './modify-retrieval-modal'
 import ResultItem from './components/result-item'
-import ResultItemExternal from "./components/result-item-external"
+import ResultItemExternal from './components/result-item-external'
 import cn from '@/utils/classnames'
-import type { ExternalKnowledgeBaseHitTestingResponse, HitTestingResponse } from '@/models/datasets'
+import type { ExternalKnowledgeBaseHitTesting, ExternalKnowledgeBaseHitTestingResponse, HitTesting, HitTestingResponse } from '@/models/datasets'
 import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
 import Pagination from '@/app/components/base/pagination'
@@ -25,7 +25,6 @@ import type { RetrievalConfig } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
-import type { HitTesting, ExternalKnowledgeBaseHitTesting } from "@/models/datasets"
 
 const limit = 10
 
@@ -43,7 +42,7 @@ const RecordsEmpty: FC = () => {
   </div>
 }
 
-const HitTesting: FC<Props> = ({ datasetId }: Props) => {
+const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
 
@@ -70,27 +69,27 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
   const [isShowRightPanel, { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel }] = useBoolean(!isMobile)
-  const renderHitResults = (
-    results: HitTesting[] | ExternalKnowledgeBaseHitTesting[]
-  ) => (
-    <div className="h-full flex flex-col py-3 px-4 rounded-t-2xl bg-background-body">
-      <div className="shrink-0 pl-2 text-text-primary font-semibold leading-6 mb-2">
-        {t("datasetHitTesting.hit.title", { num: results.length })}
+  const renderHitResults = (results: HitTesting[] | ExternalKnowledgeBaseHitTesting[]) => (
+    <div className='h-full flex flex-col py-3 px-4 rounded-t-2xl bg-background-body'>
+      <div className='shrink-0 pl-2 text-text-primary font-semibold leading-6 mb-2'>
+        {t('datasetHitTesting.hit.title', { num: results.length })}
       </div>
-      <div className="grow overflow-y-auto space-y-2">
+      <div className='grow overflow-y-auto space-y-2'>
         {results.map((record, idx) =>
-          isExternal ? (
-            <ResultItemExternal
-              key={idx}
-              payload={record as ExternalKnowledgeBaseHitTesting}
-            />
-          ) : (
-            <ResultItem key={idx} payload={record as HitTesting} />
-          )
+          isExternal
+            ? (
+              <ResultItemExternal
+                key={idx}
+                payload={record as ExternalKnowledgeBaseHitTesting}
+              />
+            )
+            : (
+              <ResultItem key={idx} payload={record as HitTesting} />
+            ),
         )}
       </div>
     </div>
-  );
+  )
 
   const renderEmptyState = () => (
     <div className='h-full flex flex-col justify-center items-center py-3 px-4 rounded-t-2xl bg-background-body'>
@@ -137,7 +136,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
               <>
                 <div className='grow overflow-y-auto'>
                   <table className={'w-full border-collapse border-0 text-[13px] leading-4 text-text-secondary '}>
-                    <thead className="sticky top-0 h-7 leading-7  text-xs text-text-tertiary font-medium uppercase">
+                    <thead className='sticky top-0 h-7 leading-7  text-xs text-text-tertiary font-medium uppercase'>
                       <tr>
                         <td className='pl-3 w-[128px] rounded-l-lg bg-background-section-burn'>{t('datasetHitTesting.table.header.source')}</td>
                         <td className='bg-background-section-burn'>{t('datasetHitTesting.table.header.text')}</td>
@@ -215,4 +214,4 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
   )
 }
 
-export default HitTesting
+export default HitTestingPage
