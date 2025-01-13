@@ -54,6 +54,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
     onUpload: (imageFile: ImageFile) => {
       if (imageFile.fileId) {
         setUploading(false)
+        setInputImageInfo(undefined)
         handleSaveAvatar(imageFile.fileId)
       }
     },
@@ -105,7 +106,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
             {t('app.iconPicker.cancel')}
           </Button>
 
-          <Button variant="primary" className='w-full' disabled={uploading} loading={uploading} onClick={handleSelect}>
+          <Button variant="primary" className='w-full' disabled={uploading || !inputImageInfo} loading={uploading} onClick={handleSelect}>
             {t('app.iconPicker.ok')}
           </Button>
         </div>
