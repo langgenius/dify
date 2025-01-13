@@ -12,6 +12,7 @@ const Description = async ({
   const localeDefault = getLocaleOnServer()
   const { t } = await translate(localeFromProps || localeDefault, 'plugin')
   const { t: tCommon } = await translate(localeFromProps || localeDefault, 'common')
+  const isZhHans = localeFromProps === 'zh-Hans'
 
   return (
     <>
@@ -19,7 +20,22 @@ const Description = async ({
         {t('marketplace.empower')}
       </h1>
       <h2 className='shrink-0 flex justify-center items-center text-center body-md-regular text-text-tertiary'>
-        {t('marketplace.discover')}
+        {
+          isZhHans && (
+            <>
+              <span className='mr-1'>{tCommon('operation.in')}</span>
+              {t('marketplace.difyMarketplace')}
+              {t('marketplace.discover')}
+            </>
+          )
+        }
+        {
+          !isZhHans && (
+            <>
+              {t('marketplace.discover')}
+            </>
+          )
+        }
         <span className="relative ml-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected z-[1]">
           <span className='relative z-[2] lowercase'>{t('category.models')}</span>
         </span>
@@ -39,8 +55,14 @@ const Description = async ({
         <span className="relative ml-1 mr-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected z-[1]">
           <span className='relative z-[2] lowercase'>{t('category.bundles')}</span>
         </span>
-        <span className='mr-1'>{tCommon('operation.in')}</span>
-        {t('marketplace.difyMarketplace')}
+        {
+          !isZhHans && (
+            <>
+              <span className='mr-1'>{tCommon('operation.in')}</span>
+              {t('marketplace.difyMarketplace')}
+            </>
+          )
+        }
       </h2>
     </>
   )
