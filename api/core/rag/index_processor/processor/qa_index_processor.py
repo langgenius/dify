@@ -112,7 +112,7 @@ class QAIndexProcessor(BaseIndexProcessor):
             df = pd.read_csv(file)
             text_docs = []
             for index, row in df.iterrows():
-                data = Document(page_content=row[0], metadata={"answer": row[1]})
+                data = Document(page_content=row.iloc[0], metadata={"answer": row.iloc[1]})
                 text_docs.append(data)
             if len(text_docs) == 0:
                 raise ValueError("The CSV file is empty.")
