@@ -2,7 +2,7 @@ provider: sambanova
 label:
   en_US: Sambanova
 description:
-  en_US: SambaNova Cloud 
+  en_US: SambaNova Cloud
 icon_small:
   en_US: icon_s_en.png
 icon_large:
@@ -15,7 +15,7 @@ help:
     en_US: https://cloud.sambanova.ai/apis
 supported_model_types:
   - llm
-configurate_methods: 
+configurate_methods:
   - predefined-model
 provider_credential_schema:
   credential_form_schemas:
