@@ -68,6 +68,7 @@ ignore = [
     "SIM107", # return-in-try-except-finally
     "SIM108", # if-else-block-instead-of-if-exp
     "SIM113", # enumerate-for-loop
+    "SIM117", # multiple-with-statements
     "SIM210", # if-expr-with-true-false
 ]
 
