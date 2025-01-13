@@ -236,7 +236,7 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type="service_api",
-            is_anonymous=True if user_id == "DEFAULT-USER" else False,
+            is_anonymous=user_id == "DEFAULT-USER",
             session_id=user_id,
         )
         db.session.add(end_user)

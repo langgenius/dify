@@ -17,6 +17,7 @@ from core.ops.entities.config_entity import (
     OPS_FILE_PATH,
     LangfuseConfig,
     LangSmithConfig,
+    OpikConfig,
     TracingProviderEnum,
 )
 from core.ops.entities.trace_entity import (
@@ -32,6 +33,7 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
 from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
+from core.ops.opik_trace.opik_trace import OpikDataTrace
 from core.ops.utils import get_message_data
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -51,6 +53,12 @@ provider_config_map: dict[str, dict[str, Any]] = {
         "secret_keys": ["api_key"],
         "other_keys": ["project", "endpoint"],
         "trace_instance": LangSmithDataTrace,
+    },
+    TracingProviderEnum.OPIK.value: {
+        "config_class": OpikConfig,
+        "secret_keys": ["api_key"],
+        "other_keys": ["project", "url", "workspace"],
+        "trace_instance": OpikDataTrace,
     },
 }
 
