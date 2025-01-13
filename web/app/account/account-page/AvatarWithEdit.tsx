@@ -52,11 +52,15 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
     limit: 3,
     disabled: false,
     onUpload: (imageFile: ImageFile) => {
-      if (imageFile.fileId) {
+      if (imageFile.progress === 100) {
         setUploading(false)
         setInputImageInfo(undefined)
         handleSaveAvatar(imageFile.fileId)
       }
+
+      // Error
+      if (imageFile.progress === -1)
+        setUploading(false)
     },
   })
 
