@@ -32,7 +32,7 @@ class FirecrawlApp:
             return self._extract_common_fields(data)
         elif response.status_code in {402, 409, 500, 429, 408}:
             self._handle_error(response, "scrape URL")
-            return {} # Avoid additional exception after handling error
+            return {}  # Avoid additional exception after handling error
         else:
             raise Exception(f"Failed to scrape URL. Status code: {response.status_code}")
 
@@ -75,9 +75,7 @@ class FirecrawlApp:
                         storage.save(file_key, json.dumps(url_data_list).encode("utf-8"))
                     except Exception as e:
                         raise Exception(f"Error saving crawl data: {e}")
-                return self._format_crawl_status_response(
-                    "completed", crawl_status_response, url_data_list
-                )
+                return self._format_crawl_status_response("completed", crawl_status_response, url_data_list)
             else:
                 return self._format_crawl_status_response(
                     crawl_status_response.get("status"), crawl_status_response, []

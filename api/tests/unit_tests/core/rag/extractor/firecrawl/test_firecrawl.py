@@ -20,7 +20,7 @@ def test_firecrawl_web_extractor_crawl_mode(mocker):
         }
     }
     mocked_firecrawl = {
-        "jobId": "test",
+        "id": "test",
     }
     mocker.patch("requests.post", return_value=_mock_response(mocked_firecrawl))
     job_id = firecrawl_app.crawl_url(url, params)
