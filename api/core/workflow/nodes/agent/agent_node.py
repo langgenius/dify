@@ -90,18 +90,11 @@ class AgentNode(ToolNode):
 
         try:
             # convert tool messages
-            manager = PluginInstallationManager()
-            plugins = manager.list_plugins(self.tenant_id)
-            current_plugin = next(
-                plugin
-                for plugin in plugins
-                if f"{plugin.plugin_id}/{plugin.name}"
-                == cast(AgentNodeData, self.node_data).agent_strategy_provider_name
-            )
+
             yield from self._transform_message(
                 message_stream,
                 {
-                    "icon": current_plugin.declaration.icon,
+                    "icon": self.agent_strategy_icon,
                     "agent_strategy": cast(AgentNodeData, self.node_data).agent_strategy_name,
                 },
                 parameters_for_log,
@@ -229,16 +222,33 @@ class AgentNode(ToolNode):
         result: dict[str, Any] = {}
         for parameter_name in node_data.agent_parameters:
             input = node_data.agent_parameters[parameter_name]
-            if input.type == "mixed":
-                assert isinstance(input.value, str)
-                selectors = VariableTemplateParser(input.value).extract_variable_selectors()
+            if input.type in ["mixed", "constant"]:
+                selectors = VariableTemplateParser(str(input.value)).extract_variable_selectors()
                 for selector in selectors:
                     result[selector.variable] = selector.value_selector
             elif input.type == "variable":
                 result[parameter_name] = input.value
-            elif input.type == "constant":
-                pass
 
         result = {node_id + "." + key: value for key, value in result.items()}
 
         return result
+
+    @property
+    def agent_strategy_icon(self) -> str | None:
+        """
+        Get agent strategy icon
+        :return:
+        """
+        manager = PluginInstallationManager()
+        plugins = manager.list_plugins(self.tenant_id)
+        try:
+            current_plugin = next(
+                plugin
+                for plugin in plugins
+                if f"{plugin.plugin_id}/{plugin.name}"
+                == cast(AgentNodeData, self.node_data).agent_strategy_provider_name
+            )
+            icon = current_plugin.declaration.icon
+        except StopIteration:
+            icon = None
+        return icon
