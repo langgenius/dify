@@ -1,7 +1,7 @@
 import logging
 import uuid
 from enum import StrEnum
-from typing import Optional, cast
+from typing import Optional
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -138,15 +138,6 @@ class AppDslService:
                         id=import_id,
                         status=ImportStatus.FAILED,
                         error="Empty content from url",
-                    )
-
-                try:
-                    content = cast(bytes, content).decode("utf-8")
-                except UnicodeDecodeError as e:
-                    return Import(
-                        id=import_id,
-                        status=ImportStatus.FAILED,
-                        error=f"Error decoding content: {e}",
                     )
             except Exception as e:
                 return Import(
