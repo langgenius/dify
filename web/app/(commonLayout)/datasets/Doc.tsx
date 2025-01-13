@@ -71,7 +71,7 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
       <div className={`fixed right-16 top-32 z-10 transition-all ${isTocExpanded ? 'w-64' : 'w-10'}`}>
         {isTocExpanded
           ? (
-            <nav className="toc w-full bg-gray-50 p-4 rounded-lg shadow-md">
+            <nav className="toc w-full bg-gray-50 p-4 rounded-lg shadow-md max-h-[calc(100vh-150px)] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold">{t('appApi.develop.toc')}</h3>
                 <button
