@@ -49,3 +49,8 @@ class NodeRunResult(BaseModel):
 
     # single step node run retry
     retry_index: int = 0
+
+
+class AgentNodeStrategyInit(BaseModel):
+    name: str
+    icon: str | None = None
