@@ -25,7 +25,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
   const { notify } = useContext(ToastContext)
 
   const [inputImageInfo, setInputImageInfo] = useState<InputImageInfo>()
-  const [isShowAvatarPicker, setIsShowAvaterPicker] = useState(false)
+  const [isShowAvatarPicker, setIsShowAvatarPicker] = useState(false)
   const [uploading, setUploading] = useState(false)
 
   const handleImageInput: OnImageInput = useCallback(async (isCropped: boolean, fileOrTempUrl: string | File, croppedAreaPixels?: Area, fileName?: string) => {
@@ -40,7 +40,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
     try {
       await updateUserProfile({ url: 'account/avatar', body: { avatar: uploadedFileId } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      setIsShowAvaterPicker(false)
+      setIsShowAvatarPicker(false)
       onSave?.()
     }
     catch (e) {
@@ -81,7 +81,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
         <div className="relative group">
           <Avatar {...props} />
           <div
-            onClick={() => { setIsShowAvaterPicker(true) }}
+            onClick={() => { setIsShowAvatarPicker(true) }}
             className="absolute inset-0 bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center"
           >
             <span className="text-white text-xs">
@@ -95,13 +95,13 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
         closable
         className="!w-[362px] !p-0"
         isShow={isShowAvatarPicker}
-        onClose={() => setIsShowAvaterPicker(false)}
+        onClose={() => setIsShowAvatarPicker(false)}
       >
         <ImageInput onImageInput={handleImageInput} cropShape='round' />
         <Divider className='m-0' />
 
         <div className='w-full flex items-center justify-center p-3 gap-2'>
-          <Button className='w-full' onClick={() => setIsShowAvaterPicker(false)}>
+          <Button className='w-full' onClick={() => setIsShowAvatarPicker(false)}>
             {t('app.iconPicker.cancel')}
           </Button>
 
