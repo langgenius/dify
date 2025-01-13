@@ -257,8 +257,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         for index, response in enumerate(responses):
             if response.status_code not in {200, HTTPStatus.OK}:
                 raise ServiceUnavailableError(
-                    f"Failed to invoke model {model}, status code: {response.status_code}, "
-                    f"message: {response.message}"
+                    f"Failed to invoke model {model}, status code: {response.status_code}, message: {response.message}"
                 )
 
             resp_finish_reason = response.output.choices[0].finish_reason
