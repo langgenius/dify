@@ -2,8 +2,7 @@ import os
 
 import pytest
 
-from core.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
-from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
+from core.model_runtime.entities.rerank_entities import RerankResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.huggingface_tei.rerank.rerank import (
     HuggingfaceTeiRerankModel,
@@ -41,6 +40,7 @@ def test_validate_credentials(setup_tei_mock):
                 model="embedding",
                 credentials={
                     "server_url": os.environ.get("TEI_RERANK_SERVER_URL"),
+                    "api_key": os.environ.get("TEI_API_KEY", ""),
                 },
             )
 
@@ -48,6 +48,7 @@ def test_validate_credentials(setup_tei_mock):
         model=model_name,
         credentials={
             "server_url": os.environ.get("TEI_RERANK_SERVER_URL"),
+            "api_key": os.environ.get("TEI_API_KEY", ""),
         },
     )
 
@@ -62,6 +63,7 @@ def test_invoke_model(setup_tei_mock):
         model=model_name,
         credentials={
             "server_url": os.environ.get("TEI_RERANK_SERVER_URL"),
+            "api_key": os.environ.get("TEI_API_KEY", ""),
         },
         query="Who is Kasumi?",
         docs=[

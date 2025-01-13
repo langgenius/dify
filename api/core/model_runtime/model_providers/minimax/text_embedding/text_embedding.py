@@ -4,7 +4,7 @@ from typing import Optional
 
 from requests import post
 
-from core.embedding.embedding_constant import EmbeddingInputType
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.invoke import (
@@ -61,7 +61,8 @@ class MinimaxTextEmbeddingModel(TextEmbeddingModel):
         url = f"{self.api_base}?GroupId={group_id}"
         headers = {"Authorization": "Bearer " + api_key, "Content-Type": "application/json"}
 
-        data = {"model": "embo-01", "texts": texts, "type": "db"}
+        embedding_type = "db" if input_type == EmbeddingInputType.DOCUMENT else "query"
+        data = {"model": "embo-01", "texts": texts, "type": embedding_type}
 
         try:
             response = post(url, headers=headers, data=dumps(data))

@@ -15,9 +15,12 @@
     <a href="https://discord.gg/FngNHpbcY7" target="_blank">
         <img src="https://img.shields.io/discord/1082486657678311454?logo=discord&labelColor=%20%235462eb&logoColor=%20%23f5f5f5&color=%20%235462eb"
             alt="chat sur Discord"></a>
+    <a href="https://reddit.com/r/difyai" target="_blank">  
+        <img src="https://img.shields.io/reddit/subreddit-subscribers/difyai?style=plastic&logo=reddit&label=r%2Fdifyai&labelColor=white"
+            alt="join Reddit"></a>
     <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
         <img src="https://img.shields.io/twitter/follow/dify_ai?logo=X&color=%20%23f5f5f5"
-            alt="suivre sur Twitter"></a>
+            alt="suivre sur X(Twitter)"></a>
     <a href="https://hub.docker.com/u/langgenius" target="_blank">
         <img alt="Tirages Docker" src="https://img.shields.io/docker/pulls/langgenius/dify-web?labelColor=%20%23FDB062&color=%20%23f79009"></a>
     <a href="https://github.com/langgenius/dify/graphs/commit-activity" target="_blank">
@@ -202,10 +205,20 @@ Si vous souhaitez configurer une configuration haute disponibilité, la communau
 
 #### Utilisation de Terraform pour le déploiement
 
+Déployez Dify sur une plateforme cloud en un clic en utilisant [terraform](https://www.terraform.io/)
+
 ##### Azure Global
-Utilisez [terraform](https://www.terraform.io/) pour déployer Dify sur Azure en un clic.
 - [Azure Terraform par @nikawang](https://github.com/nikawang/dify-azure-terraform)
 
+##### Google Cloud
+- [Google Cloud Terraform par @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
+
+#### Utilisation d'AWS CDK pour le déploiement
+
+Déployez Dify sur AWS en utilisant [CDK](https://aws.amazon.com/cdk/)
+
+##### AWS 
+- [AWS CDK par @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 
 ## Contribuer
 
@@ -226,13 +239,20 @@ Dans le même temps, veuillez envisager de soutenir Dify en le partageant sur le
 * [Discussion GitHub](https://github.com/langgenius/dify/discussions). Meilleur pour: partager des commentaires et poser des questions.
 * [Problèmes GitHub](https://github.com/langgenius/dify/issues). Meilleur pour: les bogues que vous rencontrez en utilisant Dify.AI et les propositions de fonctionnalités. Consultez notre [Guide de contribution](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
 * [Discord](https://discord.gg/FngNHpbcY7). Meilleur pour: partager vos applications et passer du temps avec la communauté.
-* [Twitter](https://twitter.com/dify_ai). Meilleur pour: partager vos applications et passer du temps avec la communauté.
+* [X(Twitter)](https://twitter.com/dify_ai). Meilleur pour: partager vos applications et passer du temps avec la communauté.
 
 ## Historique des étoiles
 
 [![Graphique de l'historique des étoiles](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
 
 
+## Divulgation de sécurité
+
+Pour protéger votre vie privée, veuillez éviter de publier des problèmes de sécurité sur GitHub. Au lieu de cela, envoyez vos questions à security@dify.ai et nous vous fournirons une réponse plus détaillée.
+
+## Licence
+
+Ce référentiel est disponible sous la [Licence open source Dify](LICENSE), qui est essentiellement l'Apache 2.0 avec quelques restrictions supplémentaires.
 ## Divulgation de sécurité
 
 Pour protéger votre vie privée, veuillez éviter de publier des problèmes de sécurité sur GitHub. Au lieu de cela, envoyez vos questions à security@dify.ai et nous vous fournirons une réponse plus détaillée.

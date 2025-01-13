@@ -1,44 +1,69 @@
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 from urllib.parse import quote_plus
 
 from pydantic import Field, NonNegativeInt, PositiveFloat, PositiveInt, computed_field
 from pydantic_settings import BaseSettings
 
-from configs.middleware.cache.redis_config import RedisConfig
-from configs.middleware.storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
-from configs.middleware.storage.amazon_s3_storage_config import S3StorageConfig
-from configs.middleware.storage.azure_blob_storage_config import AzureBlobStorageConfig
-from configs.middleware.storage.google_cloud_storage_config import GoogleCloudStorageConfig
-from configs.middleware.storage.huawei_obs_storage_config import HuaweiCloudOBSStorageConfig
-from configs.middleware.storage.oci_storage_config import OCIStorageConfig
-from configs.middleware.storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
-from configs.middleware.storage.volcengine_tos_storage_config import VolcengineTOSStorageConfig
-from configs.middleware.vdb.analyticdb_config import AnalyticdbConfig
-from configs.middleware.vdb.chroma_config import ChromaConfig
-from configs.middleware.vdb.elasticsearch_config import ElasticsearchConfig
-from configs.middleware.vdb.milvus_config import MilvusConfig
-from configs.middleware.vdb.myscale_config import MyScaleConfig
-from configs.middleware.vdb.opensearch_config import OpenSearchConfig
-from configs.middleware.vdb.oracle_config import OracleConfig
-from configs.middleware.vdb.pgvector_config import PGVectorConfig
-from configs.middleware.vdb.pgvectors_config import PGVectoRSConfig
-from configs.middleware.vdb.qdrant_config import QdrantConfig
-from configs.middleware.vdb.relyt_config import RelytConfig
-from configs.middleware.vdb.tencent_vector_config import TencentVectorDBConfig
-from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
-from configs.middleware.vdb.weaviate_config import WeaviateConfig
+from .cache.redis_config import RedisConfig
+from .storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
+from .storage.amazon_s3_storage_config import S3StorageConfig
+from .storage.azure_blob_storage_config import AzureBlobStorageConfig
+from .storage.baidu_obs_storage_config import BaiduOBSStorageConfig
+from .storage.google_cloud_storage_config import GoogleCloudStorageConfig
+from .storage.huawei_obs_storage_config import HuaweiCloudOBSStorageConfig
+from .storage.oci_storage_config import OCIStorageConfig
+from .storage.opendal_storage_config import OpenDALStorageConfig
+from .storage.supabase_storage_config import SupabaseStorageConfig
+from .storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
+from .storage.volcengine_tos_storage_config import VolcengineTOSStorageConfig
+from .vdb.analyticdb_config import AnalyticdbConfig
+from .vdb.baidu_vector_config import BaiduVectorDBConfig
+from .vdb.chroma_config import ChromaConfig
+from .vdb.couchbase_config import CouchbaseConfig
+from .vdb.elasticsearch_config import ElasticsearchConfig
+from .vdb.lindorm_config import LindormConfig
+from .vdb.milvus_config import MilvusConfig
+from .vdb.myscale_config import MyScaleConfig
+from .vdb.oceanbase_config import OceanBaseVectorConfig
+from .vdb.opensearch_config import OpenSearchConfig
+from .vdb.oracle_config import OracleConfig
+from .vdb.pgvector_config import PGVectorConfig
+from .vdb.pgvectors_config import PGVectoRSConfig
+from .vdb.qdrant_config import QdrantConfig
+from .vdb.relyt_config import RelytConfig
+from .vdb.tencent_vector_config import TencentVectorDBConfig
+from .vdb.tidb_on_qdrant_config import TidbOnQdrantConfig
+from .vdb.tidb_vector_config import TiDBVectorConfig
+from .vdb.upstash_config import UpstashConfig
+from .vdb.vikingdb_config import VikingDBConfig
+from .vdb.weaviate_config import WeaviateConfig
 
 
 class StorageConfig(BaseSettings):
-    STORAGE_TYPE: str = Field(
+    STORAGE_TYPE: Literal[
+        "opendal",
+        "s3",
+        "aliyun-oss",
+        "azure-blob",
+        "baidu-obs",
+        "google-storage",
+        "huawei-obs",
+        "oci-storage",
+        "tencent-cos",
+        "volcengine-tos",
+        "supabase",
+        "local",
+    ] = Field(
         description="Type of storage to use."
-        " Options: 'local', 's3', 'azure-blob', 'aliyun-oss', 'google-storage'. Default is 'local'.",
-        default="local",
+        " Options: 'opendal', '(deprecated) local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', 'google-storage', "
+        "'huawei-obs', 'oci-storage', 'tencent-cos', 'volcengine-tos', 'supabase'. Default is 'opendal'.",
+        default="opendal",
     )
 
     STORAGE_LOCAL_PATH: str = Field(
         description="Path for local storage when STORAGE_TYPE is set to 'local'.",
         default="storage",
+        deprecated=True,
     )
 
 
@@ -47,6 +72,11 @@ class VectorStoreConfig(BaseSettings):
         description="Type of vector store to use for efficient similarity search."
         " Set to None if not using a vector store.",
         default=None,
+    )
+
+    VECTOR_STORE_WHITELIST_ENABLE: Optional[bool] = Field(
+        description="Enable whitelist for vector store.",
+        default=False,
     )
 
 
@@ -58,7 +88,7 @@ class KeywordStoreConfig(BaseSettings):
     )
 
 
-class DatabaseConfig:
+class DatabaseConfig(BaseSettings):
     DB_HOST: str = Field(
         description="Hostname or IP address of the database server.",
         default="localhost",
@@ -100,7 +130,6 @@ class DatabaseConfig:
     )
 
     @computed_field
-    @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         db_extras = (
             f"{self.DB_EXTRAS}&client_encoding={self.DB_CHARSET}" if self.DB_CHARSET else self.DB_EXTRAS
@@ -138,7 +167,6 @@ class DatabaseConfig:
     )
 
     @computed_field
-    @property
     def SQLALCHEMY_ENGINE_OPTIONS(self) -> dict[str, Any]:
         return {
             "pool_size": self.SQLALCHEMY_POOL_SIZE,
@@ -176,7 +204,6 @@ class CeleryConfig(DatabaseConfig):
     )
 
     @computed_field
-    @property
     def CELERY_RESULT_BACKEND(self) -> str | None:
         return (
             "db+{}".format(self.SQLALCHEMY_DATABASE_URI)
@@ -184,10 +211,25 @@ class CeleryConfig(DatabaseConfig):
             else self.CELERY_BROKER_URL
         )
 
-    @computed_field
     @property
     def BROKER_USE_SSL(self) -> bool:
         return self.CELERY_BROKER_URL.startswith("rediss://") if self.CELERY_BROKER_URL else False
+
+
+class InternalTestConfig(BaseSettings):
+    """
+    Configuration settings for Internal Test
+    """
+
+    AWS_SECRET_ACCESS_KEY: Optional[str] = Field(
+        description="Internal test AWS secret access key",
+        default=None,
+    )
+
+    AWS_ACCESS_KEY_ID: Optional[str] = Field(
+        description="Internal test AWS access key ID",
+        default=None,
+    )
 
 
 class MiddlewareConfig(
@@ -200,12 +242,15 @@ class MiddlewareConfig(
     StorageConfig,
     AliyunOSSStorageConfig,
     AzureBlobStorageConfig,
+    BaiduOBSStorageConfig,
     GoogleCloudStorageConfig,
-    TencentCloudCOSStorageConfig,
     HuaweiCloudOBSStorageConfig,
-    VolcengineTOSStorageConfig,
-    S3StorageConfig,
     OCIStorageConfig,
+    OpenDALStorageConfig,
+    S3StorageConfig,
+    SupabaseStorageConfig,
+    TencentCloudCOSStorageConfig,
+    VolcengineTOSStorageConfig,
     # configs of vdb and vdb providers
     VectorStoreConfig,
     AnalyticdbConfig,
@@ -222,5 +267,13 @@ class MiddlewareConfig(
     TiDBVectorConfig,
     WeaviateConfig,
     ElasticsearchConfig,
+    CouchbaseConfig,
+    InternalTestConfig,
+    VikingDBConfig,
+    UpstashConfig,
+    TidbOnQdrantConfig,
+    LindormConfig,
+    OceanBaseVectorConfig,
+    BaiduVectorDBConfig,
 ):
     pass

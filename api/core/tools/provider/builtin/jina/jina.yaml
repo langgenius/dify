@@ -6,9 +6,9 @@ identity:
     zh_Hans: Jina AI
     pt_BR: Jina AI
   description:
-    en_US: Convert any URL to an LLM-friendly input or perform searches on the web for grounding information. Experience improved output for your agent and RAG systems at no cost.
-    zh_Hans: 将任何URL转换为LLM易读的输入或在网页上搜索引擎上搜索引擎。
-    pt_BR: Converte qualquer URL em uma entrada LLm-fácil de ler ou realize pesquisas na web para obter informação de grounding. Tenha uma experiência melhor para seu agente e sistemas RAG sem custo.
+    en_US: Your Search Foundation, Supercharged!
+    zh_Hans: 您的搜索底座，从此不同!
+    pt_BR: Your Search Foundation, Supercharged!
   icon: icon.svg
   tags:
     - search

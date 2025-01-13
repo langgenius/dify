@@ -59,7 +59,7 @@ parameters:
       en_US: Paging size, the default and maximum value is 500.
       zh_Hans: 分页大小, 默认值和最大值为 500。
     llm_description: 分页大小, 表示一次请求最多返回多少条数据，默认值和最大值为 500。
-    form: llm
+    form: form
 
   - name: page_token
     type: string

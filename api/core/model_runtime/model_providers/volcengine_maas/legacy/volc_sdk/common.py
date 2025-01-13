@@ -1,5 +1,6 @@
 import json
 import random
+from collections import UserDict
 from datetime import datetime
 
 
@@ -10,9 +11,9 @@ class ChatRole:
     FUNCTION = "function"
 
 
-class _Dict(dict):
-    __setattr__ = dict.__setitem__
-    __getattr__ = dict.__getitem__
+class _Dict(UserDict):
+    __setattr__ = UserDict.__setitem__
+    __getattr__ = UserDict.__getitem__
 
     def __missing__(self, key):
         return None

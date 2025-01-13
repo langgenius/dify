@@ -1,5 +1,6 @@
 import urllib.parse
 from dataclasses import dataclass
+from typing import Optional
 
 import requests
 
@@ -40,12 +41,14 @@ class GitHubOAuth(OAuth):
     _USER_INFO_URL = "https://api.github.com/user"
     _EMAIL_INFO_URL = "https://api.github.com/user/emails"
 
-    def get_authorization_url(self):
+    def get_authorization_url(self, invite_token: Optional[str] = None):
         params = {
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
             "scope": "user:email",  # Request only basic user information
         }
+        if invite_token:
+            params["state"] = invite_token
         return f"{self._AUTH_URL}?{urllib.parse.urlencode(params)}"
 
     def get_access_token(self, code: str):
@@ -74,9 +77,9 @@ class GitHubOAuth(OAuth):
 
         email_response = requests.get(self._EMAIL_INFO_URL, headers=headers)
         email_info = email_response.json()
-        primary_email = next((email for email in email_info if email["primary"] == True), None)
+        primary_email: dict = next((email for email in email_info if email["primary"] == True), {})
 
-        return {**user_info, "email": primary_email["email"]}
+        return {**user_info, "email": primary_email.get("email", "")}
 
     def _transform_user_info(self, raw_info: dict) -> OAuthUserInfo:
         email = raw_info.get("email")
@@ -90,13 +93,15 @@ class GoogleOAuth(OAuth):
     _TOKEN_URL = "https://oauth2.googleapis.com/token"
     _USER_INFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
-    def get_authorization_url(self):
+    def get_authorization_url(self, invite_token: Optional[str] = None):
         params = {
             "client_id": self.client_id,
             "response_type": "code",
             "redirect_uri": self.redirect_uri,
             "scope": "openid email",
         }
+        if invite_token:
+            params["state"] = invite_token
         return f"{self._AUTH_URL}?{urllib.parse.urlencode(params)}"
 
     def get_access_token(self, code: str):
@@ -125,4 +130,4 @@ class GoogleOAuth(OAuth):
         return response.json()
 
     def _transform_user_info(self, raw_info: dict) -> OAuthUserInfo:
-        return OAuthUserInfo(id=str(raw_info["sub"]), name=None, email=raw_info["email"])
+        return OAuthUserInfo(id=str(raw_info["sub"]), name="", email=raw_info["email"])

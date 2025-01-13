@@ -3,8 +3,6 @@ import logging
 import time
 from typing import Optional
 
-import boto3
-from botocore.config import Config
 from botocore.exceptions import (
     ClientError,
     EndpointConnectionError,
@@ -13,7 +11,7 @@ from botocore.exceptions import (
     UnknownServiceError,
 )
 
-from core.embedding.embedding_constant import EmbeddingInputType
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.invoke import (
@@ -25,6 +23,7 @@ from core.model_runtime.errors.invoke import (
     InvokeServerUnavailableError,
 )
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from core.model_runtime.model_providers.bedrock.get_bedrock_client import get_bedrock_client
 
 logger = logging.getLogger(__name__)
 
@@ -48,14 +47,7 @@ class BedrockTextEmbeddingModel(TextEmbeddingModel):
         :param input_type: input type
         :return: embeddings result
         """
-        client_config = Config(region_name=credentials["aws_region"])
-
-        bedrock_runtime = boto3.client(
-            service_name="bedrock-runtime",
-            config=client_config,
-            aws_access_key_id=credentials.get("aws_access_key_id"),
-            aws_secret_access_key=credentials.get("aws_secret_access_key"),
-        )
+        bedrock_runtime = get_bedrock_client("bedrock-runtime", credentials)
 
         embeddings = []
         token_usage = 0

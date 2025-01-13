@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,12 +25,14 @@ type AddProps = {
   nodeData: CommonNodeType
   sourceHandle: string
   isParallel?: boolean
+  isFailBranch?: boolean
 }
 const Add = ({
   nodeId,
   nodeData,
   sourceHandle,
   isParallel,
+  isFailBranch,
 }: AddProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -58,6 +61,15 @@ const Add = ({
     setOpen(newOpen)
   }, [checkParallelLimit, nodeId, sourceHandle])
 
+  const tip = useMemo(() => {
+    if (isFailBranch)
+      return t('workflow.common.addFailureBranch')
+
+    if (isParallel)
+      return t('workflow.common.addParallelNode')
+
+    return t('workflow.panel.selectNextStep')
+  }, [isFailBranch, isParallel, t])
   const renderTrigger = useCallback((open: boolean) => {
     return (
       <div
@@ -72,15 +84,11 @@ const Add = ({
           <RiAddLine className='w-3 h-3' />
         </div>
         <div className='flex items-center uppercase'>
-          {
-            isParallel
-              ? t('workflow.common.addParallelNode')
-              : t('workflow.panel.selectNextStep')
-          }
+          {tip}
         </div>
       </div>
     )
-  }, [t, nodesReadOnly, isParallel])
+  }, [nodesReadOnly, tip])
 
   return (
     <BlockSelector

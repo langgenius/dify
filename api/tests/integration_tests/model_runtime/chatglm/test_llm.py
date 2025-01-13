@@ -8,7 +8,6 @@ from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessageTool,
     SystemPromptMessage,
-    TextPromptMessageContent,
     UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import AIModelEntity

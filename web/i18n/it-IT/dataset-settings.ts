@@ -34,6 +34,12 @@ const translation = {
         ' sul metodo di recupero, puoi cambiare questo in qualsiasi momento nelle impostazioni della Conoscenza.',
     },
     save: 'Salva',
+    retrievalSettings: 'Impostazioni di recupero',
+    externalKnowledgeID: 'ID conoscenza esterna',
+    externalKnowledgeAPI: 'API di conoscenza esterna',
+    helpText: 'Scopri come scrivere una buona descrizione del set di dati.',
+    upgradeHighQualityTip: 'Una volta effettuato l\'aggiornamento alla modalità Alta qualità, il ripristino della modalità Risparmio non è disponibile',
+    indexMethodChangeToEconomyDisabledTip: 'Non disponibile per il downgrade da HQ a ECO',
   },
 }
 

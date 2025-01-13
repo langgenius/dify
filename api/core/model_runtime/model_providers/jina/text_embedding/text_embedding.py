@@ -4,7 +4,7 @@ from typing import Optional
 
 from requests import post
 
-from core.embedding.embedding_constant import EmbeddingInputType
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelPropertyKey, ModelType, PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
@@ -193,7 +193,7 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
             label=I18nObject(en_US=model),
             model_type=ModelType.TEXT_EMBEDDING,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
-            model_properties={ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size"))},
+            model_properties={ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size", 8000))},
         )
 
         return entity

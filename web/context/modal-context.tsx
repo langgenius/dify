@@ -6,10 +6,11 @@ import { createContext, useContext, useContextSelector } from 'use-context-selec
 import { useRouter, useSearchParams } from 'next/navigation'
 import AccountSetting from '@/app/components/header/account-setting'
 import ApiBasedExtensionModal from '@/app/components/header/account-setting/api-based-extension-page/modal'
-import ModerationSettingModal from '@/app/components/app/configuration/toolbox/moderation/moderation-setting-modal'
+import ModerationSettingModal from '@/app/components/base/features/new-feature-panel/moderation/moderation-setting-modal'
 import ExternalDataToolModal from '@/app/components/app/configuration/tools/external-data-tool-modal'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import ModelModal from '@/app/components/header/account-setting/model-provider-page/model-modal'
+import ExternalAPIModal from '@/app/components/datasets/external-api/external-api-modal'
 import type {
   ConfigurationMethodEnum,
   CustomConfigurationModelFixedFields,
@@ -18,21 +19,28 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 import Pricing from '@/app/components/billing/pricing'
-import type { ModerationConfig } from '@/models/debug'
+import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import type {
   ApiBasedExtension,
   ExternalDataTool,
 } from '@/models/common'
+import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
 import ModelLoadBalancingEntryModal from '@/app/components/header/account-setting/model-provider-page/model-modal/model-load-balancing-entry-modal'
 import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
 import ModelLoadBalancingModal from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
+import OpeningSettingModal from '@/app/components/base/features/new-feature-panel/conversation-opener/modal'
+import type { OpeningStatement } from '@/app/components/base/features/types'
+import type { InputVar } from '@/app/components/workflow/types'
 
 export type ModalState<T> = {
   payload: T
   onCancelCallback?: () => void
   onSaveCallback?: (newPayload: T) => void
   onRemoveCallback?: (newPayload: T) => void
+  onEditCallback?: (newPayload: T) => void
   onValidateBeforeSaveCallback?: (newPayload: T) => boolean
+  isEditMode?: boolean
+  datasetBindings?: { id: string; name: string }[]
 }
 
 export type ModelModalType = {
@@ -52,8 +60,14 @@ export type ModalContextState = {
   setShowPricingModal: () => void
   setShowAnnotationFullModal: () => void
   setShowModelModal: Dispatch<SetStateAction<ModalState<ModelModalType> | null>>
+  setShowExternalKnowledgeAPIModal: Dispatch<SetStateAction<ModalState<CreateExternalAPIReq> | null>>
   setShowModelLoadBalancingModal: Dispatch<SetStateAction<ModelLoadBalancingModalProps | null>>
   setShowModelLoadBalancingEntryModal: Dispatch<SetStateAction<ModalState<LoadBalancingEntryModalType> | null>>
+  setShowOpeningModal: Dispatch<SetStateAction<ModalState<OpeningStatement & {
+    promptVariables?: PromptVariable[]
+    workflowVariables?: InputVar[]
+    onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
+  }> | null>>
 }
 const ModalContext = createContext<ModalContextState>({
   setShowAccountSettingModal: () => { },
@@ -63,8 +77,10 @@ const ModalContext = createContext<ModalContextState>({
   setShowPricingModal: () => { },
   setShowAnnotationFullModal: () => { },
   setShowModelModal: () => { },
+  setShowExternalKnowledgeAPIModal: () => { },
   setShowModelLoadBalancingModal: () => { },
   setShowModelLoadBalancingEntryModal: () => { },
+  setShowOpeningModal: () => { },
 })
 
 export const useModalContext = () => useContext(ModalContext)
@@ -86,8 +102,14 @@ export const ModalContextProvider = ({
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
   const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
+  const [showExternalKnowledgeAPIModal, setShowExternalKnowledgeAPIModal] = useState<ModalState<CreateExternalAPIReq> | null>(null)
   const [showModelLoadBalancingModal, setShowModelLoadBalancingModal] = useState<ModelLoadBalancingModalProps | null>(null)
   const [showModelLoadBalancingEntryModal, setShowModelLoadBalancingEntryModal] = useState<ModalState<LoadBalancingEntryModalType> | null>(null)
+  const [showOpeningModal, setShowOpeningModal] = useState<ModalState<OpeningStatement & {
+    promptVariables?: PromptVariable[]
+    workflowVariables?: InputVar[]
+    onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
+  }> | null>(null)
   const searchParams = useSearchParams()
   const router = useRouter()
   const [showPricingModal, setShowPricingModal] = useState(searchParams.get('show-pricing') === '1')
@@ -122,10 +144,34 @@ export const ModalContextProvider = ({
     setShowModelModal(null)
   }, [showModelModal])
 
+  const handleCancelExternalApiModal = useCallback(() => {
+    setShowExternalKnowledgeAPIModal(null)
+    if (showExternalKnowledgeAPIModal?.onCancelCallback)
+      showExternalKnowledgeAPIModal.onCancelCallback()
+  }, [showExternalKnowledgeAPIModal])
+
+  const handleSaveExternalApiModal = useCallback(async (updatedFormValue: CreateExternalAPIReq) => {
+    if (showExternalKnowledgeAPIModal?.onSaveCallback)
+      showExternalKnowledgeAPIModal.onSaveCallback(updatedFormValue)
+    setShowExternalKnowledgeAPIModal(null)
+  }, [showExternalKnowledgeAPIModal])
+
+  const handleEditExternalApiModal = useCallback(async (updatedFormValue: CreateExternalAPIReq) => {
+    if (showExternalKnowledgeAPIModal?.onEditCallback)
+      showExternalKnowledgeAPIModal.onEditCallback(updatedFormValue)
+    setShowExternalKnowledgeAPIModal(null)
+  }, [showExternalKnowledgeAPIModal])
+
   const handleCancelModelLoadBalancingEntryModal = useCallback(() => {
     showModelLoadBalancingEntryModal?.onCancelCallback?.()
     setShowModelLoadBalancingEntryModal(null)
   }, [showModelLoadBalancingEntryModal])
+
+  const handleCancelOpeningModal = useCallback(() => {
+    setShowOpeningModal(null)
+    if (showOpeningModal?.onCancelCallback)
+      showOpeningModal.onCancelCallback()
+  }, [showOpeningModal])
 
   const handleSaveModelLoadBalancingEntryModal = useCallback((entry: ModelLoadBalancingConfigEntry) => {
     showModelLoadBalancingEntryModal?.onSaveCallback?.({
@@ -164,6 +210,12 @@ export const ModalContextProvider = ({
     return true
   }
 
+  const handleSaveOpeningModal = (newOpening: OpeningStatement) => {
+    if (showOpeningModal?.onSaveCallback)
+      showOpeningModal.onSaveCallback(newOpening)
+    setShowOpeningModal(null)
+  }
+
   return (
     <ModalContext.Provider value={{
       setShowAccountSettingModal,
@@ -173,8 +225,10 @@ export const ModalContextProvider = ({
       setShowPricingModal: () => setShowPricingModal(true),
       setShowAnnotationFullModal: () => setShowAnnotationFullModal(true),
       setShowModelModal,
+      setShowExternalKnowledgeAPIModal,
       setShowModelLoadBalancingModal,
       setShowModelLoadBalancingEntryModal,
+      setShowOpeningModal,
     }}>
       <>
         {children}
@@ -246,6 +300,18 @@ export const ModalContextProvider = ({
           )
         }
         {
+          !!showExternalKnowledgeAPIModal && (
+            <ExternalAPIModal
+              data={showExternalKnowledgeAPIModal.payload}
+              datasetBindings={showExternalKnowledgeAPIModal.datasetBindings ?? []}
+              onSave={handleSaveExternalApiModal}
+              onCancel={handleCancelExternalApiModal}
+              onEdit={handleEditExternalApiModal}
+              isEditMode={showExternalKnowledgeAPIModal.isEditMode ?? false}
+            />
+          )
+        }
+        {
           Boolean(showModelLoadBalancingModal) && (
             <ModelLoadBalancingModal {...showModelLoadBalancingModal!} />
           )
@@ -263,6 +329,16 @@ export const ModalContextProvider = ({
             />
           )
         }
+        {showOpeningModal && (
+          <OpeningSettingModal
+            data={showOpeningModal.payload}
+            onSave={handleSaveOpeningModal}
+            onCancel={handleCancelOpeningModal}
+            promptVariables={showOpeningModal.payload.promptVariables}
+            workflowVariables={showOpeningModal.payload.workflowVariables}
+            onAutoAddPromptVariable={showOpeningModal.payload.onAutoAddPromptVariable}
+          />
+        )}
       </>
     </ModalContext.Provider>
   )

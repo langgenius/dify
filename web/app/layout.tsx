@@ -2,8 +2,8 @@ import type { Viewport } from 'next'
 import I18nServer from './components/i18n-server'
 import BrowserInitor from './components/browser-initor'
 import SentryInitor from './components/sentry-initor'
-import Topbar from './components/base/topbar'
 import { getLocaleOnServer } from '@/i18n/server'
+import { TanstackQueryIniter } from '@/context/query-client'
 import './styles/globals.css'
 import './styles/markdown.scss'
 
@@ -35,7 +35,7 @@ const LocaleLayout = ({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
       <body
-        className="h-full select-auto"
+        className="h-full select-auto color-scheme"
         data-api-prefix={process.env.NEXT_PUBLIC_API_PREFIX}
         data-pubic-api-prefix={process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX}
         data-public-edition={process.env.NEXT_PUBLIC_EDITION}
@@ -44,11 +44,13 @@ const LocaleLayout = ({
         data-public-maintenance-notice={process.env.NEXT_PUBLIC_MAINTENANCE_NOTICE}
         data-public-site-about={process.env.NEXT_PUBLIC_SITE_ABOUT}
         data-public-text-generation-timeout-ms={process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS}
+        data-public-top-k-max-value={process.env.NEXT_PUBLIC_TOP_K_MAX_VALUE}
       >
-        <Topbar />
         <BrowserInitor>
           <SentryInitor>
-            <I18nServer>{children}</I18nServer>
+            <TanstackQueryIniter>
+              <I18nServer>{children}</I18nServer>
+            </TanstackQueryIniter>
           </SentryInitor>
         </BrowserInitor>
       </body>

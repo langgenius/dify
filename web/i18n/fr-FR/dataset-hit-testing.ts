@@ -23,6 +23,13 @@ const translation = {
   },
   noRecentTip: 'Aucun résultat de requête récent ici',
   viewChart: 'Voir GRAPHIQUE VECTORIEL',
+  settingTitle: 'Réglage de récupération',
+  viewDetail: 'Voir les détails',
+  hitChunks: 'Appuyez sur {{num}} morceaux enfants',
+  records: 'Archives',
+  chunkDetail: 'Détail du morceau',
+  open: 'Ouvrir',
+  keyword: 'Mots-clés',
 }
 
 export default translation

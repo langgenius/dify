@@ -8,9 +8,9 @@ identity:
   icon: icon.svg
 description:
   human:
-    en_US: A util tools for LLM translation, extra deployment is needed on AWS. Please refer Github Repo - https://github.com/ybalbert001/dynamodb-rag
-    zh_Hans: 大语言模型翻译工具(专词映射获取)，需要在AWS上进行额外部署，可参考Github Repo - https://github.com/ybalbert001/dynamodb-rag
-    pt_BR: A util tools for LLM translation, specific Lambda Function deployment is needed on AWS. Please refer Github Repo - https://github.com/ybalbert001/dynamodb-rag
+    en_US: A util tools for LLM translation, extra deployment is needed on AWS. Please refer Github Repo - https://github.com/aws-samples/rag-based-translation-with-dynamodb-and-bedrock
+    zh_Hans: 大语言模型翻译工具(专词映射获取)，需要在AWS上进行额外部署，可参考Github Repo - https://github.com/aws-samples/rag-based-translation-with-dynamodb-and-bedrock
+    pt_BR: A util tools for LLM translation, specific Lambda Function deployment is needed on AWS. Please refer Github Repo - https://github.com/aws-samples/rag-based-translation-with-dynamodb-and-bedrock
   llm: A util tools for translation.
 parameters:
   - name: text_content

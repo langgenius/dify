@@ -25,22 +25,18 @@ const Popup: FC<PopupProps> = ({
   const language = useLanguage()
   const [searchText, setSearchText] = useState('')
 
-  const filteredModelList = modelList.filter(
-    model => model.models.filter(
-      (modelItem) => {
-        if (modelItem.label[language] !== undefined)
-          return modelItem.label[language].toLowerCase().includes(searchText.toLowerCase())
+  const filteredModelList = modelList.map((model) => {
+    const filteredModels = model.models.filter((modelItem) => {
+      if (modelItem.label[language] !== undefined)
+        return modelItem.label[language].toLowerCase().includes(searchText.toLowerCase())
 
-        let found = false
-        Object.keys(modelItem.label).forEach((key) => {
-          if (modelItem.label[key].toLowerCase().includes(searchText.toLowerCase()))
-            found = true
-        })
+      return Object.values(modelItem.label).some(label =>
+        label.toLowerCase().includes(searchText.toLowerCase()),
+      )
+    })
 
-        return found
-      },
-    ).length,
-  )
+    return { ...model, models: filteredModels }
+  }).filter(model => model.models.length > 0)
 
   return (
     <div className='w-[320px] max-h-[480px] rounded-lg border-[0.5px] border-gray-200 bg-white shadow-lg overflow-y-auto'>

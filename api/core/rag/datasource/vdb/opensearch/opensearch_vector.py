@@ -9,11 +9,11 @@ from opensearchpy.helpers import BulkIndexError
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -66,7 +66,7 @@ class OpenSearchVector(BaseVector):
         return VectorType.OPENSEARCH
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
-        metadatas = [d.metadata for d in texts]
+        metadatas = [d.metadata if d.metadata is not None else {} for d in texts]
         self.create_collection(embeddings, metadatas)
         self.add_texts(texts, embeddings)
 
@@ -129,7 +129,7 @@ class OpenSearchVector(BaseVector):
                     if status == 404:
                         logger.warning(f"Document not found for deletion: {doc_id}")
                     else:
-                        logger.error(f"Error deleting document: {error}")
+                        logger.exception(f"Error deleting document: {error}")
 
     def delete(self) -> None:
         self._client.indices.delete(index=self._collection_name.lower())
@@ -158,7 +158,7 @@ class OpenSearchVector(BaseVector):
         try:
             response = self._client.search(index=self._collection_name.lower(), body=query)
         except Exception as e:
-            logger.error(f"Error executing search: {e}")
+            logger.exception(f"Error executing vector search, query: {query}")
             raise
 
         docs = []
@@ -244,7 +244,7 @@ class OpenSearchVectorFactory(AbstractVectorFactory):
             dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.OPENSEARCH, collection_name))
 
         open_search_config = OpenSearchConfig(
-            host=dify_config.OPENSEARCH_HOST,
+            host=dify_config.OPENSEARCH_HOST or "localhost",
             port=dify_config.OPENSEARCH_PORT,
             user=dify_config.OPENSEARCH_USER,
             password=dify_config.OPENSEARCH_PASSWORD,

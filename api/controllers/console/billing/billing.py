@@ -1,9 +1,8 @@
-from flask_login import current_user
-from flask_restful import Resource, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, reqparse  # type: ignore
 
 from controllers.console import api
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required, only_edition_cloud
+from controllers.console.wraps import account_initialization_required, only_edition_cloud, setup_required
 from libs.login import login_required
 from services.billing_service import BillingService
 

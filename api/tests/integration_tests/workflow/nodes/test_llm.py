@@ -13,15 +13,15 @@ from core.entities.provider_entities import CustomConfiguration, CustomProviderC
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers import ModelProviderFactory
-from core.workflow.entities.node_entities import UserFrom
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.event import RunCompletedEvent
-from core.workflow.nodes.llm.llm_node import LLMNode
+from core.workflow.nodes.llm.node import LLMNode
 from extensions.ext_database import db
+from models.enums import UserFrom
 from models.provider import ProviderType
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 

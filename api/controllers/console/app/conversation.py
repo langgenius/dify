@@ -1,17 +1,16 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-import pytz
-from flask_login import current_user
-from flask_restful import Resource, marshal_with, reqparse
-from flask_restful.inputs import int_range
+import pytz  # pip install pytz
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, marshal_with, reqparse  # type: ignore
+from flask_restful.inputs import int_range  # type: ignore
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
@@ -22,7 +21,8 @@ from fields.conversation_fields import (
 )
 from libs.helper import DatetimeString
 from libs.login import login_required
-from models.model import AppMode, Conversation, EndUser, Message, MessageAnnotation
+from models import Conversation, EndUser, Message, MessageAnnotation
+from models.model import AppMode
 
 
 class CompletionConversationApi(Resource):
@@ -77,8 +77,9 @@ class CompletionConversationApi(Resource):
 
             query = query.where(Conversation.created_at < end_datetime_utc)
 
+        # FIXME, the type ignore in this file
         if args["annotation_status"] == "annotated":
-            query = query.options(joinedload(Conversation.message_annotations)).join(
+            query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
                 MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
             )
         elif args["annotation_status"] == "not_annotated":
@@ -188,6 +189,7 @@ class ChatConversationApi(Resource):
                         subquery.c.from_end_user_session_id.ilike(keyword_filter),
                     ),
                 )
+                .group_by(Conversation.id)
             )
 
         account = current_user
@@ -221,7 +223,7 @@ class ChatConversationApi(Resource):
                     query = query.where(Conversation.created_at <= end_datetime_utc)
 
         if args["annotation_status"] == "annotated":
-            query = query.options(joinedload(Conversation.message_annotations)).join(
+            query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
                 MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
             )
         elif args["annotation_status"] == "not_annotated":
@@ -233,7 +235,7 @@ class ChatConversationApi(Resource):
 
         if args["message_count_gte"] and args["message_count_gte"] >= 1:
             query = (
-                query.options(joinedload(Conversation.messages))
+                query.options(joinedload(Conversation.messages))  # type: ignore
                 .join(Message, Message.conversation_id == Conversation.id)
                 .group_by(Conversation.id)
                 .having(func.count(Message.id) >= args["message_count_gte"])
@@ -313,7 +315,7 @@ def _get_conversation(app_model, conversation_id):
         raise NotFound("Conversation Not Exists.")
 
     if not conversation.read_at:
-        conversation.read_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        conversation.read_at = datetime.now(UTC).replace(tzinfo=None)
         conversation.read_account_id = current_user.id
         db.session.commit()
 

@@ -1,8 +1,15 @@
 {
     "version": "0.2.0",
+    "compounds": [
+        {
+            "name": "Launch Flask and Celery",
+            "configurations": ["Python: Flask", "Python: Celery"]
+        }
+    ],
     "configurations": [
         {
             "name": "Python: Flask",
+            "consoleName": "Flask",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -17,12 +24,12 @@
             },
             "args": [
                 "run",
-                "--host=0.0.0.0",
                 "--port=5001"
             ]
         },
         {
             "name": "Python: Celery",
+            "consoleName": "Celery",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -45,10 +52,10 @@
                 "-c",
                 "1",
                 "--loglevel",
-                "info",
+                "DEBUG",
                 "-Q",
                 "dataset,generation,mail,ops_trace,app_deletion"
             ]
-        },
+        }
     ]
 }

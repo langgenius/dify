@@ -31,6 +31,8 @@ const translation = {
     manageInTools: '去工具列表管理',
     emptyTitle: '没有可用的工作流工具',
     emptyTip: '去 “工作流 -> 发布为工具” 添加',
+    emptyTitleCustom: '没有可用的自定义工具',
+    emptyTipCustom: '创建自定义工具',
   },
   createTool: {
     title: '创建自定义工具',
@@ -119,8 +121,8 @@ const translation = {
   thought: {
     using: '正在使用',
     used: '已使用',
-    requestTitle: '请求来自',
-    responseTitle: '响应来自',
+    requestTitle: '请求',
+    responseTitle: '响应',
   },
   setBuiltInTools: {
     info: '信息',

@@ -1,11 +1,10 @@
 import time
-from collections.abc import Mapping
 from typing import Optional, Union
 
 import numpy as np
 from openai import OpenAI
 
-from core.embedding.embedding_constant import EmbeddingInputType
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -93,7 +92,7 @@ class FireworksTextEmbeddingModel(_CommonFireworks, TextEmbeddingModel):
         """
         return sum(self._get_num_tokens_by_gpt2(text) for text in texts)
 
-    def validate_credentials(self, model: str, credentials: Mapping) -> None:
+    def validate_credentials(self, model: str, credentials: dict) -> None:
         """
         Validate model credentials
 

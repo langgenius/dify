@@ -1,12 +1,12 @@
 import os
 from collections.abc import Callable
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
 import pytest
 
 # import monkeypatch
 from _pytest.monkeypatch import MonkeyPatch
-from nomic import embed
+from nomic import embed  # type: ignore
 
 
 def create_embedding(texts: list[str], model: str, **kwargs: Any) -> dict:

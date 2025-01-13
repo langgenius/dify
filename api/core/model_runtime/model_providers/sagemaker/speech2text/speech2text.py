@@ -2,7 +2,7 @@ import json
 import logging
 from typing import IO, Any, Optional
 
-import boto3
+import boto3  # type: ignore
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
@@ -14,6 +14,7 @@ from core.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
+from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
 from core.model_runtime.model_providers.sagemaker.sagemaker import generate_presigned_url
 
@@ -66,6 +67,7 @@ class SageMakerSpeech2TextModel(Speech2TextModel):
             s3_prefix = "dify/speech2text/"
             sagemaker_endpoint = credentials.get("sagemaker_endpoint")
             bucket = credentials.get("audio_s3_cache_bucket")
+            assert bucket is not None, "audio_s3_cache_bucket is required in credentials"
 
             s3_presign_url = generate_presigned_url(self.s3_client, file, bucket, s3_prefix)
             payload = {"audio_s3_presign_uri": s3_presign_url}
@@ -77,7 +79,8 @@ class SageMakerSpeech2TextModel(Speech2TextModel):
             json_obj = json.loads(json_str)
             asr_text = json_obj["text"]
         except Exception as e:
-            logger.exception(f"Exception {e}, line : {line}")
+            logger.exception(f"failed to invoke speech2text model, model: {model}")
+            raise CredentialsValidateFailedError(str(e))
 
         return asr_text
 
@@ -109,7 +112,7 @@ class SageMakerSpeech2TextModel(Speech2TextModel):
             InvokeBadRequestError: [InvokeBadRequestError, KeyError, ValueError],
         }
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """

@@ -57,6 +57,7 @@ import {
 import I18n from '@/context/i18n'
 import { CollectionType } from '@/app/components/tools/types'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
+import { useWorkflowConfig } from '@/service/use-workflow'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
@@ -69,7 +70,9 @@ export const useWorkflow = () => {
   const { locale } = useContext(I18n)
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
+  const appId = useStore(s => s.appId)
   const nodesExtraData = useNodesExtraData()
+  const { data: workflowConfig } = useWorkflowConfig(appId)
   const setPanelWidth = useCallback((width: number) => {
     localStorage.setItem('workflow-node-panel-width', `${width}`)
     workflowStore.setState({ panelWidth: width })
@@ -235,6 +238,33 @@ export const useWorkflow = () => {
     return nodes.filter(node => node.parentId === nodeId)
   }, [store])
 
+  const isFromStartNode = useCallback((nodeId: string) => {
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    const currentNode = nodes.find(node => node.id === nodeId)
+
+    if (!currentNode)
+      return false
+
+    if (currentNode.data.type === BlockEnum.Start)
+      return true
+
+    const checkPreviousNodes = (node: Node) => {
+      const previousNodes = getBeforeNodeById(node.id)
+
+      for (const prevNode of previousNodes) {
+        if (prevNode.data.type === BlockEnum.Start)
+          return true
+        if (checkPreviousNodes(prevNode))
+          return true
+      }
+
+      return false
+    }
+
+    return checkPreviousNodes(currentNode)
+  }, [store, getBeforeNodeById])
+
   const handleOutVarRenameChange = useCallback((nodeId: string, oldValeSelector: ValueSelector, newVarSelector: ValueSelector) => {
     const { getNodes, setNodes } = store.getState()
     const afterNodes = getAfterNodesInSameBranch(nodeId)
@@ -309,15 +339,15 @@ export const useWorkflow = () => {
     for (let i = 0; i < parallelList.length; i++) {
       const parallel = parallelList[i]
 
-      if (parallel.depth > PARALLEL_DEPTH_LIMIT) {
+      if (parallel.depth > (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT)) {
         const { setShowTips } = workflowStore.getState()
-        setShowTips(t('workflow.common.parallelTip.depthLimit', { num: PARALLEL_DEPTH_LIMIT }))
+        setShowTips(t('workflow.common.parallelTip.depthLimit', { num: (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT) }))
         return false
       }
     }
 
     return true
-  }, [t, workflowStore])
+  }, [t, workflowStore, workflowConfig?.parallel_depth_limit])
 
   const isValidConnection = useCallback(({ source, sourceHandle, target }: Connection) => {
     const {
@@ -389,6 +419,7 @@ export const useWorkflow = () => {
     checkParallelLimit,
     checkNestedParallelLimit,
     isValidConnection,
+    isFromStartNode,
     formatTimeFromNow,
     getNode,
     getBeforeNodeById,
@@ -439,7 +470,9 @@ export const useWorkflowInit = () => {
   const setSyncWorkflowDraftHash = useStore(s => s.setSyncWorkflowDraftHash)
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
-  workflowStore.setState({ appId: appDetail.id })
+  useEffect(() => {
+    workflowStore.setState({ appId: appDetail.id })
+  }, [appDetail.id, workflowStore])
 
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
@@ -487,6 +520,7 @@ export const useWorkflowInit = () => {
 
   useEffect(() => {
     handleGetInitialWorkflowData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleFetchPreloadData = useCallback(async () => {

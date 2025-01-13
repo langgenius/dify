@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from typing import Optional
 
 from httpx import Response, post
 from yarl import URL
@@ -109,7 +110,7 @@ class TritonInferenceAILargeLanguageModel(LargeLanguageModel):
                 raise NotImplementedError(f"PromptMessage type {type(item)} is not supported")
         return text
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """

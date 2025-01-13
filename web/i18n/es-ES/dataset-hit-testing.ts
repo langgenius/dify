@@ -23,6 +23,13 @@ const translation = {
   },
   noRecentTip: 'No hay resultados de consulta recientes aquí',
   viewChart: 'Ver GRÁFICO VECTORIAL',
+  viewDetail: 'Ver Detalle',
+  settingTitle: 'Configuración de recuperación',
+  open: 'Abrir',
+  records: 'Archivo',
+  chunkDetail: 'Detalle de fragmentos',
+  keyword: 'Palabras clave',
+  hitChunks: 'Golpea {{num}} fragmentos secundarios',
 }
 
 export default translation

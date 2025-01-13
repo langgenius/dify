@@ -14,7 +14,7 @@ class PGVectorConfig(BaseSettings):
         default=None,
     )
 
-    PGVECTOR_PORT: Optional[PositiveInt] = Field(
+    PGVECTOR_PORT: PositiveInt = Field(
         description="Port number on which the PostgreSQL server is listening (default is 5433)",
         default=5433,
     )

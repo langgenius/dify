@@ -23,6 +23,13 @@ const translation = {
   },
   noRecentTip: 'Nenhum resultado de consulta recente aqui',
   viewChart: 'Ver GRÁFICO DE VETORES',
+  viewDetail: 'Ver detalhes',
+  settingTitle: 'Configuração de recuperação',
+  records: 'Arquivo',
+  hitChunks: 'Hit {{num}} pedaços filhos',
+  open: 'Abrir',
+  chunkDetail: 'Detalhe do pedaço',
+  keyword: 'Palavras-chave',
 }
 
 export default translation

@@ -24,6 +24,13 @@ const translation = {
   },
   noRecentTip: 'Nessun risultato di query recente qui',
   viewChart: 'Visualizza GRAFICO VETTORIALE',
+  settingTitle: 'Impostazione di recupero',
+  viewDetail: 'vedi dettagli',
+  chunkDetail: 'Dettaglio pezzo',
+  hitChunks: 'Premi {{num}} blocchi figlio',
+  open: 'Aperto',
+  keyword: 'Parole chiavi',
+  records: 'Archivio',
 }
 
 export default translation

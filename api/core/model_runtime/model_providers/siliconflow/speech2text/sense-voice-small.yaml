@@ -3,3 +3,4 @@ model_type: speech2text
 model_properties:
   file_upload_limit: 1
   supported_file_extensions: mp3,wav
+deprecated: true

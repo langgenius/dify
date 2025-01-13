@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
@@ -8,7 +8,7 @@ from pydantic_core.core_schema import ValidationInfo
 from core.ops.utils import replace_text_with_content
 
 
-class LangSmithRunType(str, Enum):
+class LangSmithRunType(StrEnum):
     tool = "tool"
     chain = "chain"
     llm = "llm"

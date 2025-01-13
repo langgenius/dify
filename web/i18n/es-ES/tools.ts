@@ -31,6 +31,8 @@ const translation = {
     manageInTools: 'Administrar en Herramientas',
     emptyTitle: 'No hay herramientas de flujo de trabajo disponibles',
     emptyTip: 'Ir a "Flujo de Trabajo -> Publicar como Herramienta"',
+    emptyTitleCustom: 'No hay herramienta personalizada disponible',
+    emptyTipCustom: 'Crear una herramienta personalizada',
   },
   createTool: {
     title: 'Crear Herramienta Personalizada',

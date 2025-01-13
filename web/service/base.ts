@@ -1,3 +1,4 @@
+import { refreshAccessTokenOrRelogin } from './refresh-token'
 import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
 import Toast from '@/app/components/base/toast'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
@@ -16,6 +17,7 @@ import type {
   WorkflowStartedResponse,
 } from '@/types/workflow'
 import { removeAccessToken } from '@/app/components/share/utils'
+import { asyncRunSafe } from '@/utils'
 const TIME_OUT = 100000
 
 const ContentType = {
@@ -60,6 +62,7 @@ export type IOnNodeStarted = (nodeStarted: NodeStartedResponse) => void
 export type IOnNodeFinished = (nodeFinished: NodeFinishedResponse) => void
 export type IOnIterationStarted = (workflowStarted: IterationStartedResponse) => void
 export type IOnIterationNext = (workflowStarted: IterationNextResponse) => void
+export type IOnNodeRetry = (nodeFinished: NodeFinishedResponse) => void
 export type IOnIterationFinished = (workflowFinished: IterationFinishedResponse) => void
 export type IOnParallelBranchStarted = (parallelBranchStarted: ParallelBranchStartedResponse) => void
 export type IOnParallelBranchFinished = (parallelBranchFinished: ParallelBranchFinishedResponse) => void
@@ -90,6 +93,7 @@ export type IOtherOptions = {
   onIterationStart?: IOnIterationStarted
   onIterationNext?: IOnIterationNext
   onIterationFinish?: IOnIterationFinished
+  onNodeRetry?: IOnNodeRetry
   onParallelBranchStarted?: IOnParallelBranchStarted
   onParallelBranchFinished?: IOnParallelBranchFinished
   onTextChunk?: IOnTextChunk
@@ -122,6 +126,24 @@ function requiredWebSSOLogin() {
   globalThis.location.href = `/webapp-signin?redirect_url=${globalThis.location.pathname}`
 }
 
+function getAccessToken(isPublicAPI?: boolean) {
+  if (isPublicAPI) {
+    const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
+    const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
+    let accessTokenJson = { [sharedToken]: '' }
+    try {
+      accessTokenJson = JSON.parse(accessToken)
+    }
+    catch (e) {
+
+    }
+    return accessTokenJson[sharedToken]
+  }
+  else {
+    return localStorage.getItem('console_token') || ''
+  }
+}
+
 export function format(text: string) {
   let res = text.trim()
   if (res.startsWith('\n'))
@@ -145,6 +167,7 @@ const handleStream = (
   onIterationStart?: IOnIterationStarted,
   onIterationNext?: IOnIterationNext,
   onIterationFinish?: IOnIterationFinished,
+  onNodeRetry?: IOnNodeRetry,
   onParallelBranchStarted?: IOnParallelBranchStarted,
   onParallelBranchFinished?: IOnParallelBranchFinished,
   onTextChunk?: IOnTextChunk,
@@ -236,6 +259,9 @@ const handleStream = (
             else if (bufferObj.event === 'iteration_completed') {
               onIterationFinish?.(bufferObj as IterationFinishedResponse)
             }
+            else if (bufferObj.event === 'node_retry') {
+              onNodeRetry?.(bufferObj as NodeFinishedResponse)
+            }
             else if (bufferObj.event === 'parallel_branch_started') {
               onParallelBranchStarted?.(bufferObj as ParallelBranchStartedResponse)
             }
@@ -293,22 +319,8 @@ const baseFetch = <T>(
     getAbortController(abortController)
     options.signal = abortController.signal
   }
-  if (isPublicAPI) {
-    const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
-    const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
-    let accessTokenJson = { [sharedToken]: '' }
-    try {
-      accessTokenJson = JSON.parse(accessToken)
-    }
-    catch (e) {
-
-    }
-    options.headers.set('Authorization', `Bearer ${accessTokenJson[sharedToken]}`)
-  }
-  else {
-    const accessToken = localStorage.getItem('console_token') || ''
-    options.headers.set('Authorization', `Bearer ${accessToken}`)
-  }
+  const accessToken = getAccessToken(isPublicAPI)
+  options.headers.set('Authorization', `Bearer ${accessToken}`)
 
   if (deleteContentType) {
     options.headers.delete('Content-Type')
@@ -320,7 +332,9 @@ const baseFetch = <T>(
   }
 
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  let urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
+  let urlWithPrefix = (url.startsWith('http://') || url.startsWith('https://'))
+    ? url
+    : `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
 
   const { method, params, body } = options
   // handle query
@@ -356,42 +370,8 @@ const baseFetch = <T>(
           if (!/^(2|3)\d{2}$/.test(String(res.status))) {
             const bodyJson = res.json()
             switch (res.status) {
-              case 401: {
-                if (isPublicAPI) {
-                  return bodyJson.then((data: ResponseError) => {
-                    if (!silent)
-                      Toast.notify({ type: 'error', message: data.message })
-
-                    if (data.code === 'web_sso_auth_required')
-                      requiredWebSSOLogin()
-
-                    if (data.code === 'unauthorized') {
-                      removeAccessToken()
-                      globalThis.location.reload()
-                    }
-
-                    return Promise.reject(data)
-                  })
-                }
-                const loginUrl = `${globalThis.location.origin}/signin`
-                bodyJson.then((data: ResponseError) => {
-                  if (data.code === 'init_validate_failed' && IS_CE_EDITION && !silent)
-                    Toast.notify({ type: 'error', message: data.message, duration: 4000 })
-                  else if (data.code === 'not_init_validated' && IS_CE_EDITION)
-                    globalThis.location.href = `${globalThis.location.origin}/init`
-                  else if (data.code === 'not_setup' && IS_CE_EDITION)
-                    globalThis.location.href = `${globalThis.location.origin}/install`
-                  else if (location.pathname !== '/signin' || !IS_CE_EDITION)
-                    globalThis.location.href = loginUrl
-                  else if (!silent)
-                    Toast.notify({ type: 'error', message: data.message })
-                }).catch(() => {
-                  // Handle any other errors
-                  globalThis.location.href = loginUrl
-                })
-
-                break
-              }
+              case 401:
+                return Promise.reject(resClone)
               case 403:
                 bodyJson.then((data: ResponseError) => {
                   if (!silent)
@@ -433,23 +413,7 @@ const baseFetch = <T>(
 
 export const upload = (options: any, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<any> => {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  let token = ''
-  if (isPublicAPI) {
-    const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
-    const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
-    let accessTokenJson = { [sharedToken]: '' }
-    try {
-      accessTokenJson = JSON.parse(accessToken)
-    }
-    catch (e) {
-
-    }
-    token = accessTokenJson[sharedToken]
-  }
-  else {
-    const accessToken = localStorage.getItem('console_token') || ''
-    token = accessToken
-  }
+  const token = getAccessToken(isPublicAPI)
   const defaultOptions = {
     method: 'POST',
     url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
@@ -487,7 +451,9 @@ export const upload = (options: any, isPublicAPI?: boolean, url?: string, search
 export const ssePost = (
   url: string,
   fetchOptions: FetchOptionType,
-  {
+  otherOptions: IOtherOptions,
+) => {
+  const {
     isPublicAPI = false,
     onData,
     onCompleted,
@@ -502,6 +468,7 @@ export const ssePost = (
     onIterationStart,
     onIterationNext,
     onIterationFinish,
+    onNodeRetry,
     onParallelBranchStarted,
     onParallelBranchFinished,
     onTextChunk,
@@ -510,8 +477,7 @@ export const ssePost = (
     onTextReplace,
     onError,
     getAbortController,
-  }: IOtherOptions,
-) => {
+  } = otherOptions
   const abortController = new AbortController()
 
   const options = Object.assign({}, baseOptions, {
@@ -526,29 +492,43 @@ export const ssePost = (
   getAbortController?.(abortController)
 
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  const urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
+  const urlWithPrefix = (url.startsWith('http://') || url.startsWith('https://'))
+    ? url
+    : `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
 
   const { body } = options
   if (body)
     options.body = JSON.stringify(body)
 
+  const accessToken = getAccessToken(isPublicAPI)
+  options.headers.set('Authorization', `Bearer ${accessToken}`)
+
   globalThis.fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
       if (!/^(2|3)\d{2}$/.test(String(res.status))) {
-        res.json().then((data: any) => {
-          Toast.notify({ type: 'error', message: data.message || 'Server Error' })
+        if (res.status === 401) {
+          refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
+            ssePost(url, fetchOptions, otherOptions)
+          }).catch(() => {
+            res.json().then((data: any) => {
+              if (isPublicAPI) {
+                if (data.code === 'web_sso_auth_required')
+                  requiredWebSSOLogin()
 
-          if (isPublicAPI) {
-            if (data.code === 'web_sso_auth_required')
-              requiredWebSSOLogin()
-
-            if (data.code === 'unauthorized') {
-              removeAccessToken()
-              globalThis.location.reload()
-            }
-          }
-        })
-        onError?.('Server Error')
+                if (data.code === 'unauthorized') {
+                  removeAccessToken()
+                  globalThis.location.reload()
+                }
+              }
+            })
+          })
+        }
+        else {
+          res.json().then((data) => {
+            Toast.notify({ type: 'error', message: data.message || 'Server Error' })
+          })
+          onError?.('Server Error')
+        }
         return
       }
       return handleStream(res, (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
@@ -560,7 +540,7 @@ export const ssePost = (
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
-      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile, onWorkflowStarted, onWorkflowFinished, onNodeStarted, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onParallelBranchStarted, onParallelBranchFinished, onTextChunk, onTTSChunk, onTTSEnd, onTextReplace)
+      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile, onWorkflowStarted, onWorkflowFinished, onNodeStarted, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onNodeRetry, onParallelBranchStarted, onParallelBranchFinished, onTextChunk, onTTSChunk, onTTSEnd, onTextReplace)
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
         Toast.notify({ type: 'error', message: e })
@@ -569,8 +549,78 @@ export const ssePost = (
 }
 
 // base request
-export const request = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return baseFetch<T>(url, options, otherOptions || {})
+export const request = async<T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  try {
+    const otherOptionsForBaseFetch = otherOptions || {}
+    const [err, resp] = await asyncRunSafe<T>(baseFetch(url, options, otherOptionsForBaseFetch))
+    if (err === null)
+      return resp
+    const errResp: Response = err as any
+    if (errResp.status === 401) {
+      const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
+      const loginUrl = `${globalThis.location.origin}/signin`
+      if (parseErr) {
+        globalThis.location.href = loginUrl
+        return Promise.reject(err)
+      }
+      // special code
+      const { code, message } = errRespData
+      // webapp sso
+      if (code === 'web_sso_auth_required') {
+        requiredWebSSOLogin()
+        return Promise.reject(err)
+      }
+      if (code === 'unauthorized_and_force_logout') {
+        localStorage.removeItem('console_token')
+        localStorage.removeItem('refresh_token')
+        globalThis.location.reload()
+        return Promise.reject(err)
+      }
+      const {
+        isPublicAPI = false,
+        silent,
+      } = otherOptionsForBaseFetch
+      if (isPublicAPI && code === 'unauthorized') {
+        removeAccessToken()
+        globalThis.location.reload()
+        return Promise.reject(err)
+      }
+      if (code === 'init_validate_failed' && IS_CE_EDITION && !silent) {
+        Toast.notify({ type: 'error', message, duration: 4000 })
+        return Promise.reject(err)
+      }
+      if (code === 'not_init_validated' && IS_CE_EDITION) {
+        globalThis.location.href = `${globalThis.location.origin}/init`
+        return Promise.reject(err)
+      }
+      if (code === 'not_setup' && IS_CE_EDITION) {
+        globalThis.location.href = `${globalThis.location.origin}/install`
+        return Promise.reject(err)
+      }
+
+      // refresh token
+      const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrRelogin(TIME_OUT))
+      if (refreshErr === null)
+        return baseFetch<T>(url, options, otherOptionsForBaseFetch)
+      if (location.pathname !== '/signin' || !IS_CE_EDITION) {
+        globalThis.location.href = loginUrl
+        return Promise.reject(err)
+      }
+      if (!silent) {
+        Toast.notify({ type: 'error', message })
+        return Promise.reject(err)
+      }
+      globalThis.location.href = loginUrl
+      return Promise.reject(err)
+    }
+    else {
+      return Promise.reject(err)
+    }
+  }
+  catch (error) {
+    console.error(error)
+    return Promise.reject(error)
+  }
 }
 
 // request methods

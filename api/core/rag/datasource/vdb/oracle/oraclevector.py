@@ -5,18 +5,16 @@ import uuid
 from contextlib import contextmanager
 from typing import Any
 
-import jieba.posseg as pseg
-import nltk
+import jieba.posseg as pseg  # type: ignore
 import numpy
 import oracledb
-from nltk.corpus import stopwords
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -90,12 +88,11 @@ class OracleVector(BaseVector):
 
     def numpy_converter_out(self, value):
         if value.typecode == "b":
-            dtype = numpy.int8
+            return numpy.array(value, copy=False, dtype=numpy.int8)
         elif value.typecode == "f":
-            dtype = numpy.float32
+            return numpy.array(value, copy=False, dtype=numpy.float32)
         else:
-            dtype = numpy.float64
-        return numpy.array(value, copy=False, dtype=dtype)
+            return numpy.array(value, copy=False, dtype=numpy.float64)
 
     def output_type_handler(self, cursor, metadata):
         if metadata.type_code is oracledb.DB_TYPE_VECTOR:
@@ -137,17 +134,18 @@ class OracleVector(BaseVector):
         values = []
         pks = []
         for i, doc in enumerate(documents):
-            doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
-            pks.append(doc_id)
-            values.append(
-                (
-                    doc_id,
-                    doc.page_content,
-                    json.dumps(doc.metadata),
-                    # array.array("f", embeddings[i]),
-                    numpy.array(embeddings[i]),
+            if doc.metadata is not None:
+                doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
+                pks.append(doc_id)
+                values.append(
+                    (
+                        doc_id,
+                        doc.page_content,
+                        json.dumps(doc.metadata),
+                        # array.array("f", embeddings[i]),
+                        numpy.array(embeddings[i]),
+                    )
                 )
-            )
         # print(f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES (:1, :2, :3, :4)")
         with self._get_cursor() as cur:
             cur.executemany(
@@ -168,15 +166,9 @@ class OracleVector(BaseVector):
                 docs.append(Document(page_content=record[1], metadata=record[0]))
         return docs
 
-    # def get_ids_by_metadata_field(self, key: str, value: str):
-    #    with self._get_cursor() as cur:
-    #        cur.execute(f"SELECT id FROM {self.table_name} d WHERE d.meta.{key}='{value}'" )
-    #        idss = []
-    #        for record in cur:
-    #            idss.append(record[0])
-    #    return idss
-
     def delete_by_ids(self, ids: list[str]) -> None:
+        if not ids:
+            return
         with self._get_cursor() as cur:
             cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s" % (tuple(ids),))
 
@@ -192,7 +184,7 @@ class OracleVector(BaseVector):
         :param top_k: The number of nearest neighbors to return, default is 5.
         :return: List of Documents that are nearest to the query vector.
         """
-        top_k = kwargs.get("top_k", 5)
+        top_k = kwargs.get("top_k", 4)
         with self._get_cursor() as cur:
             cur.execute(
                 f"SELECT meta, text, vector_distance(embedding,:1) AS distance FROM {self.table_name}"
@@ -210,6 +202,10 @@ class OracleVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
+        # lazy import
+        import nltk  # type: ignore
+        from nltk.corpus import stopwords  # type: ignore
+
         top_k = kwargs.get("top_k", 5)
         # just not implement fetch by score_threshold now, may be later
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
@@ -238,7 +234,6 @@ class OracleVector(BaseVector):
                 except LookupError:
                     nltk.download("punkt")
                     nltk.download("stopwords")
-                    print("run download")
                 e_str = re.sub(r"[^\w ]", "", query)
                 all_tokens = nltk.word_tokenize(e_str)
                 stop_words = stopwords.words("english")
@@ -292,10 +287,10 @@ class OracleVectorFactory(AbstractVectorFactory):
         return OracleVector(
             collection_name=collection_name,
             config=OracleVectorConfig(
-                host=dify_config.ORACLE_HOST,
+                host=dify_config.ORACLE_HOST or "localhost",
                 port=dify_config.ORACLE_PORT,
-                user=dify_config.ORACLE_USER,
-                password=dify_config.ORACLE_PASSWORD,
-                database=dify_config.ORACLE_DATABASE,
+                user=dify_config.ORACLE_USER or "system",
+                password=dify_config.ORACLE_PASSWORD or "oracle",
+                database=dify_config.ORACLE_DATABASE or "orcl",
             ),
         )

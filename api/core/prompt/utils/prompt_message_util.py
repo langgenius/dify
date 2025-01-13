@@ -1,7 +1,9 @@
-from typing import cast
+from collections.abc import Sequence
+from typing import Any, cast
 
-from core.model_runtime.entities.message_entities import (
+from core.model_runtime.entities import (
     AssistantPromptMessage,
+    AudioPromptMessageContent,
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContentType,
@@ -13,7 +15,7 @@ from core.prompt.simple_prompt_transform import ModelMode
 
 class PromptMessageUtil:
     @staticmethod
-    def prompt_messages_to_prompt_for_saving(model_mode: str, prompt_messages: list[PromptMessage]) -> list[dict]:
+    def prompt_messages_to_prompt_for_saving(model_mode: str, prompt_messages: Sequence[PromptMessage]) -> list[dict]:
         """
         Prompt messages to prompt for saving.
         :param model_mode: model mode
@@ -21,7 +23,7 @@ class PromptMessageUtil:
         :return:
         """
         prompts = []
-        if model_mode == ModelMode.CHAT.value:
+        if model_mode == ModelMode.CHAT:
             tool_calls = []
             for prompt_message in prompt_messages:
                 if prompt_message.role == PromptMessageRole.USER:
@@ -51,11 +53,9 @@ class PromptMessageUtil:
                 files = []
                 if isinstance(prompt_message.content, list):
                     for content in prompt_message.content:
-                        if content.type == PromptMessageContentType.TEXT:
-                            content = cast(TextPromptMessageContent, content)
+                        if isinstance(content, TextPromptMessageContent):
                             text += content.data
-                        else:
-                            content = cast(ImagePromptMessageContent, content)
+                        elif isinstance(content, ImagePromptMessageContent):
                             files.append(
                                 {
                                     "type": "image",
@@ -63,8 +63,16 @@ class PromptMessageUtil:
                                     "detail": content.detail.value,
                                 }
                             )
+                        elif isinstance(content, AudioPromptMessageContent):
+                            files.append(
+                                {
+                                    "type": "audio",
+                                    "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
+                                    "format": content.format,
+                                }
+                            )
                 else:
-                    text = prompt_message.content
+                    text = cast(str, prompt_message.content)
 
                 prompt = {"role": role, "text": text, "files": files}
 
@@ -91,9 +99,9 @@ class PromptMessageUtil:
                             }
                         )
             else:
-                text = prompt_message.content
+                text = cast(str, prompt_message.content)
 
-            params = {
+            params: dict[str, Any] = {
                 "role": "user",
                 "text": text,
             }

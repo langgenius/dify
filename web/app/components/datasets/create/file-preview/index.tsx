@@ -44,7 +44,7 @@ const FilePreview = ({
   }, [file])
 
   return (
-    <div className={cn(s.filePreview)}>
+    <div className={cn(s.filePreview, 'h-full')}>
       <div className={cn(s.previewHeader)}>
         <div className={cn(s.title)}>
           <span>{t('datasetCreation.stepOne.filePreview')}</span>
@@ -59,7 +59,7 @@ const FilePreview = ({
       <div className={cn(s.previewContent)}>
         {loading && <div className={cn(s.loading)} />}
         {!loading && (
-          <div className={cn(s.fileContent)}>{previewContent}</div>
+          <div className={cn(s.fileContent, 'body-md-regular')}>{previewContent}</div>
         )}
       </div>
     </div>

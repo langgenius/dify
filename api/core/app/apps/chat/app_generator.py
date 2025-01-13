@@ -1,13 +1,14 @@
 import logging
-import os
 import threading
 import uuid
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from typing import Any, Literal, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
 
+from configs import dify_config
+from constants import UUID_NIL
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedError, PublishFrom
@@ -17,12 +18,13 @@ from core.app.apps.chat.generate_response_converter import ChatAppGenerateRespon
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
-from core.file.message_file_parser import MessageFileParser
-from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
+from factories import file_factory
 from models.account import Account
 from models.model import App, EndUser
+from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +35,9 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         self,
         app_model: App,
         user: Union[Account, EndUser],
-        args: Any,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        stream: Literal[True] = True,
+        streaming: Literal[True],
     ) -> Generator[str, None, None]: ...
 
     @overload
@@ -43,19 +45,29 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         self,
         app_model: App,
         user: Union[Account, EndUser],
-        args: Any,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        stream: Literal[False] = False,
-    ) -> dict: ...
+        streaming: Literal[False],
+    ) -> Mapping[str, Any]: ...
+
+    @overload
+    def generate(
+        self,
+        app_model: App,
+        user: Union[Account, EndUser],
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        streaming: bool,
+    ) -> Union[Mapping[str, Any], Generator[str, None, None]]: ...
 
     def generate(
         self,
         app_model: App,
         user: Union[Account, EndUser],
-        args: Any,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        stream: bool = True,
-    ) -> Union[dict, Generator[str, None, None]]:
+        streaming: bool = True,
+    ):
         """
         Generate App response.
 
@@ -80,7 +92,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         # get conversation
         conversation = None
         if args.get("conversation_id"):
-            conversation = self._get_conversation_by_user(app_model, args.get("conversation_id"), user)
+            conversation = self._get_conversation_by_user(app_model, args.get("conversation_id", ""), user)
 
         # get app model config
         app_model_config = self._get_app_model_config(app_model=app_model, conversation=conversation)
@@ -93,7 +105,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
 
             # validate config
             override_model_config_dict = ChatAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id, config=args.get("model_config")
+                tenant_id=app_model.tenant_id, config=args.get("model_config", {})
             )
 
             # always enable retriever resource in debugger mode
@@ -101,10 +113,13 @@ class ChatAppGenerator(MessageBasedAppGenerator):
 
         # parse files
         files = args["files"] if args.get("files") else []
-        message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id)
         file_extra_config = FileUploadConfigManager.convert(override_model_config_dict or app_model_config.to_dict())
         if file_extra_config:
-            file_objs = message_file_parser.validate_and_transform_files_arg(files, file_extra_config, user)
+            file_objs = file_factory.build_from_mappings(
+                mappings=files,
+                tenant_id=app_model.tenant_id,
+                config=file_extra_config,
+            )
         else:
             file_objs = []
 
@@ -117,23 +132,28 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         )
 
         # get tracing instance
-        trace_manager = TraceQueueManager(app_model.id)
+        trace_manager = TraceQueueManager(app_id=app_model.id)
 
         # init application generate entity
         application_generate_entity = ChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
             model_conf=ModelConfigConverter.convert(app_config),
+            file_upload_config=file_extra_config,
             conversation_id=conversation.id if conversation else None,
-            inputs=conversation.inputs if conversation else self._get_cleaned_inputs(inputs, app_config),
+            inputs=conversation.inputs
+            if conversation
+            else self._prepare_user_inputs(
+                user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
+            ),
             query=query,
-            files=file_objs,
-            parent_message_id=args.get("parent_message_id"),
+            files=list(file_objs),
+            parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
             user_id=user.id,
-            stream=stream,
             invoke_from=invoke_from,
             extras=extras,
             trace_manager=trace_manager,
+            stream=streaming,
         )
 
         # init generate records
@@ -153,7 +173,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         worker_thread = threading.Thread(
             target=self._generate_worker,
             kwargs={
-                "flask_app": current_app._get_current_object(),
+                "flask_app": current_app._get_current_object(),  # type: ignore
                 "application_generate_entity": application_generate_entity,
                 "queue_manager": queue_manager,
                 "conversation_id": conversation.id,
@@ -170,7 +190,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
             message=message,
             user=user,
-            stream=stream,
+            stream=streaming,
         )
 
         return ChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
@@ -197,6 +217,8 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 # get conversation and message
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)
+                if message is None:
+                    raise MessageNotExistsError("Message not exists")
 
                 # chatbot app
                 runner = ChatAppRunner()
@@ -215,8 +237,8 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             except ValidationError as e:
                 logger.exception("Validation Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
-            except (ValueError, InvokeError) as e:
-                if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == "true":
+            except ValueError as e:
+                if dify_config.DEBUG:
                     logger.exception("Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except Exception as e:

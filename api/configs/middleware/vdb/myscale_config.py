@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field, PositiveInt
+from pydantic import Field, PositiveInt
+from pydantic_settings import BaseSettings
 
 
-class MyScaleConfig(BaseModel):
+class MyScaleConfig(BaseSettings):
     """
     Configuration settings for MyScale vector database
     """

@@ -6,9 +6,9 @@ import {
   RiDeleteBinLine,
 } from '@remixicon/react'
 import { StatusItem } from '../../list'
-import { DocumentTitle } from '../index'
+import style from '../../style.module.css'
 import s from './style.module.css'
-import { SegmentIndexTag } from './index'
+import { SegmentIndexTag } from './common/segment-index-tag'
 import cn from '@/utils/classnames'
 import Confirm from '@/app/components/base/confirm'
 import Switch from '@/app/components/base/switch'
@@ -31,11 +31,33 @@ const ProgressBar: FC<{ percent: number; loading: boolean }> = ({ percent, loadi
   )
 }
 
+type DocumentTitleProps = {
+  extension?: string
+  name?: string
+  iconCls?: string
+  textCls?: string
+  wrapperCls?: string
+}
+
+const DocumentTitle: FC<DocumentTitleProps> = ({ extension, name, iconCls, textCls, wrapperCls }) => {
+  const localExtension = extension?.toLowerCase() || name?.split('.')?.pop()?.toLowerCase()
+  return <div className={cn('flex items-center justify-start flex-1', wrapperCls)}>
+    <div className={cn(s[`${localExtension || 'txt'}Icon`], style.titleIcon, iconCls)}></div>
+    <span className={cn('font-semibold text-lg text-gray-900 ml-1', textCls)}> {name || '--'}</span>
+  </div>
+}
+
 export type UsageScene = 'doc' | 'hitTesting'
 
 type ISegmentCardProps = {
   loading: boolean
   detail?: SegmentDetailModel & { document: { name: string } }
+  contentExternal?: string
+  refSource?: {
+    title: string
+    uri: string
+  }
+  isExternal?: boolean
   score?: number
   onClick?: () => void
   onChangeSwitch?: (segId: string, enabled: boolean) => Promise<void>
@@ -48,6 +70,9 @@ type ISegmentCardProps = {
 
 const SegmentCard: FC<ISegmentCardProps> = ({
   detail = {},
+  contentExternal,
+  isExternal,
+  refSource,
   score,
   onClick,
   onChangeSwitch,
@@ -87,6 +112,9 @@ const SegmentCard: FC<ISegmentCardProps> = ({
         </>
       )
     }
+
+    if (contentExternal)
+      return contentExternal
 
     return content
   }
@@ -199,16 +227,16 @@ const SegmentCard: FC<ISegmentCardProps> = ({
               </div>
               <div className={cn('w-full bg-gray-50 group-hover:bg-white')}>
                 <Divider />
-                <div className="relative flex items-center w-full">
+                <div className="relative flex items-center w-full pb-1">
                   <DocumentTitle
-                    name={detail?.document?.name || ''}
-                    extension={(detail?.document?.name || '').split('.').pop() || 'txt'}
+                    name={detail?.document?.name || refSource?.title || ''}
+                    extension={(detail?.document?.name || refSource?.title || '').split('.').pop() || 'txt'}
                     wrapperCls='w-full'
                     iconCls="!h-4 !w-4 !bg-contain"
                     textCls="text-xs text-gray-700 !font-normal overflow-hidden whitespace-nowrap text-ellipsis"
                   />
                   <div className={cn(s.chartLinkText, 'group-hover:inline-flex')}>
-                    {t('datasetHitTesting.viewChart')}
+                    {isExternal ? t('datasetHitTesting.viewDetail') : t('datasetHitTesting.viewChart')}
                     <ArrowUpRightIcon className="w-3 h-3 ml-1 stroke-current stroke-2" />
                   </div>
                 </div>

@@ -28,6 +28,8 @@ const HeaderInMobile = () => {
             className='mr-2'
             size='tiny'
             icon={appData?.site.icon}
+            iconType={appData?.site.icon_type}
+            imageUrl={appData?.site.icon_url}
             background={appData?.site.icon_background}
           />
           <div className='py-1 text-base font-semibold text-gray-800 truncate'>

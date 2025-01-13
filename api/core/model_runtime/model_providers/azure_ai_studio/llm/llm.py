@@ -294,7 +294,7 @@ class AzureAIStudioLargeLanguageModel(LargeLanguageModel):
             ],
         }
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         Used to define customizable model schema
         """

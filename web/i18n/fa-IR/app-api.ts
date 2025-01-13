@@ -77,7 +77,9 @@ const translation = {
     requestBody: 'بدنه درخواست',
     pathParams: 'پارامترهای مسیر',
     query: 'پرس‌وجو',
+    toc: 'محتویات',
   },
+  regenerate: 'بازسازی',
 }
 
 export default translation

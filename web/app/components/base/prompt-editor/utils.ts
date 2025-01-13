@@ -296,7 +296,7 @@ export function $splitNodeContainingQuery(match: MenuTextMatch): TextNode | null
 }
 
 export function textToEditorState(text: string) {
-  const paragraph = text.split('\n')
+  const paragraph = text ? text.split('\n') : ['']
 
   return JSON.stringify({
     root: {

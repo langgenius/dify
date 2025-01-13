@@ -1,8 +1,8 @@
 import json
 from enum import Enum
-from typing import Any, Union
+from typing import Any, Optional, Union
 
-import boto3
+import boto3  # type: ignore
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
@@ -17,11 +17,11 @@ class TTSModelType(Enum):
 
 class SageMakerTTSTool(BuiltinTool):
     sagemaker_client: Any = None
-    sagemaker_endpoint: str = None
+    sagemaker_endpoint: str | None = None
     s3_client: Any = None
     comprehend_client: Any = None
 
-    def _detect_lang_code(self, content: str, map_dict: dict = None):
+    def _detect_lang_code(self, content: str, map_dict: Optional[dict] = None):
         map_dict = {"zh": "<|zh|>", "en": "<|en|>", "ja": "<|jp|>", "zh-TW": "<|yue|>", "ko": "<|ko|>"}
 
         response = self.comprehend_client.detect_dominant_language(Text=content)

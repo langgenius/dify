@@ -205,7 +205,7 @@ provider_credential_schema:
   但是有的供应商根据不同的模型支持不同的参数，如供应商`OpenLLM`支持`top_k`，但是并不是这个供应商提供的所有模型都支持`top_k`，我们这里举例A模型支持`top_k`，B模型不支持`top_k`，那么我们需要在这里动态生成模型参数的Schema，如下所示：
   
     ```python
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
             used to define customizable model schema
         """

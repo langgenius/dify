@@ -14,6 +14,7 @@ export enum FormTypeEnum {
   radio = 'radio',
   boolean = 'boolean',
   files = 'files',
+  file = 'file',
 }
 
 export type FormOption = {
@@ -51,6 +52,9 @@ export enum ModelFeatureEnum {
   multiToolCall = 'multi-tool-call',
   agentThought = 'agent-thought',
   vision = 'vision',
+  video = 'video',
+  document = 'document',
+  audio = 'audio',
 }
 
 export enum ModelFeatureTextEnum {
@@ -58,6 +62,9 @@ export enum ModelFeatureTextEnum {
   multiToolCall = 'Multi Tool Call',
   agentThought = 'Agent Thought',
   vision = 'Vision',
+  video = 'Video',
+  document = 'Document',
+  audio = 'Audio',
 }
 
 export enum ModelStatusEnum {

@@ -1,6 +1,6 @@
 import re
 from collections.abc import Generator
-from json import dumps, loads
+from json import dumps
 from time import time
 
 # import monkeypatch
@@ -11,11 +11,9 @@ from openai._types import NOT_GIVEN, NotGiven
 from openai.resources.chat.completions import Completions
 from openai.types import Completion as CompletionMessage
 from openai.types.chat import (
-    ChatCompletion,
     ChatCompletionChunk,
     ChatCompletionMessageParam,
     ChatCompletionMessageToolCall,
-    ChatCompletionToolChoiceOptionParam,
     ChatCompletionToolParam,
     completion_create_params,
 )

@@ -7,7 +7,7 @@ import numpy as np
 import tiktoken
 from openai import AzureOpenAI
 
-from core.embedding.embedding_constant import EmbeddingInputType
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.model_entities import AIModelEntity, PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -92,7 +92,10 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
                 average = embeddings_batch[0]
             else:
                 average = np.average(_result, axis=0, weights=num_tokens_in_batch[i])
-            embeddings[i] = (average / np.linalg.norm(average)).tolist()
+            embedding = (average / np.linalg.norm(average)).tolist()
+            if np.isnan(embedding).any():
+                raise ValueError("Normalized embedding is nan please try again")
+            embeddings[i] = embedding
 
         # calc usage
         usage = self._calc_response_usage(model=model, credentials=credentials, tokens=used_tokens)

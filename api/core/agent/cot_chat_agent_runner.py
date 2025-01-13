@@ -1,13 +1,16 @@
 import json
 
 from core.agent.cot_agent_runner import CotAgentRunner
-from core.model_runtime.entities.message_entities import (
+from core.file import file_manager
+from core.model_runtime.entities import (
     AssistantPromptMessage,
     PromptMessage,
+    PromptMessageContent,
     SystemPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 from core.model_runtime.utils.encoders import jsonable_encoder
 
 
@@ -16,7 +19,12 @@ class CotChatAgentRunner(CotAgentRunner):
         """
         Organize system prompt
         """
+        if not self.app_config.agent:
+            raise ValueError("Agent configuration is not set")
+
         prompt_entity = self.app_config.agent.prompt
+        if not prompt_entity:
+            raise ValueError("Agent prompt configuration is not set")
         first_prompt = prompt_entity.first_prompt
 
         system_prompt = (
@@ -27,14 +35,31 @@ class CotChatAgentRunner(CotAgentRunner):
 
         return SystemPromptMessage(content=system_prompt)
 
-    def _organize_user_query(self, query, prompt_messages: list[PromptMessage] = None) -> list[PromptMessage]:
+    def _organize_user_query(self, query, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """
         Organize user query
         """
         if self.files:
-            prompt_message_contents = [TextPromptMessageContent(data=query)]
-            for file_obj in self.files:
-                prompt_message_contents.append(file_obj.prompt_message_content)
+            prompt_message_contents: list[PromptMessageContent] = []
+            prompt_message_contents.append(TextPromptMessageContent(data=query))
+
+            # get image detail config
+            image_detail_config = (
+                self.application_generate_entity.file_upload_config.image_config.detail
+                if (
+                    self.application_generate_entity.file_upload_config
+                    and self.application_generate_entity.file_upload_config.image_config
+                )
+                else None
+            )
+            image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
+            for file in self.files:
+                prompt_message_contents.append(
+                    file_manager.to_prompt_message_content(
+                        file,
+                        image_detail_config=image_detail_config,
+                    )
+                )
 
             prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
         else:
@@ -55,6 +80,7 @@ class CotChatAgentRunner(CotAgentRunner):
             assistant_messages = []
         else:
             assistant_message = AssistantPromptMessage(content="")
+            assistant_message.content = ""  # FIXME: type check tell mypy that assistant_message.content is str
             for unit in agent_scratchpad:
                 if unit.is_final():
                     assistant_message.content += f"Final Answer: {unit.agent_response}"

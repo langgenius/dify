@@ -1,4 +1,4 @@
-from dashscope.common.error import (
+from dashscope.common.error import (  # type: ignore
     AuthenticationError,
     InvalidParameter,
     RequestFailure,

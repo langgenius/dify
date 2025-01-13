@@ -38,6 +38,18 @@ const translation = {
     duplicate: 'Duplica',
     rename: 'Rinomina',
     audioSourceUnavailable: 'AudioSource non è disponibile',
+    zoomOut: 'Zoom indietro',
+    zoomIn: 'Ingrandisci',
+    openInNewTab: 'Apri in una nuova scheda',
+    copyImage: 'Copia immagine',
+    close: 'Chiudere',
+    view: 'Vista',
+    saveAndRegenerate: 'Salva e rigenera i blocchi figlio',
+    regenerate: 'Rigenerare',
+    viewMore: 'SCOPRI DI PIÙ',
+    submit: 'Invia',
+    skip: 'Nave',
+    imageCopied: 'Immagine copiata',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',
@@ -179,6 +191,21 @@ const translation = {
       'Eliminando il tuo account cancellerai permanentemente tutti i tuoi dati e non sarà possibile recuperarli.',
     deleteConfirmTip:
       'Per confermare, invia il seguente messaggio dalla tua email registrata a ',
+    myAccount: 'Il mio account',
+    account: 'Conto',
+    studio: 'Dify Studio',
+    deletePrivacyLinkTip: 'Per ulteriori informazioni su come gestiamo i tuoi dati, consulta il nostro',
+    deletePrivacyLink: 'Informativa sulla privacy.',
+    deleteSuccessTip: 'Il tuo account ha bisogno di tempo per completare l\'eliminazione. Ti invieremo un\'e-mail quando tutto sarà finito.',
+    deleteLabel: 'Per confermare, digita la tua email qui sotto',
+    deletePlaceholder: 'Inserisci la tua email',
+    sendVerificationButton: 'Invia codice di verifica',
+    verificationLabel: 'Codice di verifica',
+    verificationPlaceholder: 'Incolla il codice a 6 cifre',
+    permanentlyDeleteButton: 'Elimina definitivamente l\'account',
+    feedbackTitle: 'Valutazione',
+    feedbackLabel: 'Dicci perché hai cancellato il tuo account?',
+    feedbackPlaceholder: 'Opzionale',
   },
   members: {
     team: 'Team',
@@ -201,6 +228,7 @@ const translation = {
     inviteTeamMember: 'Aggiungi membro del team',
     inviteTeamMemberTip:
       'Potranno accedere ai dati del tuo team direttamente dopo aver effettuato l\'accesso.',
+    emailNotSetup: 'Il server email non è configurato, quindi non è possibile inviare email di invito. Si prega di notificare agli utenti il link di invito che verrà emesso dopo l\'invito.',
     email: 'Email',
     emailInvalid: 'Formato Email non valido',
     emailPlaceholder: 'Per favore inserisci le email',
@@ -496,6 +524,7 @@ const translation = {
       'La Conoscenza non è stata associata, per favore vai all\'applicazione o al plug-in per completare l\'associazione.',
     viewDoc: 'Visualizza documentazione',
     relatedApp: 'app collegate',
+    noRelatedApp: 'Nessuna app collegata',
   },
   voiceInput: {
     speaking: 'Parla ora...',
@@ -527,6 +556,7 @@ const translation = {
       vectorHash: 'Hash del vettore:',
       hitScore: 'Punteggio di recupero:',
     },
+    inputPlaceholder: 'Parla con il bot',
   },
   promptEditor: {
     placeholder:
@@ -603,6 +633,23 @@ const translation = {
     deleteTip: 'Il tag è in uso, eliminarlo?',
     created: 'Tag creato con successo',
     failed: 'Creazione del tag fallita',
+  },
+  fileUploader: {
+    uploadFromComputer: 'Caricamento locale',
+    uploadFromComputerLimit: 'Il file di caricamento non può superare {{size}}',
+    pasteFileLinkInvalid: 'Collegamento file non valido',
+    fileExtensionNotSupport: 'Estensione del file non supportata',
+    pasteFileLinkInputPlaceholder: 'Inserisci l\'URL...',
+    uploadFromComputerUploadError: 'Caricamento del file non riuscito, carica di nuovo.',
+    pasteFileLink: 'Incolla il collegamento del file',
+    uploadFromComputerReadError: 'Lettura del file non riuscita, riprovare.',
+  },
+  license: {
+    expiring_plural: 'Scadenza tra {{count}} giorni',
+    expiring: 'Scadenza in un giorno',
+  },
+  pagination: {
+    perPage: 'Articoli per pagina',
   },
 }
 

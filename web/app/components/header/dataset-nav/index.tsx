@@ -51,7 +51,7 @@ const DatasetNav = () => {
       navs={datasetItems.map(dataset => ({
         id: dataset.id,
         name: dataset.name,
-        link: `/datasets/${dataset.id}/documents`,
+        link: dataset.provider === 'external' ? `/datasets/${dataset.id}/hitTesting` : `/datasets/${dataset.id}/documents`,
         icon: dataset.icon,
         icon_background: dataset.icon_background,
       })) as NavItem[]}

@@ -1,4 +1,7 @@
-import { uniq } from 'lodash-es'
+import {
+  uniq,
+  xorBy,
+} from 'lodash-es'
 import type { MultipleRetrievalConfig } from './types'
 import type {
   DataSet,
@@ -15,12 +18,17 @@ export const checkNodeValid = () => {
   return true
 }
 
-export const getSelectedDatasetsMode = (datasets: DataSet[]) => {
+export const getSelectedDatasetsMode = (datasets: DataSet[] = []) => {
+  if (datasets === null)
+    datasets = []
   let allHighQuality = true
   let allHighQualityVectorSearch = true
   let allHighQualityFullTextSearch = true
   let allEconomic = true
   let mixtureHighQualityAndEconomic = true
+  let allExternal = true
+  let allInternal = true
+  let mixtureInternalAndExternal = true
   let inconsistentEmbeddingModel = false
   if (!datasets.length) {
     allHighQuality = false
@@ -29,6 +37,9 @@ export const getSelectedDatasetsMode = (datasets: DataSet[]) => {
     allEconomic = false
     mixtureHighQualityAndEconomic = false
     inconsistentEmbeddingModel = false
+    allExternal = false
+    allInternal = false
+    mixtureInternalAndExternal = false
   }
   datasets.forEach((dataset) => {
     if (dataset.indexing_technique === 'economy') {
@@ -45,7 +56,20 @@ export const getSelectedDatasetsMode = (datasets: DataSet[]) => {
       if (dataset.retrieval_model_dict.search_method !== RETRIEVE_METHOD.fullText)
         allHighQualityFullTextSearch = false
     }
+    if (dataset.provider !== 'external') {
+      allExternal = false
+    }
+    else {
+      allInternal = false
+      allHighQuality = false
+      allHighQualityVectorSearch = false
+      allHighQualityFullTextSearch = false
+      mixtureHighQualityAndEconomic = false
+    }
   })
+
+  if (allExternal || allInternal)
+    mixtureInternalAndExternal = false
 
   if (allHighQuality || allEconomic)
     mixtureHighQualityAndEconomic = false
@@ -59,17 +83,31 @@ export const getSelectedDatasetsMode = (datasets: DataSet[]) => {
     allHighQualityFullTextSearch,
     allEconomic,
     mixtureHighQualityAndEconomic,
+    allInternal,
+    allExternal,
+    mixtureInternalAndExternal,
     inconsistentEmbeddingModel,
   } as SelectedDatasetsMode
 }
 
-export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetrievalConfig, selectedDatasets: DataSet[]) => {
+export const getMultipleRetrievalConfig = (
+  multipleRetrievalConfig: MultipleRetrievalConfig,
+  selectedDatasets: DataSet[],
+  originalDatasets: DataSet[],
+  validRerankModel?: { provider?: string; model?: string },
+) => {
+  const shouldSetWeightDefaultValue = xorBy(selectedDatasets, originalDatasets, 'id').length > 0
+  const rerankModelIsValid = validRerankModel?.provider && validRerankModel?.model
+
   const {
     allHighQuality,
     allHighQualityVectorSearch,
     allHighQualityFullTextSearch,
     allEconomic,
     mixtureHighQualityAndEconomic,
+    allInternal,
+    allExternal,
+    mixtureInternalAndExternal,
     inconsistentEmbeddingModel,
   } = getSelectedDatasetsMode(selectedDatasets)
 
@@ -88,16 +126,10 @@ export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetr
     reranking_mode,
     reranking_model,
     weights,
-    reranking_enable: allEconomic ? reranking_enable : true,
+    reranking_enable: ((allInternal && allEconomic) || allExternal) ? reranking_enable : shouldSetWeightDefaultValue,
   }
 
-  if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel)
-    result.reranking_mode = RerankingModeEnum.RerankingModel
-
-  if (allHighQuality && !inconsistentEmbeddingModel && reranking_mode === undefined)
-    result.reranking_mode = RerankingModeEnum.WeightedScore
-
-  if (allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined) && !weights) {
+  const setDefaultWeights = () => {
     result.weights = {
       vector_setting: {
         vector_weight: allHighQualityVectorSearch
@@ -118,5 +150,97 @@ export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetr
     }
   }
 
+  if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel || allExternal || mixtureInternalAndExternal) {
+    result.reranking_mode = RerankingModeEnum.RerankingModel
+    if (!result.reranking_model?.provider || !result.reranking_model?.model) {
+      if (rerankModelIsValid) {
+        result.reranking_enable = true
+        result.reranking_model = {
+          provider: validRerankModel?.provider || '',
+          model: validRerankModel?.model || '',
+        }
+      }
+      else {
+        result.reranking_model = {
+          provider: '',
+          model: '',
+        }
+      }
+    }
+  }
+
+  if (allHighQuality && !inconsistentEmbeddingModel && allInternal) {
+    if (!reranking_mode) {
+      if (validRerankModel?.provider && validRerankModel?.model) {
+        result.reranking_mode = RerankingModeEnum.RerankingModel
+        result.reranking_enable = true
+        result.reranking_model = {
+          provider: validRerankModel.provider,
+          model: validRerankModel.model,
+        }
+      }
+      else {
+        result.reranking_mode = RerankingModeEnum.WeightedScore
+        setDefaultWeights()
+      }
+    }
+
+    if (reranking_mode === RerankingModeEnum.WeightedScore && !weights)
+      setDefaultWeights()
+
+    if (reranking_mode === RerankingModeEnum.WeightedScore && weights && shouldSetWeightDefaultValue) {
+      if (rerankModelIsValid) {
+        result.reranking_mode = RerankingModeEnum.RerankingModel
+        result.reranking_enable = true
+        result.reranking_model = {
+          provider: validRerankModel.provider || '',
+          model: validRerankModel.model || '',
+        }
+      }
+      else {
+        setDefaultWeights()
+      }
+    }
+    if (reranking_mode === RerankingModeEnum.RerankingModel && !rerankModelIsValid && shouldSetWeightDefaultValue) {
+      result.reranking_mode = RerankingModeEnum.WeightedScore
+      setDefaultWeights()
+    }
+    if (reranking_mode === RerankingModeEnum.RerankingModel && rerankModelIsValid) {
+      result.reranking_enable = true
+      result.reranking_model = {
+        provider: validRerankModel.provider || '',
+        model: validRerankModel.model || '',
+      }
+    }
+  }
+
   return result
+}
+
+export const checkoutRerankModelConfigedInRetrievalSettings = (
+  datasets: DataSet[],
+  multipleRetrievalConfig?: MultipleRetrievalConfig,
+) => {
+  if (!multipleRetrievalConfig)
+    return true
+
+  const {
+    allEconomic,
+    allExternal,
+  } = getSelectedDatasetsMode(datasets)
+
+  const {
+    reranking_enable,
+    reranking_mode,
+    reranking_model,
+  } = multipleRetrievalConfig
+
+  if (reranking_mode === RerankingModeEnum.RerankingModel && (!reranking_model?.provider || !reranking_model?.model)) {
+    if ((allEconomic || allExternal) && !reranking_enable)
+      return true
+
+    return false
+  }
+
+  return true
 }

@@ -47,7 +47,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         const { data, has_more } = await fetchDatasets({ url: '/datasets', params: { page } })
         setPage(getPage() + 1)
         setIsNoMore(!has_more)
-        const newList = [...(datasets || []), ...data.filter(item => item.indexing_technique)]
+        const newList = [...(datasets || []), ...data.filter(item => item.indexing_technique || item.provider === 'external')]
         setDataSets(newList)
         setLoaded(true)
         if (!selected.find(item => !item.name))
@@ -143,6 +143,11 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                     <Badge
                       text={formatIndexingTechniqueAndMethod(item.indexing_technique, item.retrieval_model_dict?.search_method)}
                     />
+                  )
+                }
+                {
+                  item.provider === 'external' && (
+                    <Badge text={t('dataset.externalTag')} />
                   )
                 }
               </div>

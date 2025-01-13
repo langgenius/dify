@@ -24,8 +24,10 @@ import QuestionClassifyDefault from '@/app/components/workflow/nodes/question-cl
 import HTTPDefault from '@/app/components/workflow/nodes/http/default'
 import ToolDefault from '@/app/components/workflow/nodes/tool/default'
 import VariableAssigner from '@/app/components/workflow/nodes/variable-assigner/default'
+import Assigner from '@/app/components/workflow/nodes/assigner/default'
 import ParameterExtractorDefault from '@/app/components/workflow/nodes/parameter-extractor/default'
 import IterationDefault from '@/app/components/workflow/nodes/iteration/default'
+import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
 import { ssePost } from '@/service/base'
 
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
@@ -39,8 +41,10 @@ const { checkValid: checkQuestionClassifyValid } = QuestionClassifyDefault
 const { checkValid: checkHttpValid } = HTTPDefault
 const { checkValid: checkToolValid } = ToolDefault
 const { checkValid: checkVariableAssignerValid } = VariableAssigner
+const { checkValid: checkAssignerValid } = Assigner
 const { checkValid: checkParameterExtractorValid } = ParameterExtractorDefault
 const { checkValid: checkIterationValid } = IterationDefault
+const { checkValid: checkDocumentExtractorValid } = DocumentExtractorDefault
 
 const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.LLM]: checkLLMValid,
@@ -51,10 +55,11 @@ const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.QuestionClassifier]: checkQuestionClassifyValid,
   [BlockEnum.HttpRequest]: checkHttpValid,
   [BlockEnum.Tool]: checkToolValid,
-  [BlockEnum.VariableAssigner]: checkVariableAssignerValid,
+  [BlockEnum.VariableAssigner]: checkAssignerValid,
   [BlockEnum.VariableAggregator]: checkVariableAssignerValid,
   [BlockEnum.ParameterExtractor]: checkParameterExtractorValid,
   [BlockEnum.Iteration]: checkIterationValid,
+  [BlockEnum.DocExtractor]: checkDocumentExtractorValid,
 } as any
 
 type Params<T> = {
@@ -80,8 +85,10 @@ const varTypeToInputVarType = (type: VarType, {
     return InputVarType.number
   if ([VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(type))
     return InputVarType.json
+  if (type === VarType.file)
+    return InputVarType.singleFile
   if (type === VarType.arrayFile)
-    return InputVarType.files
+    return InputVarType.multiFiles
 
   return InputVarType.textInput
 }
@@ -103,32 +110,29 @@ const useOneStepRun = <T>({
   const availableNodesIncludeParent = getBeforeNodesInSameBranchIncludeParent(id)
   const allOutputVars = toNodeOutputVars(availableNodes, isChatMode, undefined, undefined, conversationVariables)
   const getVar = (valueSelector: ValueSelector): Var | undefined => {
-    let res: Var | undefined
     const isSystem = valueSelector[0] === 'sys'
-    const targetVar = isSystem ? allOutputVars.find(item => !!item.isStartNode) : allOutputVars.find(v => v.nodeId === valueSelector[0])
+    const targetVar = allOutputVars.find(item => isSystem ? !!item.isStartNode : item.nodeId === valueSelector[0])
     if (!targetVar)
       return undefined
+
     if (isSystem)
       return targetVar.vars.find(item => item.variable.split('.')[1] === valueSelector[1])
 
     let curr: any = targetVar.vars
-    if (!curr)
-      return
+    for (let i = 1; i < valueSelector.length; i++) {
+      const key = valueSelector[i]
+      const isLast = i === valueSelector.length - 1
 
-    valueSelector.slice(1).forEach((key, i) => {
-      const isLast = i === valueSelector.length - 2
-      // conversation variable is start with 'conversation.'
-      curr = curr?.find((v: any) => v.variable.replace('conversation.', '') === key)
-      if (isLast) {
-        res = curr
-      }
-      else {
-        if (curr?.type === VarType.object)
-          curr = curr.children
-      }
-    })
+      if (Array.isArray(curr))
+        curr = curr.find((v: any) => v.variable.replace('conversation.', '') === key)
 
-    return res
+      if (isLast)
+        return curr
+      else if (curr?.type === VarType.object || curr?.type === VarType.file)
+        curr = curr.children
+    }
+
+    return undefined
   }
 
   const checkValid = checkValidFns[data.type]

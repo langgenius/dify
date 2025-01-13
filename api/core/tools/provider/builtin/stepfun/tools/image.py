@@ -32,16 +32,17 @@ class StepfunTool(BuiltinTool):
         prompt = tool_parameters.get("prompt", "")
         if not prompt:
             return self.create_text_message("Please input prompt")
-
+        if len(prompt) > 1024:
+            return self.create_text_message("The prompt length should less than 1024")
         seed = tool_parameters.get("seed", 0)
         if seed > 0:
             extra_body["seed"] = seed
-        steps = tool_parameters.get("steps", 0)
+        steps = tool_parameters.get("steps", 50)
         if steps > 0:
             extra_body["steps"] = steps
-        negative_prompt = tool_parameters.get("negative_prompt", "")
-        if negative_prompt:
-            extra_body["negative_prompt"] = negative_prompt
+        cfg_scale = tool_parameters.get("cfg_scale", 7.5)
+        if cfg_scale > 0:
+            extra_body["cfg_scale"] = cfg_scale
 
         # call openapi stepfun model
         response = client.images.generate(
@@ -51,7 +52,6 @@ class StepfunTool(BuiltinTool):
             n=tool_parameters.get("n", 1),
             extra_body=extra_body,
         )
-        print(response)
 
         result = []
         for image in response.data:

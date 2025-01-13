@@ -77,7 +77,9 @@ const translation = {
     requestBody: 'Request Body',
     pathParams: 'Path Params',
     query: 'Query',
+    toc: 'Içeriği',
   },
+  regenerate: 'Yenilemek',
 }
 
 export default translation

@@ -7,9 +7,9 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import Optional, Union, cast
 
-from dashscope import Generation, MultiModalConversation, get_tokenizer
-from dashscope.api_entities.dashscope_response import GenerationResponse
-from dashscope.common.error import (
+from dashscope import Generation, MultiModalConversation, get_tokenizer  # type: ignore
+from dashscope.api_entities.dashscope_response import GenerationResponse  # type: ignore
+from dashscope.common.error import (  # type: ignore
     AuthenticationError,
     InvalidParameter,
     RequestFailure,
@@ -29,6 +29,7 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     ToolPromptMessage,
     UserPromptMessage,
+    VideoPromptMessageContent,
 )
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
@@ -431,6 +432,14 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
                             sub_message_dict = {"image": image_url}
                             sub_messages.append(sub_message_dict)
+                        elif message_content.type == PromptMessageContentType.VIDEO:
+                            message_content = cast(VideoPromptMessageContent, message_content)
+                            video_url = message_content.url
+                            if not video_url:
+                                raise InvokeError("not support base64, please set MULTIMODAL_SEND_FORMAT to url")
+
+                            sub_message_dict = {"video": video_url}
+                            sub_messages.append(sub_message_dict)
 
                     # resort sub_messages to ensure text is always at last
                     sub_messages = sorted(sub_messages, key=lambda x: "text" in x)
@@ -535,7 +544,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
             ],
         }
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         Architecture for defining customizable models
 

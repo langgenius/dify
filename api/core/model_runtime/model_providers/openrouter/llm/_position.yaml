@@ -14,6 +14,10 @@
 - google/gemini-pro
 - cohere/command-r-plus
 - cohere/command-r
+- meta-llama/llama-3.2-1b-instruct
+- meta-llama/llama-3.2-3b-instruct
+- meta-llama/llama-3.2-11b-vision-instruct
+- meta-llama/llama-3.2-90b-vision-instruct
 - meta-llama/llama-3.1-405b-instruct
 - meta-llama/llama-3.1-70b-instruct
 - meta-llama/llama-3.1-8b-instruct
@@ -22,6 +26,7 @@
 - mistralai/mixtral-8x22b-instruct
 - mistralai/mixtral-8x7b-instruct
 - mistralai/mistral-7b-instruct
+- qwen/qwen-2.5-72b-instruct
 - qwen/qwen-2-72b-instruct
 - deepseek/deepseek-chat
 - deepseek/deepseek-coder

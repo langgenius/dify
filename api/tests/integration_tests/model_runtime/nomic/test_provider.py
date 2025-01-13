@@ -4,7 +4,6 @@ import pytest
 
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.nomic.nomic import NomicAtlasProvider
-from core.model_runtime.model_providers.nomic.text_embedding.text_embedding import NomicTextEmbeddingModel
 from tests.integration_tests.model_runtime.__mock.nomic_embeddings import setup_nomic_mock
 
 

@@ -29,6 +29,12 @@ const translation = {
     save: 'Salvare',
     permissionsInvitedMembers: 'Membri parțiali ai echipei',
     me: '(Tu)',
+    externalKnowledgeID: 'ID de cunoștințe extern',
+    externalKnowledgeAPI: 'API de cunoștințe externe',
+    retrievalSettings: 'Setări de recuperare',
+    indexMethodChangeToEconomyDisabledTip: 'Nu este disponibil pentru retrogradarea de la HQ la ECO',
+    upgradeHighQualityTip: 'După ce faceți upgrade la modul Înaltă calitate, revenirea la modul Economic nu este disponibilă',
+    helpText: 'Aflați cum să scrieți o descriere bună a setului de date.',
   },
 }
 

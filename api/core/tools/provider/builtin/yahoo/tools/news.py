@@ -1,6 +1,6 @@
 from typing import Any, Union
 
-import yfinance
+import yfinance  # type: ignore
 from requests.exceptions import HTTPError, ReadTimeout
 
 from core.tools.entities.tool_entities import ToolInvokeMessage

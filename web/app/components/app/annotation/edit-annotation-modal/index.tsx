@@ -123,7 +123,7 @@ const EditAnnotationModal: FC<Props> = ({
             {
               annotationId
                 ? (
-                  <div className='px-4 flex h-16 items-center justify-between border-t border-black/5 bg-gray-50 rounded-bl-xl rounded-br-xl leading-[18px] text-[13px] font-medium text-gray-500'>
+                  <div className='px-4 flex h-16 items-center justify-between border-t border-divider-subtle bg-background-section-burn rounded-bl-xl rounded-br-xl system-sm-medium text-text-tertiary'>
                     <div
                       className='flex items-center pl-3 space-x-2 cursor-pointer'
                       onClick={() => setShowModal(true)}

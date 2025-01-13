@@ -12,17 +12,15 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/langgenius/dify",
-    license='MIT',
-    packages=['dify_client'],
+    license="MIT",
+    packages=["dify_client"],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.6",
-    install_requires=[
-        "requests"
-    ],
-    keywords='dify nlp ai language-processing',
+    install_requires=["requests"],
+    keywords="dify nlp ai language-processing",
     include_package_data=True,
 )

@@ -40,6 +40,7 @@ type ComponentPickerProps = {
   variableBlock?: VariableBlockType
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
+  isSupportFileVar?: boolean
 }
 const ComponentPicker = ({
   triggerString,
@@ -49,6 +50,7 @@ const ComponentPicker = ({
   variableBlock,
   externalToolBlock,
   workflowVariableBlock,
+  isSupportFileVar,
 }: ComponentPickerProps) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const { refs, floatingStyles, isPositioned } = useFloating({
@@ -133,11 +135,10 @@ const ComponentPicker = ({
             // See https://github.com/facebook/lexical/blob/ac97dfa9e14a73ea2d6934ff566282d7f758e8bb/packages/lexical-react/src/shared/LexicalMenu.ts#L493
             <div className='w-0 h-0'>
               <div
-                className='p-1 w-[260px] bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg overflow-y-auto overflow-x-hidden'
+                className='p-1 w-[260px] bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg'
                 style={{
                   ...floatingStyles,
                   visibility: isPositioned ? 'visible' : 'hidden',
-                  maxHeight: 'calc(1 / 3 * 100vh)',
                 }}
                 ref={refs.setFloating}
               >
@@ -147,7 +148,7 @@ const ComponentPicker = ({
                       {
                         // Divider
                         index !== 0 && options.at(index - 1)?.group !== option.group && (
-                          <div className='h-px bg-gray-100 my-1 w-screen -translate-x-1'></div>
+                          <div className='h-px bg-gray-100 my-1 w-full -translate-x-1'></div>
                         )
                       }
                       {option.renderMenuOption({
@@ -168,7 +169,7 @@ const ComponentPicker = ({
                     <>
                       {
                         (!!options.length) && (
-                          <div className='h-px bg-gray-100 my-1 w-screen -translate-x-1'></div>
+                          <div className='h-px bg-gray-100 my-1 w-full -translate-x-1'></div>
                         )
                       }
                       <div className='p-1'>
@@ -178,6 +179,8 @@ const ComponentPicker = ({
                           onChange={(variables: string[]) => {
                             handleSelectWorkflowVariable(variables)
                           }}
+                          maxHeightClass='max-h-[34vh]'
+                          isSupportFileVar={isSupportFileVar}
                         />
                       </div>
                     </>

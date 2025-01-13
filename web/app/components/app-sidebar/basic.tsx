@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import AppIcon from '../base/app-icon'
 import Tooltip from '@/app/components/base/tooltip'
 
@@ -6,6 +7,7 @@ export type IAppBasicProps = {
   iconType?: 'app' | 'api' | 'dataset' | 'webapp' | 'notion'
   icon?: string
   icon_background?: string | null
+  isExternal?: boolean
   name: string
   type: string | React.ReactNode
   hoverTip?: string
@@ -52,7 +54,9 @@ const ICON_MAP = {
   notion: <AppIcon innerIcon={NotionSvg} className='!border-[0.5px] !border-indigo-100 !bg-white' />,
 }
 
-export default function AppBasic({ icon, icon_background, name, type, hoverTip, textStyle, mode = 'expand', iconType = 'app' }: IAppBasicProps) {
+export default function AppBasic({ icon, icon_background, name, isExternal, type, hoverTip, textStyle, mode = 'expand', iconType = 'app' }: IAppBasicProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="flex items-start p-1">
       {icon && icon_background && iconType === 'app' && (
@@ -83,6 +87,7 @@ export default function AppBasic({ icon, icon_background, name, type, hoverTip, 
           }
         </div>
         <div className={`text-xs font-normal text-gray-500 group-hover:text-gray-700 break-all ${textStyle?.extra ?? ''}`}>{type}</div>
+        <div className='text-text-tertiary system-2xs-medium-uppercase'>{isExternal ? t('dataset.externalTag') : ''}</div>
       </div>}
     </div>
   )

@@ -1,5 +1,5 @@
 from collections.abc import Generator, Iterator
-from typing import cast
+from typing import Optional, cast
 
 from openai import (
     APIConnectionError,
@@ -17,7 +17,7 @@ from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletio
 from openai.types.chat.chat_completion_chunk import ChoiceDeltaFunctionCall, ChoiceDeltaToolCall
 from openai.types.chat.chat_completion_message import FunctionCall
 from openai.types.completion import Completion
-from xinference_client.client.restful.restful_client import (
+from xinference_client.client.restful.restful_client import (  # type: ignore
     Client,
     RESTfulChatModelHandle,
     RESTfulGenerateModelHandle,
@@ -62,6 +62,9 @@ from core.model_runtime.model_providers.xinference.xinference_helper import (
     validate_model_uid,
 )
 from core.model_runtime.utils import helper
+
+DEFAULT_MAX_RETRIES = 3
+DEFAULT_INVOKE_TIMEOUT = 60
 
 
 class XinferenceAILargeLanguageModel(LargeLanguageModel):
@@ -315,13 +318,18 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             message_dict = {"role": "system", "content": message.content}
         elif isinstance(message, ToolPromptMessage):
             message = cast(ToolPromptMessage, message)
-            message_dict = {"tool_call_id": message.tool_call_id, "role": "tool", "content": message.content}
+            message_dict = {
+                "tool_call_id": message.tool_call_id,
+                "role": "tool",
+                "content": message.content,
+                "name": message.name,
+            }
         else:
             raise ValueError(f"Unknown message type {type(message)}")
 
         return message_dict
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """
@@ -466,8 +474,8 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         client = OpenAI(
             base_url=f'{credentials["server_url"]}/v1',
             api_key=api_key,
-            max_retries=3,
-            timeout=60,
+            max_retries=int(credentials.get("max_retries") or DEFAULT_MAX_RETRIES),
+            timeout=int(credentials.get("invoke_timeout") or DEFAULT_INVOKE_TIMEOUT),
         )
 
         xinference_client = Client(

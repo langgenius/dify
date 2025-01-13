@@ -52,6 +52,8 @@ parameter_rules:
     help:
       zh_Hans: 对于每个后续标记，仅从前 K 个选项中进行采样。使用 top_k 删除长尾低概率响应。
       en_US: Only sample from the top K options for each subsequent token. Use top_k to remove long tail low probability responses.
+  - name: response_format
+    use_template: response_format
 pricing:
   input: '0.00025'
   output: '0.00125'

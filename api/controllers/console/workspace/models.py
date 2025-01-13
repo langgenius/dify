@@ -1,12 +1,11 @@
 import logging
 
-from flask_login import current_user
-from flask_restful import Resource, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, reqparse  # type: ignore
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -72,8 +71,12 @@ class DefaultModelApi(Resource):
                     provider=model_setting["provider"],
                     model=model_setting["model"],
                 )
-            except Exception:
-                logging.warning(f"{model_setting['model_type']} save error")
+            except Exception as ex:
+                logging.exception(
+                    f"Failed to update default model, model type: {model_setting['model_type']},"
+                    f" model:{model_setting.get('model')}"
+                )
+                raise ex
 
         return {"result": "success"}
 
@@ -156,7 +159,10 @@ class ModelProviderModelApi(Resource):
                         credentials=args["credentials"],
                     )
                 except CredentialsValidateFailedError as ex:
-                    logging.exception(f"save model credentials error: {ex}")
+                    logging.exception(
+                        f"Failed to save model credentials, tenant_id: {tenant_id},"
+                        f" model: {args.get('model')}, model_type: {args.get('model_type')}"
+                    )
                     raise ValueError(str(ex))
 
         return {"result": "success"}, 200
@@ -302,7 +308,7 @@ class ModelProviderModelValidateApi(Resource):
         model_provider_service = ModelProviderService()
 
         result = True
-        error = None
+        error = ""
 
         try:
             model_provider_service.model_credentials_validate(

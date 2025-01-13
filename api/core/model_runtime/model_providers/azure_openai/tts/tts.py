@@ -1,6 +1,6 @@
 import concurrent.futures
 import copy
-from typing import Optional
+from typing import Any, Optional
 
 from openai import AzureOpenAI
 
@@ -14,12 +14,12 @@ from core.model_runtime.model_providers.azure_openai._constant import TTS_BASE_M
 
 class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
     """
-    Model class for OpenAI Speech to text model.
+    Model class for OpenAI text2speech model.
     """
 
     def _invoke(
         self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str, user: Optional[str] = None
-    ) -> any:
+    ) -> Any:
         """
         _invoke text2speech model
 
@@ -56,7 +56,7 @@ class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str, voice: str) -> any:
+    def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str, voice: str) -> Any:
         """
         _tts_invoke_streaming text2speech model
         :param model: model name
@@ -114,6 +114,8 @@ class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         ai_model_entity = self._get_ai_model_entity(credentials["base_model_name"], model)
+        if not ai_model_entity:
+            return None
         return ai_model_entity.entity
 
     @staticmethod

@@ -29,6 +29,12 @@ const translation = {
       longDescription: ' о методе поиска, вы можете изменить это в любое время в настройках базы знаний.',
     },
     save: 'Сохранить',
+    externalKnowledgeAPI: 'API внешних знаний',
+    retrievalSettings: 'Настройки извлечения',
+    externalKnowledgeID: 'Внешний идентификатор базы знаний',
+    helpText: 'Узнайте, как написать хорошее описание набора данных.',
+    upgradeHighQualityTip: 'После обновления до режима «Высокое качество» возврат к экономичному режиму невозможен',
+    indexMethodChangeToEconomyDisabledTip: 'Недоступно для понижения уровня с HQ до ECO',
   },
 }
 

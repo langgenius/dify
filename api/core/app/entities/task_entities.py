@@ -1,3 +1,4 @@
+from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import Any, Optional
 
@@ -51,6 +52,7 @@ class StreamEvent(Enum):
     WORKFLOW_FINISHED = "workflow_finished"
     NODE_STARTED = "node_started"
     NODE_FINISHED = "node_finished"
+    NODE_RETRY = "node_retry"
     PARALLEL_BRANCH_STARTED = "parallel_branch_started"
     PARALLEL_BRANCH_FINISHED = "parallel_branch_finished"
     ITERATION_STARTED = "iteration_started"
@@ -68,7 +70,7 @@ class StreamResponse(BaseModel):
     event: StreamEvent
     task_id: str
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return jsonable_encoder(self)
 
 
@@ -119,6 +121,7 @@ class MessageEndStreamResponse(StreamResponse):
     event: StreamEvent = StreamEvent.MESSAGE_END
     id: str
     metadata: dict = {}
+    files: Optional[Sequence[Mapping[str, Any]]] = None
 
 
 class MessageFileStreamResponse(StreamResponse):
@@ -211,7 +214,8 @@ class WorkflowFinishStreamResponse(StreamResponse):
         created_by: Optional[dict] = None
         created_at: int
         finished_at: int
-        files: Optional[list[dict]] = []
+        exceptions_count: Optional[int] = 0
+        files: Optional[Sequence[Mapping[str, Any]]] = []
 
     event: StreamEvent = StreamEvent.WORKFLOW_FINISHED
     workflow_run_id: str
@@ -242,6 +246,7 @@ class NodeStartStreamResponse(StreamResponse):
         parent_parallel_id: Optional[str] = None
         parent_parallel_start_node_id: Optional[str] = None
         iteration_id: Optional[str] = None
+        parallel_run_id: Optional[str] = None
 
     event: StreamEvent = StreamEvent.NODE_STARTED
     workflow_run_id: str
@@ -296,7 +301,7 @@ class NodeFinishStreamResponse(StreamResponse):
         execution_metadata: Optional[dict] = None
         created_at: int
         finished_at: int
-        files: Optional[list[dict]] = []
+        files: Optional[Sequence[Mapping[str, Any]]] = []
         parallel_id: Optional[str] = None
         parallel_start_node_id: Optional[str] = None
         parent_parallel_id: Optional[str] = None
@@ -334,6 +339,75 @@ class NodeFinishStreamResponse(StreamResponse):
                 "parent_parallel_id": self.data.parent_parallel_id,
                 "parent_parallel_start_node_id": self.data.parent_parallel_start_node_id,
                 "iteration_id": self.data.iteration_id,
+            },
+        }
+
+
+class NodeRetryStreamResponse(StreamResponse):
+    """
+    NodeFinishStreamResponse entity
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        id: str
+        node_id: str
+        node_type: str
+        title: str
+        index: int
+        predecessor_node_id: Optional[str] = None
+        inputs: Optional[dict] = None
+        process_data: Optional[dict] = None
+        outputs: Optional[dict] = None
+        status: str
+        error: Optional[str] = None
+        elapsed_time: float
+        execution_metadata: Optional[dict] = None
+        created_at: int
+        finished_at: int
+        files: Optional[Sequence[Mapping[str, Any]]] = []
+        parallel_id: Optional[str] = None
+        parallel_start_node_id: Optional[str] = None
+        parent_parallel_id: Optional[str] = None
+        parent_parallel_start_node_id: Optional[str] = None
+        iteration_id: Optional[str] = None
+        retry_index: int = 0
+
+    event: StreamEvent = StreamEvent.NODE_RETRY
+    workflow_run_id: str
+    data: Data
+
+    def to_ignore_detail_dict(self):
+        return {
+            "event": self.event.value,
+            "task_id": self.task_id,
+            "workflow_run_id": self.workflow_run_id,
+            "data": {
+                "id": self.data.id,
+                "node_id": self.data.node_id,
+                "node_type": self.data.node_type,
+                "title": self.data.title,
+                "index": self.data.index,
+                "predecessor_node_id": self.data.predecessor_node_id,
+                "inputs": None,
+                "process_data": None,
+                "outputs": None,
+                "status": self.data.status,
+                "error": None,
+                "elapsed_time": self.data.elapsed_time,
+                "execution_metadata": None,
+                "created_at": self.data.created_at,
+                "finished_at": self.data.finished_at,
+                "files": [],
+                "parallel_id": self.data.parallel_id,
+                "parallel_start_node_id": self.data.parallel_start_node_id,
+                "parent_parallel_id": self.data.parent_parallel_id,
+                "parent_parallel_start_node_id": self.data.parent_parallel_start_node_id,
+                "iteration_id": self.data.iteration_id,
+                "retry_index": self.data.retry_index,
             },
         }
 
@@ -400,8 +474,8 @@ class IterationNodeStartStreamResponse(StreamResponse):
         title: str
         created_at: int
         extras: dict = {}
-        metadata: dict = {}
-        inputs: dict = {}
+        metadata: Mapping = {}
+        inputs: Mapping = {}
         parallel_id: Optional[str] = None
         parallel_start_node_id: Optional[str] = None
 
@@ -430,6 +504,8 @@ class IterationNodeNextStreamResponse(StreamResponse):
         extras: dict = {}
         parallel_id: Optional[str] = None
         parallel_start_node_id: Optional[str] = None
+        parallel_mode_run_id: Optional[str] = None
+        duration: Optional[float] = None
 
     event: StreamEvent = StreamEvent.ITERATION_NEXT
     workflow_run_id: str
@@ -450,15 +526,15 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         node_id: str
         node_type: str
         title: str
-        outputs: Optional[dict] = None
+        outputs: Optional[Mapping] = None
         created_at: int
         extras: Optional[dict] = None
-        inputs: Optional[dict] = None
+        inputs: Optional[Mapping] = None
         status: WorkflowNodeExecutionStatus
         error: Optional[str] = None
         elapsed_time: float
         total_tokens: int
-        execution_metadata: Optional[dict] = None
+        execution_metadata: Optional[Mapping] = None
         finished_at: int
         steps: int
         parallel_id: Optional[str] = None
@@ -552,7 +628,7 @@ class AppBlockingResponse(BaseModel):
 
     task_id: str
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return jsonable_encoder(self)
 
 

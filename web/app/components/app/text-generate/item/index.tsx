@@ -22,8 +22,8 @@ import { File02 } from '@/app/components/base/icons/src/vender/line/files'
 import { Bookmark } from '@/app/components/base/icons/src/vender/line/general'
 import { Stars02 } from '@/app/components/base/icons/src/vender/line/weather'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
+import AnnotationCtrlBtn from '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-btn'
 import { fetchTextGenerationMessage } from '@/service/debug'
-import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annotation/annotation-ctrl-btn'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
@@ -282,7 +282,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const [currentTab, setCurrentTab] = useState<string>('DETAIL')
 
   return (
-    <div ref={ref} className={cn(isTop ? `rounded-xl border ${!isError ? 'border-gray-200 bg-white' : 'border-[#FECDCA] bg-[#FEF3F2]'} ` : 'rounded-br-xl !mt-0', className)}
+    <div ref={ref} className={cn(isTop ? `rounded-xl border ${!isError ? 'border-gray-200 bg-chat-bubble-bg' : 'border-[#FECDCA] bg-[#FEF3F2]'} ` : 'rounded-br-xl !mt-0', className)}
       style={isTop
         ? {
           boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)',
@@ -306,8 +306,14 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             }
             <div className={`flex ${contentClassName}`}>
               <div className='grow w-0'>
-                {siteInfo && siteInfo.show_workflow_steps && workflowProcessData && (
-                  <WorkflowProcessItem grayBg hideInfo data={workflowProcessData} expand={workflowProcessData.expand} hideProcessDetail={hideProcessDetail} />
+                {siteInfo && workflowProcessData && (
+                  <WorkflowProcessItem
+                    data={workflowProcessData}
+                    expand={workflowProcessData.expand}
+                    hideProcessDetail={hideProcessDetail}
+                    hideInfo={hideProcessDetail}
+                    readonly={!siteInfo.show_workflow_steps}
+                  />
                 )}
                 {workflowProcessData && !isError && (
                   <ResultTab data={workflowProcessData} content={content} currentTab={currentTab} onCurrentTabChange={setCurrentTab} />
@@ -334,7 +340,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                     </SimpleBtn>
                   )
                 }
-                {(currentTab === 'RESULT' || !isWorkflow) && (
+                {((currentTab === 'RESULT' && workflowProcessData?.resultText) || !isWorkflow) && (
                   <SimpleBtn
                     isDisabled={isError || !messageId}
                     className={cn(isMobile && '!px-1.5', 'space-x-1')}

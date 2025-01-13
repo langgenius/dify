@@ -332,6 +332,23 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
         if not endpoint_url.endswith("/"):
             endpoint_url += "/"
 
+        response_format = model_parameters.get("response_format")
+        if response_format:
+            if response_format == "json_schema":
+                json_schema = model_parameters.get("json_schema")
+                if not json_schema:
+                    raise ValueError("Must define JSON Schema when the response format is json_schema")
+                try:
+                    schema = json.loads(json_schema)
+                except:
+                    raise ValueError(f"not correct json_schema format: {json_schema}")
+                model_parameters.pop("json_schema")
+                model_parameters["response_format"] = {"type": "json_schema", "json_schema": schema}
+            else:
+                model_parameters["response_format"] = {"type": response_format}
+        elif "json_schema" in model_parameters:
+            del model_parameters["json_schema"]
+
         data = {"model": model, "stream": stream, **model_parameters}
 
         completion_type = LLMMode.value_of(credentials["mode"])
@@ -397,16 +414,21 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
         chunk_index = 0
 
         def create_final_llm_result_chunk(
-            index: int, message: AssistantPromptMessage, finish_reason: str
+            id: Optional[str], index: int, message: AssistantPromptMessage, finish_reason: str, usage: dict
         ) -> LLMResultChunk:
             # calculate num tokens
-            prompt_tokens = self._num_tokens_from_string(model, prompt_messages[0].content)
-            completion_tokens = self._num_tokens_from_string(model, full_assistant_content)
+            prompt_tokens = usage and usage.get("prompt_tokens")
+            if prompt_tokens is None:
+                prompt_tokens = self._num_tokens_from_string(model, prompt_messages[0].content)
+            completion_tokens = usage and usage.get("completion_tokens")
+            if completion_tokens is None:
+                completion_tokens = self._num_tokens_from_string(model, full_assistant_content)
 
             # transform usage
             usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
 
             return LLMResultChunk(
+                id=id,
                 model=model,
                 prompt_messages=prompt_messages,
                 delta=LLMResultChunkDelta(index=index, message=message, finish_reason=finish_reason, usage=usage),
@@ -450,32 +472,42 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                     tool_call.function.arguments += new_tool_call.function.arguments
 
         finish_reason = None  # The default value of finish_reason is None
-
+        message_id, usage = None, None
         for chunk in response.iter_lines(decode_unicode=True, delimiter=delimiter):
             chunk = chunk.strip()
             if chunk:
                 # ignore sse comments
                 if chunk.startswith(":"):
                     continue
-                decoded_chunk = chunk.strip().lstrip("data: ").lstrip()
+                decoded_chunk = chunk.strip().removeprefix("data:").lstrip()
                 if decoded_chunk == "[DONE]":  # Some provider returns "data: [DONE]"
                     continue
 
                 try:
-                    chunk_json = json.loads(decoded_chunk)
+                    chunk_json: dict = json.loads(decoded_chunk)
                 # stream ended
                 except json.JSONDecodeError as e:
                     yield create_final_llm_result_chunk(
+                        id=message_id,
                         index=chunk_index + 1,
                         message=AssistantPromptMessage(content=""),
                         finish_reason="Non-JSON encountered.",
+                        usage=usage,
                     )
                     break
+                # handle the error here. for issue #11629
+                if chunk_json.get("error") and chunk_json.get("choices") is None:
+                    raise ValueError(chunk_json.get("error"))
+
+                if chunk_json:
+                    if u := chunk_json.get("usage"):
+                        usage = u
                 if not chunk_json or len(chunk_json["choices"]) == 0:
                     continue
 
                 choice = chunk_json["choices"][0]
                 finish_reason = chunk_json["choices"][0].get("finish_reason")
+                message_id = chunk_json.get("id")
                 chunk_index += 1
 
                 if "delta" in choice:
@@ -524,6 +556,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                     continue
 
                 yield LLMResultChunk(
+                    id=message_id,
                     model=model,
                     prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
@@ -536,6 +569,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
 
         if tools_calls:
             yield LLMResultChunk(
+                id=message_id,
                 model=model,
                 prompt_messages=prompt_messages,
                 delta=LLMResultChunkDelta(
@@ -545,17 +579,22 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
             )
 
         yield create_final_llm_result_chunk(
-            index=chunk_index, message=AssistantPromptMessage(content=""), finish_reason=finish_reason
+            id=message_id,
+            index=chunk_index,
+            message=AssistantPromptMessage(content=""),
+            finish_reason=finish_reason,
+            usage=usage,
         )
 
     def _handle_generate_response(
         self, model: str, credentials: dict, response: requests.Response, prompt_messages: list[PromptMessage]
     ) -> LLMResult:
-        response_json = response.json()
+        response_json: dict = response.json()
 
         completion_type = LLMMode.value_of(credentials["mode"])
 
         output = response_json["choices"][0]
+        message_id = response_json.get("id")
 
         response_content = ""
         tool_calls = None
@@ -593,6 +632,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
 
         # transform response
         result = LLMResult(
+            id=message_id,
             model=response_json["model"],
             prompt_messages=prompt_messages,
             message=assistant_message,
@@ -688,7 +728,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
         model: str,
         messages: list[PromptMessage],
         tools: Optional[list[PromptMessageTool]] = None,
-        credentials: dict = None,
+        credentials: Optional[dict] = None,
     ) -> int:
         """
         Approximate num tokens with GPT2 tokenizer.

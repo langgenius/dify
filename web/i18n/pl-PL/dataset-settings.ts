@@ -34,6 +34,12 @@ const translation = {
     save: 'Zapisz',
     permissionsInvitedMembers: 'Częściowi członkowie zespołu',
     me: '(Ty)',
+    externalKnowledgeAPI: 'Interfejs API wiedzy zewnętrznej',
+    retrievalSettings: 'Ustawienia pobierania',
+    externalKnowledgeID: 'Zewnętrzny identyfikator wiedzy',
+    helpText: 'Dowiedz się, jak napisać dobry opis zestawu danych.',
+    upgradeHighQualityTip: 'Po uaktualnieniu do trybu wysokiej jakości powrót do trybu ekonomicznego nie jest dostępny',
+    indexMethodChangeToEconomyDisabledTip: 'Niedostępne w przypadku zmiany z HQ na ECO',
   },
 }
 

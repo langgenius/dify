@@ -2,10 +2,6 @@
 import { useTranslation } from 'react-i18next'
 import { useEffect, useRef, useState } from 'react'
 import {
-  RiAccountCircleFill,
-  RiAccountCircleLine,
-  RiApps2AddFill,
-  RiApps2AddLine,
   RiBox3Fill,
   RiBox3Line,
   RiCloseLine,
@@ -21,9 +17,7 @@ import {
   RiPuzzle2Line,
   RiTranslate2,
 } from '@remixicon/react'
-import AccountPage from './account-page'
 import MembersPage from './members-page'
-import IntegrationsPage from './Integrations-page'
 import LanguagePage from './language-page'
 import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page'
@@ -60,7 +54,7 @@ type GroupItem = {
 
 export default function AccountSetting({
   onCancel,
-  activeTab = 'account',
+  activeTab = 'members',
 }: IAccountSettingProps) {
   const [activeMenu, setActiveMenu] = useState(activeTab)
   const { t } = useTranslation()
@@ -126,18 +120,6 @@ export default function AccountSetting({
       name: t('common.settings.accountGroup'),
       items: [
         {
-          key: 'account',
-          name: t('common.settings.account'),
-          icon: <RiAccountCircleLine className={iconClassName} />,
-          activeIcon: <RiAccountCircleFill className={iconClassName} />,
-        },
-        {
-          key: 'integrations',
-          name: t('common.settings.integrations'),
-          icon: <RiApps2AddLine className={iconClassName} />,
-          activeIcon: <RiApps2AddFill className={iconClassName} />,
-        },
-        {
           key: 'language',
           name: t('common.settings.language'),
           icon: <RiTranslate2 className={iconClassName} />,
@@ -170,14 +152,14 @@ export default function AccountSetting({
       wrapperClassName='pt-[60px]'
     >
       <div className='flex'>
-        <div className='w-[44px] sm:w-[200px] px-[1px] py-4 sm:p-4 border border-gray-100 shrink-0 sm:shrink-1 flex flex-col items-center sm:items-start'>
-          <div className='mb-8 ml-0 sm:ml-2 text-sm sm:text-base font-medium leading-6 text-gray-900'>{t('common.userProfile.settings')}</div>
+        <div className='w-[44px] sm:w-[200px] px-[1px] py-4 sm:p-4 border border-divider-burn shrink-0 sm:shrink-1 flex flex-col items-center sm:items-start'>
+          <div className='mb-8 ml-0 sm:ml-2 sm:text-base title-2xl-semi-bold text-text-primary'>{t('common.userProfile.settings')}</div>
           <div className='w-full'>
             {
               menuItems.map(menuItem => (
                 <div key={menuItem.key} className='mb-4'>
                   {!isCurrentWorkspaceDatasetOperator && (
-                    <div className='px-2 mb-[6px] text-[10px] sm:text-xs font-medium text-gray-500'>{menuItem.name}</div>
+                    <div className='px-2 mb-[6px] sm:text-xs system-xs-medium-uppercase text-text-tertiary'>{menuItem.name}</div>
                   )}
                   <div>
                     {
@@ -186,7 +168,7 @@ export default function AccountSetting({
                           key={item.key}
                           className={`
                             flex items-center h-[37px] mb-[2px] text-sm cursor-pointer rounded-lg
-                            ${activeMenu === item.key ? 'font-semibold text-primary-600 bg-primary-50' : 'font-light text-gray-700'}
+                            ${activeMenu === item.key ? 'system-sm-semibold text-components-menu-item-text-active bg-state-base-active' : 'system-sm-medium text-components-menu-item-text'}
                           `}
                           title={item.name}
                           onClick={() => setActiveMenu(item.key)}
@@ -203,7 +185,7 @@ export default function AccountSetting({
           </div>
         </div>
         <div ref={scrollRef} className='relative w-[824px] h-[720px] pb-4 overflow-y-auto'>
-          <div className={cn('sticky top-0 px-6 py-4 flex items-center h-14 mb-4 bg-white text-base font-medium text-gray-900 z-20', scrolled && scrolledClassName)}>
+          <div className={cn('sticky top-0 px-6 py-4 flex items-center h-14 mb-4 bg-components-panel-bg title-2xl-semi-bold text-text-primary z-20', scrolled && scrolledClassName)}>
             <div className='shrink-0'>{activeItem?.name}</div>
             {
               activeItem?.description && (
@@ -211,16 +193,14 @@ export default function AccountSetting({
               )
             }
             <div className='grow flex justify-end'>
-              <div className='flex items-center justify-center -mr-4 w-6 h-6 cursor-pointer' onClick={onCancel}>
-                <RiCloseLine className='w-4 h-4 text-gray-400' />
+              <div className='z-[10] flex items-center justify-center -mr-4 p-2 cursor-pointer rounded-[10px] hover:bg-components-button-tertiary-bg' onClick={onCancel}>
+                <RiCloseLine className='w-5 h-5 text-components-button-tertiary-text' />
               </div>
             </div>
           </div>
           <div className='px-4 sm:px-8 pt-2'>
-            {activeMenu === 'account' && <AccountPage />}
             {activeMenu === 'members' && <MembersPage />}
             {activeMenu === 'billing' && <BillingPage />}
-            {activeMenu === 'integrations' && <IntegrationsPage />}
             {activeMenu === 'language' && <LanguagePage />}
             {activeMenu === 'provider' && <ModelProviderPage />}
             {activeMenu === 'data-source' && <DataSourcePage />}

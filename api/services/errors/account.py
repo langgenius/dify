@@ -13,6 +13,10 @@ class AccountLoginError(BaseServiceError):
     pass
 
 
+class AccountPasswordError(BaseServiceError):
+    pass
+
+
 class AccountNotLinkTenantError(BaseServiceError):
     pass
 

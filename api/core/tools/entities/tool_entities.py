@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any, Optional, Union, cast
 
 from pydantic import BaseModel, Field, field_validator
@@ -104,14 +104,15 @@ class ToolInvokeMessage(BaseModel):
         BLOB = "blob"
         JSON = "json"
         IMAGE_LINK = "image_link"
-        FILE_VAR = "file_var"
+        FILE = "file"
 
     type: MessageType = MessageType.TEXT
     """
         plain text, image url or link url
     """
     message: str | bytes | dict | None = None
-    meta: dict[str, Any] | None = None
+    # TODO: Use a BaseModel for meta
+    meta: dict[str, Any] = Field(default_factory=dict)
     save_as: str = ""
 
 
@@ -136,13 +137,74 @@ class ToolParameterOption(BaseModel):
 
 
 class ToolParameter(BaseModel):
-    class ToolParameterType(str, Enum):
+    class ToolParameterType(StrEnum):
         STRING = "string"
         NUMBER = "number"
         BOOLEAN = "boolean"
         SELECT = "select"
         SECRET_INPUT = "secret-input"
         FILE = "file"
+        FILES = "files"
+
+        # deprecated, should not use.
+        SYSTEM_FILES = "systme-files"
+
+        def as_normal_type(self):
+            if self in {
+                ToolParameter.ToolParameterType.SECRET_INPUT,
+                ToolParameter.ToolParameterType.SELECT,
+            }:
+                return "string"
+            return self.value
+
+        def cast_value(self, value: Any, /):
+            try:
+                match self:
+                    case (
+                        ToolParameter.ToolParameterType.STRING
+                        | ToolParameter.ToolParameterType.SECRET_INPUT
+                        | ToolParameter.ToolParameterType.SELECT
+                    ):
+                        if value is None:
+                            return ""
+                        else:
+                            return value if isinstance(value, str) else str(value)
+
+                    case ToolParameter.ToolParameterType.BOOLEAN:
+                        if value is None:
+                            return False
+                        elif isinstance(value, str):
+                            # Allowed YAML boolean value strings: https://yaml.org/type/bool.html
+                            # and also '0' for False and '1' for True
+                            match value.lower():
+                                case "true" | "yes" | "y" | "1":
+                                    return True
+                                case "false" | "no" | "n" | "0":
+                                    return False
+                                case _:
+                                    return bool(value)
+                        else:
+                            return value if isinstance(value, bool) else bool(value)
+
+                    case ToolParameter.ToolParameterType.NUMBER:
+                        if isinstance(value, int | float):
+                            return value
+                        elif isinstance(value, str) and value:
+                            if "." in value:
+                                return float(value)
+                            else:
+                                return int(value)
+                    case (
+                        ToolParameter.ToolParameterType.SYSTEM_FILES
+                        | ToolParameter.ToolParameterType.FILE
+                        | ToolParameter.ToolParameterType.FILES
+                    ):
+                        return value
+                    case _:
+                        return str(value)
+
+            except Exception:
+                raise ValueError(f"The tool parameter value {value} is not in correct type.")
 
     class ToolParameterForm(Enum):
         SCHEMA = "schema"  # should be set while adding tool
@@ -181,19 +243,22 @@ class ToolParameter(BaseModel):
         :param options: the options of the parameter
         """
         # convert options to ToolParameterOption
+        # FIXME fix the type error
         if options:
             options = [
-                ToolParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option)) for option in options
+                ToolParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option))  # type: ignore
+                for option in options  # type: ignore
             ]
         return cls(
             name=name,
             label=I18nObject(en_US="", zh_Hans=""),
             human_description=I18nObject(en_US="", zh_Hans=""),
+            placeholder=None,
             type=type,
             form=cls.ToolParameterForm.LLM,
             llm_description=llm_description,
             required=required,
-            options=options,
+            options=options,  # type: ignore
         )
 
 
@@ -269,7 +334,7 @@ class ToolProviderCredentials(BaseModel):
             "default": self.default,
             "options": self.options,
             "help": self.help.to_dict() if self.help else None,
-            "label": self.label.to_dict(),
+            "label": self.label.to_dict() if self.label else None,
             "url": self.url,
             "placeholder": self.placeholder.to_dict() if self.placeholder else None,
         }
@@ -312,7 +377,10 @@ class ToolRuntimeVariablePool(BaseModel):
                 pool[index] = ToolRuntimeImageVariable(**variable)
         super().__init__(**data)
 
-    def dict(self) -> dict:
+    def dict(self) -> dict:  # type: ignore
+        """
+        FIXME: just ignore the type check for now
+        """
         return {
             "conversation_id": self.conversation_id,
             "user_id": self.user_id,
@@ -341,7 +409,7 @@ class ToolRuntimeVariablePool(BaseModel):
 
         self.pool.append(variable)
 
-    def set_file(self, tool_name: str, value: str, name: str = None) -> None:
+    def set_file(self, tool_name: str, value: str, name: Optional[str] = None) -> None:
         """
         set an image variable
 

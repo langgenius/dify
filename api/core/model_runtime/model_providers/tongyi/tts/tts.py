@@ -1,11 +1,11 @@
 import threading
 from queue import Queue
-from typing import Optional
+from typing import Any, Optional
 
-import dashscope
-from dashscope import SpeechSynthesizer
-from dashscope.api_entities.dashscope_response import SpeechSynthesisResponse
-from dashscope.audio.tts import ResultCallback, SpeechSynthesisResult
+import dashscope  # type: ignore
+from dashscope import SpeechSynthesizer  # type: ignore
+from dashscope.api_entities.dashscope_response import SpeechSynthesisResponse  # type: ignore
+from dashscope.audio.tts import ResultCallback, SpeechSynthesisResult  # type: ignore
 
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -20,7 +20,7 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
 
     def _invoke(
         self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str, user: Optional[str] = None
-    ) -> any:
+    ) -> Any:
         """
         _invoke text2speech model
 
@@ -58,7 +58,7 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str, voice: str) -> any:
+    def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str, voice: str) -> Any:
         """
         _tts_invoke_streaming text2speech model
 

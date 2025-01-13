@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Mapping
 
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -9,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class OpenAIProvider(ModelProvider):
-    def validate_provider_credentials(self, credentials: Mapping) -> None:
+    def validate_provider_credentials(self, credentials: dict) -> None:
         """
         Validate provider credentials
         if validate failed, raise exception
@@ -19,9 +18,9 @@ class OpenAIProvider(ModelProvider):
         try:
             model_instance = self.get_model_instance(ModelType.LLM)
 
-            # Use `gpt-3.5-turbo` model for validate,
+            # Use `gpt-4o-mini` model for validate,
             # no matter what model you pass in, text completion model or chat model
-            model_instance.validate_credentials(model="gpt-3.5-turbo", credentials=credentials)
+            model_instance.validate_credentials(model="gpt-4o-mini", credentials=credentials)
         except CredentialsValidateFailedError as ex:
             raise ex
         except Exception as ex:

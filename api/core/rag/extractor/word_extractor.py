@@ -14,10 +14,12 @@ import requests
 from docx import Document as DocxDocument
 
 from configs import dify_config
+from core.helper import ssrf_proxy
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from models.enums import CreatedByRole
 from models.model import UploadFile
 
 logger = logging.getLogger(__name__)
@@ -25,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 class WordExtractor(BaseExtractor):
     """Load docx files.
-
 
     Args:
         file_path: Path to the file to load.
@@ -85,9 +86,11 @@ class WordExtractor(BaseExtractor):
                 image_count += 1
                 if rel.is_external:
                     url = rel.reltype
-                    response = requests.get(url, stream=True)
+                    response = ssrf_proxy.get(url)
                     if response.status_code == 200:
                         image_ext = mimetypes.guess_extension(response.headers["Content-Type"])
+                        if image_ext is None:
+                            continue
                         file_uuid = str(uuid.uuid4())
                         file_key = "image_files/" + self.tenant_id + "/" + file_uuid + "." + image_ext
                         mime_type, _ = mimetypes.guess_type(file_key)
@@ -96,6 +99,8 @@ class WordExtractor(BaseExtractor):
                         continue
                 else:
                     image_ext = rel.target_ref.split(".")[-1]
+                    if image_ext is None:
+                        continue
                     # user uuid as file name
                     file_uuid = str(uuid.uuid4())
                     file_key = "image_files/" + self.tenant_id + "/" + file_uuid + "." + image_ext
@@ -109,19 +114,20 @@ class WordExtractor(BaseExtractor):
                     key=file_key,
                     name=file_key,
                     size=0,
-                    extension=image_ext,
-                    mime_type=mime_type,
+                    extension=str(image_ext),
+                    mime_type=mime_type or "",
                     created_by=self.user_id,
-                    created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+                    created_by_role=CreatedByRole.ACCOUNT,
+                    created_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                     used=True,
                     used_by=self.user_id,
-                    used_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+                    used_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                 )
 
                 db.session.add(upload_file)
                 db.session.commit()
                 image_map[rel.target_part] = (
-                    f"![image]({dify_config.CONSOLE_API_URL}/files/{upload_file.id}/image-preview)"
+                    f"![image]({dify_config.CONSOLE_API_URL}/files/{upload_file.id}/file-preview)"
                 )
 
         return image_map
@@ -224,15 +230,17 @@ class WordExtractor(BaseExtractor):
                             if x_child is None:
                                 continue
                             if x.tag.endswith("instrText"):
+                                if x.text is None:
+                                    continue
                                 for i in url_pattern.findall(x.text):
                                     hyperlinks_url = str(i)
                     except Exception as e:
-                        logger.error(e)
+                        logger.exception("Failed to parse HYPERLINK xml")
 
         def parse_paragraph(paragraph):
             paragraph_content = []
             for run in paragraph.runs:
-                if hasattr(run.element, "tag") and isinstance(element.tag, str) and run.element.tag.endswith("r"):
+                if hasattr(run.element, "tag") and isinstance(run.element.tag, str) and run.element.tag.endswith("r"):
                     drawing_elements = run.element.findall(
                         ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing"
                     )
@@ -259,8 +267,10 @@ class WordExtractor(BaseExtractor):
                 if isinstance(element.tag, str) and element.tag.endswith("p"):  # paragraph
                     para = paragraphs.pop(0)
                     parsed_paragraph = parse_paragraph(para)
-                    if parsed_paragraph:
+                    if parsed_paragraph.strip():
                         content.append(parsed_paragraph)
+                    else:
+                        content.append("\n")
                 elif isinstance(element.tag, str) and element.tag.endswith("tbl"):  # table
                     table = tables.pop(0)
                     content.append(self._table_to_markdown(table, image_map))

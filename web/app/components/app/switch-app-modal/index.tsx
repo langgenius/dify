@@ -8,7 +8,9 @@ import { RiCloseLine } from '@remixicon/react'
 import AppIconPicker from '../../base/app-icon-picker'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
+import Checkbox from '@/app/components/base/checkbox'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
@@ -121,11 +123,11 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
               background={appIcon.type === 'image' ? undefined : appIcon.background}
               imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
             />
-            <input
+            <Input
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder={t('app.newApp.appNamePlaceholder') || ''}
-              className='grow h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg border border-transparent outline-none appearance-none caret-primary-600 placeholder:text-gray-400 hover:bg-gray-50 hover:border hover:border-gray-300 focus:bg-gray-50 focus:border focus:border-gray-300 focus:shadow-xs'
+              className='grow h-10'
             />
           </div>
           {showAppIconPicker && <AppIconPicker
@@ -144,8 +146,8 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         {isAppsFull && <AppsFull loc='app-switch' />}
         <div className='pt-6 flex justify-between items-center'>
           <div className='flex items-center'>
-            <input id="removeOriginal" type="checkbox" checked={removeOriginal} onChange={() => setRemoveOriginal(!removeOriginal)} className="w-4 h-4 rounded border-gray-300 text-blue-700 cursor-pointer focus:ring-blue-700" />
-            <label htmlFor="removeOriginal" className="ml-2 text-sm leading-5 text-gray-700 cursor-pointer">{t('app.removeOriginal')}</label>
+            <Checkbox className='shrink-0' checked={removeOriginal} onCheck={() => setRemoveOriginal(!removeOriginal)} />
+            <div className="ml-2 text-sm leading-5 text-gray-700 cursor-pointer" onClick={() => setRemoveOriginal(!removeOriginal)}>{t('app.removeOriginal')}</div>
           </div>
           <div className='flex items-center'>
             <Button className='mr-2' onClick={onClose}>{t('app.newApp.Cancel')}</Button>

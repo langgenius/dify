@@ -5,7 +5,7 @@ from typing import Any, Literal, Union
 import anthropic
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from anthropic import Anthropic, Stream
+from anthropic import Stream
 from anthropic.resources import Messages
 from anthropic.types import (
     ContentBlock,

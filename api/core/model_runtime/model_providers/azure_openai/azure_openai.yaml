@@ -54,6 +54,12 @@ model_credential_schema:
       required: true
       options:
         - label:
+            en_US: 2024-10-01-preview
+          value: 2024-10-01-preview
+        - label:
+            en_US: 2024-09-01-preview
+          value: 2024-09-01-preview
+        - label:
             en_US: 2024-08-01-preview
           value: 2024-08-01-preview
         - label:
@@ -80,6 +86,9 @@ model_credential_schema:
         - label:
             en_US: '2024-06-01'
           value: '2024-06-01'
+        - label:
+            en_US: '2024-10-21'
+          value: '2024-10-21'
       placeholder:
         zh_Hans: 在此选择您的 API 版本
         en_US: Select your API Version here
@@ -121,6 +130,18 @@ model_credential_schema:
             - variable: __model_type
               value: llm
         - label:
+            en_US: o1-mini
+          value: o1-mini
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: o1-preview
+          value: o1-preview
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
             en_US: gpt-4o-mini
           value: gpt-4o-mini
           show_on:
@@ -147,6 +168,12 @@ model_credential_schema:
         - label:
             en_US: gpt-4o-2024-08-06
           value: gpt-4o-2024-08-06
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4o-2024-11-20
+          value: gpt-4o-2024-11-20
           show_on:
             - variable: __model_type
               value: llm

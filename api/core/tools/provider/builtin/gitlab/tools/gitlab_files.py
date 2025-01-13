@@ -69,14 +69,16 @@ class GitlabFilesTool(BuiltinTool):
                         self.fetch_files(site_url, access_token, identifier, branch, item_path, is_repository)
                     )
                 else:  # It's a file
+                    encoded_item_path = urllib.parse.quote(item_path, safe="")
                     if is_repository:
                         file_url = (
                             f"{domain}/api/v4/projects/{encoded_identifier}/repository/files"
-                            f"/{item_path}/raw?ref={branch}"
+                            f"/{encoded_item_path}/raw?ref={branch}"
                         )
                     else:
                         file_url = (
-                            f"{domain}/api/v4/projects/{project_id}/repository/files/{item_path}/raw?ref={branch}"
+                            f"{domain}/api/v4/projects/{project_id}/repository/files"
+                            f"{encoded_item_path}/raw?ref={branch}"
                         )
 
                     file_response = requests.get(file_url, headers=headers)

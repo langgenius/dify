@@ -47,7 +47,9 @@ Chat applications support session persistence, allowing previous chat history to
       </Property>
       <Property name='inputs' type='object' key='inputs'>
           Allows the entry of various variable values defined by the App.
-          The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable. Default `{}`
+          The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable.
+          If the variable is of file type, specify an object that has the keys described in `files` below.
+          Default `{}`
       </Property>
       <Property name='response_mode' type='string' key='response_mode'>
         The mode of response return, supporting:
@@ -63,8 +65,13 @@ Chat applications support session persistence, allowing previous chat history to
       Conversation ID, to continue the conversation based on previous chat records, it is necessary to pass the previous message's conversation_id.
       </Property>
       <Property name='files' type='array[object]' key='files'>
-          File list, suitable for inputting files (images) combined with text understanding and answering questions, available only when the model supports Vision capability.
-          - `type` (string) Supported type: `image` (currently only supports image type)
+          File list, suitable for inputting files combined with text understanding and answering questions, available only when the model supports Vision capability.
+          - `type` (string) Supported type: 
+            - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
+            - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
+            - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
+            - `video` ('MP4', 'MOV', 'MPEG', 'MPGA')
+            - `custom` (Other file types)
           - `transfer_method` (string) Transfer method, `remote_url` for image URL / `local_file` for file upload
           - `url` (string) Image URL (when the transfer method is `remote_url`)
           - `upload_file_id` (string) Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)
@@ -155,7 +162,7 @@ Chat applications support session persistence, allowing previous chat history to
         - `title` (string) name of node
         - `index` (int) Execution sequence number, used to display Tracing Node sequence
         - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
-        - `inputs` (array[object]) Contents of all preceding node variables used in the node
+        - `inputs` (object) Contents of all preceding node variables used in the node
         - `created_at` (timestamp) timestamp of start, e.g., 1705395332
     - `event: node_finished` node execution ends, success or failure in different states in the same event
       - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
@@ -168,7 +175,7 @@ Chat applications support session persistence, allowing previous chat history to
         - `title` (string) name of node
         - `index` (int) Execution sequence number, used to display Tracing Node sequence
         - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
-        - `inputs` (array[object]) Contents of all preceding node variables used in the node
+        - `inputs` (object) Contents of all preceding node variables used in the node
         - `process_data` (json) Optional node process data
         - `outputs` (json) Optional content of output
         - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
@@ -303,8 +310,8 @@ Chat applications support session persistence, allowing previous chat history to
 />
 <Row>
   <Col>
-  Upload a file (currently only images are supported) for use when sending messages, enabling multimodal understanding of images and text.
-  Supports png, jpg, jpeg, webp, gif formats.
+  Upload a file for use when sending messages, enabling multimodal understanding of images and text.
+  Supports any formats that are supported by your application.
   Uploaded files are for use by the current end-user only.
 
   ### Request Body
@@ -438,6 +445,9 @@ Chat applications support session persistence, allowing previous chat history to
       <Property name='user' type='string' key='user'>
         User identifier, defined by the developer's rules, must be unique within the application.
       </Property>
+      <Property name='content' type='string' key='content'>
+        The specific content of message feedback.
+      </Property>
     </Properties>
 
     ### Response
@@ -445,7 +455,7 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123",\n    "content": "message feedback information"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \
@@ -453,7 +463,8 @@ Chat applications support session persistence, allowing previous chat history to
     --header 'Content-Type: application/json' \
     --data-raw '{
         "rating": "like",
-        "user": "abc-123"
+        "user": "abc-123",
+        "content": "message feedback information"
     }'
     ```
 
@@ -474,7 +485,7 @@ Chat applications support session persistence, allowing previous chat history to
 <Heading
   url='/messages/{message_id}/suggested'
   method='GET'
-  title='next suggested questions'
+  title='Next Suggested Questions'
   name='#suggested'
 />
 <Row>
@@ -558,7 +569,7 @@ Chat applications support session persistence, allowing previous chat history to
     - `data` (array[object]) Message list
     - `id` (string) Message ID
     - `conversation_id` (string) Conversation ID
-    - `inputs` (array[object]) User input parameters.
+    - `inputs` (object) User input parameters.
     - `query` (string) User input / question content.
     - `message_files` (array[object]) Message files
       - `id` (string) ID
@@ -642,13 +653,15 @@ Chat applications support session persistence, allowing previous chat history to
           Should be uniquely defined by the developer within the application.
       </Property>
       <Property name='last_id' type='string' key='last_id'>
-          The ID of the last record on the current page, default is null.
+          (Optional) The ID of the last record on the current page, default is null.
       </Property>
       <Property name='limit' type='int' key='limit'>
-          How many records to return in one request, default is the most recent 20 entries.
+          (Optional) How many records to return in one request, default is the most recent 20 entries. Maximum 100, minimum 1.
       </Property>
-      <Property name='pinned' type='bool' key='pinned'>
-        Return only pinned conversations as `true`, only non-pinned as `false`
+      <Property name='sort_by' type='string' key='sort_by'>
+        (Optional) Sorting Field, Default: -updated_at (sorted in descending order by update time)
+        - Available Values: created_at, -created_at, updated_at, -updated_at
+        - The symbol before the field represents the order or reverse, "-" represents reverse order.
       </Property>
     </Properties>
 
@@ -656,16 +669,18 @@ Chat applications support session persistence, allowing previous chat history to
     - `data` (array[object]) List of conversations
       - `id` (string) Conversation ID
       - `name` (string) Conversation name, by default, is generated by LLM.
-      - `inputs` (array[object]) User input parameters.
+      - `inputs` (object) User input parameters.
+      - `status` (string) Conversation status
       - `introduction` (string) Introduction
       - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
+      - `updated_at` (timestamp) Update timestamp, e.g., 1705395332
     - `has_more` (bool)
     - `limit` (int) Number of entries returned, if input exceeds system limit, system limit number is returned
 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/conversations" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20'`}>
+    <CodeGroup title="Request" tag="GET" label="/conversations" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \\\n --header 'Authorization: Bearer {api_key}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \
@@ -688,7 +703,8 @@ Chat applications support session persistence, allowing previous chat history to
               "myName": "Lucy"
           },
           "status": "normal",
-          "created_at": 1679667915
+          "created_at": 1679667915,
+          "updated_at": 1679667915
         },
         {
           "id": "hSIhXBhNe8X1d8Et"
@@ -763,13 +779,17 @@ Chat applications support session persistence, allowing previous chat history to
 <Row>
   <Col>
     ### Request Body
+    Rename the session, the session name is used for display on clients that support multiple sessions.
+
+    ### Path
+    - `conversation_id` (string) Conversation ID
 
     <Properties>
       <Property name='name' type='string' key='name'>
-          The name of the conversation. This parameter can be omitted if `auto_generate` is set to `true`.
+        (Optional) The name of the conversation. This parameter can be omitted if `auto_generate` is set to `true`.
       </Property>
       <Property name='auto_generate' type='bool' key='auto_generate'>
-        Automatically generate the title, default is `false`
+        (Optional) Automatically generate the title, default is `false`
       </Property>
       <Property name='user' type='string' key='user'>
         The user identifier, defined by the developer, must ensure uniqueness within the application.
@@ -779,20 +799,23 @@ Chat applications support session persistence, allowing previous chat history to
     ### Response
     - `id` (string) Conversation ID
     - `name` (string) Conversation name
-    - `inputs` array[object] User input parameters.
+    - `inputs` (object) User input parameters
+    - `status` (string) Conversation status
     - `introduction` (string) Introduction
     - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
+    - `updated_at` (timestamp) Update timestamp, e.g., 1705395332
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "auto_generate": true, \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \
+    curl -X POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
     --header 'Content-Type: application/json' \
     --header 'Authorization: Bearer {api_key}' \
     --data-raw '{
         "name": "",
+        "auto_generate": true,
         "user": "abc-123"
     }'
     ```
@@ -805,8 +828,10 @@ Chat applications support session persistence, allowing previous chat history to
         "id": "cd78daf6-f9e4-4463-9ff2-54257230a0ce",
         "name": "Chat vs AI",
         "inputs": {},
+        "status": "normal",
         "introduction": "",
-        "created_at": 1705569238
+        "created_at": 1705569238,
+        "updated_at": 1705569238
     }
     ```
     </CodeGroup>
@@ -869,7 +894,7 @@ Chat applications support session persistence, allowing previous chat history to
 <Heading
   url='/text-to-audio'
   method='POST'
-  title='text to audio'
+  title='Text to Audio'
   name='#audio'
 />
 <Row>
@@ -916,26 +941,56 @@ Chat applications support session persistence, allowing previous chat history to
     </CodeGroup>
   </Col>
 </Row>
+---
+
+<Heading
+  url='/info'
+  method='GET'
+  title='Get Application Basic Information'
+  name='#info'
+/>
+<Row>
+  <Col>
+  Used to get basic information about this application
+
+  ### Response
+  - `name` (string) application name
+  - `description` (string) application description
+  - `tags` (array[string]) application tags
+  </Col>
+  <Col>
+    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X GET '${props.appDetail.api_base_url}/info' \
+      -H 'Authorization: Bearer {api_key}'
+      ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "name": "My App",
+      "description": "This is my app.",
+      "tags": [
+        "tag1",
+        "tag2"
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
 
 ---
 
 <Heading
   url='/parameters'
   method='GET'
-  title='Get Application Information'
+  title='Get Application Parameters Information'
   name='#parameters'
 />
 <Row>
   <Col>
     Used at the start of entering the page to obtain information such as features, input parameter names, types, and default values.
-
-    ### Query
-
-    <Properties>
-      <Property name='user' type='string' key='user'>
-          User identifier, defined by the developer's rules, must be unique within the application.
-      </Property>
-    </Properties>
 
     ### Response
     - `opening_statement` (string) Opening statement
@@ -972,15 +1027,18 @@ Chat applications support session persistence, allowing previous chat history to
         - `number_limits` (int) Image number limit, default is 3
         - `transfer_methods` (array[string]) List of transfer methods, remote_url, local_file, must choose one
     - `system_parameters` (object) System parameters
-      - `image_file_size_limit` (string) Image file upload size limit (MB)
+      - `file_size_limit` (int) Document upload size limit (MB)
+      - `image_file_size_limit` (int) Image file upload size limit (MB)
+      - `audio_file_size_limit` (int) Audio file upload size limit (MB)
+      - `video_file_size_limit` (int) Video file upload size limit (MB)
 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
+    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
+    curl -X GET '${props.appDetail.api_base_url}/parameters' \
     --header 'Authorization: Bearer {api_key}'
     ```
 
@@ -1024,7 +1082,10 @@ Chat applications support session persistence, allowing previous chat history to
           }
       },
       "system_parameters": {
-          "image_file_size_limit": "10"
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
       }
     }
     ```
@@ -1042,13 +1103,7 @@ Chat applications support session persistence, allowing previous chat history to
 <Row>
   <Col>
   Used to get icons of tools in this application
-  ### Query
-    <Properties>
 
-   <Property name='user' type='string' key='user'>
-        User identifier, defined by the developer's rules, must be unique within the application.
-    </Property>
-      </Properties>
   ### Response
   - `tool_icons`(object[string]) tool icons
     - `tool_name` (string)
@@ -1059,9 +1114,9 @@ Chat applications support session persistence, allowing previous chat history to
         - (string) url of icon
   </Col>
   <Col>
-  <CodeGroup title="Request" tag="GET" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/meta?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
+  <CodeGroup title="Request" tag="GET" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/meta' \\\n-H 'Authorization: Bearer {api_key}'`}>
     ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/meta?user=abc-123' \
+    curl -X GET '${props.appDetail.api_base_url}/meta' \
     -H 'Authorization: Bearer {api_key}'
     ```
 
@@ -1070,14 +1125,14 @@ Chat applications support session persistence, allowing previous chat history to
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-    "tool_icons": {
+      "tool_icons": {
         "dalle2": "https://cloud.dify.ai/console/api/workspaces/current/tool-provider/builtin/dalle/icon",
         "api_tool": {
-            "background": "#252525",
-            "content": "\ud83d\ude01"
+          "background": "#252525",
+          "content": "\ud83d\ude01"
         }
+      }
     }
-  }
     ```
     </CodeGroup>
   </Col>

@@ -2,7 +2,6 @@ from typing import Any
 
 from duckduckgo_search import DDGS
 
-from core.file.file_obj import FileTransferMethod
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
@@ -19,12 +18,16 @@ class DuckDuckGoImageSearchTool(BuiltinTool):
             "size": tool_parameters.get("size"),
             "max_results": tool_parameters.get("max_results"),
         }
+
+        # Add query_prefix handling
+        query_prefix = tool_parameters.get("query_prefix", "").strip()
+        final_query = f"{query_prefix} {query_dict['keywords']}".strip()
+        query_dict["keywords"] = final_query
+
         response = DDGS().images(**query_dict)
-        result = []
+        markdown_result = "\n\n"
+        json_result = []
         for res in response:
-            res["transfer_method"] = FileTransferMethod.REMOTE_URL
-            msg = ToolInvokeMessage(
-                type=ToolInvokeMessage.MessageType.IMAGE_LINK, message=res.get("image"), save_as="", meta=res
-            )
-            result.append(msg)
-        return result
+            markdown_result += f"![{res.get('title') or ''}]({res.get('image') or ''})"
+            json_result.append(self.create_json_message(res))
+        return [self.create_text_message(markdown_result)] + json_result

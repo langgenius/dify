@@ -1,4 +1,4 @@
-"""add-dataset-retrival-model
+"""add-dataset-retrieval-model
 
 Revision ID: fca025d3b60f
 Revises: b3a09c049e8e

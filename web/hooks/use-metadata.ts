@@ -1,7 +1,7 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { formatFileSize, formatNumber, formatTime } from '@/utils/format'
-import type { DocType } from '@/models/datasets'
+import { type DocType, ProcessMode } from '@/models/datasets'
 import useTimestamp from '@/hooks/use-timestamp'
 
 export type inputType = 'input' | 'select' | 'textarea'
@@ -250,7 +250,7 @@ export const useMetadataMap = (): MetadataMap => {
       subFieldsMap: {
         'dataset_process_rule.mode': {
           label: t(`${fieldPrefix}.technicalParameters.segmentSpecification`),
-          render: value => value === 'automatic' ? (t('datasetDocuments.embedding.automatic') as string) : (t('datasetDocuments.embedding.custom') as string),
+          render: value => value === ProcessMode.general ? (t('datasetDocuments.embedding.custom') as string) : (t('datasetDocuments.embedding.hierarchical') as string),
         },
         'dataset_process_rule.rules.segmentation.max_tokens': {
           label: t(`${fieldPrefix}.technicalParameters.segmentLength`),

@@ -29,6 +29,12 @@ const translation = {
     save: 'Lưu',
     permissionsInvitedMembers: 'Thành viên một phần trong nhóm',
     me: '(Bạn)',
+    externalKnowledgeAPI: 'API kiến thức bên ngoài',
+    retrievalSettings: 'Cài đặt truy xuất',
+    externalKnowledgeID: 'ID kiến thức bên ngoài',
+    helpText: 'Tìm hiểu cách viết mô tả tập dữ liệu tốt.',
+    indexMethodChangeToEconomyDisabledTip: 'Không khả dụng để hạ cấp từ HQ xuống ECO',
+    upgradeHighQualityTip: 'Sau khi nâng cấp lên chế độ Chất lượng cao, không thể hoàn nguyên về chế độ Tiết kiệm',
   },
 }
 

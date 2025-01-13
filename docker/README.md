@@ -36,7 +36,7 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
     - Navigate to the `docker` directory.
     - Ensure the `middleware.env` file is created by running `cp middleware.env.example middleware.env` (refer to the `middleware.env.example` file).
 2. **Running Middleware Services**:
-    - Execute `docker-compose -f docker-compose.middleware.yaml up -d` to start the middleware services.
+    - Execute `docker-compose -f docker-compose.middleware.yaml up --env-file middleware.env -d` to start the middleware services.
 
 ### Migration for Existing Users
 

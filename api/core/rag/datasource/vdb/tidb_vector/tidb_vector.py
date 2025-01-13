@@ -9,10 +9,10 @@ from sqlalchemy import text as sql_text
 from sqlalchemy.orm import Session, declarative_base
 
 from configs import dify_config
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -37,8 +37,6 @@ class TiDBVectorConfig(BaseModel):
             raise ValueError("config TIDB_VECTOR_PORT is required")
         if not values["user"]:
             raise ValueError("config TIDB_VECTOR_USER is required")
-        if not values["password"]:
-            raise ValueError("config TIDB_VECTOR_PASSWORD is required")
         if not values["database"]:
             raise ValueError("config TIDB_VECTOR_DATABASE is required")
         if not values["program_name"]:
@@ -51,7 +49,7 @@ class TiDBVector(BaseVector):
         return VectorType.TIDB_VECTOR
 
     def _table(self, dim: int) -> Table:
-        from tidb_vector.sqlalchemy import VectorType
+        from tidb_vector.sqlalchemy import VectorType  # type: ignore
 
         return Table(
             self._collection_name,
@@ -184,7 +182,7 @@ class TiDBVector(BaseVector):
             self._delete_by_ids(ids)
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
-        top_k = kwargs.get("top_k", 5)
+        top_k = kwargs.get("top_k", 4)
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         filter = kwargs.get("filter")
         distance = 1 - score_threshold
@@ -243,11 +241,11 @@ class TiDBVectorFactory(AbstractVectorFactory):
         return TiDBVector(
             collection_name=collection_name,
             config=TiDBVectorConfig(
-                host=dify_config.TIDB_VECTOR_HOST,
-                port=dify_config.TIDB_VECTOR_PORT,
-                user=dify_config.TIDB_VECTOR_USER,
-                password=dify_config.TIDB_VECTOR_PASSWORD,
-                database=dify_config.TIDB_VECTOR_DATABASE,
+                host=dify_config.TIDB_VECTOR_HOST or "",
+                port=dify_config.TIDB_VECTOR_PORT or 0,
+                user=dify_config.TIDB_VECTOR_USER or "",
+                password=dify_config.TIDB_VECTOR_PASSWORD or "",
+                database=dify_config.TIDB_VECTOR_DATABASE or "",
                 program_name=dify_config.APPLICATION_NAME,
             ),
         )

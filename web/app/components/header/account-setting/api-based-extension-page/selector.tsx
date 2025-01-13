@@ -81,7 +81,10 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
               </div>
               <div
                 className='flex items-center text-xs text-primary-600 cursor-pointer'
-                onClick={() => setShowAccountSettingModal({ payload: 'api-based-extension' })}
+                onClick={() => {
+                  setOpen(false)
+                  setShowAccountSettingModal({ payload: 'api-based-extension' })
+                }}
               >
                 {t('common.apiBasedExtension.selector.manage')}
                 <ArrowUpRight className='ml-0.5 w-3 h-3' />
@@ -106,7 +109,10 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
           <div className='p-1'>
             <div
               className='flex items-center px-3 h-8 text-sm text-primary-600 cursor-pointer'
-              onClick={() => setShowApiBasedExtensionModal({ payload: {}, onSaveCallback: () => mutate() })}
+              onClick={() => {
+                setOpen(false)
+                setShowApiBasedExtensionModal({ payload: {}, onSaveCallback: () => mutate() })
+              }}
             >
               <RiAddLine className='mr-2 w-4 h-4' />
               {t('common.operation.add')}

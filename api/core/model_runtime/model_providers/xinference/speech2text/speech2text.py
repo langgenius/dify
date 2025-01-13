@@ -1,6 +1,6 @@
 from typing import IO, Optional
 
-from xinference_client.client.restful.restful_client import Client, RESTfulAudioModelHandle
+from xinference_client.client.restful.restful_client import Client, RESTfulAudioModelHandle  # type: ignore
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
@@ -129,7 +129,7 @@ class XinferenceSpeech2TextModel(Speech2TextModel):
 
         return response["text"]
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """

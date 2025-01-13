@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from copy import deepcopy
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -20,10 +20,9 @@ from core.tools.entities.tool_entities import (
     ToolRuntimeVariablePool,
 )
 from core.tools.tool_file_manager import ToolFileManager
-from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 
 if TYPE_CHECKING:
-    from core.file.file_obj import FileVar
+    from core.file.models import File
 
 
 class Tool(BaseModel, ABC):
@@ -63,8 +62,12 @@ class Tool(BaseModel, ABC):
     def __init__(self, **data: Any):
         super().__init__(**data)
 
-    class VariableKey(Enum):
+    class VariableKey(StrEnum):
         IMAGE = "image"
+        DOCUMENT = "document"
+        VIDEO = "video"
+        AUDIO = "audio"
+        CUSTOM = "custom"
 
     def fork_tool_runtime(self, runtime: dict[str, Any]) -> "Tool":
         """
@@ -88,7 +91,7 @@ class Tool(BaseModel, ABC):
         :return: the tool provider type
         """
 
-    def load_variables(self, variables: ToolRuntimeVariablePool):
+    def load_variables(self, variables: ToolRuntimeVariablePool | None) -> None:
         """
         load variables from database
 
@@ -102,6 +105,8 @@ class Tool(BaseModel, ABC):
         """
         if not self.variables:
             return
+        if self.identity is None:
+            return
 
         self.variables.set_file(self.identity.name, variable_name, image_key)
 
@@ -110,6 +115,8 @@ class Tool(BaseModel, ABC):
         set a text variable
         """
         if not self.variables:
+            return
+        if self.identity is None:
             return
 
         self.variables.set_text(self.identity.name, variable_name, text)
@@ -197,7 +204,11 @@ class Tool(BaseModel, ABC):
     def invoke(self, user_id: str, tool_parameters: Mapping[str, Any]) -> list[ToolInvokeMessage]:
         # update tool_parameters
         # TODO: Fix type error.
+        if self.runtime is None:
+            return []
         if self.runtime.runtime_parameters:
+            # Convert Mapping to dict before updating
+            tool_parameters = dict(tool_parameters)
             tool_parameters.update(self.runtime.runtime_parameters)
 
         # try parse tool parameters into the correct type
@@ -211,6 +222,12 @@ class Tool(BaseModel, ABC):
         if not isinstance(result, list):
             result = [result]
 
+        if not all(isinstance(message, ToolInvokeMessage) for message in result):
+            raise ValueError(
+                f"Invalid return type from {self.__class__.__name__}._invoke method. "
+                "Expected ToolInvokeMessage or list of ToolInvokeMessage."
+            )
+
         return result
 
     def _transform_tool_parameters_type(self, tool_parameters: Mapping[str, Any]) -> dict[str, Any]:
@@ -218,12 +235,10 @@ class Tool(BaseModel, ABC):
         Transform tool parameters type
         """
         # Temp fix for the issue that the tool parameters will be converted to empty while validating the credentials
-        result = deepcopy(tool_parameters)
+        result: dict[str, Any] = deepcopy(dict(tool_parameters))
         for parameter in self.parameters or []:
             if parameter.name in tool_parameters:
-                result[parameter.name] = ToolParameterConverter.cast_parameter_by_type(
-                    tool_parameters[parameter.name], parameter.type
-                )
+                result[parameter.name] = parameter.type.cast_value(tool_parameters[parameter.name])
 
         return result
 
@@ -233,12 +248,15 @@ class Tool(BaseModel, ABC):
     ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         pass
 
-    def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any]) -> None:
+    def validate_credentials(
+        self, credentials: dict[str, Any], parameters: dict[str, Any], format_only: bool = False
+    ) -> str | None:
         """
         validate the credentials
 
         :param credentials: the credentials
         :param parameters: the parameters
+        :param format_only: only return the formatted
         """
         pass
 
@@ -260,7 +278,7 @@ class Tool(BaseModel, ABC):
         """
         parameters = self.parameters or []
         parameters = parameters.copy()
-        user_parameters = self.get_runtime_parameters() or []
+        user_parameters = self.get_runtime_parameters()
         user_parameters = user_parameters.copy()
 
         # override parameters
@@ -295,10 +313,8 @@ class Tool(BaseModel, ABC):
         """
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE, message=image, save_as=save_as)
 
-    def create_file_var_message(self, file_var: "FileVar") -> ToolInvokeMessage:
-        return ToolInvokeMessage(
-            type=ToolInvokeMessage.MessageType.FILE_VAR, message="", meta={"file_var": file_var}, save_as=""
-        )
+    def create_file_message(self, file: "File") -> ToolInvokeMessage:
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.FILE, message="", meta={"file": file}, save_as="")
 
     def create_link_message(self, link: str, save_as: str = "") -> ToolInvokeMessage:
         """
@@ -318,14 +334,19 @@ class Tool(BaseModel, ABC):
         """
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.TEXT, message=text, save_as=save_as)
 
-    def create_blob_message(self, blob: bytes, meta: dict = None, save_as: str = "") -> ToolInvokeMessage:
+    def create_blob_message(self, blob: bytes, meta: Optional[dict] = None, save_as: str = "") -> ToolInvokeMessage:
         """
         create a blob message
 
         :param blob: the blob
         :return: the blob message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.BLOB, message=blob, meta=meta, save_as=save_as)
+        return ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.BLOB,
+            message=blob,
+            meta=meta or {},
+            save_as=save_as,
+        )
 
     def create_json_message(self, object: dict) -> ToolInvokeMessage:
         """

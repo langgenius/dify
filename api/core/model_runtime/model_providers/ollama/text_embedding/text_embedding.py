@@ -8,7 +8,7 @@ from urllib.parse import urljoin
 import numpy as np
 import requests
 
-from core.embedding.embedding_constant import EmbeddingInputType
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
@@ -61,6 +61,7 @@ class OllamaEmbeddingModel(TextEmbeddingModel):
         headers = {"Content-Type": "application/json"}
 
         endpoint_url = credentials.get("base_url")
+        assert endpoint_url is not None, "Base URL is required for Ollama API"
         if not endpoint_url.endswith("/"):
             endpoint_url += "/"
 
@@ -139,7 +140,7 @@ class OllamaEmbeddingModel(TextEmbeddingModel):
             model_type=ModelType.TEXT_EMBEDDING,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size")),
+                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size", 512)),
                 ModelPropertyKey.MAX_CHUNKS: 1,
             },
             parameter_rules=[],

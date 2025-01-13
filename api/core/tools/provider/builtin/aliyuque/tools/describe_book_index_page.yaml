@@ -1,0 +1,38 @@
+identity:
+  name: aliyuque_describe_book_index_page
+  author: 佐井
+  label:
+    en_US: Get Repo Index Page
+    zh_Hans: 获取知识库首页
+  icon: icon.svg
+
+description:
+  human:
+    en_US: Retrieves the homepage of a knowledge base within a group, supporting both book ID and group login with book slug access.
+    zh_Hans: 获取团队中知识库的首页信息，可通过书籍ID或团队登录名与书籍路径访问。
+  llm: Fetches the knowledge base homepage using group and book identifiers with support for alternate access paths.
+
+parameters:
+  - name: group_login
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: Group Login
+      zh_Hans: 团队登录名
+    human_description:
+      en_US: The login name of the group that owns the knowledge base.
+      zh_Hans: 拥有该知识库的团队登录名。
+    llm_description: Team login identifier for the knowledge base owner.
+
+  - name: book_slug
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: Book Slug
+      zh_Hans: 知识库路径
+    human_description:
+      en_US: The unique slug representing the path of the knowledge base.
+      zh_Hans: 知识库的唯一路径标识。
+    llm_description: Unique path identifier for the knowledge base.

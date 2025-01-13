@@ -79,7 +79,9 @@ const translation = {
     requestBody: '요청 본문',
     pathParams: '경로 매개변수',
     query: '쿼리',
+    toc: '목차',
   },
+  regenerate: '재생성',
 }
 
 export default translation

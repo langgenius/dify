@@ -70,7 +70,7 @@ class OutputModeration(BaseModel):
         thread = threading.Thread(
             target=self.worker,
             kwargs={
-                "flask_app": current_app._get_current_object(),
+                "flask_app": current_app._get_current_object(),  # type: ignore
                 "buffer_size": buffer_size if buffer_size > 0 else dify_config.MODERATION_BUFFER_SIZE,
             },
         )
@@ -126,6 +126,6 @@ class OutputModeration(BaseModel):
             result: ModerationOutputsResult = moderation_factory.moderation_for_outputs(moderation_buffer)
             return result
         except Exception as e:
-            logger.error("Moderation Output error: %s", e)
+            logger.exception(f"Moderation Output error, app_id: {app_id}")
 
         return None

@@ -100,7 +100,7 @@ const Popup: FC<PopupProps> = ({
                             />
                             <Tooltip
                               text={t('common.chat.citation.vectorHash')}
-                              data={source.index_node_hash.substring(0, 7)}
+                              data={source.index_node_hash?.substring(0, 7)}
                               icon={<BezierCurve03 className='mr-1 w-3 h-3' />}
                             />
                             {

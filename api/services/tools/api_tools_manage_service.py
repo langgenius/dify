@@ -1,5 +1,7 @@
 import json
 import logging
+from collections.abc import Mapping
+from typing import Any, Optional, cast
 
 from httpx import get
 
@@ -27,12 +29,12 @@ logger = logging.getLogger(__name__)
 
 class ApiToolManageService:
     @staticmethod
-    def parser_api_schema(schema: str) -> list[ApiToolBundle]:
+    def parser_api_schema(schema: str) -> Mapping[str, Any]:
         """
         parse api schema to tool bundle
         """
         try:
-            warnings = {}
+            warnings: dict[str, str] = {}
             try:
                 tool_bundles, schema_type = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(schema, warning=warnings)
             except Exception as e:
@@ -67,19 +69,24 @@ class ApiToolManageService:
                 ),
             ]
 
-            return jsonable_encoder(
-                {
-                    "schema_type": schema_type,
-                    "parameters_schema": tool_bundles,
-                    "credentials_schema": credentials_schema,
-                    "warning": warnings,
-                }
+            return cast(
+                Mapping,
+                jsonable_encoder(
+                    {
+                        "schema_type": schema_type,
+                        "parameters_schema": tool_bundles,
+                        "credentials_schema": credentials_schema,
+                        "warning": warnings,
+                    }
+                ),
             )
         except Exception as e:
             raise ValueError(f"invalid schema: {str(e)}")
 
     @staticmethod
-    def convert_schema_to_tool_bundles(schema: str, extra_info: dict = None) -> list[ApiToolBundle]:
+    def convert_schema_to_tool_bundles(
+        schema: str, extra_info: Optional[dict] = None
+    ) -> tuple[list[ApiToolBundle], str]:
         """
         convert schema to tool bundles
 
@@ -110,8 +117,10 @@ class ApiToolManageService:
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f"invalid schema type {schema}")
 
+        provider_name = provider_name.strip()
+
         # check if the provider exists
-        provider: ApiToolProvider = (
+        provider = (
             db.session.query(ApiToolProvider)
             .filter(
                 ApiToolProvider.tenant_id == tenant_id,
@@ -124,7 +133,7 @@ class ApiToolManageService:
             raise ValueError(f"provider {provider_name} already exists")
 
         # parse openapi to tool bundle
-        extra_info = {}
+        extra_info: dict[str, str] = {}
         # extra info like description will be set here
         tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
 
@@ -190,27 +199,27 @@ class ApiToolManageService:
             # try to parse schema, avoid SSRF attack
             ApiToolManageService.parser_api_schema(schema)
         except Exception as e:
-            logger.error(f"parse api schema error: {str(e)}")
+            logger.exception("parse api schema error")
             raise ValueError("invalid schema, please check the url you provided")
 
         return {"schema": schema}
 
     @staticmethod
-    def list_api_tool_provider_tools(user_id: str, tenant_id: str, provider: str) -> list[UserTool]:
+    def list_api_tool_provider_tools(user_id: str, tenant_id: str, provider_name: str) -> list[UserTool]:
         """
         list api tool provider tools
         """
-        provider: ApiToolProvider = (
+        provider = (
             db.session.query(ApiToolProvider)
             .filter(
                 ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == provider,
+                ApiToolProvider.name == provider_name,
             )
             .first()
         )
 
         if provider is None:
-            raise ValueError(f"you have not added provider {provider}")
+            raise ValueError(f"you have not added provider {provider_name}")
 
         controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
         labels = ToolLabelManager.get_tool_labels(controller)
@@ -243,8 +252,10 @@ class ApiToolManageService:
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f"invalid schema type {schema}")
 
+        provider_name = provider_name.strip()
+
         # check if the provider exists
-        provider: ApiToolProvider = (
+        provider = (
             db.session.query(ApiToolProvider)
             .filter(
                 ApiToolProvider.tenant_id == tenant_id,
@@ -255,9 +266,8 @@ class ApiToolManageService:
 
         if provider is None:
             raise ValueError(f"api provider {provider_name} does not exists")
-
         # parse openapi to tool bundle
-        extra_info = {}
+        extra_info: dict[str, str] = {}
         # extra info like description will be set here
         tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
 
@@ -311,7 +321,7 @@ class ApiToolManageService:
         """
         delete tool provider
         """
-        provider: ApiToolProvider = (
+        provider = (
             db.session.query(ApiToolProvider)
             .filter(
                 ApiToolProvider.tenant_id == tenant_id,
@@ -361,7 +371,7 @@ class ApiToolManageService:
         if tool_bundle is None:
             raise ValueError(f"invalid tool name {tool_name}")
 
-        db_provider: ApiToolProvider = (
+        db_provider = (
             db.session.query(ApiToolProvider)
             .filter(
                 ApiToolProvider.tenant_id == tenant_id,
@@ -409,13 +419,13 @@ class ApiToolManageService:
             provider_controller.validate_credentials_format(credentials)
             # get tool
             tool = provider_controller.get_tool(tool_name)
-            tool = tool.fork_tool_runtime(
+            runtime_tool = tool.fork_tool_runtime(
                 runtime={
                     "credentials": credentials,
                     "tenant_id": tenant_id,
                 }
             )
-            result = tool.validate_credentials(credentials, parameters)
+            result = runtime_tool.validate_credentials(credentials, parameters)
         except Exception as e:
             return {"error": str(e)}
 
@@ -447,7 +457,7 @@ class ApiToolManageService:
 
             tools = provider_controller.get_tools(user_id=user_id, tenant_id=tenant_id)
 
-            for tool in tools:
+            for tool in tools or []:
                 user_provider.tools.append(
                     ToolTransformService.tool_to_user_tool(
                         tenant_id=tenant_id, tool=tool, credentials=user_provider.original_credentials, labels=labels

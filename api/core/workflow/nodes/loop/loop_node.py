@@ -1,12 +1,12 @@
 from typing import Any
 
-from core.workflow.entities.node_entities import NodeType
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.base import BaseNode
+from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.loop.entities import LoopNodeData, LoopState
 from core.workflow.utils.condition.entities import Condition
 
 
-class LoopNode(BaseNode):
+class LoopNode(BaseNode[LoopNodeData]):
     """
     Loop Node.
     """
@@ -14,8 +14,8 @@ class LoopNode(BaseNode):
     _node_data_cls = LoopNodeData
     _node_type = NodeType.LOOP
 
-    def _run(self) -> LoopState:
-        return super()._run()
+    def _run(self) -> LoopState:  # type: ignore
+        return super()._run()  # type: ignore
 
     @classmethod
     def get_conditions(cls, node_config: dict[str, Any]) -> list[Condition]:
@@ -28,7 +28,7 @@ class LoopNode(BaseNode):
 
         # TODO waiting for implementation
         return [
-            Condition(
+            Condition(  # type: ignore
                 variable_selector=[node_id, "index"],
                 comparison_operator="≤",
                 value_type="value_selector",

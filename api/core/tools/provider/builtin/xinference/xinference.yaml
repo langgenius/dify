@@ -31,7 +31,7 @@ credentials_for_provider:
       zh_Hans: 请输入你的模型名称
   api_key:
     type: secret-input
-    required: true
+    required: false
     label:
       en_US: API Key
       zh_Hans: Xinference 服务器的 API Key

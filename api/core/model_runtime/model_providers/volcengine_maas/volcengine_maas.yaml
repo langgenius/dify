@@ -119,6 +119,18 @@ model_credential_schema:
       required: true
       options:
         - label:
+            en_US: Doubao-vision-pro-32k
+          value: Doubao-vision-pro-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-vision-lite-32k
+          value: Doubao-vision-lite-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
             en_US: Doubao-pro-4k
           value: Doubao-pro-4k
           show_on:
@@ -151,6 +163,12 @@ model_credential_schema:
         - label:
             en_US: Doubao-lite-128k
           value: Doubao-lite-128k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-pro-256k
+          value: Doubao-pro-256k
           show_on:
             - variable: __model_type
               value: llm
@@ -205,6 +223,12 @@ model_credential_schema:
         - label:
             en_US: Doubao-embedding
           value: Doubao-embedding
+          show_on:
+            - variable: __model_type
+              value: text-embedding
+        - label:
+            en_US: Doubao-embedding-large
+          value: Doubao-embedding-large
           show_on:
             - variable: __model_type
               value: text-embedding

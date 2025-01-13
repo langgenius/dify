@@ -1,16 +1,17 @@
 import json
 from collections.abc import Mapping
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from mimetypes import guess_type
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 from yarl import URL
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.file.file_obj import FileTransferMethod
+from core.file import FileType
+from core.file.models import FileTransferMethod
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessageBinary, ToolInvokeMeta, ToolParameter
 from core.tools.errors import (
@@ -26,6 +27,7 @@ from core.tools.tool.tool import Tool
 from core.tools.tool.workflow_tool import WorkflowTool
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from extensions.ext_database import db
+from models.enums import CreatedByRole
 from models.model import Message, MessageFile
 
 
@@ -44,7 +46,7 @@ class ToolEngine:
         invoke_from: InvokeFrom,
         agent_tool_callback: DifyAgentCallbackHandler,
         trace_manager: Optional[TraceQueueManager] = None,
-    ) -> tuple[str, list[tuple[MessageFile, bool]], ToolInvokeMeta]:
+    ) -> tuple[str, list[tuple[MessageFile, str]], ToolInvokeMeta]:
         """
         Agent invokes the tool with the given arguments.
         """
@@ -53,15 +55,22 @@ class ToolEngine:
             # check if this tool has only one parameter
             parameters = [
                 parameter
-                for parameter in tool.get_runtime_parameters() or []
+                for parameter in tool.get_runtime_parameters()
                 if parameter.form == ToolParameter.ToolParameterForm.LLM
             ]
             if parameters and len(parameters) == 1:
                 tool_parameters = {parameters[0].name: tool_parameters}
             else:
-                raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
+                try:
+                    tool_parameters = json.loads(tool_parameters)
+                except Exception as e:
+                    pass
+                if not isinstance(tool_parameters, dict):
+                    raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
 
         # invoke the tool
+        if tool.identity is None:
+            raise ValueError("tool identity is not set")
         try:
             # hit the callback handler
             agent_tool_callback.on_tool_start(tool_name=tool.identity.name, tool_inputs=tool_parameters)
@@ -104,7 +113,7 @@ class ToolEngine:
             error_response = f"tool invoke error: {e}"
             agent_tool_callback.on_tool_error(e)
         except ToolEngineInvokeError as e:
-            meta = e.args[0]
+            meta = e.meta
             error_response = f"tool invoke error: {meta.error}"
             agent_tool_callback.on_tool_error(e)
             return error_response, [], meta
@@ -128,6 +137,7 @@ class ToolEngine:
         """
         try:
             # hit the callback handler
+            assert tool.identity is not None
             workflow_tool_callback.on_tool_start(tool_name=tool.identity.name, tool_inputs=tool_parameters)
 
             if isinstance(tool, WorkflowTool):
@@ -155,7 +165,9 @@ class ToolEngine:
         """
         Invoke the tool with the given arguments.
         """
-        started_at = datetime.now(timezone.utc)
+        if tool.identity is None:
+            raise ValueError("tool identity is not set")
+        started_at = datetime.now(UTC)
         meta = ToolInvokeMeta(
             time_cost=0.0,
             error=None,
@@ -163,7 +175,7 @@ class ToolEngine:
                 "tool_name": tool.identity.name,
                 "tool_provider": tool.identity.provider,
                 "tool_provider_type": tool.tool_provider_type().value,
-                "tool_parameters": deepcopy(tool.runtime.runtime_parameters),
+                "tool_parameters": deepcopy(tool.runtime.runtime_parameters) if tool.runtime else {},
                 "tool_icon": tool.identity.icon,
             },
         )
@@ -173,7 +185,7 @@ class ToolEngine:
             meta.error = str(e)
             raise ToolEngineInvokeError(meta)
         finally:
-            ended_at = datetime.now(timezone.utc)
+            ended_at = datetime.now(UTC)
             meta.time_cost = (ended_at - started_at).total_seconds()
 
         return meta, response
@@ -186,9 +198,9 @@ class ToolEngine:
         result = ""
         for response in tool_response:
             if response.type == ToolInvokeMessage.MessageType.TEXT:
-                result += response.message
+                result += str(response.message) if response.message is not None else ""
             elif response.type == ToolInvokeMessage.MessageType.LINK:
-                result += f"result link: {response.message}. please tell user to check it."
+                result += f"result link: {response.message!r}. please tell user to check it."
             elif response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
                 result += (
                     "image has been created and sent to user already, you do not need to create it,"
@@ -197,7 +209,7 @@ class ToolEngine:
             elif response.type == ToolInvokeMessage.MessageType.JSON:
                 result += f"tool response: {json.dumps(response.message, ensure_ascii=False)}."
             else:
-                result += f"tool response: {response.message}."
+                result += f"tool response: {response.message!r}."
 
         return result
 
@@ -215,7 +227,7 @@ class ToolEngine:
                     mimetype = response.meta.get("mime_type")
                 else:
                     try:
-                        url = URL(response.message)
+                        url = URL(cast(str, response.message))
                         extension = url.suffix
                         guess_type_result, _ = guess_type(f"a{extension}")
                         if guess_type_result:
@@ -229,7 +241,7 @@ class ToolEngine:
                 result.append(
                     ToolInvokeMessageBinary(
                         mimetype=response.meta.get("mime_type", "image/jpeg"),
-                        url=response.message,
+                        url=cast(str, response.message),
                         save_as=response.save_as,
                     )
                 )
@@ -237,7 +249,7 @@ class ToolEngine:
                 result.append(
                     ToolInvokeMessageBinary(
                         mimetype=response.meta.get("mime_type", "octet/stream"),
-                        url=response.message,
+                        url=cast(str, response.message),
                         save_as=response.save_as,
                     )
                 )
@@ -249,7 +261,7 @@ class ToolEngine:
                             mimetype=response.meta.get("mime_type", "octet/stream")
                             if response.meta
                             else "octet/stream",
-                            url=response.message,
+                            url=cast(str, response.message),
                             save_as=response.save_as,
                         )
                     )
@@ -258,7 +270,10 @@ class ToolEngine:
 
     @staticmethod
     def _create_message_files(
-        tool_messages: list[ToolInvokeMessageBinary], agent_message: Message, invoke_from: InvokeFrom, user_id: str
+        tool_messages: list[ToolInvokeMessageBinary],
+        agent_message: Message,
+        invoke_from: InvokeFrom,
+        user_id: str,
     ) -> list[tuple[Any, str]]:
         """
         Create message file
@@ -269,29 +284,31 @@ class ToolEngine:
         result = []
 
         for message in tool_messages:
-            file_type = "bin"
             if "image" in message.mimetype:
-                file_type = "image"
+                file_type = FileType.IMAGE
             elif "video" in message.mimetype:
-                file_type = "video"
+                file_type = FileType.VIDEO
             elif "audio" in message.mimetype:
-                file_type = "audio"
-            elif "text" in message.mimetype:
-                file_type = "text"
-            elif "pdf" in message.mimetype:
-                file_type = "pdf"
-            elif "zip" in message.mimetype:
-                file_type = "archive"
-            # ...
+                file_type = FileType.AUDIO
+            elif "text" in message.mimetype or "pdf" in message.mimetype:
+                file_type = FileType.DOCUMENT
+            else:
+                file_type = FileType.CUSTOM
 
+            # extract tool file id from url
+            tool_file_id = message.url.split("/")[-1].split(".")[0]
             message_file = MessageFile(
                 message_id=agent_message.id,
                 type=file_type,
-                transfer_method=FileTransferMethod.TOOL_FILE.value,
+                transfer_method=FileTransferMethod.TOOL_FILE,
                 belongs_to="assistant",
                 url=message.url,
-                upload_file_id=None,
-                created_by_role=("account" if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end_user"),
+                upload_file_id=tool_file_id,
+                created_by_role=(
+                    CreatedByRole.ACCOUNT
+                    if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
+                    else CreatedByRole.END_USER
+                ),
                 created_by=user_id,
             )
 

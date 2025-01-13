@@ -3,7 +3,7 @@ import type {
   VisionFile,
   VisionSettings,
 } from '@/types/app'
-
+import type { ExternalDataTool } from '@/models/common'
 export type { VisionFile } from '@/types/app'
 export { TransferMethod } from '@/types/app'
 
@@ -36,6 +36,8 @@ export type EnableType = {
   enabled: boolean
 }
 
-export type TextGenerationConfig = Omit<ModelConfig, 'model'>
+export type TextGenerationConfig = Omit<ModelConfig, 'model'> & {
+  external_data_tools: ExternalDataTool[]
+}
 
 export type OnSend = (message: string, files?: VisionFile[]) => void

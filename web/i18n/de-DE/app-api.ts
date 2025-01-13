@@ -76,8 +76,10 @@ const translation = {
     requestBody: 'Anfragekörper',
     pathParams: 'Pfadparameter',
     query: 'Anfrage',
+    toc: 'Inhalt',
   },
   loading: 'Laden',
+  regenerate: 'Erneuern',
 }
 
 export default translation

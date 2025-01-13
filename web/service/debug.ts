@@ -9,6 +9,11 @@ export type AutomaticRes = {
   opening_statement: string
   error?: string
 }
+export type CodeGenRes = {
+  code: string
+  language: string[]
+  error?: string
+}
 
 export const sendChatMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace }: {
   onData: IOnData
@@ -68,6 +73,11 @@ export const fetchConversationMessages = (appId: string, conversation_id: string
 
 export const generateRule = (body: Record<string, any>) => {
   return post<AutomaticRes>('/rule-generate', {
+    body,
+  })
+}
+export const generateRuleCode = (body: Record<string, any>) => {
+  return post<CodeGenRes>('/rule-code-generate', {
     body,
   })
 }

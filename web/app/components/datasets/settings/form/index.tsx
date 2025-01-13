@@ -2,23 +2,26 @@
 import { useState } from 'react'
 import { useMount } from 'ahooks'
 import { useContext } from 'use-context-selector'
-import { BookOpenIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import { useSWRConfig } from 'swr'
 import { unstable_serialize } from 'swr/infinite'
 import PermissionSelector from '../permission-selector'
 import IndexMethodRadio from '../index-method-radio'
-import cn from '@/utils/classnames'
+import RetrievalSettings from '../../external-knowledge-base/create/RetrievalSettings'
+import { IndexingType } from '../../create/step-two'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
+import Textarea from '@/app/components/base/textarea'
+import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { updateDatasetSetting } from '@/service/datasets'
-import type { DataSetListResponse } from '@/models/datasets'
+import { type DataSetListResponse } from '@/models/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { type RetrievalConfig } from '@/types/app'
 import { useAppContext } from '@/context/app-context'
-import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import {
   useModelList,
@@ -28,15 +31,11 @@ import type { DefaultModel } from '@/app/components/header/account-setting/model
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
+import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
 
-const rowClass = `
-  flex justify-between py-4 flex-wrap gap-y-2
-`
+const rowClass = 'flex'
 const labelClass = `
-  flex items-center w-[168px] h-9
-`
-const inputClass = `
-  w-full max-w-[480px] px-3 bg-gray-100 text-sm text-gray-800 rounded-lg outline-none appearance-none
+  flex items-center shrink-0 w-[180px] h-9
 `
 
 const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
@@ -55,6 +54,9 @@ const Form = () => {
   const [name, setName] = useState(currentDataset?.name ?? '')
   const [description, setDescription] = useState(currentDataset?.description ?? '')
   const [permission, setPermission] = useState(currentDataset?.permission)
+  const [topK, setTopK] = useState(currentDataset?.external_retrieval_model.top_k ?? 2)
+  const [scoreThreshold, setScoreThreshold] = useState(currentDataset?.external_retrieval_model.score_threshold ?? 0.5)
+  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(currentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset?.partial_member_list || [])
   const [memberList, setMemberList] = useState<Member[]>([])
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
@@ -72,8 +74,6 @@ const Form = () => {
   )
   const {
     modelList: rerankModelList,
-    defaultModel: rerankDefaultModel,
-    currentModel: isRerankDefaultModelValid,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
 
@@ -83,6 +83,15 @@ const Form = () => {
       setMemberList([])
     else
       setMemberList(accounts)
+  }
+
+  const handleSettingsChange = (data: { top_k?: number; score_threshold?: number; score_threshold_enabled?: boolean }) => {
+    if (data.top_k !== undefined)
+      setTopK(data.top_k)
+    if (data.score_threshold !== undefined)
+      setScoreThreshold(data.score_threshold)
+    if (data.score_threshold_enabled !== undefined)
+      setScoreThresholdEnabled(data.score_threshold_enabled)
   }
 
   useMount(() => {
@@ -98,8 +107,6 @@ const Form = () => {
     }
     if (
       !isReRankModelSelected({
-        rerankDefaultModel,
-        isRerankDefaultModelValid: !!isRerankDefaultModelValid,
         rerankModelList,
         retrievalConfig,
         indexMethod,
@@ -108,14 +115,9 @@ const Form = () => {
       notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
       return
     }
-    const postRetrievalConfig = ensureRerankModelSelected({
-      rerankDefaultModel: rerankDefaultModel!,
-      retrievalConfig,
-      indexMethod,
-    })
-    if (postRetrievalConfig.weights) {
-      postRetrievalConfig.weights.vector_setting.embedding_provider_name = currentDataset?.embedding_model_provider || ''
-      postRetrievalConfig.weights.vector_setting.embedding_model_name = currentDataset?.embedding_model || ''
+    if (retrievalConfig.weights) {
+      retrievalConfig.weights.vector_setting.embedding_provider_name = currentDataset?.embedding_model_provider || ''
+      retrievalConfig.weights.vector_setting.embedding_model_name = currentDataset?.embedding_model || ''
     }
     try {
       setLoading(true)
@@ -127,11 +129,20 @@ const Form = () => {
           permission,
           indexing_technique: indexMethod,
           retrieval_model: {
-            ...postRetrievalConfig,
-            score_threshold: postRetrievalConfig.score_threshold_enabled ? postRetrievalConfig.score_threshold : 0,
+            ...retrievalConfig,
+            score_threshold: retrievalConfig.score_threshold_enabled ? retrievalConfig.score_threshold : 0,
           },
           embedding_model: embeddingModel.model,
           embedding_model_provider: embeddingModel.provider,
+          ...(currentDataset!.provider === 'external' && {
+            external_knowledge_id: currentDataset!.external_knowledge_info.external_knowledge_id,
+            external_knowledge_api_id: currentDataset!.external_knowledge_info.external_knowledge_api_id,
+            external_retrieval_model: {
+              top_k: topK,
+              score_threshold: scoreThreshold,
+              score_threshold_enabled: scoreThresholdEnabled,
+            },
+          }),
         },
       } as any
       if (permission === 'partial_members') {
@@ -158,15 +169,15 @@ const Form = () => {
   }
 
   return (
-    <div className='w-full sm:w-[800px] p-4 sm:px-16 sm:py-6'>
+    <div className='w-full sm:w-[880px] px-14 py-8 flex flex-col gap-y-4'>
       <div className={rowClass}>
         <div className={labelClass}>
-          <div>{t('datasetSettings.form.name')}</div>
+          <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.name')}</div>
         </div>
-        <div className='w-full max-w-[480px]'>
-          <input
+        <div className='grow'>
+          <Input
             disabled={!currentDataset?.embedding_available}
-            className={cn(inputClass, !currentDataset?.embedding_available && 'opacity-60', 'h-9')}
+            className='h-9'
             value={name}
             onChange={e => setName(e.target.value)}
           />
@@ -174,27 +185,23 @@ const Form = () => {
       </div>
       <div className={rowClass}>
         <div className={labelClass}>
-          <div>{t('datasetSettings.form.desc')}</div>
+          <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.desc')}</div>
         </div>
-        <div className='w-full max-w-[480px]'>
-          <textarea
+        <div className='grow'>
+          <Textarea
             disabled={!currentDataset?.embedding_available}
-            className={cn(`${inputClass} block mb-2 h-[120px] py-2 resize-none`, !currentDataset?.embedding_available && 'opacity-60')}
+            className='h-[120px] resize-none'
             placeholder={t('datasetSettings.form.descPlaceholder') || ''}
             value={description}
             onChange={e => setDescription(e.target.value)}
           />
-          <a className='flex items-center h-[18px] px-3 text-xs text-gray-500' href="https://docs.dify.ai/features/datasets#how-to-write-a-good-dataset-description" target='_blank' rel='noopener noreferrer'>
-            <BookOpenIcon className='w-3 h-[18px] mr-1' />
-            {t('datasetSettings.form.descWrite')}
-          </a>
         </div>
       </div>
       <div className={rowClass}>
         <div className={labelClass}>
-          <div>{t('datasetSettings.form.permissions')}</div>
+          <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.permissions')}</div>
         </div>
-        <div className='w-full sm:w-[480px]'>
+        <div className='grow'>
           <PermissionSelector
             disabled={!currentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
             permission={permission}
@@ -207,71 +214,133 @@ const Form = () => {
       </div>
       {currentDataset && currentDataset.indexing_technique && (
         <>
-          <div className='w-full h-0 border-b-[0.5px] border-b-gray-200 my-2' />
+          <div className='w-full h-0 border-b border-divider-subtle my-1' />
           <div className={rowClass}>
             <div className={labelClass}>
-              <div>{t('datasetSettings.form.indexMethod')}</div>
+              <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.indexMethod')}</div>
             </div>
-            <div className='w-full sm:w-[480px]'>
+            <div className='grow'>
               <IndexMethodRadio
                 disable={!currentDataset?.embedding_available}
                 value={indexMethod}
-                onChange={v => setIndexMethod(v)}
+                onChange={v => setIndexMethod(v!)}
+                docForm={currentDataset.doc_form}
+                currentValue={currentDataset.indexing_technique}
               />
+              {currentDataset.indexing_technique === IndexingType.ECONOMICAL && indexMethod === IndexingType.QUALIFIED && <div className='mt-2 h-10 p-2 flex items-center gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border overflow-hidden bg-components-panel-bg-blur backdrop-blur-[5px] shadow-xs'>
+                <div className='absolute top-0 left-0 right-0 bottom-0 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)] opacity-40'></div>
+                <div className='p-1'>
+                  <AlertTriangle className='size-4 text-text-warning-secondary' />
+                </div>
+                <span className='system-xs-medium'>{t('datasetSettings.form.upgradeHighQualityTip')}</span>
+              </div>}
             </div>
           </div>
         </>
       )}
       {indexMethod === 'high_quality' && (
-        <div className={rowClass}>
-          <div className={labelClass}>
-            <div>{t('datasetSettings.form.embeddingModel')}</div>
-          </div>
-          <div className='w-[480px]'>
-            <ModelSelector
-              triggerClassName=''
-              defaultModel={embeddingModel}
-              modelList={embeddingModelList}
-              onSelect={(model: DefaultModel) => {
-                setEmbeddingModel(model)
-              }}
-            />
-          </div>
-        </div>
-      )}
-      {/* Retrieval Method Config */}
-      <div className={rowClass}>
-        <div className={labelClass}>
-          <div>
-            <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
-            <div className='leading-[18px] text-xs font-normal text-gray-500'>
-              <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
-              {t('datasetSettings.form.retrievalSetting.description')}
+        <>
+          <div className={rowClass}>
+            <div className={labelClass}>
+              <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.embeddingModel')}</div>
+            </div>
+            <div className='grow'>
+              <ModelSelector
+                triggerClassName=''
+                defaultModel={embeddingModel}
+                modelList={embeddingModelList}
+                onSelect={(model: DefaultModel) => {
+                  setEmbeddingModel(model)
+                }}
+              />
             </div>
           </div>
-        </div>
-        <div className='w-[480px]'>
-          {indexMethod === 'high_quality'
-            ? (
-              <RetrievalMethodConfig
-                value={retrievalConfig}
-                onChange={setRetrievalConfig}
-              />
-            )
-            : (
-              <EconomicalRetrievalMethodConfig
-                value={retrievalConfig}
-                onChange={setRetrievalConfig}
-              />
-            )}
-        </div>
-      </div>
+        </>
+      )}
+      {/* Retrieval Method Config */}
+      {currentDataset?.provider === 'external'
+        ? <>
+          <div className='w-full h-0 border-b border-divider-subtle my-1' />
+          <div className={rowClass}>
+            <div className={labelClass}>
+              <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.retrievalSetting.title')}</div>
+            </div>
+            <RetrievalSettings
+              topK={topK}
+              scoreThreshold={scoreThreshold}
+              scoreThresholdEnabled={scoreThresholdEnabled}
+              onChange={handleSettingsChange}
+              isInRetrievalSetting={true}
+            />
+          </div>
+          <div className='w-full h-0 border-b border-divider-subtle my-1' />
+          <div className={rowClass}>
+            <div className={labelClass}>
+              <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.externalKnowledgeAPI')}</div>
+            </div>
+            <div className='w-full'>
+              <div className='flex h-full px-3 py-2 items-center gap-1 rounded-lg bg-components-input-bg-normal'>
+                <ApiConnectionMod className='w-4 h-4 text-text-secondary' />
+                <div className='overflow-hidden text-text-secondary text-ellipsis system-sm-medium'>
+                  {currentDataset?.external_knowledge_info.external_knowledge_api_name}
+                </div>
+                <div className='text-text-tertiary system-xs-regular'>·</div>
+                <div className='text-text-tertiary system-xs-regular'>{currentDataset?.external_knowledge_info.external_knowledge_api_endpoint}</div>
+              </div>
+            </div>
+          </div>
+          <div className={rowClass}>
+            <div className={labelClass}>
+              <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.externalKnowledgeID')}</div>
+            </div>
+            <div className='w-full'>
+              <div className='flex h-full px-3 py-2 items-center gap-1 rounded-lg bg-components-input-bg-normal'>
+                <div className='text-text-tertiary system-xs-regular'>{currentDataset?.external_knowledge_info.external_knowledge_id}</div>
+              </div>
+            </div>
+          </div>
+        </>
+        : indexMethod
+          ? <>
+            <div className='w-full h-0 border-b border-divider-subtle my-1' />
+            <div className={rowClass}>
+              <div className={labelClass}>
+                <div>
+                  <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.retrievalSetting.title')}</div>
+                  <div className='body-xs-regular text-text-tertiary'>
+                    <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                    {t('datasetSettings.form.retrievalSetting.description')}
+                  </div>
+                </div>
+              </div>
+              <div className='grow'>
+                {indexMethod === IndexingType.QUALIFIED
+                  ? (
+                    <RetrievalMethodConfig
+                      value={retrievalConfig}
+                      onChange={setRetrievalConfig}
+                    />
+                  )
+                  : (
+                    <EconomicalRetrievalMethodConfig
+                      value={retrievalConfig}
+                      onChange={setRetrievalConfig}
+                    />
+                  )}
+              </div>
+            </div>
+          </>
+          : null
+      }
+      <div className='w-full h-0 border-b border-divider-subtle my-1' />
       <div className={rowClass}>
         <div className={labelClass} />
-        <div className='w-[480px]'>
+        <div className='grow'>
           <Button
             className='min-w-24'
             variant='primary'
+            loading={loading}
+            disabled={loading}
             onClick={handleSave}
           >
             {t('datasetSettings.form.save')}

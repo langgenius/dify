@@ -1,13 +1,14 @@
 import time
 from typing import Optional
 
-from core.embedding.embedding_constant import EmbeddingInputType
+from zhipuai import ZhipuAI  # type: ignore
+
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.zhipuai._common import _CommonZhipuaiAI
-from core.model_runtime.model_providers.zhipuai.zhipuai_sdk._client import ZhipuAI
 
 
 class ZhipuAITextEmbeddingModel(_CommonZhipuaiAI, TextEmbeddingModel):
@@ -103,17 +104,6 @@ class ZhipuAITextEmbeddingModel(_CommonZhipuaiAI, TextEmbeddingModel):
             embedding_used_tokens += response.usage.total_tokens
 
         return [list(map(float, e)) for e in embeddings], embedding_used_tokens
-
-    def embed_query(self, text: str) -> list[float]:
-        """Call out to ZhipuAI's embedding endpoint.
-
-        Args:
-            text: The text to embed.
-
-        Returns:
-            Embeddings for the text.
-        """
-        return self.embed_documents([text])[0]
 
     def _calc_response_usage(self, model: str, credentials: dict, tokens: int) -> EmbeddingUsage:
         """

@@ -1,8 +1,9 @@
 import pytest
 from pydantic import ValidationError
 
-from core.app.segments import (
-    ArrayAnyVariable,
+from core.variables import (
+    ArrayFileVariable,
+    ArrayVariable,
     FloatVariable,
     IntegerVariable,
     ObjectVariable,
@@ -82,3 +83,8 @@ def test_variable_to_object():
     assert var.to_object() == 3.14
     var = SecretVariable(name="secret", value="secret_value")
     assert var.to_object() == "secret_value"
+
+
+def test_array_file_variable_is_array_variable():
+    var = ArrayFileVariable(name="files", value=[])
+    assert isinstance(var, ArrayVariable)

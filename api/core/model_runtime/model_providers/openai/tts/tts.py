@@ -1,5 +1,5 @@
 import concurrent.futures
-from typing import Optional
+from typing import Any, Optional
 
 from openai import OpenAI
 
@@ -11,12 +11,12 @@ from core.model_runtime.model_providers.openai._common import _CommonOpenAI
 
 class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
     """
-    Model class for OpenAI Speech to text model.
+    Model class for OpenAI text2speech model.
     """
 
     def _invoke(
         self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str, user: Optional[str] = None
-    ) -> any:
+    ) -> Any:
         """
         _invoke text2speech model
 
@@ -55,7 +55,7 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str, voice: str) -> any:
+    def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str, voice: str) -> Any:
         """
         _tts_invoke_streaming text2speech model
 

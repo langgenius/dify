@@ -77,7 +77,9 @@ const translation = {
     requestBody: 'अनुरोध निकाय',
     pathParams: 'पथ पैरामीटर',
     query: 'प्रश्न',
+    toc: 'सामग्री',
   },
+  regenerate: 'पुनर्जन्म',
 }
 
 export default translation

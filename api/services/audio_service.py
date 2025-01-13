@@ -1,5 +1,6 @@
 import io
 import logging
+import uuid
 from typing import Optional
 
 from werkzeug.datastructures import FileStorage
@@ -110,6 +111,8 @@ class AudioService:
                         voices = model_instance.get_tts_voices()
                         if voices:
                             voice = voices[0].get("value")
+                            if not voice:
+                                raise ValueError("Sorry, no voice available.")
                         else:
                             raise ValueError("Sorry, no voice available.")
 
@@ -120,7 +123,13 @@ class AudioService:
                     raise e
 
         if message_id:
+            try:
+                uuid.UUID(message_id)
+            except ValueError:
+                return None
             message = db.session.query(Message).filter(Message.id == message_id).first()
+            if message is None:
+                return None
             if message.answer == "" and message.status == "normal":
                 return None
 
@@ -130,6 +139,8 @@ class AudioService:
                     return Response(stream_with_context(response), content_type="audio/mpeg")
                 return response
         else:
+            if text is None:
+                raise ValueError("Text is required")
             response = invoke_tts(text, app_model, voice)
             if isinstance(response, Generator):
                 return Response(stream_with_context(response), content_type="audio/mpeg")

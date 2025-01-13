@@ -1,14 +1,5 @@
-/* .cardWrapper {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, auto));
-  grid-gap: 16px;
-  grid-auto-rows: 180px;
-} */
-.totalText {
-  @apply text-gray-900 font-medium text-base flex-1;
-}
 .docSearchWrapper {
-  @apply sticky w-full py-1 -top-3 bg-white flex items-center mb-3 justify-between z-10 flex-wrap gap-y-1;
+  @apply sticky w-full -top-3 flex items-center mb-3 justify-between z-[11] flex-wrap gap-y-1 pr-3;
 }
 .listContainer {
   height: calc(100% - 3.25rem);
@@ -41,7 +32,7 @@
   @apply text-primary-600 font-semibold text-xs absolute right-0 hidden h-12 pl-12 items-center;
 }
 .select {
-  @apply h-8 py-0 bg-gray-50 hover:bg-gray-100 rounded-lg shadow-none !important;
+  @apply h-8 py-0 pr-5 w-[100px] shadow-none !important;
 }
 .segModalContent {
   @apply h-96 text-gray-800 text-base break-all overflow-y-scroll;

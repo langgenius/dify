@@ -10,6 +10,7 @@ type Props = {
   list: KeyValue[]
   onChange: (newList: KeyValue[]) => void
   onAdd: () => void
+  isSupportFile?: boolean
   // toggleKeyValueEdit: () => void
 }
 
@@ -19,6 +20,7 @@ const KeyValueList: FC<Props> = ({
   list,
   onChange,
   onAdd,
+  isSupportFile,
   // toggleKeyValueEdit,
 }) => {
   // const handleBulkValueChange = useCallback((value: string) => {
@@ -48,6 +50,7 @@ const KeyValueList: FC<Props> = ({
     list={list}
     onChange={onChange}
     onAdd={onAdd}
+    isSupportFile={isSupportFile}
   // onSwitchToBulkEdit={toggleKeyValueEdit}
   />
   // : <BulkEdit

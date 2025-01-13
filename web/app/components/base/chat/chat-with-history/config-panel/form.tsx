@@ -3,22 +3,26 @@ import { useTranslation } from 'react-i18next'
 import { useChatWithHistoryContext } from '../context'
 import Input from './form-input'
 import { PortalSelect } from '@/app/components/base/select'
+import { InputVarType } from '@/app/components/workflow/types'
+import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 
 const Form = () => {
   const { t } = useTranslation()
   const {
+    appParams,
     inputsForms,
     newConversationInputs,
+    newConversationInputsRef,
     handleNewConversationInputsChange,
     isMobile,
   } = useChatWithHistoryContext()
 
-  const handleFormChange = useCallback((variable: string, value: string) => {
+  const handleFormChange = useCallback((variable: string, value: any) => {
     handleNewConversationInputsChange({
-      ...newConversationInputs,
+      ...newConversationInputsRef.current,
       [variable]: value,
     })
-  }, [newConversationInputs, handleNewConversationInputsChange])
+  }, [newConversationInputsRef, handleNewConversationInputsChange])
 
   const renderField = (form: any) => {
     const {
@@ -45,6 +49,36 @@ const Form = () => {
           value={newConversationInputs[variable] || ''}
           onChange={e => handleFormChange(variable, e.target.value)}
           placeholder={`${label}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+        />
+      )
+    }
+    if (form.type === InputVarType.singleFile) {
+      return (
+        <FileUploaderInAttachmentWrapper
+          value={newConversationInputs[variable] ? [newConversationInputs[variable]] : []}
+          onChange={files => handleFormChange(variable, files[0])}
+          fileConfig={{
+            allowed_file_types: form.allowed_file_types,
+            allowed_file_extensions: form.allowed_file_extensions,
+            allowed_file_upload_methods: form.allowed_file_upload_methods,
+            number_limits: 1,
+            fileUploadConfig: (appParams as any).system_parameters,
+          }}
+        />
+      )
+    }
+    if (form.type === InputVarType.multiFiles) {
+      return (
+        <FileUploaderInAttachmentWrapper
+          value={newConversationInputs[variable]}
+          onChange={files => handleFormChange(variable, files)}
+          fileConfig={{
+            allowed_file_types: form.allowed_file_types,
+            allowed_file_extensions: form.allowed_file_extensions,
+            allowed_file_upload_methods: form.allowed_file_upload_methods,
+            number_limits: form.max_length,
+            fileUploadConfig: (appParams as any).system_parameters,
+          }}
         />
       )
     }

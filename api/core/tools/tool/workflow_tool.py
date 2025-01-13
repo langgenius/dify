@@ -1,12 +1,13 @@
 import json
 import logging
 from copy import deepcopy
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
-from core.file.file_obj import FileTransferMethod, FileVar
+from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolProviderType
 from core.tools.tool.tool import Tool
 from extensions.ext_database import db
+from factories.file_factory import build_from_mapping
 from models.account import Account
 from models.model import App, EndUser
 from models.workflow import Workflow
@@ -45,38 +46,43 @@ class WorkflowTool(Tool):
         workflow = self._get_workflow(app_id=self.workflow_app_id, version=self.version)
 
         # transform the tool parameters
-        tool_parameters, files = self._transform_args(tool_parameters)
+        tool_parameters, files = self._transform_args(tool_parameters=tool_parameters)
 
         from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 
         generator = WorkflowAppGenerator()
+        assert self.runtime is not None
+        assert self.runtime.invoke_from is not None
         result = generator.generate(
             app_model=app,
             workflow=workflow,
             user=self._get_user(user_id),
             args={"inputs": tool_parameters, "files": files},
             invoke_from=self.runtime.invoke_from,
-            stream=False,
+            streaming=False,
             call_depth=self.workflow_call_depth + 1,
             workflow_thread_pool_id=self.thread_pool_id,
         )
-
+        assert isinstance(result, dict)
         data = result.get("data", {})
 
         if data.get("error"):
             raise Exception(data.get("error"))
 
-        result = []
+        r = []
 
-        outputs = data.get("outputs", {})
-        outputs, files = self._extract_files(outputs)
-        for file in files:
-            result.append(self.create_file_var_message(file))
+        outputs = data.get("outputs")
+        if outputs == None:
+            outputs = {}
+        else:
+            outputs, extracted_files = self._extract_files(outputs)
+            for f in extracted_files:
+                r.append(self.create_file_message(f))
 
-        result.append(self.create_text_message(json.dumps(outputs, ensure_ascii=False)))
-        result.append(self.create_json_message(outputs))
+        r.append(self.create_text_message(json.dumps(outputs, ensure_ascii=False)))
+        r.append(self.create_json_message(outputs))
 
-        return result
+        return r
 
     def _get_user(self, user_id: str) -> Union[EndUser, Account]:
         """
@@ -151,32 +157,32 @@ class WorkflowTool(Tool):
         parameters_result = {}
         files = []
         for parameter in parameter_rules:
-            if parameter.type == ToolParameter.ToolParameterType.FILE:
+            if parameter.type == ToolParameter.ToolParameterType.SYSTEM_FILES:
                 file = tool_parameters.get(parameter.name)
                 if file:
                     try:
-                        file_var_list = [FileVar(**f) for f in file]
-                        for file_var in file_var_list:
-                            file_dict = {
-                                "transfer_method": file_var.transfer_method.value,
-                                "type": file_var.type.value,
+                        file_var_list = [File.model_validate(f) for f in file]
+                        for file in file_var_list:
+                            file_dict: dict[str, str | None] = {
+                                "transfer_method": file.transfer_method.value,
+                                "type": file.type.value,
                             }
-                            if file_var.transfer_method == FileTransferMethod.TOOL_FILE:
-                                file_dict["tool_file_id"] = file_var.related_id
-                            elif file_var.transfer_method == FileTransferMethod.LOCAL_FILE:
-                                file_dict["upload_file_id"] = file_var.related_id
-                            elif file_var.transfer_method == FileTransferMethod.REMOTE_URL:
-                                file_dict["url"] = file_var.preview_url
+                            if file.transfer_method == FileTransferMethod.TOOL_FILE:
+                                file_dict["tool_file_id"] = file.related_id
+                            elif file.transfer_method == FileTransferMethod.LOCAL_FILE:
+                                file_dict["upload_file_id"] = file.related_id
+                            elif file.transfer_method == FileTransferMethod.REMOTE_URL:
+                                file_dict["url"] = file.generate_url()
 
                             files.append(file_dict)
                     except Exception as e:
-                        logger.exception(e)
+                        logger.exception(f"Failed to transform file {file}")
             else:
                 parameters_result[parameter.name] = tool_parameters.get(parameter.name)
 
         return parameters_result, files
 
-    def _extract_files(self, outputs: dict) -> tuple[dict, list[FileVar]]:
+    def _extract_files(self, outputs: dict) -> tuple[dict, list[File]]:
         """
         extract files from the result
 
@@ -187,17 +193,21 @@ class WorkflowTool(Tool):
         result = {}
         for key, value in outputs.items():
             if isinstance(value, list):
-                has_file = False
                 for item in value:
-                    if isinstance(item, dict) and item.get("__variant") == "FileVar":
-                        try:
-                            files.append(FileVar(**item))
-                            has_file = True
-                        except Exception as e:
-                            pass
-                if has_file:
-                    continue
+                    if isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY:
+                        item["tool_file_id"] = item.get("related_id")
+                        file = build_from_mapping(
+                            mapping=item,
+                            tenant_id=str(cast(Tool.Runtime, self.runtime).tenant_id),
+                        )
+                        files.append(file)
+            elif isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
+                value["tool_file_id"] = value.get("related_id")
+                file = build_from_mapping(
+                    mapping=value,
+                    tenant_id=str(cast(Tool.Runtime, self.runtime).tenant_id),
+                )
+                files.append(file)
 
             result[key] = value
-
         return result, files

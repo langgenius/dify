@@ -29,6 +29,12 @@ const translation = {
     save: 'Salvar',
     permissionsInvitedMembers: 'Membros parciais da equipe',
     me: '(Você)',
+    retrievalSettings: 'Configurações de recuperação',
+    externalKnowledgeID: 'ID de conhecimento externo',
+    externalKnowledgeAPI: 'API de conhecimento externo',
+    indexMethodChangeToEconomyDisabledTip: 'Não disponível para rebaixamento de HQ para ECO',
+    helpText: 'Aprenda a escrever uma boa descrição do conjunto de dados.',
+    upgradeHighQualityTip: 'Depois de atualizar para o modo de alta qualidade, reverter para o modo econômico não está disponível',
   },
 }
 

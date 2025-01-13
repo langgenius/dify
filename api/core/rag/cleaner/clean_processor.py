@@ -12,7 +12,7 @@ class CleanProcessor:
         # Unicode  U+FFFE
         text = re.sub("\ufffe", "", text)
 
-        rules = process_rule["rules"] if process_rule else None
+        rules = process_rule["rules"] if process_rule else {}
         if "pre_processing_rules" in rules:
             pre_processing_rules = rules["pre_processing_rules"]
             for pre_processing_rule in pre_processing_rules:

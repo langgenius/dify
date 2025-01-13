@@ -31,6 +31,8 @@ const translation = {
     manageInTools: 'Araçlarda Yönet',
     emptyTitle: 'Kullanılabilir workflow aracı yok',
     emptyTip: 'Git "Workflow -> Araç olarak Yayınla"',
+    emptyTitleCustom: 'Özel bir araç yok',
+    emptyTipCustom: 'Özel bir araç oluşturun',
   },
   createTool: {
     title: 'Özel Araç Oluştur',

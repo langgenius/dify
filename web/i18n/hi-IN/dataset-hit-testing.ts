@@ -23,6 +23,13 @@ const translation = {
   },
   noRecentTip: 'यहां कोई हाल के प्रश्न परिणाम नहीं हैं',
   viewChart: 'वेक्टर चार्ट देखें',
+  viewDetail: 'विस्तार से देखें',
+  settingTitle: 'पुनर्प्राप्ति सेटिंग',
+  hitChunks: '{{num}} बच्चे के टुकड़े मारो',
+  keyword: 'खोजशब्दों',
+  chunkDetail: 'चंक विवरण',
+  open: 'खोलना',
+  records: 'रिकॉर्ड',
 }
 
 export default translation

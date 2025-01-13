@@ -1,0 +1,23 @@
+identity:
+  name: tavily_extract
+  author: Kalo Chin
+  label:
+    en_US: Tavily Extract
+    zh_Hans: Tavily Extract
+description:
+  human:
+    en_US: A web extraction tool built specifically for AI agents (LLMs), delivering raw content from web pages.
+    zh_Hans: 专为人工智能代理 (LLM) 构建的网页提取工具，提供网页的原始内容。
+  llm: A tool for extracting raw content from web pages, designed for AI agents (LLMs).
+parameters:
+  - name: urls
+    type: string
+    required: true
+    label:
+      en_US: URLs
+      zh_Hans: URLs
+    human_description:
+      en_US: A comma-separated list of URLs to extract content from.
+      zh_Hans: 要从中提取内容的 URL 的逗号分隔列表。
+    llm_description: A comma-separated list of URLs to extract content from.
+    form: llm
