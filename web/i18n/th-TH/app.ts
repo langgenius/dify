@@ -160,6 +160,10 @@ const translation = {
       removeConfirmTitle: 'ลบการกําหนดค่า {{key}} หรือไม่?',
       removeConfirmContent: 'การกําหนดค่าปัจจุบันกําลังใช้งาน การลบออกจะเป็นการปิดคุณสมบัติการติดตาม',
     },
+    opik: {
+      title: 'โอปิก',
+      description: 'Opik เป็นแพลตฟอร์มโอเพ่นซอร์สสําหรับการประเมิน ทดสอบ และตรวจสอบแอปพลิเคชัน LLM',
+    },
   },
   mermaid: {
     handDrawn: 'วาดด้วยมือ',
