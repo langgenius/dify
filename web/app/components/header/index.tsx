@@ -51,7 +51,7 @@ const Header = () => {
   }, [selectedSegment])
   return (
     <div className='flex flex-1 items-center justify-between px-4 bg-background-body'>
-      <div className='flex items-center' style="visibility: hidden;">
+      <div className='flex items-center' style={{ visibility: 'hidden' }}>
         {isMobile && <div
           className='flex items-center justify-center h-8 w-8 cursor-pointer'
           onClick={toggle}
