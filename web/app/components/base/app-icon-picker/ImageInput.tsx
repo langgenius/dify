@@ -2,8 +2,7 @@
 
 import type { ChangeEvent, FC } from 'react'
 import { createRef, useEffect, useState } from 'react'
-import type { Area } from 'react-easy-crop'
-import Cropper from 'react-easy-crop'
+import Cropper, { type Area, type CropperProps } from 'react-easy-crop'
 import classNames from 'classnames'
 
 import { ImagePlus } from '../icons/src/vender/line/images'
@@ -18,11 +17,13 @@ export type OnImageInput = {
 
 type UploaderProps = {
   className?: string
+  cropShape?: CropperProps['cropShape']
   onImageInput?: OnImageInput
 }
 
 const ImageInput: FC<UploaderProps> = ({
   className,
+  cropShape,
   onImageInput,
 }) => {
   const [inputImage, setInputImage] = useState<{ file: File; url: string }>()
@@ -78,6 +79,7 @@ const ImageInput: FC<UploaderProps> = ({
         crop={crop}
         zoom={zoom}
         aspect={1}
+        cropShape={cropShape}
         onCropChange={setCrop}
         onCropComplete={onCropComplete}
         onZoomChange={setZoom}

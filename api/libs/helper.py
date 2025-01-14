@@ -41,6 +41,18 @@ class AppIconUrlField(fields.Raw):
         return None
 
 
+class AvatarUrlField(fields.Raw):
+    def output(self, key, obj):
+        if obj is None:
+            return None
+
+        from models.account import Account
+
+        if isinstance(obj, Account) and obj.avatar is not None:
+            return file_helpers.get_signed_file_url(obj.avatar)
+        return None
+
+
 class TimestampField(fields.Raw):
     def format(self, value) -> int:
         return int(value.timestamp())

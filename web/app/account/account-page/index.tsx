@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import DeleteAccount from '../delete-account'
 import s from './index.module.css'
+import AvatarWithEdit from './AvatarWithEdit'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import type { IItem } from '@/app/components/header/account-setting/collapse'
 import Modal from '@/app/components/base/modal'
@@ -13,7 +14,6 @@ import { updateUserProfile } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
 import { ToastContext } from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
-import Avatar from '@/app/components/base/avatar'
 import { IS_CE_EDITION } from '@/config'
 import Input from '@/app/components/base/input'
 
@@ -133,7 +133,7 @@ export default function AccountPage() {
         <h4 className='title-2xl-semi-bold text-text-primary'>{t('common.account.myAccount')}</h4>
       </div>
       <div className='mb-8 p-6 rounded-xl flex items-center bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1'>
-        <Avatar name={userProfile.name} size={64} />
+        <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} onSave={ mutateUserProfile } size={64} />
         <div className='ml-4'>
           <p className='system-xl-semibold text-text-primary'>{userProfile.name}</p>
           <p className='system-xs-regular text-text-tertiary'>{userProfile.email}</p>

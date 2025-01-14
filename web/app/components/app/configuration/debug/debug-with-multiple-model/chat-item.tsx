@@ -149,7 +149,7 @@ const ChatItem: FC<ChatItemProps> = ({
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
       showPromptLog
-      questionIcon={<Avatar name={userProfile.name} size={40} />}
+      questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={40} />}
       allToolIcons={allToolIcons}
       hideLogModal
       noSpacing
