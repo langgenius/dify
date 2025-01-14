@@ -90,12 +90,12 @@ class ToolFileMessageTransformer:
                     )
             elif message.type == ToolInvokeMessage.MessageType.FILE:
                 assert message.meta is not None
-                file = message.meta.get("file")
-                if isinstance(file, File):
-                    if file.transfer_method == FileTransferMethod.TOOL_FILE:
-                        assert file.related_id is not None
-                        url = cls.get_tool_file_url(tool_file_id=file.related_id, extension=file.extension)
-                        if file.type == FileType.IMAGE:
+                file_mata = message.meta.get("file")
+                if isinstance(file_mata, File):
+                    if file_mata.transfer_method == FileTransferMethod.TOOL_FILE:
+                        assert file_mata.related_id is not None
+                        url = cls.get_tool_file_url(tool_file_id=file_mata.related_id, extension=file_mata.extension)
+                        if file_mata.type == FileType.IMAGE:
                             result.append(
                                 ToolInvokeMessage(
                                     type=ToolInvokeMessage.MessageType.IMAGE_LINK,

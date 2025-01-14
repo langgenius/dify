@@ -42,7 +42,7 @@ class LindormVectorStoreConfig(BaseModel):
         return values
 
     def to_opensearch_params(self) -> dict[str, Any]:
-        params = {"hosts": self.hosts}
+        params: dict[str, Any] = {"hosts": self.hosts}
         if self.username and self.password:
             params["http_auth"] = (self.username, self.password)
         return params
@@ -53,7 +53,7 @@ class LindormVectorStore(BaseVector):
         self._routing = None
         self._routing_field = None
         if using_ugc:
-            routing_value: str = kwargs.get("routing_value")
+            routing_value: str | None = kwargs.get("routing_value")
             if routing_value is None:
                 raise ValueError("UGC index should init vector with valid 'routing_value' parameter value")
             self._routing = routing_value.lower()
@@ -87,14 +87,15 @@ class LindormVectorStore(BaseVector):
                     "_id": uuids[i],
                 }
             }
-            action_values = {
+            action_values: dict[str, Any] = {
                 Field.CONTENT_KEY.value: documents[i].page_content,
                 Field.VECTOR.value: embeddings[i],  # Make sure you pass an array here
                 Field.METADATA_KEY.value: documents[i].metadata,
             }
             if self._using_ugc:
                 action_header["index"]["routing"] = self._routing
-                action_values[self._routing_field] = self._routing
+                if self._routing_field is not None:
+                    action_values[self._routing_field] = self._routing
             actions.append(action_header)
             actions.append(action_values)
         response = self._client.bulk(actions)
@@ -105,7 +106,9 @@ class LindormVectorStore(BaseVector):
             self.refresh()
 
     def get_ids_by_metadata_field(self, key: str, value: str):
-        query = {"query": {"bool": {"must": [{"term": {f"{Field.METADATA_KEY.value}.{key}.keyword": value}}]}}}
+        query: dict[str, Any] = {
+            "query": {"bool": {"must": [{"term": {f"{Field.METADATA_KEY.value}.{key}.keyword": value}}]}}
+        }
         if self._using_ugc:
             query["query"]["bool"]["must"].append({"term": {f"{self._routing_field}.keyword": self._routing}})
         response = self._client.search(index=self._collection_name, body=query)
@@ -191,7 +194,8 @@ class LindormVectorStore(BaseVector):
         for doc, score in docs_and_scores:
             score_threshold = kwargs.get("score_threshold", 0.0) or 0.0
             if score > score_threshold:
-                doc.metadata["score"] = score
+                if doc.metadata is not None:
+                    doc.metadata["score"] = score
                 docs.append(doc)
 
         return docs
@@ -254,7 +258,7 @@ class LindormVectorStore(BaseVector):
             hnsw_ef_construction = kwargs.pop("hnsw_ef_construction", 500)
             ivfpq_m = kwargs.pop("ivfpq_m", dimension)
             nlist = kwargs.pop("nlist", 1000)
-            centroids_use_hnsw = kwargs.pop("centroids_use_hnsw", True if nlist >= 5000 else False)
+            centroids_use_hnsw = kwargs.pop("centroids_use_hnsw", nlist >= 5000)
             centroids_hnsw_m = kwargs.pop("centroids_hnsw_m", 24)
             centroids_hnsw_ef_construct = kwargs.pop("centroids_hnsw_ef_construct", 500)
             centroids_hnsw_ef_search = kwargs.pop("centroids_hnsw_ef_search", 100)
@@ -301,7 +305,7 @@ def default_text_mapping(dimension: int, method_name: str, **kwargs: Any) -> dic
     if method_name == "ivfpq":
         ivfpq_m = kwargs["ivfpq_m"]
         nlist = kwargs["nlist"]
-        centroids_use_hnsw = True if nlist > 10000 else False
+        centroids_use_hnsw = nlist > 10000
         centroids_hnsw_m = 24
         centroids_hnsw_ef_construct = 500
         centroids_hnsw_ef_search = 100
@@ -366,6 +370,7 @@ def default_text_search_query(
     routing_field: Optional[str] = None,
     **kwargs,
 ) -> dict:
+    query_clause: dict[str, Any] = {}
     if routing is not None:
         query_clause = {
             "bool": {"must": [{"match": {text_field: query_text}}, {"term": {f"{routing_field}.keyword": routing}}]}
@@ -386,7 +391,7 @@ def default_text_search_query(
     else:
         must = [query_clause]
 
-    boolean_query = {"must": must}
+    boolean_query: dict[str, Any] = {"must": must}
 
     if must_not:
         if not isinstance(must_not, list):
@@ -426,7 +431,7 @@ def default_vector_search_query(
         filter_type = "post_filter" if filter_type is None else filter_type
         if not isinstance(filters, list):
             raise RuntimeError(f"unexpected filter with {type(filters)}")
-    final_ext = {"lvector": {}}
+    final_ext: dict[str, Any] = {"lvector": {}}
     if min_score != "0.0":
         final_ext["lvector"]["min_score"] = min_score
     if ef_search:
@@ -438,7 +443,7 @@ def default_vector_search_query(
     if client_refactor:
         final_ext["lvector"]["client_refactor"] = client_refactor
 
-    search_query = {
+    search_query: dict[str, Any] = {
         "size": k,
         "_source": True,  # force return '_source'
         "query": {"knn": {vector_field: {"vector": query_vector, "k": k}}},
@@ -446,8 +451,8 @@ def default_vector_search_query(
 
     if filters is not None:
         # when using filter, transform filter from List[Dict] to Dict as valid format
-        filters = {"bool": {"must": filters}} if len(filters) > 1 else filters[0]
-        search_query["query"]["knn"][vector_field]["filter"] = filters  # filter should be Dict
+        filter_dict = {"bool": {"must": filters}} if len(filters) > 1 else filters[0]
+        search_query["query"]["knn"][vector_field]["filter"] = filter_dict  # filter should be Dict
         if filter_type:
             final_ext["lvector"]["filter_type"] = filter_type
 
@@ -459,17 +464,19 @@ def default_vector_search_query(
 class LindormVectorStoreFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> LindormVectorStore:
         lindorm_config = LindormVectorStoreConfig(
-            hosts=dify_config.LINDORM_URL,
+            hosts=dify_config.LINDORM_URL or "",
             username=dify_config.LINDORM_USERNAME,
             password=dify_config.LINDORM_PASSWORD,
             using_ugc=dify_config.USING_UGC_INDEX,
         )
         using_ugc = dify_config.USING_UGC_INDEX
+        if using_ugc is None:
+            raise ValueError("USING_UGC_INDEX is not set")
         routing_value = None
         if dataset.index_struct:
             # if an existed record's index_struct_dict doesn't contain using_ugc field,
             # it actually stores in the normal index format
-            stored_in_ugc = dataset.index_struct_dict.get("using_ugc", False)
+            stored_in_ugc: bool = dataset.index_struct_dict.get("using_ugc", False)
             using_ugc = stored_in_ugc
             if stored_in_ugc:
                 dimension = dataset.index_struct_dict["dimension"]

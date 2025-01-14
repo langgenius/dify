@@ -53,14 +53,16 @@ class OAICompatEmbeddingModel(_CommonOaiApiCompat, TextEmbeddingModel):
         api_key = credentials.get("api_key")
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
-
+        endpoint_url: Optional[str]
         if "endpoint_url" not in credentials or credentials["endpoint_url"] == "":
             endpoint_url = "https://cloud.perfxlab.cn/v1/"
         else:
             endpoint_url = credentials.get("endpoint_url")
+            assert endpoint_url is not None, "endpoint_url is required in credentials"
             if not endpoint_url.endswith("/"):
                 endpoint_url += "/"
 
+        assert isinstance(endpoint_url, str)
         endpoint_url = urljoin(endpoint_url, "embeddings")
 
         extra_model_kwargs = {}
@@ -142,13 +144,16 @@ class OAICompatEmbeddingModel(_CommonOaiApiCompat, TextEmbeddingModel):
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
 
+            endpoint_url: Optional[str]
             if "endpoint_url" not in credentials or credentials["endpoint_url"] == "":
                 endpoint_url = "https://cloud.perfxlab.cn/v1/"
             else:
                 endpoint_url = credentials.get("endpoint_url")
+                assert endpoint_url is not None, "endpoint_url is required in credentials"
                 if not endpoint_url.endswith("/"):
                     endpoint_url += "/"
 
+            assert isinstance(endpoint_url, str)
             endpoint_url = urljoin(endpoint_url, "embeddings")
 
             payload = {"input": "ping", "model": model}

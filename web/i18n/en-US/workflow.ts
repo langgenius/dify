@@ -104,6 +104,8 @@ const translation = {
     branch: 'BRANCH',
     onFailure: 'On Failure',
     addFailureBranch: 'Add Fail Branch',
+    loadMore: 'Load More Workflows',
+    noHistory: 'No History',
   },
   env: {
     envPanelTitle: 'Environment Variables',
@@ -181,7 +183,7 @@ const translation = {
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
-    rerankModelRequired: 'Before turning on the Rerank Model, please confirm that the model has been successfully configured in the settings.',
+    rerankModelRequired: 'A configured Rerank Model is required',
     authRequired: 'Authorization is required',
     invalidJson: '{{field}} is invalid JSON',
     fields: {
@@ -189,7 +191,7 @@ const translation = {
       variableValue: 'Variable Value',
       code: 'Code',
       model: 'Model',
-      rerankModel: 'Rerank Model',
+      rerankModel: 'A configured Rerank Model',
       visionVariable: 'Vision Variable',
     },
     invalidVariable: 'Invalid variable',
@@ -328,6 +330,20 @@ const translation = {
         partialSucceeded: {
           tip: 'There are {{num}} nodes in the process running abnormally, please go to tracing to check the logs.',
         },
+      },
+      retry: {
+        retry: 'Retry',
+        retryOnFailure: 'retry on failure',
+        maxRetries: 'max retries',
+        retryInterval: 'retry interval',
+        retryTimes: 'Retry {{times}} times on failure',
+        retrying: 'Retrying...',
+        retrySuccessful: 'Retry successful',
+        retryFailed: 'Retry failed',
+        retryFailedTimes: '{{times}} retries failed',
+        times: 'times',
+        ms: 'ms',
+        retries: '{{num}} Retries',
       },
     },
     start: {

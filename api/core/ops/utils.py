@@ -18,7 +18,7 @@ def filter_none_values(data: dict):
     return new_data
 
 
-def get_message_data(message_id):
+def get_message_data(message_id: str):
     return db.session.query(Message).filter(Message.id == message_id).first()
 
 

@@ -28,12 +28,12 @@ def clean_messages():
     plan_sandbox_clean_message_day = datetime.datetime.now() - datetime.timedelta(
         days=dify_config.PLAN_SANDBOX_CLEAN_MESSAGE_DAY_SETTING
     )
-    page = 1
     while True:
         try:
             # Main query with join and filter
+            # FIXME:for mypy no paginate method error
             messages = (
-                db.session.query(Message)
+                db.session.query(Message)  # type: ignore
                 .filter(Message.created_at < plan_sandbox_clean_message_day)
                 .order_by(Message.created_at.desc())
                 .limit(100)
@@ -78,4 +78,4 @@ def clean_messages():
                 db.session.query(Message).filter(Message.id == message.id).delete()
                 db.session.commit()
     end_at = time.perf_counter()
-    click.echo(click.style("Cleaned unused dataset from db success latency: {}".format(end_at - start_at), fg="green"))
+    click.echo(click.style("Cleaned messages from db success latency: {}".format(end_at - start_at), fg="green"))

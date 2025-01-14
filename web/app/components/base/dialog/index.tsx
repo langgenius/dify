@@ -47,7 +47,7 @@ const CustomDialog = ({
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-full p-4 text-center">
+          <div className="flex items-center justify-center min-h-full">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -57,20 +57,20 @@ const CustomDialog = ({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className={classNames('w-full max-w-[800px] p-0 overflow-hidden text-left text-gray-900 align-middle transition-all transform bg-white shadow-xl rounded-2xl', className)}>
+              <Dialog.Panel className={classNames('w-full max-w-[800px] p-6 overflow-hidden transition-all transform bg-components-panel-bg border-[0.5px] border-components-panel-border shadow-xl rounded-2xl', className)}>
                 {Boolean(title) && (
                   <Dialog.Title
                     as={titleAs || 'h3'}
-                    className={classNames('px-8 py-6 text-lg font-medium leading-6 text-gray-900', titleClassName)}
+                    className={classNames('pr-8 pb-3 title-2xl-semi-bold text-text-primary', titleClassName)}
                   >
                     {title}
                   </Dialog.Title>
                 )}
-                <div className={classNames('px-8 text-lg font-medium leading-6', bodyClassName)}>
+                <div className={classNames(bodyClassName)}>
                   {children}
                 </div>
                 {Boolean(footer) && (
-                  <div className={classNames('flex items-center justify-end gap-2 px-8 py-6', footerClassName)}>
+                  <div className={classNames('flex items-center justify-end gap-2 px-6 pb-6 pt-3', footerClassName)}>
                     {footer}
                   </div>
                 )}

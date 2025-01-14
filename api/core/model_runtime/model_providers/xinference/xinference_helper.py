@@ -1,6 +1,6 @@
 from threading import Lock
 from time import time
-from typing import Optional
+from typing import Any, Optional
 
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError, MissingSchema, Timeout
@@ -39,13 +39,15 @@ class XinferenceModelExtraParameter:
         self.model_family = model_family
 
 
-cache = {}
+cache: dict[str, dict[str, Any]] = {}
 cache_lock = Lock()
 
 
 class XinferenceHelper:
     @staticmethod
-    def get_xinference_extra_parameter(server_url: str, model_uid: str, api_key: str) -> XinferenceModelExtraParameter:
+    def get_xinference_extra_parameter(
+        server_url: str, model_uid: str, api_key: str | None
+    ) -> XinferenceModelExtraParameter:
         XinferenceHelper._clean_cache()
         with cache_lock:
             if model_uid not in cache:
@@ -66,7 +68,9 @@ class XinferenceHelper:
             pass
 
     @staticmethod
-    def _get_xinference_extra_parameter(server_url: str, model_uid: str, api_key: str) -> XinferenceModelExtraParameter:
+    def _get_xinference_extra_parameter(
+        server_url: str, model_uid: str, api_key: str | None
+    ) -> XinferenceModelExtraParameter:
         """
         get xinference model extra parameter like model_format and model_handle_type
         """

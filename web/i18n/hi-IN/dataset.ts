@@ -153,6 +153,28 @@ const translation = {
   noExternalKnowledge: 'अभी तक कोई बाहरी ज्ञान एपीआई नहीं है, बनाने के लिए यहां क्लिक करें',
   createNewExternalAPI: 'एक नया बाहरी नॉलेज API बनाएँ',
   learnHowToWriteGoodKnowledgeDescription: 'एक अच्छा ज्ञान विवरण लिखना सीखें',
+  chunkingMode: {
+    parentChild: 'माता-पिता का बच्चा',
+    general: 'सामान्य',
+  },
+  parentMode: {
+    fullDoc: 'पूर्ण-दस्तावेज़',
+    paragraph: 'अनुच्‍छेद',
+  },
+  batchAction: {
+    cancel: 'रद्द करना',
+    disable: 'अक्षम',
+    enable: 'योग्य बनाना',
+    selected: 'चयनित',
+    delete: 'मिटाना',
+    archive: 'पुरालेख',
+  },
+  localDocs: 'स्थानीय डॉक्स',
+  preprocessDocument: '{{num}} प्रीप्रोसेस दस्तावेज़',
+  enable: 'योग्य बनाना',
+  documentsDisabled: '{{num}} दस्तावेज़ अक्षम - 30 दिनों से अधिक समय से निष्क्रिय',
+  allKnowledge: 'सर्व ज्ञान',
+  allKnowledgeDescription: 'इस कार्यस्थान में सभी ज्ञान प्रदर्शित करने के लिए चयन करें. केवल कार्यस्थान स्वामी ही सभी ज्ञान का प्रबंधन कर सकता है.',
 }
 
 export default translation

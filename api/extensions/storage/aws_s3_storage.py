@@ -1,9 +1,9 @@
 import logging
 from collections.abc import Generator
 
-import boto3
-from botocore.client import Config
-from botocore.exceptions import ClientError
+import boto3  # type: ignore
+from botocore.client import Config  # type: ignore
+from botocore.exceptions import ClientError  # type: ignore
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
@@ -53,7 +53,7 @@ class AwsS3Storage(BaseStorage):
 
     def load_once(self, filename: str) -> bytes:
         try:
-            data = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].read()
+            data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].read()
         except ClientError as ex:
             if ex.response["Error"]["Code"] == "NoSuchKey":
                 raise FileNotFoundError("File not found")
@@ -67,7 +67,9 @@ class AwsS3Storage(BaseStorage):
             yield from response["Body"].iter_chunks()
         except ClientError as ex:
             if ex.response["Error"]["Code"] == "NoSuchKey":
-                raise FileNotFoundError("File not found")
+                raise FileNotFoundError("file not found")
+            elif "reached max retries" in str(ex):
+                raise ValueError("please do not request the same file too frequently")
             else:
                 raise
 

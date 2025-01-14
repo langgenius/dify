@@ -1,7 +1,6 @@
-from collections.abc import Generator
 from unittest.mock import MagicMock
 
-import google.generativeai.types.generation_types as generation_config_types
+import google.generativeai.types.generation_types as generation_config_types  # type: ignore
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from google.ai import generativelanguage as glm
@@ -45,7 +44,7 @@ class MockGoogleClass:
         return GenerateContentResponse(done=True, iterator=None, result=glm.GenerateContentResponse({}), chunks=[])
 
     @staticmethod
-    def generate_content_stream() -> Generator[GenerateContentResponse, None, None]:
+    def generate_content_stream() -> MockGoogleResponseClass:
         return MockGoogleResponseClass()
 
     def generate_content(

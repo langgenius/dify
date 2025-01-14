@@ -4,7 +4,7 @@ from hmac import new as hmac_new
 from json import loads as json_loads
 from threading import Lock
 from time import sleep, time
-from typing import Any
+from typing import Any, Union
 
 from httpx import get, post
 from requests import get as requests_get
@@ -21,23 +21,25 @@ class AIPPTGenerateToolAdapter:
     """
 
     _api_base_url = URL("https://co.aippt.cn/api")
-    _api_token_cache = {}
-    _style_cache = {}
+    _api_token_cache: dict[str, dict[str, Union[str, float]]] = {}
+    _style_cache: dict[str, dict[str, Union[list[dict[str, Any]], float]]] = {}
 
-    _api_token_cache_lock = Lock()
-    _style_cache_lock = Lock()
+    _api_token_cache_lock: Lock = Lock()
+    _style_cache_lock: Lock = Lock()
 
-    _task = {}
+    _task: dict[str, Any] = {}
     _task_type_map = {
         "auto": 1,
         "markdown": 7,
     }
-    _tool: BuiltinTool
+    _tool: BuiltinTool | None
 
-    def __init__(self, tool: BuiltinTool = None):
+    def __init__(self, tool: BuiltinTool | None = None):
         self._tool = tool
 
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
+    def _invoke(
+        self, user_id: str, tool_parameters: dict[str, Any]
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
         Invokes the AIPPT generate tool with the given user ID and tool parameters.
 
@@ -68,8 +70,8 @@ class AIPPTGenerateToolAdapter:
         )
 
         # get suit
-        color: str = tool_parameters.get("color")
-        style: str = tool_parameters.get("style")
+        color: str = tool_parameters.get("color", "")
+        style: str = tool_parameters.get("style", "")
 
         if color == "__default__":
             color_id = ""
@@ -226,7 +228,7 @@ class AIPPTGenerateToolAdapter:
 
         return ""
 
-    def _generate_ppt(self, task_id: str, suit_id: int, user_id) -> tuple[str, str]:
+    def _generate_ppt(self, task_id: str, suit_id: int, user_id: str) -> tuple[str, str]:
         """
         Generate a ppt
 
@@ -362,7 +364,9 @@ class AIPPTGenerateToolAdapter:
         ).decode("utf-8")
 
     @classmethod
-    def _get_styles(cls, credentials: dict[str, str], user_id: str) -> tuple[list[dict], list[dict]]:
+    def _get_styles(
+        cls, credentials: dict[str, str], user_id: str
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """
         Get styles
         """
@@ -415,7 +419,7 @@ class AIPPTGenerateToolAdapter:
 
         return colors, styles
 
-    def get_styles(self, user_id: str) -> tuple[list[dict], list[dict]]:
+    def get_styles(self, user_id: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """
         Get styles
 
@@ -507,7 +511,9 @@ class AIPPTGenerateTool(BuiltinTool):
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
+    def _invoke(
+        self, user_id: str, tool_parameters: dict[str, Any]
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         return AIPPTGenerateToolAdapter(self)._invoke(user_id, tool_parameters)
 
     def get_runtime_parameters(self) -> list[ToolParameter]:

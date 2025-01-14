@@ -1,8 +1,8 @@
 from collections.abc import Generator
 from typing import Optional, cast
 
-from volcenginesdkarkruntime import Ark
-from volcenginesdkarkruntime.types.chat import (
+from volcenginesdkarkruntime import Ark  # type: ignore
+from volcenginesdkarkruntime.types.chat import (  # type: ignore
     ChatCompletion,
     ChatCompletionAssistantMessageParam,
     ChatCompletionChunk,
@@ -15,10 +15,10 @@ from volcenginesdkarkruntime.types.chat import (
     ChatCompletionToolParam,
     ChatCompletionUserMessageParam,
 )
-from volcenginesdkarkruntime.types.chat.chat_completion_content_part_image_param import ImageURL
-from volcenginesdkarkruntime.types.chat.chat_completion_message_tool_call_param import Function
-from volcenginesdkarkruntime.types.create_embedding_response import CreateEmbeddingResponse
-from volcenginesdkarkruntime.types.shared_params import FunctionDefinition
+from volcenginesdkarkruntime.types.chat.chat_completion_content_part_image_param import ImageURL  # type: ignore
+from volcenginesdkarkruntime.types.chat.chat_completion_message_tool_call_param import Function  # type: ignore
+from volcenginesdkarkruntime.types.create_embedding_response import CreateEmbeddingResponse  # type: ignore
+from volcenginesdkarkruntime.types.shared_params import FunctionDefinition  # type: ignore
 
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,

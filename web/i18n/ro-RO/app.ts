@@ -183,6 +183,7 @@ const translation = {
     searchAllTemplate: 'Căutați toate șabloanele...',
     byCategories: 'DUPĂ CATEGORII',
   },
+  showMyCreatedAppsOnly: 'Afișează doar aplicațiile create de mine',
 }
 
 export default translation

@@ -25,16 +25,18 @@ import Input from '@/app/components/base/input'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
+import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 
 const getKey = (
   pageIndex: number,
   previousPageData: AppListResponse,
   activeTab: string,
+  isCreatedByMe: boolean,
   tags: string[],
   keywords: string,
 ) => {
   if (!pageIndex || previousPageData.has_more) {
-    const params: any = { url: 'apps', params: { page: pageIndex + 1, limit: 30, name: keywords } }
+    const params: any = { url: 'apps', params: { page: pageIndex + 1, limit: 30, name: keywords, is_created_by_me: isCreatedByMe } }
 
     if (activeTab !== 'all')
       params.params.mode = activeTab
@@ -58,6 +60,7 @@ const Apps = () => {
     defaultTab: 'all',
   })
   const { query: { tagIDs = [], keywords = '' }, setQuery } = useAppsQueryState()
+  const [isCreatedByMe, setIsCreatedByMe] = useState(false)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
   const [searchKeywords, setSearchKeywords] = useState(keywords)
   const setKeywords = useCallback((keywords: string) => {
@@ -68,7 +71,7 @@ const Apps = () => {
   }, [setQuery])
 
   const { data, isLoading, setSize, mutate } = useSWRInfinite(
-    (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, activeTab, tagIDs, searchKeywords),
+    (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, activeTab, isCreatedByMe, tagIDs, searchKeywords),
     fetchAppList,
     { revalidateFirstPage: true },
   )
@@ -132,6 +135,12 @@ const Apps = () => {
           options={options}
         />
         <div className='flex items-center gap-2'>
+          <CheckboxWithLabel
+            className='mr-2'
+            label={t('app.showMyCreatedAppsOnly')}
+            isChecked={isCreatedByMe}
+            onChange={() => setIsCreatedByMe(!isCreatedByMe)}
+          />
           <TagFilter type='app' value={tagFilterValue} onChange={handleTagsChange} />
           <Input
             showLeftIcon

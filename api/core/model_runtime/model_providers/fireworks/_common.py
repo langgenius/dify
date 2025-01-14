@@ -1,5 +1,3 @@
-from collections.abc import Mapping
-
 import openai
 
 from core.model_runtime.errors.invoke import (
@@ -13,7 +11,7 @@ from core.model_runtime.errors.invoke import (
 
 
 class _CommonFireworks:
-    def _to_credential_kwargs(self, credentials: Mapping) -> dict:
+    def _to_credential_kwargs(self, credentials: dict) -> dict:
         """
         Transform credentials to kwargs for model instance
 

@@ -20,6 +20,7 @@ import type { StartNodeType } from '../nodes/start/types'
 import {
   useChecklistBeforePublish,
   useIsChatMode,
+  useNodesInteractions,
   useNodesReadOnly,
   useNodesSyncDraft,
   useWorkflowMode,
@@ -35,6 +36,7 @@ import RestoringTitle from './restoring-title'
 import ViewHistory from './view-history'
 import ChatVariableButton from './chat-variable-button'
 import EnvButton from './env-button'
+import VersionHistoryModal from './version-history-modal'
 import Button from '@/app/components/base/button'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { publishWorkflow } from '@/service/workflow'
@@ -49,11 +51,13 @@ const Header: FC = () => {
   const appID = appDetail?.id
   const isChatMode = useIsChatMode()
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
+  const { handleNodeSelect } = useNodesInteractions()
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const toolPublished = useStore(s => s.toolPublished)
   const nodes = useNodes<StartNodeType>()
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+  const selectedNode = nodes.find(node => node.data.selected)
   const startVariables = startNode?.data.variables
   const fileSettings = useFeatures(s => s.features.file)
   const variables = useMemo(() => {
@@ -76,7 +80,6 @@ const Header: FC = () => {
   const {
     handleLoadBackupDraft,
     handleBackupDraft,
-    handleRestoreFromPublishedWorkflow,
   } = useWorkflowRun()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -126,8 +129,10 @@ const Header: FC = () => {
   const onStartRestoring = useCallback(() => {
     workflowStore.setState({ isRestoring: true })
     handleBackupDraft()
-    handleRestoreFromPublishedWorkflow()
-  }, [handleBackupDraft, handleRestoreFromPublishedWorkflow, workflowStore])
+    // clear right panel
+    if (selectedNode)
+      handleNodeSelect(selectedNode.id, true)
+  }, [handleBackupDraft, workflowStore, handleNodeSelect, selectedNode])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)
@@ -209,23 +214,27 @@ const Header: FC = () => {
       }
       {
         restoring && (
-          <div className='flex items-center space-x-2'>
-            <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
-              <RiApps2AddLine className='w-4 h-4 mr-1 text-components-button-secondary-text' />
-              {t('workflow.common.features')}
-            </Button>
-            <Divider type='vertical' className='h-3.5 mx-auto' />
-            <Button
-              onClick={handleCancelRestore}
-            >
-              {t('common.operation.cancel')}
-            </Button>
-            <Button
-              onClick={handleRestore}
-              variant='primary'
-            >
-              {t('workflow.common.restore')}
-            </Button>
+          <div className='flex flex-col mt-auto'>
+            <div className='flex items-center justify-end my-4'>
+              <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
+                <RiApps2AddLine className='w-4 h-4 mr-1 text-components-button-secondary-text' />
+                {t('workflow.common.features')}
+              </Button>
+              <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
+              <Button
+                className='mr-2'
+                onClick={handleCancelRestore}
+              >
+                {t('common.operation.cancel')}
+              </Button>
+              <Button
+                onClick={handleRestore}
+                variant='primary'
+              >
+                {t('workflow.common.restore')}
+              </Button>
+            </div>
+            <VersionHistoryModal />
           </div>
         )
       }

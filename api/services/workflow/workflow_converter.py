@@ -1,5 +1,5 @@
 import json
-from typing import Optional
+from typing import Any, Optional
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -101,7 +101,7 @@ class WorkflowConverter:
         app_config = self._convert_to_app_config(app_model=app_model, app_model_config=app_model_config)
 
         # init workflow graph
-        graph = {"nodes": [], "edges": []}
+        graph: dict[str, Any] = {"nodes": [], "edges": []}
 
         # Convert list:
         # - variables -> start
@@ -118,7 +118,7 @@ class WorkflowConverter:
         graph["nodes"].append(start_node)
 
         # convert to http request node
-        external_data_variable_node_mapping = {}
+        external_data_variable_node_mapping: dict[str, str] = {}
         if app_config.external_data_variables:
             http_request_nodes, external_data_variable_node_mapping = self._convert_to_http_request_node(
                 app_model=app_model,
@@ -199,15 +199,16 @@ class WorkflowConverter:
         return workflow
 
     def _convert_to_app_config(self, app_model: App, app_model_config: AppModelConfig) -> EasyUIBasedAppConfig:
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode == AppMode.AGENT_CHAT or app_model.is_agent:
+        app_mode_enum = AppMode.value_of(app_model.mode)
+        app_config: EasyUIBasedAppConfig
+        if app_mode_enum == AppMode.AGENT_CHAT or app_model.is_agent:
             app_model.mode = AppMode.AGENT_CHAT.value
             app_config = AgentChatAppConfigManager.get_app_config(
                 app_model=app_model, app_model_config=app_model_config
             )
-        elif app_mode == AppMode.CHAT:
+        elif app_mode_enum == AppMode.CHAT:
             app_config = ChatAppConfigManager.get_app_config(app_model=app_model, app_model_config=app_model_config)
-        elif app_mode == AppMode.COMPLETION:
+        elif app_mode_enum == AppMode.COMPLETION:
             app_config = CompletionAppConfigManager.get_app_config(
                 app_model=app_model, app_model_config=app_model_config
             )
@@ -302,7 +303,7 @@ class WorkflowConverter:
             nodes.append(http_request_node)
 
             # append code node for response body parsing
-            code_node = {
+            code_node: dict[str, Any] = {
                 "id": f"code_{index}",
                 "position": None,
                 "data": {
@@ -401,6 +402,7 @@ class WorkflowConverter:
         )
 
         role_prefix = None
+        prompts: Any = None
 
         # Chat Model
         if model_config.mode == LLMMode.CHAT.value:

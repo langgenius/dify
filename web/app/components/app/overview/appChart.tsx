@@ -6,6 +6,7 @@ import type { EChartsOption } from 'echarts'
 import useSWR from 'swr'
 import dayjs from 'dayjs'
 import { get } from 'lodash-es'
+import Decimal from 'decimal.js'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/utils/format'
 import Basic from '@/app/components/app-sidebar/basic'
@@ -60,10 +61,8 @@ const CHART_TYPE_CONFIG: Record<string, IChartConfigType> = {
   },
 }
 
-const sum = (arr: number[]): number => {
-  return arr.reduce((acr, cur) => {
-    return acr + cur
-  })
+const sum = (arr: Decimal.Value[]): number => {
+  return Decimal.sum(...arr).toNumber()
 }
 
 const defaultPeriod = {

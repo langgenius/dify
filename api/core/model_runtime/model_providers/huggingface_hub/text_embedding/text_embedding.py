@@ -4,7 +4,7 @@ from typing import Optional
 
 import numpy as np
 import requests
-from huggingface_hub import HfApi, InferenceClient
+from huggingface_hub import HfApi, InferenceClient  # type: ignore
 
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject

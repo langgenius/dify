@@ -7,9 +7,9 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import Optional, Union, cast
 
-from dashscope import Generation, MultiModalConversation, get_tokenizer
-from dashscope.api_entities.dashscope_response import GenerationResponse
-from dashscope.common.error import (
+from dashscope import Generation, MultiModalConversation, get_tokenizer  # type: ignore
+from dashscope.api_entities.dashscope_response import GenerationResponse  # type: ignore
+from dashscope.common.error import (  # type: ignore
     AuthenticationError,
     InvalidParameter,
     RequestFailure,

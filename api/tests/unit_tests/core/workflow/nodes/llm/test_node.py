@@ -157,6 +157,7 @@ def test_fetch_files_with_file_segment(llm_node):
         filename="test.jpg",
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="1",
+        storage_key="",
     )
     llm_node.graph_runtime_state.variable_pool.add(["sys", "files"], file)
 
@@ -173,6 +174,7 @@ def test_fetch_files_with_array_file_segment(llm_node):
             filename="test1.jpg",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="1",
+            storage_key="",
         ),
         File(
             id="2",
@@ -181,6 +183,7 @@ def test_fetch_files_with_array_file_segment(llm_node):
             filename="test2.jpg",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="2",
+            storage_key="",
         ),
     ]
     llm_node.graph_runtime_state.variable_pool.add(["sys", "files"], ArrayFileSegment(value=files))
@@ -224,14 +227,15 @@ def test_fetch_prompt_messages__vison_disabled(faker, llm_node, model_config):
             filename="test1.jpg",
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url=fake_remote_url,
+            storage_key="",
         )
     ]
 
     fake_query = faker.sentence()
 
     prompt_messages, _ = llm_node._fetch_prompt_messages(
-        user_query=fake_query,
-        user_files=files,
+        sys_query=fake_query,
+        sys_files=files,
         context=None,
         memory=None,
         model_config=model_config,
@@ -283,8 +287,8 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
     test_scenarios = [
         LLMNodeTestScenario(
             description="No files",
-            user_query=fake_query,
-            user_files=[],
+            sys_query=fake_query,
+            sys_files=[],
             features=[],
             vision_enabled=False,
             vision_detail=None,
@@ -318,8 +322,8 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
         ),
         LLMNodeTestScenario(
             description="User files",
-            user_query=fake_query,
-            user_files=[
+            sys_query=fake_query,
+            sys_files=[
                 File(
                     tenant_id="test",
                     type=FileType.IMAGE,
@@ -328,6 +332,7 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
                     remote_url=fake_remote_url,
                     extension=".jpg",
                     mime_type="image/jpg",
+                    storage_key="",
                 )
             ],
             vision_enabled=True,
@@ -370,8 +375,8 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
         ),
         LLMNodeTestScenario(
             description="Prompt template with variable selector of File",
-            user_query=fake_query,
-            user_files=[],
+            sys_query=fake_query,
+            sys_files=[],
             vision_enabled=False,
             vision_detail=fake_vision_detail,
             features=[ModelFeature.VISION],
@@ -403,6 +408,7 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
                     remote_url=fake_remote_url,
                     extension=".jpg",
                     mime_type="image/jpg",
+                    storage_key="",
                 )
             },
         ),
@@ -417,8 +423,8 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
 
         # Call the method under test
         prompt_messages, _ = llm_node._fetch_prompt_messages(
-            user_query=scenario.user_query,
-            user_files=scenario.user_files,
+            sys_query=scenario.sys_query,
+            sys_files=scenario.sys_files,
             context=fake_context,
             memory=memory,
             model_config=model_config,
@@ -435,3 +441,29 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
         assert (
             prompt_messages == scenario.expected_messages
         ), f"Message content mismatch in scenario: {scenario.description}"
+
+
+def test_handle_list_messages_basic(llm_node):
+    messages = [
+        LLMNodeChatModelMessage(
+            text="Hello, {#context#}",
+            role=PromptMessageRole.USER,
+            edition_type="basic",
+        )
+    ]
+    context = "world"
+    jinja2_variables = []
+    variable_pool = llm_node.graph_runtime_state.variable_pool
+    vision_detail_config = ImagePromptMessageContent.DETAIL.HIGH
+
+    result = llm_node._handle_list_messages(
+        messages=messages,
+        context=context,
+        jinja2_variables=jinja2_variables,
+        variable_pool=variable_pool,
+        vision_detail_config=vision_detail_config,
+    )
+
+    assert len(result) == 1
+    assert isinstance(result[0], UserPromptMessage)
+    assert result[0].content == [TextPromptMessageContent(data="Hello, world")]

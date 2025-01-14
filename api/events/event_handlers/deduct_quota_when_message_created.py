@@ -44,7 +44,7 @@ def handle(sender, **kwargs):
         else:
             used_quota = 1
 
-    if used_quota is not None:
+    if used_quota is not None and system_configuration.current_quota_type is not None:
         db.session.query(Provider).filter(
             Provider.tenant_id == application_generate_entity.app_config.tenant_id,
             Provider.provider_name == model_config.provider,

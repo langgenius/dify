@@ -183,6 +183,7 @@ const translation = {
     searchAllTemplate: 'Поиск по всем шаблонам...',
     byCategories: 'ПО КАТЕГОРИЯМ',
   },
+  showMyCreatedAppsOnly: 'Показать только созданные мной приложения',
 }
 
 export default translation

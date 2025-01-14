@@ -25,7 +25,7 @@ class ParameterConfig(BaseModel):
             raise ValueError("Parameter name is required")
         if value in {"__reason", "__is_success"}:
             raise ValueError("Invalid parameter name, __reason and __is_success are reserved")
-        return value
+        return str(value)
 
 
 class ParameterExtractorNodeData(BaseNodeData):
@@ -52,7 +52,7 @@ class ParameterExtractorNodeData(BaseNodeData):
 
         :return: parameter json schema
         """
-        parameters = {"type": "object", "properties": {}, "required": []}
+        parameters: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
 
         for parameter in self.parameters:
             parameter_schema: dict[str, Any] = {"description": parameter.description}

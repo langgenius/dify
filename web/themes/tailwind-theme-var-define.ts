@@ -399,6 +399,7 @@ const vars = {
   'background-default-burn': 'var(--color-background-default-burn)',
   'background-overlay-fullscreen': 'var(--color-background-overlay-fullscreen)',
   'background-default-lighter': 'var(--color-background-default-lighter)',
+  'background-account-teams-bg': 'var(--color-account-teams-bg)',
   'background-section': 'var(--color-background-section)',
   'background-interaction-from-bg-1': 'var(--color-background-interaction-from-bg-1)',
   'background-interaction-from-bg-2': 'var(--color-background-interaction-from-bg-2)',

@@ -183,6 +183,7 @@ const translation = {
     byCategories: 'POR CATEGORÍAS',
     searchAllTemplate: 'Buscar todas las plantillas...',
   },
+  showMyCreatedAppsOnly: 'Mostrar solo mis aplicaciones creadas',
 }
 
 export default translation

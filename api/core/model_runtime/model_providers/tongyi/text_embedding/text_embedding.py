@@ -1,7 +1,7 @@
 import time
 from typing import Optional
 
-import dashscope
+import dashscope  # type: ignore
 import numpy as np
 
 from core.entities.embedding_type import EmbeddingInputType

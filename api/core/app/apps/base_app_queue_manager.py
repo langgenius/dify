@@ -1,7 +1,6 @@
 import queue
 import time
 from abc import abstractmethod
-from collections.abc import Generator
 from enum import Enum
 from typing import Any
 
@@ -11,9 +10,11 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
+    MessageQueueMessage,
     QueueErrorEvent,
     QueuePingEvent,
     QueueStopEvent,
+    WorkflowQueueMessage,
 )
 from extensions.ext_redis import redis_client
 
@@ -37,11 +38,11 @@ class AppQueueManager:
             AppQueueManager._generate_task_belong_cache_key(self._task_id), 1800, f"{user_prefix}-{self._user_id}"
         )
 
-        q = queue.Queue()
+        q: queue.Queue[WorkflowQueueMessage | MessageQueueMessage | None] = queue.Queue()
 
         self._q = q
 
-    def listen(self) -> Generator:
+    def listen(self):
         """
         Listen to queue
         :return:
@@ -49,7 +50,7 @@ class AppQueueManager:
         # wait for APP_MAX_EXECUTION_TIME seconds to stop listen
         listen_timeout = dify_config.APP_MAX_EXECUTION_TIME
         start_time = time.time()
-        last_ping_time = 0
+        last_ping_time: int | float = 0
         while True:
             try:
                 message = self._q.get(timeout=1)

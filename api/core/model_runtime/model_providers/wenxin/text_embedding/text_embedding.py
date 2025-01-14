@@ -1,6 +1,5 @@
 import time
 from abc import abstractmethod
-from collections.abc import Mapping
 from json import dumps
 from typing import Any, Optional
 
@@ -23,12 +22,12 @@ from core.model_runtime.model_providers.wenxin.wenxin_errors import (
 
 class TextEmbedding:
     @abstractmethod
-    def embed_documents(self, model: str, texts: list[str], user: str) -> (list[list[float]], int, int):
+    def embed_documents(self, model: str, texts: list[str], user: str) -> tuple[list[list[float]], int, int]:
         raise NotImplementedError
 
 
 class WenxinTextEmbedding(_CommonWenxin, TextEmbedding):
-    def embed_documents(self, model: str, texts: list[str], user: str) -> (list[list[float]], int, int):
+    def embed_documents(self, model: str, texts: list[str], user: str) -> tuple[list[list[float]], int, int]:
         access_token = self._get_access_token()
         url = f"{self.api_bases[model]}?access_token={access_token}"
         body = self._build_embed_request_body(model, texts, user)
@@ -50,7 +49,7 @@ class WenxinTextEmbedding(_CommonWenxin, TextEmbedding):
         }
         return body
 
-    def _handle_embed_response(self, model: str, response: Response) -> (list[list[float]], int, int):
+    def _handle_embed_response(self, model: str, response: Response) -> tuple[list[list[float]], int, int]:
         data = response.json()
         if "error_code" in data:
             code = data["error_code"]
@@ -147,7 +146,7 @@ class WenxinTextEmbeddingModel(TextEmbeddingModel):
 
         return total_num_tokens
 
-    def validate_credentials(self, model: str, credentials: Mapping) -> None:
+    def validate_credentials(self, model: str, credentials: dict) -> None:
         api_key = credentials["api_key"]
         secret_key = credentials["secret_key"]
         try:

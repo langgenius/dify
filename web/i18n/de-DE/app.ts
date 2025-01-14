@@ -190,6 +190,7 @@ const translation = {
     byCategories: 'NACH KATEGORIEN',
     searchAllTemplate: 'Alle Vorlagen durchsuchen...',
   },
+  showMyCreatedAppsOnly: 'Nur meine erstellten Apps anzeigen',
 }
 
 export default translation
