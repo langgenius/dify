@@ -145,6 +145,7 @@ class ToolParameter(BaseModel):
         SECRET_INPUT = "secret-input"
         FILE = "file"
         FILES = "files"
+        OBJECT = "object"
 
         # deprecated, should not use.
         SYSTEM_FILES = "systme-files"
