@@ -167,6 +167,9 @@ export const getMultipleRetrievalConfig = (
         }
       }
     }
+    else {
+      result.reranking_enable = true
+    }
   }
 
   if (allHighQuality && !inconsistentEmbeddingModel && allInternal) {
@@ -204,13 +207,6 @@ export const getMultipleRetrievalConfig = (
     if (reranking_mode === RerankingModeEnum.RerankingModel && !rerankModelIsValid && shouldSetWeightDefaultValue) {
       result.reranking_mode = RerankingModeEnum.WeightedScore
       setDefaultWeights()
-    }
-    if (reranking_mode === RerankingModeEnum.RerankingModel && rerankModelIsValid) {
-      result.reranking_enable = true
-      result.reranking_model = {
-        provider: validRerankModel.provider || '',
-        model: validRerankModel.model || '',
-      }
     }
   }
 
