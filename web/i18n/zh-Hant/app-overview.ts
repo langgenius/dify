@@ -65,6 +65,8 @@ const translation = {
           customDisclaimer: '自定義免責聲明',
           customDisclaimerPlaceholder: '請輸入免責聲明',
           customDisclaimerTip: '客製化的免責聲明文字將在客戶端顯示，提供有關應用程式的額外資訊。',
+          copyrightTip: '在 Web 應用程式中顯示版權資訊',
+          copyrightTooltip: '請升級至專業計劃或以上',
         },
         sso: {
           description: '所有使用者在使用 WebApp 之前都需要使用 SSO 登錄',
@@ -72,6 +74,7 @@ const translation = {
           tooltip: '聯繫管理員以啟用 WebApp SSO',
           label: 'SSO 身份驗證',
         },
+        modalTip: '用戶端 Web 應用程式設置。',
       },
       embedded: {
         entry: '嵌入',
