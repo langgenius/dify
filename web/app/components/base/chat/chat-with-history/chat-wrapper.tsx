@@ -69,7 +69,7 @@ const ChatWrapper = () => {
   useEffect(() => {
     if (currentChatInstanceRef.current)
       currentChatInstanceRef.current.handleStop = handleStop
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const doSend: OnSend = useCallback((message, files, last_answer) => {
@@ -172,7 +172,7 @@ const ChatWrapper = () => {
         config={appConfig}
         chatList={chatList}
         isResponding={isResponding}
-        chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[720px] ${isMobile && 'px-4'}`}
+        chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[1024px] ${isMobile && 'px-4'}`}
         chatFooterClassName='pb-4'
         chatFooterInnerClassName={`mx-auto w-full max-w-[720px] ${isMobile && 'px-4'}`}
         onSend={doSend}
