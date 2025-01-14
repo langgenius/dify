@@ -1,10 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useSelectedLayoutSegments } from 'next/navigation'
 import Link from 'next/link'
+import { RiLayoutRight2Line } from '@remixicon/react'
+import { LayoutRight2LineMod } from '../../base/icons/src/public/knowledge'
 import Toast from '../../base/toast'
 import Item from './app-nav-item'
 import cn from '@/utils/classnames'
@@ -13,6 +16,7 @@ import ExploreContext from '@/context/explore-context'
 import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 const SelectedDiscoveryIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -52,6 +56,15 @@ const SideBar: FC<IExploreSideBarProps> = ({
   const isChatSelected = lastSegment === 'chat'
   const { installedApps, setInstalledApps } = useContext(ExploreContext)
 
+  const { appSidebarExpand, setAppSiderbarExpand } = useAppStore(useShallow(state => ({
+    appSidebarExpand: state.appSidebarExpand,
+    setAppSiderbarExpand: state.setAppSiderbarExpand,
+  })))
+  const expand = appSidebarExpand === 'expand'
+  const handleToggle = (state: string) => {
+    setAppSiderbarExpand(state === 'expand' ? 'collapse' : 'expand')
+  }
+
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
@@ -83,6 +96,13 @@ const SideBar: FC<IExploreSideBarProps> = ({
   }
 
   useEffect(() => {
+    if (appSidebarExpand) {
+      localStorage.setItem('app-detail-collapse-or-expand', appSidebarExpand)
+      setAppSiderbarExpand(appSidebarExpand)
+    }
+  }, [appSidebarExpand, setAppSiderbarExpand])
+
+  useEffect(() => {
     fetchInstalledAppList()
   }, [])
 
@@ -92,7 +112,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
   return (
-    <div className='w-fit sm:w-[216px] shrink-0 pt-6 px-4 border-gray-200 cursor-pointer'>
+    <div className={`w-fit shrink-0 pt-6 px-4 border-gray-200 cursor-pointer ${expand ? 'sm:w-[216px]' : ''}`}>
       <div>
         <Link
           href='/explore/apps'
@@ -100,7 +120,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
           style={isDiscoverySelected ? { boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)' } : {}}
         >
           {isDiscoverySelected ? <SelectedDiscoveryIcon /> : <DiscoveryIcon />}
-          {!isMobile && <div className='text-sm'>{t('explore.sidebar.discovery')}</div>}
+          {expand && <div className='text-sm'>{t('explore.sidebar.discovery')}</div>}
         </Link>
       </div>
       {installedApps.length > 0 && (
@@ -114,7 +134,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
             {installedApps.map(({ id, is_pinned, uninstallable, app: { name, icon_type, icon, icon_url, icon_background } }, index) => (
               <React.Fragment key={id}>
                 <Item
-                  isMobile={isMobile}
+                  expand={expand}
                   name={name}
                   icon_type={icon_type}
                   icon={icon}
@@ -145,6 +165,22 @@ const SideBar: FC<IExploreSideBarProps> = ({
           onCancel={() => setShowConfirm(false)}
         />
       )}
+      {
+        !isMobile && (
+          <div>
+            <div
+              className='flex items-center justify-center w-6 h-6 text-gray-500 cursor-pointer'
+              onClick={() => handleToggle(appSidebarExpand)}
+            >
+              {
+                expand
+                  ? <RiLayoutRight2Line className='w-5 h-5 text-components-menu-item-text' />
+                  : <LayoutRight2LineMod className='w-5 h-5 text-components-menu-item-text' />
+              }
+            </div>
+          </div>
+        )
+      }
     </div>
   )
 }
