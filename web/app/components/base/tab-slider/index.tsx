@@ -1,9 +1,9 @@
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import cn from '@/utils/classnames'
 
 type Option = {
   value: string
-  text: string
+  text: ReactNode
 }
 type TabSliderProps = {
   className?: string
@@ -23,17 +23,12 @@ const TabSlider: FC<TabSliderProps> = ({
   const current = options[currentIndex]
 
   return (
-    <div className={cn(className, 'relative flex p-0.5 rounded-lg bg-gray-200')}>
+    <div className={cn('relative flex p-0.5 rounded-xl bg-components-segmented-control-bg-normal', className)}>
       {
-        options.map((option, index) => (
+        options.map(option => (
           <div
             key={option.value}
-            className={`
-              flex justify-center items-center h-7 text-[13px] 
-              font-semibold text-gray-600 rounded-[7px] cursor-pointer
-              hover:bg-gray-50
-              ${index !== options.length - 1 && 'mr-[1px]'}
-            `}
+            className={'flex justify-center items-center h-[42px] rounded-xl cursor-pointer'}
             style={{
               width: itemWidth,
             }}
@@ -47,12 +42,13 @@ const TabSlider: FC<TabSliderProps> = ({
         current && (
           <div
             className={`
-              absolute flex justify-center items-center h-7 bg-white text-[13px] font-semibold text-primary-600 
-              border-[0.5px] border-gray-200 rounded-[7px] shadow-xs transition-transform
+              absolute flex justify-center items-center h-[42px] rounded-xl cursor-pointer
+              text-text-accent-light-mode-only bg-components-segmented-control-item-active-bg
+              border-[0.5px] border-components-segmented-control-item-active-border shadow-xs transition-transform
             `}
             style={{
               width: itemWidth,
-              transform: `translateX(${currentIndex * itemWidth + 1}px)`,
+              transform: `translateX(${currentIndex * itemWidth}px)`,
             }}
           >
             {current.text}
