@@ -111,6 +111,7 @@ const ToolSelector: FC<Props> = ({
     const paramValues = addDefaultValue(tool.params, toolParametersToFormSchemas(tool.paramSchemas.filter(param => param.form !== 'llm') as any))
     const toolValue = {
       provider_name: tool.provider_id,
+      type: tool.provider_type,
       tool_name: tool.tool_name,
       parameters: paramValues,
       enabled: tool.is_team_authorization,

@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect } from 'react'
 import Input from '@/app/components/base/input'
 
-export type IConfigStringProps = {
+export interface IConfigStringProps {
   value: number | undefined
   maxLength: number
   modelId: string

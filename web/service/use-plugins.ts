@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import type {
   DebugInfo as DebugInfoTypes,
   Dependency,
@@ -305,7 +305,8 @@ export const useMutationPluginsFromMarketplace = () => {
         page = 1,
         pageSize = 40,
       } = pluginsSearchParams
-      return postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/search/basic', {
+      const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
+      return postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/basic`, {
         body: {
           page,
           page_size: pageSize,
@@ -355,7 +356,6 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[])
 
 const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
 export const usePluginTaskList = () => {
-  const [enabled, setEnabled] = useState(true)
   const {
     data,
     isFetched,
@@ -363,20 +363,17 @@ export const usePluginTaskList = () => {
     ...rest
   } = useQuery({
     queryKey: usePluginTaskListKey,
-    queryFn: async () => {
-      const currentData = await get<{ tasks: PluginTask[] }>('/workspaces/current/plugin/tasks?page=1&page_size=100')
-      const taskDone = currentData.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
-
+    queryFn: () => get<{ tasks: PluginTask[] }>('/workspaces/current/plugin/tasks?page=1&page_size=100'),
+    refetchInterval: (lastQuery) => {
+      const lastData = lastQuery.state.data
+      const taskDone = lastData?.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
       if (taskDone)
-        setEnabled(false)
+        return false
 
-      return currentData
+      return 5000
     },
-    refetchInterval: 5000,
-    enabled,
   })
   const handleRefetch = useCallback(() => {
-    setEnabled(true)
     refetch()
   }, [refetch])
 

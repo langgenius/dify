@@ -72,7 +72,7 @@ export const useMarketplacePlugins = () => {
   const handleUpdatePlugins = useCallback((pluginsSearchParams: PluginsSearchParams) => {
     mutateAsync(pluginsSearchParams).then((res) => {
       const currentPage = pluginsSearchParams.page || 1
-      const resPlugins = res.data.plugins
+      const resPlugins = res.data.bundles || res.data.plugins
       if (currentPage > 1) {
         setPrevPlugins(prevPlugins => [...(prevPlugins || []), ...resPlugins.map((plugin) => {
           return getFormattedPlugin(plugin)

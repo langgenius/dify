@@ -33,7 +33,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
 
-type SettingsModalProps = {
+interface SettingsModalProps {
   currentDataset: DataSet
   onCancel: () => void
   onSave: (newDataset: DataSet) => void

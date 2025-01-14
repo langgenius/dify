@@ -6,7 +6,7 @@ import type { Timeout as TimeoutPayloadType } from '../../types'
 import Input from '@/app/components/base/input'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
 
-type Props = {
+interface Props {
   readonly: boolean
   nodeId: string
   payload: TimeoutPayloadType

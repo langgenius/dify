@@ -13,6 +13,7 @@ import { useGetLanguage } from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
 import { useSingleCategories } from '../hooks'
 import { renderI18nObject } from '@/hooks/use-i18n'
+import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 
 export type Props = {
   className?: string
@@ -43,9 +44,10 @@ const Card = ({
 }: Props) => {
   const defaultLocale = useGetLanguage()
   const locale = localeFromProps ? getLanguage(localeFromProps) : defaultLocale
-  const { categoriesMap } = useSingleCategories()
+  const { t } = useMixedTranslation(localeFromProps)
+  const { categoriesMap } = useSingleCategories(t)
   const { category, type, name, org, label, brief, icon, verified } = payload
-  const isBundle = !['plugin', 'model', 'tool', 'extension', 'agent_strategy'].includes(type)
+  const isBundle = !['plugin', 'model', 'tool', 'extension', 'agent-strategy'].includes(type)
   const cornerMark = isBundle ? categoriesMap.bundle?.label : categoriesMap[category]?.label
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj ? renderI18nObject(obj, locale) : ''

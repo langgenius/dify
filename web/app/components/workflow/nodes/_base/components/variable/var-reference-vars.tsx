@@ -17,7 +17,7 @@ import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others
 import { checkKeys } from '@/utils/var'
 import { FILE_STRUCT } from '@/app/components/workflow/constants'
 
-type ObjectChildrenProps = {
+interface ObjectChildrenProps {
   nodeId: string
   title: string
   data: Var[]
@@ -28,7 +28,7 @@ type ObjectChildrenProps = {
   isSupportFileVar?: boolean
 }
 
-type ItemProps = {
+interface ItemProps {
   nodeId: string
   title: string
   objPath: string[]
@@ -226,7 +226,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
   )
 }
 
-type Props = {
+interface Props {
   hideSearch?: boolean
   searchBoxClassName?: string
   vars: NodeOutPutVar[]

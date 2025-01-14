@@ -51,11 +51,11 @@ const Toast = ({
     'top-0',
     'right-0',
   )}>
-    <div className={`absolute inset-0 opacity-40 -z-10 ${(type === 'success' && 'bg-toast-success-bg')
+    <div className={`absolute inset-0 opacity-40 ${(type === 'success' && 'bg-toast-success-bg')
       || (type === 'warning' && 'bg-toast-warning-bg')
       || (type === 'error' && 'bg-toast-error-bg')
       || (type === 'info' && 'bg-toast-info-bg')
-    }`}
+      }`}
     />
     <div className={`flex ${size === 'md' ? 'gap-1' : 'gap-0.5'}`}>
       <div className={`flex justify-center items-center ${size === 'md' ? 'p-0.5' : 'p-1'}`}>
@@ -80,7 +80,7 @@ const Toast = ({
         </ActionButton>)
       }
     </div>
-  </div>
+  </div >
 }
 
 export const ToastProvider = ({

@@ -54,7 +54,9 @@ const Action: FC<Props> = ({
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
   const handleFetchNewVersion = async () => {
-    const fetchedReleases = await fetchReleases(author, pluginName)
+    const owner = meta!.repo.split('/')[0] || author
+    const repo = meta!.repo.split('/')[1] || pluginName
+    const fetchedReleases = await fetchReleases(owner, repo)
     if (fetchedReleases.length === 0) return
     const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta!.version)
     Toast.notify(toastProps)
@@ -92,7 +94,7 @@ const Action: FC<Props> = ({
       hideDeleteConfirm()
       onDelete()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [installationId, onDelete])
   return (
     <div className='flex space-x-1'>

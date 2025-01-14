@@ -7,7 +7,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import Tooltip from '@/app/components/base/tooltip'
 import Toast from '@/app/components/base/toast'
 
-type ImagePreviewProps = {
+interface ImagePreviewProps {
   url: string
   title: string
   onCancel: () => void

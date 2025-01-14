@@ -16,7 +16,7 @@ import Checkbox from '@/app/components/base/checkbox'
 import { bindTag, createTag, fetchTagList, unBindTag } from '@/service/tag'
 import { ToastContext } from '@/app/components/base/toast'
 
-type TagSelectorProps = {
+interface TagSelectorProps {
   targetID: string
   isPopover?: boolean
   position?: 'bl' | 'br'

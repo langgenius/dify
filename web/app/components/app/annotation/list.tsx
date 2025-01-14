@@ -9,7 +9,7 @@ import ActionButton from '@/app/components/base/action-button'
 import useTimestamp from '@/hooks/use-timestamp'
 import cn from '@/utils/classnames'
 
-type Props = {
+interface Props {
   list: AnnotationItem[]
   onRemove: (id: string) => void
   onView: (item: AnnotationItem) => void

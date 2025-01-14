@@ -35,7 +35,7 @@ import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { AppData } from '@/models/share'
 
-export type ChatProps = {
+export interface ChatProps {
   appData?: AppData
   chatList: ChatItem[]
   config?: ChatConfig

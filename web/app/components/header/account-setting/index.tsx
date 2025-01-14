@@ -17,6 +17,7 @@ import {
   RiPuzzle2Line,
   RiTranslate2,
 } from '@remixicon/react'
+import Button from '../../base/button'
 import MembersPage from './members-page'
 import LanguagePage from './language-page'
 import ApiBasedExtensionPage from './api-based-extension-page'
@@ -30,7 +31,6 @@ import { useProviderContext } from '@/context/provider-context'
 import { useAppContext } from '@/context/app-context'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import Input from '@/app/components/base/input'
-import Button from '@/app/components/base/button'
 
 const iconClassName = `
   w-5 h-5 mr-2

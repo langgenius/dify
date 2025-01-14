@@ -5,7 +5,7 @@ on:
     branches:
       - "main"
       - "deploy/dev"
-      - "dev/plugin-deploy"
+      - "plugins/beta"
   release:
     types: [published]
 

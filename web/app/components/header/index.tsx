@@ -86,7 +86,7 @@ const Header = () => {
             </div>
           </div>
         }
-      </div>
+      </div >
       {isMobile && (
         <div className='flex'>
           <Link href="/apps" className='flex items-center mr-4'>

@@ -5,7 +5,7 @@ import cn from '@/utils/classnames'
 import Indicator from '@/app/components/header/indicator'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 
-type ResultProps = {
+interface ResultProps {
   status: string
   time?: number
   tokens?: number
