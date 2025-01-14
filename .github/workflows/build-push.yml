@@ -6,6 +6,7 @@ on:
       - "main"
       - "deploy/dev"
       - "plugins/beta"
+      - "dev/plugin-deploy"
   release:
     types: [published]
 
