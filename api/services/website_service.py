@@ -42,7 +42,6 @@ class WebsiteService:
                     "excludes": [],
                     "generateImgAltText": True,
                     "limit": 1,
-                    "returnOnlyUrls": False,
                     "scrapeOptions": {"onlyMainContent": only_main_content},
                 }
             else:
@@ -53,7 +52,6 @@ class WebsiteService:
                     "excludes": excludes,
                     "generateImgAltText": True,
                     "limit": options.get("limit", 1),
-                    "returnOnlyUrls": False,
                     "scrapeOptions": {"onlyMainContent": only_main_content},
                 }
                 if options.get("max_depth"):
@@ -224,7 +222,7 @@ class WebsiteService:
             # decrypt api_key
             api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=credentials.get("config").get("api_key"))
             firecrawl_app = FirecrawlApp(api_key=api_key, base_url=credentials.get("config").get("base_url", None))
-            params = {"onlyMainContent": only_main_content, "includeHtml": False}
+            params = {"onlyMainContent": only_main_content}
             result = firecrawl_app.scrape_url(url, params)
             return result
         else:

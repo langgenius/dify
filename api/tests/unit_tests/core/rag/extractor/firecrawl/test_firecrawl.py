@@ -15,7 +15,6 @@ def test_firecrawl_web_extractor_crawl_mode(mocker):
         "generateImgAltText": True,
         "maxDepth": 1,
         "limit": 1,
-        "returnOnlyUrls": False,
     }
     mocked_firecrawl = {
         "id": "test",
