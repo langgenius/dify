@@ -27,12 +27,11 @@ def init_app(app: DifyApp):
     # Always add StreamHandler to log to console
     sh = logging.StreamHandler(sys.stdout)
     sh.addFilter(RequestIdFilter())
-    log_formatter = logging.Formatter(fmt=dify_config.LOG_FORMAT)
-    sh.setFormatter(log_formatter)
     log_handlers.append(sh)
 
     logging.basicConfig(
         level=dify_config.LOG_LEVEL,
+        format=dify_config.LOG_FORMAT,
         datefmt=dify_config.LOG_DATEFORMAT,
         handlers=log_handlers,
         force=True,
