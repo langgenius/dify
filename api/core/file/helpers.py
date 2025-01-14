@@ -33,7 +33,7 @@ def get_signed_file_url_for_plugin(filename: str, mimetype: str, tenant_id: str,
     sign = hmac.new(key, msg.encode(), hashlib.sha256).digest()
     encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
-    return f"{url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}&user_id={user_id}"
+    return f"{url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}&user_id={user_id}&tenant_id={tenant_id}"
 
 
 def verify_plugin_file_signature(
