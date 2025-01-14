@@ -265,7 +265,7 @@ def _endswith(value: str) -> Callable[[str], bool]:
 
 
 def _is(value: str) -> Callable[[str], bool]:
-    return lambda x: x is value
+    return lambda x: x == value
 
 
 def _in(value: str | Sequence[str]) -> Callable[[str], bool]:

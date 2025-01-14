@@ -8,6 +8,7 @@ import tempfile
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
+import chardet
 import docx
 import pandas as pd
 import pypdfium2  # type: ignore
@@ -292,7 +293,11 @@ def _extract_text_from_file(file: File):
 
 def _extract_text_from_csv(file_content: bytes) -> str:
     try:
-        csv_file = io.StringIO(file_content.decode("utf-8", "ignore"))
+        detected_encoding = chardet.detect(file_content)["encoding"]
+        if detected_encoding is None:
+            csv_file = io.StringIO(file_content.decode("utf-8", "ignore"))
+        else:
+            csv_file = io.StringIO(file_content.decode(detected_encoding, "replace"))
         csv_reader = csv.reader(csv_file)
         rows = list(csv_reader)
 
