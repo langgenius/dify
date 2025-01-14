@@ -1,0 +1,63 @@
+provider: modelscope
+label:
+  en_US: ModelScope
+icon_small:
+  en_US: icon_s_en.png
+icon_large:
+  en_US: icon_l_en.png
+help:
+  title:
+    en_US: Get your API key from ModelScope
+    zh_Hans: 从魔搭社区获取API key
+  url:
+    en_US: https://www.modelscope.cn/docs/model-service/API-Inference/intro
+supported_model_types:
+- llm
+configurate_methods:
+- predefined-model
+- customizable-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: base_url
+      label:
+        zh_Hans: 服务器URL
+        en_US: Server url
+      type: secret-input
+      required: true
+      default: https://api-inference.modelscope.cn
+    - variable: api_key
+      label:
+        zh_Hans: API_Key
+        en_US: API_Key
+      type: secret-input
+      required: false
+      placeholder:
+        zh_Hans: 在此输入API_Key
+        en_US: Enter the API_Key of your ModelScope service
+model_credential_schema:
+  model:
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    placeholder:
+      en_US: Enter your model name
+      zh_Hans: 输入模型名称
+  credential_form_schemas:
+    - variable: base_url
+      label:
+        zh_Hans: 服务器URL
+        en_US: Server url
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: ModelScope服务地址（API Inference/Swift/SwingDeploy）
+        en_US: ModelScope service url(API Inference/Swift/SwingDeploy)
+    - variable: api_key
+      label:
+        zh_Hans: API_Key
+        en_US: API_Key
+      type: secret-input
+      required: false
+      placeholder:
+        zh_Hans: 在此输入API_Key
+        en_US: Enter the API_Key of your ModelScope service
