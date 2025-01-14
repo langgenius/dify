@@ -6,13 +6,14 @@ from flask_restful import Resource, abort, marshal_with, reqparse  # type: ignor
 import services
 from configs import dify_config
 from controllers.console import api
+from controllers.console.workspace.error import RepeatPasswordNotMatchError
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
     setup_required,
 )
 from extensions.ext_database import db
-from fields.member_fields import account_with_role_list_fields
+from fields.member_fields import account_fields, account_with_role_list_fields
 from libs.login import login_required
 from models.account import Account, TenantAccountRole
 from services.account_service import RegisterService, TenantService
@@ -148,8 +149,38 @@ class DatasetOperatorMemberListApi(Resource):
         return {"result": "success", "accounts": members}, 200
 
 
+class MemberResetPasswordApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(account_fields)
+    def post(self, member_id):
+        parser = reqparse.RequestParser()
+        parser.add_argument("new_password", type=str, required=True, location="json")
+        parser.add_argument("repeat_new_password", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        if args["new_password"] != args["repeat_new_password"]:
+            raise RepeatPasswordNotMatchError()
+
+        member = db.session.get(Account, str(member_id))
+        if not member:
+            abort(404)
+
+        try:
+            assert member is not None, "Member not found"
+            TenantService.admin_update_member_password(
+                current_user.current_tenant, member, args["new_password"], current_user
+            )
+        except Exception as e:
+            raise ValueError(str(e))
+
+        return {"result": "success"}
+
+
 api.add_resource(MemberListApi, "/workspaces/current/members")
 api.add_resource(MemberInviteEmailApi, "/workspaces/current/members/invite-email")
 api.add_resource(MemberCancelInviteApi, "/workspaces/current/members/<uuid:member_id>")
 api.add_resource(MemberUpdateRoleApi, "/workspaces/current/members/<uuid:member_id>/update-role")
 api.add_resource(DatasetOperatorMemberListApi, "/workspaces/current/dataset-operators")
+api.add_resource(MemberResetPasswordApi, "/workspaces/current/members/<uuid:member_id>/password")
