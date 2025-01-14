@@ -161,9 +161,10 @@ class AgentNode(ToolNode):
                     value = cast(list[dict[str, Any]], value)
                     tool_value = []
                     for tool in value:
+                        provider_type = ToolProviderType(tool.get("type", ToolProviderType.BUILT_IN.value))
                         entity = AgentToolEntity(
                             provider_id=tool.get("provider_name", ""),
-                            provider_type=ToolProviderType.BUILT_IN,
+                            provider_type=provider_type,
                             tool_name=tool.get("tool_name", ""),
                             tool_parameters=tool.get("parameters", {}),
                             plugin_unique_identifier=tool.get("plugin_unique_identifier", None),
@@ -183,6 +184,7 @@ class AgentNode(ToolNode):
                             {
                                 **tool_runtime.entity.model_dump(mode="json"),
                                 "runtime_parameters": tool_runtime.runtime.runtime_parameters,
+                                "provider_type": provider_type.value,
                             }
                         )
                     value = tool_value
