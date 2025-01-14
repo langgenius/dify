@@ -113,6 +113,8 @@ const ProviderList = () => {
                     payload={{
                       ...collection,
                       brief: collection.description,
+                      org: collection.plugin_id ? collection.plugin_id.split('/')[0] : '',
+                      name: collection.plugin_id ? collection.plugin_id.split('/')[1] : collection.name,
                     } as any}
                     footer={
                       <CardMoreInfo
