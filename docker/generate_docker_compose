@@ -37,6 +37,8 @@ def generate_shared_env_block(env_vars, anchor_name="shared-api-worker-env"):
     """
     lines = [f"x-shared-env: &{anchor_name}"]
     for key, default in env_vars.items():
+        if key == "COMPOSE_PROFILES":
+            continue
         # If default value is empty, use ${KEY:-}
         if default == "":
             lines.append(f"  {key}: ${{{key}:-}}")

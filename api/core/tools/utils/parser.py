@@ -5,6 +5,7 @@ from json import loads as json_loads
 from json.decoder import JSONDecodeError
 from typing import Optional
 
+from flask import request
 from requests import get
 from yaml import YAMLError, safe_load  # type: ignore
 
@@ -29,6 +30,10 @@ class ApiBasedToolSchemaParser:
             raise ToolProviderNotFoundError("No server found in the openapi yaml.")
 
         server_url = openapi["servers"][0]["url"]
+        request_env = request.headers.get("X-Request-Env")
+        if request_env:
+            matched_servers = [server["url"] for server in openapi["servers"] if server["env"] == request_env]
+            server_url = matched_servers[0] if matched_servers else server_url
 
         # list all interfaces
         interfaces = []
@@ -112,7 +117,7 @@ class ApiBasedToolSchemaParser:
                                 llm_description=property.get("description", ""),
                                 default=property.get("default", None),
                                 placeholder=I18nObject(
-                                    en_US=parameter.get("description", ""), zh_Hans=parameter.get("description", "")
+                                    en_US=property.get("description", ""), zh_Hans=property.get("description", "")
                                 ),
                             )
 

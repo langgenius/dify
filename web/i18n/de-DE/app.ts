@@ -157,6 +157,10 @@ const translation = {
       removeConfirmContent: 'Die aktuelle Konfiguration wird verwendet. Das Entfernen wird die Nachverfolgungsfunktion ausschalten.',
     },
     view: 'Ansehen',
+    opik: {
+      description: 'Opik ist eine Open-Source-Plattform zum Bewerten, Testen und Überwachen von LLM-Anwendungen.',
+      title: 'Opik',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Gibt an, ob das WebApp-Symbol zum Ersetzen 🤖 in Explore verwendet werden soll',
@@ -190,6 +194,7 @@ const translation = {
     byCategories: 'NACH KATEGORIEN',
     searchAllTemplate: 'Alle Vorlagen durchsuchen...',
   },
+  showMyCreatedAppsOnly: 'Nur meine erstellten Apps anzeigen',
 }
 
 export default translation

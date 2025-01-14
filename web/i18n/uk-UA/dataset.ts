@@ -167,6 +167,8 @@ const translation = {
   documentsDisabled: 'Документи {{num}} вимкнені - неактивні понад 30 днів',
   localDocs: 'Локальні документи',
   enable: 'Вмикати',
+  allKnowledge: 'Всі знання',
+  allKnowledgeDescription: 'Виберіть, щоб відобразити всі знання в цій робочій області. Тільки власник робочої області може керувати всіма знаннями.',
 }
 
 export default translation

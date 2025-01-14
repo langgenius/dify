@@ -739,6 +739,12 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
             delta = chunk.choices[0]
             has_finish_reason = delta.finish_reason is not None
+            # to fix issue #12215 yi model has special case for ligthing
+            # FIXME drop the case when yi model is updated
+            if model.startswith("yi-"):
+                if isinstance(delta.finish_reason, str):
+                    # doc: https://platform.lingyiwanwu.com/docs/api-reference
+                    has_finish_reason = delta.finish_reason.startswith(("length", "stop", "content_filter"))
 
             if (
                 not has_finish_reason

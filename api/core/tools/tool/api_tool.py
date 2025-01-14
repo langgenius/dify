@@ -202,8 +202,23 @@ class ApiTool(Tool):
             else:
                 body = body
 
-        if method in {"get", "head", "post", "put", "delete", "patch"}:
-            response: httpx.Response = getattr(ssrf_proxy, method)(
+        if method in {
+            "get",
+            "head",
+            "post",
+            "put",
+            "delete",
+            "patch",
+            "options",
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "HEAD",
+            "OPTIONS",
+        }:
+            response: httpx.Response = getattr(ssrf_proxy, method.lower())(
                 url,
                 params=params,
                 headers=headers,

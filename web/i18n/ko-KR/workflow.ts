@@ -104,6 +104,8 @@ const translation = {
     openInExplore: 'Explore에서 열기',
     onFailure: '실패 시',
     addFailureBranch: '실패 분기 추가',
+    noHistory: '이력 없음',
+    loadMore: '더 많은 워크플로우 로드',
   },
   env: {
     envPanelTitle: '환경 변수',

@@ -87,6 +87,6 @@ class CommonValidator:
             if value.lower() not in {"true", "false"}:
                 raise ValueError(f"Variable {credential_form_schema.variable} should be true or false")
 
-            value = True if value.lower() == "true" else False
+            value = value.lower() == "true"
 
         return value

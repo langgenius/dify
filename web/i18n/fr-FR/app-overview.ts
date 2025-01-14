@@ -65,6 +65,8 @@ const translation = {
           customDisclaimer: 'Clause de non-responsabilité personnalisée',
           customDisclaimerPlaceholder: 'Entrez le texte de la clause de non-responsabilité personnalisée',
           customDisclaimerTip: 'Le texte de la clause de non-responsabilité personnalisée sera affiché côté client, fournissant des informations supplémentaires sur l\'application',
+          copyrightTip: 'Afficher les informations de copyright dans l’application web',
+          copyrightTooltip: 'Veuillez passer à l’abonnement professionnel ou supérieur',
         },
         sso: {
           label: 'Authentification SSO',
@@ -72,6 +74,7 @@ const translation = {
           tooltip: 'Contactez l’administrateur pour activer l’authentification unique WebApp',
           description: 'Tous les utilisateurs doivent se connecter avec l’authentification unique avant d’utiliser WebApp',
         },
+        modalTip: 'Paramètres de l’application web côté client.',
       },
       embedded: {
         entry: 'Intégré',

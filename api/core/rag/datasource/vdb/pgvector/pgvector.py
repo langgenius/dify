@@ -129,6 +129,11 @@ class PGVector(BaseVector):
         return docs
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        # Avoiding crashes caused by performing delete operations on empty lists in certain scenarios
+        # Scenario 1: extract a document fails, resulting in a table not being created.
+        # Then clicking the retry button triggers a delete operation on an empty list.
+        if not ids:
+            return
         with self._get_cursor() as cur:
             cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s", (tuple(ids),))
 

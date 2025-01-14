@@ -104,6 +104,8 @@ const translation = {
     openInExplore: 'Otwieranie w obszarze Eksploruj',
     onFailure: 'W przypadku niepowodzenia',
     addFailureBranch: 'Dodawanie gałęzi niepowodzenia',
+    loadMore: 'Załaduj więcej przepływów pracy',
+    noHistory: 'Brak historii',
   },
   env: {
     envPanelTitle: 'Zmienne Środowiskowe',
