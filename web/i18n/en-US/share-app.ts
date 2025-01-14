@@ -30,6 +30,7 @@ const translation = {
     },
     tryToSolve: 'Try to solve',
     temporarySystemIssue: 'Sorry, temporary system issue.',
+    loadedAllMessages: 'Loaded all messages',
   },
   generation: {
     tabs: {

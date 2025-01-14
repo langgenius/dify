@@ -49,6 +49,8 @@ export type ChatWithHistoryContextValue = {
   handleFeedback: (messageId: string, feedback: Feedback) => void
   currentChatInstanceRef: RefObject<{ handleStop: () => void }>
   themeBuilder?: ThemeBuilder
+  hasMore: boolean
+  setChatListSize: (size: number | ((_size: number) => number)) => void
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
@@ -59,21 +61,23 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   showConfigPanelBeforeChat: false,
   newConversationInputs: {},
   newConversationInputsRef: { current: {} },
-  handleNewConversationInputsChange: () => {},
+  handleNewConversationInputsChange: () => { },
   inputsForms: [],
-  handleNewConversation: () => {},
-  handleStartChat: () => {},
-  handleChangeConversation: () => {},
-  handlePinConversation: () => {},
-  handleUnpinConversation: () => {},
-  handleDeleteConversation: () => {},
+  handleNewConversation: () => { },
+  handleStartChat: () => { },
+  handleChangeConversation: () => { },
+  handlePinConversation: () => { },
+  handleUnpinConversation: () => { },
+  handleDeleteConversation: () => { },
   conversationRenaming: false,
-  handleRenameConversation: () => {},
-  handleNewConversationCompleted: () => {},
+  handleRenameConversation: () => { },
+  handleNewConversationCompleted: () => { },
   chatShouldReloadKey: '',
   isMobile: false,
   isInstalledApp: false,
-  handleFeedback: () => {},
-  currentChatInstanceRef: { current: { handleStop: () => {} } },
+  handleFeedback: () => { },
+  currentChatInstanceRef: { current: { handleStop: () => { } } },
+  hasMore: false,
+  setChatListSize: (_: number | ((_size: number) => number)) => { },
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)
