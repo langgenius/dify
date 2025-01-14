@@ -5,7 +5,7 @@ import urllib.parse
 from collections.abc import Mapping
 from typing import Any
 from uuid import uuid4
-
+import magic
 import httpx
 from pydantic import BaseModel
 
@@ -46,6 +46,13 @@ def guess_file_info_from_response(response: httpx.Response):
     if mimetype is None:
         # If guessing fails, use Content-Type from response headers
         mimetype = response.headers.get("Content-Type", "application/octet-stream")
+
+    # Use python-magic to guess MIME type if still unknown or generic
+    if mimetype == "application/octet-stream":
+        try:
+            mimetype = magic.from_buffer(response.content[:1024], mime=True)
+        except magic.MagicException:
+            pass
 
     extension = os.path.splitext(filename)[1]
 
