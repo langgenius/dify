@@ -618,6 +618,21 @@ designer = ["mldesigner"]
 mount = ["azureml-dataprep-rslex (>=2.22.0)"]
 
 [[package]]
+name = "azure-cognitiveservices-speech"
+version = "1.41.1"
+description = "Microsoft Cognitive Services Speech SDK for Python"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "azure_cognitiveservices_speech-1.41.1-py3-none-macosx_10_14_x86_64.whl", hash = "sha256:ea9d466f236598e37ea3dad1db203a2901ef91b407e435b59d9b22669324074d"},
+    {file = "azure_cognitiveservices_speech-1.41.1-py3-none-macosx_11_0_arm64.whl", hash = "sha256:0f52f7852965bb2f5cf9aed0d3c6ef58238867bb6f0287eba95e42e1a513dd74"},
+    {file = "azure_cognitiveservices_speech-1.41.1-py3-none-manylinux1_x86_64.whl", hash = "sha256:70030c6f1c875895eb985de3775f62349aa8687b6616afa9498466e281f178d3"},
+    {file = "azure_cognitiveservices_speech-1.41.1-py3-none-manylinux2014_aarch64.whl", hash = "sha256:94ddda0deb3a9fee58a0a781b09ab8ab95401c5daf9bfc9f84ce8134d3a77055"},
+    {file = "azure_cognitiveservices_speech-1.41.1-py3-none-win32.whl", hash = "sha256:039eec52c0a549a30658fa24a06d42afc6366c47b03b961c0b6f730fd421293e"},
+    {file = "azure_cognitiveservices_speech-1.41.1-py3-none-win_amd64.whl", hash = "sha256:13679949f52f89c263e8b1c6a2d0f384d663917c58b150772cf42b710a01321c"},
+]
+
+[[package]]
 name = "azure-common"
 version = "1.1.28"
 description = "Microsoft Azure Client Library for Python (Common)"
@@ -11384,4 +11399,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "3bb0ce64c87712cf105c75105a0ca75c0523d6b27001ff6a623bb2a0d1343003"
+content-hash = "88f1ebb28aed4b46df57131777d1890282cd32b09363156a56f2c1657e89b406"
