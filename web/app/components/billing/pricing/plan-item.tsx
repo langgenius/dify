@@ -21,7 +21,7 @@ type Props = {
   canPay: boolean
 }
 
-const KeyValue = ({ icon, label, tooltip }: { icon: ReactNode; label: string; tooltip?: string }) => {
+const KeyValue = ({ icon, label, tooltip }: { icon: ReactNode; label: string; tooltip?: ReactNode }) => {
   return (
     <div className='flex text-text-tertiary'>
       <div className='size-4 flex items-center justify-center'>
@@ -199,7 +199,7 @@ const PlanItem: FC<Props> = ({
         <KeyValue
           icon={<RiSeoLine />}
           label={t('billing.plansCommon.documentsRequestQuota', { count: planInfo.documentsRequestQuota })}
-          tooltip={t('billing.plansCommon.documentsRequestQuotaTooltip') as string}
+          tooltip={t('billing.plansCommon.documentsRequestQuotaTooltip')}
         />
         <KeyValue
           icon={<RiProgress3Line />}

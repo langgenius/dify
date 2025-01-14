@@ -54,7 +54,7 @@ const translation = {
     vectorSpace: '{{size}} Knowledge Data Storage',
     vectorSpaceTooltip: 'Documents with the High Quality indexing mode will consume Knowledge Data Storage resources. When Knowledge Data Storage reaches the limit, new documents will not be uploaded.',
     documentsRequestQuota: '{{count}}/min Knowledge Request Rate limit',
-    documentsRequestQuotaTooltip: 'Indicates the number of queries per minute the system can handle with knowledge base support, used to measure query capacity and performance.',
+    documentsRequestQuotaTooltip: 'Specifies the total number of actions a workspace can perform per minute within the knowledge base, including dataset creation, deletion, updates, document uploads, modifications, archiving, and knowledge base queries. This metric is used to evaluate the performance of knowledge base requests. For example, if a Sandbox user performs 10 consecutive hit tests within one minute, their workspace will be temporarily restricted from performing the following actions for the next minute: dataset creation, deletion, updates, and document uploads or modifications. ',
     documentProcessingPriority: 'Document Processing',
     priority: {
       'standard': 'Standard',
