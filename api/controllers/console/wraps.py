@@ -8,7 +8,9 @@ from flask_login import current_user  # type: ignore
 
 from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models.dataset import RateLimitLog
 from models.model import DifySetup
 from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService
@@ -132,6 +134,14 @@ def cloud_edition_billing_rate_limit_check(resource: str):
                     request_count = redis_client.zcard(key)
 
                     if request_count > knowledge_rate_limit.limit:
+                        # add ratelimit record
+                        rate_limit_log = RateLimitLog(
+                            tenant_id=current_user.current_tenant_id,
+                            subscription_plan=knowledge_rate_limit.subscription_plan,
+                            operation="knowledge",
+                        )
+                        db.session.add(rate_limit_log)
+                        db.session.commit()
                         abort(
                             403, "Sorry, you have reached the knowledge base request rate limit of your subscription."
                         )

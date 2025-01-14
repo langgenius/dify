@@ -21,7 +21,7 @@ from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.dataset import Dataset, Document
+from models.dataset import Dataset, Document, RateLimitLog
 from models.workflow import WorkflowNodeExecutionStatus
 from services.feature_service import FeatureService
 
@@ -74,6 +74,14 @@ class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
                 redis_client.zremrangebyscore(key, 0, current_time - 60000)
                 request_count = redis_client.zcard(key)
                 if request_count > knowledge_rate_limit.limit:
+                    # add ratelimit record
+                    rate_limit_log = RateLimitLog(
+                        tenant_id=self.tenant_id,
+                        subscription_plan=knowledge_rate_limit.subscription_plan,
+                        operation="knowledge",
+                    )
+                    db.session.add(rate_limit_log)
+                    db.session.commit()
                     return NodeRunResult(
                         status=WorkflowNodeExecutionStatus.FAILED,
                         inputs=variables,

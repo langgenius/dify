@@ -56,6 +56,7 @@ class FeatureModel(BaseModel):
 class KnowledgeRateLimitModel(BaseModel):
     enabled: bool = False
     limit: int = 10
+    subscription_plan: str = ""
 
 
 class SystemFeatureModel(BaseModel):
@@ -90,7 +91,10 @@ class FeatureService:
         knowledge_rate_limit = KnowledgeRateLimitModel()
         if dify_config.BILLING_ENABLED and tenant_id:
             knowledge_rate_limit.enabled = True
-            knowledge_rate_limit.limit = BillingService.get_knowledge_rate_limit(tenant_id)
+            knowledge_rate_limit.subscription_plan = BillingService.get_subscription_plan(tenant_id)
+            limit_info = BillingService.get_knowledge_rate_limit(tenant_id)
+            knowledge_rate_limit.limit = limit_info.get("limit", 10)
+            knowledge_rate_limit.subscription_plan = limit_info.get("subscription_plan", "sandbox")
         return knowledge_rate_limit
 
     @classmethod

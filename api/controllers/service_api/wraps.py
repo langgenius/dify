@@ -15,6 +15,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.login import _get_user
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
+from models.dataset import RateLimitLog
 from models.model import ApiToken, App, EndUser
 from services.feature_service import FeatureService
 
@@ -158,6 +159,14 @@ def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
                     request_count = redis_client.zcard(key)
 
                     if request_count > knowledge_rate_limit.limit:
+                        # add ratelimit record
+                        rate_limit_log = RateLimitLog(
+                            tenant_id=api_token.tenant_id,
+                            subscription_plan=knowledge_rate_limit.subscription_plan,
+                            operation="knowledge",
+                        )
+                        db.session.add(rate_limit_log)
+                        db.session.commit()
                         raise Forbidden(
                             "Sorry, you have reached the knowledge base request rate limit of your subscription."
                         )
