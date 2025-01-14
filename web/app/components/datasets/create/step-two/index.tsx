@@ -342,8 +342,8 @@ const StepTwo = ({
   }
 
   const updatePreview = () => {
-    if (segmentationType === ProcessMode.general && maxChunkLength > 4000) {
-      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
+    if (segmentationType === ProcessMode.general && maxChunkLength > limitMaxChunkLength) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck', { limit: limitMaxChunkLength }) })
       return
     }
     fetchEstimate()
@@ -559,6 +559,17 @@ const StepTwo = ({
     else {
       getRulesFromDetail()
       getDefaultMode()
+      fetchDefaultProcessRuleMutation.mutate('/datasets/process-rule', {
+        onSuccess(data) {
+          setLimitMaxChunkLength(data.limits.indexing_max_segmentation_tokens_length || 4000)
+        },
+        onError(error) {
+          Toast.notify({
+            type: 'error',
+            message: `${error}`,
+          })
+        },
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -619,6 +630,7 @@ const StepTwo = ({
                   unit='tokens'
                   value={maxChunkLength}
                   onChange={setMaxChunkLength}
+                  max={limitMaxChunkLength}
                 />
                 <OverlapInput
                   unit='tokens'
@@ -758,6 +770,7 @@ const StepTwo = ({
                             maxLength: value,
                           },
                         })}
+                        max={limitMaxChunkLength}
                       />
                     </div>
                   }
@@ -805,6 +818,7 @@ const StepTwo = ({
                         maxLength: value,
                       },
                     })}
+                    max={limitMaxChunkLength}
                   />
                 </div>
               </div>
