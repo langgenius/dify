@@ -80,6 +80,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
             ? (
               <ResultItemExternal
                 key={idx}
+                positionId={idx + 1}
                 payload={record as ExternalKnowledgeBaseHitTesting}
               />
             )
