@@ -39,7 +39,7 @@ const VarPanel: FC<Props> = ({
         }
       </div>
       {!isCollapse && (
-        <div className='p-3 flex flex-col gap-2'>
+        <div className='p-3 flex flex-col gap-2 max-h-[500px] overflow-y-auto'>
           {varList.map(({ label, value }, index) => (
             <div key={index} className='flex py-2 system-xs-medium'>
               <div className='shrink-0 w-[128px] flex text-text-accent'>
