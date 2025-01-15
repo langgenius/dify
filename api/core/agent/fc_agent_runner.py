@@ -32,9 +32,12 @@ logger = logging.getLogger(__name__)
 
 
 class FunctionCallAgentRunner(BaseAgentRunner):
-    def run(self, message: Message, query: str, **kwargs: Any) -> Generator[LLMResultChunk, None, None]:
+    def run(
+        self, message: Message, query: str, **kwargs: Any
+    ) -> Union[Generator[LLMResultChunk, None, None], LLMResult]:
         """
         Run FunctionCall agent application
+        Returns either a Generator for streaming mode or LLMResult for blocking mode
         """
         self.query = query
         app_generate_entity = self.application_generate_entity
@@ -70,55 +73,109 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         model_instance = self.model_instance
 
-        while function_call_state and iteration_step <= max_iteration_steps:
-            function_call_state = False
+        # track full response for blocking mode
+        full_response = ""
+        final_prompt_messages = None
+        final_system_fingerprint = None
 
-            if iteration_step == max_iteration_steps:
-                # the last iteration, remove all tools
-                prompt_messages_tools = []
+        def response_generator() -> Generator[LLMResultChunk, None, None]:
+            nonlocal \
+                full_response, \
+                final_prompt_messages, \
+                final_system_fingerprint, \
+                function_call_state, \
+                iteration_step, \
+                prompt_messages_tools, \
+                final_answer
 
-            message_file_ids: list[str] = []
-            agent_thought = self.create_agent_thought(
-                message_id=message.id, message="", tool_name="", tool_input="", messages_ids=message_file_ids
-            )
+            while function_call_state and iteration_step <= max_iteration_steps:
+                function_call_state = False
 
-            # recalc llm max tokens
-            prompt_messages = self._organize_prompt_messages()
-            self.recalc_llm_max_tokens(self.model_config, prompt_messages)
-            # invoke model
-            chunks: Union[Generator[LLMResultChunk, None, None], LLMResult] = model_instance.invoke_llm(
-                prompt_messages=prompt_messages,
-                model_parameters=app_generate_entity.model_conf.parameters,
-                tools=prompt_messages_tools,
-                stop=app_generate_entity.model_conf.stop,
-                stream=self.stream_tool_call,
-                user=self.user_id,
-                callbacks=[],
-            )
+                if iteration_step == max_iteration_steps:
+                    # the last iteration, remove all tools
+                    prompt_messages_tools = []
 
-            tool_calls: list[tuple[str, str, dict[str, Any]]] = []
+                message_file_ids: list[str] = []
+                agent_thought = self.create_agent_thought(
+                    message_id=message.id, message="", tool_name="", tool_input="", messages_ids=message_file_ids
+                )
 
-            # save full response
-            response = ""
+                # recalc llm max tokens
+                prompt_messages = self._organize_prompt_messages()
+                self.recalc_llm_max_tokens(self.model_config, prompt_messages)
+                # invoke model
+                chunks: Union[Generator[LLMResultChunk, None, None], LLMResult] = model_instance.invoke_llm(
+                    prompt_messages=prompt_messages,
+                    model_parameters=app_generate_entity.model_conf.parameters,
+                    tools=prompt_messages_tools,
+                    stop=app_generate_entity.model_conf.stop,
+                    stream=self.stream_tool_call,
+                    user=self.user_id,
+                    callbacks=[],
+                )
 
-            # save tool call names and inputs
-            tool_call_names = ""
-            tool_call_inputs = ""
+                tool_calls: list[tuple[str, str, dict[str, Any]]] = []
 
-            current_llm_usage = None
+                # save full response
+                response = ""
 
-            if self.stream_tool_call and isinstance(chunks, Generator):
-                is_first_chunk = True
-                for chunk in chunks:
-                    if is_first_chunk:
-                        self.queue_manager.publish(
-                            QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
-                        )
-                        is_first_chunk = False
+                # save tool call names and inputs
+                tool_call_names = ""
+                tool_call_inputs = ""
+
+                current_llm_usage = None
+
+                if self.stream_tool_call and isinstance(chunks, Generator):
+                    is_first_chunk = True
+                    for chunk in chunks:
+                        if is_first_chunk:
+                            self.queue_manager.publish(
+                                QueueAgentThoughtEvent(agent_thought_id=agent_thought.id),
+                                PublishFrom.APPLICATION_MANAGER,
+                            )
+                            is_first_chunk = False
+                        # check if there is any tool call
+                        if self.check_tool_calls(chunk):
+                            function_call_state = True
+                            tool_calls.extend(self.extract_tool_calls(chunk) or [])
+                            tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
+                            try:
+                                tool_call_inputs = json.dumps(
+                                    {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
+                                )
+                            except json.JSONDecodeError as e:
+                                # ensure ascii to avoid encoding error
+                                tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
+
+                        if chunk.delta.message and chunk.delta.message.content:
+                            if isinstance(chunk.delta.message.content, list):
+                                for content in chunk.delta.message.content:
+                                    response += content.data
+                            else:
+                                response += str(chunk.delta.message.content)
+
+                        if chunk.delta.usage:
+                            increase_usage(llm_usage, chunk.delta.usage)
+                            current_llm_usage = chunk.delta.usage
+
+                        # update tracking variables
+                        if not final_prompt_messages:
+                            final_prompt_messages = chunk.prompt_messages
+                        final_system_fingerprint = chunk.system_fingerprint
+                        if chunk.delta.message and chunk.delta.message.content:
+                            if isinstance(chunk.delta.message.content, list):
+                                for content in chunk.delta.message.content:
+                                    full_response += content.data
+                            else:
+                                full_response += str(chunk.delta.message.content)
+
+                        yield chunk
+                elif not self.stream_tool_call and isinstance(chunks, LLMResult):
+                    result = chunks
                     # check if there is any tool call
-                    if self.check_tool_calls(chunk):
+                    if self.check_blocking_tool_calls(result):
                         function_call_state = True
-                        tool_calls.extend(self.extract_tool_calls(chunk) or [])
+                        tool_calls.extend(self.extract_blocking_tool_calls(result) or [])
                         tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
                         try:
                             tool_call_inputs = json.dumps(
@@ -128,196 +185,196 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             # ensure ascii to avoid encoding error
                             tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
 
-                    if chunk.delta.message and chunk.delta.message.content:
-                        if isinstance(chunk.delta.message.content, list):
-                            for content in chunk.delta.message.content:
+                    if result.usage:
+                        increase_usage(llm_usage, result.usage)
+                        current_llm_usage = result.usage
+
+                    if result.message and result.message.content:
+                        if isinstance(result.message.content, list):
+                            for content in result.message.content:
                                 response += content.data
                         else:
-                            response += str(chunk.delta.message.content)
+                            response += str(result.message.content)
 
-                    if chunk.delta.usage:
-                        increase_usage(llm_usage, chunk.delta.usage)
-                        current_llm_usage = chunk.delta.usage
+                    if not result.message.content:
+                        result.message.content = ""
 
-                    yield chunk
-            elif not self.stream_tool_call and isinstance(chunks, LLMResult):
-                result = chunks
-                # check if there is any tool call
-                if self.check_blocking_tool_calls(result):
-                    function_call_state = True
-                    tool_calls.extend(self.extract_blocking_tool_calls(result) or [])
-                    tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
-                    try:
-                        tool_call_inputs = json.dumps(
-                            {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
-                        )
-                    except json.JSONDecodeError as e:
-                        # ensure ascii to avoid encoding error
-                        tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
+                    self.queue_manager.publish(
+                        QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
+                    )
 
-                if result.usage:
-                    increase_usage(llm_usage, result.usage)
-                    current_llm_usage = result.usage
+                    # update tracking variables
+                    if not final_prompt_messages:
+                        final_prompt_messages = result.prompt_messages
+                    final_system_fingerprint = result.system_fingerprint
+                    if result.message and result.message.content:
+                        if isinstance(result.message.content, list):
+                            for content in result.message.content:
+                                full_response += content.data
+                        else:
+                            full_response += str(result.message.content)
 
-                if result.message and result.message.content:
-                    if isinstance(result.message.content, list):
-                        for content in result.message.content:
-                            response += content.data
-                    else:
-                        response += str(result.message.content)
-
-                if not result.message.content:
-                    result.message.content = ""
-
-                self.queue_manager.publish(
-                    QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
-                )
-
-                yield LLMResultChunk(
-                    model=model_instance.model,
-                    prompt_messages=result.prompt_messages,
-                    system_fingerprint=result.system_fingerprint,
-                    delta=LLMResultChunkDelta(
-                        index=0,
-                        message=result.message,
-                        usage=result.usage,
-                    ),
-                )
-            else:
-                raise RuntimeError(f"invalid chunks type: {type(chunks)}")
-
-            assistant_message = AssistantPromptMessage(content="", tool_calls=[])
-            if tool_calls:
-                assistant_message.tool_calls = [
-                    AssistantPromptMessage.ToolCall(
-                        id=tool_call[0],
-                        type="function",
-                        function=AssistantPromptMessage.ToolCall.ToolCallFunction(
-                            name=tool_call[1], arguments=json.dumps(tool_call[2], ensure_ascii=False)
+                    yield LLMResultChunk(
+                        model=model_instance.model,
+                        prompt_messages=result.prompt_messages,
+                        system_fingerprint=result.system_fingerprint,
+                        delta=LLMResultChunkDelta(
+                            index=0,
+                            message=result.message,
+                            usage=result.usage,
                         ),
                     )
-                    for tool_call in tool_calls
-                ]
-            else:
-                assistant_message.content = response
-
-            self._current_thoughts.append(assistant_message)
-
-            # save thought
-            self.save_agent_thought(
-                agent_thought=agent_thought,
-                tool_name=tool_call_names,
-                tool_input=tool_call_inputs,
-                thought=response,
-                tool_invoke_meta=None,
-                observation=None,
-                answer=response,
-                messages_ids=[],
-                llm_usage=current_llm_usage,
-            )
-            self.queue_manager.publish(
-                QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
-            )
-
-            final_answer += response + "\n"
-
-            # call tools
-            tool_responses = []
-            for tool_call_id, tool_call_name, tool_call_args in tool_calls:
-                tool_instance = tool_instances.get(tool_call_name)
-                if not tool_instance:
-                    tool_response = {
-                        "tool_call_id": tool_call_id,
-                        "tool_call_name": tool_call_name,
-                        "tool_response": f"there is not a tool named {tool_call_name}",
-                        "meta": ToolInvokeMeta.error_instance(f"there is not a tool named {tool_call_name}").to_dict(),
-                    }
                 else:
-                    # invoke tool
-                    tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
-                        tool=tool_instance,
-                        tool_parameters=tool_call_args,
-                        user_id=self.user_id,
-                        tenant_id=self.tenant_id,
-                        message=self.message,
-                        invoke_from=self.application_generate_entity.invoke_from,
-                        agent_tool_callback=self.agent_callback,
-                        trace_manager=trace_manager,
-                    )
-                    # publish files
-                    for message_file_id, save_as in message_files:
-                        if save_as:
-                            if self.variables_pool:
-                                self.variables_pool.set_file(
-                                    tool_name=tool_call_name, value=message_file_id, name=save_as
-                                )
+                    raise RuntimeError(f"invalid chunks type: {type(chunks)}")
 
-                        # publish message file
-                        self.queue_manager.publish(
-                            QueueMessageFileEvent(message_file_id=message_file_id), PublishFrom.APPLICATION_MANAGER
+                assistant_message = AssistantPromptMessage(content="", tool_calls=[])
+                if tool_calls:
+                    assistant_message.tool_calls = [
+                        AssistantPromptMessage.ToolCall(
+                            id=tool_call[0],
+                            type="function",
+                            function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                name=tool_call[1], arguments=json.dumps(tool_call[2], ensure_ascii=False)
+                            ),
                         )
-                        # add message file ids
-                        message_file_ids.append(message_file_id)
+                        for tool_call in tool_calls
+                    ]
+                else:
+                    assistant_message.content = response
 
-                    tool_response = {
-                        "tool_call_id": tool_call_id,
-                        "tool_call_name": tool_call_name,
-                        "tool_response": tool_invoke_response,
-                        "meta": tool_invoke_meta.to_dict(),
-                    }
+                self._current_thoughts.append(assistant_message)
 
-                tool_responses.append(tool_response)
-                if tool_response["tool_response"] is not None:
-                    self._current_thoughts.append(
-                        ToolPromptMessage(
-                            content=str(tool_response["tool_response"]),
-                            tool_call_id=tool_call_id,
-                            name=tool_call_name,
-                        )
-                    )
-
-            if len(tool_responses) > 0:
-                # save agent thought
+                # save thought
                 self.save_agent_thought(
                     agent_thought=agent_thought,
-                    tool_name="",
-                    tool_input="",
-                    thought="",
-                    tool_invoke_meta={
-                        tool_response["tool_call_name"]: tool_response["meta"] for tool_response in tool_responses
-                    },
-                    observation={
-                        tool_response["tool_call_name"]: tool_response["tool_response"]
-                        for tool_response in tool_responses
-                    },
-                    answer="",
-                    messages_ids=message_file_ids,
+                    tool_name=tool_call_names,
+                    tool_input=tool_call_inputs,
+                    thought=response,
+                    tool_invoke_meta=None,
+                    observation=None,
+                    answer=response,
+                    messages_ids=[],
+                    llm_usage=current_llm_usage,
                 )
                 self.queue_manager.publish(
                     QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
                 )
 
-            # update prompt tool
-            for prompt_tool in prompt_messages_tools:
-                self.update_prompt_message_tool(tool_instances[prompt_tool.name], prompt_tool)
+                final_answer += response + "\n"
 
-            iteration_step += 1
+                # call tools
+                tool_responses = []
+                for tool_call_id, tool_call_name, tool_call_args in tool_calls:
+                    tool_instance = tool_instances.get(tool_call_name)
+                    if not tool_instance:
+                        tool_response = {
+                            "tool_call_id": tool_call_id,
+                            "tool_call_name": tool_call_name,
+                            "tool_response": f"there is not a tool named {tool_call_name}",
+                            "meta": ToolInvokeMeta.error_instance(
+                                f"there is not a tool named {tool_call_name}"
+                            ).to_dict(),
+                        }
+                    else:
+                        # invoke tool
+                        tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
+                            tool=tool_instance,
+                            tool_parameters=tool_call_args,
+                            user_id=self.user_id,
+                            tenant_id=self.tenant_id,
+                            message=self.message,
+                            invoke_from=self.application_generate_entity.invoke_from,
+                            agent_tool_callback=self.agent_callback,
+                            trace_manager=trace_manager,
+                        )
+                        # publish files
+                        for message_file_id, save_as in message_files:
+                            if save_as:
+                                if self.variables_pool:
+                                    self.variables_pool.set_file(
+                                        tool_name=tool_call_name, value=message_file_id, name=save_as
+                                    )
 
-        if self.variables_pool and self.db_variables_pool:
-            self.update_db_variables(self.variables_pool, self.db_variables_pool)
-        # publish end event
-        self.queue_manager.publish(
-            QueueMessageEndEvent(
-                llm_result=LLMResult(
-                    model=model_instance.model,
-                    prompt_messages=prompt_messages,
-                    message=AssistantPromptMessage(content=final_answer),
-                    usage=llm_usage["usage"] or LLMUsage.empty_usage(),
-                    system_fingerprint="",
-                )
-            ),
-            PublishFrom.APPLICATION_MANAGER,
-        )
+                            # publish message file
+                            self.queue_manager.publish(
+                                QueueMessageFileEvent(message_file_id=message_file_id), PublishFrom.APPLICATION_MANAGER
+                            )
+                            # add message file ids
+                            message_file_ids.append(message_file_id)
+
+                        tool_response = {
+                            "tool_call_id": tool_call_id,
+                            "tool_call_name": tool_call_name,
+                            "tool_response": tool_invoke_response,
+                            "meta": tool_invoke_meta.to_dict(),
+                        }
+
+                    tool_responses.append(tool_response)
+                    if tool_response["tool_response"] is not None:
+                        self._current_thoughts.append(
+                            ToolPromptMessage(
+                                content=str(tool_response["tool_response"]),
+                                tool_call_id=tool_call_id,
+                                name=tool_call_name,
+                            )
+                        )
+
+                if len(tool_responses) > 0:
+                    # save agent thought
+                    self.save_agent_thought(
+                        agent_thought=agent_thought,
+                        tool_name="",
+                        tool_input="",
+                        thought="",
+                        tool_invoke_meta={
+                            tool_response["tool_call_name"]: tool_response["meta"] for tool_response in tool_responses
+                        },
+                        observation={
+                            tool_response["tool_call_name"]: tool_response["tool_response"]
+                            for tool_response in tool_responses
+                        },
+                        answer="",
+                        messages_ids=message_file_ids,
+                    )
+                    self.queue_manager.publish(
+                        QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
+                    )
+
+                # update prompt tool
+                for prompt_tool in prompt_messages_tools:
+                    self.update_prompt_message_tool(tool_instances[prompt_tool.name], prompt_tool)
+
+                iteration_step += 1
+
+            if self.variables_pool and self.db_variables_pool:
+                self.update_db_variables(self.variables_pool, self.db_variables_pool)
+            # publish end event
+            self.queue_manager.publish(
+                QueueMessageEndEvent(
+                    llm_result=LLMResult(
+                        model=model_instance.model,
+                        prompt_messages=prompt_messages,
+                        message=AssistantPromptMessage(content=full_response),
+                        usage=llm_usage["usage"] or LLMUsage.empty_usage(),
+                        system_fingerprint="",
+                    )
+                ),
+                PublishFrom.APPLICATION_MANAGER,
+            )
+
+        chunk_generator = response_generator()
+
+        if app_generate_entity.stream:
+            return chunk_generator
+        else:
+            list(chunk_generator)
+            return LLMResult(
+                model=model_instance.model,
+                prompt_messages=final_prompt_messages or [],
+                message=AssistantPromptMessage(content=full_response),
+                usage=llm_usage["usage"] or LLMUsage.empty_usage(),
+                system_fingerprint=final_system_fingerprint or "",
+            )
 
     def check_tool_calls(self, llm_result_chunk: LLMResultChunk) -> bool:
         """
