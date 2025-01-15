@@ -6,6 +6,7 @@ import {
   ALL_CHAT_AVAILABLE_BLOCKS,
   ALL_COMPLETION_AVAILABLE_BLOCKS,
 } from '@/app/components/workflow/constants'
+import { MAX_RETRIES_DEFAULT_HTTP_NODE, MAX_RETRIES_UPPER_BOUND_HTTP_NODE, RETRY_ENABLED_DEFAULT_HTTP_NODE, RETRY_INTERVAL_DEFAULT_HTTP_NODE, RETRY_INTERVAL_UPPER_BOUND_HTTP_NODE } from '@/config'
 
 const nodeDefault: NodeDefault<HttpNodeType> = {
   defaultValue: {
@@ -28,9 +29,11 @@ const nodeDefault: NodeDefault<HttpNodeType> = {
       max_write_timeout: 0,
     },
     retry_config: {
-      retry_enabled: true,
-      max_retries: 3,
-      retry_interval: 100,
+      retry_enabled: RETRY_ENABLED_DEFAULT_HTTP_NODE,
+      max_retries: MAX_RETRIES_DEFAULT_HTTP_NODE,
+      retry_interval: RETRY_INTERVAL_DEFAULT_HTTP_NODE,
+      max_retries_upper_bound: MAX_RETRIES_UPPER_BOUND_HTTP_NODE,
+      retry_interval_upper_bound: RETRY_INTERVAL_UPPER_BOUND_HTTP_NODE,
     },
   },
   getAvailablePrevNodes(isChatMode: boolean) {
