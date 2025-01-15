@@ -134,6 +134,10 @@ class ArrayStringSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_STRING
     value: Sequence[str]
 
+    @property
+    def text(self) -> str:
+        return json.dumps(self.value)
+
 
 class ArrayNumberSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_NUMBER
