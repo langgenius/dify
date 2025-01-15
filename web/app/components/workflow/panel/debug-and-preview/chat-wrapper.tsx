@@ -19,14 +19,14 @@ import ConversationVariableModal from './conversation-variable-modal'
 import { useChat } from './hooks'
 import type { ChatWrapperRefType } from './index'
 import Chat from '@/app/components/base/chat/chat'
-import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
+import type { ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import {
   fetchSuggestedQuestions,
   stopChatMessageResponding,
 } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { getLastAnswer } from '@/app/components/base/chat/utils'
+import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 
 type ChatWrapperProps = {
   showConversationVariableModal: boolean
@@ -65,13 +65,12 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
   const {
     conversationId,
     chatList,
-    chatListRef,
-    handleUpdateChatList,
     handleStop,
     isResponding,
     suggestedQuestions,
     handleSend,
     handleRestart,
+    setTargetMessageId,
   } = useChat(
     config,
     {
@@ -82,36 +81,26 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
     taskId => stopChatMessageResponding(appDetail!.id, taskId),
   )
 
-  const doSend = useCallback<OnSend>((query, files, last_answer) => {
+  const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     handleSend(
       {
-        query,
+        query: message,
         files,
         inputs: workflowStore.getState().inputs,
         conversation_id: conversationId,
-        parent_message_id: last_answer?.id || getLastAnswer(chatListRef.current)?.id || null,
+        parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || undefined,
       },
       {
         onGetSuggestedQuestions: (messageId, getAbortController) => fetchSuggestedQuestions(appDetail!.id, messageId, getAbortController),
       },
     )
-  }, [chatListRef, conversationId, handleSend, workflowStore, appDetail])
+  }, [handleSend, workflowStore, conversationId, chatList, appDetail])
 
-  const doRegenerate = useCallback((chatItem: ChatItem) => {
-    const index = chatList.findIndex(item => item.id === chatItem.id)
-    if (index === -1)
-      return
-
-    const prevMessages = chatList.slice(0, index)
-    const question = prevMessages.pop()
-    const lastAnswer = getLastAnswer(prevMessages)
-
-    if (!question)
-      return
-
-    handleUpdateChatList(prevMessages)
-    doSend(question.content, question.message_files, lastAnswer)
-  }, [chatList, handleUpdateChatList, doSend])
+  const doRegenerate = useCallback((chatItem: ChatItemInTree) => {
+    const question = chatList.find(item => item.id === chatItem.parentMessageId)!
+    const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
+    doSend(question.content, question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
+  }, [chatList, doSend])
 
   useImperativeHandle(ref, () => {
     return {
@@ -159,6 +148,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
         suggestedQuestions={suggestedQuestions}
         showPromptLog
         chatAnswerContainerInner='!pr-2'
+        switchSibling={setTargetMessageId}
       />
       {showConversationVariableModal && (
         <ConversationVariableModal
