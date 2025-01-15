@@ -260,3 +260,17 @@ export const TEXT_GENERATION_TIMEOUT_MS = textGenerationTimeoutMs
 export const DISABLE_UPLOAD_IMAGE_AS_ICON = process.env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON === 'true'
 
 export const FULL_DOC_PREVIEW_LENGTH = 50
+
+// System default upper bounds of max retry and retry intervals
+export const MAX_RETRIES_DEFAULT = 3
+export const RETRY_INTERVAL_DEFAULT = 500
+export const RETRY_ENABLED_DEFAULT = false
+export const MAX_RETRIES_UPPER_BOUND_DEFAULT = 10
+export const RETRY_INTERVAL_UPPER_BOUND_DEFAULT = 5000
+
+// Retries related parameters of LLM Node
+export const MAX_RETRIES_DEFAULT_LLM_NODE = 3
+export const RETRY_INTERVAL_DEFAULT_LLM_NODE = 500
+export const RETRY_ENABLED_DEFAULT_LLM_NODE = false
+export const MAX_RETRIES_UPPER_BOUND_LLM_NODE = 10
+export const RETRY_INTERVAL_UPPER_BOUND_LLM_NODE = 5000
