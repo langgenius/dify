@@ -416,7 +416,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.15.1
+    image: tzliu2024/dify-api:0.15.1
     restart: always
     environment:
       # Use the shared environment variables.
