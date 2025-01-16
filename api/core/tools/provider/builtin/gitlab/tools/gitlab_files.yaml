@@ -29,7 +29,7 @@ parameters:
       zh_Hans: 项目
     human_description:
       en_US: project
-      zh_Hans: 项目
+      zh_Hans: 项目(和仓库路径二选一,都填写以仓库路径优先)
     llm_description: Project for GitLab
     form: llm
   - name: branch
@@ -45,12 +45,21 @@ parameters:
     form: llm
   - name: path
     type: string
-    required: true
     label:
       en_US: path
-      zh_Hans: 文件路径
+      zh_Hans: 文件夹
     human_description:
       en_US: path
+      zh_Hans: 文件夹
+    llm_description: Dir path for GitLab
+    form: llm
+  - name: file_path
+    type: string
+    label:
+      en_US: file_path
       zh_Hans: 文件路径
+    human_description:
+      en_US: file_path
+      zh_Hans: 文件路径(和文件夹二选一,都填写以文件夹优先)
     llm_description: File path for GitLab
     form: llm
