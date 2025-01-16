@@ -263,28 +263,28 @@ export const FULL_DOC_PREVIEW_LENGTH = 50
 
 // System default upper bounds of max retry and retry intervals
 export const MAX_RETRIES_DEFAULT = 3
-export const RETRY_INTERVAL_DEFAULT = 500
+export const RETRY_INTERVAL_DEFAULT = 1000
 export const RETRY_ENABLED_DEFAULT = false
 export const MAX_RETRIES_UPPER_BOUND_DEFAULT = 10
 export const RETRY_INTERVAL_UPPER_BOUND_DEFAULT = 5000
 
 // Retries related parameters of LLM Node
 export const MAX_RETRIES_DEFAULT_LLM_NODE = 3
-export const RETRY_INTERVAL_DEFAULT_LLM_NODE = 500
+export const RETRY_INTERVAL_DEFAULT_LLM_NODE = 1000
 export const RETRY_ENABLED_DEFAULT_LLM_NODE = false
 export const MAX_RETRIES_UPPER_BOUND_LLM_NODE = 10
 export const RETRY_INTERVAL_UPPER_BOUND_LLM_NODE = 5000
 
 // Retries related parameters of HTTP Node
 export const MAX_RETRIES_DEFAULT_HTTP_NODE = 3
-export const RETRY_INTERVAL_DEFAULT_HTTP_NODE = 500
-export const RETRY_ENABLED_DEFAULT_HTTP_NODE = true
+export const RETRY_INTERVAL_DEFAULT_HTTP_NODE = 100
+export const RETRY_ENABLED_DEFAULT_HTTP_NODE = false
 export const MAX_RETRIES_UPPER_BOUND_HTTP_NODE = 10
 export const RETRY_INTERVAL_UPPER_BOUND_HTTP_NODE = 5000
 
 // Retries related parameters of Tool Node
 export const MAX_RETRIES_DEFAULT_TOOL_NODE = 3
-export const RETRY_INTERVAL_DEFAULT_TOOL_NODE = 500
-export const RETRY_ENABLED_DEFAULT_TOOL_NODE = true
+export const RETRY_INTERVAL_DEFAULT_TOOL_NODE = 1000
+export const RETRY_ENABLED_DEFAULT_TOOL_NODE = false
 export const MAX_RETRIES_UPPER_BOUND_TOOL_NODE = 10
 export const RETRY_INTERVAL_UPPER_BOUND_TOOL_NODE = 5000
