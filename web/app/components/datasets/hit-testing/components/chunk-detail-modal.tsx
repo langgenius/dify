@@ -56,7 +56,7 @@ const ChunkDetailModal: FC<Props> = ({
             </div>
             <Score value={score} />
           </div>
-          <div className={cn('mt-2 body-md-regular text-text-secondary', heighClassName)}>
+          <div className={cn('mt-2 body-md-regular text-text-secondary break-all', heighClassName)}>
             {content}
           </div>
           {!isParentChildRetrieval && keywords && keywords.length > 0 && (

@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.14.2",
+  "version": "0.15.1",
   "private": true,
   "engines": {
     "node": ">=18.17.0"
@@ -50,6 +50,7 @@
     "copy-to-clipboard": "^3.3.3",
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.7",
+    "decimal.js": "^10.4.3",
     "echarts": "^5.5.1",
     "echarts-for-react": "^3.0.2",
     "elkjs": "^0.9.3",

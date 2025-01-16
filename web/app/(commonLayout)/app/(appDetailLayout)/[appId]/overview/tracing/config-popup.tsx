@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import TracingIcon from './tracing-icon'
 import ProviderPanel from './provider-panel'
-import type { LangFuseConfig, LangSmithConfig } from './type'
+import type { LangFuseConfig, LangSmithConfig, OpikConfig } from './type'
 import { TracingProvider } from './type'
 import ProviderConfigModal from './provider-config-modal'
 import Indicator from '@/app/components/header/indicator'
@@ -23,7 +23,8 @@ export type PopupProps = {
   onChooseProvider: (provider: TracingProvider) => void
   langSmithConfig: LangSmithConfig | null
   langFuseConfig: LangFuseConfig | null
-  onConfigUpdated: (provider: TracingProvider, payload: LangSmithConfig | LangFuseConfig) => void
+  opikConfig: OpikConfig | null
+  onConfigUpdated: (provider: TracingProvider, payload: LangSmithConfig | LangFuseConfig | OpikConfig) => void
   onConfigRemoved: (provider: TracingProvider) => void
 }
 
@@ -36,6 +37,7 @@ const ConfigPopup: FC<PopupProps> = ({
   onChooseProvider,
   langSmithConfig,
   langFuseConfig,
+  opikConfig,
   onConfigUpdated,
   onConfigRemoved,
 }) => {
@@ -59,7 +61,7 @@ const ConfigPopup: FC<PopupProps> = ({
     }
   }, [onChooseProvider])
 
-  const handleConfigUpdated = useCallback((payload: LangSmithConfig | LangFuseConfig) => {
+  const handleConfigUpdated = useCallback((payload: LangSmithConfig | LangFuseConfig | OpikConfig) => {
     onConfigUpdated(currentProvider!, payload)
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigUpdated])
@@ -69,8 +71,8 @@ const ConfigPopup: FC<PopupProps> = ({
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigRemoved])
 
-  const providerAllConfigured = langSmithConfig && langFuseConfig
-  const providerAllNotConfigured = !langSmithConfig && !langFuseConfig
+  const providerAllConfigured = langSmithConfig && langFuseConfig && opikConfig
+  const providerAllNotConfigured = !langSmithConfig && !langFuseConfig && !opikConfig
 
   const switchContent = (
     <Switch
@@ -90,6 +92,7 @@ const ConfigPopup: FC<PopupProps> = ({
       onConfig={handleOnConfig(TracingProvider.langSmith)}
       isChosen={chosenProvider === TracingProvider.langSmith}
       onChoose={handleOnChoose(TracingProvider.langSmith)}
+      key="langSmith-provider-panel"
     />
   )
 
@@ -102,8 +105,60 @@ const ConfigPopup: FC<PopupProps> = ({
       onConfig={handleOnConfig(TracingProvider.langfuse)}
       isChosen={chosenProvider === TracingProvider.langfuse}
       onChoose={handleOnChoose(TracingProvider.langfuse)}
+      key="langfuse-provider-panel"
     />
   )
+
+  const opikPanel = (
+    <ProviderPanel
+      type={TracingProvider.opik}
+      readOnly={readOnly}
+      config={opikConfig}
+      hasConfigured={!!opikConfig}
+      onConfig={handleOnConfig(TracingProvider.opik)}
+      isChosen={chosenProvider === TracingProvider.opik}
+      onChoose={handleOnChoose(TracingProvider.opik)}
+      key="opik-provider-panel"
+    />
+  )
+
+  const configuredProviderPanel = () => {
+    const configuredPanels: ProviderPanel[] = []
+
+    if (langSmithConfig)
+      configuredPanels.push(langSmithPanel)
+
+    if (langFuseConfig)
+      configuredPanels.push(langfusePanel)
+
+    if (opikConfig)
+      configuredPanels.push(opikPanel)
+
+    return configuredPanels
+  }
+
+  const moreProviderPanel = () => {
+    const notConfiguredPanels: ProviderPanel[] = []
+
+    if (!langSmithConfig)
+      notConfiguredPanels.push(langSmithPanel)
+
+    if (!langFuseConfig)
+      notConfiguredPanels.push(langfusePanel)
+
+    if (!opikConfig)
+      notConfiguredPanels.push(opikPanel)
+
+    return notConfiguredPanels
+  }
+
+  const configuredProviderConfig = () => {
+    if (currentProvider === TracingProvider.langSmith)
+      return langSmithConfig
+    if (currentProvider === TracingProvider.langfuse)
+      return langFuseConfig
+    return opikConfig
+  }
 
   return (
     <div className='w-[420px] p-4 rounded-2xl bg-white border-[0.5px] border-black/5 shadow-lg'>
@@ -146,18 +201,19 @@ const ConfigPopup: FC<PopupProps> = ({
               <div className='mt-2 space-y-2'>
                 {langSmithPanel}
                 {langfusePanel}
+                {opikPanel}
               </div>
             </>
           )
           : (
             <>
               <div className='leading-4 text-xs font-medium text-gray-500 uppercase'>{t(`${I18N_PREFIX}.configProviderTitle.configured`)}</div>
-              <div className='mt-2'>
-                {langSmithConfig ? langSmithPanel : langfusePanel}
+              <div className='mt-2 space-y-2'>
+                {configuredProviderPanel()}
               </div>
               <div className='mt-3 leading-4 text-xs font-medium text-gray-500 uppercase'>{t(`${I18N_PREFIX}.configProviderTitle.moreProvider`)}</div>
-              <div className='mt-2'>
-                {!langSmithConfig ? langSmithPanel : langfusePanel}
+              <div className='mt-2 space-y-2'>
+                {moreProviderPanel()}
               </div>
             </>
           )}
@@ -167,7 +223,7 @@ const ConfigPopup: FC<PopupProps> = ({
         <ProviderConfigModal
           appId={appId}
           type={currentProvider!}
-          payload={currentProvider === TracingProvider.langSmith ? langSmithConfig : langFuseConfig}
+          payload={configuredProviderConfig()}
           onCancel={hideConfigModal}
           onSaved={handleConfigUpdated}
           onChosen={onChooseProvider}

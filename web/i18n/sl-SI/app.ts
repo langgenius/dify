@@ -164,6 +164,10 @@ const translation = {
       removeConfirmTitle: 'Odstraniti konfiguracijo {{key}}?',
       removeConfirmContent: 'Trenutna konfiguracija je v uporabi, odstranitev bo onemogočila funkcijo sledenja.',
     },
+    opik: {
+      description: 'Opik je odprtokodna platforma za ocenjevanje, testiranje in spremljanje aplikacij LLM.',
+      title: 'Opik',
+    },
   },
   mermaid: {
     handDrawn: 'Ročno narisano',
@@ -183,6 +187,7 @@ const translation = {
     byCategories: 'PO KATEGORIJAH',
     searchAllTemplate: 'Preišči vse predloge ...',
   },
+  showMyCreatedAppsOnly: 'Prikaži samo aplikacije, ki sem jih ustvaril',
 }
 
 export default translation

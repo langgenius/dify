@@ -39,6 +39,7 @@ const translation = {
     rename: 'Rename',
     audioSourceUnavailable: 'AudioSource is unavailable',
     copyImage: 'Copy Image',
+    imageCopied: 'Image copied',
     zoomOut: 'Zoom Out',
     zoomIn: 'Zoom In',
     openInNewTab: 'Open in new tab',

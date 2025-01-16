@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import Image from 'next/image'
@@ -39,8 +39,8 @@ const RetrievalParamConfig: FC<Props> = ({
   const { t } = useTranslation()
   const canToggleRerankModalEnable = type !== RETRIEVE_METHOD.hybrid
   const isEconomical = type === RETRIEVE_METHOD.invertedIndex
+  const isHybridSearch = type === RETRIEVE_METHOD.hybrid
   const {
-    defaultModel: rerankDefaultModel,
     modelList: rerankModelList,
   } = useModelListAndDefaultModel(ModelTypeEnum.rerank)
 
@@ -48,35 +48,28 @@ const RetrievalParamConfig: FC<Props> = ({
     currentModel,
   } = useCurrentProviderAndModel(
     rerankModelList,
-    rerankDefaultModel
-      ? {
-        ...rerankDefaultModel,
-        provider: rerankDefaultModel.provider.provider,
-      }
-      : undefined,
+    {
+      provider: value.reranking_model?.reranking_provider_name ?? '',
+      model: value.reranking_model?.reranking_model_name ?? '',
+    },
   )
 
-  const handleDisabledSwitchClick = useCallback(() => {
-    if (!currentModel)
+  const handleDisabledSwitchClick = useCallback((enable: boolean) => {
+    if (enable && !currentModel)
       Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
-  }, [currentModel, rerankDefaultModel, t])
+    onChange({
+      ...value,
+      reranking_enable: enable,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentModel, onChange, value])
 
-  const isHybridSearch = type === RETRIEVE_METHOD.hybrid
-
-  const rerankModel = (() => {
-    if (value.reranking_model) {
-      return {
-        provider_name: value.reranking_model.reranking_provider_name,
-        model_name: value.reranking_model.reranking_model_name,
-      }
+  const rerankModel = useMemo(() => {
+    return {
+      provider_name: value.reranking_model.reranking_provider_name,
+      model_name: value.reranking_model.reranking_model_name,
     }
-    else if (rerankDefaultModel) {
-      return {
-        provider_name: rerankDefaultModel.provider.provider,
-        model_name: rerankDefaultModel.model,
-      }
-    }
-  })()
+  }, [value.reranking_model])
 
   const handleChangeRerankMode = (v: RerankingModeEnum) => {
     if (v === value.reranking_mode)
@@ -100,6 +93,8 @@ const RetrievalParamConfig: FC<Props> = ({
         },
       }
     }
+    if (v === RerankingModeEnum.RerankingModel && !currentModel)
+      Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
     onChange(result)
   }
 
@@ -122,22 +117,11 @@ const RetrievalParamConfig: FC<Props> = ({
         <div>
           <div className='flex items-center space-x-2 mb-2'>
             {canToggleRerankModalEnable && (
-              <div
-                className='flex items-center'
-                onClick={handleDisabledSwitchClick}
-              >
-                <Switch
-                  size='md'
-                  defaultValue={currentModel ? value.reranking_enable : false}
-                  onChange={(v) => {
-                    onChange({
-                      ...value,
-                      reranking_enable: v,
-                    })
-                  }}
-                  disabled={!currentModel}
-                />
-              </div>
+              <Switch
+                size='md'
+                defaultValue={value.reranking_enable}
+                onChange={handleDisabledSwitchClick}
+              />
             )}
             <div className='flex items-center'>
               <span className='mr-0.5 system-sm-semibold text-text-secondary'>{t('common.modelProvider.rerankModel.key')}</span>
@@ -148,21 +132,23 @@ const RetrievalParamConfig: FC<Props> = ({
               />
             </div>
           </div>
-          <ModelSelector
-            triggerClassName={`${!value.reranking_enable && '!opacity-60 !cursor-not-allowed'}`}
-            defaultModel={rerankModel && { provider: rerankModel.provider_name, model: rerankModel.model_name }}
-            modelList={rerankModelList}
-            readonly={!value.reranking_enable}
-            onSelect={(v) => {
-              onChange({
-                ...value,
-                reranking_model: {
-                  reranking_provider_name: v.provider,
-                  reranking_model_name: v.model,
-                },
-              })
-            }}
-          />
+          {
+            value.reranking_enable && (
+              <ModelSelector
+                defaultModel={rerankModel && { provider: rerankModel.provider_name, model: rerankModel.model_name }}
+                modelList={rerankModelList}
+                onSelect={(v) => {
+                  onChange({
+                    ...value,
+                    reranking_model: {
+                      reranking_provider_name: v.provider,
+                      reranking_model_name: v.model,
+                    },
+                  })
+                }}
+              />
+            )
+          }
         </div>
       )}
       {
@@ -255,10 +241,8 @@ const RetrievalParamConfig: FC<Props> = ({
             {
               value.reranking_mode !== RerankingModeEnum.WeightedScore && (
                 <ModelSelector
-                  triggerClassName={`${!value.reranking_enable && '!opacity-60 !cursor-not-allowed'}`}
                   defaultModel={rerankModel && { provider: rerankModel.provider_name, model: rerankModel.model_name }}
                   modelList={rerankModelList}
-                  readonly={!value.reranking_enable}
                   onSelect={(v) => {
                     onChange({
                       ...value,

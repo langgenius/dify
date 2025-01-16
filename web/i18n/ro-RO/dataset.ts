@@ -166,6 +166,8 @@ const translation = {
   preprocessDocument: '{{num}} Procesarea prealabilă a documentelor',
   enable: 'Activa',
   localDocs: 'Documente locale',
+  allKnowledge: 'Toate cunoștințele',
+  allKnowledgeDescription: 'Selectați pentru a afișa toate cunoștințele din acest spațiu de lucru. Doar proprietarul spațiului de lucru poate gestiona toate cunoștințele.',
 }
 
 export default translation

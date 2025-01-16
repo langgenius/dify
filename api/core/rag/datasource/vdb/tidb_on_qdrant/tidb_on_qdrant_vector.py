@@ -409,27 +409,27 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
             db.session.query(TidbAuthBinding).filter(TidbAuthBinding.tenant_id == dataset.tenant_id).one_or_none()
         )
         if not tidb_auth_binding:
-            idle_tidb_auth_binding = (
-                db.session.query(TidbAuthBinding)
-                .filter(TidbAuthBinding.active == False, TidbAuthBinding.status == "ACTIVE")
-                .limit(1)
-                .one_or_none()
-            )
-            if idle_tidb_auth_binding:
-                idle_tidb_auth_binding.active = True
-                idle_tidb_auth_binding.tenant_id = dataset.tenant_id
-                db.session.commit()
-                TIDB_ON_QDRANT_API_KEY = f"{idle_tidb_auth_binding.account}:{idle_tidb_auth_binding.password}"
-            else:
-                with redis_client.lock("create_tidb_serverless_cluster_lock", timeout=900):
-                    tidb_auth_binding = (
+            with redis_client.lock("create_tidb_serverless_cluster_lock", timeout=900):
+                tidb_auth_binding = (
+                    db.session.query(TidbAuthBinding)
+                    .filter(TidbAuthBinding.tenant_id == dataset.tenant_id)
+                    .one_or_none()
+                )
+                if tidb_auth_binding:
+                    TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
+
+                else:
+                    idle_tidb_auth_binding = (
                         db.session.query(TidbAuthBinding)
-                        .filter(TidbAuthBinding.tenant_id == dataset.tenant_id)
+                        .filter(TidbAuthBinding.active == False, TidbAuthBinding.status == "ACTIVE")
+                        .limit(1)
                         .one_or_none()
                     )
-                    if tidb_auth_binding:
-                        TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
-
+                    if idle_tidb_auth_binding:
+                        idle_tidb_auth_binding.active = True
+                        idle_tidb_auth_binding.tenant_id = dataset.tenant_id
+                        db.session.commit()
+                        TIDB_ON_QDRANT_API_KEY = f"{idle_tidb_auth_binding.account}:{idle_tidb_auth_binding.password}"
                     else:
                         new_cluster = TidbService.create_tidb_serverless_cluster(
                             dify_config.TIDB_PROJECT_ID or "",
@@ -451,7 +451,6 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                         db.session.add(new_tidb_auth_binding)
                         db.session.commit()
                         TIDB_ON_QDRANT_API_KEY = f"{new_tidb_auth_binding.account}:{new_tidb_auth_binding.password}"
-
         else:
             TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
 

@@ -760,7 +760,21 @@ export const useWorkflowRun = () => {
       edges,
       viewport,
     })
-    featuresStore?.setState({ features: publishedWorkflow.features })
+    const mappedFeatures = {
+      opening: {
+        enabled: !!publishedWorkflow.features.opening_statement || !!publishedWorkflow.features.suggested_questions.length,
+        opening_statement: publishedWorkflow.features.opening_statement,
+        suggested_questions: publishedWorkflow.features.suggested_questions,
+      },
+      suggested: publishedWorkflow.features.suggested_questions_after_answer,
+      text2speech: publishedWorkflow.features.text_to_speech,
+      speech2text: publishedWorkflow.features.speech_to_text,
+      citation: publishedWorkflow.features.retriever_resource,
+      moderation: publishedWorkflow.features.sensitive_word_avoidance,
+      file: publishedWorkflow.features.file_upload,
+    }
+
+    featuresStore?.setState({ features: mappedFeatures })
     workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
     workflowStore.getState().setEnvironmentVariables(publishedWorkflow.environment_variables || [])
   }, [featuresStore, handleUpdateWorkflowCanvas, workflowStore])

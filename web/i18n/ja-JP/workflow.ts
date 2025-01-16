@@ -104,6 +104,8 @@ const translation = {
     importWarningDetails: 'DSL のバージョンの違いが特定の機能に影響を与える場合があります',
     onFailure: '失敗時',
     addFailureBranch: '失敗ブランチを追加',
+    noHistory: '履歴なし',
+    loadMore: 'より多くのワークフローをロードする',
   },
   env: {
     envPanelTitle: '環境変数',

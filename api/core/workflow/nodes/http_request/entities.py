@@ -68,7 +68,22 @@ class HttpRequestNodeData(BaseNodeData):
     Code Node Data.
     """
 
-    method: Literal["get", "post", "put", "patch", "delete", "head"]
+    method: Literal[
+        "get",
+        "post",
+        "put",
+        "patch",
+        "delete",
+        "head",
+        "options",
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "HEAD",
+        "OPTIONS",
+    ]
     url: str
     authorization: HttpRequestNodeAuthorization
     headers: str

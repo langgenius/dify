@@ -52,12 +52,12 @@ class DatasetListApi(Resource):
         # provider = request.args.get("provider", default="vendor")
         search = request.args.get("keyword", default=None, type=str)
         tag_ids = request.args.getlist("tag_ids")
-
+        include_all = request.args.get("include_all", default="false").lower() == "true"
         if ids:
             datasets, total = DatasetService.get_datasets_by_ids(ids, current_user.current_tenant_id)
         else:
             datasets, total = DatasetService.get_datasets(
-                page, limit, current_user.current_tenant_id, current_user, search, tag_ids
+                page, limit, current_user.current_tenant_id, current_user, search, tag_ids, include_all
             )
 
         # check embedding setting
@@ -640,6 +640,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.MYSCALE
                 | VectorType.ORACLE
                 | VectorType.ELASTICSEARCH
+                | VectorType.ELASTICSEARCH_JA
                 | VectorType.PGVECTOR
                 | VectorType.TIDB_ON_QDRANT
                 | VectorType.LINDORM
@@ -683,6 +684,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.MYSCALE
                 | VectorType.ORACLE
                 | VectorType.ELASTICSEARCH
+                | VectorType.ELASTICSEARCH_JA
                 | VectorType.COUCHBASE
                 | VectorType.PGVECTOR
                 | VectorType.LINDORM

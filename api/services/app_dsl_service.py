@@ -1,7 +1,8 @@
 import logging
 import uuid
 from enum import StrEnum
-from typing import Optional, cast
+from typing import Optional
+from urllib.parse import urlparse
 from uuid import uuid4
 
 import yaml  # type: ignore
@@ -103,7 +104,7 @@ class AppDslService:
             raise ValueError(f"Invalid import_mode: {import_mode}")
 
         # Get YAML content
-        content: bytes | str = b""
+        content: str = ""
         if mode == ImportMode.YAML_URL:
             if not yaml_url:
                 return Import(
@@ -113,13 +114,17 @@ class AppDslService:
                 )
             try:
                 max_size = 10 * 1024 * 1024  # 10MB
-                # tricky way to handle url from github to github raw url
-                if yaml_url.startswith("https://github.com") and yaml_url.endswith((".yml", ".yaml")):
+                parsed_url = urlparse(yaml_url)
+                if (
+                    parsed_url.scheme == "https"
+                    and parsed_url.netloc == "github.com"
+                    and parsed_url.path.endswith((".yml", ".yaml"))
+                ):
                     yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
                     yaml_url = yaml_url.replace("/blob/", "/")
                 response = ssrf_proxy.get(yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
-                content = response.content
+                content = response.content.decode()
 
                 if len(content) > max_size:
                     return Import(
@@ -133,15 +138,6 @@ class AppDslService:
                         id=import_id,
                         status=ImportStatus.FAILED,
                         error="Empty content from url",
-                    )
-
-                try:
-                    content = cast(bytes, content).decode("utf-8")
-                except UnicodeDecodeError as e:
-                    return Import(
-                        id=import_id,
-                        status=ImportStatus.FAILED,
-                        error=f"Error decoding content: {e}",
                     )
             except Exception as e:
                 return Import(

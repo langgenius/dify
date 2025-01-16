@@ -166,6 +166,8 @@ const translation = {
     cancel: 'キャンセル',
   },
   preprocessDocument: '{{num}}件のドキュメントを前処理',
+  allKnowledge: 'すべての知識',
+  allKnowledgeDescription: 'このワークスペースにすべてのナレッジを表示する場合に選択します。ワークスペースのオーナーのみがすべてのナレッジを管理できます。',
 }
 
 export default translation
