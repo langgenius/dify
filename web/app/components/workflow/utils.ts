@@ -41,6 +41,7 @@ import type { ToolNodeType } from './nodes/tool/types'
 import type { IterationNodeType } from './nodes/iteration/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { MAX_RETRIES_UPPER_BOUND_DEFAULT, RETRY_INTERVAL_UPPER_BOUND_DEFAULT } from '@/config'
 
 const WHITE = 'WHITE'
 const GRAY = 'GRAY'
@@ -286,6 +287,8 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
         retry_enabled: true,
         max_retries: DEFAULT_RETRY_MAX,
         retry_interval: DEFAULT_RETRY_INTERVAL,
+        max_retries_upper_bound: MAX_RETRIES_UPPER_BOUND_DEFAULT,
+        retry_interval_upper_bound: RETRY_INTERVAL_UPPER_BOUND_DEFAULT,
       }
     }
 
