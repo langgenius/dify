@@ -154,7 +154,7 @@ class AIModel(ABC):
         # get all yaml files path under provider_model_type_path that do not start with __
         model_schema_yaml_paths = [
             os.path.join(provider_model_type_path, model_schema_yaml)
-            for model_schema_yaml in os.listdir(provider_model_type_path)
+            for model_schema_yaml in sorted(os.listdir(provider_model_type_path))
             if not model_schema_yaml.startswith("__")
             and not model_schema_yaml.startswith("_")
             and os.path.isfile(os.path.join(provider_model_type_path, model_schema_yaml))
