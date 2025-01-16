@@ -30,7 +30,7 @@ class BingSearchTool(BuiltinTool):
         headers = {"Ocp-Apim-Subscription-Key": subscription_key, "Accept-Language": accept_language}
 
         query = quote(query)
-        server_url = f'{server_url}?q={query}&mkt={market_code}&count={limit}&responseFilter={",".join(filters)}'
+        server_url = f"{server_url}?q={query}&mkt={market_code}&count={limit}&responseFilter={','.join(filters)}"
         response = get(server_url, headers=headers)
 
         if response.status_code != 200:
@@ -47,23 +47,23 @@ class BingSearchTool(BuiltinTool):
             results = []
             if search_results:
                 for result in search_results:
-                    url = f': {result["url"]}' if "url" in result else ""
-                    results.append(self.create_text_message(text=f'{result["name"]}{url}'))
+                    url = f": {result['url']}" if "url" in result else ""
+                    results.append(self.create_text_message(text=f"{result['name']}{url}"))
 
             if entities:
                 for entity in entities:
-                    url = f': {entity["url"]}' if "url" in entity else ""
-                    results.append(self.create_text_message(text=f'{entity.get("name", "")}{url}'))
+                    url = f": {entity['url']}" if "url" in entity else ""
+                    results.append(self.create_text_message(text=f"{entity.get('name', '')}{url}"))
 
             if news:
                 for news_item in news:
-                    url = f': {news_item["url"]}' if "url" in news_item else ""
-                    results.append(self.create_text_message(text=f'{news_item.get("name", "")}{url}'))
+                    url = f": {news_item['url']}" if "url" in news_item else ""
+                    results.append(self.create_text_message(text=f"{news_item.get('name', '')}{url}"))
 
             if related_searches:
                 for related in related_searches:
-                    url = f': {related["displayText"]}' if "displayText" in related else ""
-                    results.append(self.create_text_message(text=f'{related.get("displayText", "")}{url}'))
+                    url = f": {related['displayText']}" if "displayText" in related else ""
+                    results.append(self.create_text_message(text=f"{related.get('displayText', '')}{url}"))
 
             return results
         elif result_type == "json":
@@ -106,29 +106,29 @@ class BingSearchTool(BuiltinTool):
             text = ""
             if search_results:
                 for i, result in enumerate(search_results):
-                    text += f'{i + 1}: {result.get("name", "")} - {result.get("snippet", "")}\n'
+                    text += f"{i + 1}: {result.get('name', '')} - {result.get('snippet', '')}\n"
 
             if computation and "expression" in computation and "value" in computation:
                 text += "\nComputation:\n"
-                text += f'{computation["expression"]} = {computation["value"]}\n'
+                text += f"{computation['expression']} = {computation['value']}\n"
 
             if entities:
                 text += "\nEntities:\n"
                 for entity in entities:
-                    url = f'- {entity["url"]}' if "url" in entity else ""
-                    text += f'{entity.get("name", "")}{url}\n'
+                    url = f"- {entity['url']}" if "url" in entity else ""
+                    text += f"{entity.get('name', '')}{url}\n"
 
             if news:
                 text += "\nNews:\n"
                 for news_item in news:
-                    url = f'- {news_item["url"]}' if "url" in news_item else ""
-                    text += f'{news_item.get("name", "")}{url}\n'
+                    url = f"- {news_item['url']}" if "url" in news_item else ""
+                    text += f"{news_item.get('name', '')}{url}\n"
 
             if related_searches:
                 text += "\n\nRelated Searches:\n"
                 for related in related_searches:
-                    url = f'- {related["webSearchUrl"]}' if "webSearchUrl" in related else ""
-                    text += f'{related.get("displayText", "")}{url}\n'
+                    url = f"- {related['webSearchUrl']}" if "webSearchUrl" in related else ""
+                    text += f"{related.get('displayText', '')}{url}\n"
 
             return self.create_text_message(text=self.summary(user_id=user_id, content=text))
 

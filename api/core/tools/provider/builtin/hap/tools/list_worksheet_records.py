@@ -110,7 +110,7 @@ class ListWorksheetRecordsTool(BuiltinTool):
                             result["rows"].append(self.get_row_field_value(row, schema))
                         return self.create_text_message(json.dumps(result, ensure_ascii=False))
                     else:
-                        result_text = f"Found {result['total']} rows in worksheet \"{worksheet_name}\"."
+                        result_text = f'Found {result["total"]} rows in worksheet "{worksheet_name}".'
                         if result["total"] > 0:
                             result_text += (
                                 f" The following are {min(limit, result['total'])}"

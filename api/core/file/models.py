@@ -90,7 +90,7 @@ class File(BaseModel):
     def markdown(self) -> str:
         url = self.generate_url()
         if self.type == FileType.IMAGE:
-            text = f'![{self.filename or ""}]({url})'
+            text = f"![{self.filename or ''}]({url})"
         else:
             text = f"[{self.filename or url}]({url})"
 

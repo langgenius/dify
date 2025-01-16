@@ -44,6 +44,6 @@ def test_duplicated_dependency_crossing_groups() -> None:
         dependency_names = list(dependencies.keys())
         all_dependency_names.extend(dependency_names)
     expected_all_dependency_names = set(all_dependency_names)
-    assert sorted(expected_all_dependency_names) == sorted(
-        all_dependency_names
-    ), "Duplicated dependencies crossing groups are found"
+    assert sorted(expected_all_dependency_names) == sorted(all_dependency_names), (
+        "Duplicated dependencies crossing groups are found"
+    )

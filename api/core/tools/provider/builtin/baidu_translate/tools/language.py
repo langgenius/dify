@@ -52,7 +52,7 @@ class BaiduLanguageTool(BuiltinTool, BaiduTranslateToolBase):
 
             result_text = ""
             if result["error_code"] != 0:
-                result_text = f'{result["error_code"]}: {result["error_msg"]}'
+                result_text = f"{result['error_code']}: {result['error_msg']}"
             else:
                 result_text = result["data"]["src"]
                 result_text = self.mapping_result(description_language, result_text)

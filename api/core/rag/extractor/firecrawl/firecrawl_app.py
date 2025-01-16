@@ -31,7 +31,7 @@ class FirecrawlApp:
                     "markdown": data.get("markdown"),
                 }
             else:
-                raise Exception(f'Failed to scrape URL. Error: {response_data["error"]}')
+                raise Exception(f"Failed to scrape URL. Error: {response_data['error']}")
 
         elif response.status_code in {402, 409, 500}:
             error_message = response.json().get("error", "Unknown error occurred")

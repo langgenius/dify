@@ -155,7 +155,7 @@ class ExternalDatasetService:
             if custom_parameters:
                 for parameter in custom_parameters:
                     if parameter.get("required", False) and not process_parameter.get(parameter.get("name")):
-                        raise ValueError(f'{parameter.get("name")} is required')
+                        raise ValueError(f"{parameter.get('name')} is required")
 
     @staticmethod
     def process_external_api(

@@ -146,7 +146,7 @@ class EndpointConfig(BaseSettings):
     )
 
     CONSOLE_WEB_URL: str = Field(
-        description="Base URL for the console web interface," "used for frontend references and CORS configuration",
+        description="Base URL for the console web interface,used for frontend references and CORS configuration",
         default="",
     )
 

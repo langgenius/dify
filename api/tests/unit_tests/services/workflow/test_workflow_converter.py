@@ -401,8 +401,7 @@ def test__convert_to_llm_node_for_workflow_advanced_completion_model(default_var
     prompt_template = PromptTemplateEntity(
         prompt_type=PromptTemplateEntity.PromptType.ADVANCED,
         advanced_completion_prompt_template=AdvancedCompletionPromptTemplateEntity(
-            prompt="You are a helpful assistant named {{name}}.\n\nContext:\n{{#context#}}\n\n"
-            "Human: hi\nAssistant: ",
+            prompt="You are a helpful assistant named {{name}}.\n\nContext:\n{{#context#}}\n\nHuman: hi\nAssistant: ",
             role_prefix=AdvancedCompletionPromptTemplateEntity.RolePrefixEntity(user="Human", assistant="Assistant"),
         ),
     )

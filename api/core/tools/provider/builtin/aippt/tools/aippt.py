@@ -127,7 +127,7 @@ class AIPPTGenerateToolAdapter:
 
         response = response.json()
         if response.get("code") != 0:
-            raise Exception(f'Failed to create task: {response.get("msg")}')
+            raise Exception(f"Failed to create task: {response.get('msg')}")
 
         return response.get("data", {}).get("id")
 
@@ -222,7 +222,7 @@ class AIPPTGenerateToolAdapter:
         elif model == "wenxin":
             response = response.json()
             if response.get("code") != 0:
-                raise Exception(f'Failed to generate content: {response.get("msg")}')
+                raise Exception(f"Failed to generate content: {response.get('msg')}")
 
             return response.get("data", "")
 
@@ -254,7 +254,7 @@ class AIPPTGenerateToolAdapter:
 
         response = response.json()
         if response.get("code") != 0:
-            raise Exception(f'Failed to generate ppt: {response.get("msg")}')
+            raise Exception(f"Failed to generate ppt: {response.get('msg')}")
 
         id = response.get("data", {}).get("id")
         cover_url = response.get("data", {}).get("cover_url")
@@ -270,7 +270,7 @@ class AIPPTGenerateToolAdapter:
 
         response = response.json()
         if response.get("code") != 0:
-            raise Exception(f'Failed to generate ppt: {response.get("msg")}')
+            raise Exception(f"Failed to generate ppt: {response.get('msg')}")
 
         export_code = response.get("data")
         if not export_code:
@@ -290,7 +290,7 @@ class AIPPTGenerateToolAdapter:
 
             response = response.json()
             if response.get("code") != 0:
-                raise Exception(f'Failed to generate ppt: {response.get("msg")}')
+                raise Exception(f"Failed to generate ppt: {response.get('msg')}")
 
             if response.get("msg") == "导出中":
                 current_iteration += 1
@@ -343,7 +343,7 @@ class AIPPTGenerateToolAdapter:
             raise Exception(f"Failed to connect to aippt: {response.text}")
         response = response.json()
         if response.get("code") != 0:
-            raise Exception(f'Failed to connect to aippt: {response.get("msg")}')
+            raise Exception(f"Failed to connect to aippt: {response.get('msg')}")
 
         token = response.get("data", {}).get("token")
         expire = response.get("data", {}).get("time_expire")
@@ -379,7 +379,7 @@ class AIPPTGenerateToolAdapter:
                 if cls._style_cache[key]["expire"] < now:
                     del cls._style_cache[key]
 
-            key = f'{credentials["aippt_access_key"]}#@#{user_id}'
+            key = f"{credentials['aippt_access_key']}#@#{user_id}"
             if key in cls._style_cache:
                 return cls._style_cache[key]["colors"], cls._style_cache[key]["styles"]
 
@@ -396,11 +396,11 @@ class AIPPTGenerateToolAdapter:
         response = response.json()
 
         if response.get("code") != 0:
-            raise Exception(f'Failed to connect to aippt: {response.get("msg")}')
+            raise Exception(f"Failed to connect to aippt: {response.get('msg')}")
 
         colors = [
             {
-                "id": f'id-{item.get("id")}',
+                "id": f"id-{item.get('id')}",
                 "name": item.get("name"),
                 "en_name": item.get("en_name", item.get("name")),
             }
@@ -408,7 +408,7 @@ class AIPPTGenerateToolAdapter:
         ]
         styles = [
             {
-                "id": f'id-{item.get("id")}',
+                "id": f"id-{item.get('id')}",
                 "name": item.get("title"),
             }
             for item in response.get("data", {}).get("suit_style") or []
@@ -454,7 +454,7 @@ class AIPPTGenerateToolAdapter:
         response = response.json()
 
         if response.get("code") != 0:
-            raise Exception(f'Failed to connect to aippt: {response.get("msg")}')
+            raise Exception(f"Failed to connect to aippt: {response.get('msg')}")
 
         if len(response.get("data", {}).get("list") or []) > 0:
             return response.get("data", {}).get("list")[0].get("id")

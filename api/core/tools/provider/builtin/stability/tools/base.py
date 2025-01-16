@@ -28,4 +28,4 @@ class BaseStabilityAuthorization:
         """
         This method is responsible for generating the authorization headers.
         """
-        return {"Authorization": f'Bearer {credentials.get("api_key", "")}'}
+        return {"Authorization": f"Bearer {credentials.get('api_key', '')}"}

@@ -406,7 +406,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             elif credentials["completion_type"] == "completion":
                 completion_type = LLMMode.COMPLETION.value
             else:
-                raise ValueError(f'completion_type {credentials["completion_type"]} is not supported')
+                raise ValueError(f"completion_type {credentials['completion_type']} is not supported")
         else:
             extra_args = XinferenceHelper.get_xinference_extra_parameter(
                 server_url=credentials["server_url"],
@@ -472,7 +472,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         api_key = credentials.get("api_key") or "abc"
 
         client = OpenAI(
-            base_url=f'{credentials["server_url"]}/v1',
+            base_url=f"{credentials['server_url']}/v1",
             api_key=api_key,
             max_retries=int(credentials.get("max_retries") or DEFAULT_MAX_RETRIES),
             timeout=int(credentials.get("invoke_timeout") or DEFAULT_INVOKE_TIMEOUT),

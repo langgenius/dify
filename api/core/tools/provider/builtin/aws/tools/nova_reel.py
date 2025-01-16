@@ -229,8 +229,7 @@ class NovaReelTool(BuiltinTool):
 
         if async_mode:
             return self.create_text_message(
-                f"Video generation started.\nInvocation ARN: {invocation_arn}\n"
-                f"Video will be available at: {video_uri}"
+                f"Video generation started.\nInvocation ARN: {invocation_arn}\nVideo will be available at: {video_uri}"
             )
 
         return self._wait_for_completion(bedrock, s3_client, invocation_arn)

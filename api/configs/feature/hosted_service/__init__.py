@@ -181,7 +181,7 @@ class HostedFetchAppTemplateConfig(BaseSettings):
     """
 
     HOSTED_FETCH_APP_TEMPLATES_MODE: str = Field(
-        description="Mode for fetching app templates: remote, db, or builtin" " default to remote,",
+        description="Mode for fetching app templates: remote, db, or builtin default to remote,",
         default="remote",
     )
 

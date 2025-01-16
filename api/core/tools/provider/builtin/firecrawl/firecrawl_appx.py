@@ -74,7 +74,7 @@ class FirecrawlApp:
         if response is None:
             raise HTTPError("Failed to initiate crawl after multiple retries")
         elif response.get("success") == False:
-            raise HTTPError(f'Failed to crawl: {response.get("error")}')
+            raise HTTPError(f"Failed to crawl: {response.get('error')}")
         job_id: str = response["id"]
         if wait:
             return self._monitor_job_status(job_id=job_id, poll_interval=poll_interval)
@@ -100,7 +100,7 @@ class FirecrawlApp:
             if status["status"] == "completed":
                 return status
             elif status["status"] == "failed":
-                raise HTTPError(f'Job {job_id} failed: {status["error"]}')
+                raise HTTPError(f"Job {job_id} failed: {status['error']}")
             time.sleep(poll_interval)
 
 

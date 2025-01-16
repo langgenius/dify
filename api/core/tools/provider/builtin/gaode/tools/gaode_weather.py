@@ -37,8 +37,9 @@ class GaodeRepositoriesTool(BuiltinTool):
                     CityCode = City_data["districts"][0]["adcode"]
                     weatherInfo_response = s.request(
                         method="GET",
-                        url="{url}/weather/weatherInfo?city={citycode}&extensions=all&key={apikey}&output=json"
-                        "".format(url=api_domain, citycode=CityCode, apikey=self.runtime.credentials.get("api_key")),
+                        url="{url}/weather/weatherInfo?city={citycode}&extensions=all&key={apikey}&output=json".format(
+                            url=api_domain, citycode=CityCode, apikey=self.runtime.credentials.get("api_key")
+                        ),
                     )
                     weatherInfo_data = weatherInfo_response.json()
                     if weatherInfo_response.status_code == 200 and weatherInfo_data.get("info") == "OK":

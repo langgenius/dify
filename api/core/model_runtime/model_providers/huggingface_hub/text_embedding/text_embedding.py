@@ -162,9 +162,9 @@ class HuggingfaceHubTextEmbeddingModel(_CommonHuggingfaceHub, TextEmbeddingModel
     @staticmethod
     def _check_endpoint_url_model_repository_name(credentials: dict, model_name: str):
         try:
-            url = f'{HUGGINGFACE_ENDPOINT_API}{credentials["huggingface_namespace"]}'
+            url = f"{HUGGINGFACE_ENDPOINT_API}{credentials['huggingface_namespace']}"
             headers = {
-                "Authorization": f'Bearer {credentials["huggingfacehub_api_token"]}',
+                "Authorization": f"Bearer {credentials['huggingfacehub_api_token']}",
                 "Content-Type": "application/json",
             }
 

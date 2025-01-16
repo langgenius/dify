@@ -221,8 +221,7 @@ class DatasetService:
                 )
             except LLMBadRequestError:
                 raise ValueError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ValueError(f"The dataset in unavailable, due to: {ex.description}")
