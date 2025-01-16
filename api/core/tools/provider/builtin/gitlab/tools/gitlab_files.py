@@ -58,7 +58,7 @@ class GitlabFilesTool(BuiltinTool):
         path: str,
     ) -> dict[str, Any]:
         encoded_file_path = urllib.parse.quote(path, safe="")
-        file_url = f"{site_url}/api/v4/projects/{identifier}/repository/files" f"/{encoded_file_path}/raw?ref={branch}"
+        file_url = f"{site_url}/api/v4/projects/{identifier}/repository/files/{encoded_file_path}/raw?ref={branch}"
 
         file_response = requests.get(file_url, headers=headers)
         file_response.raise_for_status()
