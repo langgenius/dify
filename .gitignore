@@ -197,3 +197,6 @@ api/.vscode
 
 # pnpm
 /.pnpm-store
+
+# plugin migrate
+plugins.jsonl
