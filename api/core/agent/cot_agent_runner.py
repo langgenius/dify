@@ -144,8 +144,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     action = chunk
                     # detect action
                     if scratchpad.agent_response is not None:
-                        scratchpad.agent_response += json.dumps(chunk.model_dump())
-                    scratchpad.action_str = json.dumps(chunk.model_dump())
+                        scratchpad.agent_response += json.dumps(chunk.model_dump(), ensure_ascii=False)
+                    scratchpad.action_str = json.dumps(chunk.model_dump(), ensure_ascii=False)
                     scratchpad.action = action
                 else:
                     if scratchpad.agent_response is not None:
@@ -195,7 +195,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     # action is final answer, return final answer directly
                     try:
                         if isinstance(scratchpad.action.action_input, dict):
-                            final_answer = json.dumps(scratchpad.action.action_input)
+                            final_answer = json.dumps(scratchpad.action.action_input, ensure_ascii=False)
                         elif isinstance(scratchpad.action.action_input, str):
                             final_answer = scratchpad.action.action_input
                         else:
@@ -407,7 +407,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                             action_name=message.tool_calls[0].function.name,
                             action_input=json.loads(message.tool_calls[0].function.arguments),
                         )
-                        current_scratchpad.action_str = json.dumps(current_scratchpad.action.to_dict())
+                        current_scratchpad.action_str = json.dumps(current_scratchpad.action.to_dict(), ensure_ascii=False)
                     except:
                         pass
             elif isinstance(message, ToolPromptMessage):
