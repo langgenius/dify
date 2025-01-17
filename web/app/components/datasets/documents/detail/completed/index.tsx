@@ -168,10 +168,6 @@ const Completed: FC<ICompletedProps> = ({
   const invalidSegmentList = useInvalid(useSegmentListKey)
 
   useEffect(() => {
-    resetList()
-  }, [pathname])
-
-  useEffect(() => {
     if (segmentListData) {
       setSegments(segmentListData.data || [])
       const totalPages = segmentListData.total_pages
@@ -379,6 +375,10 @@ const Completed: FC<ICompletedProps> = ({
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segments, datasetId, documentId])
+
+  useEffect(() => {
+    resetList()
+  }, [pathname])
 
   useEffect(() => {
     if (importStatus === ProcessStatus.COMPLETED)
