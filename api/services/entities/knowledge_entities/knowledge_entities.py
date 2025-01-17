@@ -97,7 +97,7 @@ class KnowledgeConfig(BaseModel):
     original_document_id: Optional[str] = None
     duplicate: bool = True
     indexing_technique: Literal["high_quality", "economy"]
-    data_source: DataSource
+    data_source: Optional[DataSource] = None
     process_rule: Optional[ProcessRule] = None
     retrieval_model: Optional[RetrievalModel] = None
     doc_form: str = "text_model"
