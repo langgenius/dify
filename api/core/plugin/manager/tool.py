@@ -48,8 +48,10 @@ class PluginToolManager(BasePluginManager):
         tool_provider_id = GenericProviderID(provider)
 
         def transformer(json_response: dict[str, Any]) -> dict:
-            for tool in json_response.get("data", {}).get("declaration", {}).get("tools", []):
-                tool["identity"]["provider"] = tool_provider_id.provider_name
+            data = json_response.get("data")
+            if data:
+                for tool in data.get("declaration", {}).get("tools", []):
+                    tool["identity"]["provider"] = tool_provider_id.provider_name
 
             return json_response
 
