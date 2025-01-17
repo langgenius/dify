@@ -48,7 +48,9 @@ class PluginToolProviderController(BuiltinToolProviderController):
         """
         return tool with given name
         """
-        tool_entity = next(tool_entity for tool_entity in self.entity.tools if tool_entity.identity.name == tool_name)
+        tool_entity = next(
+            (tool_entity for tool_entity in self.entity.tools if tool_entity.identity.name == tool_name), None
+        )
 
         if not tool_entity:
             raise ValueError(f"Tool with name {tool_name} not found")
