@@ -161,6 +161,10 @@ const translation = {
       removeConfirmContent: '現在の設定は使用中です。これを削除すると、トレース機能が無効になります。',
     },
     view: '見る',
+    opik: {
+      title: 'オピック',
+      description: 'Opik は、LLM アプリケーションを評価、テスト、監視するためのオープンソース プラットフォームです。',
+    },
   },
   answerIcon: {
     title: 'Webアプリアイコンを使用して🤖を置き換える',
