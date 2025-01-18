@@ -168,8 +168,16 @@ class QAIndexProcessor(BaseIndexProcessor):
         with flask_app.app_context():
             try:
                 # qa model document
-                response = LLMGenerator.generate_qa_document(tenant_id, document_node.page_content, document_language)
-                document_qa_list = self._format_split_text(response)
+                qa_split_list = self._format_split_text(document_node.page_content)
+                if len(qa_split_list) >= 1 and "question" in qa_split_list[0] and "answer" in qa_split_list[0]:
+                    document_qa_list = qa_split_list
+                else:
+                    response = LLMGenerator.generate_qa_document(
+                        tenant_id,
+                        document_node.page_content,
+                        document_language
+                    )
+                    document_qa_list = self._format_split_text(response)
                 qa_documents = []
                 for result in document_qa_list:
                     qa_document = Document(page_content=result["question"], metadata=document_node.metadata.copy())
