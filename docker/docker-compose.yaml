@@ -5,8 +5,8 @@
 # ==================================================================
 
 x-shared-env: &shared-api-worker-env
-  HTTP_PROXY: http://host.docker.internal:1081
-  HTTPS_PROXY: http://host.docker.internal:1081
+  HTTP_PROXY: ${HTTP_PROXY:-}
+  HTTPS_PROXY: ${HTTPS_PROXY:-}
   NO_PROXY: localhost,127.0.0.1
   CONSOLE_API_URL: ${CONSOLE_API_URL:-}
   CONSOLE_WEB_URL: ${CONSOLE_WEB_URL:-}
@@ -423,6 +423,8 @@ services:
   worker:
     image: akiyu303/lefeng-api:latest
     restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
