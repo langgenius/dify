@@ -29,11 +29,6 @@ server {
       include proxy.conf;
     }
 
-    location /supertokens {
-      proxy_pass http://supertokens:3567;
-      include proxy.conf; 
-    }
-
     # placeholder for acme challenge location
     ${ACME_CHALLENGE_LOCATION}
 
