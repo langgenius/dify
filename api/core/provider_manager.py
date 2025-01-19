@@ -840,16 +840,16 @@ class ProviderManager:
         :return:
         """
         # Get provider model credential secret variables
-        if ConfigurateMethod.CUSTOMIZABLE_MODEL in provider_entity.configurate_methods:
+        if ConfigurateMethod.PREDEFINED_MODEL in provider_entity.configurate_methods:
             model_credential_secret_variables = self._extract_secret_variables(
-                provider_entity.model_credential_schema.credential_form_schemas
-                if provider_entity.model_credential_schema
+                provider_entity.provider_credential_schema.credential_form_schemas
+                if provider_entity.provider_credential_schema
                 else []
             )
         else:
             model_credential_secret_variables = self._extract_secret_variables(
-                provider_entity.provider_credential_schema.credential_form_schemas
-                if provider_entity.provider_credential_schema
+                provider_entity.model_credential_schema.credential_form_schemas
+                if provider_entity.model_credential_schema
                 else []
             )
 
