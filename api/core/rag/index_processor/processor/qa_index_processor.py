@@ -173,8 +173,8 @@ class QAIndexProcessor(BaseIndexProcessor):
                     document_qa_list = qa_split_list
                 else:
                     response = LLMGenerator.generate_qa_document(
-                        tenant_id, 
-                        document_node.page_content, 
+                        tenant_id,
+                        document_node.page_content,
                         document_language
                     )
                     document_qa_list = self._format_split_text(response)
