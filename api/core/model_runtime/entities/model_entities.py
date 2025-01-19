@@ -27,20 +27,24 @@ class ModelType(Enum):
 
         :return: model type
         """
-        if origin_model_type in {"text-generation", cls.LLM.value}:
-            return cls.LLM
-        elif origin_model_type in {"embeddings", cls.TEXT_EMBEDDING.value}:
-            return cls.TEXT_EMBEDDING
-        elif origin_model_type in {"reranking", cls.RERANK.value}:
-            return cls.RERANK
-        elif origin_model_type in {"speech2text", cls.SPEECH2TEXT.value}:
-            return cls.SPEECH2TEXT
-        elif origin_model_type in {"tts", cls.TTS.value}:
-            return cls.TTS
-        elif origin_model_type in {"text2img", cls.TEXT2IMG.value}:
-            return cls.TEXT2IMG
-        elif origin_model_type == cls.MODERATION.value:
-            return cls.MODERATION
+        model_type_map = {
+            "text-generation": cls.LLM,
+            cls.LLM.value: cls.LLM,
+            "embeddings": cls.TEXT_EMBEDDING,
+            cls.TEXT_EMBEDDING.value: cls.TEXT_EMBEDDING,
+            "reranking": cls.RERANK,
+            cls.RERANK.value: cls.RERANK,
+            "speech2text": cls.SPEECH2TEXT,
+            cls.SPEECH2TEXT.value: cls.SPEECH2TEXT,
+            "tts": cls.TTS,
+            cls.TTS.value: cls.TTS,
+            "text2img": cls.TEXT2IMG,
+            cls.TEXT2IMG.value: cls.TEXT2IMG,
+            cls.MODERATION.value: cls.MODERATION,
+        }
+
+        if origin_model_type in model_type_map:
+            return model_type_map[origin_model_type]
         else:
             raise ValueError(f"invalid origin model type {origin_model_type}")
 
@@ -50,21 +54,19 @@ class ModelType(Enum):
 
         :return: origin model type
         """
-        if self == self.LLM:
-            return "text-generation"
-        elif self == self.TEXT_EMBEDDING:
-            return "embeddings"
-        elif self == self.RERANK:
-            return "reranking"
-        elif self == self.SPEECH2TEXT:
-            return "speech2text"
-        elif self == self.TTS:
-            return "tts"
-        elif self == self.MODERATION:
-            return "moderation"
-        elif self == self.TEXT2IMG:
-            return "text2img"
-        else:
+        origin_model_type_map = {
+            self.LLM: "text-generation",
+            self.TEXT_EMBEDDING: "embeddings",
+            self.RERANK: "reranking",
+            self.SPEECH2TEXT: "speech2text",
+            self.TTS: "tts",
+            self.MODERATION: "moderation",
+            self.TEXT2IMG: "text2img",
+        }
+
+        try:
+            return origin_model_type_map[self]
+        except KeyError:
             raise ValueError(f"invalid model type {self}")
 
 
