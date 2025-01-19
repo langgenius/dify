@@ -20,6 +20,29 @@ class ModelType(Enum):
     TTS = "tts"
     TEXT2IMG = "text2img"
 
+    model_type_map = {
+        "text-generation": LLM,
+        LLM.value: LLM,
+        "embeddings": TEXT_EMBEDDING,
+        TEXT_EMBEDDING.value: TEXT_EMBEDDING,
+        "reranking": RERANK,
+        RERANK.value: RERANK,
+        SPEECH2TEXT.value: SPEECH2TEXT,
+        TTS.value: TTS,
+        TEXT2IMG.value: TEXT2IMG,
+        MODERATION.value: MODERATION,
+    }
+
+    origin_model_type_map = {
+        LLM: "text-generation",
+        TEXT_EMBEDDING: "embeddings",
+        RERANK: "reranking",
+        SPEECH2TEXT: "speech2text",
+        TTS: "tts",
+        MODERATION: "moderation",
+        TEXT2IMG: "text2img",
+    }
+
     @classmethod
     def value_of(cls, origin_model_type: str) -> "ModelType":
         """
@@ -27,21 +50,9 @@ class ModelType(Enum):
 
         :return: model type
         """
-        model_type_map = {
-            "text-generation": cls.LLM,
-            cls.LLM.value: cls.LLM,
-            "embeddings": cls.TEXT_EMBEDDING,
-            cls.TEXT_EMBEDDING.value: cls.TEXT_EMBEDDING,
-            "reranking": cls.RERANK,
-            cls.RERANK.value: cls.RERANK,
-            cls.SPEECH2TEXT.value: cls.SPEECH2TEXT,
-            cls.TTS.value: cls.TTS,
-            cls.TEXT2IMG.value: cls.TEXT2IMG,
-            cls.MODERATION.value: cls.MODERATION,
-        }
 
-        if origin_model_type in model_type_map:
-            return model_type_map[origin_model_type]
+        if origin_model_type in cls.model_type_map:
+            return cls.model_type_map[origin_model_type]
         else:
             raise ValueError(f"invalid origin model type {origin_model_type}")
 
@@ -51,18 +62,9 @@ class ModelType(Enum):
 
         :return: origin model type
         """
-        origin_model_type_map = {
-            self.LLM: "text-generation",
-            self.TEXT_EMBEDDING: "embeddings",
-            self.RERANK: "reranking",
-            self.SPEECH2TEXT: "speech2text",
-            self.TTS: "tts",
-            self.MODERATION: "moderation",
-            self.TEXT2IMG: "text2img",
-        }
 
         try:
-            return origin_model_type_map[self]
+            return ModelType.origin_model_type_map[self]
         except KeyError:
             raise ValueError(f"invalid model type {self}")
 
