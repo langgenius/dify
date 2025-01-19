@@ -19,6 +19,19 @@ supported_model_types:
   - llm
 configurate_methods:
   - predefined-model
+model_credential_schema:
+  model:
+    label:
+      en_US: Model Name
+  credential_form_schemas:
+    - variable: google_api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key
 provider_credential_schema:
   credential_form_schemas:
     - variable: google_api_key
