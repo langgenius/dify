@@ -389,9 +389,9 @@ x-shared-env: &shared-api-worker-env
   CREATE_TIDB_SERVICE_JOB_ENABLED: ${CREATE_TIDB_SERVICE_JOB_ENABLED:-false}
   MAX_SUBMIT_COUNT: ${MAX_SUBMIT_COUNT:-100}
   TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-10}
-  HTTP_PROXY: ${HTTP_PROXY:-http://host.docker.internal:1081}
-  HTTPS_PROXY: ${HTTPS_PROXY:-http://host.docker.internal:1081}
-  NO_PROXY: ${NO_PROXY:-weaviate,localhost,127.0.0.1}
+  HTTP_PROXY: ${HTTP_PROXY:-}
+  HTTPS_PROXY: ${HTTPS_PROXY:-}
+  NO_PROXY: ${NO_PROXY:-}
 
 services:
   # API service
