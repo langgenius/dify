@@ -34,11 +34,8 @@ class ModelType(Enum):
             cls.TEXT_EMBEDDING.value: cls.TEXT_EMBEDDING,
             "reranking": cls.RERANK,
             cls.RERANK.value: cls.RERANK,
-            "speech2text": cls.SPEECH2TEXT,
             cls.SPEECH2TEXT.value: cls.SPEECH2TEXT,
-            "tts": cls.TTS,
             cls.TTS.value: cls.TTS,
-            "text2img": cls.TEXT2IMG,
             cls.TEXT2IMG.value: cls.TEXT2IMG,
             cls.MODERATION.value: cls.MODERATION,
         }
