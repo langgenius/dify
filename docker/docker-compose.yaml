@@ -7,7 +7,7 @@
 x-shared-env: &shared-api-worker-env
   HTTP_PROXY: ${HTTP_PROXY:-}
   HTTPS_PROXY: ${HTTPS_PROXY:-}
-  NO_PROXY: localhost,127.0.0.1
+  NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1}
   CONSOLE_API_URL: ${CONSOLE_API_URL:-}
   CONSOLE_WEB_URL: ${CONSOLE_WEB_URL:-}
   SERVICE_API_URL: ${SERVICE_API_URL:-}
