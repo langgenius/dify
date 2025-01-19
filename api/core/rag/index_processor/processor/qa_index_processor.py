@@ -175,7 +175,8 @@ class QAIndexProcessor(BaseIndexProcessor):
                     response = LLMGenerator.generate_qa_document(
                         tenant_id, 
                         document_node.page_content, 
-                        document_language)
+                        document_language
+                    )
                     document_qa_list = self._format_split_text(response)
                 qa_documents = []
                 for result in document_qa_list:
