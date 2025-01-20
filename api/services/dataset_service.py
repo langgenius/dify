@@ -1611,8 +1611,8 @@ class SegmentService:
                     segment.answer = args.answer
                     segment.word_count += len(args.answer) if args.answer else 0
                 word_count_change = segment.word_count - word_count_change
-                if args.keywords:
-                    segment.keywords = args.keywords
+                cls.update_segment_keywords(args, dataset, segment)
+
                 segment.enabled = True
                 segment.disabled_at = None
                 segment.disabled_by = None
@@ -1745,6 +1745,31 @@ class SegmentService:
             db.session.commit()
         new_segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment.id).first()
         return new_segment
+
+    @classmethod
+    def update_segment_keywords(cls, args, dataset, segment):
+        if args.keywords:
+            add_keywords = list(set(args.keywords) - set(segment.keywords))
+            segment.keywords = args.keywords
+
+            lock_name = "keyword_indexing_lock_{}".format(dataset.id)
+            with redis_client.lock(lock_name, timeout=600):
+                keyword_table_dict_keywords = None
+                dataset_keyword_table = dataset.dataset_keyword_table
+                if dataset_keyword_table:
+                    keyword_table_dict = dataset_keyword_table.keyword_table_dict
+                    if keyword_table_dict:
+                        keyword_table_dict_keywords = dict(keyword_table_dict["__data__"]["table"])
+                if not keyword_table_dict_keywords:
+                    return
+
+                for new_keyword in add_keywords:
+                    if new_keyword not in keyword_table_dict_keywords:
+                        keyword_table_dict_keywords[new_keyword] = set()
+                    keyword_table_dict_keywords[new_keyword].add(segment.index_node_id)
+
+                keyword_table_dict["__data__"]["table"] = keyword_table_dict_keywords
+                dataset_keyword_table.update_keyword_table_dict(keyword_table_dict)
 
     @classmethod
     def delete_segment(cls, segment: DocumentSegment, document: Document, dataset: Dataset):

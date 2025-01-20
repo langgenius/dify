@@ -747,6 +747,14 @@ class DatasetKeywordTable(db.Model):  # type: ignore[name-defined]
                 logging.exception(f"Failed to load keyword table from file: {file_key}")
                 return None
 
+    def update_keyword_table_dict(self, new_keyword_table_dict):
+        if self.data_source_type != "database":
+            return
+        updated_keyword_table = json.dumps(new_keyword_table_dict, default=list)
+        self.keyword_table = updated_keyword_table
+        db.session.add(self)
+        db.session.commit()
+
 
 class Embedding(db.Model):  # type: ignore[name-defined]
     __tablename__ = "embeddings"
