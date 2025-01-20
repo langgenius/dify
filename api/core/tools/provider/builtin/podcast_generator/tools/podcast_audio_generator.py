@@ -32,19 +32,19 @@ class PodcastAudioGeneratorTool(BuiltinTool):
                 tenant_id=self.runtime.tenant_id or "",
                 voice=voice,
             )
-            
+
             buffer = io.BytesIO()
             for chunk in audio_data:
                 buffer.write(chunk)
-            
+
             audio_bytes = buffer.getvalue()
-            
+
             # Generate silence
             silence_buffer = io.BytesIO()
             silence = AudioSegment.silent(duration=int(random.uniform(0.1, 1.5) * 1000))
             silence.export(silence_buffer, format="wav")
             silence_bytes = silence_buffer.getvalue()
-            
+
             return index, audio_bytes, silence_bytes
         except Exception as e:
             return index, f"Error generating audio: {str(e)}", None
@@ -53,10 +53,10 @@ class PodcastAudioGeneratorTool(BuiltinTool):
         self, user_id: str, tool_parameters: dict[str, Any]
     ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         script = tool_parameters.get("script", "")
-        
+
         provider1, model1 = tool_parameters.get("host1_model", "").split("#")
         provider2, model2 = tool_parameters.get("host2_model", "").split("#")
-        
+
         host1_voice = tool_parameters.get(f"host1_voice#{provider1}#{model1}")
         host2_voice = tool_parameters.get(f"host2_voice#{provider2}#{model2}")
 
@@ -66,14 +66,14 @@ class PodcastAudioGeneratorTool(BuiltinTool):
             raise ToolParameterValidationError("Host voices are required")
 
         model_manager = ModelManager()
-        
+
         model1_instance = model_manager.get_model_instance(
             tenant_id=self.runtime.tenant_id or "",
             provider=provider1,
             model_type=ModelType.TTS,
             model=model1,
         )
-        
+
         model2_instance = model_manager.get_model_instance(
             tenant_id=self.runtime.tenant_id or "",
             provider=provider2,
@@ -133,11 +133,11 @@ class PodcastAudioGeneratorTool(BuiltinTool):
     def get_runtime_parameters(self) -> list[ToolParameter]:
         parameters = []
         options = []
-        
+
         for provider, model, voices in self.get_available_models():
             option = ToolParameterOption(value=f"{provider}#{model}", label=I18nObject(en_US=f"{model}({provider})"))
             options.append(option)
-            
+
             # Host 1 voice parameter
             parameters.append(
                 ToolParameter(
@@ -153,7 +153,7 @@ class PodcastAudioGeneratorTool(BuiltinTool):
                     ],
                 )
             )
-            
+
             # Host 2 voice parameter
             parameters.append(
                 ToolParameter(
@@ -186,7 +186,7 @@ class PodcastAudioGeneratorTool(BuiltinTool):
                 options=options,
             ),
         )
-        
+
         parameters.insert(
             1,
             ToolParameter(
@@ -202,5 +202,5 @@ class PodcastAudioGeneratorTool(BuiltinTool):
                 options=options,
             ),
         )
-        
+
         return parameters
