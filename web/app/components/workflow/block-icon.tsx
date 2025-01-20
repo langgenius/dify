@@ -18,7 +18,6 @@ import {
   Loop,
   ParameterExtractor,
   QuestionClassifier,
-  Sleep,
   TemplatingTransform,
   VariableX,
 } from '@/app/components/base/icons/src/vender/workflow'
