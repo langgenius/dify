@@ -628,7 +628,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 model_parameters["max_completion_tokens"] = model_parameters["max_tokens"]
                 del model_parameters["max_tokens"]
 
-            if re.match(r"^o1(-\d{4}-\d{2}-\d{2})?", model):
+            if re.match(r"^o1(-\d{4}-\d{2}-\d{2})?$", model):
                 if stream:
                     block_as_stream = True
                     stream = False
