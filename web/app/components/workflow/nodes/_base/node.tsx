@@ -32,7 +32,6 @@ import {
 import { useNodeIterationInteractions } from '../iteration/use-interactions'
 import { useNodeLoopInteractions } from '../loop/use-interactions'
 import type { IterationNodeType } from '../iteration/types'
-import type { SleepNodeType } from '../sleep/types'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
@@ -208,15 +207,6 @@ const BaseNode: FC<BaseNodeProps> = ({
           >
             <div>
               {data.title}
-              {
-                data.type === BlockEnum.Sleep
-                && <span>
-                  &nbsp;
-                  {(data as SleepNodeType).sleep_time_ms}
-                  {t('workflow.nodes.sleep.unit')}
-                  &nbsp;
-                </span>
-              }
             </div>
             {
               data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
@@ -299,7 +289,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.desc && data.type !== BlockEnum.Iteration && (
+          data.desc && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop && (
             <div className='px-3 pt-1 pb-2 system-xs-regular text-text-tertiary whitespace-pre-line break-words'>
               {data.desc}
             </div>

@@ -12,6 +12,7 @@ const format = (list: NodeTracing[]): NodeTracing[] => {
   }).map((item) => {
     const { execution_metadata } = item
     const isInIteration = !!execution_metadata?.iteration_id
+    const isInLoop = !!execution_metadata?.loop_id
     const nodeId = item.node_id
     const isRetryBelongNode = retryNodeIds.includes(nodeId)
 
@@ -22,8 +23,14 @@ const format = (list: NodeTracing[]): NodeTracing[] => {
           if (!isInIteration)
             return node.node_id === nodeId
 
+          if (!isInLoop)
+            return node.node_id === nodeId
+
           // retry node in iteration
-          return node.node_id === nodeId && node.execution_metadata?.iteration_index === execution_metadata?.iteration_index
+          return node.node_id === nodeId && (
+            isInIteration ? node.execution_metadata?.iteration_index === execution_metadata?.iteration_index
+              : isInLoop ? node.execution_metadata?.loop_index === execution_metadata?.loop_index
+                : false)
         }),
       }
     }

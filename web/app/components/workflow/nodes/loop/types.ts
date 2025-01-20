@@ -2,6 +2,7 @@ import type { VarType as NumberVarType } from '../tool/types'
 import type {
   BlockEnum,
   CommonNodeType,
+  ErrorHandleMode,
   ValueSelector,
   Var,
   VarType,
@@ -71,4 +72,5 @@ export type LoopNodeType = CommonNodeType & {
   logical_operator?: LogicalOperator
   break_conditions?: Condition[]
   loop_count: number
+  error_handle_mode: ErrorHandleMode // how to handle error in the iteration
 }

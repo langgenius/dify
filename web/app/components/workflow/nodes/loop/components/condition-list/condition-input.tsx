@@ -4,21 +4,18 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import { BlockEnum } from '@/app/components/workflow/types'
 import type {
   Node,
-  NodeOutPutVar,
 } from '@/app/components/workflow/types'
 
 type ConditionInputProps = {
   disabled?: boolean
   value: string
   onChange: (value: string) => void
-  nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
 }
 const ConditionInput = ({
   value,
   onChange,
   disabled,
-  nodesOutputVars,
   availableNodes,
 }: ConditionInputProps) => {
   const { t } = useTranslation()
@@ -32,7 +29,7 @@ const ConditionInput = ({
       placeholder={t('workflow.nodes.ifElse.enterValue') || ''}
       workflowVariableBlock={{
         show: true,
-        variables: nodesOutputVars || [],
+        variables: [],
         workflowNodesMap: availableNodes.reduce((acc, node) => {
           acc[node.id] = {
             title: node.data.title,

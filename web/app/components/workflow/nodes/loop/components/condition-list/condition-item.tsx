@@ -29,7 +29,6 @@ import VariableTag from '@/app/components/workflow/nodes/_base/components/variab
 import type {
   Node,
   NodeOutPutVar,
-  Var,
 } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
@@ -52,10 +51,8 @@ type ConditionItemProps = {
   onUpdateSubVariableCondition?: HandleUpdateSubVariableCondition
   onToggleSubVariableConditionLogicalOperator?: HandleToggleSubVariableConditionLogicalOperator
   nodeId: string
-  nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   numberVariables: NodeOutPutVar[]
-  filterVar: (varPayload: Var) => boolean
 }
 const ConditionItem = ({
   className,
@@ -72,10 +69,8 @@ const ConditionItem = ({
   onUpdateSubVariableCondition,
   onToggleSubVariableConditionLogicalOperator,
   nodeId,
-  nodesOutputVars,
   availableNodes,
   numberVariables,
-  filterVar,
 }: ConditionItemProps) => {
   const { t } = useTranslation()
 
@@ -136,7 +131,7 @@ const ConditionItem = ({
       value: isArrayValue ? [value] : value,
     }
     doUpdateCondition(newCondition)
-  }, [condition, doUpdateCondition, fileAttr])
+  }, [condition, doUpdateCondition, isArrayValue])
 
   const isSelect = condition.comparison_operator && [ComparisonOperator.in, ComparisonOperator.notIn].includes(condition.comparison_operator)
   const selectOptions = useMemo(() => {
@@ -244,7 +239,6 @@ const ConditionItem = ({
                 disabled={disabled}
                 value={condition.value as string}
                 onChange={handleUpdateConditionValue}
-                nodesOutputVars={nodesOutputVars}
                 availableNodes={availableNodes}
               />
             </div>
@@ -294,9 +288,7 @@ const ConditionItem = ({
                 handleUpdateSubVariableCondition={onUpdateSubVariableCondition}
                 handleToggleSubVariableConditionLogicalOperator={onToggleSubVariableConditionLogicalOperator}
                 nodeId={nodeId}
-                nodesOutputVars={nodesOutputVars}
                 availableNodes={availableNodes}
-                filterVar={filterVar}
                 availableVars={[]}
               />
             </div>

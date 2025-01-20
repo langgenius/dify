@@ -83,7 +83,6 @@ export type CommonNodeType<T = {}> = {
   height?: number
   _loopLength?: number
   _loopIndex?: number
-  isLoopStart?: boolean
   isInLoop?: boolean
   loop_id?: string
   error_strategy?: ErrorHandleTypeEnum
@@ -101,10 +100,10 @@ export type CommonEdgeType = {
   _waitingRun?: boolean
   isInIteration?: boolean
   iteration_id?: string
-  sourceType: BlockEnum
-  targetType: BlockEnum
   isInLoop?: boolean
   loop_id?: string
+  sourceType: BlockEnum
+  targetType: BlockEnum
 }
 
 export type Node<T = {}> = ReactFlowNode<CommonNodeType<T>>

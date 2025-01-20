@@ -20,7 +20,7 @@ type Props = {
   isSubVariable?: boolean
   conditionId?: string
   conditions: Condition[]
-  logicalOperator: LogicalOperator
+  logicalOperator: LogicalOperator | undefined
   readOnly: boolean
   handleAddCondition?: HandleAddCondition
   handleRemoveCondition?: HandleRemoveCondition
@@ -31,10 +31,7 @@ type Props = {
   handleUpdateSubVariableCondition?: HandleUpdateSubVariableCondition
   handleToggleSubVariableConditionLogicalOperator?: HandleToggleSubVariableConditionLogicalOperator
   nodeId: string
-  nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
-  varsIsVarFileAttribute?: Record<string, boolean>
-  filterVar: (varPayload: Var) => boolean
   availableVars: NodeOutPutVar[]
 }
 
@@ -53,10 +50,7 @@ const ConditionWrap: FC<Props> = ({
   handleRemoveSubVariableCondition,
   handleUpdateSubVariableCondition,
   handleToggleSubVariableConditionLogicalOperator,
-  nodesOutputVars = [],
   availableNodes = [],
-  varsIsVarFileAttribute = {},
-  filterVar = () => true,
   availableVars = [],
 }) => {
   const { t } = useTranslation()
@@ -97,11 +91,8 @@ const ConditionWrap: FC<Props> = ({
                   onRemoveCondition={handleRemoveCondition}
                   onToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
                   nodeId={id}
-                  nodesOutputVars={nodesOutputVars}
                   availableNodes={availableNodes}
-                  filterVar={filterVar}
                   numberVariables={getAvailableVars(id, '', filterNumberVar)}
-                  varsIsVarFileAttribute={varsIsVarFileAttribute}
                   onAddSubVariableCondition={handleAddSubVariableCondition}
                   onRemoveSubVariableCondition={handleRemoveSubVariableCondition}
                   onUpdateSubVariableCondition={handleUpdateSubVariableCondition}
@@ -153,4 +144,5 @@ const ConditionWrap: FC<Props> = ({
     </>
   )
 }
+
 export default React.memo(ConditionWrap)

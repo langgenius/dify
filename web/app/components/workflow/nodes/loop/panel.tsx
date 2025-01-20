@@ -1,20 +1,20 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiArrowRightSLine,
-} from '@remixicon/react'
 
 import Split from '../_base/components/split'
 import ResultPanel from '../../run/result-panel'
-import LoopResultPanel from '../../run/loop-result-panel'
 import InputNumberWithSlider from '../_base/components/input-number-with-slider'
 import type { LoopNodeType } from './types'
 import useConfig from './use-config'
+import { ErrorHandleMode, type NodePanelProps } from '@/app/components/workflow/types'
 import ConditionWrap from './components/condition-wrap'
-import { type NodePanelProps } from '@/app/components/workflow/types'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
+import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
+import Select from '@/app/components/base/select'
+import formatTracing from '@/app/components/workflow/run/utils/format-log'
+
+import { useLogs } from '@/app/components/workflow/run/hooks'
 
 const i18nPrefix = 'workflow.nodes.loop'
 
@@ -23,6 +23,20 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
+  const responseMethod = [
+    {
+      value: ErrorHandleMode.Terminated,
+      name: t(`${i18nPrefix}.ErrorMethod.operationTerminated`),
+    },
+    {
+      value: ErrorHandleMode.ContinueOnError,
+      name: t(`${i18nPrefix}.ErrorMethod.continueOnError`),
+    },
+    {
+      value: ErrorHandleMode.RemoveAbnormalOutput,
+      name: t(`${i18nPrefix}.ErrorMethod.removeAbnormalOutput`),
+    },
+  ]
 
   const {
     readOnly,
@@ -31,10 +45,6 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
     loopChildrenNodes,
     isShowSingleRun,
     hideSingleRun,
-    isShowLoopDetail,
-    backToSingleRun,
-    showLoopDetail,
-    hideLoopDetail,
     runningStatus,
     handleRun,
     handleStop,
@@ -42,11 +52,7 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
     inputVarValues,
     setInputVarValues,
     usedOutVars,
-    loop,
-    setLoop,
-    loopInputKey,
     loopRunResult,
-    filterVar,
     handleAddCondition,
     handleUpdateCondition,
     handleRemoveCondition,
@@ -55,10 +61,12 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
     handleRemoveSubVariableCondition,
     handleUpdateSubVariableCondition,
     handleToggleSubVariableConditionLogicalOperator,
-    nodesOutputVars,
-    varsIsVarFileAttribute,
     handleUpdateLoopCount,
+    changeErrorResponseMode,
   } = useConfig(id, data)
+
+  const nodeInfo = formatTracing(loopRunResult, t)[0]
+  const logsParams = useLogs()
 
   return (
     <div className='mt-2'>
@@ -77,11 +85,8 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
             handleRemoveSubVariableCondition={handleRemoveSubVariableCondition}
             handleUpdateSubVariableCondition={handleUpdateSubVariableCondition}
             handleToggleSubVariableConditionLogicalOperator={handleToggleSubVariableConditionLogicalOperator}
-            nodesOutputVars={nodesOutputVars}
             availableNodes={loopChildrenNodes}
             availableVars={childrenNodeVars}
-            varsIsVarFileAttribute={varsIsVarFileAttribute}
-            filterVar={filterVar}
             conditions={inputs.break_conditions || []}
             logicalOperator={inputs.logical_operator!}
           />
@@ -105,6 +110,12 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
           </Field>
         </div>
       </div>
+      <div className='px-4 py-2'>
+        <Field title={t(`${i18nPrefix}.errorResponseMethod`)} >
+          <Select items={responseMethod} defaultValue={inputs.error_handle_mode} onSelect={changeErrorResponseMode} allowSearch={false}>
+          </Select>
+        </Field>
+      </div>
       {isShowSingleRun && (
         <BeforeRunForm
           nodeName={inputs.title}
@@ -120,25 +131,8 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
           onRun={handleRun}
           onStop={handleStop}
           result={
-            <div className='mt-3'>
-              <div className='px-4'>
-                <div className='flex items-center h-[34px] justify-between px-3 bg-gray-100 border-[0.5px] border-gray-200 rounded-lg cursor-pointer' onClick={showLoopDetail}>
-                  <div className='leading-[18px] text-[13px] font-medium text-gray-700'>{t(`${i18nPrefix}.loop`, { count: loopRunResult.length })}</div>
-                  <RiArrowRightSLine className='w-3.5 h-3.5 text-gray-500' />
-
-                </div>
-                <Split className='mt-3' />
-              </div>
-              <ResultPanel {...runResult} showSteps={false} />
-            </div>
+            <ResultPanel {...runResult} showSteps={false} nodeInfo={nodeInfo} {...logsParams} />
           }
-        />
-      )}
-      {isShowLoopDetail && (
-        <LoopResultPanel
-          onBack={backToSingleRun}
-          onHide={hideLoopDetail}
-          list={loopRunResult}
         />
       )}
     </div>

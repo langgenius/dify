@@ -104,6 +104,7 @@ const useOneStepRun = <T>({
   defaultRunInputData,
   moreDataForCheckValid,
   iteratorInputKey,
+  loopInputKey,
 }: Params<T>) => {
   const { t } = useTranslation()
   const { getBeforeNodesInSameBranch, getBeforeNodesInSameBranchIncludeParent } = useWorkflow() as any
@@ -145,6 +146,7 @@ const useOneStepRun = <T>({
   const appId = useAppStore.getState().appDetail?.id
   const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
   const iterationTimes = iteratorInputKey ? runInputData[iteratorInputKey].length : 0
+  const loopTimes = loopInputKey ? runInputData[loopInputKey].length : 0
   const [runResult, setRunResult] = useState<any>(null)
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
@@ -348,11 +350,10 @@ const useOneStepRun = <T>({
               _loopResult = newLoopRunResult
               setLoopRunResult(newLoopRunResult)
             },
-            onLoopNext: (params) => {
-              // TODO: ??
-              // loop next trigger time is triggered one more time than iterationTimes
-              // if (_loopResult.length >= iterationTimes!)
-              //   return _loopResult.length >= iterationTimes!
+            onLoopNext: () => {
+              // loop next trigger time is triggered one more time than loopTimes
+              if (_loopResult.length >= loopTimes!)
+                return _loopResult.length >= loopTimes!
             },
             onLoopFinish: (params) => {
               _runResult = params.data
@@ -420,6 +421,7 @@ const useOneStepRun = <T>({
         throw new Error(res.error)
     }
     catch (e: any) {
+      console.error(e)
       if (!isIteration && !isLoop) {
         handleNodeDataUpdate({
           id,

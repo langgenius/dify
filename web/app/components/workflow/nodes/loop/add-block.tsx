@@ -55,7 +55,6 @@ const AddBlock = ({
         open && '!bg-gray-50',
       )}>
         <RiAddLine className='mr-1 w-4 h-4' />
-
         {t('workflow.common.addBlock')}
       </div>
     )
@@ -74,7 +73,6 @@ const AddBlock = ({
         popupClassName='!min-w-[256px]'
         availableBlocksTypes={availableNextBlocks}
       />
-
     </div>
   )
 }

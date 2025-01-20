@@ -290,7 +290,8 @@ export const useWorkflowRun = () => {
         ...restCallback,
       },
     )
-  }, [store,
+  }, [
+    store,
     workflowStore,
     doSyncWorkflowDraft,
     handleWorkflowStarted,
@@ -308,8 +309,8 @@ export const useWorkflowRun = () => {
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
     handleWorkflowAgentLog,
-    pathname]
-  )
+    pathname,
+  ])
 
   const handleStopRun = useCallback((taskId: string) => {
     const appId = useAppStore.getState().appDetail?.id

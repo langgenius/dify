@@ -874,7 +874,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     }
 
     case BlockEnum.Loop: {
-      const payload = (data as LoopNodeType)
+      const payload = data as LoopNodeType
       res = payload.break_conditions?.map((c) => {
         return c.variable_selector || []
       }) || []
