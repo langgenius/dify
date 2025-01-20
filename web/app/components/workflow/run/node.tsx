@@ -145,6 +145,7 @@ const NodePanel: FC<Props> = ({
                 onShowIterationResultList={onShowIterationDetail}
               />
             )}
+            {/* The nav to the Loop detail */}
             {isLoopNode && !notShowLoopNav && onShowLoopDetail && (
               <LoopLogTrigger
                 nodeInfo={nodeInfo}

@@ -673,6 +673,12 @@ const translation = {
       breakCondition: '循环终止条件',
       loopMaxCount: '最大循环次数',
       loopMaxCountError: '请输入正确的 最大循环次数，范围为 1 到 100',
+      errorResponseMethod: '错误响应方法',
+      ErrorMethod: {
+        operationTerminated: '错误时终止',
+        continueOnError: '忽略错误并继续',
+        removeAbnormalOutput: '移除错误输出',
+      },
     },
     note: {
       addNote: '添加注释',

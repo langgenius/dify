@@ -59,6 +59,7 @@ export const useNodeHelpLink = (nodeType: BlockEnum) => {
       [BlockEnum.Tool]: 'tools',
       [BlockEnum.DocExtractor]: 'doc-extractor',
       [BlockEnum.ListFilter]: 'list-operator',
+      [BlockEnum.Agent]: 'agent',
     }
   }, [language])
 

@@ -46,10 +46,11 @@ function parseTopLevelFlow(dsl: string): string[] {
  * Parses a single node string.
  * If the node is complex (e.g., has parentheses), it extracts the node type, node ID, and parameters.
  * @param nodeStr - The node string to parse.
- * @param parentIterationOrLoopId - The ID of the parent iteration node or loop node (if applicable).
+ * @param parentIterationId - The ID of the parent iteration node (if applicable).
+ * @param parentLoopId - The ID of the parent loop node (if applicable).
  * @returns A parsed node object.
  */
-function parseNode(nodeStr: string, parentIterationOrLoopId?: string): Node {
+function parseNode(nodeStr: string, parentIterationId?: string, parentLoopId?: string): Node {
   // Check if the node is a complex node
   if (nodeStr.startsWith('(') && nodeStr.endsWith(')')) {
     const innerContent = nodeStr.slice(1, -1).trim() // Remove outer parentheses
@@ -75,24 +76,32 @@ function parseNode(nodeStr: string, parentIterationOrLoopId?: string): Node {
 
     // Extract nodeType, nodeId, and params
     const [nodeType, nodeId, ...paramsRaw] = parts
-    const params = parseParams(paramsRaw, nodeType === 'iteration' ? nodeId.trim() : parentIterationOrLoopId)
+    const params = parseParams(paramsRaw, nodeType === 'iteration' ? nodeId.trim() : parentIterationId, nodeType === 'loop' ? nodeId.trim() : parentLoopId)
     const complexNode = {
       nodeType: nodeType.trim(),
       nodeId: nodeId.trim(),
       params,
     }
-    if (parentIterationOrLoopId) {
-      (complexNode as any).iterationId = parentIterationOrLoopId;
+    if (parentIterationId) {
+      (complexNode as any).iterationId = parentIterationId;
       (complexNode as any).iterationIndex = 0 // Fixed as 0
+    }
+    if (parentLoopId) {
+      (complexNode as any).loopId = parentLoopId;
+      (complexNode as any).loopIndex = 0 // Fixed as 0
     }
     return complexNode
   }
 
   // If it's not a complex node, treat it as a plain node
   const plainNode: NodePlain = { nodeType: 'plain', nodeId: nodeStr.trim() }
-  if (parentIterationOrLoopId) {
-    plainNode.iterationId = parentIterationOrLoopId
+  if (parentIterationId) {
+    plainNode.iterationId = parentIterationId
     plainNode.iterationIndex = 0 // Fixed as 0
+  }
+  if (parentLoopId) {
+    plainNode.loopId = parentLoopId
+    plainNode.loopIndex = 0 // Fixed as 0
   }
   return plainNode
 }
@@ -102,18 +111,19 @@ function parseNode(nodeStr: string, parentIterationOrLoopId?: string): Node {
  * Supports nested flows and complex sub-nodes.
  * Adds iteration-specific metadata recursively.
  * @param paramParts - The parameters string split by commas.
- * @param parentIterationOrLoopId - The ID of the iteration node or loop node, if applicable.
+ * @param parentIterationId - The ID of the parent iteration node (if applicable).
+ * @param parentLoopId - The ID of the parent loop node (if applicable).
  * @returns An array of parsed parameters (plain nodes, nested nodes, or flows).
  */
-function parseParams(paramParts: string[], parentIterationOrLoopId?: string): (Node | Node[] | number)[] {
+function parseParams(paramParts: string[], parentIteration?: string, parentLoopId?: string): (Node | Node[] | number)[] {
   return paramParts.map((part) => {
     if (part.includes('->')) {
       // Parse as a flow and return an array of nodes
-      return parseTopLevelFlow(part).map(node => parseNode(node, parentIterationOrLoopId))
+      return parseTopLevelFlow(part).map(node => parseNode(node, parentIteration || undefined, parentLoopId || undefined))
     }
     else if (part.startsWith('(')) {
       // Parse as a nested complex node
-      return parseNode(part, parentIterationOrLoopId)
+      return parseNode(part, parentIteration || undefined, parentLoopId || undefined)
     }
     else if (!Number.isNaN(Number(part.trim()))) {
       // Parse as a numeric parameter
@@ -121,7 +131,7 @@ function parseParams(paramParts: string[], parentIterationOrLoopId?: string): (N
     }
     else {
       // Parse as a plain node
-      return parseNode(part, parentIterationOrLoopId)
+      return parseNode(part, parentIteration || undefined, parentLoopId || undefined)
     }
   })
 }

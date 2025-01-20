@@ -362,8 +362,11 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
     }
 
     // TODO: loop error handle mode
-    if (node.data.type === BlockEnum.Loop)
-      node.data._children = iterationOrLoopNodeMap[node.id] || []
+    if (node.data.type === BlockEnum.Loop) {
+      const loopNodeData = node.data as LoopNodeType
+      loopNodeData._children = iterationOrLoopNodeMap[node.id] || []
+      loopNodeData.error_handle_mode = loopNodeData.error_handle_mode || ErrorHandleMode.Terminated
+    }
 
     // legacy provider handle
     if (node.data.type === BlockEnum.LLM)
@@ -571,15 +574,18 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
     if (outgoers.length) {
       outgoers.forEach((outgoer) => {
         list.push(outgoer)
+
         if (outgoer.data.type === BlockEnum.Iteration)
           list.push(...nodes.filter(node => node.parentId === outgoer.id))
         if (outgoer.data.type === BlockEnum.Loop)
           list.push(...nodes.filter(node => node.parentId === outgoer.id))
+
         traverse(outgoer, depth + 1)
       })
     }
     else {
       list.push(root)
+
       if (root.data.type === BlockEnum.Iteration)
         list.push(...nodes.filter(node => node.parentId === root.id))
       if (root.data.type === BlockEnum.Loop)

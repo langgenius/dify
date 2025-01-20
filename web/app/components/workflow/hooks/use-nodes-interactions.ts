@@ -134,25 +134,24 @@ export const useNodesInteractions = () => {
 
       if (showVerticalHelpLineNodesLength > 0)
         currentNode.position.x = showVerticalHelpLineNodes[0].position.x
-      else if (restrictLoopPosition.x !== undefined)
-        currentNode.position.x = restrictLoopPosition.x
       else if (restrictPosition.x !== undefined)
         currentNode.position.x = restrictPosition.x
+      else if (restrictLoopPosition.x !== undefined)
+        currentNode.position.x = restrictLoopPosition.x
       else
         currentNode.position.x = node.position.x
 
       if (showHorizontalHelpLineNodesLength > 0)
         currentNode.position.y = showHorizontalHelpLineNodes[0].position.y
-      else if (restrictLoopPosition.y !== undefined)
-        currentNode.position.y = restrictLoopPosition.y
       else if (restrictPosition.y !== undefined)
         currentNode.position.y = restrictPosition.y
+      else if (restrictLoopPosition.y !== undefined)
+        currentNode.position.y = restrictLoopPosition.y
       else
         currentNode.position.y = node.position.y
     })
-
     setNodes(newNodes)
-  }, [store, getNodesReadOnly, handleSetHelpline, handleNodeIterationChildDrag, handleNodeLoopChildDrag])
+  }, [getNodesReadOnly, store, handleNodeIterationChildDrag, handleNodeLoopChildDrag, handleSetHelpline])
 
   const handleNodeDragStop = useCallback<NodeDragHandler>((_, node) => {
     const {
@@ -722,7 +721,6 @@ export const useNodesInteractions = () => {
       if (prevNode.parentId) {
         newNode.data.isInIteration = isInIteration
         newNode.data.isInLoop = isInLoop
-        newNode.data.iteration_id = prevNode.parentId
         if (isInIteration) {
           newNode.data.iteration_id = parentNode.id
           newNode.zIndex = ITERATION_CHILDREN_Z_INDEX
@@ -732,6 +730,10 @@ export const useNodesInteractions = () => {
           newNode.zIndex = LOOP_CHILDREN_Z_INDEX
         }
         if (isInIteration && (newNode.data.type === BlockEnum.Answer || newNode.data.type === BlockEnum.Tool || newNode.data.type === BlockEnum.Assigner)) {
+          const iterNodeData: IterationNodeType = parentNode.data
+          iterNodeData._isShowTips = true
+        }
+        if (isInLoop && (newNode.data.type === BlockEnum.Answer || newNode.data.type === BlockEnum.Tool || newNode.data.type === BlockEnum.Assigner)) {
           const iterNodeData: IterationNodeType = parentNode.data
           iterNodeData._isShowTips = true
         }

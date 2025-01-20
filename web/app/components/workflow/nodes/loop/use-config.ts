@@ -9,7 +9,7 @@ import {
   useWorkflow,
 } from '../../hooks'
 import { VarType } from '../../types'
-import type { ValueSelector, Var } from '../../types'
+import type { ErrorHandleMode, ValueSelector, Var } from '../../types'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSystemVar, toNodeOutputVars } from '../_base/components/variable/utils'
 import useOneStepRun from '../_base/hooks/use-one-step-run'
@@ -78,10 +78,6 @@ const useConfig = (id: string, payload: LoopNodeType) => {
     hideLoopDetail()
     showSingleRun()
   }, [hideLoopDetail, showSingleRun])
-
-  const filterNumberVar = useCallback((varPayload: Var) => {
-    return varPayload.type === VarType.number
-  }, [])
 
   const {
     getIsVarFileAttribute,
@@ -174,6 +170,13 @@ const useConfig = (id: string, payload: LoopNodeType) => {
       [loopInputKey]: newLoop,
     })
   }, [loopInputKey, runInputData, setRunInputData])
+
+  const changeErrorResponseMode = useCallback((item: { value: unknown }) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.error_handle_mode = item.value as ErrorHandleMode
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
 
   const handleAddCondition = useCallback<HandleAddCondition>((valueSelector, varItem) => {
     const newInputs = produce(inputs, (draft) => {
@@ -319,6 +322,7 @@ const useConfig = (id: string, payload: LoopNodeType) => {
     handleRemoveSubVariableCondition,
     handleToggleSubVariableConditionLogicalOperator,
     handleUpdateLoopCount,
+    changeErrorResponseMode,
   }
 }
 

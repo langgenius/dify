@@ -290,7 +290,8 @@ export const useWorkflowRun = () => {
         ...restCallback,
       },
     )
-  }, [store,
+  }, [
+    store,
     workflowStore,
     doSyncWorkflowDraft,
     handleWorkflowStarted,

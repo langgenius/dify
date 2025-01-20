@@ -43,7 +43,7 @@ export const useWorkflowVariables = () => {
   const getCurrentVariableType = useCallback(({
     parentNode,
     valueSelector,
-    isItem,
+    isIterationItem,
     isLoopItem,
     availableNodes,
     isChatMode,
@@ -51,7 +51,7 @@ export const useWorkflowVariables = () => {
   }: {
     valueSelector: ValueSelector
     parentNode?: Node | null
-    isItem?: boolean
+    isIterationItem?: boolean
     isLoopItem?: boolean
     availableNodes: any[]
     isChatMode: boolean
@@ -60,7 +60,7 @@ export const useWorkflowVariables = () => {
     return getVarType({
       parentNode,
       valueSelector,
-      isItem,
+      isIterationItem,
       isLoopItem,
       availableNodes,
       isChatMode,

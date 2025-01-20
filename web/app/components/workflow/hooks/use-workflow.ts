@@ -290,7 +290,7 @@ export const useWorkflow = () => {
       setNodes(newNodes)
     }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store])
 
   const isVarUsedInNodes = useCallback((varSelector: ValueSelector) => {
@@ -531,7 +531,7 @@ export const useWorkflowInit = () => {
 
   useEffect(() => {
     handleGetInitialWorkflowData()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleFetchPreloadData = useCallback(async () => {
@@ -548,7 +548,7 @@ export const useWorkflowInit = () => {
       workflowStore.getState().setPublishedAt(publishedWorkflow?.created_at)
     }
     catch (e) {
-
+      console.error(e)
     }
   }, [workflowStore, appDetail])
 
