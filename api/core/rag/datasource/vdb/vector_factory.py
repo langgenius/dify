@@ -152,6 +152,7 @@ class Vector:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
     
     max_batch_documents = 1000
+
     def create(self, texts: Optional[list] = None, **kwargs):
         if texts:
             for i in range(0, len(texts), self.max_batch_documents):
