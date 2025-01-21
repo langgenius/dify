@@ -151,12 +151,11 @@ class Vector:
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
-    max_batch_documents = 1000
-
     def create(self, texts: Optional[list] = None, **kwargs):
+        max_batch_documents = 1000
         if texts:
-            for i in range(0, len(texts), self.max_batch_documents):
-                batch_documents = texts[i : i + self.max_batch_documents]
+            for i in range(0, len(texts), max_batch_documents):
+                batch_documents = texts[i : i + max_batch_documents]
                 batch_contents = [document.page_content for document in batch_documents]
                 batch_embeddings = self._embeddings.embed_documents(batch_contents)
                 self._vector_processor.create(texts=batch_documents, embeddings=batch_embeddings, **kwargs)
