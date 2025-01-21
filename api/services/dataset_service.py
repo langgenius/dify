@@ -1,3 +1,4 @@
+from collections import Counter
 import datetime
 import json
 import logging
@@ -1610,8 +1611,11 @@ class SegmentService:
                     segment.answer = args.answer
                     segment.word_count += len(args.answer) if args.answer else 0
                 word_count_change = segment.word_count - word_count_change
+                keyword_changed = False
                 if args.keywords:
-                    segment.keywords = args.keywords
+                    if Counter(segment.keywords) != Counter(args.keywords):
+                        segment.keywords = args.keywords
+                        keyword_changed = True
                 segment.enabled = True
                 segment.disabled_at = None
                 segment.disabled_by = None
@@ -1622,13 +1626,6 @@ class SegmentService:
                     document.word_count = max(0, document.word_count + word_count_change)
                     db.session.add(document)
                 # update segment index task
-                if args.enabled:
-                    VectorService.create_segments_vector(
-                        [args.keywords] if args.keywords else None,
-                        [segment],
-                        dataset,
-                        document.doc_form,
-                    )
                 if document.doc_form == IndexType.PARENT_CHILD_INDEX and args.regenerate_child_chunks:
                     # regenerate child chunks
                     # get embedding model instance
@@ -1661,6 +1658,14 @@ class SegmentService:
                     VectorService.generate_child_chunks(
                         segment, document, dataset, embedding_model_instance, processing_rule, True
                     )
+                elif document.doc_form in (IndexType.PARAGRAPH_INDEX, IndexType.QA_INDEX):
+                    if args.enabled or keyword_changed:
+                        VectorService.create_segments_vector(
+                            [args.keywords] if args.keywords else None,
+                            [segment],
+                            dataset,
+                            document.doc_form,
+                        )
             else:
                 segment_hash = helper.generate_text_hash(content)
                 tokens = 0
