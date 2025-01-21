@@ -123,6 +123,7 @@ export const useChecklistBeforePublish = () => {
   const isChatMode = useIsChatMode()
   const store = useStoreApi()
   const nodesExtraData = useNodesExtraData()
+  const { data: strategyProviders } = useStrategyProviders()
 
   const handleCheckBeforePublish = useCallback(() => {
     const {
@@ -145,6 +146,19 @@ export const useChecklistBeforePublish = () => {
       let moreDataForCheckValid
       if (node.data.type === BlockEnum.Tool)
         moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, workflowTools, language)
+
+      if (node.data.type === BlockEnum.Agent) {
+        const data = node.data as AgentNodeType
+        const isReadyForCheckValid = !!strategyProviders
+        const provider = strategyProviders?.find(provider => provider.declaration.identity.name === data.agent_strategy_provider_name)
+        const strategy = provider?.declaration.strategies?.find(s => s.identity.name === data.agent_strategy_name)
+        moreDataForCheckValid = {
+          provider,
+          strategy,
+          language,
+          isReadyForCheckValid,
+        }
+      }
 
       const { errorMessage } = nodesExtraData[node.data.type as BlockEnum].checkValid(node.data, t, moreDataForCheckValid)
 
