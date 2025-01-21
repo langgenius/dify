@@ -10,7 +10,7 @@ features:
   - stream-tool-call
 model_properties:
   mode: chat
-  context_size: 128000
+  context_size: 64000
 parameter_rules:
   - name: temperature
     use_template: temperature
