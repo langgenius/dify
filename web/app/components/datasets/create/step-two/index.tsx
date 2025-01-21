@@ -1001,7 +1001,7 @@ const StepTwo = ({
           )
           : (
             <div className='flex items-center mt-8 py-2'>
-              {!datasetId && <Button loading={isCreating} variant='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.save')}</Button>}
+              <Button loading={isCreating} variant='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.save')}</Button>
               <Button className='ml-2' onClick={onCancel}>{t('datasetCreation.stepTwo.cancel')}</Button>
             </div>
           )}
