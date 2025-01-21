@@ -150,7 +150,7 @@ class Vector:
                 return OceanBaseVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
-    
+
     max_batch_documents = 1000
 
     def create(self, texts: Optional[list] = None, **kwargs):
