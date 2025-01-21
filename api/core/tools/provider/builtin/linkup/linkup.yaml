@@ -1,0 +1,26 @@
+identity:
+  author: Juliette Sivan
+  name: linkup
+  label:
+    en_US: Linkup Search and Sourced
+    zh_Hans: Linkup 搜索工具
+  description:
+    en_US: Search engine optimized for agents to seamlessly and fairly retrieve data from the web and beyond.
+    zh_Hans: 针对代理进行了优化的搜索引擎，可以无缝、公平地从网络及其他地方检索数据
+  icon: icon.png
+  tags:
+    - search
+credentials_for_provider:
+  linkup_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Linkup API Key
+      zh_Hans: Linkup API 密钥
+    placeholder:
+      en_US: Please input your Linkup API key
+      zh_Hans: 请输入你的 Linkup API 密钥
+    help:
+      en_US: Get your Linkup API key from Linkup
+      zh_Hans: 从 Linkup 获取您的 Linkup API 密钥
+    url: https://app.linkup.so/sign-up/

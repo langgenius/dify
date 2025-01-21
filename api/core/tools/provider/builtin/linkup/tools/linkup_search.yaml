@@ -1,0 +1,42 @@
+identity:
+  name: linkup_search
+  author: Juliette Sivan
+  label:
+    en_US: Linkup Search
+    zh_Hans: Linkup 搜索
+description:
+  human:
+    en_US: Search engine optimized for agents to seamlessly and fairly retrieve data from the web and beyond.
+    zh_Hans: 针对代理进行了优化的搜索引擎，可以无缝、公平地从网络及其他地方检索数据
+  llm: A search engine optimized for agents to seamlessly and fairly retrieve data from the web and beyond.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query
+      zh_Hans: 查询
+    human_description:
+      en_US: The search query you want to execute
+      zh_Hans: 您想要执行的搜索查询
+    llm_description: The search query.
+    form: llm
+  - name: depth
+    type: select
+    required: false
+    label:
+      en_US: Search Depth
+      zh_Hans: 搜索深度
+    human_description:
+      en_US: The depth of the search.
+      zh_Hans: 搜索的深度。
+    form: form
+    options:
+      - value: deep
+        label:
+          en_US: Deep
+          zh_Hans: 深度
+      - value: standard
+        label:
+          en_US: Standard
+          zh_Hans: 标准
