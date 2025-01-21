@@ -498,7 +498,7 @@ class GraphEngine:
                 future = self.thread_pool.submit(
                     self._run_parallel_node,
                     **{
-                        "flask_app": current_app._get_current_object(),
+                        "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
                         "q": q,
                         "parallel_id": parallel_id,
                         "parallel_start_node_id": edge.target_node_id,
@@ -746,7 +746,7 @@ class GraphEngine:
                                     # plus state total_tokens
                                     self.graph_runtime_state.total_tokens += int(
                                         # type: ignore[arg-type]
-                                        run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS)
+                                        run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS)  # type: ignore[arg-type]
                                     )
 
                                 if run_result.llm_usage:
