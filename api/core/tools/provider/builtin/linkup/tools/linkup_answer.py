@@ -1,22 +1,20 @@
+from typing import Any
+
 from linkup import LinkupClient
-from typing import Any, Union
-from typing import Any, List, Union
+
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class LinkupSourceTool(BuiltinTool):
 
-
     def _invoke(self, 
                 user_id: str,
-               tool_parameters: dict[str, Any], 
+                tool_parameters: dict[str, Any], 
         ) -> ToolInvokeMessage | list[ToolInvokeMessage]:
-
         """
         Invoke the tool.
         """
-
         api_key = self.runtime.credentials.get('linkup_api_key', None)
         client = LinkupClient(api_key=api_key)
         query = tool_parameters.get('query', '')
