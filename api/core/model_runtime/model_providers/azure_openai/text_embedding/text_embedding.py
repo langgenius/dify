@@ -130,7 +130,7 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
             raise CredentialsValidateFailedError("Base Model Name is required")
 
         if not self._get_ai_model_entity(credentials["base_model_name"], model):
-            raise CredentialsValidateFailedError(f'Base Model Name {credentials["base_model_name"]} is invalid')
+            raise CredentialsValidateFailedError(f"Base Model Name {credentials['base_model_name']} is invalid")
 
         try:
             credentials_kwargs = self._to_credential_kwargs(credentials)

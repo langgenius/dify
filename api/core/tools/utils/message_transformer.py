@@ -29,7 +29,7 @@ class ToolFileMessageTransformer:
                         user_id=user_id, tenant_id=tenant_id, conversation_id=conversation_id, file_url=message.message
                     )
 
-                    url = f'/files/tools/{file.id}{guess_extension(file.mimetype) or ".png"}'
+                    url = f"/files/tools/{file.id}{guess_extension(file.mimetype) or '.png'}"
 
                     result.append(
                         ToolInvokeMessage(
@@ -122,4 +122,4 @@ class ToolFileMessageTransformer:
 
     @classmethod
     def get_tool_file_url(cls, tool_file_id: str, extension: Optional[str]) -> str:
-        return f'/files/tools/{tool_file_id}{extension or ".bin"}'
+        return f"/files/tools/{tool_file_id}{extension or '.bin'}"
