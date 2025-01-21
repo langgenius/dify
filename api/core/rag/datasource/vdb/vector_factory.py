@@ -156,7 +156,8 @@ class Vector:
         if texts:
             for i in range(0, len(texts), self.max_batch_documents):
                 batch_documents = texts[i:i + self.max_batch_documents]
-                batch_embeddings = self._embeddings.embed_documents([document.page_content for document in batch_documents])
+                batch_contents = [document.page_content for document in batch_documents]
+                batch_embeddings = self._embeddings.embed_documents(batch_contents)
                 self._vector_processor.create(texts=batch_documents, embeddings=batch_embeddings, **kwargs)
 
     def add_texts(self, documents: list[Document], **kwargs):
