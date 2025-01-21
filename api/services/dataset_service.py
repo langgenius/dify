@@ -1,10 +1,10 @@
-from collections import Counter
 import datetime
 import json
 import logging
 import random
 import time
 import uuid
+from collections import Counter
 from typing import Any, Optional
 
 from flask_login import current_user  # type: ignore
