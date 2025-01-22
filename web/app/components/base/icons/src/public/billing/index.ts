@@ -1,4 +1,5 @@
 export { default as ArCube1 } from './ArCube1'
+export { default as Asterisk } from './Asterisk'
 export { default as AwsMarketplace } from './AwsMarketplace'
 export { default as Azure } from './Azure'
 export { default as Buildings } from './Buildings'

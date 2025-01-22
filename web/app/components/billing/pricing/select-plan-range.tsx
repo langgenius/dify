@@ -40,7 +40,7 @@ const SelectPlanRange: FC<Props> = ({
     <div className='relative flex flex-col items-end pr-6'>
       <div className='text-sm italic bg-clip-text bg-premium-yearly-tip-text-background text-transparent'>{t('billing.plansCommon.yearlyTip')}</div>
       <div className='flex items-center py-1'>
-        <span className='mr-2'>{t('billing.plansCommon.annualBilling')}</span>
+        <span className='mr-2 text-[13px]'>{t('billing.plansCommon.annualBilling')}</span>
         <Switch size='l' defaultValue={value === PlanRange.yearly} onChange={(v) => {
           onChange(v ? PlanRange.yearly : PlanRange.monthly)
         }} />

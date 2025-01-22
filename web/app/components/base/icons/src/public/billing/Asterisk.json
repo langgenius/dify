@@ -1,0 +1,38 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "28",
+			"height": "28",
+			"viewBox": "0 0 28 28",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "asterisk"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Vector",
+							"d": "M14.0033 3.20837V24.7917M4.65747 8.60421L23.3492 19.3959M4.6586 19.3959L23.3503 8.60421",
+							"stroke": "#101828",
+							"stroke-width": "1.5",
+							"stroke-linecap": "round"
+						},
+						"children": []
+					}
+				]
+			}
+		]
+	},
+	"name": "Asterisk"
+}

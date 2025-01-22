@@ -2,12 +2,12 @@
 import type { FC, ReactNode } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowRightUpLine, RiAsterisk, RiBrain2Line, RiCheckLine, RiQuestionLine } from '@remixicon/react'
+import { RiArrowRightUpLine, RiBrain2Line, RiCheckLine, RiQuestionLine } from '@remixicon/react'
 import { SelfHostedPlan } from '../type'
 import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../config'
 import Toast from '../../base/toast'
 import Tooltip from '../../base/tooltip'
-import { AwsMarketplace, Azure, Buildings, Diamond, GoogleCloud } from '../../base/icons/src/public/billing'
+import { Asterisk, AwsMarketplace, Azure, Buildings, Diamond, GoogleCloud } from '../../base/icons/src/public/billing'
 import type { PlanRange } from './select-plan-range'
 import cn from '@/utils/classnames'
 import { useAppContext } from '@/context/app-context'
@@ -42,7 +42,7 @@ const KeyValue = ({ label, tooltip, textColor, tooltipIconColor }: { icon: React
 
 const style = {
   [SelfHostedPlan.community]: {
-    icon: <RiAsterisk className='text-text-primary size-7' />,
+    icon: <Asterisk className='text-text-primary size-7' />,
     title: 'text-text-primary',
     price: 'text-text-primary',
     priceTip: 'text-text-tertiary',
@@ -142,7 +142,7 @@ const SelfHostedPlanItem: FC<Props> = ({
           {t(`${i18nPrefix}.btnText`)}
           {isPremiumPlan
             && <>
-              <div className='pt-[6px]'>
+              <div className='pt-[6px] mx-1'>
                 <AwsMarketplace className='h-6' />
               </div>
               <RiArrowRightUpLine className='size-4' />

@@ -14,6 +14,7 @@ import SelfHostedPlanItem from './self-hosted-plan-item'
 import { useProviderContext } from '@/context/provider-context'
 import GridMask from '@/app/components/base/grid-mask'
 import { useAppContext } from '@/context/app-context'
+import classNames from '@/utils/classnames'
 
 type Props = {
   onCancel: () => void
@@ -51,7 +52,7 @@ const Pricing: FC<Props> = ({
             </div>
             <div className='system-sm-regular text-text-secondary'>
               <span>{t('billing.plansCommon.freeTrialTipPrefix')}</span>
-              <span className='text-gradient'>{t('billing.plansCommon.freeTrialTip')}</span>
+              <span className='text-gradient font-semibold'>{t('billing.plansCommon.freeTrialTip')}</span>
               <span>{t('billing.plansCommon.freeTrialTipSuffix')}</span>
             </div>
           </div>
@@ -62,8 +63,20 @@ const Pricing: FC<Props> = ({
                 itemWidth={170}
                 className='inline-flex'
                 options={[
-                  { value: 'cloud', text: <div className='inline-flex items-center system-md-semibold-uppercase text-text-secondary'><RiCloudFill className='size-4 mr-2' />{t('billing.plansCommon.cloud')}</div> },
-                  { value: 'self', text: <div className='inline-flex items-center system-md-semibold-uppercase text-text-secondary'><RiTerminalBoxFill className='size-4 mr-2' />{t('billing.plansCommon.self')}</div> }]}
+                  {
+                    value: 'cloud',
+                    text: <div className={
+                      classNames('inline-flex items-center system-md-semibold-uppercase text-text-secondary',
+                        currentPlan === 'cloud' && 'text-text-accent-light-mode-only')} >
+                      <RiCloudFill className='size-4 mr-2' />{t('billing.plansCommon.cloud')}</div>,
+                  },
+                  {
+                    value: 'self',
+                    text: <div className={
+                      classNames('inline-flex items-center system-md-semibold-uppercase text-text-secondary',
+                        currentPlan === 'self' && 'text-text-accent-light-mode-only')}>
+                      <RiTerminalBoxFill className='size-4 mr-2' />{t('billing.plansCommon.self')}</div>,
+                  }]}
                 onChange={v => setCurrentPlan(v)} />
 
               {currentPlan === 'cloud' && <SelectPlanRange
@@ -114,13 +127,13 @@ const Pricing: FC<Props> = ({
             </div>
           </div>
           <div className='py-4 flex items-center justify-center'>
-            <div className='px-3 py-2 flex items-center justify-center gap-x-0.5 text-components-button-secondary-accent-text'>
+            <div className='px-3 py-2 flex items-center justify-center gap-x-0.5 text-components-button-secondary-accent-text rounded-lg hover:bg-state-accent-hover hover:cursor-pointer'>
               <Link href='https://dify.ai/pricing#plans-and-features' className='system-sm-medium'>{t('billing.plansCommon.comparePlanAndFeatures')}</Link>
               <RiArrowRightUpLine className='size-4' />
             </div>
           </div>
         </GridMask>
-      </div>
+      </div >
     </div >,
     document.body,
   )
