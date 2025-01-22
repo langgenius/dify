@@ -183,18 +183,15 @@ class DeepseekLargeLanguageModel(OAIAPICompatLargeLanguageModel):
                     # Add markdown quote markers for reasoning content
                     if is_reasoning:
                         if not is_reasoning_started:
-                            # Add opening marker for first reasoning block
                             delta_content = "> 💭 " + delta_content
                             is_reasoning_started = True
                         elif "\n\n" in delta_content:
-                            # For newline tokens, add the quote marker for the next line
                             delta_content = delta_content.replace("\n\n", "\n> ")
                         elif "\n" in delta_content:
-                            # For single newline, add the quote marker
                             delta_content = delta_content.replace("\n", "\n> ")
                     elif is_reasoning_started:
                         # If we were in reasoning mode but now getting regular content,
-                        # add closing marker and switch mode
+                        # add \n\n to close the reasoning block
                         delta_content = "\n\n" + delta_content
                         is_reasoning_started = False
 
