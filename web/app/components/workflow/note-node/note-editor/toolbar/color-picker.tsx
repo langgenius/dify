@@ -67,13 +67,15 @@ const ColorPicker = ({
           open && 'bg-black/5',
         )}>
           <div
-            className='w-4 h-4 rounded-full border border-black/5'
-            style={{ backgroundColor: THEME_MAP[theme].title }}
+            className={cn(
+              'w-4 h-4 rounded-full border border-black/5',
+              THEME_MAP[theme].title,
+            )}
           ></div>
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>
-        <div className='grid grid-cols-3 grid-rows-2 gap-0.5 p-0.5 rounded-lg border-[0.5px] border-black/8 bg-white shadow-lg'>
+        <div className='grid grid-cols-3 grid-rows-2 gap-0.5 p-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-lg'>
           {
             COLOR_LIST.map(color => (
               <div
@@ -86,12 +88,16 @@ const ColorPicker = ({
                 }}
               >
                 <div
-                  className='hidden group-hover:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full border-[1.5px]'
-                  style={{ borderColor: color.outer }}
+                  className={cn(
+                    'hidden group-hover:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full border-[1.5px]',
+                    color.outer,
+                  )}
                 ></div>
                 <div
-                  className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border border-black/5'
-                  style={{ backgroundColor: color.inner }}
+                  className={cn(
+                    'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border border-black/5',
+                    color.inner,
+                  )}
                 ></div>
               </div>
             ))
