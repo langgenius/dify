@@ -135,7 +135,7 @@ class DataSourceNotionListApi(Resource):
                         data_source_info = json.loads(document.data_source_info)
                         exist_page_ids.append(data_source_info["notion_page_id"])
             # get all authorized pages
-            data_source_bindings = session.execute(
+            data_source_bindings = session.scalars(
                 select(DataSourceOauthBinding).filter_by(
                     tenant_id=current_user.current_tenant_id, provider="notion", disabled=False
                 )
