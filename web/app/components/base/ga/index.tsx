@@ -18,13 +18,13 @@ export type IGAProps = {
   gaType: GaType
 }
 
-const GA: FC<IGAProps> = ({
+const GA: FC<IGAProps> = async ({
   gaType,
 }) => {
   if (IS_CE_EDITION)
     return null
 
-  const nonce = process.env.NODE_ENV === 'production' ? headers().get('x-nonce') : ''
+  const nonce = process.env.NODE_ENV === 'production' ? (await headers()).get('x-nonce') : ''
 
   return (
     <>
