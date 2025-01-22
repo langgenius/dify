@@ -156,7 +156,12 @@ class Vector:
         if texts:
             for i in range(0, len(texts), max_batch_documents):
                 batch_documents = texts[i : i + max_batch_documents]
-                self.add_texts(batch_documents, duplicate_check=True, **kwargs)
+                batch_contents = [document.page_content for document in batch_documents]
+                batch_embeddings = self._embeddings.embed_documents(batch_contents)
+                if i < max_batch_documents:
+                    self._vector_processor.create(texts=batch_documents, embeddings=batch_embeddings, **kwargs)
+                else:
+                    self._vector_processor.add_texts(texts=batch_documents, embeddings=batch_embeddings, **kwargs)
 
     def add_texts(self, documents: list[Document], **kwargs):
         if kwargs.get("duplicate_check", False):
