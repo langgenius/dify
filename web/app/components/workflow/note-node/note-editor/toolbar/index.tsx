@@ -18,7 +18,7 @@ const Toolbar = ({
   onShowAuthorChange,
 }: ToolbarProps) => {
   return (
-    <div className='inline-flex items-center p-0.5 bg-white rounded-lg border-[0.5px] border-black/5 shadow-sm'>
+    <div className='inline-flex items-center p-0.5 bg-components-actionbar-bg rounded-lg border-[0.5px] border-components-actionbar-border shadow-sm'>
       <ColorPicker
         theme={theme}
         onThemeChange={onThemeChange}

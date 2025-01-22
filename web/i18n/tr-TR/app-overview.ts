@@ -65,6 +65,8 @@ const translation = {
           customDisclaimer: 'Özel İfşa',
           customDisclaimerPlaceholder: 'Özel ifşa metnini girin',
           customDisclaimerTip: 'Özel ifşa metni istemci tarafında görüntülenecek ve uygulama hakkında ek bilgiler sağlayacak',
+          copyrightTip: 'Web uygulamasında telif hakkı bilgilerini görüntüleme',
+          copyrightTooltip: 'Lütfen Profesyonel plana veya daha yüksek bir plana yükseltin',
         },
         sso: {
           title: 'WebApp SSO\'su',
@@ -72,6 +74,7 @@ const translation = {
           label: 'SSO Kimlik Doğrulaması',
           description: 'Tüm kullanıcıların WebApp\'i kullanmadan önce SSO ile oturum açmaları gerekir',
         },
+        modalTip: 'İstemci tarafı web uygulaması ayarları.',
       },
       embedded: {
         entry: 'Gömülü',

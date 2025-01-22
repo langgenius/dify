@@ -155,6 +155,10 @@ const translation = {
       removeConfirmContent: 'La configuration actuelle est en cours d\'utilisation, sa suppression désactivera la fonction de Traçage.',
     },
     view: 'Vue',
+    opik: {
+      description: 'Opik est une plate-forme open-source pour l’évaluation, le test et la surveillance des applications LLM.',
+      title: 'Opik',
+    },
   },
   answerIcon: {
     description: 'S’il faut utiliser l’icône WebApp pour remplacer 🤖 dans l’application partagée',

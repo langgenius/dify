@@ -45,7 +45,7 @@ export default function AppSelector() {
                     ${open && 'bg-components-panel-bg-blur'}
                   `}
               >
-                <Avatar name={userProfile.name} size={32} />
+                <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={32} />
               </Menu.Button>
             </div>
             <Transition
@@ -71,7 +71,7 @@ export default function AppSelector() {
                         <div className='system-md-medium text-text-primary break-all'>{userProfile.name}</div>
                         <div className='system-xs-regular text-text-tertiary break-all'>{userProfile.email}</div>
                       </div>
-                      <Avatar name={userProfile.name} size={32} />
+                      <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={32} />
                     </div>
                   </div>
                 </Menu.Item>

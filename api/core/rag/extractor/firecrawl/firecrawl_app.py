@@ -1,6 +1,6 @@
 import json
 import time
-from typing import cast
+from typing import Any, cast
 
 import requests
 
@@ -14,7 +14,7 @@ class FirecrawlApp:
         if self.api_key is None and self.base_url == "https://api.firecrawl.dev":
             raise ValueError("No API key provided")
 
-    def scrape_url(self, url, params=None) -> dict:
+    def scrape_url(self, url, params=None) -> dict[str, Any]:
         # Documentation: https://docs.firecrawl.dev/api-reference/endpoint/scrape
         headers = self._prepare_headers()
         json_data = {
@@ -52,7 +52,7 @@ class FirecrawlApp:
             # FIXME: unreachable code for mypy
             return ""  # unreachable
 
-    def check_crawl_status(self, job_id) -> dict:
+    def check_crawl_status(self, job_id) -> dict[str, Any]:
         headers = self._prepare_headers()
         response = self._get_request(f"{self.base_url}/v1/crawl/{job_id}", headers)
         if response.status_code == 200:
@@ -85,7 +85,9 @@ class FirecrawlApp:
             # FIXME: unreachable code for mypy
             return {}  # unreachable
 
-    def _format_crawl_status_response(self, status, crawl_status_response, url_data_list):
+    def _format_crawl_status_response(
+        self, status: str, crawl_status_response: dict[str, Any], url_data_list: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         return {
             "status": status,
             "total": crawl_status_response.get("total"),
@@ -93,7 +95,7 @@ class FirecrawlApp:
             "data": url_data_list,
         }
 
-    def _extract_common_fields(self, item):
+    def _extract_common_fields(self, item: dict[str, Any]) -> dict[str, Any]:
         return {
             "title": item.get("metadata", {}).get("title"),
             "description": item.get("metadata", {}).get("description"),
@@ -101,10 +103,10 @@ class FirecrawlApp:
             "markdown": item.get("markdown"),
         }
 
-    def _prepare_headers(self):
+    def _prepare_headers(self) -> dict[str, Any]:
         return {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
 
-    def _post_request(self, url, data, headers, retries=3, backoff_factor=0.5):
+    def _post_request(self, url, data, headers, retries=3, backoff_factor=0.5) -> requests.Response:
         for attempt in range(retries):
             response = requests.post(url, headers=headers, json=data)
             if response.status_code == 502:
@@ -113,7 +115,7 @@ class FirecrawlApp:
                 return response
         return response
 
-    def _get_request(self, url, headers, retries=3, backoff_factor=0.5):
+    def _get_request(self, url, headers, retries=3, backoff_factor=0.5) -> requests.Response:
         for attempt in range(retries):
             response = requests.get(url, headers=headers)
             if response.status_code == 502:
@@ -122,6 +124,6 @@ class FirecrawlApp:
                 return response
         return response
 
-    def _handle_error(self, response, action):
+    def _handle_error(self, response, action) -> None:
         error_message = response.json().get("error", "Unknown error occurred")
         raise Exception(f"Failed to {action}. Status code: {response.status_code}. Error: {error_message}")

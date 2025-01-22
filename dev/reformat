@@ -9,10 +9,10 @@ if ! command -v ruff &> /dev/null || ! command -v dotenv-linter &> /dev/null; th
 fi
 
 # run ruff linter
-poetry run -C api ruff check --fix ./api
+poetry run -C api ruff check --fix ./
 
 # run ruff formatter
-poetry run -C api ruff format ./api
+poetry run -C api ruff format ./
 
 # run dotenv-linter linter
-poetry run -C api dotenv-linter ./api/.env.example ./web/.env.example
+poetry run -P api dotenv-linter ./api/.env.example ./web/.env.example
