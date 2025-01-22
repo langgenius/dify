@@ -5,9 +5,8 @@ import urllib.parse
 from collections.abc import Mapping
 from typing import Any
 from uuid import uuid4
-
-import httpx
 import magic
+import httpx
 from pydantic import BaseModel
 
 from configs import dify_config
