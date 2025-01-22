@@ -2,6 +2,7 @@
 import { useTranslation } from 'react-i18next'
 import { Fragment } from 'react'
 import { Menu, Transition } from '@headlessui/react'
+import { RiArrowDownSLine } from '@remixicon/react'
 import NotionIcon from '../../notion-icon'
 import s from './index.module.css'
 import cn from '@/utils/classnames'
@@ -31,9 +32,9 @@ export default function WorkspaceSelector({
                 src={currentWorkspace?.workspace_icon}
                 name={currentWorkspace?.workspace_name}
               />
-              <div className='mr-1 w-[90px] text-left text-sm font-medium text-gray-700 truncate' title={currentWorkspace?.workspace_name}>{currentWorkspace?.workspace_name}</div>
-              <div className='mr-1 px-1 h-[18px] bg-primary-50 rounded-lg text-xs font-medium text-primary-600'>{currentWorkspace?.pages.length}</div>
-              <div className={cn(s['down-arrow'], 'mr-2 w-3 h-3')} />
+              <div className='mr-1 w-[90px] text-left text-sm font-medium text-text-secondary truncate' title={currentWorkspace?.workspace_name}>{currentWorkspace?.workspace_name}</div>
+              <div className='mr-1 px-1 h-[18px] bg-primary-50 rounded-lg text-xs font-medium text-text-accent'>{currentWorkspace?.pages.length}</div>
+              <RiArrowDownSLine className='w-4 h-4 text-text-secondary' />
             </Menu.Button>
             <Transition
               as={Fragment}
