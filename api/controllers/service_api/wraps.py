@@ -195,7 +195,11 @@ def validate_and_get_api_token(scope: str | None = None):
     with Session(db.engine, expire_on_commit=False) as session:
         update_stmt = (
             update(ApiToken)
-            .where(ApiToken.token == auth_token, ApiToken.last_used_at < cutoff_time, ApiToken.type == scope)
+            .where(
+                ApiToken.token == auth_token,
+                (ApiToken.last_used_at.is_(None) | (ApiToken.last_used_at < cutoff_time)),
+                ApiToken.type == scope,
+            )
             .values(last_used_at=current_time)
             .returning(ApiToken)
         )
