@@ -8,7 +8,7 @@ inputs:
   poetry-version:
     description: Poetry version to set up
     required: true
-    default: '1.8.4'
+    default: '2.0.1'
   poetry-lockfile:
     description: Path to the Poetry lockfile to restore cache from
     required: true

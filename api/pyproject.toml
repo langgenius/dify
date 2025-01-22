@@ -1,9 +1,10 @@
 [project]
 name = "dify-api"
 requires-python = ">=3.11,<3.13"
+dynamic = [ "dependencies" ]
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
