@@ -119,6 +119,30 @@ model_credential_schema:
       required: true
       options:
         - label:
+            en_US: Doubao-1.5-vision-pro-32k
+          value: Doubao-1.5-vision-pro-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-1.5-pro-32k
+          value: Doubao-1.5-pro-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-1.5-lite-32k
+          value: Doubao-1.5-lite-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-1.5-pro-256k
+          value: Doubao-1.5-pro-256k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
             en_US: Doubao-vision-pro-32k
           value: Doubao-vision-pro-32k
           show_on:

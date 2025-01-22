@@ -18,6 +18,22 @@ class ModelConfig(BaseModel):
 
 
 configs: dict[str, ModelConfig] = {
+    "Doubao-1.5-vision-pro-32k": ModelConfig(
+        properties=ModelProperties(context_size=32768, max_tokens=12288, mode=LLMMode.CHAT),
+        features=[ModelFeature.VISION],
+    ),
+    "Doubao-1.5-pro-32k": ModelConfig(
+        properties=ModelProperties(context_size=32768, max_tokens=12288, mode=LLMMode.CHAT),
+        features=[],
+    ),
+    "Doubao-1.5-lite-32k": ModelConfig(
+        properties=ModelProperties(context_size=32768, max_tokens=12288, mode=LLMMode.CHAT),
+        features=[],
+    ),
+    "Doubao-1.5-pro-256k": ModelConfig(
+        properties=ModelProperties(context_size=262144, max_tokens=12288, mode=LLMMode.CHAT),
+        features=[],
+    ),
     "Doubao-vision-pro-32k": ModelConfig(
         properties=ModelProperties(context_size=32768, max_tokens=4096, mode=LLMMode.CHAT),
         features=[ModelFeature.VISION],
