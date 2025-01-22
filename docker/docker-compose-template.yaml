@@ -1,4 +1,4 @@
-x-shared-env: &shared-api-worker-env
+x-shared-env: &shared-api-worker-env 
 services:
   # API service
   api:
@@ -57,6 +57,7 @@ services:
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
       TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
 
   # The postgres database.
   db:
