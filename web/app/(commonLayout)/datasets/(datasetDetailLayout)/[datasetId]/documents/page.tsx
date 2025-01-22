@@ -2,14 +2,14 @@ import React from 'react'
 import Main from '@/app/components/datasets/documents'
 
 export type IProps = {
-  params: { datasetId: string }
+  params: Promise<{ datasetId: string }>
 }
 
 const Documents = async ({
-  params: { datasetId },
+  params,
 }: IProps) => {
   return (
-    <Main datasetId={datasetId} />
+    <Main datasetId={(await params).datasetId} />
   )
 }
 

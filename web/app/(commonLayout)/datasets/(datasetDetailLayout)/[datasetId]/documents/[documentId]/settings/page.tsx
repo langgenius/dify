@@ -2,14 +2,14 @@ import React from 'react'
 import Settings from '@/app/components/datasets/documents/detail/settings'
 
 export type IProps = {
-  params: { datasetId: string; documentId: string }
+  params: Promise<{ datasetId: string; documentId: string }>
 }
 
 const DocumentSettings = async ({
-  params: { datasetId, documentId },
+  params,
 }: IProps) => {
   return (
-    <Settings datasetId={datasetId} documentId={documentId} />
+    <Settings datasetId={(await params).datasetId} documentId={(await params).documentId} />
   )
 }
 
