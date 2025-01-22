@@ -125,10 +125,10 @@ const AgentTools: FC = () => {
         }
         headerRight={
           <div className='flex items-center'>
-            <div className='leading-[18px] text-xs font-normal text-gray-500'>{tools.filter((item: any) => !!item.enabled).length}/{tools.length}&nbsp;{t('appDebug.agent.tools.enabled')}</div>
+            <div className='leading-[18px] text-xs font-normal text-text-tertiary'>{tools.filter((item: any) => !!item.enabled).length}/{tools.length}&nbsp;{t('appDebug.agent.tools.enabled')}</div>
             {tools.length < MAX_TOOLS_NUM && (
               <>
-                <div className='ml-3 mr-1 h-3.5 w-px bg-gray-200'></div>
+                <div className='ml-3 mr-1 h-3.5 w-px bg-divider-regular'></div>
                 <ToolPicker
                   trigger={<OperationBtn type="add" />}
                   isShow={isShowChooseTool}
