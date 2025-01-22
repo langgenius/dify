@@ -1,6 +1,7 @@
-/** @type {import('tailwindcss').Config} */
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define'
-module.exports = {
+
+/** @type {import('tailwindcss').Config} */
+const config = {
   content: [
     './app/**/*.{js,ts,jsx,tsx}',
     './components/**/*.{js,ts,jsx,tsx}',
@@ -81,6 +82,11 @@ module.exports = {
         'xl': '0px 8px 8px -4px rgba(16, 24, 40, 0.03), 0px 20px 24px -4px rgba(16, 24, 40, 0.08)',
         '2xl': '0px 24px 48px -12px rgba(16, 24, 40, 0.18)',
         '3xl': '0px 32px 64px -12px rgba(16, 24, 40, 0.14)',
+        'status-indicator-green-shadow': '0px 2px 6px 0px var(--color-components-badge-status-light-success-halo), 0px 0px 0px 1px var(--color-components-badge-status-light-border-outer)',
+        'status-indicator-warning-shadow': '0px 2px 6px 0px var(--color-components-badge-status-light-warning-halo), 0px 0px 0px 1px var(--color-components-badge-status-light-border-outer)',
+        'status-indicator-red-shadow': '0px 2px 6px 0px var(--color-components-badge-status-light-error-halo), 0px 0px 0px 1px var(--color-components-badge-status-light-border-outer)',
+        'status-indicator-blue-shadow': '0px 2px 6px 0px var(--color-components-badge-status-light-normal-halo), 0px 0px 0px 1px var(--color-components-badge-status-light-border-outer)',
+        'status-indicator-gray-shadow': '0px 1px 2px 0px var(--color-components-badge-status-light-disabled-halo), 0px 0px 0px 1px var(--color-components-badge-status-light-border-outer)',
       },
       opacity: {
         2: '0.02',
@@ -93,6 +99,18 @@ module.exports = {
         'chatbot-bg': 'var(--color-chatbot-bg)',
         'chat-bubble-bg': 'var(--color-chat-bubble-bg)',
         'workflow-process-bg': 'var(--color-workflow-process-bg)',
+        'dataset-chunk-process-success-bg': 'var(--color-dataset-chunk-process-success-bg)',
+        'dataset-chunk-process-error-bg': 'var(--color-dataset-chunk-process-error-bg)',
+        'dataset-chunk-detail-card-hover-bg': 'var(--color-dataset-chunk-detail-card-hover-bg)',
+        'dataset-child-chunk-expand-btn-bg': 'var(--color-dataset-child-chunk-expand-btn-bg)',
+        'dataset-option-card-blue-gradient': 'var(--color-dataset-option-card-blue-gradient)',
+        'dataset-option-card-purple-gradient': 'var(--color-dataset-option-card-purple-gradient)',
+        'dataset-option-card-orange-gradient': 'var(--color-dataset-option-card-orange-gradient)',
+        'dataset-chunk-list-mask-bg': 'var(--color-dataset-chunk-list-mask-bg)',
+      },
+      lineClamp: {
+        '20': '20',
+        'mask-top2bottom-gray-50-to-transparent': 'var(--mask-top2bottom-gray-50-to-transparent)',
       },
     },
   },
@@ -104,3 +122,5 @@ module.exports = {
     preflight: false,
   },
 }
+
+export default config

@@ -1,4 +1,5 @@
 import { RiCheckLine } from '@remixicon/react'
+import s from './index.module.css'
 import cn from '@/utils/classnames'
 
 type CheckboxProps = {
@@ -6,15 +7,17 @@ type CheckboxProps = {
   onCheck?: () => void
   className?: string
   disabled?: boolean
+  mixed?: boolean
 }
 
-const Checkbox = ({ checked, onCheck, className, disabled }: CheckboxProps) => {
+const Checkbox = ({ checked, onCheck, className, disabled, mixed }: CheckboxProps) => {
   if (!checked) {
     return (
       <div
         className={cn(
           'w-4 h-4 rounded-[4px] bg-components-checkbox-bg-unchecked border border-components-checkbox-border hover:bg-components-checkbox-bg-unchecked-hover hover:border-components-checkbox-border-hover shadow-xs cursor-pointer',
           disabled && 'border-components-checkbox-border-disabled bg-components-checkbox-bg-disabled hover:border-components-checkbox-border-disabled hover:bg-components-checkbox-bg-disabled cursor-not-allowed',
+          mixed && s.mixed,
           className,
         )}
         onClick={() => {

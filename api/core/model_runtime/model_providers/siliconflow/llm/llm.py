@@ -29,9 +29,6 @@ class SiliconflowLargeLanguageModel(OAIAPICompatLargeLanguageModel):
         user: Optional[str] = None,
     ) -> Union[LLMResult, Generator]:
         self._add_custom_parameters(credentials)
-        # {"response_format": "json_object"} need convert to {"response_format": {"type": "json_object"}}
-        if "response_format" in model_parameters:
-            model_parameters["response_format"] = {"type": model_parameters.get("response_format")}
         return super()._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
@@ -43,7 +40,7 @@ class SiliconflowLargeLanguageModel(OAIAPICompatLargeLanguageModel):
         credentials["mode"] = "chat"
         credentials["endpoint_url"] = "https://api.siliconflow.cn/v1"
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
         return AIModelEntity(
             model=model,
             label=I18nObject(en_US=model, zh_Hans=model),

@@ -94,7 +94,7 @@ class ModelConfigManager:
             config["model"]["completion_params"]
         )
 
-        return config, ["model"]
+        return dict(config), ["model"]
 
     @classmethod
     def validate_model_completion_params(cls, cp: dict) -> dict:

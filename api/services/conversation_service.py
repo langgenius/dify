@@ -1,8 +1,9 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import Optional, Union
 
-from sqlalchemy import asc, desc, or_
+from sqlalchemy import asc, desc, func, or_, select
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.llm_generator import LLMGenerator
@@ -18,19 +19,21 @@ class ConversationService:
     @classmethod
     def pagination_by_last_id(
         cls,
+        *,
+        session: Session,
         app_model: App,
         user: Optional[Union[Account, EndUser]],
         last_id: Optional[str],
         limit: int,
         invoke_from: InvokeFrom,
-        include_ids: Optional[list] = None,
-        exclude_ids: Optional[list] = None,
+        include_ids: Optional[Sequence[str]] = None,
+        exclude_ids: Optional[Sequence[str]] = None,
         sort_by: str = "-updated_at",
     ) -> InfiniteScrollPagination:
         if not user:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
 
-        base_query = db.session.query(Conversation).filter(
+        stmt = select(Conversation).where(
             Conversation.is_deleted == False,
             Conversation.app_id == app_model.id,
             Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
@@ -38,37 +41,39 @@ class ConversationService:
             Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
             or_(Conversation.invoke_from.is_(None), Conversation.invoke_from == invoke_from.value),
         )
-
         if include_ids is not None:
-            base_query = base_query.filter(Conversation.id.in_(include_ids))
-
+            stmt = stmt.where(Conversation.id.in_(include_ids))
         if exclude_ids is not None:
-            base_query = base_query.filter(~Conversation.id.in_(exclude_ids))
+            stmt = stmt.where(~Conversation.id.in_(exclude_ids))
 
         # define sort fields and directions
         sort_field, sort_direction = cls._get_sort_params(sort_by)
 
         if last_id:
-            last_conversation = base_query.filter(Conversation.id == last_id).first()
+            last_conversation = session.scalar(stmt.where(Conversation.id == last_id))
             if not last_conversation:
                 raise LastConversationNotExistsError()
 
             # build filters based on sorting
-            filter_condition = cls._build_filter_condition(sort_field, sort_direction, last_conversation)
-            base_query = base_query.filter(filter_condition)
-
-        base_query = base_query.order_by(sort_direction(getattr(Conversation, sort_field)))
-
-        conversations = base_query.limit(limit).all()
+            filter_condition = cls._build_filter_condition(
+                sort_field=sort_field,
+                sort_direction=sort_direction,
+                reference_conversation=last_conversation,
+            )
+            stmt = stmt.where(filter_condition)
+        query_stmt = stmt.order_by(sort_direction(getattr(Conversation, sort_field))).limit(limit)
+        conversations = session.scalars(query_stmt).all()
 
         has_more = False
         if len(conversations) == limit:
             current_page_last_conversation = conversations[-1]
             rest_filter_condition = cls._build_filter_condition(
-                sort_field, sort_direction, current_page_last_conversation, is_next_page=True
+                sort_field=sort_field,
+                sort_direction=sort_direction,
+                reference_conversation=current_page_last_conversation,
             )
-            rest_count = base_query.filter(rest_filter_condition).count()
-
+            count_stmt = select(func.count()).select_from(stmt.where(rest_filter_condition).subquery())
+            rest_count = session.scalar(count_stmt) or 0
             if rest_count > 0:
                 has_more = True
 
@@ -81,11 +86,9 @@ class ConversationService:
         return sort_by, asc
 
     @classmethod
-    def _build_filter_condition(
-        cls, sort_field: str, sort_direction: Callable, reference_conversation: Conversation, is_next_page: bool = False
-    ):
+    def _build_filter_condition(cls, sort_field: str, sort_direction: Callable, reference_conversation: Conversation):
         field_value = getattr(reference_conversation, sort_field)
-        if (sort_direction == desc and not is_next_page) or (sort_direction == asc and is_next_page):
+        if sort_direction == desc:
             return getattr(Conversation, sort_field) < field_value
         else:
             return getattr(Conversation, sort_field) > field_value

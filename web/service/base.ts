@@ -62,6 +62,7 @@ export type IOnNodeStarted = (nodeStarted: NodeStartedResponse) => void
 export type IOnNodeFinished = (nodeFinished: NodeFinishedResponse) => void
 export type IOnIterationStarted = (workflowStarted: IterationStartedResponse) => void
 export type IOnIterationNext = (workflowStarted: IterationNextResponse) => void
+export type IOnNodeRetry = (nodeFinished: NodeFinishedResponse) => void
 export type IOnIterationFinished = (workflowFinished: IterationFinishedResponse) => void
 export type IOnParallelBranchStarted = (parallelBranchStarted: ParallelBranchStartedResponse) => void
 export type IOnParallelBranchFinished = (parallelBranchFinished: ParallelBranchFinishedResponse) => void
@@ -92,6 +93,7 @@ export type IOtherOptions = {
   onIterationStart?: IOnIterationStarted
   onIterationNext?: IOnIterationNext
   onIterationFinish?: IOnIterationFinished
+  onNodeRetry?: IOnNodeRetry
   onParallelBranchStarted?: IOnParallelBranchStarted
   onParallelBranchFinished?: IOnParallelBranchFinished
   onTextChunk?: IOnTextChunk
@@ -165,6 +167,7 @@ const handleStream = (
   onIterationStart?: IOnIterationStarted,
   onIterationNext?: IOnIterationNext,
   onIterationFinish?: IOnIterationFinished,
+  onNodeRetry?: IOnNodeRetry,
   onParallelBranchStarted?: IOnParallelBranchStarted,
   onParallelBranchFinished?: IOnParallelBranchFinished,
   onTextChunk?: IOnTextChunk,
@@ -255,6 +258,9 @@ const handleStream = (
             }
             else if (bufferObj.event === 'iteration_completed') {
               onIterationFinish?.(bufferObj as IterationFinishedResponse)
+            }
+            else if (bufferObj.event === 'node_retry') {
+              onNodeRetry?.(bufferObj as NodeFinishedResponse)
             }
             else if (bufferObj.event === 'parallel_branch_started') {
               onParallelBranchStarted?.(bufferObj as ParallelBranchStartedResponse)
@@ -462,6 +468,7 @@ export const ssePost = (
     onIterationStart,
     onIterationNext,
     onIterationFinish,
+    onNodeRetry,
     onParallelBranchStarted,
     onParallelBranchFinished,
     onTextChunk,
@@ -533,7 +540,7 @@ export const ssePost = (
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
-      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile, onWorkflowStarted, onWorkflowFinished, onNodeStarted, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onParallelBranchStarted, onParallelBranchFinished, onTextChunk, onTTSChunk, onTTSEnd, onTextReplace)
+      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile, onWorkflowStarted, onWorkflowFinished, onNodeStarted, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onNodeRetry, onParallelBranchStarted, onParallelBranchFinished, onTextChunk, onTTSChunk, onTTSEnd, onTextReplace)
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
         Toast.notify({ type: 'error', message: e })

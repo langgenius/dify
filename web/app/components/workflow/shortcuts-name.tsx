@@ -12,14 +12,14 @@ const ShortcutsName = ({
 }: ShortcutsNameProps) => {
   return (
     <div className={cn(
-      'flex items-center gap-0.5 h-4 text-xs text-gray-400',
+      'flex items-center gap-0.5',
       className,
     )}>
       {
         keys.map(key => (
           <div
             key={key}
-            className='capitalize'
+            className='w-4 h-4 flex items-center justify-center bg-components-kbd-bg-gray rounded-[4px] system-kbd capitalize'
           >
             {getKeyboardKeyNameBySystem(key)}
           </div>

@@ -3,13 +3,15 @@ import cn from '@/utils/classnames'
 
 type BadgeProps = {
   className?: string
-  text: string
+  text?: string
+  children?: React.ReactNode
   uppercase?: boolean
 }
 
 const Badge = ({
   className,
   text,
+  children,
   uppercase = true,
 }: BadgeProps) => {
   return (
@@ -20,7 +22,7 @@ const Badge = ({
         className,
       )}
     >
-      {text}
+      {children || text}
     </div>
   )
 }

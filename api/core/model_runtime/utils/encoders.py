@@ -129,7 +129,8 @@ def jsonable_encoder(
             sqlalchemy_safe=sqlalchemy_safe,
         )
     if dataclasses.is_dataclass(obj):
-        obj_dict = dataclasses.asdict(obj)
+        # FIXME: mypy error, try to fix it instead of using type: ignore
+        obj_dict = dataclasses.asdict(obj)  # type: ignore
         return jsonable_encoder(
             obj_dict,
             by_alias=by_alias,

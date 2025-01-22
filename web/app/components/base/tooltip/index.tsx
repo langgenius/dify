@@ -14,6 +14,7 @@ export type TooltipProps = {
   popupContent?: React.ReactNode
   children?: React.ReactNode
   popupClassName?: string
+  noDecoration?: boolean
   offset?: OffsetOptions
   needsDelay?: boolean
   asChild?: boolean
@@ -27,6 +28,7 @@ const Tooltip: FC<TooltipProps> = ({
   popupContent,
   children,
   popupClassName,
+  noDecoration,
   offset,
   asChild = true,
   needsDelay = false,
@@ -96,7 +98,7 @@ const Tooltip: FC<TooltipProps> = ({
       >
         {popupContent && (<div
           className={cn(
-            'relative px-3 py-2 system-xs-regular text-text-tertiary bg-components-panel-bg rounded-md shadow-lg break-words',
+            !noDecoration && 'relative px-3 py-2 system-xs-regular text-text-tertiary bg-components-panel-bg rounded-md shadow-lg break-words',
             popupClassName,
           )}
           onMouseEnter={() => triggerMethod === 'hover' && setHoverPopup()}

@@ -8,6 +8,8 @@ features:
   - tool-call
   - stream-tool-call
   - document
+  - video
+  - audio
 model_properties:
   mode: chat
   context_size: 32767

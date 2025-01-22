@@ -43,23 +43,23 @@ const AllTools = ({
 
     return mergedTools.filter((toolWithProvider) => {
       return isMatchingKeywords(toolWithProvider.name, searchText)
-      || toolWithProvider.tools.some((tool) => {
-        return Object.values(tool.label).some((label) => {
-          return isMatchingKeywords(label, searchText)
+        || toolWithProvider.tools.some((tool) => {
+          return Object.values(tool.label).some((label) => {
+            return isMatchingKeywords(label, searchText)
+          })
         })
-      })
     })
   }, [activeTab, buildInTools, customTools, workflowTools, searchText])
   return (
     <div>
-      <div className='flex items-center px-3 h-8 space-x-1 bg-gray-25 border-b-[0.5px] border-black/[0.08] shadow-xs'>
+      <div className='flex items-center px-3 h-8 space-x-1 bg-background-default-hover border-b-[0.5px] border-divider-subtle shadow-xs'>
         {
           tabs.map(tab => (
             <div
               className={cn(
-                'flex items-center px-2 h-6 rounded-md hover:bg-gray-100 cursor-pointer',
-                'text-xs font-medium text-gray-700',
-                activeTab === tab.key && 'bg-gray-200',
+                'flex items-center px-2 h-6 rounded-md hover:bg-state-base-hover-alt cursor-pointer',
+                'system-xs-medium text-text-tertiary',
+                activeTab === tab.key && 'system-xs-semibold bg-state-base-hover-alt text-text-primary',
               )}
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}

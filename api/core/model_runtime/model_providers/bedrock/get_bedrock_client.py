@@ -1,11 +1,19 @@
+from collections.abc import Mapping
+
 import boto3
 from botocore.config import Config
 
+from core.model_runtime.errors.invoke import InvokeBadRequestError
 
-def get_bedrock_client(service_name, credentials=None):
-    client_config = Config(region_name=credentials["aws_region"])
-    aws_access_key_id = credentials["aws_access_key_id"]
-    aws_secret_access_key = credentials["aws_secret_access_key"]
+
+def get_bedrock_client(service_name: str, credentials: Mapping[str, str]):
+    region_name = credentials.get("aws_region")
+    if not region_name:
+        raise InvokeBadRequestError("aws_region is required")
+    client_config = Config(region_name=region_name)
+    aws_access_key_id = credentials.get("aws_access_key_id")
+    aws_secret_access_key = credentials.get("aws_secret_access_key")
+
     if aws_access_key_id and aws_secret_access_key:
         # use aksk to call bedrock
         client = boto3.client(

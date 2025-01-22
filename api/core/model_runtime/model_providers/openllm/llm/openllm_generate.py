@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from enum import Enum
 from json import dumps, loads
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from requests import Response, post
 from requests.exceptions import ConnectionError, InvalidSchema, MissingSchema
@@ -20,7 +20,7 @@ class OpenLLMGenerateMessage:
 
     role: str = Role.USER.value
     content: str
-    usage: dict[str, int] = None
+    usage: Optional[dict[str, int]] = None
     stop_reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -165,17 +165,17 @@ class OpenLLMGenerate:
             if not line:
                 continue
 
-            line: str = line.decode("utf-8")
-            if line.startswith("data: "):
-                line = line[6:].strip()
+            line_str: str = line.decode("utf-8")
+            if line_str.startswith("data: "):
+                line_str = line_str[6:].strip()
 
-            if line == "[DONE]":
+            if line_str == "[DONE]":
                 return
 
             try:
-                data = loads(line)
+                data = loads(line_str)
             except Exception as e:
-                raise InternalServerError(f"Failed to convert response to json: {e} with text: {line}")
+                raise InternalServerError(f"Failed to convert response to json: {e} with text: {line_str}")
 
             output = data["outputs"]
 

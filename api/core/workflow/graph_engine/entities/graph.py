@@ -1,9 +1,11 @@
 import uuid
+from collections import defaultdict
 from collections.abc import Mapping
 from typing import Any, Optional, cast
 
 from pydantic import BaseModel, Field
 
+from configs import dify_config
 from core.workflow.graph_engine.entities.run_condition import RunCondition
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.answer.answer_stream_generate_router import AnswerStreamGeneratorRouter
@@ -170,7 +172,9 @@ class Graph(BaseModel):
         for parallel in parallel_mapping.values():
             if parallel.parent_parallel_id:
                 cls._check_exceed_parallel_limit(
-                    parallel_mapping=parallel_mapping, level_limit=3, parent_parallel_id=parallel.parent_parallel_id
+                    parallel_mapping=parallel_mapping,
+                    level_limit=dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
+                    parent_parallel_id=parallel.parent_parallel_id,
                 )
 
         # init answer stream generate routes
@@ -307,26 +311,17 @@ class Graph(BaseModel):
         parallel = None
         if len(target_node_edges) > 1:
             # fetch all node ids in current parallels
-            parallel_branch_node_ids = {}
-            condition_edge_mappings = {}
+            parallel_branch_node_ids = defaultdict(list)
+            condition_edge_mappings = defaultdict(list)
             for graph_edge in target_node_edges:
                 if graph_edge.run_condition is None:
-                    if "default" not in parallel_branch_node_ids:
-                        parallel_branch_node_ids["default"] = []
-
                     parallel_branch_node_ids["default"].append(graph_edge.target_node_id)
                 else:
                     condition_hash = graph_edge.run_condition.hash
-                    if condition_hash not in condition_edge_mappings:
-                        condition_edge_mappings[condition_hash] = []
-
                     condition_edge_mappings[condition_hash].append(graph_edge)
 
             for condition_hash, graph_edges in condition_edge_mappings.items():
                 if len(graph_edges) > 1:
-                    if condition_hash not in parallel_branch_node_ids:
-                        parallel_branch_node_ids[condition_hash] = []
-
                     for graph_edge in graph_edges:
                         parallel_branch_node_ids[condition_hash].append(graph_edge.target_node_id)
 
@@ -415,7 +410,7 @@ class Graph(BaseModel):
             if condition_edge_mappings:
                 for condition_hash, graph_edges in condition_edge_mappings.items():
                     for graph_edge in graph_edges:
-                        current_parallel: GraphParallel | None = cls._get_current_parallel(
+                        current_parallel = cls._get_current_parallel(
                             parallel_mapping=parallel_mapping,
                             graph_edge=graph_edge,
                             parallel=condition_parallels.get(condition_hash),
@@ -618,10 +613,10 @@ class Graph(BaseModel):
         for (node_id, node_id2), branch_node_ids in duplicate_end_node_ids.items():
             # check which node is after
             if cls._is_node2_after_node1(node1_id=node_id, node2_id=node_id2, edge_mapping=edge_mapping):
-                if node_id in merge_branch_node_ids:
+                if node_id in merge_branch_node_ids and node_id2 in merge_branch_node_ids:
                     del merge_branch_node_ids[node_id2]
             elif cls._is_node2_after_node1(node1_id=node_id2, node2_id=node_id, edge_mapping=edge_mapping):
-                if node_id2 in merge_branch_node_ids:
+                if node_id in merge_branch_node_ids and node_id2 in merge_branch_node_ids:
                     del merge_branch_node_ids[node_id]
 
         branches_merge_node_ids: dict[str, str] = {}

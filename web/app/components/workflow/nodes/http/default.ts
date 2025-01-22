@@ -2,7 +2,10 @@ import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
 import { AuthorizationType, BodyType, Method } from './types'
 import type { BodyPayload, HttpNodeType } from './types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
+import {
+  ALL_CHAT_AVAILABLE_BLOCKS,
+  ALL_COMPLETION_AVAILABLE_BLOCKS,
+} from '@/app/components/workflow/constants'
 
 const nodeDefault: NodeDefault<HttpNodeType> = {
   defaultValue: {
@@ -23,6 +26,11 @@ const nodeDefault: NodeDefault<HttpNodeType> = {
       max_connect_timeout: 0,
       max_read_timeout: 0,
       max_write_timeout: 0,
+    },
+    retry_config: {
+      retry_enabled: true,
+      max_retries: 3,
+      retry_interval: 100,
     },
   },
   getAvailablePrevNodes(isChatMode: boolean) {

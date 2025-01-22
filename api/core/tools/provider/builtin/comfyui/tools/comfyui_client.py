@@ -40,7 +40,10 @@ class ComfyUiClient:
     def open_websocket_connection(self) -> tuple[WebSocket, str]:
         client_id = str(uuid.uuid4())
         ws = WebSocket()
-        ws_address = f"ws://{self.base_url.authority}/ws?clientId={client_id}"
+        ws_protocol = "ws"
+        if self.base_url.scheme == "https":
+            ws_protocol = "wss"
+        ws_address = f"{ws_protocol}://{self.base_url.authority}/ws?clientId={client_id}"
         ws.connect(ws_address)
         return ws, client_id
 
@@ -122,7 +125,7 @@ class ComfyUiClient:
             for output in history["outputs"].values():
                 for img in output.get("images", []):
                     image_data = self.get_image(img["filename"], img["subfolder"], img["type"])
-                    images.append(image_data)
+                    images.append((image_data, img["filename"]))
             return images
         finally:
             ws.close()

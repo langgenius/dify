@@ -29,7 +29,7 @@ class ToolFileMessageTransformer:
                         user_id=user_id, tenant_id=tenant_id, conversation_id=conversation_id, file_url=message.message
                     )
 
-                    url = f'/files/tools/{file.id}{guess_extension(file.mimetype) or ".png"}'
+                    url = f"/files/tools/{file.id}{guess_extension(file.mimetype) or '.png'}"
 
                     result.append(
                         ToolInvokeMessage(
@@ -90,12 +90,12 @@ class ToolFileMessageTransformer:
                     )
             elif message.type == ToolInvokeMessage.MessageType.FILE:
                 assert message.meta is not None
-                file = message.meta.get("file")
-                if isinstance(file, File):
-                    if file.transfer_method == FileTransferMethod.TOOL_FILE:
-                        assert file.related_id is not None
-                        url = cls.get_tool_file_url(tool_file_id=file.related_id, extension=file.extension)
-                        if file.type == FileType.IMAGE:
+                file_mata = message.meta.get("file")
+                if isinstance(file_mata, File):
+                    if file_mata.transfer_method == FileTransferMethod.TOOL_FILE:
+                        assert file_mata.related_id is not None
+                        url = cls.get_tool_file_url(tool_file_id=file_mata.related_id, extension=file_mata.extension)
+                        if file_mata.type == FileType.IMAGE:
                             result.append(
                                 ToolInvokeMessage(
                                     type=ToolInvokeMessage.MessageType.IMAGE_LINK,
@@ -122,4 +122,4 @@ class ToolFileMessageTransformer:
 
     @classmethod
     def get_tool_file_url(cls, tool_file_id: str, extension: Optional[str]) -> str:
-        return f'/files/tools/{tool_file_id}{extension or ".bin"}'
+        return f"/files/tools/{tool_file_id}{extension or '.bin'}"

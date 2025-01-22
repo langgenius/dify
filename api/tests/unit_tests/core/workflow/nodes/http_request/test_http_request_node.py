@@ -51,6 +51,7 @@ def test_http_request_node_binary_file(monkeypatch):
                 type=FileType.IMAGE,
                 transfer_method=FileTransferMethod.LOCAL_FILE,
                 related_id="1111",
+                storage_key="",
             ),
         ),
     )
@@ -138,6 +139,7 @@ def test_http_request_node_form_with_file(monkeypatch):
                 type=FileType.IMAGE,
                 transfer_method=FileTransferMethod.LOCAL_FILE,
                 related_id="1111",
+                storage_key="",
             ),
         ),
     )

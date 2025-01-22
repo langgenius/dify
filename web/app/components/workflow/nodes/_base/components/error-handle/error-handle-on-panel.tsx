@@ -14,7 +14,6 @@ import type {
   CommonNodeType,
   Node,
 } from '@/app/components/workflow/types'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
 import Tooltip from '@/app/components/base/tooltip'
 
 type ErrorHandleProps = Pick<Node, 'id' | 'data'>
@@ -45,7 +44,6 @@ const ErrorHandle = ({
 
   return (
     <>
-      <Split />
       <div className='py-4'>
         <Collapse
           disabled={!error_strategy}

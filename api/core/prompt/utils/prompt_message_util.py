@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import cast
+from typing import Any, cast
 
 from core.model_runtime.entities import (
     AssistantPromptMessage,
@@ -72,7 +72,7 @@ class PromptMessageUtil:
                                 }
                             )
                 else:
-                    text = prompt_message.content
+                    text = cast(str, prompt_message.content)
 
                 prompt = {"role": role, "text": text, "files": files}
 
@@ -99,9 +99,9 @@ class PromptMessageUtil:
                             }
                         )
             else:
-                text = prompt_message.content
+                text = cast(str, prompt_message.content)
 
-            params = {
+            params: dict[str, Any] = {
                 "role": "user",
                 "text": text,
             }

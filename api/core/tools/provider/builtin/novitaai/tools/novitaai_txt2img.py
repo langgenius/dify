@@ -2,7 +2,7 @@ from base64 import b64decode
 from copy import deepcopy
 from typing import Any, Union
 
-from novita_client import (
+from novita_client import (  # type: ignore
     NovitaClient,
 )
 

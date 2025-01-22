@@ -2,7 +2,6 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import (
     GraphRunPartialSucceededEvent,
-    GraphRunSucceededEvent,
     NodeRunExceptionEvent,
     NodeRunStreamChunkEvent,
 )
@@ -14,7 +13,9 @@ from models.workflow import WorkflowType
 
 class ContinueOnErrorTestHelper:
     @staticmethod
-    def get_code_node(code: str, error_strategy: str = "fail-branch", default_value: dict | None = None):
+    def get_code_node(
+        code: str, error_strategy: str = "fail-branch", default_value: dict | None = None, retry_config: dict = {}
+    ):
         """Helper method to create a code node configuration"""
         node = {
             "id": "node",
@@ -26,6 +27,7 @@ class ContinueOnErrorTestHelper:
                 "code_language": "python3",
                 "code": "\n".join([line[4:] for line in code.split("\n")]),
                 "type": "code",
+                **retry_config,
             },
         }
         if default_value:
@@ -34,7 +36,10 @@ class ContinueOnErrorTestHelper:
 
     @staticmethod
     def get_http_node(
-        error_strategy: str = "fail-branch", default_value: dict | None = None, authorization_success: bool = False
+        error_strategy: str = "fail-branch",
+        default_value: dict | None = None,
+        authorization_success: bool = False,
+        retry_config: dict = {},
     ):
         """Helper method to create a http node configuration"""
         authorization = (
@@ -65,6 +70,7 @@ class ContinueOnErrorTestHelper:
                 "body": None,
                 "type": "http-request",
                 "error_strategy": error_strategy,
+                **retry_config,
             },
         }
         if default_value:

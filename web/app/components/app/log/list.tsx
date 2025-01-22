@@ -16,6 +16,7 @@ import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import type { ChatItemInTree } from '../../base/chat/types'
+import Indicator from '../../header/indicator'
 import VarPanel from './var-panel'
 import type { FeedbackFunc, FeedbackType, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
 import type { Annotation, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
@@ -57,6 +58,12 @@ type IDrawerContext = {
   appDetail?: App
 }
 
+type StatusCount = {
+  success: number
+  failed: number
+  partial_success: number
+}
+
 const DrawerContext = createContext<IDrawerContext>({} as IDrawerContext)
 
 /**
@@ -69,6 +76,33 @@ const HandThumbIconWithCount: FC<{ count: number; iconType: 'up' | 'down' }> = (
     <Icon className={'h-3 w-3 mr-0.5 rounded-md'} />
     {count > 0 ? count : null}
   </div>
+}
+
+const statusTdRender = (statusCount: StatusCount) => {
+  if (statusCount.partial_success + statusCount.failed === 0) {
+    return (
+      <div className='inline-flex items-center gap-1 system-xs-semibold-uppercase'>
+        <Indicator color={'green'} />
+        <span className='text-util-colors-green-green-600'>Success</span>
+      </div>
+    )
+  }
+  else if (statusCount.failed === 0) {
+    return (
+      <div className='inline-flex items-center gap-1 system-xs-semibold-uppercase'>
+        <Indicator color={'green'} />
+        <span className='text-util-colors-green-green-600'>Partial Success</span>
+      </div>
+    )
+  }
+  else {
+    return (
+      <div className='inline-flex items-center gap-1 system-xs-semibold-uppercase'>
+        <Indicator color={'red'} />
+        <span className='text-util-colors-red-red-600'>{statusCount.failed} {`${statusCount.failed > 1 ? 'Failures' : 'Failure'}`}</span>
+      </div>
+    )
+  }
 }
 
 const getFormattedChatList = (messages: ChatMessage[], conversationId: string, timezone: string, format: string) => {
@@ -496,8 +530,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 }
 
 /**
- * Text App Conversation Detail Component
- */
+   * Text App Conversation Detail Component
+   */
 const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: string }> = ({ appId, conversationId }) => {
   // Text Generator App Session Details Including Message List
   const detailParams = ({ url: `/apps/${appId}/completion-conversations/${conversationId}` })
@@ -542,8 +576,8 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
 }
 
 /**
- * Chat App Conversation Detail Component
- */
+   * Chat App Conversation Detail Component
+   */
 const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }> = ({ appId, conversationId }) => {
   const detailParams = { url: `/apps/${appId}/chat-conversations/${conversationId}` }
   const { data: conversationDetail } = useSWR(() => (appId && conversationId) ? detailParams : null, fetchChatConversationDetail)
@@ -585,8 +619,8 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
 }
 
 /**
- * Conversation list component including basic information
- */
+   * Conversation list component including basic information
+   */
 const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
@@ -597,6 +631,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   const [showDrawer, setShowDrawer] = useState<boolean>(false) // Whether to display the chat details drawer
   const [currentConversation, setCurrentConversation] = useState<ChatConversationGeneralDetail | CompletionConversationGeneralDetail | undefined>() // Currently selected conversation
   const isChatMode = appDetail.mode !== 'completion' // Whether the app is a chat app
+  const isChatflow = appDetail.mode === 'advanced-chat' // Whether the app is a chatflow app
   const { setShowPromptLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
     setShowPromptLogModal: state.setShowPromptLogModal,
     setShowAgentLogModal: state.setShowAgentLogModal,
@@ -639,6 +674,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
             <td className='pl-2 pr-1 w-5 rounded-l-lg bg-background-section-burn whitespace-nowrap'></td>
             <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
             <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.endUser')}</td>
+            {isChatflow && <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.status')}</td>}
             <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{isChatMode ? t('appLog.table.header.messageCount') : t('appLog.table.header.output')}</td>
             <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.userRate')}</td>
             <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.adminRate')}</td>
@@ -669,6 +705,9 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                 {renderTdValue(leftValue || t('appLog.table.empty.noChat'), !leftValue, isChatMode && log.annotated)}
               </td>
               <td className='p-3 pr-2'>{renderTdValue(endUser || defaultValue, !endUser)}</td>
+              {isChatflow && <td className='p-3 pr-2 w-[160px]' style={{ maxWidth: isChatMode ? 300 : 200 }}>
+                {statusTdRender(log.status_count)}
+              </td>}
               <td className='p-3 pr-2' style={{ maxWidth: isChatMode ? 100 : 200 }}>
                 {renderTdValue(rightValue === 0 ? 0 : (rightValue || t('appLog.table.empty.noOutput')), !rightValue, !isChatMode && !!log.annotation?.content, log.annotation)}
               </td>

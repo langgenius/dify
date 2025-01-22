@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, model_validator
 
@@ -20,7 +20,7 @@ class AnalyticdbVectorOpenAPIConfig(BaseModel):
     account: str
     account_password: str
     namespace: str = "dify"
-    namespace_password: str = (None,)
+    namespace_password: Optional[str] = None
     metrics: str = "cosine"
     read_timeout: int = 60000
 
@@ -55,8 +55,8 @@ class AnalyticdbVectorOpenAPIConfig(BaseModel):
 class AnalyticdbVectorOpenAPI:
     def __init__(self, collection_name: str, config: AnalyticdbVectorOpenAPIConfig):
         try:
-            from alibabacloud_gpdb20160503.client import Client
-            from alibabacloud_tea_openapi import models as open_api_models
+            from alibabacloud_gpdb20160503.client import Client  # type: ignore
+            from alibabacloud_tea_openapi import models as open_api_models  # type: ignore
         except:
             raise ImportError(_import_err_msg)
         self._collection_name = collection_name.lower()
@@ -77,7 +77,7 @@ class AnalyticdbVectorOpenAPI:
             redis_client.set(database_exist_cache_key, 1, ex=3600)
 
     def _initialize_vector_database(self) -> None:
-        from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
+        from alibabacloud_gpdb20160503 import models as gpdb_20160503_models  # type: ignore
 
         request = gpdb_20160503_models.InitVectorDatabaseRequest(
             dbinstance_id=self.config.instance_id,
@@ -89,7 +89,7 @@ class AnalyticdbVectorOpenAPI:
 
     def _create_namespace_if_not_exists(self) -> None:
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
-        from Tea.exceptions import TeaException
+        from Tea.exceptions import TeaException  # type: ignore
 
         try:
             request = gpdb_20160503_models.DescribeNamespaceRequest(
@@ -159,17 +159,18 @@ class AnalyticdbVectorOpenAPI:
 
         rows: list[gpdb_20160503_models.UpsertCollectionDataRequestRows] = []
         for doc, embedding in zip(documents, embeddings, strict=True):
-            metadata = {
-                "ref_doc_id": doc.metadata["doc_id"],
-                "page_content": doc.page_content,
-                "metadata_": json.dumps(doc.metadata),
-            }
-            rows.append(
-                gpdb_20160503_models.UpsertCollectionDataRequestRows(
-                    vector=embedding,
-                    metadata=metadata,
+            if doc.metadata is not None:
+                metadata = {
+                    "ref_doc_id": doc.metadata["doc_id"],
+                    "page_content": doc.page_content,
+                    "metadata_": json.dumps(doc.metadata),
+                }
+                rows.append(
+                    gpdb_20160503_models.UpsertCollectionDataRequestRows(
+                        vector=embedding,
+                        metadata=metadata,
+                    )
                 )
-            )
         request = gpdb_20160503_models.UpsertCollectionDataRequest(
             dbinstance_id=self.config.instance_id,
             region_id=self.config.region_id,
@@ -258,7 +259,7 @@ class AnalyticdbVectorOpenAPI:
                     metadata=metadata,
                 )
                 documents.append(doc)
-        documents = sorted(documents, key=lambda x: x.metadata["score"], reverse=True)
+        documents = sorted(documents, key=lambda x: x.metadata["score"] if x.metadata else 0, reverse=True)
         return documents
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
@@ -290,7 +291,7 @@ class AnalyticdbVectorOpenAPI:
                     metadata=metadata,
                 )
                 documents.append(doc)
-        documents = sorted(documents, key=lambda x: x.metadata["score"], reverse=True)
+        documents = sorted(documents, key=lambda x: x.metadata["score"] if x.metadata else 0, reverse=True)
         return documents
 
     def delete(self) -> None:

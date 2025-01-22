@@ -2,10 +2,11 @@ import json
 import logging
 
 from flask import abort, request
-from flask_restful import Resource, marshal_with, reqparse
+from flask_restful import Resource, inputs, marshal_with, reqparse  # type: ignore
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
+from configs import dify_config
 from controllers.console import api
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.wraps import get_app_model
@@ -13,7 +14,7 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from factories import variable_factory
-from fields.workflow_fields import workflow_fields
+from fields.workflow_fields import workflow_fields, workflow_pagination_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
 from libs.helper import TimestampField, uuid_value
@@ -426,7 +427,46 @@ class ConvertToWorkflowApi(Resource):
         }
 
 
+class WorkflowConfigApi(Resource):
+    """Resource for workflow configuration."""
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def get(self, app_model: App):
+        return {
+            "parallel_depth_limit": dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
+        }
+
+
+class PublishedAllWorkflowApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @marshal_with(workflow_pagination_fields)
+    def get(self, app_model: App):
+        """
+        Get published workflows
+        """
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
+        parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
+        args = parser.parse_args()
+        page = args.get("page")
+        limit = args.get("limit")
+        workflow_service = WorkflowService()
+        workflows, has_more = workflow_service.get_all_published_workflow(app_model=app_model, page=page, limit=limit)
+
+        return {"items": workflows, "page": page, "limit": limit, "has_more": has_more}
+
+
 api.add_resource(DraftWorkflowApi, "/apps/<uuid:app_id>/workflows/draft")
+api.add_resource(WorkflowConfigApi, "/apps/<uuid:app_id>/workflows/draft/config")
 api.add_resource(AdvancedChatDraftWorkflowRunApi, "/apps/<uuid:app_id>/advanced-chat/workflows/draft/run")
 api.add_resource(DraftWorkflowRunApi, "/apps/<uuid:app_id>/workflows/draft/run")
 api.add_resource(WorkflowTaskStopApi, "/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop")
@@ -439,6 +479,7 @@ api.add_resource(
     WorkflowDraftRunIterationNodeApi, "/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run"
 )
 api.add_resource(PublishedWorkflowApi, "/apps/<uuid:app_id>/workflows/publish")
+api.add_resource(PublishedAllWorkflowApi, "/apps/<uuid:app_id>/workflows")
 api.add_resource(DefaultBlockConfigsApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
 api.add_resource(
     DefaultBlockConfigApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>"

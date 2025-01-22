@@ -7,9 +7,9 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import Optional, Union, cast
 
-from dashscope import Generation, MultiModalConversation, get_tokenizer
-from dashscope.api_entities.dashscope_response import GenerationResponse
-from dashscope.common.error import (
+from dashscope import Generation, MultiModalConversation, get_tokenizer  # type: ignore
+from dashscope.api_entities.dashscope_response import GenerationResponse  # type: ignore
+from dashscope.common.error import (  # type: ignore
     AuthenticationError,
     InvalidParameter,
     RequestFailure,
@@ -257,8 +257,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         for index, response in enumerate(responses):
             if response.status_code not in {200, HTTPStatus.OK}:
                 raise ServiceUnavailableError(
-                    f"Failed to invoke model {model}, status code: {response.status_code}, "
-                    f"message: {response.message}"
+                    f"Failed to invoke model {model}, status code: {response.status_code}, message: {response.message}"
                 )
 
             resp_finish_reason = response.output.choices[0].finish_reason
@@ -434,9 +433,9 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                             sub_messages.append(sub_message_dict)
                         elif message_content.type == PromptMessageContentType.VIDEO:
                             message_content = cast(VideoPromptMessageContent, message_content)
-                            video_url = message_content.data
-                            if message_content.data.startswith("data:"):
-                                raise InvokeError("not support base64, please set MULTIMODAL_SEND_VIDEO_FORMAT to url")
+                            video_url = message_content.url
+                            if not video_url:
+                                raise InvokeError("not support base64, please set MULTIMODAL_SEND_FORMAT to url")
 
                             sub_message_dict = {"video": video_url}
                             sub_messages.append(sub_message_dict)
