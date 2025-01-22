@@ -65,6 +65,8 @@ const translation = {
           customDisclaimer: 'Tuyên bố từ chối trách nhiệm tùy chỉnh',
           customDisclaimerPlaceholder: 'Nhập liên kết tuyên bố từ chối trách nhiệm',
           customDisclaimerTip: 'Liên kết này sẽ hiển thị ở phía người dùng, cung cấp thông tin về trách nhiệm của ứng dụng',
+          copyrightTip: 'Hiển thị thông tin bản quyền trong ứng dụng web',
+          copyrightTooltip: 'Vui lòng nâng cấp lên gói Professional trở lên',
         },
         sso: {
           title: 'SSO ứng dụng web',
@@ -72,6 +74,7 @@ const translation = {
           tooltip: 'Liên hệ với quản trị viên để bật SSO WebApp',
           label: 'Xác thực SSO',
         },
+        modalTip: 'Cài đặt ứng dụng web phía máy khách.',
       },
       embedded: {
         entry: 'Nhúng',

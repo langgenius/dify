@@ -49,6 +49,7 @@ const translation = {
     saveAndRegenerate: 'Сохранение и повторное создание дочерних блоков',
     submit: 'Отправить',
     skip: 'Корабль',
+    imageCopied: 'Скопированное изображение',
   },
   errorMsg: {
     fieldRequired: '{{field}} обязательно',

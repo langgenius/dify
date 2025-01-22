@@ -195,7 +195,11 @@ def validate_and_get_api_token(scope: str | None = None):
     with Session(db.engine, expire_on_commit=False) as session:
         update_stmt = (
             update(ApiToken)
-            .where(ApiToken.token == auth_token, ApiToken.last_used_at < cutoff_time, ApiToken.type == scope)
+            .where(
+                ApiToken.token == auth_token,
+                (ApiToken.last_used_at.is_(None) | (ApiToken.last_used_at < cutoff_time)),
+                ApiToken.type == scope,
+            )
             .values(last_used_at=current_time)
             .returning(ApiToken)
         )
@@ -236,7 +240,7 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type="service_api",
-            is_anonymous=True if user_id == "DEFAULT-USER" else False,
+            is_anonymous=user_id == "DEFAULT-USER",
             session_id=user_id,
         )
         db.session.add(end_user)

@@ -173,6 +173,8 @@ const translation = {
   preprocessDocument: '{{num}} प्रीप्रोसेस दस्तावेज़',
   enable: 'योग्य बनाना',
   documentsDisabled: '{{num}} दस्तावेज़ अक्षम - 30 दिनों से अधिक समय से निष्क्रिय',
+  allKnowledge: 'सर्व ज्ञान',
+  allKnowledgeDescription: 'इस कार्यस्थान में सभी ज्ञान प्रदर्शित करने के लिए चयन करें. केवल कार्यस्थान स्वामी ही सभी ज्ञान का प्रबंधन कर सकता है.',
 }
 
 export default translation

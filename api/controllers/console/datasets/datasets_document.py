@@ -362,8 +362,7 @@ class DatasetInitApi(Resource):
                 )
             except InvokeAuthorizationError:
                 raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
@@ -540,8 +539,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 return response.model_dump(), 200
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)

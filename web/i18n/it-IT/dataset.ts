@@ -173,6 +173,8 @@ const translation = {
   enable: 'Abilitare',
   documentsDisabled: '{{num}} documenti disabilitati - inattivi da oltre 30 giorni',
   localDocs: 'Documenti locali',
+  allKnowledge: 'Tutta la conoscenza',
+  allKnowledgeDescription: 'Selezionare questa opzione per visualizzare tutte le informazioni in questa area di lavoro. Solo il proprietario dell\'area di lavoro può gestire tutte le conoscenze.',
 }
 
 export default translation

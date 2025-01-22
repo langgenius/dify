@@ -65,6 +65,8 @@ const translation = {
           customDisclaimer: 'Descargo de responsabilidad personalizado',
           customDisclaimerPlaceholder: 'Ingresa el texto de descargo de responsabilidad personalizado',
           customDisclaimerTip: 'El texto de descargo de responsabilidad personalizado se mostrará en el lado del cliente, proporcionando información adicional sobre la aplicación',
+          copyrightTip: 'Mostrar información de derechos de autor en la aplicación web',
+          copyrightTooltip: 'Actualice al plan Profesional o superior',
         },
         sso: {
           description: 'Todos los usuarios deben iniciar sesión con SSO antes de usar WebApp',
@@ -72,6 +74,7 @@ const translation = {
           label: 'Autenticación SSO',
           title: 'WebApp SSO',
         },
+        modalTip: 'Configuración de la aplicación web del lado del cliente.',
       },
       embedded: {
         entry: 'Incrustado',

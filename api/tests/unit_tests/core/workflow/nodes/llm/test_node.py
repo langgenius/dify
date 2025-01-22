@@ -434,11 +434,11 @@ def test_fetch_files_with_non_existent_variable(llm_node):
 #         jinja2_variables=[],
 #     )
 
-#     # Verify the result
-#     assert len(prompt_messages) == len(scenario.expected_messages), f"Scenario failed: {scenario.description}"
-#     assert (
-#         prompt_messages == scenario.expected_messages
-#     ), f"Message content mismatch in scenario: {scenario.description}"
+# # Verify the result
+# assert len(prompt_messages) == len(scenario.expected_messages), f"Scenario failed: {scenario.description}"
+# assert prompt_messages == scenario.expected_messages, (
+#     f"Message content mismatch in scenario: {scenario.description}"
+# )
 
 
 def test_handle_list_messages_basic(llm_node):

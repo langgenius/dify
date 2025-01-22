@@ -1,26 +1,32 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
-import { ChevronRightIcon } from '@heroicons/react/20/solid'
+import React, { useCallback, useEffect, useState } from 'react'
+import { RiArrowRightSLine, RiCloseLine } from '@remixicon/react'
 import Link from 'next/link'
 import { Trans, useTranslation } from 'react-i18next'
-import { useContextSelector } from 'use-context-selector'
+import { useContext, useContextSelector } from 'use-context-selector'
+import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import Modal from '@/app/components/base/modal'
+import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import AppIcon from '@/app/components/base/app-icon'
 import Switch from '@/app/components/base/switch'
+import PremiumBadge from '@/app/components/base/premium-badge'
 import { SimpleSelect } from '@/app/components/base/select'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppIconType, AppSSO, Language } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
-import { languages } from '@/i18n/language'
+import { LanguagesSupported, languages } from '@/i18n/language'
 import Tooltip from '@/app/components/base/tooltip'
 import AppContext, { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
+import { useModalContext } from '@/context/modal-context'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import Divider from '@/app/components/base/divider'
+import I18n from '@/context/i18n'
 import cn from '@/utils/classnames'
 
 export type ISettingsModalProps = {
@@ -85,6 +91,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     chatColorTheme: chat_color_theme,
     chatColorThemeInverted: chat_color_theme_inverted,
     copyright,
+    copyrightSwitchValue: !!copyright,
     privacyPolicy: privacy_policy,
     customDisclaimer: custom_disclaimer,
     show_workflow_steps,
@@ -94,6 +101,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
   const { t } = useTranslation()
+  const { locale } = useContext(I18n)
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState<AppIconSelection>(
@@ -101,7 +109,16 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       ? { type: 'image', url: icon_url!, fileId: icon }
       : { type: 'emoji', icon, background: icon_background! },
   )
-  const isChatBot = appInfo.mode === 'chat' || appInfo.mode === 'advanced-chat' || appInfo.mode === 'agent-chat'
+
+  const { enableBilling, plan } = useProviderContext()
+  const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
+  const isFreePlan = plan.type === 'sandbox'
+  const handlePlanClick = useCallback(() => {
+    if (isFreePlan)
+      setShowPricingModal()
+    else
+      setShowAccountSettingModal({ payload: 'billing' })
+  }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
 
   useEffect(() => {
     setInputInfo({
@@ -110,6 +127,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       chatColorTheme: chat_color_theme,
       chatColorThemeInverted: chat_color_theme_inverted,
       copyright,
+      copyrightSwitchValue: !!copyright,
       privacyPolicy: privacy_policy,
       customDisclaimer: custom_disclaimer,
       show_workflow_steps,
@@ -159,7 +177,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       chat_color_theme: inputInfo.chatColorTheme,
       chat_color_theme_inverted: inputInfo.chatColorThemeInverted,
       prompt_public: false,
-      copyright: inputInfo.copyright,
+      copyright: isFreePlan
+        ? ''
+        : inputInfo.copyrightSwitchValue
+          ? inputInfo.copyright
+          : '',
       privacy_policy: inputInfo.privacyPolicy,
       custom_disclaimer: inputInfo.customDisclaimer,
       icon_type: appIcon.type,
@@ -193,8 +215,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   return (
     <>
       <Modal
-        title={t(`${prefixSettings}.title`)}
         isShow={isShow}
+        closable={false}
         onClose={onHide}
         className='max-w-[520px]'
       >
@@ -327,7 +349,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           <Button className='mr-2' onClick={onHide}>{t('common.operation.cancel')}</Button>
           <Button variant='primary' onClick={onClickSave} loading={saveLoading}>{t('common.operation.save')}</Button>
         </div>
-        {showAppIconPicker && <AppIconPicker
+      </Modal >
+      {showAppIconPicker && (
+        <AppIconPicker
           onSelect={(payload) => {
             setAppIcon(payload)
             setShowAppIconPicker(false)
@@ -338,8 +362,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               : { type: 'emoji', icon, background: icon_background! })
             setShowAppIconPicker(false)
           }}
-        />}
-      </Modal >
+        />
+      )}
     </>
 
   )

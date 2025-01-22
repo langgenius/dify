@@ -43,19 +43,17 @@ jobs:
         run: poetry install -C api --with dev
 
       - name: Check dependencies in pyproject.toml
-        run: poetry run -C api bash dev/pytest/pytest_artifacts.sh
+        run: poetry run -P api bash dev/pytest/pytest_artifacts.sh
 
       - name: Run Unit tests
-        run: poetry run -C api bash dev/pytest/pytest_unit_tests.sh
+        run: poetry run -P api bash dev/pytest/pytest_unit_tests.sh
 
       - name: Run dify config tests
-        run: poetry run -C api python dev/pytest/pytest_config_tests.py
+        run: poetry run -P api python dev/pytest/pytest_config_tests.py
 
       - name: Run mypy
         run: |
-          pushd api
-          poetry run python -m mypy --install-types --non-interactive .
-          popd
+          poetry run -C api python -m mypy --install-types --non-interactive .
 
       - name: Set up dotenvs
         run: |
@@ -75,4 +73,4 @@ jobs:
             ssrf_proxy
 
       - name: Run Workflow
-        run: poetry run -C api bash dev/pytest/pytest_workflow.sh
+        run: poetry run -P api bash dev/pytest/pytest_workflow.sh

@@ -49,6 +49,7 @@ const translation = {
     regenerate: 'Régénérer',
     submit: 'Envoyer',
     skip: 'Bateau',
+    imageCopied: 'Image copied',
   },
   placeholder: {
     input: 'Veuillez entrer',
