@@ -64,7 +64,7 @@ class EndStreamGeneratorRouter:
                 node_type = node.get("data", {}).get("type")
                 if (
                     variable_selector.value_selector not in value_selectors
-                    and node_type == NodeType.LLM.value
+                    and (node_type in (NodeType.LLM.value, NodeType.AGENT.value))
                     and variable_selector.value_selector[1] == "text"
                 ):
                     value_selectors.append(list(variable_selector.value_selector))
