@@ -192,7 +192,7 @@ const DatasetCard = ({
               />
             </div>
           </div>
-          <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200' />
+          <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-divider-regular' />
           <div className='!hidden group-hover:!flex shrink-0'>
             <CustomPopover
               htmlContent={<Operations showDelete={!isCurrentWorkspaceDatasetOperator} />}

@@ -16,7 +16,7 @@ import Checkbox from '@/app/components/base/checkbox'
 import { bindTag, createTag, fetchTagList, unBindTag } from '@/service/tag'
 import { ToastContext } from '@/app/components/base/toast'
 
-interface TagSelectorProps {
+type TagSelectorProps = {
   targetID: string
   isPopover?: boolean
   position?: 'bl' | 'br'
@@ -231,10 +231,10 @@ const TagSelector: FC<TagSelectorProps> = ({
   const Trigger = () => {
     return (
       <div className={cn(
-        'group/tip relative w-full flex items-center gap-1 px-2 py-[7px] rounded-md cursor-pointer hover:bg-gray-100',
+        'group/tip relative w-full flex items-center gap-1 px-2 py-[7px] rounded-md cursor-pointer',
       )}>
-        <Tag01 className='shrink-0 w-3 h-3' />
-        <div className='grow text-xs text-start leading-[18px] font-normal truncate'>
+        <Tag01 className='shrink-0 w-3 h-3 text-components-input-text-placeholder' />
+        <div className='grow text-start system-sm-regular  text-components-input-text-placeholder truncate'>
           {!triggerContent ? t('common.tag.addTag') : triggerContent}
         </div>
       </div>
@@ -260,8 +260,8 @@ const TagSelector: FC<TagSelectorProps> = ({
           btnElement={<Trigger />}
           btnClassName={open =>
             cn(
-              open ? '!bg-gray-100 !text-gray-700' : '!bg-transparent',
-              '!w-full !p-0 !border-0 !text-gray-500 hover:!bg-gray-100 hover:!text-gray-700',
+              open ? '!bg-components-input-bg-normal' : '!bg-transparent',
+              '!w-full !p-0 !border-0 hover:!bg-state-base-hover',
             )
           }
           popupClassName='!w-full !ring-0'
