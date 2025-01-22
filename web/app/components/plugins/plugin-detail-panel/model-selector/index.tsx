@@ -131,6 +131,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       model_type,
       ...(model_type === ModelTypeEnum.textGeneration ? {
         mode: targetModelItem?.model_properties.mode as string,
+        completion_params: {},
       } : {}),
     })
   }
