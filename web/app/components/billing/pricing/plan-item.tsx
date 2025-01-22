@@ -22,6 +22,7 @@ type Props = {
 }
 
 const KeyValue = ({ icon, label, tooltip }: { icon: ReactNode; label: string; tooltip?: ReactNode }) => {
+  console.log(label)
   return (
     <div className='flex text-text-tertiary'>
       <div className='size-4 flex items-center justify-center'>
