@@ -82,7 +82,7 @@ const Container = () => {
   }, [currentWorkspace, router])
 
   return (
-    <div ref={containerRef} className='grow relative flex flex-col bg-background-body overflow-y-auto'>
+    <div ref={containerRef} className='grow relative flex flex-col bg-background-body overflow-y-auto scroll-container'>
       <div className='sticky top-0 flex justify-between pt-4 px-12 pb-2 leading-[56px] bg-background-body z-10 flex-wrap gap-y-2'>
         <TabSliderNew
           value={activeTab}

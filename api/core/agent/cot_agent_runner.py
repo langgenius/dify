@@ -172,7 +172,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
             self.save_agent_thought(
                 agent_thought=agent_thought,
-                tool_name=scratchpad.action.action_name if scratchpad.action else "",
+                tool_name=(scratchpad.action.action_name if scratchpad.action and not scratchpad.is_final() else ""),
                 tool_input={scratchpad.action.action_name: scratchpad.action.action_input} if scratchpad.action else {},
                 tool_invoke_meta={},
                 thought=scratchpad.thought or "",

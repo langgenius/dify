@@ -21,7 +21,7 @@ class SparkLLMClient:
             domain = api_domain
 
         model_api_configs = {
-            "spark-lite": {"version": "v1.1", "chat_domain": "general"},
+            "spark-lite": {"version": "v1.1", "chat_domain": "lite"},
             "spark-pro": {"version": "v3.1", "chat_domain": "generalv3"},
             "spark-pro-128k": {"version": "pro-128k", "chat_domain": "pro-128k"},
             "spark-max": {"version": "v3.5", "chat_domain": "generalv3.5"},

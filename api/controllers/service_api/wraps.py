@@ -1,4 +1,3 @@
-import time
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from enum import Enum
@@ -14,7 +13,6 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from libs.login import _get_user
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.model import ApiToken, App, EndUser
@@ -141,35 +139,6 @@ def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: s
     return interceptor
 
 
-def cloud_edition_billing_rate_limit_check(resource: str, api_token_type: str):
-    def interceptor(view):
-        @wraps(view)
-        def decorated(*args, **kwargs):
-            api_token = validate_and_get_api_token(api_token_type)
-
-            if resource == "knowledge":
-                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(api_token.tenant_id)
-                if knowledge_rate_limit.enabled:
-                    current_time = int(time.time() * 1000)
-                    key = f"rate_limit_{api_token.tenant_id}"
-
-                    redis_client.zadd(key, {current_time: current_time})
-
-                    redis_client.zremrangebyscore(key, 0, current_time - 60000)
-
-                    request_count = redis_client.zcard(key)
-
-                    if request_count > knowledge_rate_limit.limit:
-                        raise Forbidden(
-                            "Sorry, you have reached the knowledge base request rate limit of your subscription."
-                        )
-            return view(*args, **kwargs)
-
-        return decorated
-
-    return interceptor
-
-
 def validate_dataset_token(view=None):
     def decorator(view):
         @wraps(view)
@@ -226,7 +195,11 @@ def validate_and_get_api_token(scope: str | None = None):
     with Session(db.engine, expire_on_commit=False) as session:
         update_stmt = (
             update(ApiToken)
-            .where(ApiToken.token == auth_token, ApiToken.last_used_at < cutoff_time, ApiToken.type == scope)
+            .where(
+                ApiToken.token == auth_token,
+                (ApiToken.last_used_at.is_(None) | (ApiToken.last_used_at < cutoff_time)),
+                ApiToken.type == scope,
+            )
             .values(last_used_at=current_time)
             .returning(ApiToken)
         )

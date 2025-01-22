@@ -41,7 +41,6 @@ class FeatureModel(BaseModel):
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     vector_space: LimitationModel = LimitationModel(size=0, limit=5)
-    knowledge_rate_limit: int = 10
     annotation_quota_limit: LimitationModel = LimitationModel(size=0, limit=10)
     documents_upload_quota: LimitationModel = LimitationModel(size=0, limit=50)
     docs_processing: str = "standard"
@@ -51,11 +50,6 @@ class FeatureModel(BaseModel):
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
-
-
-class KnowledgeRateLimitModel(BaseModel):
-    enabled: bool = False
-    limit: int = 10
 
 
 class SystemFeatureModel(BaseModel):
@@ -84,14 +78,6 @@ class FeatureService:
             cls._fulfill_params_from_billing_api(features, tenant_id)
 
         return features
-
-    @classmethod
-    def get_knowledge_rate_limit(cls, tenant_id: str):
-        knowledge_rate_limit = KnowledgeRateLimitModel()
-        if dify_config.BILLING_ENABLED and tenant_id:
-            knowledge_rate_limit.enabled = True
-            knowledge_rate_limit.limit = BillingService.get_knowledge_rate_limit(tenant_id)
-        return knowledge_rate_limit
 
     @classmethod
     def get_system_features(cls) -> SystemFeatureModel:
@@ -157,9 +143,6 @@ class FeatureService:
 
         if "model_load_balancing_enabled" in billing_info:
             features.model_load_balancing_enabled = billing_info["model_load_balancing_enabled"]
-
-        if "knowledge_rate_limit" in billing_info:
-            features.knowledge_rate_limit = billing_info["knowledge_rate_limit"]["limit"]
 
     @classmethod
     def _fulfill_params_from_enterprise(cls, features):
