@@ -1,9 +1,9 @@
+import json
 from collections.abc import Generator
 from typing import Optional, Union
-import json
 
-from yarl import URL
 import requests
+from yarl import URL
 
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
