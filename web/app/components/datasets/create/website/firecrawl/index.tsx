@@ -9,7 +9,6 @@ import Crawling from '../base/crawling'
 import ErrorMessage from '../base/error-message'
 import Header from './header'
 import Options from './options'
-import cn from '@/utils/classnames'
 import { useModalContext } from '@/context/modal-context'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import Toast from '@/app/components/base/toast'
@@ -179,10 +178,10 @@ const FireCrawl: FC<Props> = ({
   return (
     <div>
       <Header onSetting={handleSetting} />
-      <div className={cn('mt-2 p-4 pb-0 rounded-xl border border-gray-200')}>
+      <div className='mt-2 p-4 pb-0 rounded-xl border border-components-panel-border bg-background-default-subtle'>
         <UrlInput onRun={handleRun} isRunning={isRunning} />
         <OptionsWrap
-          className={cn('mt-4')}
+          className='mt-4'
           controlFoldOptions={controlFoldOptions}
         >
           <Options className='mt-2' payload={crawlOptions} onChange={onCrawlOptionsChange} />

@@ -1,7 +1,4 @@
 .stepHeader {
-  position: sticky;
-  top: 0;
-  left: 0;
   padding: 42px 64px 12px 0;
 }
 
@@ -21,7 +18,7 @@
 
 .dataSourceItem.active {
   @apply bg-components-option-card-option-selected-bg border border-components-option-card-option-selected-border
-  shadow-emulate-border shadow-components-option-card-option-selected-border;
+  ring-[0.5px] ring-components-option-card-option-selected-border;
 }
 
 .dataSourceItem.disabled,
