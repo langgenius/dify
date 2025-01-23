@@ -25,7 +25,7 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
     documentProcessingPriority: Priority.standard,
     messageRequest: 200,
     annotatedResponse: 10,
-    logHistory: 15,
+    logHistory: 30,
   },
   professional: {
     level: 2,
