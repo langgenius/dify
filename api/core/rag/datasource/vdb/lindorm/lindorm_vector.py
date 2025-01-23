@@ -258,7 +258,7 @@ class LindormVectorStore(BaseVector):
             hnsw_ef_construction = kwargs.pop("hnsw_ef_construction", 500)
             ivfpq_m = kwargs.pop("ivfpq_m", dimension)
             nlist = kwargs.pop("nlist", 1000)
-            centroids_use_hnsw = kwargs.pop("centroids_use_hnsw", True if nlist >= 5000 else False)
+            centroids_use_hnsw = kwargs.pop("centroids_use_hnsw", nlist >= 5000)
             centroids_hnsw_m = kwargs.pop("centroids_hnsw_m", 24)
             centroids_hnsw_ef_construct = kwargs.pop("centroids_hnsw_ef_construct", 500)
             centroids_hnsw_ef_search = kwargs.pop("centroids_hnsw_ef_search", 100)
@@ -305,7 +305,7 @@ def default_text_mapping(dimension: int, method_name: str, **kwargs: Any) -> dic
     if method_name == "ivfpq":
         ivfpq_m = kwargs["ivfpq_m"]
         nlist = kwargs["nlist"]
-        centroids_use_hnsw = True if nlist > 10000 else False
+        centroids_use_hnsw = nlist > 10000
         centroids_hnsw_m = 24
         centroids_hnsw_ef_construct = 500
         centroids_hnsw_ef_search = 100

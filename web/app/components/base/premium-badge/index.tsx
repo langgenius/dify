@@ -3,7 +3,7 @@ import React from 'react'
 import { type VariantProps, cva } from 'class-variance-authority'
 import classNames from '@/utils/classnames'
 import './index.css'
-import { Highlight } from '../icons/src/public/common'
+import { Highlight } from '@/app/components/base/icons/src/public/common'
 
 const PremiumBadgeVariants = cva(
   'premium-badge',

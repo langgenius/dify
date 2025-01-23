@@ -74,7 +74,7 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
         >
           {permission === 'only_me' && (
             <div className={cn('flex items-center px-3 py-[6px] rounded-lg bg-gray-100 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200', disabled && 'hover:!bg-gray-100 !cursor-default')}>
-              <Avatar name={userProfile.name} className='shrink-0 mr-2' size={24} />
+              <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='shrink-0 mr-2' size={24} />
               <div className='grow mr-2 text-gray-900 text-sm leading-5'>{t('datasetSettings.form.permissionsOnlyMe')}</div>
               {!disabled && <RiArrowDownSLine className='shrink-0 w-4 h-4 text-gray-700' />}
             </div>
@@ -106,7 +106,7 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
                 setOpen(false)
               }}>
                 <div className='flex items-center gap-2'>
-                  <Avatar name={userProfile.name} className='shrink-0 mr-2' size={24} />
+                  <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='shrink-0 mr-2' size={24} />
                   <div className='grow mr-2 text-gray-900 text-sm leading-5'>{t('datasetSettings.form.permissionsOnlyMe')}</div>
                   {permission === 'only_me' && <Check className='w-4 h-4 text-primary-600' />}
                 </div>
@@ -149,7 +149,7 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
                 </div>
                 {showMe && (
                   <div className='pl-3 pr-[10px] py-1 flex gap-2 items-center rounded-lg'>
-                    <Avatar name={userProfile.name} className='shrink-0' size={24} />
+                    <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='shrink-0' size={24} />
                     <div className='grow'>
                       <div className='text-[13px] text-gray-700 font-medium leading-[18px] truncate'>
                         {userProfile.name}
@@ -162,7 +162,7 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
                 )}
                 {filteredMemberList.map(member => (
                   <div key={member.id} className='pl-3 pr-[10px] py-1 flex gap-2 items-center rounded-lg hover:bg-gray-100 cursor-pointer' onClick={() => selectMember(member)}>
-                    <Avatar name={member.name} className='shrink-0' size={24} />
+                    <Avatar avatar={userProfile.avatar_url} name={member.name} className='shrink-0' size={24} />
                     <div className='grow'>
                       <div className='text-[13px] text-gray-700 font-medium leading-[18px] truncate'>{member.name}</div>
                       <div className='text-xs text-gray-500 leading-[18px] truncate'>{member.email}</div>

@@ -84,6 +84,7 @@ const TextAreaWithButton = ({
   }
 
   const externalRetrievalTestingOnSubmit = async () => {
+    setLoading(true)
     const [e, res] = await asyncRunSafe<ExternalKnowledgeBaseHitTestingResponse>(
       externalKnowledgeBaseHitTesting({
         datasetId,

@@ -49,6 +49,7 @@ const translation = {
     view: 'Vista',
     submit: 'Enviar',
     skip: 'Navío',
+    imageCopied: 'Imagen copiada',
   },
   errorMsg: {
     fieldRequired: '{{field}} es requerido',

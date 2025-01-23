@@ -59,7 +59,7 @@ class InsertExploreAppListApi(Resource):
         with Session(db.engine) as session:
             app = session.execute(select(App).filter(App.id == args["app_id"])).scalar_one_or_none()
         if not app:
-            raise NotFound(f'App \'{args["app_id"]}\' is not found')
+            raise NotFound(f"App '{args['app_id']}' is not found")
 
         site = app.site
         if not site:

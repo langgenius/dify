@@ -168,8 +168,7 @@ class DatasetDocumentSegmentApi(Resource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
@@ -217,8 +216,7 @@ class DatasetDocumentSegmentAddApi(Resource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
@@ -267,8 +265,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
@@ -368,9 +365,9 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
             result = []
             for index, row in df.iterrows():
                 if document.doc_form == "qa_model":
-                    data = {"content": row[0], "answer": row[1]}
+                    data = {"content": row.iloc[0], "answer": row.iloc[1]}
                 else:
-                    data = {"content": row[0]}
+                    data = {"content": row.iloc[0]}
                 result.append(data)
             if len(result) == 0:
                 raise ValueError("The CSV file is empty.")
@@ -437,8 +434,7 @@ class ChildChunkAddApi(Resource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
