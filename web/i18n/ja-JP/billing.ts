@@ -63,7 +63,7 @@ const translation = {
     logsHistory: '{{days}}のログ履歴',
     customTools: 'カスタムツール',
     unavailable: '利用不可',
-    days: '日',
+    days: '日間',
     unlimited: '無制限',
     support: 'サポート',
     supportItems: {
