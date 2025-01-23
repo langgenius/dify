@@ -25,7 +25,7 @@ parameter_rules:
     min: 1
     max: 4000
 pricing:
-  input: '0.0000008' 
+  input: '0.0000008'
   output: '0.0000016'
   unit: '1'
   currency: USD
