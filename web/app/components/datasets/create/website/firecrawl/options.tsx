@@ -36,6 +36,7 @@ const Options: FC<Props> = ({
         label={t(`${I18N_PREFIX}.crawlSubPage`)}
         isChecked={payload.crawl_sub_pages}
         onChange={handleChange('crawl_sub_pages')}
+        labelClassName='text-[13px] leading-[16px] font-medium text-text-secondary'
       />
       <div className='flex justify-between space-x-4'>
         <Field
@@ -76,6 +77,7 @@ const Options: FC<Props> = ({
         label={t(`${I18N_PREFIX}.extractOnlyMainContent`)}
         isChecked={payload.only_main_content}
         onChange={handleChange('only_main_content')}
+        labelClassName='text-[13px] leading-[16px] font-medium text-text-secondary'
       />
     </div>
   )
