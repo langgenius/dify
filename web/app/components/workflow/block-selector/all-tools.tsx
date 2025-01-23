@@ -95,15 +95,15 @@ const AllTools = ({
 
   return (
     <div className={cn(className)}>
-      <div className='flex items-center justify-between px-3 bg-background-default-hover border-b-[0.5px] border-black/[0.08] shadow-xs'>
+      <div className='flex items-center justify-between px-3 bg-background-default-hover border-b-[0.5px] border-divider-subtle shadow-xs'>
         <div className='flex items-center h-8 space-x-1'>
           {
             tabs.map(tab => (
               <div
                 className={cn(
-                  'flex items-center px-2 h-6 rounded-md hover:bg-gray-100 cursor-pointer',
-                  'text-xs font-medium text-gray-700',
-                  activeTab === tab.key && 'bg-gray-200',
+                  'flex items-center px-2 h-6 rounded-md hover:bg-state-base-hover cursor-pointer',
+                  'text-xs font-medium text-text-secondary',
+                  activeTab === tab.key && 'bg-state-base-hover-alt',
                 )}
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}

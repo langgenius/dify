@@ -68,7 +68,7 @@ const Tool: FC<Props> = ({
     >
       <div className={cn(className)}>
         <div
-          className='flex items-center justify-between pl-3 pr-1 w-full rounded-lg hover:bg-gray-50 cursor-pointer select-none'
+          className='flex items-center justify-between pl-3 pr-1 w-full rounded-lg hover:bg-state-base-hover cursor-pointer select-none'
           onClick={() => {
             if (hasAction)
               setFold(!isFold)
@@ -96,7 +96,7 @@ const Tool: FC<Props> = ({
               type={BlockEnum.Tool}
               toolIcon={payload.icon}
             />
-            <div className='ml-2 text-sm text-gray-900 flex-1 w-0 grow truncate'>{payload.label[language]}</div>
+            <div className='ml-2 text-sm text-text-primary flex-1 w-0 grow truncate'>{payload.label[language]}</div>
           </div>
 
           <div className='flex items-center'>

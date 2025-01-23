@@ -22,7 +22,7 @@ const Item: FC<Props> = ({
 }) => {
   return (
     <div>
-      <div className='flex items-center px-3 h-[22px] text-xs font-medium text-gray-500'>
+      <div className='flex items-center px-3 h-[22px] text-xs font-medium text-text-tertiary'>
         {groupName}
       </div>
       <div>
