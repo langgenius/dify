@@ -186,7 +186,7 @@ Dify 是一个开源的 LLM 应用开发平台。其直观的界面结合了 AI 
 ```bash
 cd docker
 cp .env.example .env
-docker compose up -d
+docker-compose up -d
 ```
 
 运行后，可以在浏览器上访问 [http://localhost/install](http://localhost/install) 进入 Dify 控制台并开始初始化安装操作。

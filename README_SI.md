@@ -63,7 +63,7 @@ Najlažji način za zagon strežnika Dify je prek docker compose . Preden zažen
 cd dify
 cd docker
 cp .env.example .env
-docker compose up -d
+docker-compose up -d
 ```
 
 Po zagonu lahko dostopate do nadzorne plošče Dify v brskalniku na [http://localhost/install](http://localhost/install) in začnete postopek inicializacije.

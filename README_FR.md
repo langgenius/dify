@@ -186,7 +186,7 @@ La manière la plus simple de démarrer le serveur Dify est d'exécuter notre fi
 ```bash
 cd docker
 cp .env.example .env
-docker compose up -d
+docker-compose up -d
 ```
 
 Après l'exécution, vous pouvez accéder au tableau de bord Dify dans votre navigateur à [http://localhost/install](http://localhost/install) et commencer le processus d'initialisation.

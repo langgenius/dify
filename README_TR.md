@@ -184,7 +184,7 @@ Dify sunucusunu başlatmanın en kolay yolu, [docker-compose.yml](docker/docker-
 ```bash
 cd docker
 cp .env.example .env
-docker compose up -d
+docker-compose up -d
 ```
 
 Çalıştırdıktan sonra, tarayıcınızda [http://localhost/install](http://localhost/install) adresinden Dify kontrol paneline erişebilir ve başlangıç ayarları sürecini başlatabilirsiniz.

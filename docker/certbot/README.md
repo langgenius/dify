@@ -72,5 +72,5 @@ docker compose exec nginx nginx -s reload
 To use cert files dir `nginx/ssl` as before, simply launch containers WITHOUT `--profile certbot` option.
 
 ```shell
-docker compose up -d
+docker-compose up -d
 ```

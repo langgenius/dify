@@ -178,7 +178,7 @@ Dify 서버를 시작하는 가장 쉬운 방법은 [docker-compose.yml](docker/
 ```bash
 cd docker
 cp .env.example .env
-docker compose up -d
+docker-compose up -d
 ```
 
 실행 후 브라우저의 [http://localhost/install](http://localhost/install) 에서 Dify 대시보드에 액세스하고 초기화 프로세스를 시작할 수 있습니다.

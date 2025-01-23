@@ -180,7 +180,7 @@ Cách dễ nhất để khởi động máy chủ Dify là chạy tệp [docker-
 ```bash
 cd docker
 cp .env.example .env
-docker compose up -d
+docker-compose up -d
 ```
 
 Sau khi chạy, bạn có thể truy cập bảng điều khiển Dify trong trình duyệt của bạn tại [http://localhost/install](http://localhost/install) và bắt đầu quá trình khởi tạo.
