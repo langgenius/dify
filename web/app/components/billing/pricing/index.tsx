@@ -40,12 +40,12 @@ const Pricing: FC<Props> = ({
     >
       <div className='w-full h-full relative overflow-auto rounded-2xl border border-effects-highlight bg-saas-background'>
         <div
-          className='absolute top-3 right-3 flex items-center justify-center w-9 h-9 bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover rounded-[10px] cursor-pointer z-[1001]'
+          className='fixed top-7 right-7 flex items-center justify-center w-9 h-9 bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover rounded-[10px] cursor-pointer z-[1001]'
           onClick={onCancel}
         >
           <RiCloseLine className='size-5 text-components-button-tertiary-text' />
         </div>
-        <GridMask wrapperClassName='w-full h-full' canvasClassName='h-full'>
+        <GridMask wrapperClassName='w-full min-h-full' canvasClassName='min-h-full'>
           <div className='pt-12 px-8 pb-7 flex flex-col items-center'>
             <div className='mb-2 title-5xl-bold text-text-primary'>
               {t('billing.plansCommon.title')}
