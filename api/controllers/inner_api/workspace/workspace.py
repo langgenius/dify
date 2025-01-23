@@ -39,10 +39,7 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
         parser.add_argument("name", type=str, required=True, location="json")
         args = parser.parse_args()
 
-        tenant = TenantService.create_tenant(
-            args["name"],
-            is_from_dashboard=True
-        )
+        tenant = TenantService.create_tenant(args["name"], is_from_dashboard=True)
 
         tenant_was_created.send(tenant)
 
