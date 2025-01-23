@@ -50,16 +50,19 @@ const style = {
     icon: <ArCube1 className='text-text-primary size-7' />,
     description: 'text-util-colors-gray-gray-600',
     btnStyle: 'bg-components-button-secondary-bg hover:bg-components-button-secondary-bg-hover border-[0.5px] border-components-button-secondary-border text-text-primary',
+    btnDisabledStyle: 'bg-components-button-secondary-bg-disabled hover:bg-components-button-secondary-bg-disabled border-components-button-secondary-border-disabled text-components-button-secondary-text-disabled',
   },
   [Plan.professional]: {
     icon: <Keyframe className='text-util-colors-blue-brand-blue-brand-600 size-7' />,
     description: 'text-util-colors-blue-brand-blue-brand-600',
     btnStyle: 'bg-components-button-primary-bg hover:bg-components-button-primary-bg-hover border border-components-button-primary-border text-components-button-primary-text',
+    btnDisabledStyle: 'bg-components-button-primary-bg-disabled hover:bg-components-button-primary-bg-disabled border-components-button-primary-border-disabled text-components-button-primary-text-disabled',
   },
   [Plan.team]: {
     icon: <Group2 className='text-util-colors-indigo-indigo-600 size-7' />,
     description: 'text-util-colors-indigo-indigo-600',
     btnStyle: 'bg-components-button-indigo-bg hover:bg-components-button-indigo-bg-hover border border-components-button-primary-border text-components-button-primary-text',
+    btnDisabledStyle: 'bg-components-button-indigo-bg-disabled hover:bg-components-button-indigo-bg-disabled border-components-button-indigo-border-disabled text-components-button-primary-text-disabled',
   },
 }
 const PlanItem: FC<Props> = ({
@@ -156,7 +159,8 @@ const PlanItem: FC<Props> = ({
       <div
         className={cn('flex py-3 px-5 rounded-full justify-center items-center h-[42px]',
           style[plan].btnStyle,
-          isPlanDisabled ? 'cursor-not-allowed' : 'cursor-pointer ')}
+          isPlanDisabled && style[plan].btnDisabledStyle,
+          isPlanDisabled ? 'cursor-not-allowed' : 'cursor-pointer')}
         onClick={handleGetPayUrl}
       >
         {btnText}
