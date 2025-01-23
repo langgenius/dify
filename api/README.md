@@ -13,7 +13,7 @@
    cd ../docker
    cp middleware.env.example middleware.env
    # change the profile to other vector database if you are not using weaviate
-   docker compose -f docker-compose.middleware.yaml --profile weaviate -p dify up -d
+   docker-compose -f docker-compose.middleware.yaml --profile weaviate -p dify up -d
    cd ../api
    ```
 
