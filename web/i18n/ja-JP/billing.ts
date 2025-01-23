@@ -60,7 +60,7 @@ const translation = {
       'priority': '優先',
       'top-priority': '最優先',
     },
-    logsHistory: '{{days}}ログ履歴',
+    logsHistory: '{{days}}のログ履歴',
     customTools: 'カスタムツール',
     unavailable: '利用不可',
     days: '日',
