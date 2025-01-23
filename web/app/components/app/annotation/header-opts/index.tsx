@@ -10,7 +10,7 @@ import { useContext } from 'use-context-selector'
 import {
   useCSVDownloader,
 } from 'react-papaparse'
-import { Menu, Transition } from '@headlessui/react'
+import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
 import Button from '../../../base/button'
 import AddAnnotationModal from '../add-annotation-modal'
 import type { AnnotationItemBasic } from '../type'
@@ -87,11 +87,11 @@ const HeaderOptions: FC<Props> = ({
           <span className='grow text-text-secondary system-sm-regular text-left'>{t('appAnnotation.table.header.bulkImport')}</span>
         </button>
         <Menu as="div" className="relative w-full h-full">
-          <Menu.Button className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]'>
+          <MenuButton className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]'>
             <FileDownload02 className='w-4 h-4 text-text-tertiary' />
             <span className='grow text-text-secondary system-sm-regular text-left'>{t('appAnnotation.table.header.bulkExport')}</span>
             <ChevronRight className='shrink-0 w-[14px] h-[14px] text-text-tertiary' />
-          </Menu.Button>
+          </MenuButton>
           <Transition
             as={Fragment}
             enter="transition ease-out duration-100"
@@ -101,7 +101,7 @@ const HeaderOptions: FC<Props> = ({
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <Menu.Items
+            <MenuItems
               className={cn(
                 'absolute top-[1px] left-1 -translate-x-full py-1 min-w-[100px] z-10 bg-components-panel-bg border-[0.5px] border-components-panel-on-panel-item-bg origin-top-right rounded-xl shadow-xs',
               )}
@@ -122,7 +122,7 @@ const HeaderOptions: FC<Props> = ({
               <button disabled={annotationUnavailable} className={cn('h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-components-panel-on-panel-item-bg-hover rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)]', '!border-0')} onClick={JSONLOutput}>
                 <span className='grow text-text-secondary system-sm-regular text-left'>JSONL</span>
               </button>
-            </Menu.Items>
+            </MenuItems>
           </Transition>
         </Menu>
       </div>
