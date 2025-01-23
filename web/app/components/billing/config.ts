@@ -48,7 +48,7 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
     price: 159,
     modelProviders: supportModelProviders,
     teamWorkspace: 1,
-    teamMembers: 5,
+    teamMembers: 50,
     buildApps: 200,
     documents: 1000,
     vectorSpace: '20GB',
