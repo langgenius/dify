@@ -15,7 +15,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
 import { useFeatures } from '@/app/components/base/features/hooks'
 
-interface TextGenerationItemProps {
+type TextGenerationItemProps = {
   modelAndParameter: ModelAndParameter
 }
 const TextGenerationItem: FC<TextGenerationItemProps> = ({
