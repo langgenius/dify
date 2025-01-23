@@ -5,6 +5,7 @@ on:
     branches:
       - "main"
       - "deploy/dev"
+      - "feat/add-inner-api"
   release:
     types: [published]
 

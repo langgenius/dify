@@ -1,3 +1,5 @@
+import json
+
 from flask_restful import Resource, reqparse  # type: ignore
 
 from controllers.console.wraps import setup_required
@@ -59,6 +61,7 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
             "message": "enterprise workspace created.",
             "tenant": resp,
         }
+
 
 api.add_resource(EnterpriseWorkspace, "/enterprise/workspace")
 api.add_resource(EnterpriseWorkspaceNoOwnerEmail, "/enterprise/workspace/ownerless")
