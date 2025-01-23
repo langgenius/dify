@@ -12,7 +12,7 @@ import Divider from '@/app/components/base/divider'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { type DataSet } from '@/models/datasets'
+import type { DataSet } from '@/models/datasets'
 import { useToastContext } from '@/app/components/base/toast'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useAppContext } from '@/context/app-context'
@@ -33,7 +33,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
 
-interface SettingsModalProps {
+type SettingsModalProps = {
   currentDataset: DataSet
   onCancel: () => void
   onSave: (newDataset: DataSet) => void

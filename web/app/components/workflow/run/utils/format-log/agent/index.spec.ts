@@ -1,6 +1,5 @@
-import exp from 'constants'
 import format from '.'
-import { agentNodeData, oneStepCircle, multiStepsCircle } from './data'
+import { agentNodeData, multiStepsCircle, oneStepCircle } from './data'
 
 describe('agent', () => {
   test('list should transform to tree', () => {
