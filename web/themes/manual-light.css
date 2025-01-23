@@ -55,5 +55,5 @@ html[data-theme="light"] {
     180deg,
     rgba(200, 206, 218, 0.2) 0%,
     rgba(255, 255, 255, 0) 100%);
-  --color-dataset-crawler-error-message-bg: linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%);
+  --color-dataset-warning-message-bg: linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%);
 }

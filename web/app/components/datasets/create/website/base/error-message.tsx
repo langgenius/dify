@@ -16,7 +16,7 @@ const ErrorMessage: FC<Props> = ({
   errorMsg,
 }) => {
   return (
-    <div className={cn(className, 'py-2 px-4 border-t border-divider-subtle bg-dataset-crawler-error-message-bg')}>
+    <div className={cn(className, 'py-2 px-4 border-t border-divider-subtle bg-dataset-warning-message-bg opacity-40')}>
       <div className='flex items-center h-5'>
         <AlertTriangle className='mr-2 w-4 h-4 text-text-warning-secondary' />
         <div className='system-md-medium text-text-warning'>{title}</div>

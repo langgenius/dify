@@ -111,6 +111,7 @@ const config = {
         'dataset-option-card-purple-gradient': 'var(--color-dataset-option-card-purple-gradient)',
         'dataset-option-card-orange-gradient': 'var(--color-dataset-option-card-orange-gradient)',
         'dataset-chunk-list-mask-bg': 'var(--color-dataset-chunk-list-mask-bg)',
+        'dataset-warning-message-bg': 'var(--color-dataset-warning-message-bg)',
       },
       animation: {
         'spin-slow': 'spin 2s linear infinite',
