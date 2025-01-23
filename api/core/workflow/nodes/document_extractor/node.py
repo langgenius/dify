@@ -211,20 +211,22 @@ def _extract_text_from_doc(file_content: bytes) -> str:
     """
     from unstructured.partition.api import partition_via_api
 
+    if not (dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY):
+        raise TextExtractionError("UNSTRUCTURED_API_URL and UNSTRUCTURED_API_KEY must be set")
+
     try:
-        if dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY:
-            with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as temp_file:
-                temp_file.write(file_content)
-                temp_file.flush()
-                with open(temp_file.name, "rb") as file:
-                    elements = partition_via_api(
-                        file=file,
-                        metadata_filename=temp_file.name,
-                        api_url=dify_config.UNSTRUCTURED_API_URL,
-                        api_key=dify_config.UNSTRUCTURED_API_KEY,
-                    )
-                os.unlink(temp_file.name)
-            return "\n".join([getattr(element, "text", "") for element in elements])
+        with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as temp_file:
+            temp_file.write(file_content)
+            temp_file.flush()
+            with open(temp_file.name, "rb") as file:
+                elements = partition_via_api(
+                    file=file,
+                    metadata_filename=temp_file.name,
+                    api_url=dify_config.UNSTRUCTURED_API_URL,
+                    api_key=dify_config.UNSTRUCTURED_API_KEY,
+                )
+            os.unlink(temp_file.name)
+        return "\n".join([getattr(element, "text", "") for element in elements])
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from DOC: {str(e)}") from e
 
