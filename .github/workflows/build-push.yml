@@ -5,6 +5,7 @@ on:
     branches:
       - "main"
       - "deploy/dev"
+      - "hotfix/get-property-of-string-type-cause-page-crash"
   release:
     types: [published]
 
