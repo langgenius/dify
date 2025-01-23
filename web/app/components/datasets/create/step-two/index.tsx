@@ -943,7 +943,7 @@ const StepTwo = ({
               }}
             />
             {isModelAndRetrievalConfigDisabled && (
-              <div className='mt-2 system-xs-medium'>
+              <div className='mt-2 system-xs-medium text-text-tertiary'>
                 {t('datasetCreation.stepTwo.indexSettingTip')}
                 <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
               </div>
@@ -964,7 +964,7 @@ const StepTwo = ({
               </div>
             )
             : (
-              <div className={cn('system-md-semibold mb-0.5', 'flex justify-between items-center')}>
+              <div className={cn('system-md-semibold text-text-secondary mb-0.5', 'flex justify-between items-center')}>
                 <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
               </div>
             )}
