@@ -1,7 +1,7 @@
 import { Fragment } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import { Menu, Transition } from '@headlessui/react'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import s from './index.module.css'
 import cn from '@/utils/classnames'
 import { switchWorkspace } from '@/service/common'
@@ -48,7 +48,7 @@ const WorkplaceSelector = () => {
       {
         ({ open }) => (
           <>
-            <Menu.Button className={cn(
+            <MenuButton className={cn(
               `
                 ${itemClassName} w-full
                 group hover:bg-state-base-hover cursor-pointer ${open && 'bg-state-base-hover'} rounded-lg
@@ -57,7 +57,7 @@ const WorkplaceSelector = () => {
               <div className={itemIconClassName}>{currentWorkspace?.name[0].toLocaleUpperCase()}</div>
               <div className={`${itemNameClassName} truncate`}>{currentWorkspace?.name}</div>
               <ChevronRight className='shrink-0 w-[14px] h-[14px] text-gray-500' />
-            </Menu.Button>
+            </MenuButton>
             <Transition
               as={Fragment}
               enter="transition ease-out duration-100"
@@ -67,7 +67,7 @@ const WorkplaceSelector = () => {
               leaveFrom="transform opacity-100 scale-100"
               leaveTo="transform opacity-0 scale-95"
             >
-              <Menu.Items
+              <MenuItems
                 className={cn(
                   `
                     absolute top-[1px] min-w-[200px] max-h-[70vh] overflow-y-scroll z-10 bg-white border-[0.5px] border-gray-200
@@ -79,7 +79,7 @@ const WorkplaceSelector = () => {
                 <div className="px-1 py-1">
                   {
                     workspaces.map(workspace => (
-                      <Menu.Item key={workspace.id}>
+                      <MenuItem key={workspace.id}>
                         {({ active }) => <div className={classNames(itemClassName,
                           active && 'bg-state-base-hover',
                         )} key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
@@ -88,11 +88,11 @@ const WorkplaceSelector = () => {
                           {workspace.current && <Check className={itemCheckClassName} />}
                         </div>}
 
-                      </Menu.Item>
+                      </MenuItem>
                     ))
                   }
                 </div>
-              </Menu.Items>
+              </MenuItems>
             </Transition>
           </>
         )
