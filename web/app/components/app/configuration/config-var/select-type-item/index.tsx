@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import type { InputVarType } from '@/app/components/workflow/types'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
-export interface ISelectTypeItemProps {
+export type ISelectTypeItemProps = {
   type: InputVarType
   selected: boolean
   onClick: () => void
@@ -27,7 +27,7 @@ const SelectTypeItem: FC<ISelectTypeItemProps> = ({
   return (
     <div
       className={cn(
-        'flex flex-col justify-center items-center h-[58px] rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg space-y-1',
+        'flex flex-col justify-center items-center h-[58px] rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg space-y-1 text-text-secondary',
         selected ? 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs system-xs-medium' : ' hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs cursor-pointer system-xs-regular')}
       onClick={onClick}
     >

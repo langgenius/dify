@@ -4,7 +4,7 @@ import React from 'react'
 import { RiAlignLeft, RiCheckboxMultipleLine, RiFileCopy2Line, RiFileList2Line, RiHashtag, RiTextSnippet } from '@remixicon/react'
 import { InputVarType } from '../../../types'
 
-interface Props {
+type Props = {
   className?: string
   type: InputVarType
 }

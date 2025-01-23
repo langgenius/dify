@@ -8,7 +8,6 @@ import produce from 'immer'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
-  RiHammerFill,
   RiInformation2Line,
 } from '@remixicon/react'
 import { useFormattingChangedDispatcher } from '../../../debug/hooks'
@@ -108,9 +107,6 @@ const AgentTools: FC = () => {
       <Panel
         className={cn('mt-2', tools.length === 0 && 'pb-2')}
         noBodySpacing={tools.length === 0}
-        headerIcon={
-          <RiHammerFill className='w-4 h-4 text-primary-500' />
-        }
         title={
           <div className='flex items-center'>
             <div className='mr-1'>{t('appDebug.agent.tools.name')}</div>
