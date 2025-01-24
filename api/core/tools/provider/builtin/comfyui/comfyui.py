@@ -14,7 +14,8 @@ class ComfyUIProvider(BuiltinToolProviderController):
         ws_protocol = "ws"
         if base_url.scheme == "https":
             ws_protocol = "wss"
-        ws_address = f"{ws_protocol}://{base_url.authority}/ws?clientId=test123"
+        base_path = str(base_url.path).rstrip('/')
+        ws_address = f"{ws_protocol}://{base_url.authority}{base_path}/ws?clientId=test123"
 
         try:
             ws.connect(ws_address)
