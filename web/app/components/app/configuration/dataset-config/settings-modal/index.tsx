@@ -172,14 +172,14 @@ const SettingsModal: FC<SettingsModalProps> = ({
 
   return (
     <div
-      className='overflow-hidden w-full flex flex-col bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl'
+      className='overflow-hidden w-full flex flex-col bg-components-panel-bg border-[0.5px] border-components-panel-border rounded-xl shadow-xl'
       style={{
         height: 'calc(100vh - 72px)',
       }}
       ref={ref}
     >
-      <div className='shrink-0 flex justify-between items-center pl-6 pr-5 h-14 border-b border-b-gray-100'>
-        <div className='flex flex-col text-base font-semibold text-gray-900'>
+      <div className='shrink-0 flex justify-between items-center pl-6 pr-5 h-14 border-b border-divider-regular'>
+        <div className='flex flex-col text-base font-semibold text-text-primary'>
           <div className='leading-6'>{t('datasetSettings.title')}</div>
         </div>
         <div className='flex items-center'>
@@ -187,14 +187,12 @@ const SettingsModal: FC<SettingsModalProps> = ({
             onClick={onCancel}
             className='flex justify-center items-center w-6 h-6 cursor-pointer'
           >
-            <RiCloseLine className='w-4 h-4 text-gray-500' />
+            <RiCloseLine className='w-4 h-4 text-text-tertiary' />
           </div>
         </div>
       </div>
       {/* Body */}
-      <div className='p-6 pt-5 border-b overflow-y-auto pb-[68px]' style={{
-        borderBottom: 'rgba(0, 0, 0, 0.05)',
-      }}>
+      <div className='p-6 pt-5 border-b border-divider-regular overflow-y-auto pb-[68px]'>
         <div className={cn(rowClass, 'items-center')}>
           <div className={labelClass}>
             <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.name')}</div>
@@ -217,7 +215,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
               className='resize-none'
               placeholder={t('datasetSettings.form.descPlaceholder') || ''}
             />
-            <a className='mt-2 flex items-center h-[18px] px-3 text-xs text-gray-500' href="https://docs.dify.ai/features/datasets#how-to-write-a-good-dataset-description" target='_blank' rel='noopener noreferrer'>
+            <a className='mt-2 flex items-center h-[18px] px-3 text-xs text-text-tertiary' href="https://docs.dify.ai/features/datasets#how-to-write-a-good-dataset-description" target='_blank' rel='noopener noreferrer'>
               <BookOpenIcon className='w-3 h-[18px] mr-1' />
               {t('datasetSettings.form.descWrite')}
             </a>
@@ -260,7 +258,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
               <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.embeddingModel')}</div>
             </div>
             <div className='w-full'>
-              <div className='w-full h-9 rounded-lg bg-gray-100 opacity-60'>
+              <div className='w-full h-8 rounded-lg bg-components-input-bg-normal opacity-60'>
                 <ModelSelector
                   readonly
                   defaultModel={{
@@ -270,9 +268,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
                   modelList={embeddingsModelList}
                 />
               </div>
-              <div className='mt-2 w-full text-xs leading-6 text-gray-500'>
+              <div className='mt-2 w-full text-xs leading-6 text-text-tertiary'>
                 {t('datasetSettings.form.embeddingModelTip')}
-                <span className='text-[#155eef] cursor-pointer' onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
+                <span className='text-text-accent cursor-pointer' onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
               </div>
             </div>
           </div>
@@ -326,8 +324,8 @@ const SettingsModal: FC<SettingsModalProps> = ({
             <div className={cn(labelClass, 'w-auto min-w-[168px]')}>
               <div>
                 <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.retrievalSetting.title')}</div>
-                <div className='leading-[18px] text-xs font-normal text-gray-500'>
-                  <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                <div className='leading-[18px] text-xs font-normal text-text-tertiary'>
+                  <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                   {t('datasetSettings.form.retrievalSetting.description')}
                 </div>
               </div>
@@ -360,16 +358,13 @@ const SettingsModal: FC<SettingsModalProps> = ({
             e.stopPropagation()
             e.nativeEvent.stopImmediatePropagation()
           }}>
-            <RiCloseLine className='w-4 h-4 text-gray-500 ' />
+            <RiCloseLine className='w-4 h-4 text-gray-500' />
           </div>
         </div>
       )}
 
       <div
-        className='sticky z-[5] bottom-0 w-full flex justify-end py-4 px-6 border-t bg-white '
-        style={{
-          borderColor: 'rgba(0, 0, 0, 0.05)',
-        }}
+        className='sticky z-[5] bottom-0 w-full flex justify-end py-4 px-6 border-t border-divider-regular bg-background-section'
       >
         <Button
           onClick={onCancel}

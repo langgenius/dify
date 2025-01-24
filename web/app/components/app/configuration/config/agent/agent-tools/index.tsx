@@ -8,7 +8,6 @@ import produce from 'immer'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
-  RiHammerFill,
   RiInformation2Line,
 } from '@remixicon/react'
 import { useFormattingChangedDispatcher } from '../../../debug/hooks'
@@ -108,9 +107,6 @@ const AgentTools: FC = () => {
       <Panel
         className={cn('mt-2', tools.length === 0 && 'pb-2')}
         noBodySpacing={tools.length === 0}
-        headerIcon={
-          <RiHammerFill className='w-4 h-4 text-primary-500' />
-        }
         title={
           <div className='flex items-center'>
             <div className='mr-1'>{t('appDebug.agent.tools.name')}</div>
@@ -125,10 +121,10 @@ const AgentTools: FC = () => {
         }
         headerRight={
           <div className='flex items-center'>
-            <div className='leading-[18px] text-xs font-normal text-gray-500'>{tools.filter((item: any) => !!item.enabled).length}/{tools.length}&nbsp;{t('appDebug.agent.tools.enabled')}</div>
+            <div className='leading-[18px] text-xs font-normal text-text-tertiary'>{tools.filter((item: any) => !!item.enabled).length}/{tools.length}&nbsp;{t('appDebug.agent.tools.enabled')}</div>
             {tools.length < MAX_TOOLS_NUM && (
               <>
-                <div className='ml-3 mr-1 h-3.5 w-px bg-gray-200'></div>
+                <div className='ml-3 mr-1 h-3.5 w-px bg-divider-regular'></div>
                 <ToolPicker
                   trigger={<OperationBtn type="add" />}
                   isShow={isShowChooseTool}

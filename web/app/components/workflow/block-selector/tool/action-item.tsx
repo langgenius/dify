@@ -35,8 +35,8 @@ const ToolItem: FC<Props> = ({
             type={BlockEnum.Tool}
             toolIcon={provider.icon}
           />
-          <div className='mb-1 text-sm leading-5 text-gray-900'>{payload.label[language]}</div>
-          <div className='text-xs text-gray-700 leading-[18px]'>{payload.description[language]}</div>
+          <div className='mb-1 text-sm leading-5 text-text-primary'>{payload.label[language]}</div>
+          <div className='text-xs text-text-secondary leading-[18px]'>{payload.description[language]}</div>
         </div>
       )}
     >
