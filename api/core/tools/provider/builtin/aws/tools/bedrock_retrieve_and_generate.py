@@ -41,10 +41,7 @@ class BedrockRetrieveAndGenerateTool(BuiltinTool):
     ) -> Optional[dict]:
         """Create guardrail configuration"""
         if guardrail_id and guardrail_version:
-            return {
-                "guardrailId": guardrail_id,
-                "guardrailVersion": guardrail_version
-            }
+            return {"guardrailId": guardrail_id, "guardrailVersion": guardrail_version}
         return None
 
     def _create_generation_config(
@@ -57,7 +54,7 @@ class BedrockRetrieveAndGenerateTool(BuiltinTool):
     ) -> dict:
         """Create generation configuration"""
         config = {}
-        
+
         if additional_model_fields:
             try:
                 config["additionalModelRequestFields"] = json.loads(additional_model_fields)
@@ -87,7 +84,7 @@ class BedrockRetrieveAndGenerateTool(BuiltinTool):
     ) -> dict:
         """Create orchestration configuration"""
         config = {}
-        
+
         if orchestration_additional_model_fields:
             try:
                 config["additionalModelRequestFields"] = json.loads(orchestration_additional_model_fields)
@@ -116,11 +113,11 @@ class BedrockRetrieveAndGenerateTool(BuiltinTool):
             "numberOfResults": number_of_results,
             "overrideSearchType": search_type,
         }
-        
+
         # Only add filter if metadata_filter is not empty
         if metadata_filter:
             config["filter"] = metadata_filter
-            
+
         return config
 
     def _bedrock_retrieve_and_generate(
@@ -155,28 +152,20 @@ class BedrockRetrieveAndGenerateTool(BuiltinTool):
     ) -> dict[str, Any]:
         try:
             # Create text inference configurations
-            text_inference_config = self._create_text_inference_config(
-                max_tokens, stop_sequences, temperature, top_p
-            )
+            text_inference_config = self._create_text_inference_config(max_tokens, stop_sequences, temperature, top_p)
             orchestration_text_inference_config = self._create_text_inference_config(
-                orchestration_max_tokens, orchestration_stop_sequences,
-                orchestration_temperature, orchestration_top_p
+                orchestration_max_tokens, orchestration_stop_sequences, orchestration_temperature, orchestration_top_p
             )
 
             # Create guardrail configuration
-            guardrail_config = self._create_guardrail_config(
-                guardrail_id, guardrail_version
-            )
+            guardrail_config = self._create_guardrail_config(guardrail_id, guardrail_version)
 
             # Create vector search configuration
-            vector_search_config = self._create_vector_search_config(
-                number_of_results, search_type, metadata_filter
-            )
+            vector_search_config = self._create_vector_search_config(number_of_results, search_type, metadata_filter)
 
             # Create generation configuration
             generation_config = self._create_generation_config(
-                additional_model_fields, guardrail_config,
-                text_inference_config, performance_mode, prompt_template
+                additional_model_fields, guardrail_config, text_inference_config, performance_mode, prompt_template
             )
 
             # Create orchestration configuration
@@ -184,7 +173,7 @@ class BedrockRetrieveAndGenerateTool(BuiltinTool):
                 orchestration_additional_model_fields,
                 orchestration_text_inference_config,
                 orchestration_performance_mode,
-                orchestration_prompt_template
+                orchestration_prompt_template,
             )
 
             # Create knowledge base configuration
@@ -193,9 +182,7 @@ class BedrockRetrieveAndGenerateTool(BuiltinTool):
                 "modelArn": model_arn,
                 "generationConfiguration": generation_config,
                 "orchestrationConfiguration": orchestration_config,
-                "retrievalConfiguration": {
-                    "vectorSearchConfiguration": vector_search_config
-                }
+                "retrievalConfiguration": {"vectorSearchConfiguration": vector_search_config},
             }
 
             # Create request configuration
@@ -203,8 +190,8 @@ class BedrockRetrieveAndGenerateTool(BuiltinTool):
                 "input": {"text": query},
                 "retrieveAndGenerateConfiguration": {
                     "type": "KNOWLEDGE_BASE",
-                    "knowledgeBaseConfiguration": knowledge_base_config
-                }
+                    "knowledgeBaseConfiguration": knowledge_base_config,
+                },
             }
 
             # Add session configuration if provided
@@ -214,37 +201,32 @@ class BedrockRetrieveAndGenerateTool(BuiltinTool):
 
             # Send request
             response = self.bedrock_client.retrieve_and_generate(**request_config)
-            
+
             # Process response
-            result = {
-                "output": response.get("output", {}).get("text", ""),
-                "citations": []
-            }
-            
+            result = {"output": response.get("output", {}).get("text", ""), "citations": []}
+
             # Process citations
             for citation in response.get("citations", []):
                 citation_info = {
-                    "text": citation.get("generatedResponsePart", {})
-                                  .get("textResponsePart", {})
-                                  .get("text", ""),
-                    "references": []
+                    "text": citation.get("generatedResponsePart", {}).get("textResponsePart", {}).get("text", ""),
+                    "references": [],
                 }
-                
+
                 for ref in citation.get("retrievedReferences", []):
                     reference = {
                         "content": ref.get("content", {}).get("text", ""),
                         "metadata": ref.get("metadata", {}),
-                        "location": None
+                        "location": None,
                     }
-                    
+
                     location = ref.get("location", {})
                     if location.get("type") == "S3":
                         reference["location"] = location.get("s3Location", {}).get("uri")
-                    
+
                     citation_info["references"].append(reference)
-                
+
                 result["citations"].append(citation_info)
-            
+
             return result
 
         except Exception as e:
@@ -261,7 +243,7 @@ class BedrockRetrieveAndGenerateTool(BuiltinTool):
                 aws_region = tool_parameters.get("aws_region")
                 aws_access_key_id = tool_parameters.get("aws_access_key_id")
                 aws_secret_access_key = tool_parameters.get("aws_secret_access_key")
-                
+
                 client_kwargs = {
                     "service_name": "bedrock-agent-runtime",
                 }
@@ -269,11 +251,10 @@ class BedrockRetrieveAndGenerateTool(BuiltinTool):
                     client_kwargs["region_name"] = aws_region
                 # Only add credentials if both access key and secret key are provided
                 if aws_access_key_id and aws_secret_access_key:
-                    client_kwargs.update({
-                        "aws_access_key_id": aws_access_key_id,
-                        "aws_secret_access_key": aws_secret_access_key
-                    })
-                
+                    client_kwargs.update(
+                        {"aws_access_key_id": aws_access_key_id, "aws_secret_access_key": aws_secret_access_key}
+                    )
+
                 try:
                     self.bedrock_client = boto3.client(**client_kwargs)
                 except Exception as e:
