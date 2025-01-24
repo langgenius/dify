@@ -8,10 +8,15 @@ import Tooltip from '@/app/components/base/tooltip'
 import type { Tool } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
+import cn from '@/utils/classnames'
+import { useTranslation } from 'react-i18next'
+import { RiCheckLine } from '@remixicon/react'
+import Badge from '@/app/components/base/badge'
 
 type Props = {
   provider: ToolWithProvider
   payload: Tool
+  disabled?: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
 }
 
@@ -19,7 +24,10 @@ const ToolItem: FC<Props> = ({
   provider,
   payload,
   onSelect,
+  disabled,
 }) => {
+  const { t } = useTranslation()
+
   const language = useGetLanguage()
 
   return (
@@ -42,8 +50,9 @@ const ToolItem: FC<Props> = ({
     >
       <div
         key={payload.name}
-        className='rounded-lg pl-[21px] hover:bg-state-base-hover cursor-pointer'
+        className='flex justify-between items-center pr-1 rounded-lg pl-[21px] hover:bg-state-base-hover cursor-pointer'
         onClick={() => {
+          if (disabled) return
           const params: Record<string, string> = {}
           if (payload.parameters) {
             payload.parameters.forEach((item) => {
@@ -64,7 +73,15 @@ const ToolItem: FC<Props> = ({
           })
         }}
       >
-        <div className='h-8 leading-8 border-l-2 border-divider-subtle pl-4 truncate text-text-secondary system-sm-medium'>{payload.label[language]}</div>
+        <div className={cn('h-8 leading-8 border-l-2 border-divider-subtle pl-4 truncate text-text-secondary system-sm-medium', disabled && 'opacity-30')}>{payload.label[language]}</div>
+        {disabled && <Badge
+          className='flex items-center h-5 text-text-tertiary space-x-0.5'
+          uppercase
+        >
+          <RiCheckLine className='w-3 h-3 ' />
+          <div>{t('tools.addToolModal.added')}</div>
+        </Badge>
+        }
       </div>
     </Tooltip >
   )

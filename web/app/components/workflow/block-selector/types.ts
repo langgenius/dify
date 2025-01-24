@@ -30,3 +30,11 @@ export type ToolDefaultValue = {
   paramSchemas: Record<string, any>[]
   output_schema: Record<string, any>
 }
+
+export type ToolValue = {
+  provider_name: string
+  tool_name: string
+  parameters?: Record<string, any>
+  enabled?: boolean
+  extra?: Record<string, any>
+}

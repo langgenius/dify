@@ -6,7 +6,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import type { BlockEnum, ToolWithProvider } from '../types'
 import IndexBar, { groupItems } from './index-bar'
-import type { ToolDefaultValue } from './types'
+import type { ToolDefaultValue, ToolValue } from './types'
 import { ViewType } from './view-type-select'
 import Empty from '@/app/components/tools/add-tool-modal/empty'
 import { useGetLanguage } from '@/context/i18n'
@@ -22,6 +22,7 @@ type ToolsProps = {
   hasSearchText: boolean
   className?: string
   indexBarClassName?: string
+  selectedTools?: ToolValue[]
 }
 const Blocks = ({
   showWorkflowEmpty,
@@ -31,6 +32,7 @@ const Blocks = ({
   hasSearchText,
   className,
   indexBarClassName,
+  selectedTools,
 }: ToolsProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -105,12 +107,14 @@ const Blocks = ({
             isShowLetterIndex={isShowLetterIndex}
             hasSearchText={hasSearchText}
             onSelect={onSelect}
+            selectedTools={selectedTools}
           />
         ) : (
           <ToolListTreeView
             payload={treeViewToolsData}
             hasSearchText={hasSearchText}
             onSelect={onSelect}
+            selectedTools={selectedTools}
           />
         )
       )}

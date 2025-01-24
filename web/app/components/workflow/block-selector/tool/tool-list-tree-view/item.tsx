@@ -5,13 +5,14 @@ import type { ToolWithProvider } from '../../../types'
 import Tool from '../tool'
 import type { BlockEnum } from '../../../types'
 import { ViewType } from '../../view-type-select'
-import type { ToolDefaultValue } from '../../types'
+import type { ToolDefaultValue, ToolValue } from '../../types'
 
 type Props = {
   groupName: string
   toolList: ToolWithProvider[]
   hasSearchText: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  selectedTools?: ToolValue[]
 }
 
 const Item: FC<Props> = ({
@@ -19,6 +20,7 @@ const Item: FC<Props> = ({
   toolList,
   hasSearchText,
   onSelect,
+  selectedTools,
 }) => {
   return (
     <div>
@@ -34,6 +36,7 @@ const Item: FC<Props> = ({
             isShowLetterIndex={false}
             hasSearchText={hasSearchText}
             onSelect={onSelect}
+            selectedTools={selectedTools}
           />
         ))}
       </div>

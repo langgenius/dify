@@ -8,6 +8,7 @@ import type {
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
+import type { ToolValue } from './types'
 import { ToolTypeEnum } from './types'
 import Tools from './tools'
 import { useToolTabs } from './hooks'
@@ -32,6 +33,7 @@ type AllToolsProps = {
   supportAddCustomTool?: boolean
   onAddedCustomTool?: () => void
   onShowAddCustomCollectionModal?: () => void
+  selectedTools?: ToolValue[]
 }
 const AllTools = ({
   className,
@@ -44,6 +46,7 @@ const AllTools = ({
   customTools,
   supportAddCustomTool,
   onShowAddCustomCollectionModal,
+  selectedTools,
 }: AllToolsProps) => {
   const language = useGetLanguage()
   const tabs = useToolTabs()
@@ -138,6 +141,7 @@ const AllTools = ({
           onSelect={onSelect}
           viewType={activeView}
           hasSearchText={!!searchText}
+          selectedTools={selectedTools}
         />
         {/* Plugins from marketplace */}
         <PluginList

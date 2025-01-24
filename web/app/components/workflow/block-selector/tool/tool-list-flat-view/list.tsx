@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React from 'react'
 import type { ToolWithProvider } from '../../../types'
 import type { BlockEnum } from '../../../types'
-import type { ToolDefaultValue } from '../../types'
+import type { ToolDefaultValue, ToolValue } from '../../types'
 import Tool from '../tool'
 import { ViewType } from '../../view-type-select'
 import { useMemo } from 'react'
@@ -15,6 +15,7 @@ type Props = {
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   letters: string[]
   toolRefs: any
+  selectedTools?: ToolValue[]
 }
 
 const ToolViewFlatView: FC<Props> = ({
@@ -24,6 +25,7 @@ const ToolViewFlatView: FC<Props> = ({
   hasSearchText,
   onSelect,
   toolRefs,
+  selectedTools,
 }) => {
   const firstLetterToolIds = useMemo(() => {
     const res: Record<string, string> = {}
@@ -51,6 +53,7 @@ const ToolViewFlatView: FC<Props> = ({
             isShowLetterIndex={isShowLetterIndex}
             hasSearchText={hasSearchText}
             onSelect={onSelect}
+            selectedTools={selectedTools}
           />
         </div>
       ))}

@@ -35,7 +35,7 @@ import {
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { usePluginInstalledCheck } from '@/app/components/plugins/plugin-detail-panel/tool-selector/hooks'
 import { CollectionType } from '@/app/components/tools/types'
-import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type {
   OffsetOptions,
   Placement,
@@ -43,20 +43,13 @@ import type {
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
 
-export type ToolValue = {
-  provider_name: string
-  tool_name: string
-  parameters?: Record<string, any>
-  enabled?: boolean
-  extra?: Record<string, any>
-}
-
 type Props = {
   disabled?: boolean
   placement?: Placement
   offset?: OffsetOptions
   scope?: string
   value?: ToolValue
+  selectedTools?: ToolValue[]
   onSelect: (tool: {
     provider_name: string
     tool_name: string
@@ -72,6 +65,7 @@ type Props = {
 }
 const ToolSelector: FC<Props> = ({
   value,
+  selectedTools,
   disabled,
   placement = 'left',
   offset = 4,
@@ -264,6 +258,7 @@ const ToolSelector: FC<Props> = ({
                       supportAddCustomTool
                       onSelect={handleSelectTool}
                       scope={scope}
+                      selectedTools={selectedTools}
                     />
                   </div>
                   <div className='flex flex-col gap-1'>
