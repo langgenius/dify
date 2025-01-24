@@ -10,6 +10,7 @@ from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.http_request import HttpRequestNode
 from core.workflow.nodes.if_else import IfElseNode
 from core.workflow.nodes.iteration import IterationNode, IterationStartNode
+from core.workflow.nodes.loop import LoopNode, LoopStartNode
 from core.workflow.nodes.knowledge_retrieval import KnowledgeRetrievalNode
 from core.workflow.nodes.list_operator import ListOperatorNode
 from core.workflow.nodes.llm import LLMNode
@@ -84,6 +85,14 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
     NodeType.ITERATION_START: {
         LATEST_VERSION: IterationStartNode,
         "1": IterationStartNode,
+    },
+    NodeType.LOOP: {
+        LATEST_VERSION: LoopNode,
+        "1": LoopNode,
+    },
+    NodeType.LOOP_START: {
+        LATEST_VERSION: LoopStartNode,
+        "1": LoopStartNode,
     },
     NodeType.PARAMETER_EXTRACTOR: {
         LATEST_VERSION: ParameterExtractorNode,
