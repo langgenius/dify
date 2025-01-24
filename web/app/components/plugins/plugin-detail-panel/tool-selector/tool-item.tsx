@@ -21,7 +21,7 @@ import cn from '@/utils/classnames'
 type Props = {
   icon?: any
   providerName?: string
-  toolName?: string
+  toolLabel?: string
   showSwitch?: boolean
   switchValue?: boolean
   onSwitchChange?: (value: boolean) => void
@@ -41,7 +41,7 @@ const ToolItem = ({
   open,
   icon,
   providerName,
-  toolName,
+  toolLabel,
   showSwitch,
   switchValue,
   onSwitchChange,
@@ -83,7 +83,7 @@ const ToolItem = ({
       )}
       <div className={cn('pl-0.5 grow truncate', isTransparent && 'opacity-50')}>
         <div className='text-text-tertiary system-2xs-medium-uppercase'>{providerNameText}</div>
-        <div className='text-text-secondary system-xs-medium'>{toolName}</div>
+        <div className='text-text-secondary system-xs-medium'>{toolLabel}</div>
       </div>
       <div className='hidden group-hover:flex items-center gap-1'>
         {!noAuth && !isError && !uninstalled && !versionMismatch && (

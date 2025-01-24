@@ -9,7 +9,7 @@ import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-sele
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 import Divider from '@/app/components/base/divider'
-import type { ToolValue } from '@/app/components/plugins/plugin-detail-panel/tool-selector'
+import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -85,7 +85,7 @@ const MultipleToolSelector = ({
               popupContent={tooltip}
               needsDelay
             >
-              <div><RiQuestionLine className='w-3.5 h-3.5 text-text-quaternary hover:text-text-tertiary'/></div>
+              <div><RiQuestionLine className='w-3.5 h-3.5 text-text-quaternary hover:text-text-tertiary' /></div>
             </Tooltip>
           )}
           {supportCollapse && (
@@ -119,6 +119,7 @@ const MultipleToolSelector = ({
           <ToolSelector
             scope={scope}
             value={undefined}
+            selectedTools={value}
             onSelect={handleAdd}
             controlledState={open}
             onControlledStateChange={setOpen}
@@ -134,6 +135,7 @@ const MultipleToolSelector = ({
               <ToolSelector
                 scope={scope}
                 value={item}
+                selectedTools={value}
                 onSelect={item => handleConfigure(item, index)}
                 onDelete={() => handleDelete(index)}
                 supportEnableSwitch

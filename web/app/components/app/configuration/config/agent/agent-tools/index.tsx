@@ -132,6 +132,7 @@ const AgentTools: FC = () => {
                   disabled={false}
                   supportAddCustomTool
                   onSelect={handleSelectTool}
+                  selectedTools={tools}
                 />
               </>
             )}
@@ -161,7 +162,7 @@ const AgentTools: FC = () => {
                   )}
                 >
                   <span className='text-text-secondary system-xs-medium pr-1.5'>{item.provider_type === CollectionType.builtIn ? item.provider_name.split('/').pop() : item.tool_label}</span>
-                  <span className='text-text-tertiary'>{item.tool_name}</span>
+                  <span className='text-text-tertiary'>{item.tool_label}</span>
                   {!item.isDeleted && (
                     <Tooltip
                       needsDelay
