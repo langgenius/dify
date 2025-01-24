@@ -112,12 +112,13 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
           </Field>
         </div>
       </div>
-      <div className='px-4 py-2'>
+      {/* Error handling for the Loop node is currently not considered. */}
+      {/* <div className='px-4 py-2'>
         <Field title={t(`${i18nPrefix}.errorResponseMethod`)} >
           <Select items={responseMethod} defaultValue={inputs.error_handle_mode} onSelect={changeErrorResponseMode} allowSearch={false}>
           </Select>
         </Field>
-      </div>
+      </div> */}
       {isShowSingleRun && (
         <BeforeRunForm
           nodeName={inputs.title}
