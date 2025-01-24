@@ -3,7 +3,6 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.file import File
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import LLMUsage, ModelPropertyKey, PromptMessageRole
@@ -47,13 +46,6 @@ class QuestionClassifierNode(LLMNode):
         # extract variables
         variable = variable_pool.get(node_data.query_variable_selector) if node_data.query_variable_selector else None
         query = variable.value if variable else None
-        if query:
-            if isinstance(query, (int, float, complex, bool)):
-                query = str(query)
-            elif isinstance(query, File):
-                query = json.dumps(query.to_dict())
-            if not isinstance(query, str):
-                query = json.dumps(query)
         variables = {"query": query}
         # fetch model config
         model_instance, model_config = self._fetch_model_config(node_data.model)

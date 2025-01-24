@@ -1045,7 +1045,7 @@ class Message(db.Model):  # type: ignore[name-defined]
             files.append(file)
 
         result = [
-            {"belongs_to": message_file.belongs_to, "upload_file_id": file.related_id, **file.to_dict()}
+            {"belongs_to": message_file.belongs_to, **file.to_dict()}
             for (file, message_file) in zip(files, message_files)
         ]
 
