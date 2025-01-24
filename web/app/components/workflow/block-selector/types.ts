@@ -34,6 +34,7 @@ export type ToolDefaultValue = {
 export type ToolValue = {
   provider_name: string
   tool_name: string
+  tool_label: string
   parameters?: Record<string, any>
   enabled?: boolean
   extra?: Record<string, any>

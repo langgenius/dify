@@ -107,6 +107,7 @@ const ToolSelector: FC<Props> = ({
       provider_name: tool.provider_id,
       type: tool.provider_type,
       tool_name: tool.tool_name,
+      tool_label: tool.tool_label,
       parameters: paramValues,
       enabled: tool.is_team_authorization,
       extra: {
@@ -209,7 +210,7 @@ const ToolSelector: FC<Props> = ({
               open={isShow}
               icon={currentProvider?.icon || manifestIcon}
               providerName={value.provider_name}
-              toolName={value.tool_name}
+              toolLabel={value.tool_label || value.tool_name}
               showSwitch={supportEnableSwitch}
               switchValue={value.enabled}
               onSwitchChange={handleEnabledChange}
