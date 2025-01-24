@@ -49,6 +49,7 @@ const translation = {
     viewMore: 'POGLEJ VEČ',
     submit: 'Predložiti',
     skip: 'Ladja',
+    imageCopied: 'Kopirana slika',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',

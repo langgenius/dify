@@ -1,26 +1,33 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
-import { ChevronRightIcon } from '@heroicons/react/20/solid'
+import React, { useCallback, useEffect, useState } from 'react'
+import { RiArrowRightSLine, RiCloseLine } from '@remixicon/react'
 import Link from 'next/link'
 import { Trans, useTranslation } from 'react-i18next'
-import { useContextSelector } from 'use-context-selector'
-import s from './style.module.css'
+import { useContext, useContextSelector } from 'use-context-selector'
+import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import Modal from '@/app/components/base/modal'
+import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import AppIcon from '@/app/components/base/app-icon'
 import Switch from '@/app/components/base/switch'
+import PremiumBadge from '@/app/components/base/premium-badge'
 import { SimpleSelect } from '@/app/components/base/select'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppIconType, AppSSO, Language } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
-import { languages } from '@/i18n/language'
+import { LanguagesSupported, languages } from '@/i18n/language'
 import Tooltip from '@/app/components/base/tooltip'
 import AppContext, { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
+import { useModalContext } from '@/context/modal-context'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
+import I18n from '@/context/i18n'
+import cn from '@/utils/classnames'
 
 export type ISettingsModalProps = {
   isChat: boolean
@@ -84,6 +91,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     chatColorTheme: chat_color_theme,
     chatColorThemeInverted: chat_color_theme_inverted,
     copyright,
+    copyrightSwitchValue: !!copyright,
     privacyPolicy: privacy_policy,
     customDisclaimer: custom_disclaimer,
     show_workflow_steps,
@@ -93,6 +101,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
   const { t } = useTranslation()
+  const { locale } = useContext(I18n)
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState<AppIconSelection>(
@@ -100,7 +109,16 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       ? { type: 'image', url: icon_url!, fileId: icon }
       : { type: 'emoji', icon, background: icon_background! },
   )
-  const isChatBot = appInfo.mode === 'chat' || appInfo.mode === 'advanced-chat' || appInfo.mode === 'agent-chat'
+
+  const { enableBilling, plan } = useProviderContext()
+  const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
+  const isFreePlan = plan.type === 'sandbox'
+  const handlePlanClick = useCallback(() => {
+    if (isFreePlan)
+      setShowPricingModal()
+    else
+      setShowAccountSettingModal({ payload: 'billing' })
+  }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
 
   useEffect(() => {
     setInputInfo({
@@ -109,6 +127,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       chatColorTheme: chat_color_theme,
       chatColorThemeInverted: chat_color_theme_inverted,
       copyright,
+      copyrightSwitchValue: !!copyright,
       privacyPolicy: privacy_policy,
       customDisclaimer: custom_disclaimer,
       show_workflow_steps,
@@ -158,7 +177,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       chat_color_theme: inputInfo.chatColorTheme,
       chat_color_theme_inverted: inputInfo.chatColorThemeInverted,
       prompt_public: false,
-      copyright: inputInfo.copyright,
+      copyright: isFreePlan
+        ? ''
+        : inputInfo.copyrightSwitchValue
+          ? inputInfo.copyright
+          : '',
       privacy_policy: inputInfo.privacyPolicy,
       custom_disclaimer: inputInfo.customDisclaimer,
       icon_type: appIcon.type,
@@ -192,141 +215,232 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   return (
     <>
       <Modal
-        title={t(`${prefixSettings}.title`)}
         isShow={isShow}
+        closable={false}
         onClose={onHide}
-        className={`${s.settingsModal}`}
+        className='max-w-[520px] p-0'
       >
-        <div className={`mt-6 font-medium ${s.settingTitle} text-gray-900`}>{t(`${prefixSettings}.webName`)}</div>
-        <div className='flex mt-2'>
-          <AppIcon size='large'
-            onClick={() => { setShowAppIconPicker(true) }}
-            className='cursor-pointer !mr-3 self-center'
-            iconType={appIcon.type}
-            icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-            background={appIcon.type === 'image' ? undefined : appIcon.background}
-            imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-          />
-          <Input
-            className='grow h-10'
-            value={inputInfo.title}
-            onChange={onChange('title')}
-            placeholder={t('app.appNamePlaceholder') || ''}
-          />
+        {/* header */}
+        <div className='pl-6 pt-5 pr-5 pb-3'>
+          <div className='flex items-center gap-1'>
+            <div className='grow text-text-primary title-2xl-semi-bold'>{t(`${prefixSettings}.title`)}</div>
+            <ActionButton className='shrink-0' onClick={onHide}>
+              <RiCloseLine className='w-4 h-4' />
+            </ActionButton>
+          </div>
+          <div className='mt-0.5 text-text-tertiary system-xs-regular'>
+            <span>{t(`${prefixSettings}.modalTip`)}</span>
+            <Link href={`${locale === LanguagesSupported[1] ? 'https://docs.dify.ai/zh-hans/guides/application-publishing/launch-your-webapp-quickly#she-zhi-ni-de-ai-zhan-dian' : 'https://docs.dify.ai/guides/application-publishing/launch-your-webapp-quickly#setting-up-your-ai-site'}`} target='_blank' rel='noopener noreferrer' className='text-text-accent'>{t('common.operation.learnMore')}</Link>
+          </div>
         </div>
-        <div className={`mt-6 font-medium ${s.settingTitle} text-gray-900 `}>{t(`${prefixSettings}.webDesc`)}</div>
-        <p className={`mt-1 ${s.settingsTip} text-gray-500`}>{t(`${prefixSettings}.webDescTip`)}</p>
-        <Textarea
-          className='mt-2'
-          value={inputInfo.desc}
-          onChange={e => onDesChange(e.target.value)}
-          placeholder={t(`${prefixSettings}.webDescPlaceholder`) as string}
-        />
-        {isChatBot && (
-          <div className='w-full mt-4'>
-            <div className='flex justify-between items-center'>
-              <div className={`font-medium ${s.settingTitle} text-gray-900 `}>{t('app.answerIcon.title')}</div>
-              <Switch
-                defaultValue={inputInfo.use_icon_as_answer_icon}
-                onChange={v => setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })}
+        {/* form body */}
+        <div className='px-6 py-3 space-y-5'>
+          {/* name & icon */}
+          <div className='flex gap-4'>
+            <div className='grow'>
+              <div className={cn('mb-1 py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.webName`)}</div>
+              <Input
+                className='w-full'
+                value={inputInfo.title}
+                onChange={onChange('title')}
+                placeholder={t('app.appNamePlaceholder') || ''}
               />
             </div>
-            <p className='body-xs-regular text-gray-500'>{t('app.answerIcon.description')}</p>
-          </div>
-        )}
-        <div className={`mt-6 mb-2 font-medium ${s.settingTitle} text-gray-900 `}>{t(`${prefixSettings}.language`)}</div>
-        <SimpleSelect
-          items={languages.filter(item => item.supported)}
-          defaultValue={language}
-          onSelect={item => setLanguage(item.value as Language)}
-        />
-        <div className='w-full mt-8'>
-          <p className='system-xs-medium text-gray-500'>{t(`${prefixSettings}.workflow.title`)}</p>
-          <div className='flex justify-between items-center'>
-            <div className='font-medium system-sm-semibold flex-grow text-gray-900'>{t(`${prefixSettings}.workflow.subTitle`)}</div>
-            <Switch
-              disabled={!(appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat')}
-              defaultValue={inputInfo.show_workflow_steps}
-              onChange={v => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
+            <AppIcon
+              size='xxl'
+              onClick={() => { setShowAppIconPicker(true) }}
+              className='mt-2 cursor-pointer'
+              iconType={appIcon.type}
+              icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
+              background={appIcon.type === 'image' ? undefined : appIcon.background}
+              imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
             />
           </div>
-          <p className='body-xs-regular text-gray-500'>{t(`${prefixSettings}.workflow.showDesc`)}</p>
-        </div>
-
-        {isChat && <> <div className={`mt-8 font-medium ${s.settingTitle} text-gray-900`}>{t(`${prefixSettings}.chatColorTheme`)}</div>
-          <p className={`mt-1 ${s.settingsTip} text-gray-500`}>{t(`${prefixSettings}.chatColorThemeDesc`)}</p>
-          <Input
-            className='mt-2 h-10'
-            value={inputInfo.chatColorTheme ?? ''}
-            onChange={onChange('chatColorTheme')}
-            placeholder='E.g #A020F0'
-          />
-          <div className="mt-1 flex justify-between items-center">
-            <p className={`ml-2 ${s.settingsTip} text-gray-500`}>{t(`${prefixSettings}.chatColorThemeInverted`)}</p>
-            <Switch defaultValue={inputInfo.chatColorThemeInverted} onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
+          {/* description */}
+          <div className='relative'>
+            <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.webDesc`)}</div>
+            <Textarea
+              className='mt-1'
+              value={inputInfo.desc}
+              onChange={e => onDesChange(e.target.value)}
+              placeholder={t(`${prefixSettings}.webDescPlaceholder`) as string}
+            />
+            <p className={cn('pb-0.5 text-text-tertiary body-xs-regular')}>{t(`${prefixSettings}.webDescTip`)}</p>
           </div>
-        </>}
-        {systemFeatures.enable_web_sso_switch_component && <div className='w-full mt-8'>
-          <p className='system-xs-medium text-gray-500'>{t(`${prefixSettings}.sso.label`)}</p>
-          <div className='flex justify-between items-center'>
-            <div className='font-medium system-sm-semibold flex-grow text-gray-900'>{t(`${prefixSettings}.sso.title`)}</div>
-            <Tooltip
-              disabled={systemFeatures.sso_enforced_for_web}
-              popupContent={
-                <div className='w-[180px]'>{t(`${prefixSettings}.sso.tooltip`)}</div>
-              }
-              asChild={false}
-            >
-              <Switch disabled={!systemFeatures.sso_enforced_for_web || !isCurrentWorkspaceEditor} defaultValue={systemFeatures.sso_enforced_for_web && inputInfo.enable_sso} onChange={v => setInputInfo({ ...inputInfo, enable_sso: v })}></Switch>
-            </Tooltip>
-          </div>
-          <p className='body-xs-regular text-gray-500'>{t(`${prefixSettings}.sso.description`)}</p>
-        </div>}
-        {!isShowMore && <div className='w-full cursor-pointer mt-8' onClick={() => setIsShowMore(true)}>
-          <div className='flex justify-between'>
-            <div className={`font-medium ${s.settingTitle} flex-grow text-gray-900`}>{t(`${prefixSettings}.more.entry`)}</div>
-            <div className='flex-shrink-0 w-4 h-4 text-gray-500'>
-              <ChevronRightIcon />
+          <Divider className="h-px my-0" />
+          {/* answer icon */}
+          {isChat && (
+            <div className='w-full'>
+              <div className='flex justify-between items-center'>
+                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t('app.answerIcon.title')}</div>
+                <Switch
+                  defaultValue={inputInfo.use_icon_as_answer_icon}
+                  onChange={v => setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })}
+                />
+              </div>
+              <p className='pb-0.5 text-text-tertiary body-xs-regular'>{t('app.answerIcon.description')}</p>
             </div>
-          </div>
-          <p className={`mt-1 ${s.policy} text-gray-500`}>{t(`${prefixSettings}.more.copyright`)} & {t(`${prefixSettings}.more.privacyPolicy`)}</p>
-        </div>}
-        {isShowMore && <>
-          <hr className='w-full mt-6' />
-          <div className={`mt-6 font-medium ${s.settingTitle} text-gray-900`}>{t(`${prefixSettings}.more.copyright`)}</div>
-          <Input
-            className='mt-2 h-10'
-            value={inputInfo.copyright}
-            onChange={onChange('copyright')}
-            placeholder={t(`${prefixSettings}.more.copyRightPlaceholder`) as string}
-          />
-          <div className={`mt-8 font-medium ${s.settingTitle} text-gray-900`}>{t(`${prefixSettings}.more.privacyPolicy`)}</div>
-          <p className={`mt-1 ${s.settingsTip} text-gray-500`}>
-            <Trans
-              i18nKey={`${prefixSettings}.more.privacyPolicyTip`}
-              components={{ privacyPolicyLink: <Link href={'https://docs.dify.ai/user-agreement/privacy-policy'} target='_blank' rel='noopener noreferrer' className='text-primary-600' /> }}
+          )}
+          {/* language */}
+          <div className='flex items-center'>
+            <div className={cn('grow py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.language`)}</div>
+            <SimpleSelect
+              wrapperClassName='w-[200px]'
+              items={languages.filter(item => item.supported)}
+              defaultValue={language}
+              onSelect={item => setLanguage(item.value as Language)}
             />
-          </p>
-          <Input
-            className='mt-2 h-10'
-            value={inputInfo.privacyPolicy}
-            onChange={onChange('privacyPolicy')}
-            placeholder={t(`${prefixSettings}.more.privacyPolicyPlaceholder`) as string}
-          />
-          <div className={`mt-8 font-medium ${s.settingTitle} text-gray-900`}>{t(`${prefixSettings}.more.customDisclaimer`)}</div>
-          <p className={`mt-1 ${s.settingsTip} text-gray-500`}>{t(`${prefixSettings}.more.customDisclaimerTip`)}</p>
-          <Input
-            className='mt-2 h-10'
-            value={inputInfo.customDisclaimer}
-            onChange={onChange('customDisclaimer')}
-            placeholder={t(`${prefixSettings}.more.customDisclaimerPlaceholder`) as string}
-          />
-        </>}
-        <div className='mt-10 flex justify-end'>
+          </div>
+          {/* theme color */}
+          {isChat && (
+            <div className='flex items-center'>
+              <div className='grow'>
+                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.chatColorTheme`)}</div>
+                <div className='pb-0.5 body-xs-regular text-text-tertiary'>{t(`${prefixSettings}.chatColorThemeDesc`)}</div>
+              </div>
+              <div className='shrink-0'>
+                <Input
+                  className='mb-1 w-[200px]'
+                  value={inputInfo.chatColorTheme ?? ''}
+                  onChange={onChange('chatColorTheme')}
+                  placeholder='E.g #A020F0'
+                />
+                <div className='flex justify-between items-center'>
+                  <p className={cn('body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.chatColorThemeInverted`)}</p>
+                  <Switch defaultValue={inputInfo.chatColorThemeInverted} onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* workflow detail */}
+          <div className='w-full'>
+            <div className='flex justify-between items-center'>
+              <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.workflow.subTitle`)}</div>
+              <Switch
+                disabled={!(appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat')}
+                defaultValue={inputInfo.show_workflow_steps}
+                onChange={v => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
+              />
+            </div>
+            <p className='pb-0.5 text-text-tertiary body-xs-regular'>{t(`${prefixSettings}.workflow.showDesc`)}</p>
+          </div>
+          {/* SSO */}
+          {systemFeatures.enable_web_sso_switch_component && (
+            <>
+              <Divider className="h-px my-0" />
+              <div className='w-full'>
+                <p className='mb-1 system-xs-medium-uppercase text-text-tertiary'>{t(`${prefixSettings}.sso.label`)}</p>
+                <div className='flex justify-between items-center'>
+                  <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.sso.title`)}</div>
+                  <Tooltip
+                    disabled={systemFeatures.sso_enforced_for_web}
+                    popupContent={
+                      <div className='w-[180px]'>{t(`${prefixSettings}.sso.tooltip`)}</div>
+                    }
+                    asChild={false}
+                  >
+                    <Switch disabled={!systemFeatures.sso_enforced_for_web || !isCurrentWorkspaceEditor} defaultValue={systemFeatures.sso_enforced_for_web && inputInfo.enable_sso} onChange={v => setInputInfo({ ...inputInfo, enable_sso: v })}></Switch>
+                  </Tooltip>
+                </div>
+                <p className='pb-0.5 body-xs-regular text-text-tertiary'>{t(`${prefixSettings}.sso.description`)}</p>
+              </div>
+            </>
+          )}
+          {/* more settings switch */}
+          <Divider className="h-px my-0" />
+          {!isShowMore && (
+            <div className='flex items-center cursor-pointer' onClick={() => setIsShowMore(true)}>
+              <div className='grow'>
+                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.more.entry`)}</div>
+                <p className={cn('pb-0.5 text-text-tertiary body-xs-regular')}>{t(`${prefixSettings}.more.copyRightPlaceholder`)} & {t(`${prefixSettings}.more.privacyPolicyPlaceholder`)}</p>
+              </div>
+              <RiArrowRightSLine className='shrink-0 ml-1 w-4 h-4 text-text-secondary'/>
+            </div>
+          )}
+          {/* more settings */}
+          {isShowMore && (
+            <>
+              {/* copyright */}
+              <div className='w-full'>
+                <div className='flex items-center'>
+                  <div className='grow flex items-center'>
+                    <div className={cn('mr-1 py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.more.copyright`)}</div>
+                    {/* upgrade button */}
+                    {enableBilling && isFreePlan && (
+                      <div className='select-none h-[18px]'>
+                        <PremiumBadge size='s' color='blue' allowHover={true} onClick={handlePlanClick}>
+                          <SparklesSoft className='flex items-center py-[1px] pl-[3px] w-3.5 h-3.5 text-components-premium-badge-indigo-text-stop-0' />
+                          <div className='system-xs-medium'>
+                            <span className='p-1'>
+                              {t('billing.upgradeBtn.encourageShort')}
+                            </span>
+                          </div>
+                        </PremiumBadge>
+                      </div>
+                    )}
+                  </div>
+                  <Tooltip
+                    disabled={!isFreePlan}
+                    popupContent={
+                      <div className='w-[260px]'>{t(`${prefixSettings}.more.copyrightTooltip`)}</div>
+                    }
+                    asChild={false}
+                  >
+                    <Switch
+                      disabled={isFreePlan}
+                      defaultValue={inputInfo.copyrightSwitchValue}
+                      onChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
+                    />
+                  </Tooltip>
+                </div>
+                <p className='pb-0.5 text-text-tertiary body-xs-regular'>{t(`${prefixSettings}.more.copyrightTip`)}</p>
+                {inputInfo.copyrightSwitchValue && (
+                  <Input
+                    className='mt-2 h-10'
+                    value={inputInfo.copyright}
+                    onChange={onChange('copyright')}
+                    placeholder={t(`${prefixSettings}.more.copyRightPlaceholder`) as string}
+                  />
+                )}
+              </div>
+              {/* privacy policy */}
+              <div className='w-full'>
+                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.more.privacyPolicy`)}</div>
+                <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
+                  <Trans
+                    i18nKey={`${prefixSettings}.more.privacyPolicyTip`}
+                    components={{ privacyPolicyLink: <Link href={'https://docs.dify.ai/user-agreement/privacy-policy'} target='_blank' rel='noopener noreferrer' className='text-text-accent' /> }}
+                  />
+                </p>
+                <Input
+                  className='mt-1'
+                  value={inputInfo.privacyPolicy}
+                  onChange={onChange('privacyPolicy')}
+                  placeholder={t(`${prefixSettings}.more.privacyPolicyPlaceholder`) as string}
+                />
+              </div>
+              {/* custom disclaimer */}
+              <div className='w-full'>
+                <div className={cn('py-1 text-text-secondary system-sm-semibold')}>{t(`${prefixSettings}.more.customDisclaimer`)}</div>
+                <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.more.customDisclaimerTip`)}</p>
+                <Textarea
+                  className='mt-1'
+                  value={inputInfo.customDisclaimer}
+                  onChange={onChange('customDisclaimer')}
+                  placeholder={t(`${prefixSettings}.more.customDisclaimerPlaceholder`) as string}
+                />
+              </div>
+            </>
+          )}
+        </div>
+        {/* footer */}
+        <div className='p-6 pt-5 flex justify-end'>
           <Button className='mr-2' onClick={onHide}>{t('common.operation.cancel')}</Button>
           <Button variant='primary' onClick={onClickSave} loading={saveLoading}>{t('common.operation.save')}</Button>
         </div>
-        {showAppIconPicker && <AppIconPicker
+      </Modal >
+      {showAppIconPicker && (
+        <AppIconPicker
           onSelect={(payload) => {
             setAppIcon(payload)
             setShowAppIconPicker(false)
@@ -337,8 +451,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               : { type: 'emoji', icon, background: icon_background! })
             setShowAppIconPicker(false)
           }}
-        />}
-      </Modal >
+        />
+      )}
     </>
 
   )

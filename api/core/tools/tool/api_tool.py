@@ -84,9 +84,9 @@ class ApiTool(Tool):
             if "api_key_header_prefix" in credentials:
                 api_key_header_prefix = credentials["api_key_header_prefix"]
                 if api_key_header_prefix == "basic" and credentials["api_key_value"]:
-                    credentials["api_key_value"] = f'Basic {credentials["api_key_value"]}'
+                    credentials["api_key_value"] = f"Basic {credentials['api_key_value']}"
                 elif api_key_header_prefix == "bearer" and credentials["api_key_value"]:
-                    credentials["api_key_value"] = f'Bearer {credentials["api_key_value"]}'
+                    credentials["api_key_value"] = f"Bearer {credentials['api_key_value']}"
                 elif api_key_header_prefix == "custom":
                     pass
 
@@ -202,8 +202,23 @@ class ApiTool(Tool):
             else:
                 body = body
 
-        if method in {"get", "head", "post", "put", "delete", "patch"}:
-            response: httpx.Response = getattr(ssrf_proxy, method)(
+        if method in {
+            "get",
+            "head",
+            "post",
+            "put",
+            "delete",
+            "patch",
+            "options",
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "HEAD",
+            "OPTIONS",
+        }:
+            response: httpx.Response = getattr(ssrf_proxy, method.lower())(
                 url,
                 params=params,
                 headers=headers,

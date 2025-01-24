@@ -27,12 +27,14 @@ x-shared-env: &shared-api-worker-env
   MIGRATION_ENABLED: ${MIGRATION_ENABLED:-true}
   FILES_ACCESS_TIMEOUT: ${FILES_ACCESS_TIMEOUT:-300}
   ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+  REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-30}
   APP_MAX_ACTIVE_REQUESTS: ${APP_MAX_ACTIVE_REQUESTS:-0}
   APP_MAX_EXECUTION_TIME: ${APP_MAX_EXECUTION_TIME:-1200}
   DIFY_BIND_ADDRESS: ${DIFY_BIND_ADDRESS:-0.0.0.0}
   DIFY_PORT: ${DIFY_PORT:-5001}
-  SERVER_WORKER_AMOUNT: ${SERVER_WORKER_AMOUNT:-}
-  SERVER_WORKER_CLASS: ${SERVER_WORKER_CLASS:-}
+  SERVER_WORKER_AMOUNT: ${SERVER_WORKER_AMOUNT:-1}
+  SERVER_WORKER_CLASS: ${SERVER_WORKER_CLASS:-gevent}
+  SERVER_WORKER_CONNECTIONS: ${SERVER_WORKER_CONNECTIONS:-10}
   CELERY_WORKER_CLASS: ${CELERY_WORKER_CLASS:-}
   GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-360}
   CELERY_WORKER_AMOUNT: ${CELERY_WORKER_AMOUNT:-}
@@ -136,6 +138,7 @@ x-shared-env: &shared-api-worker-env
   MILVUS_TOKEN: ${MILVUS_TOKEN:-}
   MILVUS_USER: ${MILVUS_USER:-root}
   MILVUS_PASSWORD: ${MILVUS_PASSWORD:-Milvus}
+  MILVUS_ENABLE_HYBRID_SEARCH: ${MILVUS_ENABLE_HYBRID_SEARCH:-False}
   MYSCALE_HOST: ${MYSCALE_HOST:-myscale}
   MYSCALE_PORT: ${MYSCALE_PORT:-8123}
   MYSCALE_USER: ${MYSCALE_USER:-default}
@@ -385,11 +388,12 @@ x-shared-env: &shared-api-worker-env
   CSP_WHITELIST: ${CSP_WHITELIST:-}
   CREATE_TIDB_SERVICE_JOB_ENABLED: ${CREATE_TIDB_SERVICE_JOB_ENABLED:-false}
   MAX_SUBMIT_COUNT: ${MAX_SUBMIT_COUNT:-100}
+  TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-10}
 
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.14.2
+    image: langgenius/dify-api:0.15.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -412,7 +416,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.14.2
+    image: langgenius/dify-api:0.15.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -434,7 +438,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.14.2
+    image: langgenius/dify-web:0.15.2
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -443,6 +447,8 @@ services:
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
+      TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
 
   # The postgres database.
   db:
@@ -462,7 +468,7 @@ services:
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD', 'pg_isready']
+      test: [ 'CMD', 'pg_isready' ]
       interval: 1s
       timeout: 3s
       retries: 30
@@ -479,7 +485,7 @@ services:
     # Set the redis password when startup redis server.
     command: redis-server --requirepass ${REDIS_PASSWORD:-difyai123456}
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: [ 'CMD', 'redis-cli', 'ping' ]
 
   # The DifySandbox
   sandbox:
@@ -499,7 +505,7 @@ services:
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8194/health']
+      test: [ 'CMD', 'curl', '-f', 'http://localhost:8194/health' ]
     networks:
       - ssrf_proxy_network
 
@@ -512,12 +518,7 @@ services:
     volumes:
       - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
       - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
-    entrypoint:
-      [
-        'sh',
-        '-c',
-        "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
-      ]
+    entrypoint: [ 'sh', '-c', "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" ]
     environment:
       # pls clearly modify the squid env vars to fit your network environment.
       HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
@@ -546,8 +547,8 @@ services:
       - CERTBOT_EMAIL=${CERTBOT_EMAIL}
       - CERTBOT_DOMAIN=${CERTBOT_DOMAIN}
       - CERTBOT_OPTIONS=${CERTBOT_OPTIONS:-}
-    entrypoint: ['/docker-entrypoint.sh']
-    command: ['tail', '-f', '/dev/null']
+    entrypoint: [ '/docker-entrypoint.sh' ]
+    command: [ 'tail', '-f', '/dev/null' ]
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
@@ -564,12 +565,7 @@ services:
       - ./volumes/certbot/conf/live:/etc/letsencrypt/live # cert dir (with certbot container)
       - ./volumes/certbot/conf:/etc/letsencrypt
       - ./volumes/certbot/www:/var/www/html
-    entrypoint:
-      [
-        'sh',
-        '-c',
-        "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
-      ]
+    entrypoint: [ 'sh', '-c', "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" ]
     environment:
       NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
       NGINX_HTTPS_ENABLED: ${NGINX_HTTPS_ENABLED:-false}
@@ -661,7 +657,7 @@ services:
     working_dir: /opt/couchbase
     stdin_open: true
     tty: true
-    entrypoint: [""]
+    entrypoint: [ "" ]
     command: sh -c "/opt/couchbase/init/init-cbserver.sh"
     volumes:
       - ./volumes/couchbase/data:/opt/couchbase/var/lib/couchbase/data
@@ -690,7 +686,7 @@ services:
     volumes:
       - ./volumes/pgvector/data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD', 'pg_isready']
+      test: [ 'CMD', 'pg_isready' ]
       interval: 1s
       timeout: 3s
       retries: 30
@@ -712,7 +708,7 @@ services:
     volumes:
       - ./volumes/pgvecto_rs/data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD', 'pg_isready']
+      test: [ 'CMD', 'pg_isready' ]
       interval: 1s
       timeout: 3s
       retries: 30
@@ -777,7 +773,7 @@ services:
       - ./volumes/milvus/etcd:/etcd
     command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
     healthcheck:
-      test: ['CMD', 'etcdctl', 'endpoint', 'health']
+      test: [ 'CMD', 'etcdctl', 'endpoint', 'health' ]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -796,7 +792,7 @@ services:
       - ./volumes/milvus/minio:/minio_data
     command: minio server /minio_data --console-address ":9001"
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      test: [ 'CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live' ]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -805,10 +801,10 @@ services:
 
   milvus-standalone:
     container_name: milvus-standalone
-    image: milvusdb/milvus:v2.3.1
+    image: milvusdb/milvus:v2.5.0-beta
     profiles:
       - milvus
-    command: ['milvus', 'run', 'standalone']
+    command: [ 'milvus', 'run', 'standalone' ]
     environment:
       ETCD_ENDPOINTS: ${ETCD_ENDPOINTS:-etcd:2379}
       MINIO_ADDRESS: ${MINIO_ADDRESS:-minio:9000}
@@ -816,7 +812,7 @@ services:
     volumes:
       - ./volumes/milvus/milvus:/var/lib/milvus
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9091/healthz']
+      test: [ 'CMD', 'curl', '-f', 'http://localhost:9091/healthz' ]
       interval: 30s
       start_period: 90s
       timeout: 20s
@@ -889,22 +885,30 @@ services:
     container_name: elasticsearch
     profiles:
       - elasticsearch
+      - elasticsearch-ja
     restart: always
     volumes:
+      - ./elasticsearch/docker-entrypoint.sh:/docker-entrypoint-mount.sh
       - dify_es01_data:/usr/share/elasticsearch/data
     environment:
       ELASTIC_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
+      VECTOR_STORE: ${VECTOR_STORE:-}
       cluster.name: dify-es-cluster
       node.name: dify-es0
       discovery.type: single-node
-      xpack.license.self_generated.type: trial
+      xpack.license.self_generated.type: basic
       xpack.security.enabled: 'true'
       xpack.security.enrollment.enabled: 'false'
       xpack.security.http.ssl.enabled: 'false'
     ports:
       - ${ELASTICSEARCH_PORT:-9200}:9200
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    entrypoint: [ 'sh', '-c', "sh /docker-entrypoint-mount.sh" ]
     healthcheck:
-      test: ['CMD', 'curl', '-s', 'http://localhost:9200/_cluster/health?pretty']
+      test: [ 'CMD', 'curl', '-s', 'http://localhost:9200/_cluster/health?pretty' ]
       interval: 30s
       timeout: 10s
       retries: 50
@@ -932,7 +936,7 @@ services:
     ports:
       - ${KIBANA_PORT:-5601}:5601
     healthcheck:
-      test: ['CMD-SHELL', 'curl -s http://localhost:5601 >/dev/null || exit 1']
+      test: [ 'CMD-SHELL', 'curl -s http://localhost:5601 >/dev/null || exit 1' ]
       interval: 30s
       timeout: 10s
       retries: 3

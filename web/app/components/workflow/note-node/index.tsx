@@ -62,10 +62,10 @@ const NoteNode = ({
     <div
       className={cn(
         'flex flex-col relative rounded-md shadow-xs border hover:shadow-md',
+        THEME_MAP[theme].bg,
+        data.selected ? THEME_MAP[theme].border : 'border-black/5',
       )}
       style={{
-        background: THEME_MAP[theme].bg,
-        borderColor: data.selected ? THEME_MAP[theme].border : 'rgba(0, 0, 0, 0.05)',
         width: data.width,
         height: data.height,
       }}
@@ -83,7 +83,11 @@ const NoteNode = ({
             minWidth={240}
             minHeight={88}
           />
-          <div className='shrink-0 h-2 opacity-50 rounded-t-md' style={{ background: THEME_MAP[theme].title }}></div>
+          <div
+            className={cn(
+              'shrink-0 h-2 opacity-50 rounded-t-md',
+              THEME_MAP[theme].title,
+            )}></div>
           {
             data.selected && (
               <div className='absolute -top-[41px] left-1/2 -translate-x-1/2'>
@@ -112,7 +116,7 @@ const NoteNode = ({
           </div>
           {
             data.showAuthor && (
-              <div className='p-3 pt-0 text-xs text-black/[0.32]'>
+              <div className='p-3 pt-0 text-xs text-text-tertiary'>
                 {data.author}
               </div>
             )

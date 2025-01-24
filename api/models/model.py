@@ -1405,9 +1405,8 @@ class ApiToken(db.Model):  # type: ignore[name-defined]
     def generate_api_key(prefix, n):
         while True:
             result = prefix + generate_string(n)
-            while db.session.query(ApiToken).filter(ApiToken.token == result).count() > 0:
-                result = prefix + generate_string(n)
-
+            if db.session.query(ApiToken).filter(ApiToken.token == result).count() > 0:
+                continue
             return result
 
 

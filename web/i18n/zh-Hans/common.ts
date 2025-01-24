@@ -39,6 +39,7 @@ const translation = {
     rename: '重命名',
     audioSourceUnavailable: '音源不可用',
     copyImage: '复制图片',
+    imageCopied: '图片已复制',
     zoomOut: '缩小',
     zoomIn: '放大',
     openInNewTab: '在新标签页打开',

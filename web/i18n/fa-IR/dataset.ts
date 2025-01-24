@@ -166,6 +166,8 @@ const translation = {
   documentsDisabled: '{{num}} اسناد غیرفعال - غیرفعال برای بیش از 30 روز',
   preprocessDocument: '{{عدد}} اسناد پیش پردازش',
   localDocs: 'اسناد محلی',
+  allKnowledge: 'همه دانش ها',
+  allKnowledgeDescription: 'برای نمایش تمام دانش در این فضای کاری انتخاب کنید. فقط مالک فضای کاری می تواند تمام دانش را مدیریت کند.',
 }
 
 export default translation

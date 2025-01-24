@@ -20,33 +20,33 @@ class SendEmailToolParameters(BaseModel):
     encrypt_method: str
 
 
-def send_mail(parmas: SendEmailToolParameters):
+def send_mail(params: SendEmailToolParameters):
     timeout = 60
     msg = MIMEMultipart("alternative")
-    msg["From"] = parmas.email_account
-    msg["To"] = parmas.sender_to
-    msg["Subject"] = parmas.subject
-    msg.attach(MIMEText(parmas.email_content, "plain"))
-    msg.attach(MIMEText(parmas.email_content, "html"))
+    msg["From"] = params.email_account
+    msg["To"] = params.sender_to
+    msg["Subject"] = params.subject
+    msg.attach(MIMEText(params.email_content, "plain"))
+    msg.attach(MIMEText(params.email_content, "html"))
 
     ctx = ssl.create_default_context()
 
-    if parmas.encrypt_method.upper() == "SSL":
+    if params.encrypt_method.upper() == "SSL":
         try:
-            with smtplib.SMTP_SSL(parmas.smtp_server, parmas.smtp_port, context=ctx, timeout=timeout) as server:
-                server.login(parmas.email_account, parmas.email_password)
-                server.sendmail(parmas.email_account, parmas.sender_to, msg.as_string())
+            with smtplib.SMTP_SSL(params.smtp_server, params.smtp_port, context=ctx, timeout=timeout) as server:
+                server.login(params.email_account, params.email_password)
+                server.sendmail(params.email_account, params.sender_to, msg.as_string())
                 return True
         except Exception as e:
             logging.exception("send email failed")
             return False
     else:  # NONE or TLS
         try:
-            with smtplib.SMTP(parmas.smtp_server, parmas.smtp_port, timeout=timeout) as server:
-                if parmas.encrypt_method.upper() == "TLS":
+            with smtplib.SMTP(params.smtp_server, params.smtp_port, timeout=timeout) as server:
+                if params.encrypt_method.upper() == "TLS":
                     server.starttls(context=ctx)
-                server.login(parmas.email_account, parmas.email_password)
-                server.sendmail(parmas.email_account, parmas.sender_to, msg.as_string())
+                server.login(params.email_account, params.email_password)
+                server.sendmail(params.email_account, params.sender_to, msg.as_string())
                 return True
         except Exception as e:
             logging.exception("send email failed")

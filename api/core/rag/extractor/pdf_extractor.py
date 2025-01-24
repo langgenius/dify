@@ -23,7 +23,6 @@ class PdfExtractor(BaseExtractor):
         self._file_cache_key = file_cache_key
 
     def extract(self) -> list[Document]:
-        plaintext_file_key = ""
         plaintext_file_exists = False
         if self._file_cache_key:
             try:
@@ -39,8 +38,8 @@ class PdfExtractor(BaseExtractor):
         text = "\n\n".join(text_list)
 
         # save plaintext file for caching
-        if not plaintext_file_exists and plaintext_file_key:
-            storage.save(plaintext_file_key, text.encode("utf-8"))
+        if not plaintext_file_exists and self._file_cache_key:
+            storage.save(self._file_cache_key, text.encode("utf-8"))
 
         return documents
 

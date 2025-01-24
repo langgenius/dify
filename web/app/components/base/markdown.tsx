@@ -111,9 +111,9 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
     }
     else if (language === 'echarts') {
       return (
-        <div style={{ minHeight: '350px', minWidth: '700px' }}>
+        <div style={{ minHeight: '350px', minWidth: '100%', overflowX: 'scroll' }}>
           <ErrorBoundary>
-            <ReactEcharts option={chartData} />
+            <ReactEcharts option={chartData} style={{ minWidth: '700px' }} />
           </ErrorBoundary>
         </div>
       )

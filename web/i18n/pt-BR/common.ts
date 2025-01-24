@@ -49,6 +49,7 @@ const translation = {
     view: 'Vista',
     submit: 'Enviar',
     skip: 'Navio',
+    imageCopied: 'Imagem copiada',
   },
   placeholder: {
     input: 'Por favor, insira',

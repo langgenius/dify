@@ -49,6 +49,7 @@ const translation = {
     viewMore: 'SCOPRI DI PIÙ',
     submit: 'Invia',
     skip: 'Nave',
+    imageCopied: 'Immagine copiata',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',

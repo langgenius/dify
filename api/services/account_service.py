@@ -65,7 +65,7 @@ class TokenPair(BaseModel):
 
 REFRESH_TOKEN_PREFIX = "refresh_token:"
 ACCOUNT_REFRESH_TOKEN_PREFIX = "account_refresh_token:"
-REFRESH_TOKEN_EXPIRY = timedelta(days=30)
+REFRESH_TOKEN_EXPIRY = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
 
 
 class AccountService:
