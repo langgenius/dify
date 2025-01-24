@@ -7,11 +7,10 @@ import ResultPanel from '../../run/result-panel'
 import InputNumberWithSlider from '../_base/components/input-number-with-slider'
 import type { LoopNodeType } from './types'
 import useConfig from './use-config'
-import { ErrorHandleMode, type NodePanelProps } from '@/app/components/workflow/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import ConditionWrap from './components/condition-wrap'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import Select from '@/app/components/base/select'
 import formatTracing from '@/app/components/workflow/run/utils/format-log'
 
 import { useLogs } from '@/app/components/workflow/run/hooks'
@@ -23,20 +22,6 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const responseMethod = [
-    {
-      value: ErrorHandleMode.Terminated,
-      name: t(`${i18nPrefix}.ErrorMethod.operationTerminated`),
-    },
-    {
-      value: ErrorHandleMode.ContinueOnError,
-      name: t(`${i18nPrefix}.ErrorMethod.continueOnError`),
-    },
-    {
-      value: ErrorHandleMode.RemoveAbnormalOutput,
-      name: t(`${i18nPrefix}.ErrorMethod.removeAbnormalOutput`),
-    },
-  ]
 
   const {
     readOnly,
@@ -62,7 +47,6 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
     handleUpdateSubVariableCondition,
     handleToggleSubVariableConditionLogicalOperator,
     handleUpdateLoopCount,
-    changeErrorResponseMode,
   } = useConfig(id, data)
 
   const nodeInfo = formatTracing(loopRunResult, t)[0]
