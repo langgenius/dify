@@ -54,6 +54,7 @@ class HunyuanLargeLanguageModel(LargeLanguageModel):
             "Model": model,
             "Messages": messages_dict,
             "Stream": stream,
+            "Stop": stop,
             **custom_parameters,
         }
         # add Tools and ToolChoice

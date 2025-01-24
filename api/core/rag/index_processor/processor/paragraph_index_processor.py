@@ -13,21 +13,40 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import Document
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
-from models.dataset import Dataset
+from models.dataset import Dataset, DatasetProcessRule
+from services.entities.knowledge_entities.knowledge_entities import Rule
 
 
 class ParagraphIndexProcessor(BaseIndexProcessor):
     def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
         text_docs = ExtractProcessor.extract(
-            extract_setting=extract_setting, is_automatic=kwargs.get("process_rule_mode") == "automatic"
+            extract_setting=extract_setting,
+            is_automatic=(
+                kwargs.get("process_rule_mode") == "automatic" or kwargs.get("process_rule_mode") == "hierarchical"
+            ),
         )
 
         return text_docs
 
     def transform(self, documents: list[Document], **kwargs) -> list[Document]:
+        process_rule = kwargs.get("process_rule")
+        if not process_rule:
+            raise ValueError("No process rule found.")
+        if process_rule.get("mode") == "automatic":
+            automatic_rule = DatasetProcessRule.AUTOMATIC_RULES
+            rules = Rule(**automatic_rule)
+        else:
+            if not process_rule.get("rules"):
+                raise ValueError("No rules found in process rule.")
+            rules = Rule(**process_rule.get("rules"))
         # Split the text documents into nodes.
+        if not rules.segmentation:
+            raise ValueError("No segmentation found in rules.")
         splitter = self._get_splitter(
-            processing_rule=kwargs.get("process_rule", {}),
+            processing_rule_mode=process_rule.get("mode"),
+            max_tokens=rules.segmentation.max_tokens,
+            chunk_overlap=rules.segmentation.chunk_overlap,
+            separator=rules.segmentation.separator,
             embedding_model_instance=kwargs.get("embedding_model_instance"),
         )
         all_documents = []
@@ -53,15 +72,19 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             all_documents.extend(split_documents)
         return all_documents
 
-    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True):
+    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True, **kwargs):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             vector.create(documents)
         if with_keywords:
+            keywords_list = kwargs.get("keywords_list")
             keyword = Keyword(dataset)
-            keyword.create(documents)
+            if keywords_list and len(keywords_list) > 0:
+                keyword.add_texts(documents, keywords_list=keywords_list)
+            else:
+                keyword.add_texts(documents)
 
-    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True):
+    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True, **kwargs):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             if node_ids:

@@ -4,6 +4,7 @@ import type { CommonResponse } from '@/models/common'
 import type {
   ChatRunHistoryResponse,
   ConversationVariableResponse,
+  FetchWorkflowDraftPageResponse,
   FetchWorkflowDraftResponse,
   NodesDefaultConfigsResponse,
   WorkflowRunHistoryResponse,
@@ -14,7 +15,10 @@ export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
 }
 
-export const syncWorkflowDraft = ({ url, params }: { url: string; params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'environment_variables' | 'conversation_variables'> }) => {
+export const syncWorkflowDraft = ({ url, params }: {
+  url: string
+  params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'environment_variables' | 'conversation_variables'>
+}) => {
   return post<CommonResponse & { updated_at: number; hash: string }>(url, { body: params }, { silent: true })
 }
 
@@ -46,6 +50,10 @@ export const fetchPublishedWorkflow: Fetcher<FetchWorkflowDraftResponse, string>
   return get<FetchWorkflowDraftResponse>(url)
 }
 
+export const fetchPublishedAllWorkflow: Fetcher<FetchWorkflowDraftPageResponse, string> = (url) => {
+  return get<FetchWorkflowDraftPageResponse>(url)
+}
+
 export const stopWorkflowRun = (url: string) => {
   return post<CommonResponse>(url)
 }
@@ -61,6 +69,9 @@ export const updateWorkflowDraftFromDSL = (appId: string, data: string) => {
   return post<FetchWorkflowDraftResponse>(`apps/${appId}/workflows/draft/import`, { body: { data } })
 }
 
-export const fetchCurrentValueOfConversationVariable: Fetcher<ConversationVariableResponse, { url: string; params: { conversation_id: string } }> = ({ url, params }) => {
+export const fetchCurrentValueOfConversationVariable: Fetcher<ConversationVariableResponse, {
+  url: string
+  params: { conversation_id: string }
+}> = ({ url, params }) => {
   return get<ConversationVariableResponse>(url, { params })
 }

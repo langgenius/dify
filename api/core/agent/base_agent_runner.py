@@ -339,13 +339,13 @@ class BaseAgentRunner(AppRunner):
             raise ValueError(f"Agent thought {agent_thought.id} not found")
         agent_thought = queried_thought
 
-        if thought is not None:
+        if thought:
             agent_thought.thought = thought
 
-        if tool_name is not None:
+        if tool_name:
             agent_thought.tool = tool_name
 
-        if tool_input is not None:
+        if tool_input:
             if isinstance(tool_input, dict):
                 try:
                     tool_input = json.dumps(tool_input, ensure_ascii=False)
@@ -354,7 +354,7 @@ class BaseAgentRunner(AppRunner):
 
             agent_thought.tool_input = tool_input
 
-        if observation is not None:
+        if observation:
             if isinstance(observation, dict):
                 try:
                     observation = json.dumps(observation, ensure_ascii=False)
@@ -363,7 +363,7 @@ class BaseAgentRunner(AppRunner):
 
             agent_thought.observation = observation
 
-        if answer is not None:
+        if answer:
             agent_thought.answer = answer
 
         if messages_ids is not None and len(messages_ids) > 0:

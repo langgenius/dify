@@ -19,7 +19,7 @@ class UnstructuredEpubExtractor(BaseExtractor):
         self,
         file_path: str,
         api_url: Optional[str] = None,
-        api_key: Optional[str] = None,
+        api_key: str = "",
     ):
         """Initialize with file path."""
         self._file_path = file_path
@@ -29,9 +29,6 @@ class UnstructuredEpubExtractor(BaseExtractor):
     def extract(self) -> list[Document]:
         if self._api_url:
             from unstructured.partition.api import partition_via_api
-
-            if self._api_key is None:
-                raise ValueError("api_key is required")
 
             elements = partition_via_api(filename=self._file_path, api_url=self._api_url, api_key=self._api_key)
         else:

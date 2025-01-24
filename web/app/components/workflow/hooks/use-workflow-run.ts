@@ -18,17 +18,14 @@ import { useWorkflowUpdate } from './use-workflow-interactions'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { IOtherOptions } from '@/service/base'
 import { ssePost } from '@/service/base'
-import {
-  fetchPublishedWorkflow,
-  stopWorkflowRun,
-} from '@/service/workflow'
+import { stopWorkflowRun } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import {
   getFilesInLogs,
 } from '@/app/components/base/file-uploader/utils'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import type { NodeTracing } from '@/types/workflow'
+import type { NodeTracing, VersionHistory } from '@/types/workflow'
 
 export const useWorkflowRun = () => {
   const store = useStoreApi()
@@ -754,24 +751,32 @@ export const useWorkflowRun = () => {
     stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
   }, [])
 
-  const handleRestoreFromPublishedWorkflow = useCallback(async () => {
-    const appDetail = useAppStore.getState().appDetail
-    const publishedWorkflow = await fetchPublishedWorkflow(`/apps/${appDetail?.id}/workflows/publish`)
-
-    if (publishedWorkflow) {
-      const nodes = publishedWorkflow.graph.nodes
-      const edges = publishedWorkflow.graph.edges
-      const viewport = publishedWorkflow.graph.viewport!
-
-      handleUpdateWorkflowCanvas({
-        nodes,
-        edges,
-        viewport,
-      })
-      featuresStore?.setState({ features: publishedWorkflow.features })
-      workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
-      workflowStore.getState().setEnvironmentVariables(publishedWorkflow.environment_variables || [])
+  const handleRestoreFromPublishedWorkflow = useCallback((publishedWorkflow: VersionHistory) => {
+    const nodes = publishedWorkflow.graph.nodes.map(node => ({ ...node, selected: false, data: { ...node.data, selected: false } }))
+    const edges = publishedWorkflow.graph.edges
+    const viewport = publishedWorkflow.graph.viewport!
+    handleUpdateWorkflowCanvas({
+      nodes,
+      edges,
+      viewport,
+    })
+    const mappedFeatures = {
+      opening: {
+        enabled: !!publishedWorkflow.features.opening_statement || !!publishedWorkflow.features.suggested_questions.length,
+        opening_statement: publishedWorkflow.features.opening_statement,
+        suggested_questions: publishedWorkflow.features.suggested_questions,
+      },
+      suggested: publishedWorkflow.features.suggested_questions_after_answer,
+      text2speech: publishedWorkflow.features.text_to_speech,
+      speech2text: publishedWorkflow.features.speech_to_text,
+      citation: publishedWorkflow.features.retriever_resource,
+      moderation: publishedWorkflow.features.sensitive_word_avoidance,
+      file: publishedWorkflow.features.file_upload,
     }
+
+    featuresStore?.setState({ features: mappedFeatures })
+    workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
+    workflowStore.getState().setEnvironmentVariables(publishedWorkflow.environment_variables || [])
   }, [featuresStore, handleUpdateWorkflowCanvas, workflowStore])
 
   return {

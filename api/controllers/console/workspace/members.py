@@ -122,7 +122,7 @@ class MemberUpdateRoleApi(Resource):
             return {"code": "invalid-role", "message": "Invalid role"}, 400
 
         member = db.session.get(Account, str(member_id))
-        if member:
+        if not member:
             abort(404)
 
         try:

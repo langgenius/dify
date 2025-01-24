@@ -146,7 +146,7 @@ class EndpointConfig(BaseSettings):
     )
 
     CONSOLE_WEB_URL: str = Field(
-        description="Base URL for the console web interface," "used for frontend references and CORS configuration",
+        description="Base URL for the console web interface,used for frontend references and CORS configuration",
         default="",
     )
 
@@ -488,6 +488,11 @@ class AuthConfig(BaseSettings):
         default=60,
     )
 
+    REFRESH_TOKEN_EXPIRE_DAYS: PositiveFloat = Field(
+        description="Expiration time for refresh tokens in days",
+        default=30,
+    )
+
     LOGIN_LOCKOUT_DURATION: PositiveInt = Field(
         description="Time (in seconds) a user must wait before retrying login after exceeding the rate limit.",
         default=86400,
@@ -601,7 +606,7 @@ class RagEtlConfig(BaseSettings):
 
     UNSTRUCTURED_API_KEY: Optional[str] = Field(
         description="API key for Unstructured.io service",
-        default=None,
+        default="",
     )
 
     SCARF_NO_ANALYTICS: Optional[str] = Field(
@@ -665,6 +670,11 @@ class IndexingConfig(BaseSettings):
     INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: PositiveInt = Field(
         description="Maximum token length for text segmentation during indexing",
         default=4000,
+    )
+
+    CHILD_CHUNKS_PREVIEW_NUMBER: PositiveInt = Field(
+        description="Maximum number of child chunks to preview",
+        default=50,
     )
 
 
@@ -765,6 +775,13 @@ class LoginConfig(BaseSettings):
     )
 
 
+class AccountConfig(BaseSettings):
+    ACCOUNT_DELETION_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default=5,
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -792,6 +809,7 @@ class FeatureConfig(
     WorkflowNodeExecutionConfig,
     WorkspaceConfig,
     LoginConfig,
+    AccountConfig,
     # hosted services config
     HostedServiceConfig,
     CeleryBeatConfig,

@@ -138,17 +138,24 @@ class NotionExtractor(BaseExtractor):
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=page_id)
         while True:
             query_dict: dict[str, Any] = {} if not start_cursor else {"start_cursor": start_cursor}
-            res = requests.request(
-                "GET",
-                block_url,
-                headers={
-                    "Authorization": "Bearer " + self._notion_access_token,
-                    "Content-Type": "application/json",
-                    "Notion-Version": "2022-06-28",
-                },
-                params=query_dict,
-            )
-            data = res.json()
+            try:
+                res = requests.request(
+                    "GET",
+                    block_url,
+                    headers={
+                        "Authorization": "Bearer " + self._notion_access_token,
+                        "Content-Type": "application/json",
+                        "Notion-Version": "2022-06-28",
+                    },
+                    params=query_dict,
+                )
+                if res.status_code != 200:
+                    raise ValueError(f"Error fetching Notion block data: {res.text}")
+                data = res.json()
+            except requests.RequestException as e:
+                raise ValueError("Error fetching Notion block data") from e
+            if "results" not in data or not isinstance(data["results"], list):
+                raise ValueError("Error fetching Notion block data")
             for result in data["results"]:
                 result_type = result["type"]
                 result_obj = result[result_type]
@@ -351,8 +358,7 @@ class NotionExtractor(BaseExtractor):
 
         if not data_source_binding:
             raise Exception(
-                f"No notion data source binding found for tenant {tenant_id} "
-                f"and notion workspace {notion_workspace_id}"
+                f"No notion data source binding found for tenant {tenant_id} and notion workspace {notion_workspace_id}"
             )
 
         return cast(str, data_source_binding.access_token)

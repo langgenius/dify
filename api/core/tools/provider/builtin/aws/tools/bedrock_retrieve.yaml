@@ -59,6 +59,57 @@ parameters:
     max: 10
     default: 5
 
+  - name: search_type
+    type: select
+    required: false
+    label:
+      en_US: search type
+      zh_Hans: 搜索类型
+      pt_BR: search type
+    human_description:
+      en_US: search type
+      zh_Hans: 搜索类型
+      pt_BR: search type
+    llm_description: search type
+    default: SEMANTIC
+    options:
+      - value: SEMANTIC
+        label:
+          en_US: SEMANTIC
+          zh_Hans: 语义搜索
+      - value: HYBRID
+        label:
+          en_US: HYBRID
+          zh_Hans: 混合搜索
+    form: form
+
+  - name: rerank_model_id
+    type: select
+    required: false
+    label:
+      en_US: rerank model id
+      zh_Hans: 重拍模型ID
+      pt_BR: rerank model id
+    human_description:
+      en_US: rerank model id
+      zh_Hans: 重拍模型ID
+      pt_BR: rerank model id
+    llm_description: rerank model id
+    options:
+      - value: default
+        label:
+          en_US: default
+          zh_Hans: 默认
+      - value: cohere.rerank-v3-5:0
+        label:
+          en_US: cohere.rerank-v3-5:0
+          zh_Hans: cohere.rerank-v3-5:0
+      - value: amazon.rerank-v1:0
+        label:
+          en_US: amazon.rerank-v1:0
+          zh_Hans: amazon.rerank-v1:0
+    form: form
+
   - name: aws_region
     type: string
     required: false
@@ -73,9 +124,9 @@ parameters:
     llm_description: AWS region where the Bedrock Knowledge Base is located
     form: form
 
-  - name: metadata_filter
-    type: string
-    required: false
+  - name: metadata_filter   # Additional parameter for metadata filtering
+    type: string            # String type, expects JSON-formatted filter conditions
+    required: false         # Optional field - can be omitted
     label:
       en_US: Metadata Filter
       zh_Hans: 元数据过滤器

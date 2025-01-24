@@ -20,3 +20,7 @@ class ResponseSizeError(HttpRequestNodeError):
 
 class RequestBodyError(HttpRequestNodeError):
     """Raised when the request body is invalid."""
+
+
+class InvalidURLError(HttpRequestNodeError):
+    """Raised when the URL is invalid."""

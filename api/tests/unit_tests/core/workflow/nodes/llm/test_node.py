@@ -21,8 +21,7 @@ from core.model_runtime.entities.message_entities import (
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment, StringSegment
-from core.workflow.entities.variable_entities import VariableSelector
+from core.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
 from core.workflow.nodes.answer import AnswerStreamGenerateRoute
@@ -439,9 +438,9 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
 
         # Verify the result
         assert len(prompt_messages) == len(scenario.expected_messages), f"Scenario failed: {scenario.description}"
-        assert (
-            prompt_messages == scenario.expected_messages
-        ), f"Message content mismatch in scenario: {scenario.description}"
+        assert prompt_messages == scenario.expected_messages, (
+            f"Message content mismatch in scenario: {scenario.description}"
+        )
 
 
 def test_handle_list_messages_basic(llm_node):

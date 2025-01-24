@@ -1,4 +1,3 @@
-from collections.abc import Generator
 from unittest.mock import MagicMock
 
 import google.generativeai.types.generation_types as generation_config_types  # type: ignore

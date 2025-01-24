@@ -14,12 +14,36 @@ class BedrockRetrieveTool(BuiltinTool):
     topk: int = None
 
     def _bedrock_retrieve(
-        self, query_input: str, knowledge_base_id: str, num_results: int, metadata_filter: Optional[dict] = None
+        self,
+        query_input: str,
+        knowledge_base_id: str,
+        num_results: int,
+        search_type: str,
+        rerank_model_id: str,
+        metadata_filter: Optional[dict] = None,
     ):
         try:
             retrieval_query = {"text": query_input}
 
-            retrieval_configuration = {"vectorSearchConfiguration": {"numberOfResults": num_results}}
+            if search_type not in ["HYBRID", "SEMANTIC"]:
+                raise RuntimeException("search_type should be HYBRID or SEMANTIC")
+
+            retrieval_configuration = {
+                "vectorSearchConfiguration": {"numberOfResults": num_results, "overrideSearchType": search_type}
+            }
+
+            if rerank_model_id != "default":
+                model_for_rerank_arn = f"arn:aws:bedrock:us-west-2::foundation-model/{rerank_model_id}"
+                rerankingConfiguration = {
+                    "bedrockRerankingConfiguration": {
+                        "numberOfRerankedResults": num_results,
+                        "modelConfiguration": {"modelArn": model_for_rerank_arn},
+                    },
+                    "type": "BEDROCK_RERANKING_MODEL",
+                }
+
+                retrieval_configuration["vectorSearchConfiguration"]["rerankingConfiguration"] = rerankingConfiguration
+                retrieval_configuration["vectorSearchConfiguration"]["numberOfResults"] = num_results * 5
 
             # 如果有元数据过滤条件，则添加到检索配置中
             if metadata_filter:
@@ -81,12 +105,17 @@ class BedrockRetrieveTool(BuiltinTool):
             metadata_filter_str = tool_parameters.get("metadata_filter")
             metadata_filter = json.loads(metadata_filter_str) if metadata_filter_str else None
 
+            search_type = tool_parameters.get("search_type")
+            rerank_model_id = tool_parameters.get("rerank_model_id")
+
             line = 4
             retrieved_docs = self._bedrock_retrieve(
                 query_input=query,
                 knowledge_base_id=self.knowledge_base_id,
                 num_results=self.topk,
-                metadata_filter=metadata_filter,  # 将元数据过滤条件传递给检索方法
+                search_type=search_type,
+                rerank_model_id=rerank_model_id,
+                metadata_filter=metadata_filter,
             )
 
             line = 5

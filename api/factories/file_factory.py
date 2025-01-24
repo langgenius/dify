@@ -1,4 +1,5 @@
 import mimetypes
+import uuid
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, cast
 
@@ -119,6 +120,11 @@ def _build_from_local_file(
     upload_file_id = mapping.get("upload_file_id")
     if not upload_file_id:
         raise ValueError("Invalid upload file id")
+    # check if upload_file_id is a valid uuid
+    try:
+        uuid.UUID(upload_file_id)
+    except ValueError:
+        raise ValueError("Invalid upload file id format")
     stmt = select(UploadFile).where(
         UploadFile.id == upload_file_id,
         UploadFile.tenant_id == tenant_id,
@@ -152,7 +158,7 @@ def _build_from_remote_url(
     tenant_id: str,
     transfer_method: FileTransferMethod,
 ) -> File:
-    url = mapping.get("url")
+    url = mapping.get("url") or mapping.get("remote_url")
     if not url:
         raise ValueError("Invalid file url")
 

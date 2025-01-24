@@ -157,6 +157,10 @@ const translation = {
       title: 'Langfuse',
       description: 'Traces, evals, prompt management and metrics to debug and improve your LLM application.',
     },
+    opik: {
+      title: 'Opik',
+      description: 'Opik is an open-source platform for evaluating, testing, and monitoring LLM applications.',
+    },
     inUse: 'In use',
     configProvider: {
       title: 'Config ',
@@ -169,6 +173,7 @@ const translation = {
       removeConfirmContent: 'The current configuration is in use, removing it will turn off the Tracing feature.',
     },
   },
+  showMyCreatedAppsOnly: 'Created by me',
 }
 
 export default translation

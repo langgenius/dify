@@ -108,7 +108,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         ai_model_entity = self._get_ai_model_entity(base_model_name=base_model_name, model=model)
 
         if not ai_model_entity:
-            raise CredentialsValidateFailedError(f'Base Model Name {credentials["base_model_name"]} is invalid')
+            raise CredentialsValidateFailedError(f"Base Model Name {credentials['base_model_name']} is invalid")
 
         try:
             client = AzureOpenAI(**self._to_credential_kwargs(credentials))

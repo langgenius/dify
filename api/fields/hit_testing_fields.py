@@ -34,8 +34,16 @@ segment_fields = {
     "document": fields.Nested(document_fields),
 }
 
+child_chunk_fields = {
+    "id": fields.String,
+    "content": fields.String,
+    "position": fields.Integer,
+    "score": fields.Float,
+}
+
 hit_testing_record_fields = {
     "segment": fields.Nested(segment_fields),
+    "child_chunks": fields.List(fields.Nested(child_chunk_fields)),
     "score": fields.Float,
     "tsne_position": fields.Raw,
 }

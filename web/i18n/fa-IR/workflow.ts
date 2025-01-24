@@ -104,6 +104,8 @@ const translation = {
     openInExplore: 'باز کردن در کاوش',
     onFailure: 'در مورد شکست',
     addFailureBranch: 'افزودن برنچ Fail',
+    noHistory: 'بدون تاریخچه',
+    loadMore: 'بارگذاری گردش کار بیشتر',
   },
   env: {
     envPanelTitle: 'متغیرهای محیطی',

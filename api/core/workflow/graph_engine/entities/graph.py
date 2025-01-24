@@ -613,10 +613,10 @@ class Graph(BaseModel):
         for (node_id, node_id2), branch_node_ids in duplicate_end_node_ids.items():
             # check which node is after
             if cls._is_node2_after_node1(node1_id=node_id, node2_id=node_id2, edge_mapping=edge_mapping):
-                if node_id in merge_branch_node_ids:
+                if node_id in merge_branch_node_ids and node_id2 in merge_branch_node_ids:
                     del merge_branch_node_ids[node_id2]
             elif cls._is_node2_after_node1(node1_id=node_id2, node2_id=node_id, edge_mapping=edge_mapping):
-                if node_id2 in merge_branch_node_ids:
+                if node_id in merge_branch_node_ids and node_id2 in merge_branch_node_ids:
                     del merge_branch_node_ids[node_id]
 
         branches_merge_node_ids: dict[str, str] = {}

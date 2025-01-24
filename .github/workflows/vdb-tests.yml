@@ -70,4 +70,4 @@ jobs:
             tidb
 
       - name: Test Vector Stores
-        run: poetry run -C api bash dev/pytest/pytest_vdb.sh
+        run: poetry run -P api bash dev/pytest/pytest_vdb.sh

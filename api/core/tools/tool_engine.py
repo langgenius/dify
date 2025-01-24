@@ -113,7 +113,7 @@ class ToolEngine:
             error_response = f"tool invoke error: {e}"
             agent_tool_callback.on_tool_error(e)
         except ToolEngineInvokeError as e:
-            meta = e.args[0]
+            meta = e.meta
             error_response = f"tool invoke error: {meta.error}"
             agent_tool_callback.on_tool_error(e)
             return error_response, [], meta

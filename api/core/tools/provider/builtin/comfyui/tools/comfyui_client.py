@@ -125,7 +125,7 @@ class ComfyUiClient:
             for output in history["outputs"].values():
                 for img in output.get("images", []):
                     image_data = self.get_image(img["filename"], img["subfolder"], img["type"])
-                    images.append(image_data)
+                    images.append((image_data, img["filename"]))
             return images
         finally:
             ws.close()

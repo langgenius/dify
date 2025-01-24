@@ -218,7 +218,7 @@ class DataSourceNotionApi(Resource):
             args["doc_form"],
             args["doc_language"],
         )
-        return response, 200
+        return response.model_dump(), 200
 
 
 class DataSourceNotionDatasetSyncApi(Resource):

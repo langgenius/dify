@@ -104,6 +104,8 @@ const translation = {
     openInExplore: 'Mở trong Khám phá',
     onFailure: 'Khi thất bại',
     addFailureBranch: 'Thêm nhánh Fail',
+    loadMore: 'Tải thêm quy trình làm việc',
+    noHistory: 'Không có lịch sử',
   },
   env: {
     envPanelTitle: 'Biến Môi Trường',

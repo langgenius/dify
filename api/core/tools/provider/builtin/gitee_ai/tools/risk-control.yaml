@@ -1,0 +1,32 @@
+identity:
+  name: risk control
+  author: gitee_ai
+  label:
+    en_US: risk control identification
+    zh_Hans: 风控识别
+  icon: icon.svg
+description:
+  human:
+    en_US: Ensuring the protection and compliance of sensitive information through the filtering and analysis of data semantics
+    zh_Hans: 通过对数据语义的过滤和分析，确保敏感信息的保护和合规性
+  llm: This tool is used to risk control identification.
+parameters:
+  - name: model
+    type: string
+    required: true
+    default: Security-semantic-filtering
+    label:
+      en_US: Service Model
+      zh_Hans: 服务模型
+    form: form
+  - name: input-text
+    type: string
+    required: true
+    label:
+      en_US: Input Text
+      zh_Hans: 输入文本
+    human_description:
+      en_US: The text input for filtering and analysis.
+      zh_Hans: 用于分析过滤的文本
+    llm_description: The text input for filtering and analysis.
+    form: llm
