@@ -66,6 +66,7 @@ const AppContext = createContext<AppContextValue>({
     name: '',
     email: '',
     avatar: '',
+    avatar_url: '',
     is_password_set: false,
   },
   currentWorkspace: initialWorkspaceInfo,
@@ -127,7 +128,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       setCurrentWorkspace(currentWorkspaceResponse)
   }, [currentWorkspaceResponse])
 
-  const [theme, setTheme] = useState<Theme>(Theme.light)
+  const [theme, setTheme] = useState<Theme>(Theme.dark)
   const handleSetTheme = useCallback((theme: Theme) => {
     setTheme(theme)
     globalThis.document.documentElement.setAttribute('data-theme', theme)
