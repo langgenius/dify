@@ -145,7 +145,7 @@ class MessageCycleManage:
 
             # get extension
             if "." in message_file.url:
-                extension = f'.{message_file.url.split(".")[-1]}'
+                extension = f".{message_file.url.split('.')[-1]}"
                 if len(extension) > 10:
                     extension = ".bin"
             else:

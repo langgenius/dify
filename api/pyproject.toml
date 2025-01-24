@@ -1,9 +1,10 @@
 [project]
 name = "dify-api"
 requires-python = ">=3.11,<3.13"
+dynamic = [ "dependencies" ]
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
@@ -191,4 +192,4 @@ pytest-mock = "~3.14.0"
 optional = true
 [tool.poetry.group.lint.dependencies]
 dotenv-linter = "~0.5.0"
-ruff = "~0.8.1"
+ruff = "~0.9.2"
