@@ -326,9 +326,9 @@ class DatasetService:
                             Document.dataset_id == dataset_id,
                             Document.indexing_status == "indexing",
                         )
-                        .all()
+                        .count()
                     )
-                    if len(indexing_documents) > 0:
+                    if indexing_documents > 0:
                         raise ValueError("Cannot change embedding model while documents are being indexing.")
 
                     # clean index
