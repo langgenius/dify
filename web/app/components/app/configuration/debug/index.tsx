@@ -48,7 +48,7 @@ import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 
-interface IDebug {
+type IDebug = {
   isAPIKeySet: boolean
   onSetting: () => void
   inputs: Inputs

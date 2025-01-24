@@ -151,7 +151,6 @@ const SettingBuiltInTool: FC<Props> = ({
       isEditMode={false}
       showOnVariableMap={{}}
       validating={false}
-      inputClassName='!bg-gray-50'
       readonly={readonly}
     />
   )
@@ -224,7 +223,7 @@ const SettingBuiltInTool: FC<Props> = ({
                 </div>
                 {!readonly && !isInfoActive && (
                   <div className='mt-2 shrink-0 flex justify-end py-4 px-6  space-x-2 rounded-b-[10px] bg-components-panel-bg border-t border-divider-regular'>
-                    <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onHide}>{t('common.operation.cancel')}</Button>
+                    <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium ' onClick={onHide}>{t('common.operation.cancel')}</Button>
                     <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' variant='primary' disabled={!isValid} onClick={() => onSave?.(addDefaultValue(tempSetting, formSchemas))}>{t('common.operation.save')}</Button>
                   </div>
                 )}
