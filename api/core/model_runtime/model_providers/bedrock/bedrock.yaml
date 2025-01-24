@@ -54,7 +54,7 @@ provider_credential_schema:
         - value: us-east-2
           label:
             en_US: US East (Ohio)
-            zh_Hans: 美国东部 (弗吉尼亚北部)
+            zh_Hans: 美国东部 (俄亥俄)
         - value: us-west-2
           label:
             en_US: US West (Oregon)
