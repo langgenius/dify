@@ -249,11 +249,12 @@ class Workflow(db.Model):  # type: ignore[name-defined]
         ]
 
         # decrypt secret variables value
-        decrypt_func = (
-            lambda var: var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
-            if isinstance(var, SecretVariable)
-            else var
-        )
+        def decrypt_func(var):
+            if isinstance(var, SecretVariable):
+                return var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
+            else:
+                return var
+
         results = list(map(decrypt_func, results))
         return results
 
@@ -277,11 +278,12 @@ class Workflow(db.Model):  # type: ignore[name-defined]
                 value[i] = origin_variables_dictionary[variable.id].model_copy(update={"name": variable.name})
 
         # encrypt secret variables value
-        encrypt_func = (
-            lambda var: var.model_copy(update={"value": encrypter.encrypt_token(tenant_id=tenant_id, token=var.value)})
-            if isinstance(var, SecretVariable)
-            else var
-        )
+        def encrypt_func(var):
+            if isinstance(var, SecretVariable):
+                return var.model_copy(update={"value": encrypter.encrypt_token(tenant_id=tenant_id, token=var.value)})
+            else:
+                return var
+
         encrypted_vars = list(map(encrypt_func, value))
         environment_variables_json = json.dumps(
             {var.name: var.model_dump() for var in encrypted_vars},

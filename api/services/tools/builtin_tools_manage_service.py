@@ -201,9 +201,10 @@ class BuiltinToolManageService:
         )
 
         # find provider
-        find_provider = lambda provider: next(
-            filter(lambda db_provider: db_provider.provider == provider, db_providers), None
-        )
+        def find_provider(provider):
+            return next(
+                    filter(lambda db_provider: db_provider.provider == provider, db_providers), None
+                )
 
         result: list[UserToolProvider] = []
 

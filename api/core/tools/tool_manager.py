@@ -464,9 +464,10 @@ class ToolManager:
                 db.session.query(BuiltinToolProvider).filter(BuiltinToolProvider.tenant_id == tenant_id).all()
             )
 
-            find_db_builtin_provider = lambda provider: next(
-                (x for x in db_builtin_providers if x.provider == provider), None
-            )
+            def find_db_builtin_provider(provider):
+                return next(
+                            (x for x in db_builtin_providers if x.provider == provider), None
+                        )
 
             # append builtin providers
             for provider in builtin_providers:
