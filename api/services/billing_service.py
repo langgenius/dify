@@ -91,3 +91,26 @@ class BillingService:
         """Update account deletion feedback."""
         json = {"email": email, "feedback": feedback}
         return cls._send_request("POST", "/account/delete-feedback", json=json)
+
+    @classmethod
+    def list_compliance_files(cls, tenant_id: str, account_id: str):
+        params = {"account_id": account_id, "tenant_id": tenant_id}
+        return cls._send_request("GET", "/compliances/list", params=params)
+
+    @classmethod
+    def get_compliance_download_link(
+        cls,
+        doc_name: str,
+        account_id: str,
+        tenant_id: str,
+        ip: str,
+        device_info: str,
+    ):
+        json = {
+            "doc_name": doc_name,
+            "account_id": account_id,
+            "tenant_id": tenant_id,
+            "ip_address": ip,
+            "device_info": device_info,
+        }
+        return cls._send_request("POST", "/compliance/download", json=json)
