@@ -389,12 +389,17 @@ x-shared-env: &shared-api-worker-env
   CREATE_TIDB_SERVICE_JOB_ENABLED: ${CREATE_TIDB_SERVICE_JOB_ENABLED:-false}
   MAX_SUBMIT_COUNT: ${MAX_SUBMIT_COUNT:-100}
   TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-10}
+  HTTP_PROXY: ${HTTP_PROXY:-}
+  HTTPS_PROXY: ${HTTPS_PROXY:-}
+  NO_PROXY: ${NO_PROXY:-}
 
 services:
   # API service
   api:
     image: langgenius/dify-api:0.15.2
     restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
@@ -418,6 +423,8 @@ services:
   worker:
     image: langgenius/dify-api:0.15.2
     restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # Use the shared environment variables.
       <<: *shared-api-worker-env

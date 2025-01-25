@@ -4,6 +4,8 @@ services:
   api:
     image: langgenius/dify-api:0.15.2
     restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
@@ -27,6 +29,8 @@ services:
   worker:
     image: langgenius/dify-api:0.15.2
     restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
