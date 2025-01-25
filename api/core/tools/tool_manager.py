@@ -465,9 +465,7 @@ class ToolManager:
             )
 
             def find_db_builtin_provider(provider):
-                return next(
-                            (x for x in db_builtin_providers if x.provider == provider), None
-                        )
+                return next((x for x in db_builtin_providers if x.provider == provider), None)
 
             # append builtin providers
             for provider in builtin_providers:
