@@ -1,0 +1,113 @@
+identity:
+  name: text2image
+  author: Dify
+  label:
+    en_US: Text to Image
+    zh_Hans: 文生图
+description:
+  human:
+    en_US: Generate images from text descriptions
+    zh_Hans: 从文本描述生成图像
+  llm: Generate high-quality images from text descriptions. The more detailed your description, the better the result.
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: Text description of the image you want to generate
+      zh_Hans: 你想要生成的图像的文本描述
+    llm_description: A detailed text description of the image to be generated. The more detailed and specific the prompt, the better the result.
+    form: llm
+
+  - name: negative_prompt
+    type: string
+    required: false
+    label:
+      en_US: Negative Prompt
+      zh_Hans: 反向提示词
+    human_description:
+      en_US: Things you don't want to appear in the image
+      zh_Hans: 你不想在图像中出现的内容
+    llm_description: Describe what you don't want to see in the generated image.
+    form: form
+
+  - name: width
+    type: select
+    required: false
+    default: "512"
+    options:
+      - value: "512"
+        label:
+          en_US: "512px"
+          zh_Hans: "512像素"
+      - value: "768"
+        label:
+          en_US: "768px"
+          zh_Hans: "768像素"
+      - value: "1024"
+        label:
+          en_US: "1024px"
+          zh_Hans: "1024像素"
+    label:
+      en_US: Width
+      zh_Hans: 宽度
+    human_description:
+      en_US: The width of the generated image (512-2048px)
+      zh_Hans: 生成图像的宽度 (512-2048像素)
+    llm_description: The width of the generated image in pixels. Default is 1024.
+    form: form
+
+  - name: height
+    type: select
+    required: false
+    default: "512"
+    options:
+      - value: "512"
+        label:
+          en_US: "512px"
+          zh_Hans: "512像素"
+      - value: "768"
+        label:
+          en_US: "768px"
+          zh_Hans: "768像素"
+      - value: "1024"
+        label:
+          en_US: "1024px"
+          zh_Hans: "1024像素"
+    label:
+      en_US: Height
+      zh_Hans: 高度
+    human_description:
+      en_US: The height of the generated image (512-2048px)
+      zh_Hans: 生成图像的高度 (512-2048像素)
+    llm_description: The height of the generated image in pixels. Default is 1024.
+    form: form
+
+  - name: num_inference_steps
+    type: number
+    required: false
+    default: 20
+    label:
+      en_US: Number of Steps
+      zh_Hans: 推理步数
+    human_description:
+      en_US: The number of denoising steps (higher = better quality but slower)
+      zh_Hans: 去噪步数（更高 = 更好的质量但更慢）
+    llm_description: The number of denoising steps. Higher values give better quality but take longer to generate.
+    form: form
+
+  - name: guidance_scale
+    type: number
+    required: false
+    default: 7.5
+    label:
+      en_US: Guidance Scale
+      zh_Hans: 引导比例
+    human_description:
+      en_US: How closely the image should follow the prompt
+      zh_Hans: 图像应该多严格地遵循提示词
+    llm_description: Controls how closely the image follows your prompt. Higher values make the image more closely match your description.
+    form: form

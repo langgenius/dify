@@ -1,0 +1,37 @@
+identity:
+  author: Dify
+  name: liblib
+  label:
+    en_US: Liblib
+    zh_Hans: Liblib文生图
+  description:
+    en_US: Liblib is an AI image generation service
+    zh_Hans: Liblib 是一个 AI 图像生成服务
+  icon: icon.png
+credentials_for_provider:
+  appkey:
+    type: secret-input
+    required: true
+    label:
+      en_US: Liblib AppKey
+      zh_Hans: Liblib AppKey
+    placeholder:
+      en_US: Please input your Liblib AppKey
+      zh_Hans: 请输入你的 Liblib AppKey
+    help:
+      en_US: Get your Liblib AppKey from Liblib website
+      zh_Hans: 从 Liblib 网站获取你的 AppKey
+    url: https://liblib.ai
+  appsecret:
+    type: secret-input
+    required: true
+    label:
+      en_US: Liblib AppSecret
+      zh_Hans: Liblib AppSecret
+    placeholder:
+      en_US: Please input your Liblib AppSecret
+      zh_Hans: 请输入你的 Liblib AppSecret
+    help:
+      en_US: Get your Liblib AppSecret from Liblib website
+      zh_Hans: 从 Liblib 网站获取你的 AppSecret
+    url: https://liblib.ai
