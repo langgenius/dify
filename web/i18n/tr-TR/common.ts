@@ -49,6 +49,7 @@ const translation = {
     close: 'Kapatmak',
     submit: 'Gönder',
     skip: 'Gemi',
+    imageCopied: 'Kopyalanan görüntü',
   },
   errorMsg: {
     fieldRequired: '{{field}} gereklidir',

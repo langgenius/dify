@@ -49,6 +49,7 @@ const translation = {
     saveAndRegenerate: 'सहेजें और पुन: उत्पन्न करें बाल विखंडू',
     skip: 'जहाज़',
     submit: 'जमा करें',
+    imageCopied: 'कॉपी की गई छवि',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',

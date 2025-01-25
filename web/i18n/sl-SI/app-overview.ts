@@ -71,7 +71,10 @@ const translation = {
           customDisclaimer: 'Prilagojena izjava o omejitvi odgovornosti',
           customDisclaimerPlaceholder: 'Vnesite prilagojeno izjavo o omejitvi odgovornosti',
           customDisclaimerTip: 'Prilagojeno izjavo o omejitvi odgovornosti bo prikazano na strani za stranke, ki bo zagotavljala dodatne informacije o aplikaciji',
+          copyrightTip: 'Prikaz informacij o avtorskih pravicah v spletni aplikaciji',
+          copyrightTooltip: 'Prosimo, nadgradite na paket Professional ali višji',
         },
+        modalTip: 'Nastavitve spletne aplikacije na strani odjemalca.',
       },
       embedded: {
         entry: 'Vdelano',

@@ -158,7 +158,7 @@ def _build_from_remote_url(
     tenant_id: str,
     transfer_method: FileTransferMethod,
 ) -> File:
-    url = mapping.get("url")
+    url = mapping.get("url") or mapping.get("remote_url")
     if not url:
         raise ValueError("Invalid file url")
 

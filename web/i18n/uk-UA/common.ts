@@ -49,6 +49,7 @@ const translation = {
     saveAndRegenerate: 'Збереження та регенерація дочірніх фрагментів',
     submit: 'Представити',
     skip: 'Корабель',
+    imageCopied: 'Скопійоване зображення',
   },
   placeholder: {
     input: 'Будь ласка, введіть текст',

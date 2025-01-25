@@ -53,8 +53,7 @@ class SegmentApi(DatasetApiResource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
@@ -95,8 +94,7 @@ class SegmentApi(DatasetApiResource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
@@ -175,8 +173,7 @@ class DatasetSegmentApi(DatasetApiResource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)

@@ -146,7 +146,7 @@ class TritonInferenceAILargeLanguageModel(LargeLanguageModel):
             elif credentials["completion_type"] == "completion":
                 completion_type = LLMMode.COMPLETION.value
             else:
-                raise ValueError(f'completion_type {credentials["completion_type"]} is not supported')
+                raise ValueError(f"completion_type {credentials['completion_type']} is not supported")
 
         entity = AIModelEntity(
             model=model,

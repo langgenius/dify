@@ -132,6 +132,17 @@ export type FileItem = {
   progress: number
 }
 
+export type FetchDatasetsParams = {
+  url: string
+  params: {
+    page: number
+    tag_ids?: string[]
+    limit: number
+    include_all: boolean
+    keyword?: string
+  }
+}
+
 export type DataSetListResponse = {
   data: DataSet[]
   has_more: boolean
