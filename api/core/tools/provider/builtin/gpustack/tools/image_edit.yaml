@@ -1,0 +1,181 @@
+identity:
+  name: image_edit
+  author: gpustack
+  label:
+    en_US: Image Edit
+    zh_Hans: 图片编辑
+  icon: icon.svg
+description:
+  human:
+    en_US: Edit images with GPUStack's image editing model.
+    zh_Hans: 使用 GPUStack 的图像编辑模型编辑图片。
+  llm: This tool is used to edit image.
+parameters:
+  - name: image
+    type: file
+    required: true
+    label:
+      en_US: Image
+      zh_Hans: 图片
+    human_description:
+      en_US: The image to be edited.
+      zh_Hans: 要编辑的图片。
+    llm_description: The image to be edited.
+    form: llm
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: The text prompt used to edit the image.
+      zh_Hans: 用于编辑图片的文字提示词
+    llm_description: this prompt text will be used to edit image.
+    form: llm
+  - name: model
+    type: string
+    required: true
+    label:
+      en_US: Model
+      zh_Hans: 模型
+    human_description:
+      en_US: image model name that running in GPUStack.
+      zh_Hans: 在 GPUStack 上运行的图像模型名称。
+    form: form
+  - name: cfg_scale
+    type: number
+    required: false
+    default: 4.5
+    label:
+      en_US: CFG Scale
+    human_description:
+      en_US: Classifier-free guidance scale, affecting the image's adherence to the prompt.
+      zh_Hans: 无分类器引导比例，影响图片的对 Prompt 的贴合度。
+    form: form
+  - name: n
+    type: number
+    required: false
+    default: 1
+    label:
+      en_US: Number
+      zh_Hans: 数量
+    human_description:
+      en_US: Number of images to generate.
+      zh_Hans: 生成图片数量。
+    form: form
+  - name: size
+    type: string
+    required: true
+    default: "512x512"
+    label:
+      en_US: Image Size
+      zh_Hans: 图片尺寸
+    human_description:
+      en_US: The maximum size of the generated image is controlled by the deployment parameters of the model.
+      zh_Hans: 图片生成的最大尺寸受控于模型的部署参数。
+    form: form
+  - name: sample_method
+    type: select
+    required: true
+    default: euler
+    options:
+      - value: euler_a
+        label:
+          en_US: euler_a
+      - value: euler
+        label:
+          en_US: euler
+      - value: heun
+        label:
+          en_US: heun
+      - value: dpm2
+        label:
+          en_US: dpm2
+      - value: dpm++2s_a
+        label:
+          en_US: dpm++2s_a
+      - value: dpm++2m
+        label:
+          en_US: dpm++2m
+      - value: dpm++2mv2
+        label:
+          en_US: dpm++2mv2
+      - value: ipndm
+        label:
+          en_US: ipndm
+      - value: ipndm_v
+        label:
+          en_US: ipndm_v
+      - value: icm
+        label:
+          en_US: icm
+    label:
+      en_US: Sample Method
+      zh_Hans: 采样方法
+    human_description:
+      en_US: The sample method for the image generation model.
+      zh_Hans: 图像生成模型的采样方法。
+    form: form
+  - name: sampling_steps
+    type: number
+    required: false
+    default: 20
+    label:
+      en_US: Sampling Steps
+      zh_Hans: 采样步数
+    human_description:
+      en_US: Number of sampling steps to generate the image.
+      zh_Hans: 生成图片所需的采样步数。
+    form: form
+  - name: guidance
+    type: number
+    required: false
+    default: 4.5
+    label:
+      en_US: Guidance
+    human_description:
+      en_US: Guidance scale, affecting the quality and diversity of the image.
+      zh_Hans: 引导比例，影响图片的质量和多样性
+    form: form
+  - name: schedule_method
+    type: select
+    required: true
+    default: discrete
+    options:
+      - value: discrete
+        label:
+          en_US: discrete
+      - value: karras
+        label:
+          en_US: karras
+      - value: exponential
+        label:
+          en_US: exponential
+      - value: ays
+        label:
+          en_US: ays
+      - value: gits
+        label:
+          en_US: gits
+    label:
+      en_US: Schedule Method
+      zh_Hans: 调度方法
+    form: form
+  - name: strength
+    type: number
+    required: false
+    default: 0.75
+    label:
+      en_US: Strength
+      zh_Hans: 强度
+    human_description:
+      en_US: The higher the value, the greater the modification to the original image.
+      zh_Hans: 值越高，它对原图的修改越大。
+    form: form
+  - name: seed
+    type: number
+    required: false
+    label:
+      en_US: Seed
+    form: form
