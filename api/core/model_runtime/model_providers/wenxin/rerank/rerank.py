@@ -2,27 +2,28 @@ from typing import Optional
 
 import httpx
 
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelPropertyKey, ModelType
 from core.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
-from core.model_runtime.errors.invoke import (
-    InvokeAuthorizationError,
-    InvokeBadRequestError,
-    InvokeConnectionError,
-    InvokeError,
-    InvokeRateLimitError,
-    InvokeServerUnavailableError,
-)
+from core.model_runtime.errors.invoke import InvokeError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.rerank_model import RerankModel
 from core.model_runtime.model_providers.wenxin._common import _CommonWenxin
+from core.model_runtime.model_providers.wenxin.wenxin_errors import (
+    InternalServerError,
+    invoke_error_mapping,
+)
 
 
 class WenxinRerank(_CommonWenxin):
     def rerank(self, model: str, query: str, docs: list[str], top_n: Optional[int] = None):
         access_token = self._get_access_token()
         url = f"{self.api_bases[model]}?access_token={access_token}"
-
+        # For issue #11252
+        # for wenxin Rerank model top_n length should be equal or less than docs length
+        if top_n is not None and top_n > len(docs):
+            top_n = len(docs)
+        # for wenxin Rerank model, query should not be an empty string
+        if query == "":
+            query = " "  # FIXME: this is a workaround for wenxin rerank model for better user experience.
         try:
             response = httpx.post(
                 url,
@@ -30,9 +31,13 @@ class WenxinRerank(_CommonWenxin):
                 headers={"Content-Type": "application/json"},
             )
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            # wenxin error handling
+            if "error_code" in data:
+                raise InternalServerError(data["error_msg"])
+            return data
         except httpx.HTTPStatusError as e:
-            raise InvokeServerUnavailableError(str(e))
+            raise InternalServerError(str(e))
 
 
 class WenxinRerankModel(RerankModel):
@@ -74,6 +79,9 @@ class WenxinRerankModel(RerankModel):
             results = wenxin_rerank.rerank(model, query, docs, top_n)
 
             rerank_documents = []
+            if "results" not in results:
+                raise ValueError("results key not found in response")
+
             for result in results["results"]:
                 index = result["index"]
                 if "document" in result:
@@ -93,7 +101,7 @@ class WenxinRerankModel(RerankModel):
 
             return RerankResult(model=model, docs=rerank_documents)
         except httpx.HTTPStatusError as e:
-            raise InvokeServerUnavailableError(str(e))
+            raise InternalServerError(str(e))
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
@@ -124,24 +132,4 @@ class WenxinRerankModel(RerankModel):
         """
         Map model invoke error to unified error
         """
-        return {
-            InvokeConnectionError: [httpx.ConnectError],
-            InvokeServerUnavailableError: [httpx.RemoteProtocolError],
-            InvokeRateLimitError: [],
-            InvokeAuthorizationError: [httpx.HTTPStatusError],
-            InvokeBadRequestError: [httpx.RequestError],
-        }
-
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
-        """
-        generate custom model entities from credentials
-        """
-        entity = AIModelEntity(
-            model=model,
-            label=I18nObject(en_US=model),
-            model_type=ModelType.RERANK,
-            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
-            model_properties={ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size"))},
-        )
-
-        return entity
+        return invoke_error_mapping()

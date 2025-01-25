@@ -1,0 +1,46 @@
+identity:
+  name: send_mail
+  author: wakaka6
+  label:
+    en_US: send email
+    zh_Hans: 发送邮件
+  icon: icon.svg
+description:
+  human:
+    en_US: A tool for sending email
+    zh_Hans: 用于发送邮件
+  llm: A tool for sending email
+parameters:
+  - name: send_to
+    type: string
+    required: true
+    label:
+      en_US: Recipient email account
+      zh_Hans: 收件人邮箱账号
+    human_description:
+      en_US: Recipient email account
+      zh_Hans: 收件人邮箱账号
+    llm_description: Recipient email account
+    form: llm
+  - name: subject
+    type: string
+    required: true
+    label:
+      en_US: email subject
+      zh_Hans: 邮件主题
+    human_description:
+      en_US: email subject
+      zh_Hans: 邮件主题
+    llm_description: email subject
+    form: llm
+  - name: email_content
+    type: string
+    required: true
+    label:
+      en_US: email content
+      zh_Hans: 邮件内容
+    human_description:
+      en_US: email content
+      zh_Hans: 邮件内容
+    llm_description: email content
+    form: llm

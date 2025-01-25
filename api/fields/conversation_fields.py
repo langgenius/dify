@@ -1,7 +1,9 @@
-from flask_restful import fields
+from flask_restful import fields  # type: ignore
 
 from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
+
+from .raws import FilesContainedField
 
 
 class MessageTextField(fields.Raw):
@@ -33,8 +35,12 @@ annotation_hit_history_fields = {
 
 message_file_fields = {
     "id": fields.String,
+    "filename": fields.String,
     "type": fields.String,
     "url": fields.String,
+    "mime_type": fields.String,
+    "size": fields.Integer,
+    "transfer_method": fields.String,
     "belongs_to": fields.String(default="user"),
 }
 
@@ -55,7 +61,7 @@ agent_thought_fields = {
 message_detail_fields = {
     "id": fields.String,
     "conversation_id": fields.String,
-    "inputs": fields.Raw,
+    "inputs": FilesContainedField,
     "query": fields.String,
     "message": fields.Raw,
     "message_tokens": fields.Integer,
@@ -71,7 +77,7 @@ message_detail_fields = {
     "annotation_hit_history": fields.Nested(annotation_hit_history_fields, allow_null=True),
     "created_at": TimestampField,
     "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
-    "message_files": fields.List(fields.Nested(message_file_fields), attribute="files"),
+    "message_files": fields.List(fields.Nested(message_file_fields)),
     "metadata": fields.Raw(attribute="message_metadata_dict"),
     "status": fields.String,
     "error": fields.String,
@@ -79,7 +85,7 @@ message_detail_fields = {
 }
 
 feedback_stat_fields = {"like": fields.Integer, "dislike": fields.Integer}
-
+status_count_fields = {"success": fields.Integer, "failed": fields.Integer, "partial_success": fields.Integer}
 model_config_fields = {
     "opening_statement": fields.String,
     "suggested_questions": fields.Raw,
@@ -99,7 +105,7 @@ simple_model_config_fields = {
 }
 
 simple_message_detail_fields = {
-    "inputs": fields.Raw,
+    "inputs": FilesContainedField,
     "query": fields.String,
     "message": MessageTextField,
     "answer": fields.String,
@@ -115,6 +121,7 @@ conversation_fields = {
     "from_account_name": fields.String,
     "read_at": TimestampField,
     "created_at": TimestampField,
+    "updated_at": TimestampField,
     "annotation": fields.Nested(annotation_fields, allow_null=True),
     "model_config": fields.Nested(simple_model_config_fields),
     "user_feedback_stats": fields.Nested(feedback_stat_fields),
@@ -159,6 +166,7 @@ conversation_with_summary_fields = {
     "message_count": fields.Integer,
     "user_feedback_stats": fields.Nested(feedback_stat_fields),
     "admin_feedback_stats": fields.Nested(feedback_stat_fields),
+    "status_count": fields.Nested(status_count_fields),
 }
 
 conversation_with_summary_pagination_fields = {
@@ -176,6 +184,7 @@ conversation_detail_fields = {
     "from_end_user_id": fields.String,
     "from_account_id": fields.String,
     "created_at": TimestampField,
+    "updated_at": TimestampField,
     "annotated": fields.Boolean,
     "introduction": fields.String,
     "model_config": fields.Nested(model_config_fields),
@@ -187,10 +196,15 @@ conversation_detail_fields = {
 simple_conversation_fields = {
     "id": fields.String,
     "name": fields.String,
-    "inputs": fields.Raw,
+    "inputs": FilesContainedField,
     "status": fields.String,
     "introduction": fields.String,
     "created_at": TimestampField,
+    "updated_at": TimestampField,
+}
+
+conversation_delete_fields = {
+    "result": fields.String,
 }
 
 conversation_infinite_scroll_pagination_fields = {

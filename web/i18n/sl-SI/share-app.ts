@@ -1,0 +1,71 @@
+const translation = {
+  common: {
+    welcome: '',
+    appUnavailable: 'Aplikacija ni na voljo',
+    appUnknownError: 'Aplikacija ni na voljo',
+  },
+  chat: {
+    newChat: 'Nov klepet',
+    pinnedTitle: 'Pripeto',
+    unpinnedTitle: 'Klepeti',
+    newChatDefaultName: 'Nova konverzacija',
+    resetChat: 'Ponastavi konverzacijo',
+    poweredBy: 'Poganja',
+    prompt: 'Poziv',
+    privatePromptConfigTitle: 'Nastavitve konverzacije',
+    publicPromptConfigTitle: 'Začetni poziv',
+    configStatusDes: 'Pred začetkom lahko spremenite nastavitve konverzacije',
+    configDisabled:
+      'Nastavitve prejšnje seje so uporabljene za to sejo.',
+    startChat: 'Začni klepet',
+    privacyPolicyLeft: 'Prosimo, preberite ',
+    privacyPolicyMiddle: 'politiko zasebnosti',
+    privacyPolicyRight: ' ponudnika aplikacije.',
+    deleteConversation: {
+      title: 'Izbriši konverzacijo',
+      content: 'Ali ste prepričani, da želite izbrisati to konverzacijo?',
+    },
+    tryToSolve: 'Poskusite rešiti',
+    temporarySystemIssue: 'Oprostite, začasna težava s sistemom.',
+  },
+  generation: {
+    tabs: {
+      create: 'Zaženi enkrat',
+      batch: 'Zaženi serijo',
+      saved: 'Shranjeno',
+    },
+    savedNoData: {
+      title: 'Še niste shranili rezultata!',
+      description: 'Začnite z ustvarjanjem vsebine in tukaj najdite svoje shranjene rezultate.',
+      startCreateContent: 'Začnite z ustvarjanjem vsebine',
+    },
+    title: 'AI Zaključek',
+    queryTitle: 'Vsebina poizvedbe',
+    completionResult: 'Rezultat zaključka',
+    queryPlaceholder: 'Vnesite vsebino poizvedbe...',
+    run: 'Izvedi',
+    copy: 'Kopiraj',
+    resultTitle: 'AI Zaključek',
+    noData: 'AI vam bo tukaj zagotovil, kar želite.',
+    csvUploadTitle: 'Povlecite in spustite svojo CSV datoteko tukaj, ali ',
+    browse: 'brskajte',
+    csvStructureTitle: 'CSV datoteka mora ustrezati naslednji strukturi:',
+    downloadTemplate: 'Prenesite predlogo tukaj',
+    field: 'Polje',
+    batchFailed: {
+      info: '{{num}} neuspelih izvedb',
+      retry: 'Poskusite znova',
+      outputPlaceholder: 'Brez izhodne vsebine',
+    },
+    errorMsg: {
+      empty: 'Prosimo, vnesite vsebino v naloženo datoteko.',
+      fileStructNotMatch: 'Naložena CSV datoteka ne ustreza strukturi.',
+      emptyLine: 'Vrstica {{rowIndex}} je prazna',
+      invalidLine: 'Vrstica {{rowIndex}}: vrednost {{varName}} ne sme biti prazna',
+      moreThanMaxLengthLine: 'Vrstica {{rowIndex}}: vrednost {{varName}} ne sme biti daljša od {{maxLength}} znakov',
+      atLeastOne: 'Prosimo, vnesite vsaj eno vrstico v naloženo datoteko.',
+    },
+  },
+}
+
+export default translation

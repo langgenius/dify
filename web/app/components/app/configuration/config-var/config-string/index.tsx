@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect } from 'react'
+import Input from '@/app/components/base/input'
 
 export type IConfigStringProps = {
   value: number | undefined
@@ -21,7 +22,7 @@ const ConfigString: FC<IConfigStringProps> = ({
 
   return (
     <div>
-      <input
+      <Input
         type="number"
         max={maxLength}
         min={1}
@@ -36,7 +37,6 @@ const ConfigString: FC<IConfigStringProps> = ({
 
           onChange(value)
         }}
-        className="w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-100 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
       />
     </div>
   )

@@ -1,13 +1,12 @@
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource, marshal, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, marshal, reqparse  # type: ignore
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.console import api
 from controllers.console.datasets.error import DatasetNameDuplicateError
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from fields.dataset_fields import dataset_detail_fields
 from libs.login import login_required
 from services.dataset_service import DatasetService

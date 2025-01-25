@@ -31,6 +31,8 @@ const translation = {
     manageInTools: 'Manage in Tools',
     emptyTitle: 'No workflow tool available',
     emptyTip: 'Go to "Workflow -> Publish as Tool"',
+    emptyTitleCustom: 'No custom tool available',
+    emptyTipCustom: 'Create a custom tool',
   },
   createTool: {
     title: 'Create Custom Tool',
@@ -119,8 +121,8 @@ const translation = {
   thought: {
     using: 'Using',
     used: 'Used',
-    requestTitle: 'Request to',
-    responseTitle: 'Response from',
+    requestTitle: 'Request',
+    responseTitle: 'Response',
   },
   setBuiltInTools: {
     info: 'Info',

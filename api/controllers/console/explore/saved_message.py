@@ -1,6 +1,6 @@
-from flask_login import current_user
-from flask_restful import fields, marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_login import current_user  # type: ignore
+from flask_restful import fields, marshal_with, reqparse  # type: ignore
+from flask_restful.inputs import int_range  # type: ignore
 from werkzeug.exceptions import NotFound
 
 from controllers.console import api
@@ -18,7 +18,7 @@ message_fields = {
     "inputs": fields.Raw,
     "query": fields.String,
     "answer": fields.String,
-    "message_files": fields.List(fields.Nested(message_file_fields), attribute="files"),
+    "message_files": fields.List(fields.Nested(message_file_fields)),
     "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
     "created_at": TimestampField,
 }

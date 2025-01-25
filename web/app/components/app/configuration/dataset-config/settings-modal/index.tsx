@@ -10,7 +10,9 @@ import cn from '@/utils/classnames'
 import IndexMethodRadio from '@/app/components/datasets/settings/index-method-radio'
 import Divider from '@/app/components/base/divider'
 import Button from '@/app/components/base/button'
-import type { DataSet } from '@/models/datasets'
+import Input from '@/app/components/base/input'
+import Textarea from '@/app/components/base/textarea'
+import { type DataSet } from '@/models/datasets'
 import { useToastContext } from '@/app/components/base/toast'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useAppContext } from '@/context/app-context'
@@ -19,7 +21,7 @@ import type { RetrievalConfig } from '@/types/app'
 import RetrievalSettings from '@/app/components/datasets/external-knowledge-base/create/RetrievalSettings'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
-import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -97,8 +99,6 @@ const SettingsModal: FC<SettingsModalProps> = ({
     }
     if (
       !isReRankModelSelected({
-        rerankDefaultModel,
-        isRerankDefaultModelValid: !!isRerankDefaultModelValid,
         rerankModelList,
         retrievalConfig,
         indexMethod,
@@ -107,11 +107,6 @@ const SettingsModal: FC<SettingsModalProps> = ({
       notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
       return
     }
-    const postRetrievalConfig = ensureRerankModelSelected({
-      rerankDefaultModel: rerankDefaultModel!,
-      retrievalConfig,
-      indexMethod,
-    })
     try {
       setLoading(true)
       const { id, name, description, permission } = localeCurrentDataset
@@ -123,8 +118,8 @@ const SettingsModal: FC<SettingsModalProps> = ({
           permission,
           indexing_technique: indexMethod,
           retrieval_model: {
-            ...postRetrievalConfig,
-            score_threshold: postRetrievalConfig.score_threshold_enabled ? postRetrievalConfig.score_threshold : 0,
+            ...retrievalConfig,
+            score_threshold: retrievalConfig.score_threshold_enabled ? retrievalConfig.score_threshold : 0,
           },
           embedding_model: localeCurrentDataset.embedding_model,
           embedding_model_provider: localeCurrentDataset.embedding_model_provider,
@@ -152,7 +147,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       onSave({
         ...localeCurrentDataset,
         indexing_technique: indexMethod,
-        retrieval_model_dict: postRetrievalConfig,
+        retrieval_model_dict: retrievalConfig,
       })
     }
     catch (e) {
@@ -204,10 +199,10 @@ const SettingsModal: FC<SettingsModalProps> = ({
           <div className={labelClass}>
             <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.name')}</div>
           </div>
-          <input
+          <Input
             value={localeCurrentDataset.name}
             onChange={e => handleValueChange('name', e.target.value)}
-            className='block px-3 w-full h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
+            className='block h-9'
             placeholder={t('datasetSettings.form.namePlaceholder') || ''}
           />
         </div>
@@ -216,10 +211,10 @@ const SettingsModal: FC<SettingsModalProps> = ({
             <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.desc')}</div>
           </div>
           <div className='w-full'>
-            <textarea
+            <Textarea
               value={localeCurrentDataset.description || ''}
               onChange={e => handleValueChange('description', e.target.value)}
-              className='block px-3 py-2 w-full h-[88px] rounded-lg bg-gray-100 text-sm outline-none appearance-none resize-none'
+              className='resize-none'
               placeholder={t('datasetSettings.form.descPlaceholder') || ''}
             />
             <a className='mt-2 flex items-center h-[18px] px-3 text-xs text-gray-500' href="https://docs.dify.ai/features/datasets#how-to-write-a-good-dataset-description" target='_blank' rel='noopener noreferrer'>
@@ -253,7 +248,8 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 disable={!localeCurrentDataset?.embedding_available}
                 value={indexMethod}
                 onChange={v => setIndexMethod(v!)}
-                itemClassName='sm:!w-[280px]'
+                docForm={currentDataset.doc_form}
+                currentValue={currentDataset.indexing_technique}
               />
             </div>
           </div>
@@ -285,7 +281,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         {/* Retrieval Method Config */}
         {currentDataset?.provider === 'external'
           ? <>
-            <div className={rowClass}><Divider/></div>
+            <div className={rowClass}><Divider /></div>
             <div className={rowClass}>
               <div className={labelClass}>
                 <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.retrievalSetting.title')}</div>
@@ -298,7 +294,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 isInRetrievalSetting={true}
               />
             </div>
-            <div className={rowClass}><Divider/></div>
+            <div className={rowClass}><Divider /></div>
             <div className={rowClass}>
               <div className={labelClass}>
                 <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.externalKnowledgeAPI')}</div>
@@ -324,7 +320,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 </div>
               </div>
             </div>
-            <div className={rowClass}><Divider/></div>
+            <div className={rowClass}><Divider /></div>
           </>
           : <div className={rowClass}>
             <div className={cn(labelClass, 'w-auto min-w-[168px]')}>

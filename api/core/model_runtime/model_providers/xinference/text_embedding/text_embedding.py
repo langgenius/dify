@@ -1,7 +1,7 @@
 import time
 from typing import Optional
 
-from xinference_client.client.restful.restful_client import Client, RESTfulEmbeddingModelHandle
+from xinference_client.client.restful.restful_client import Client, RESTfulEmbeddingModelHandle  # type: ignore
 
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
@@ -134,7 +134,7 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
             try:
                 handle = client.get_model(model_uid=model_uid)
             except RuntimeError as e:
-                raise InvokeAuthorizationError(e)
+                raise InvokeAuthorizationError(str(e))
 
             if not isinstance(handle, RESTfulEmbeddingModelHandle):
                 raise InvokeBadRequestError(
@@ -184,7 +184,7 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
 
         return usage
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """

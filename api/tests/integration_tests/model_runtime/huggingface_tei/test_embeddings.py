@@ -40,6 +40,7 @@ def test_validate_credentials(setup_tei_mock):
                 model="reranker",
                 credentials={
                     "server_url": os.environ.get("TEI_EMBEDDING_SERVER_URL", ""),
+                    "api_key": os.environ.get("TEI_API_KEY", ""),
                 },
             )
 
@@ -47,6 +48,7 @@ def test_validate_credentials(setup_tei_mock):
         model=model_name,
         credentials={
             "server_url": os.environ.get("TEI_EMBEDDING_SERVER_URL", ""),
+            "api_key": os.environ.get("TEI_API_KEY", ""),
         },
     )
 
@@ -60,6 +62,7 @@ def test_invoke_model(setup_tei_mock):
         model=model_name,
         credentials={
             "server_url": os.environ.get("TEI_EMBEDDING_SERVER_URL", ""),
+            "api_key": os.environ.get("TEI_API_KEY", ""),
         },
         texts=["hello", "world"],
         user="abc-123",

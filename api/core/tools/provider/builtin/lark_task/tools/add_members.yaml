@@ -1,0 +1,58 @@
+identity:
+  name: add_members
+  author: Doug Lea
+  label:
+    en_US: Add Lark Members
+    zh_Hans: 添加 Lark 任务成员
+description:
+  human:
+    en_US: Add Lark Members
+    zh_Hans: 添加 Lark 任务成员
+  llm: A tool for adding members to a Lark task.(添加 Lark 任务成员)
+parameters:
+  - name: task_guid
+    type: string
+    required: true
+    label:
+      en_US: Task GUID
+      zh_Hans: 任务 GUID
+    human_description:
+      en_US: |
+        The GUID of the task to be added, supports passing either the Task ID or the Task link URL. Example of Task ID: 8b5425ec-9f2a-43bd-a3ab-01912f50282b; Example of Task link URL: https://applink.larksuite.com/client/todo/detail?guid=1b066afa-96de-406c-90a3-dfd30159a571&suite_entity_num=t100805
+      zh_Hans: 要添加的任务的 GUID，支持传任务 ID 和任务链接 URL。任务 ID 示例：8b5425ec-9f2a-43bd-a3ab-01912f50282b；任务链接 URL 示例：https://applink.larksuite.com/client/todo/detail?guid=1b066afa-96de-406c-90a3-dfd30159a571&suite_entity_num=t100805
+    llm_description: 要添加的任务的 GUID，支持传任务 ID 和任务链接 URL。任务 ID 示例：8b5425ec-9f2a-43bd-a3ab-01912f50282b；任务链接 URL 示例：https://applink.larksuite.com/client/todo/detail?guid=1b066afa-96de-406c-90a3-dfd30159a571&suite_entity_num=t100805
+    form: llm
+
+  - name: member_phone_or_email
+    type: string
+    required: true
+    label:
+      en_US: Task Member Phone Or Email
+      zh_Hans: 任务成员的电话或邮箱
+    human_description:
+      en_US: A list of member emails or phone numbers, separated by commas.
+      zh_Hans: 任务成员邮箱或者手机号列表，使用逗号分隔。
+    llm_description: 任务成员邮箱或者手机号列表，使用逗号分隔。
+    form: llm
+
+  - name: member_role
+    type: select
+    required: true
+    options:
+      - value: assignee
+        label:
+          en_US: assignee
+          zh_Hans: 负责人
+      - value: follower
+        label:
+          en_US: follower
+          zh_Hans: 关注人
+    default: "follower"
+    label:
+      en_US: member_role
+      zh_Hans: 成员的角色
+    human_description:
+      en_US: Member role, optional values are "assignee" (responsible person) and "follower" (observer), with a default value of "assignee".
+      zh_Hans: 成员的角色，可选值有 "assignee"（负责人）和 "follower"（关注人），默认值为 "assignee"。
+    llm_description: 成员的角色，可选值有 "assignee"（负责人）和 "follower"（关注人），默认值为 "assignee"。
+    form: form

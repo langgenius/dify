@@ -1,6 +1,6 @@
 import threading
 from collections.abc import Generator
-from typing import Optional, Union
+from typing import Optional, Union, cast
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
@@ -270,7 +270,7 @@ class SparkLargeLanguageModel(LargeLanguageModel):
         elif isinstance(message, AssistantPromptMessage):
             message_text = f"{ai_prompt} {content}"
         elif isinstance(message, SystemPromptMessage):
-            message_text = content
+            message_text = cast(str, content)
         else:
             raise ValueError(f"Got unknown type {message}")
 

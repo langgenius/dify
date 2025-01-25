@@ -1,31 +1,27 @@
 import logging
-import os
 from collections.abc import Mapping
 from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
-from core.app.apps.workflow_logging_callback import WorkflowLoggingCallback
-from core.app.entities.app_invoke_entities import (
-    AdvancedChatAppGenerateEntity,
-    InvokeFrom,
-)
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
     QueueAnnotationReplyEvent,
     QueueStopEvent,
     QueueTextChunkEvent,
 )
 from core.moderation.base import ModerationError
-from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
-from core.workflow.entities.node_entities import UserFrom
+from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
+from models.enums import UserFrom
 from models.model import App, Conversation, EndUser, Message
 from models.workflow import ConversationVariable, WorkflowType
 
@@ -43,24 +39,16 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
+        dialogue_count: int,
     ) -> None:
-        """
-        :param application_generate_entity: application generate entity
-        :param queue_manager: application queue manager
-        :param conversation: conversation
-        :param message: message
-        """
         super().__init__(queue_manager)
 
         self.application_generate_entity = application_generate_entity
         self.conversation = conversation
         self.message = message
+        self._dialogue_count = dialogue_count
 
     def run(self) -> None:
-        """
-        Run application
-        :return:
-        """
         app_config = self.application_generate_entity.app_config
         app_config = cast(AdvancedChatAppConfig, app_config)
 
@@ -81,7 +69,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             user_id = self.application_generate_entity.user_id
 
         workflow_callbacks: list[WorkflowCallback] = []
-        if bool(os.environ.get("DEBUG", "False").lower() == "true"):
+        if dify_config.DEBUG:
             workflow_callbacks.append(WorkflowLoggingCallback())
 
         if self.application_generate_entity.single_iteration_run:
@@ -121,26 +109,20 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 ConversationVariable.conversation_id == self.conversation.id,
             )
             with Session(db.engine) as session:
-                conversation_variables = session.scalars(stmt).all()
-                if not conversation_variables:
+                db_conversation_variables = session.scalars(stmt).all()
+                if not db_conversation_variables:
                     # Create conversation variables if they don't exist.
-                    conversation_variables = [
+                    db_conversation_variables = [
                         ConversationVariable.from_variable(
                             app_id=self.conversation.app_id, conversation_id=self.conversation.id, variable=variable
                         )
                         for variable in workflow.conversation_variables
                     ]
-                    session.add_all(conversation_variables)
+                    session.add_all(db_conversation_variables)
                 # Convert database entities to variables.
-                conversation_variables = [item.to_variable() for item in conversation_variables]
+                conversation_variables = [item.to_variable() for item in db_conversation_variables]
 
                 session.commit()
-
-            # Increment dialogue count.
-            self.conversation.dialogue_count += 1
-
-            conversation_dialogue_count = self.conversation.dialogue_count
-            db.session.commit()
 
             # Create a variable pool.
             system_inputs = {
@@ -148,7 +130,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 SystemVariableKey.FILES: files,
                 SystemVariableKey.CONVERSATION_ID: self.conversation.id,
                 SystemVariableKey.USER_ID: user_id,
-                SystemVariableKey.DIALOGUE_COUNT: conversation_dialogue_count,
+                SystemVariableKey.DIALOGUE_COUNT: self._dialogue_count,
                 SystemVariableKey.APP_ID: app_config.app_id,
                 SystemVariableKey.WORKFLOW_ID: app_config.workflow_id,
                 SystemVariableKey.WORKFLOW_RUN_ID: self.application_generate_entity.workflow_run_id,
@@ -201,15 +183,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         query: str,
         message_id: str,
     ) -> bool:
-        """
-        Handle input moderation
-        :param app_record: app record
-        :param app_generate_entity: application generate entity
-        :param inputs: inputs
-        :param query: query
-        :param message_id: message id
-        :return:
-        """
         try:
             # process sensitive_word_avoidance
             _, inputs, query = self.moderation_for_inputs(
@@ -229,14 +202,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
     def handle_annotation_reply(
         self, app_record: App, message: Message, query: str, app_generate_entity: AdvancedChatAppGenerateEntity
     ) -> bool:
-        """
-        Handle annotation reply
-        :param app_record: app record
-        :param message: message
-        :param query: query
-        :param app_generate_entity: application generate entity
-        """
-        # annotation reply
         annotation_reply = self.query_app_annotations_to_reply(
             app_record=app_record,
             message=message,
@@ -258,8 +223,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
     def _complete_with_stream_output(self, text: str, stopped_by: QueueStopEvent.StopBy) -> None:
         """
         Direct output
-        :param text: text
-        :return:
         """
         self._publish_event(QueueTextChunkEvent(text=text))
 

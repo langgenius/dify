@@ -11,7 +11,7 @@ const Split: FC<Props> = ({
   className,
 }) => {
   return (
-    <div className={cn(className, 'h-[0.5px] bg-black/5')}>
+    <div className={cn(className, 'h-[0.5px] bg-divider-subtle')}>
     </div>
   )
 }

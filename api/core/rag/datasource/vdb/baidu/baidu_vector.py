@@ -3,13 +3,15 @@ import time
 import uuid
 from typing import Any
 
+import numpy as np
 from pydantic import BaseModel, model_validator
-from pymochow import MochowClient
-from pymochow.auth.bce_credentials import BceCredentials
-from pymochow.configuration import Configuration
-from pymochow.model.enum import FieldType, IndexState, IndexType, MetricType, TableState
-from pymochow.model.schema import Field, HNSWParams, Schema, VectorIndex
-from pymochow.model.table import AnnSearch, HNSWSearchParams, Partition, Row
+from pymochow import MochowClient  # type: ignore
+from pymochow.auth.bce_credentials import BceCredentials  # type: ignore
+from pymochow.configuration import Configuration  # type: ignore
+from pymochow.exception import ServerError  # type: ignore
+from pymochow.model.enum import FieldType, IndexState, IndexType, MetricType, ServerErrCode, TableState  # type: ignore
+from pymochow.model.schema import Field, HNSWParams, Schema, VectorIndex  # type: ignore
+from pymochow.model.table import AnnSearch, HNSWSearchParams, Partition, Row  # type: ignore
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -73,7 +75,7 @@ class BaiduVector(BaseVector):
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         texts = [doc.page_content for doc in documents]
-        metadatas = [doc.metadata for doc in documents]
+        metadatas = [doc.metadata for doc in documents if doc.metadata is not None]
         total_count = len(documents)
         batch_size = 1000
 
@@ -82,6 +84,8 @@ class BaiduVector(BaseVector):
         for start in range(0, total_count, batch_size):
             end = min(start + batch_size, total_count)
             rows = []
+            assert len(metadatas) == total_count, "metadatas length should be equal to total_count"
+            # FIXME do you need this assert?
             for i in range(start, end, 1):
                 row = Row(
                     id=metadatas[i].get("doc_id", str(uuid.uuid4())),
@@ -109,6 +113,8 @@ class BaiduVector(BaseVector):
         return False
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        if not ids:
+            return
         quoted_ids = [f"'{id}'" for id in ids]
         self._db.table(self._collection_name).delete(filter=f"id IN({', '.join(quoted_ids)})")
 
@@ -116,6 +122,7 @@ class BaiduVector(BaseVector):
         self._db.table(self._collection_name).delete(filter=f"{key} = '{value}'")
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
+        query_vector = [float(val) if isinstance(val, np.float64) else val for val in query_vector]
         anns = AnnSearch(
             vector_field=self.field_vector,
             vector_floats=query_vector,
@@ -133,7 +140,7 @@ class BaiduVector(BaseVector):
         # baidu vector database doesn't support bm25 search on current version
         return []
 
-    def _get_search_res(self, res, score_threshold):
+    def _get_search_res(self, res, score_threshold) -> list[Document]:
         docs = []
         for row in res.rows:
             row_data = row.get("row", {})
@@ -149,7 +156,13 @@ class BaiduVector(BaseVector):
         return docs
 
     def delete(self) -> None:
-        self._db.drop_table(table_name=self._collection_name)
+        try:
+            self._db.drop_table(table_name=self._collection_name)
+        except ServerError as e:
+            if e.code == ServerErrCode.TABLE_NOT_EXIST:
+                pass
+            else:
+                raise
 
     def _init_client(self, config) -> MochowClient:
         config = Configuration(credentials=BceCredentials(config.account, config.api_key), endpoint=config.endpoint)
@@ -166,7 +179,14 @@ class BaiduVector(BaseVector):
         if exists:
             return self._client.database(self._client_config.database)
         else:
-            return self._client.create_database(database_name=self._client_config.database)
+            try:
+                self._client.create_database(database_name=self._client_config.database)
+            except ServerError as e:
+                if e.code == ServerErrCode.DB_ALREADY_EXIST:
+                    pass
+                else:
+                    raise
+            return
 
     def _table_existed(self) -> bool:
         tables = self._db.list_table()
@@ -175,7 +195,7 @@ class BaiduVector(BaseVector):
     def _create_table(self, dimension: int) -> None:
         # Try to grab distributed lock and create table
         lock_name = "vector_indexing_lock_{}".format(self._collection_name)
-        with redis_client.lock(lock_name, timeout=20):
+        with redis_client.lock(lock_name, timeout=60):
             table_exist_cache_key = "vector_indexing_{}".format(self._collection_name)
             if redis_client.get(table_exist_cache_key):
                 return
@@ -238,14 +258,13 @@ class BaiduVector(BaseVector):
                 description="Table for Dify",
             )
 
+            # Wait for table created
+            while True:
+                time.sleep(1)
+                table = self._db.describe_table(self._collection_name)
+                if table.state == TableState.NORMAL:
+                    break
             redis_client.set(table_exist_cache_key, 1, ex=3600)
-
-        # Wait for table created
-        while True:
-            time.sleep(1)
-            table = self._db.describe_table(self._collection_name)
-            if table.state == TableState.NORMAL:
-                break
 
 
 class BaiduVectorFactory(AbstractVectorFactory):
@@ -261,11 +280,11 @@ class BaiduVectorFactory(AbstractVectorFactory):
         return BaiduVector(
             collection_name=collection_name,
             config=BaiduConfig(
-                endpoint=dify_config.BAIDU_VECTOR_DB_ENDPOINT,
+                endpoint=dify_config.BAIDU_VECTOR_DB_ENDPOINT or "",
                 connection_timeout_in_mills=dify_config.BAIDU_VECTOR_DB_CONNECTION_TIMEOUT_MS,
-                account=dify_config.BAIDU_VECTOR_DB_ACCOUNT,
-                api_key=dify_config.BAIDU_VECTOR_DB_API_KEY,
-                database=dify_config.BAIDU_VECTOR_DB_DATABASE,
+                account=dify_config.BAIDU_VECTOR_DB_ACCOUNT or "",
+                api_key=dify_config.BAIDU_VECTOR_DB_API_KEY or "",
+                database=dify_config.BAIDU_VECTOR_DB_DATABASE or "",
                 shard=dify_config.BAIDU_VECTOR_DB_SHARD,
                 replicas=dify_config.BAIDU_VECTOR_DB_REPLICAS,
             ),

@@ -64,6 +64,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
             onChange={handleVarListChange}
             onVarNameChange={handleVarNameChange}
             filterVar={filterVar}
+            isSupportFileVar={false}
           />
         </Field>
         <Split />
@@ -94,7 +95,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
         />
       </div>
       <Split />
-      <div className='px-4 pt-4 pb-2'>
+      <div>
         <OutputVars>
           <>
             <VarItem

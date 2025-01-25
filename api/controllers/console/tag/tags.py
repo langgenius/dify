@@ -1,11 +1,10 @@
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource, marshal_with, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, marshal_with, reqparse  # type: ignore
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from fields.tag_fields import tag_fields
 from libs.login import login_required
 from models.model import Tag
@@ -24,7 +23,7 @@ class TagListApi(Resource):
     @account_initialization_required
     @marshal_with(tag_fields)
     def get(self):
-        tag_type = request.args.get("type", type=str)
+        tag_type = request.args.get("type", type=str, default="")
         keyword = request.args.get("keyword", default=None, type=str)
         tags = TagService.get_tags(tag_type, current_user.current_tenant_id, keyword)
 

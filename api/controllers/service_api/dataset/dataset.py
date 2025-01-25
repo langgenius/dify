@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import marshal, reqparse
+from flask_restful import marshal, reqparse  # type: ignore
 from werkzeug.exceptions import NotFound
 
 import services.dataset_service
@@ -31,8 +31,11 @@ class DatasetListApi(DatasetApiResource):
         # provider = request.args.get("provider", default="vendor")
         search = request.args.get("keyword", default=None, type=str)
         tag_ids = request.args.getlist("tag_ids")
+        include_all = request.args.get("include_all", default="false").lower() == "true"
 
-        datasets, total = DatasetService.get_datasets(page, limit, tenant_id, current_user, search, tag_ids)
+        datasets, total = DatasetService.get_datasets(
+            page, limit, tenant_id, current_user, search, tag_ids, include_all
+        )
         # check embedding setting
         provider_manager = ProviderManager()
         configurations = provider_manager.get_configurations(tenant_id=current_user.current_tenant_id)
@@ -65,6 +68,13 @@ class DatasetListApi(DatasetApiResource):
             required=True,
             help="type is required. Name must be between 1 to 40 characters.",
             type=_validate_name,
+        )
+        parser.add_argument(
+            "description",
+            type=str,
+            nullable=True,
+            required=False,
+            default="",
         )
         parser.add_argument(
             "indexing_technique",
@@ -108,6 +118,7 @@ class DatasetListApi(DatasetApiResource):
             dataset = DatasetService.create_empty_dataset(
                 tenant_id=tenant_id,
                 name=args["name"],
+                description=args["description"],
                 indexing_technique=args["indexing_technique"],
                 account=current_user,
                 permission=args["permission"],

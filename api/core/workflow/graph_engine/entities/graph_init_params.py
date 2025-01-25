@@ -4,7 +4,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.node_entities import UserFrom
+from models.enums import UserFrom
 from models.workflow import WorkflowType
 
 

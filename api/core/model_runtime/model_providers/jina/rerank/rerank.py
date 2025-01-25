@@ -55,6 +55,7 @@ class JinaRerankModel(RerankModel):
                 base_url + "/rerank",
                 json={"model": model, "query": query, "documents": docs, "top_n": top_n},
                 headers={"Authorization": f"Bearer {credentials.get('api_key')}"},
+                timeout=20,
             )
             response.raise_for_status()
             results = response.json()
@@ -127,7 +128,7 @@ class JinaRerankModel(RerankModel):
             label=I18nObject(en_US=model),
             model_type=ModelType.RERANK,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
-            model_properties={ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size"))},
+            model_properties={ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size", 8000))},
         )
 
         return entity

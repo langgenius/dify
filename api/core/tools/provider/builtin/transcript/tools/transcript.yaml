@@ -1,0 +1,101 @@
+identity:
+  name: free_youtube_transcript
+  author: Tao Wang
+  label:
+    en_US: Free YouTube Transcript API
+    zh_Hans: 免费获取 YouTube 转录
+description:
+  human:
+    en_US: Get transcript from a YouTube video for free.
+    zh_Hans: 免费获取 YouTube 视频的转录文案。
+  llm: A tool for retrieving transcript from YouTube videos.
+parameters:
+  - name: video_id
+    type: string
+    required: true
+    label:
+      en_US: Video ID/URL
+      zh_Hans: 视频ID
+    human_description:
+      en_US: Used to define the video from which the transcript will be fetched. You can find the id in the video url. For example - https://www.youtube.com/watch?v=video_id.
+      zh_Hans: 您要哪条视频的转录文案？您可以在视频链接中找到id。例如 - https://www.youtube.com/watch?v=video_id。
+    llm_description: Used to define the video from which the transcript will be fetched. For example - https://www.youtube.com/watch?v=video_id.
+    form: llm
+  - name: language
+    type: string
+    required: false
+    label:
+      en_US: Language Code
+      zh_Hans: 语言
+    human_description:
+      en_US: Language code (e.g. 'en', 'zh') for the transcript.
+      zh_Hans: 字幕语言代码（如'en'、'zh'）。留空则自动选择。
+    llm_description: Used to set the language for transcripts.
+    form: form
+  - name: format
+    type: select
+    required: false
+    default: text
+    options:
+      - value: text
+        label:
+          en_US: Plain Text
+          zh_Hans: 纯文本
+      - value: json
+        label:
+          en_US: JSON Format
+          zh_Hans: JSON 格式
+      - value: pretty
+        label:
+          en_US: Pretty Print Format
+          zh_Hans: 美化格式
+      - value: srt
+        label:
+          en_US: SRT Format
+          zh_Hans: SRT 格式
+      - value: vtt
+        label:
+          en_US: WebVTT Format
+          zh_Hans: WebVTT 格式
+    label:
+      en_US: Output Format
+      zh_Hans: 输出格式
+    human_description:
+      en_US: Format of the transcript output
+      zh_Hans: 字幕输出格式
+    llm_description: The format to output the transcript in. Options are text (plain text), json (raw transcript data), srt (SubRip format), or vtt (WebVTT format)
+    form: form
+  - name: preserve_formatting
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Preserve Formatting
+      zh_Hans: 保留格式
+    human_description:
+      en_US: Keep HTML formatting elements like <i> (italics) and <b> (bold)
+      zh_Hans: 保留HTML格式元素，如<i>（斜体）和<b>（粗体）
+    llm_description: Whether to preserve HTML formatting elements in the transcript text
+    form: form
+  - name: proxy
+    type: string
+    required: false
+    label:
+      en_US: HTTPS Proxy
+      zh_Hans: HTTPS 代理
+    human_description:
+      en_US: HTTPS proxy URL (e.g. https://user:pass@domain:port)
+      zh_Hans: HTTPS 代理地址（如 https://user:pass@domain:port）
+    llm_description: HTTPS proxy to use for the request. Format should be https://user:pass@domain:port
+    form: form
+  - name: cookies
+    type: string
+    required: false
+    label:
+      en_US: Cookies File Path
+      zh_Hans: Cookies 文件路径
+    human_description:
+      en_US: Path to cookies.txt file for accessing age-restricted videos
+      zh_Hans: 用于访问年龄限制视频的 cookies.txt 文件路径
+    llm_description: Path to a cookies.txt file containing YouTube cookies, needed for accessing age-restricted videos
+    form: form

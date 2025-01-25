@@ -1,8 +1,9 @@
 from abc import ABC
-from enum import Enum
+from collections.abc import Sequence
+from enum import Enum, StrEnum
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class PromptMessageRole(Enum):
@@ -48,13 +49,16 @@ class PromptMessageFunction(BaseModel):
     function: PromptMessageTool
 
 
-class PromptMessageContentType(Enum):
+class PromptMessageContentType(StrEnum):
     """
     Enum class for prompt message content type.
     """
 
     TEXT = "text"
     IMAGE = "image"
+    AUDIO = "audio"
+    VIDEO = "video"
+    DOCUMENT = "document"
 
 
 class PromptMessageContent(BaseModel):
@@ -63,7 +67,6 @@ class PromptMessageContent(BaseModel):
     """
 
     type: PromptMessageContentType
-    data: str
 
 
 class TextPromptMessageContent(PromptMessageContent):
@@ -72,19 +75,48 @@ class TextPromptMessageContent(PromptMessageContent):
     """
 
     type: PromptMessageContentType = PromptMessageContentType.TEXT
+    data: str
 
 
-class ImagePromptMessageContent(PromptMessageContent):
+class MultiModalPromptMessageContent(PromptMessageContent):
+    """
+    Model class for multi-modal prompt message content.
+    """
+
+    type: PromptMessageContentType
+    format: str = Field(default=..., description="the format of multi-modal file")
+    base64_data: str = Field(default="", description="the base64 data of multi-modal file")
+    url: str = Field(default="", description="the url of multi-modal file")
+    mime_type: str = Field(default=..., description="the mime type of multi-modal file")
+
+    @property
+    def data(self):
+        return self.url or f"data:{self.mime_type};base64,{self.base64_data}"
+
+
+class VideoPromptMessageContent(MultiModalPromptMessageContent):
+    type: PromptMessageContentType = PromptMessageContentType.VIDEO
+
+
+class AudioPromptMessageContent(MultiModalPromptMessageContent):
+    type: PromptMessageContentType = PromptMessageContentType.AUDIO
+
+
+class ImagePromptMessageContent(MultiModalPromptMessageContent):
     """
     Model class for image prompt message content.
     """
 
-    class DETAIL(Enum):
+    class DETAIL(StrEnum):
         LOW = "low"
         HIGH = "high"
 
     type: PromptMessageContentType = PromptMessageContentType.IMAGE
     detail: DETAIL = DETAIL.LOW
+
+
+class DocumentPromptMessageContent(MultiModalPromptMessageContent):
+    type: PromptMessageContentType = PromptMessageContentType.DOCUMENT
 
 
 class PromptMessage(ABC, BaseModel):
@@ -93,7 +125,7 @@ class PromptMessage(ABC, BaseModel):
     """
 
     role: PromptMessageRole
-    content: Optional[str | list[PromptMessageContent]] = None
+    content: Optional[str | Sequence[PromptMessageContent]] = None
     name: Optional[str] = None
 
     def is_empty(self) -> bool:

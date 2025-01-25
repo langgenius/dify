@@ -12,24 +12,30 @@ import {
 } from './context'
 import type { DebugWithMultipleModelContextType } from './context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import ChatInput from '@/app/components/base/chat/chat/chat-input'
-import type { VisionFile } from '@/app/components/base/chat/types'
+import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
+import { useFeatures } from '@/app/components/base/features/hooks'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { InputForm } from '@/app/components/base/chat/chat/type'
 
 const DebugWithMultipleModel = () => {
   const {
     mode,
-    speechToTextConfig,
-    visionConfig,
+    inputs,
+    modelConfig,
   } = useDebugConfigurationContext()
+  const speech2text = useFeatures(s => s.features.speech2text)
+  const file = useFeatures(s => s.features.file)
   const {
     multipleModelConfigs,
     checkCanSend,
   } = useDebugWithMultipleModelContext()
+
   const { eventEmitter } = useEventEmitterContextContext()
   const isChatMode = mode === 'chat' || mode === 'agent-chat'
 
-  const handleSend = useCallback((message: string, files?: VisionFile[]) => {
+  const handleSend = useCallback((message: string, files?: FileEntity[]) => {
     if (checkCanSend && !checkCanSend())
       return
 
@@ -92,6 +98,9 @@ const DebugWithMultipleModel = () => {
     }
   }, [twoLine, threeLine, fourLine])
 
+  const setShowAppConfigureFeaturesModal = useAppStore(s => s.setShowAppConfigureFeaturesModal)
+  const inputsForm = modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({ ...item, label: item.name, variable: item.key })) as InputForm[]
+
   return (
     <div className='flex flex-col h-full'>
       <div
@@ -121,18 +130,20 @@ const DebugWithMultipleModel = () => {
           ))
         }
       </div>
-      {
-        isChatMode && (
-          <div className='shrink-0 pb-4 px-6'>
-            <ChatInput
-              onSend={handleSend}
-              speechToTextConfig={speechToTextConfig}
-              visionConfig={visionConfig}
-              noSpacing
-            />
-          </div>
-        )
-      }
+      {isChatMode && (
+        <div className='shrink-0 pb-0 px-6'>
+          <ChatInputArea
+            showFeatureBar
+            showFileUpload={false}
+            onFeatureBarClick={setShowAppConfigureFeaturesModal}
+            onSend={handleSend}
+            speechToTextConfig={speech2text as any}
+            visionConfig={file}
+            inputs={inputs}
+            inputsForm={inputsForm}
+          />
+        </div>
+      )}
     </div>
   )
 }

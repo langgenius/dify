@@ -7,7 +7,7 @@ import cn from '@/utils/classnames'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import LabelFilter from '@/app/components/tools/labels/filter'
-import SearchInput from '@/app/components/base/search-input'
+import Input from '@/app/components/base/input'
 import { DotsGrid } from '@/app/components/base/icons/src/vender/line/general'
 import { Colors } from '@/app/components/base/icons/src/vender/line/others'
 import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
@@ -46,7 +46,7 @@ const ProviderList = () => {
       if (tagFilterValue.length > 0 && (!collection.labels || collection.labels.every(label => !tagFilterValue.includes(label))))
         return false
       if (keywords)
-        return collection.name.toLowerCase().includes(keywords.toLowerCase())
+        return Object.values(collection.label).some(value => value.toLowerCase().includes(keywords.toLowerCase()))
       return true
     })
   }, [activeTab, tagFilterValue, keywords, collectionList])
@@ -84,7 +84,14 @@ const ProviderList = () => {
           />
           <div className='flex items-center gap-2'>
             <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
-            <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
+            <Input
+              showLeftIcon
+              showClearIcon
+              wrapperClassName='w-[200px]'
+              value={keywords}
+              onChange={e => handleKeywordsChange(e.target.value)}
+              onClear={() => handleKeywordsChange('')}
+            />
           </div>
         </div>
         <div className={cn(

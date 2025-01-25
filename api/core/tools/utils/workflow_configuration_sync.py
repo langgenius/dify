@@ -1,19 +1,18 @@
+from collections.abc import Mapping, Sequence
+from typing import Any
+
 from core.app.app_config.entities import VariableEntity
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 
 
 class WorkflowToolConfigurationUtils:
     @classmethod
-    def check_parameter_configurations(cls, configurations: list[dict]):
-        """
-        check parameter configurations
-        """
+    def check_parameter_configurations(cls, configurations: list[Mapping[str, Any]]):
         for configuration in configurations:
-            if not WorkflowToolParameterConfiguration(**configuration):
-                raise ValueError("invalid parameter configuration")
+            WorkflowToolParameterConfiguration.model_validate(configuration)
 
     @classmethod
-    def get_workflow_graph_variables(cls, graph: dict) -> list[VariableEntity]:
+    def get_workflow_graph_variables(cls, graph: Mapping[str, Any]) -> Sequence[VariableEntity]:
         """
         get workflow graph variables
         """
@@ -23,12 +22,12 @@ class WorkflowToolConfigurationUtils:
         if not start_node:
             return []
 
-        return [VariableEntity(**variable) for variable in start_node.get("data", {}).get("variables", [])]
+        return [VariableEntity.model_validate(variable) for variable in start_node.get("data", {}).get("variables", [])]
 
     @classmethod
     def check_is_synced(
         cls, variables: list[VariableEntity], tool_configurations: list[WorkflowToolParameterConfiguration]
-    ) -> None:
+    ) -> bool:
         """
         check is synced
 

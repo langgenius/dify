@@ -1,7 +1,7 @@
 import json
 import logging
 import math
-from typing import Any, Optional
+from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
 import requests
@@ -70,7 +70,7 @@ class ElasticSearchVector(BaseVector):
 
     def _get_version(self) -> str:
         info = self._client.info()
-        return info["version"]["number"]
+        return cast(str, info["version"]["number"])
 
     def _check_version(self):
         if self._version < "8.0.0":
@@ -98,6 +98,8 @@ class ElasticSearchVector(BaseVector):
         return bool(self._client.exists(index=self._collection_name, id=id))
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        if not ids:
+            return
         for id in ids:
             self._client.delete(index=self._collection_name, id=id)
 
@@ -135,14 +137,15 @@ class ElasticSearchVector(BaseVector):
         for doc, score in docs_and_scores:
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
             if score > score_threshold:
-                doc.metadata["score"] = score
+                if doc.metadata is not None:
+                    doc.metadata["score"] = score
             docs.append(doc)
 
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         query_str = {"match": {Field.CONTENT_KEY.value: query}}
-        results = self._client.search(index=self._collection_name, query=query_str)
+        results = self._client.search(index=self._collection_name, query=query_str, size=kwargs.get("top_k", 4))
         docs = []
         for hit in results["hits"]["hits"]:
             docs.append(
@@ -156,12 +159,15 @@ class ElasticSearchVector(BaseVector):
         return docs
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
-        metadatas = [d.metadata for d in texts]
+        metadatas = [d.metadata if d.metadata is not None else {} for d in texts]
         self.create_collection(embeddings, metadatas)
         self.add_texts(texts, embeddings, **kwargs)
 
     def create_collection(
-        self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None
+        self,
+        embeddings: list[list[float]],
+        metadatas: Optional[list[dict[Any, Any]]] = None,
+        index_params: Optional[dict] = None,
     ):
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
@@ -178,6 +184,7 @@ class ElasticSearchVector(BaseVector):
                         Field.VECTOR.value: {  # Make sure the dimension is correct here
                             "type": "dense_vector",
                             "dims": dim,
+                            "index": True,
                             "similarity": "cosine",
                         },
                         Field.METADATA_KEY.value: {
@@ -207,10 +214,10 @@ class ElasticSearchVectorFactory(AbstractVectorFactory):
         return ElasticSearchVector(
             index_name=collection_name,
             config=ElasticSearchConfig(
-                host=config.get("ELASTICSEARCH_HOST"),
-                port=config.get("ELASTICSEARCH_PORT"),
-                username=config.get("ELASTICSEARCH_USERNAME"),
-                password=config.get("ELASTICSEARCH_PASSWORD"),
+                host=config.get("ELASTICSEARCH_HOST", "localhost"),
+                port=config.get("ELASTICSEARCH_PORT", 9200),
+                username=config.get("ELASTICSEARCH_USERNAME", ""),
+                password=config.get("ELASTICSEARCH_PASSWORD", ""),
             ),
             attributes=[],
         )

@@ -160,6 +160,7 @@ const CodeEditor: FC<Props> = ({
             hideSearch
             vars={availableVars}
             onChange={handleSelectVar}
+            isSupportFileVar={false}
           />
         </div>
       )}

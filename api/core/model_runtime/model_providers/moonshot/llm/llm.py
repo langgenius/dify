@@ -50,7 +50,7 @@ class MoonshotLargeLanguageModel(OAIAPICompatLargeLanguageModel):
         self._add_custom_parameters(credentials)
         super().validate_credentials(model, credentials)
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         return AIModelEntity(
             model=model,
             label=I18nObject(en_US=model, zh_Hans=model),
@@ -249,7 +249,7 @@ class MoonshotLargeLanguageModel(OAIAPICompatLargeLanguageModel):
                 # ignore sse comments
                 if chunk.startswith(":"):
                     continue
-                decoded_chunk = chunk.strip().lstrip("data: ").lstrip()
+                decoded_chunk = chunk.strip().removeprefix("data:").lstrip()
                 chunk_json = None
                 try:
                     chunk_json = json.loads(decoded_chunk)

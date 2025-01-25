@@ -61,7 +61,7 @@ class WolframAlphaTool(BuiltinTool):
                 params["input"] = query
             else:
                 finished = True
-                if "souces" in response_data["queryresult"]:
+                if "sources" in response_data["queryresult"]:
                     return self.create_link_message(response_data["queryresult"]["sources"]["url"])
                 elif "pods" in response_data["queryresult"]:
                     result = response_data["queryresult"]["pods"][0]["subpods"][0]["plaintext"]

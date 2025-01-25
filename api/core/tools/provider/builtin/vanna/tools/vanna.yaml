@@ -32,7 +32,7 @@ parameters:
       en_US: RAG Model for your database DDL
       zh_Hans: 存储数据库训练数据的RAG模型
     llm_description: RAG Model for generating SQL
-    form: form
+    form: llm
   - name: db_type
     type: select
     required: true
@@ -136,7 +136,7 @@ parameters:
     human_description:
       en_US: DDL statements for training data
       zh_Hans: 用于训练RAG Model的建表语句
-    form: form
+    form: llm
   - name: question
     type: string
     required: false
@@ -146,7 +146,7 @@ parameters:
     human_description:
       en_US: Question-SQL Pairs
       zh_Hans: Question-SQL中的问题
-    form: form
+    form: llm
   - name: sql
     type: string
     required: false
@@ -156,7 +156,7 @@ parameters:
     human_description:
       en_US: SQL queries to your training data
       zh_Hans: 用于训练RAG Model的SQL语句
-    form: form
+    form: llm
   - name: memos
     type: string
     required: false
@@ -166,7 +166,7 @@ parameters:
     human_description:
       en_US: Sometimes you may want to add documentation about your business terminology or definitions
       zh_Hans: 添加更多关于数据库的业务说明
-    form: form
+    form: llm
   - name: enable_training
     type: boolean
     required: false

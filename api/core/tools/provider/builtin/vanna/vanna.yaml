@@ -26,3 +26,10 @@ credentials_for_provider:
       en_US: Get your API key from Vanna.AI
       zh_Hans: 从 Vanna.AI 获取你的 API key
     url: https://vanna.ai/account/profile
+  base_url:
+    type: text-input
+    required: false
+    label:
+      en_US: Vanna.AI Endpoint Base URL
+    placeholder:
+      en_US: https://ask.vanna.ai/rpc

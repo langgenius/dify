@@ -1,32 +1,23 @@
 import os
-from typing import Union
+from collections import UserDict
 from unittest.mock import MagicMock
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from tos import TosClientV2
-from tos.clientv2 import DeleteObjectOutput, GetObjectOutput, HeadObjectOutput, PutObjectOutput
+from tos import TosClientV2  # type: ignore
+from tos.clientv2 import DeleteObjectOutput, GetObjectOutput, HeadObjectOutput, PutObjectOutput  # type: ignore
+
+from tests.unit_tests.oss.__mock.base import (
+    get_example_bucket,
+    get_example_data,
+    get_example_filename,
+    get_example_filepath,
+)
 
 
-class AttrDict(dict):
+class AttrDict(UserDict):
     def __getattr__(self, item):
         return self.get(item)
-
-
-def get_example_bucket() -> str:
-    return "dify"
-
-
-def get_example_filename() -> str:
-    return "test.txt"
-
-
-def get_example_data() -> bytes:
-    return b"test"
-
-
-def get_example_filepath() -> str:
-    return "/test"
 
 
 class MockVolcengineTosClass:

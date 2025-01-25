@@ -2,26 +2,27 @@ import datetime
 
 import pytz
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource, fields, marshal_with, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
 
 from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
-from controllers.console.setup import setup_required
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
+    InvalidAccountDeletionCodeError,
     InvalidInvitationCodeError,
     RepeatPasswordNotMatchError,
 )
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
 from extensions.ext_database import db
 from fields.member_fields import account_fields
 from libs.helper import TimestampField, timezone
 from libs.login import login_required
-from models.account import AccountIntegrate, InvitationCode
+from models import AccountIntegrate, InvitationCode
 from services.account_service import AccountService
+from services.billing_service import BillingService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
 
 
@@ -61,7 +62,7 @@ class AccountInitApi(Resource):
                 raise InvalidInvitationCodeError()
 
             invitation_code.status = "used"
-            invitation_code.used_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            invitation_code.used_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             invitation_code.used_by_tenant_id = account.current_tenant_id
             invitation_code.used_by_account_id = account.id
 
@@ -69,7 +70,7 @@ class AccountInitApi(Resource):
         account.timezone = args["timezone"]
         account.interface_theme = "light"
         account.status = "active"
-        account.initialized_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        account.initialized_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         db.session.commit()
 
         return {"result": "success"}
@@ -80,6 +81,7 @@ class AccountProfileApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
+    @enterprise_license_required
     def get(self):
         return current_user
 
@@ -242,6 +244,54 @@ class AccountIntegrateApi(Resource):
         return {"data": integrate_data}
 
 
+class AccountDeleteVerifyApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        account = current_user
+
+        token, code = AccountService.generate_account_deletion_verification_code(account)
+        AccountService.send_account_deletion_verification_email(account, code)
+
+        return {"result": "success", "data": token}
+
+
+class AccountDeleteApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        account = current_user
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("token", type=str, required=True, location="json")
+        parser.add_argument("code", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        if not AccountService.verify_account_deletion_code(args["token"], args["code"]):
+            raise InvalidAccountDeletionCodeError()
+
+        AccountService.delete_account(account)
+
+        return {"result": "success"}
+
+
+class AccountDeleteUpdateFeedbackApi(Resource):
+    @setup_required
+    def post(self):
+        account = current_user
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("email", type=str, required=True, location="json")
+        parser.add_argument("feedback", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        BillingService.update_account_deletion_feedback(args["email"], args["feedback"])
+
+        return {"result": "success"}
+
+
 # Register API resources
 api.add_resource(AccountInitApi, "/account/init")
 api.add_resource(AccountProfileApi, "/account/profile")
@@ -252,5 +302,8 @@ api.add_resource(AccountInterfaceThemeApi, "/account/interface-theme")
 api.add_resource(AccountTimezoneApi, "/account/timezone")
 api.add_resource(AccountPasswordApi, "/account/password")
 api.add_resource(AccountIntegrateApi, "/account/integrates")
+api.add_resource(AccountDeleteVerifyApi, "/account/delete/verify")
+api.add_resource(AccountDeleteApi, "/account/delete")
+api.add_resource(AccountDeleteUpdateFeedbackApi, "/account/delete/feedback")
 # api.add_resource(AccountEmailApi, '/account/email')
 # api.add_resource(AccountEmailVerifyApi, '/account/email-verify')

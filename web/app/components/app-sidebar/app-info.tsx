@@ -237,7 +237,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                   {appDetail.mode === 'advanced-chat' && (
                     <>
                       <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.chatbot').toUpperCase()}</div>
-                      <div title={t('app.newApp.advanced') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.newApp.advanced').toUpperCase()}</div>
+                      <div title={t('app.types.advanced') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.advanced').toUpperCase()}</div>
                     </>
                   )}
                   {appDetail.mode === 'agent-chat' && (
@@ -246,13 +246,13 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                   {appDetail.mode === 'chat' && (
                     <>
                       <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.chatbot').toUpperCase()}</div>
-                      <div title={t('app.newApp.basic') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{(t('app.newApp.basic').toUpperCase())}</div>
+                      <div title={t('app.types.basic') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{(t('app.types.basic').toUpperCase())}</div>
                     </>
                   )}
                   {appDetail.mode === 'completion' && (
                     <>
                       <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.completion').toUpperCase()}</div>
-                      <div title={t('app.newApp.basic') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{(t('app.newApp.basic').toUpperCase())}</div>
+                      <div title={t('app.types.basic') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{(t('app.types.basic').toUpperCase())}</div>
                     </>
                   )}
                   {appDetail.mode === 'workflow' && (
@@ -299,7 +299,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                   {appDetail.mode === 'advanced-chat' && (
                     <>
                       <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.chatbot').toUpperCase()}</div>
-                      <div title={t('app.newApp.advanced') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.newApp.advanced').toUpperCase()}</div>
+                      <div title={t('app.types.advanced') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.advanced').toUpperCase()}</div>
                     </>
                   )}
                   {appDetail.mode === 'agent-chat' && (
@@ -308,13 +308,13 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                   {appDetail.mode === 'chat' && (
                     <>
                       <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.chatbot').toUpperCase()}</div>
-                      <div title={t('app.newApp.basic') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{(t('app.newApp.basic').toUpperCase())}</div>
+                      <div title={t('app.types.basic') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{(t('app.types.basic').toUpperCase())}</div>
                     </>
                   )}
                   {appDetail.mode === 'completion' && (
                     <>
                       <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.completion').toUpperCase()}</div>
-                      <div title={t('app.newApp.basic') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{(t('app.newApp.basic').toUpperCase())}</div>
+                      <div title={t('app.types.basic') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{(t('app.types.basic').toUpperCase())}</div>
                     </>
                   )}
                   {appDetail.mode === 'workflow' && (
@@ -398,7 +398,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               )} />
               <div className='px-4 pb-2'>
                 <div className='flex items-center gap-1 text-gray-700 text-md leading-6 font-semibold'>
-                  {showSwitchTip === 'chat' ? t('app.newApp.advanced') : t('app.types.workflow')}
+                  {showSwitchTip === 'chat' ? t('app.types.advanced') : t('app.types.workflow')}
                   <span className='px-1 rounded-[5px] bg-white border border-black/8 text-gray-500 text-[10px] leading-[18px] font-medium'>BETA</span>
                 </div>
                 <div className='text-orange-500 text-xs leading-[18px] font-medium'>{t('app.newApp.advancedFor').toLocaleUpperCase()}</div>

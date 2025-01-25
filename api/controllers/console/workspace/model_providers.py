@@ -1,13 +1,12 @@
 import io
 
 from flask import send_file
-from flask_login import current_user
-from flask_restful import Resource, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, reqparse  # type: ignore
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -67,7 +66,7 @@ class ModelProviderValidateApi(Resource):
         model_provider_service = ModelProviderService()
 
         result = True
-        error = None
+        error = ""
 
         try:
             model_provider_service.provider_credentials_validate(
@@ -133,7 +132,8 @@ class ModelProviderIconApi(Resource):
             icon_type=icon_type,
             lang=lang,
         )
-
+        if icon is None:
+            raise ValueError(f"icon not found for provider {provider}, icon_type {icon_type}, lang {lang}")
         return send_file(io.BytesIO(icon), mimetype=mimetype)
 
 

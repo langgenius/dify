@@ -1,17 +1,20 @@
 import json
+from typing import Any, Optional
 
-from sqlalchemy import ForeignKey
+import sqlalchemy as sa
+from sqlalchemy import ForeignKey, func
+from sqlalchemy.orm import Mapped, mapped_column
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
-from extensions.ext_database import db
 
+from .engine import db
 from .model import Account, App, Tenant
 from .types import StringUUID
 
 
-class BuiltinToolProvider(db.Model):
+class BuiltinToolProvider(db.Model):  # type: ignore[name-defined]
     """
     This table stores the tool provider information for built-in tools for each tenant.
     """
@@ -33,15 +36,15 @@ class BuiltinToolProvider(db.Model):
     provider = db.Column(db.String(40), nullable=False)
     # credential of the tool provider
     encrypted_credentials = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def credentials(self) -> dict:
-        return json.loads(self.encrypted_credentials)
+        return dict(json.loads(self.encrypted_credentials))
 
 
-class PublishedAppTool(db.Model):
+class PublishedAppTool(db.Model):  # type: ignore[name-defined]
     """
     The table stores the apps published as a tool for each person.
     """
@@ -71,19 +74,19 @@ class PublishedAppTool(db.Model):
     tool_name = db.Column(db.String(40), nullable=False)
     # author
     author = db.Column(db.String(40), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def description_i18n(self) -> I18nObject:
         return I18nObject(**json.loads(self.description))
 
     @property
-    def app(self) -> App:
+    def app(self):
         return db.session.query(App).filter(App.id == self.app_id).first()
 
 
-class ApiToolProvider(db.Model):
+class ApiToolProvider(db.Model):  # type: ignore[name-defined]
     """
     The table stores the api providers.
     """
@@ -101,7 +104,7 @@ class ApiToolProvider(db.Model):
     icon = db.Column(db.String(255), nullable=False)
     # original schema
     schema = db.Column(db.Text, nullable=False)
-    schema_type_str = db.Column(db.String(40), nullable=False)
+    schema_type_str: Mapped[str] = db.Column(db.String(40), nullable=False)
     # who created this tool
     user_id = db.Column(StringUUID, nullable=False)
     # tenant id
@@ -115,10 +118,10 @@ class ApiToolProvider(db.Model):
     # privacy policy
     privacy_policy = db.Column(db.String(255), nullable=True)
     # custom_disclaimer
-    custom_disclaimer = db.Column(db.String(255), nullable=True)
+    custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
 
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def schema_type(self) -> ApiProviderSchemaType:
@@ -130,18 +133,18 @@ class ApiToolProvider(db.Model):
 
     @property
     def credentials(self) -> dict:
-        return json.loads(self.credentials_str)
+        return dict(json.loads(self.credentials_str))
 
     @property
-    def user(self) -> Account:
+    def user(self) -> Account | None:
         return db.session.query(Account).filter(Account.id == self.user_id).first()
 
     @property
-    def tenant(self) -> Tenant:
+    def tenant(self) -> Tenant | None:
         return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
 
 
-class ToolLabelBinding(db.Model):
+class ToolLabelBinding(db.Model):  # type: ignore[name-defined]
     """
     The table stores the labels for tools.
     """
@@ -161,7 +164,7 @@ class ToolLabelBinding(db.Model):
     label_name = db.Column(db.String(40), nullable=False)
 
 
-class WorkflowToolProvider(db.Model):
+class WorkflowToolProvider(db.Model):  # type: ignore[name-defined]
     """
     The table stores the workflow providers.
     """
@@ -195,19 +198,15 @@ class WorkflowToolProvider(db.Model):
     # privacy policy
     privacy_policy = db.Column(db.String(255), nullable=True, server_default="")
 
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def schema_type(self) -> ApiProviderSchemaType:
-        return ApiProviderSchemaType.value_of(self.schema_type_str)
-
-    @property
-    def user(self) -> Account:
+    def user(self) -> Account | None:
         return db.session.query(Account).filter(Account.id == self.user_id).first()
 
     @property
-    def tenant(self) -> Tenant:
+    def tenant(self) -> Tenant | None:
         return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
 
     @property
@@ -215,11 +214,11 @@ class WorkflowToolProvider(db.Model):
         return [WorkflowToolParameterConfiguration(**config) for config in json.loads(self.parameter_configuration)]
 
     @property
-    def app(self) -> App:
+    def app(self) -> App | None:
         return db.session.query(App).filter(App.id == self.app_id).first()
 
 
-class ToolModelInvoke(db.Model):
+class ToolModelInvoke(db.Model):  # type: ignore[name-defined]
     """
     store the invoke logs from tool invoke
     """
@@ -252,11 +251,11 @@ class ToolModelInvoke(db.Model):
     provider_response_latency = db.Column(db.Float, nullable=False, server_default=db.text("0"))
     total_price = db.Column(db.Numeric(10, 7))
     currency = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class ToolConversationVariables(db.Model):
+class ToolConversationVariables(db.Model):  # type: ignore[name-defined]
     """
     store the conversation variables from tool invoke
     """
@@ -279,36 +278,48 @@ class ToolConversationVariables(db.Model):
     # variables pool
     variables_str = db.Column(db.Text, nullable=False)
 
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def variables(self) -> dict:
+    def variables(self) -> Any:
         return json.loads(self.variables_str)
 
 
-class ToolFile(db.Model):
-    """
-    store the file created by agent
-    """
-
+class ToolFile(db.Model):  # type: ignore[name-defined]
     __tablename__ = "tool_files"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tool_file_pkey"),
-        # add index for conversation_id
         db.Index("tool_file_conversation_id_idx", "conversation_id"),
     )
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    # conversation user id
-    user_id = db.Column(StringUUID, nullable=False)
-    # tenant id
-    tenant_id = db.Column(StringUUID, nullable=False)
-    # conversation id
-    conversation_id = db.Column(StringUUID, nullable=True)
-    # file key
-    file_key = db.Column(db.String(255), nullable=False)
-    # mime type
-    mimetype = db.Column(db.String(255), nullable=False)
-    # original url
-    original_url = db.Column(db.String(2048), nullable=True)
+    user_id: Mapped[str] = db.Column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
+    conversation_id: Mapped[Optional[str]] = db.Column(StringUUID, nullable=True)
+    file_key: Mapped[str] = db.Column(db.String(255), nullable=False)
+    mimetype: Mapped[str] = db.Column(db.String(255), nullable=False)
+    original_url: Mapped[Optional[str]] = db.Column(db.String(2048), nullable=True)
+    name: Mapped[str] = mapped_column(default="")
+    size: Mapped[int] = mapped_column(default=-1)
+
+    def __init__(
+        self,
+        *,
+        user_id: str,
+        tenant_id: str,
+        conversation_id: Optional[str] = None,
+        file_key: str,
+        mimetype: str,
+        original_url: Optional[str] = None,
+        name: str,
+        size: int,
+    ):
+        self.user_id = user_id
+        self.tenant_id = tenant_id
+        self.conversation_id = conversation_id
+        self.file_key = file_key
+        self.mimetype = mimetype
+        self.original_url = original_url
+        self.name = name
+        self.size = size

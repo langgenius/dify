@@ -146,6 +146,28 @@ const translation = {
   learnHowToWriteGoodKnowledgeDescription: 'Aprende a escribir una buena descripción del conocimiento',
   externalAPIPanelDocumentation: 'Más información sobre cómo crear una API de conocimiento externo',
   mixtureInternalAndExternalTip: 'El modelo de Rerank es necesario para la mezcla de conocimiento interno y externo.',
+  chunkingMode: {
+    parentChild: 'Padre-hijo',
+    general: 'General',
+  },
+  parentMode: {
+    fullDoc: 'Documento completo',
+    paragraph: 'Párrafo',
+  },
+  batchAction: {
+    selected: 'Seleccionado',
+    enable: 'Habilitar',
+    disable: 'Inutilizar',
+    cancel: 'Cancelar',
+    archive: 'Archivo',
+    delete: 'Borrar',
+  },
+  enable: 'Habilitar',
+  documentsDisabled: '{{num}} Documentos desactivados - inactivos durante más de 30 días',
+  preprocessDocument: '{{num}} Documentos de preprocesamiento',
+  localDocs: 'Documentos locales',
+  allKnowledgeDescription: 'Seleccione esta opción para mostrar todos los conocimientos de este espacio de trabajo. Solo el propietario del espacio de trabajo puede administrar todo el conocimiento.',
+  allKnowledge: 'Todo el conocimiento',
 }
 
 export default translation

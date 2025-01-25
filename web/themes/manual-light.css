@@ -1,0 +1,35 @@
+html[data-theme="light"] {
+  --color-chatbot-bg: linear-gradient(
+    180deg,
+    rgba(249, 250, 251, 0.9) 0%,
+    rgba(242, 244, 247, 0.9) 90.48%
+  );
+  --color-chat-bubble-bg: linear-gradient(
+    180deg,
+    #fff 0%,
+    rgba(255, 255, 255, 0.6) 100%
+  );
+  --color-workflow-process-bg: linear-gradient(
+    90deg,
+    rgba(200, 206, 218, 0.2) 0%,
+    rgba(200, 206, 218, 0.04) 100%
+  );
+  --color-account-teams-bg: linear-gradient(
+    271deg,
+    rgba(249, 250, 251, 0.9) -0.1%,
+    rgba(242, 244, 247, 0.9) 98.26%
+  );
+  --color-dataset-chunk-process-success-bg: linear-gradient(92deg, rgba(23, 178, 106, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%);
+  --color-dataset-chunk-process-error-bg: linear-gradient(92deg, rgba(240, 68, 56, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%);
+  --color-dataset-chunk-detail-card-hover-bg: linear-gradient(180deg, #F2F4F7 0%, #F9FAFB 100%);
+  --color-dataset-child-chunk-expand-btn-bg: linear-gradient(90deg, rgba(200, 206, 218, 0.20) 0%, rgba(200, 206, 218, 0.04) 100%);
+  --color-dataset-option-card-blue-gradient: linear-gradient(90deg, #F2F4F7 0%, #F9FAFB 100%);
+  --color-dataset-option-card-purple-gradient: linear-gradient(90deg, #F0EEFA 0%, #F9FAFB 100%);
+  --color-dataset-option-card-orange-gradient: linear-gradient(90deg, #F8F2EE 0%, #F9FAFB 100%);
+  --color-dataset-chunk-list-mask-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.00) 0%, #FCFCFD 100%);
+  --mask-top2bottom-gray-50-to-transparent: linear-gradient(
+    180deg,
+    rgba(200, 206, 218, 0.2) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}

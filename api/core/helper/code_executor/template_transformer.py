@@ -2,6 +2,8 @@ import json
 import re
 from abc import ABC, abstractmethod
 from base64 import b64encode
+from collections.abc import Mapping
+from typing import Any
 
 
 class TemplateTransformer(ABC):
@@ -10,7 +12,7 @@ class TemplateTransformer(ABC):
     _result_tag: str = "<<RESULT>>"
 
     @classmethod
-    def transform_caller(cls, code: str, inputs: dict) -> tuple[str, str]:
+    def transform_caller(cls, code: str, inputs: Mapping[str, Any]) -> tuple[str, str]:
         """
         Transform code to python runner
         :param code: code
@@ -23,21 +25,28 @@ class TemplateTransformer(ABC):
         return runner_script, preload_script
 
     @classmethod
-    def extract_result_str_from_response(cls, response: str) -> str:
+    def extract_result_str_from_response(cls, response: str):
         result = re.search(rf"{cls._result_tag}(.*){cls._result_tag}", response, re.DOTALL)
         if not result:
             raise ValueError("Failed to parse result")
-        result = result.group(1)
-        return result
+        return result.group(1)
 
     @classmethod
-    def transform_response(cls, response: str) -> dict:
+    def transform_response(cls, response: str) -> Mapping[str, Any]:
         """
         Transform response to dict
         :param response: response
         :return:
         """
-        return json.loads(cls.extract_result_str_from_response(response))
+        try:
+            result = json.loads(cls.extract_result_str_from_response(response))
+        except json.JSONDecodeError:
+            raise ValueError("failed to parse response")
+        if not isinstance(result, dict):
+            raise ValueError("result must be a dict")
+        if not all(isinstance(k, str) for k in result):
+            raise ValueError("result keys must be strings")
+        return result
 
     @classmethod
     @abstractmethod
@@ -48,13 +57,13 @@ class TemplateTransformer(ABC):
         pass
 
     @classmethod
-    def serialize_inputs(cls, inputs: dict) -> str:
+    def serialize_inputs(cls, inputs: Mapping[str, Any]) -> str:
         inputs_json_str = json.dumps(inputs, ensure_ascii=False).encode()
         input_base64_encoded = b64encode(inputs_json_str).decode("utf-8")
         return input_base64_encoded
 
     @classmethod
-    def assemble_runner_script(cls, code: str, inputs: dict) -> str:
+    def assemble_runner_script(cls, code: str, inputs: Mapping[str, Any]) -> str:
         # assemble runner script
         script = cls.get_runner_script()
         script = script.replace(cls._code_placeholder, code)

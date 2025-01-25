@@ -1,5 +1,5 @@
-from flask_login import current_user
-from flask_restful import Resource, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, reqparse  # type: ignore
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
@@ -7,8 +7,7 @@ from controllers.console.auth.error import ApiKeyAuthFailedError
 from libs.login import login_required
 from services.auth.api_key_auth_service import ApiKeyAuthService
 
-from ..setup import setup_required
-from ..wraps import account_initialization_required
+from ..wraps import account_initialization_required, setup_required
 
 
 class ApiKeyAuthDataSource(Resource):

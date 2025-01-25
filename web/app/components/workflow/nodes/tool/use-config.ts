@@ -132,7 +132,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         draft.tool_parameters = {}
     })
     setInputs(inputsWithDefaultValue)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currTool])
 
   // setting when call
@@ -214,8 +214,13 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     .map(k => inputs.tool_parameters[k])
 
   const varInputs = getInputVars(hadVarParams.map((p) => {
-    if (p.type === VarType.variable)
+    if (p.type === VarType.variable) {
+      // handle the old wrong value not crash the page
+      if (!(p.value as any).join)
+        return `{{#${p.value}#}}`
+
       return `{{#${(p.value as ValueSelector).join('.')}#}}`
+    }
 
     return p.value as string
   }))

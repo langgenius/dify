@@ -3,7 +3,7 @@ function escape(input: string): string {
     return ''
 
   const res = input
-    .replaceAll('\\', '\\\\')
+    // .replaceAll('\\', '\\\\') // This would add too many backslashes
     .replaceAll('\0', '\\0')
     .replaceAll('\b', '\\b')
     .replaceAll('\f', '\\f')

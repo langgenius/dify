@@ -1,0 +1,358 @@
+identity:
+  name: bedrock_retrieve_and_generate
+  author: AWS
+  label:
+    en_US: Bedrock Retrieve and Generate
+    zh_Hans: Bedrock检索和生成
+  icon: icon.svg
+
+description:
+  human:
+    en_US: A tool for retrieving and generating information using Amazon Bedrock Knowledge Base
+    zh_Hans: 使用Amazon Bedrock知识库进行信息检索和生成的工具
+  llm: A tool for retrieving and generating information using Amazon Bedrock Knowledge Base
+
+parameters:
+# Additional Configuration
+  - name: session_id
+    type: string
+    required: false
+    label:
+      en_US: Session ID
+      zh_Hans: 会话ID
+    human_description:
+      en_US: Optional session ID for continuous conversations
+      zh_Hans: 用于连续对话的可选会话ID
+    form: form
+
+  # AWS Configuration
+  - name: aws_region
+    type: string
+    required: false
+    label:
+      en_US: AWS Region
+      zh_Hans: AWS区域
+    human_description:
+      en_US: AWS region for the Bedrock service
+      zh_Hans: Bedrock服务的AWS区域
+    form: form
+
+  - name: aws_access_key_id
+    type: string
+    required: false
+    label:
+      en_US: AWS Access Key ID
+      zh_Hans: AWS访问密钥ID
+    human_description:
+      en_US: AWS access key ID for authentication (optional)
+      zh_Hans: 用于身份验证的AWS访问密钥ID（可选）
+    form: form
+
+  - name: aws_secret_access_key
+    type: string
+    required: false
+    label:
+      en_US: AWS Secret Access Key
+      zh_Hans: AWS秘密访问密钥
+    human_description:
+      en_US: AWS secret access key for authentication (optional)
+      zh_Hans: 用于身份验证的AWS秘密访问密钥（可选）
+    form: form
+
+  # Knowledge Base Configuration
+  - name: knowledge_base_id
+    type: string
+    required: true
+    label:
+      en_US: Knowledge Base ID
+      zh_Hans: 知识库ID
+    human_description:
+      en_US: ID of the Bedrock Knowledge Base
+      zh_Hans: Bedrock知识库的ID
+    form: form
+
+  - name: model_arn
+    type: string
+    required: true
+    label:
+      en_US: Model ARN
+      zh_Hans: 模型ARN
+    human_description:
+      en_US: The ARN of the model to use
+      zh_Hans: 要使用的模型ARN
+    form: form
+
+  # Retrieval Configuration
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query
+      zh_Hans: 查询
+    human_description:
+      en_US: The search query to retrieve information
+      zh_Hans: 用于检索信息的查询语句
+    form: llm
+
+  - name: number_of_results
+    type: number
+    required: false
+    label:
+      en_US: Number of Results
+      zh_Hans: 结果数量
+    human_description:
+      en_US: Number of results to retrieve (1-10)
+      zh_Hans: 要检索的结果数量（1-10）
+    default: 5
+    min: 1
+    max: 10
+    form: form
+
+  - name: search_type
+    type: select
+    required: false
+    label:
+      en_US: Search Type
+      zh_Hans: 搜索类型
+    human_description:
+      en_US: Type of search to perform
+      zh_Hans: 要执行的搜索类型
+    default: SEMANTIC
+    options:
+      - value: SEMANTIC
+        label:
+          en_US: Semantic Search
+          zh_Hans: 语义搜索
+      - value: HYBRID
+        label:
+          en_US: Hybrid Search
+          zh_Hans: 混合搜索
+    form: form
+
+  - name: metadata_filter
+    type: string
+    required: false
+    label:
+      en_US: Metadata Filter
+      zh_Hans: 元数据过滤器
+    human_description:
+      en_US: JSON formatted filter conditions for metadata, supporting operations like equals, greaterThan, lessThan, etc.
+      zh_Hans: 元数据的JSON格式过滤条件，支持等于、大于、小于等操作
+    default: "{}"
+    form: form
+
+# Generation Configuration
+  - name: guardrail_id
+    type: string
+    required: false
+    label:
+      en_US: Guardrail ID
+      zh_Hans: 防护栏ID
+    human_description:
+      en_US: ID of the guardrail to apply
+      zh_Hans: 要应用的防护栏ID
+    form: form
+
+  - name: guardrail_version
+    type: string
+    required: false
+    label:
+      en_US: Guardrail Version
+      zh_Hans: 防护栏版本
+    human_description:
+      en_US: Version of the guardrail to apply
+      zh_Hans: 要应用的防护栏版本
+    form: form
+
+  - name: max_tokens
+    type: number
+    required: false
+    label:
+      en_US: Maximum Tokens
+      zh_Hans: 最大令牌数
+    human_description:
+      en_US: Maximum number of tokens to generate
+      zh_Hans: 生成的最大令牌数
+    default: 2048
+    form: form
+
+  - name: stop_sequences
+    type: string
+    required: false
+    label:
+      en_US: Stop Sequences
+      zh_Hans: 停止序列
+    human_description:
+      en_US: JSON array of strings that will stop generation when encountered
+      zh_Hans: JSON数组格式的字符串，遇到这些序列时将停止生成
+    default: "[]"
+    form: form
+
+  - name: temperature
+    type: number
+    required: false
+    label:
+      en_US: Temperature
+      zh_Hans: 温度
+    human_description:
+      en_US: Controls randomness in the output (0-1)
+      zh_Hans: 控制输出的随机性（0-1）
+    default: 0.7
+    min: 0
+    max: 1
+    form: form
+
+  - name: top_p
+    type: number
+    required: false
+    label:
+      en_US: Top P
+      zh_Hans: Top P值
+    human_description:
+      en_US: Controls diversity via nucleus sampling (0-1)
+      zh_Hans: 通过核采样控制多样性（0-1）
+    default: 0.95
+    min: 0
+    max: 1
+    form: form
+
+  - name: performance_mode
+    type: select
+    required: false
+    label:
+      en_US: Performance Mode
+      zh_Hans: 性能模式
+    human_description:
+      en_US: Select performance optimization mode(performanceConfig.latency)
+      zh_Hans: 选择性能优化模式(performanceConfig.latency)
+    default: standard
+    options:
+      - value: standard
+        label:
+          en_US: Standard
+          zh_Hans: 标准
+      - value: optimized
+        label:
+          en_US: Optimized
+          zh_Hans: 优化
+    form: form
+
+  - name: prompt_template
+    type: string
+    required: false
+    label:
+      en_US: Prompt Template
+      zh_Hans: 提示模板
+    human_description:
+      en_US: Custom prompt template for generation
+      zh_Hans: 用于生成的自定义提示模板
+    form: form
+
+  - name: additional_model_fields
+    type: string
+    required: false
+    label:
+      en_US: Additional Model Fields
+      zh_Hans: 额外模型字段
+    human_description:
+      en_US: JSON formatted additional fields for model configuration
+      zh_Hans: JSON格式的额外模型配置字段
+    default: "{}"
+    form: form
+
+# Orchestration Configuration
+  - name: orchestration_max_tokens
+    type: number
+    required: false
+    label:
+      en_US: Orchestration Maximum Tokens
+      zh_Hans: 编排最大令牌数
+    human_description:
+      en_US: Maximum number of tokens for orchestration
+      zh_Hans: 编排过程的最大令牌数
+    default: 2048
+    form: form
+
+  - name: orchestration_stop_sequences
+    type: string
+    required: false
+    label:
+      en_US: Orchestration Stop Sequences
+      zh_Hans: 编排停止序列
+    human_description:
+      en_US: JSON array of strings that will stop orchestration when encountered
+      zh_Hans: JSON数组格式的字符串，遇到这些序列时将停止编排
+    default: "[]"
+    form: form
+
+  - name: orchestration_temperature
+    type: number
+    required: false
+    label:
+      en_US: Orchestration Temperature
+      zh_Hans: 编排温度
+    human_description:
+      en_US: Controls randomness in the orchestration output (0-1)
+      zh_Hans: 控制编排输出的随机性（0-1）
+    default: 0.7
+    min: 0
+    max: 1
+    form: form
+
+  - name: orchestration_top_p
+    type: number
+    required: false
+    label:
+      en_US: Orchestration Top P
+      zh_Hans: 编排Top P值
+    human_description:
+      en_US: Controls diversity via nucleus sampling in orchestration (0-1)
+      zh_Hans: 通过核采样控制编排的多样性（0-1）
+    default: 0.95
+    min: 0
+    max: 1
+    form: form
+
+  - name: orchestration_performance_mode
+    type: select
+    required: false
+    label:
+      en_US: Orchestration Performance Mode
+      zh_Hans: 编排性能模式
+    human_description:
+      en_US: Select performance optimization mode for orchestration
+      zh_Hans: 选择编排的性能优化模式
+    default: standard
+    options:
+      - value: standard
+        label:
+          en_US: Standard
+          zh_Hans: 标准
+      - value: optimized
+        label:
+          en_US: Optimized
+          zh_Hans: 优化
+    form: form
+
+  - name: orchestration_prompt_template
+    type: string
+    required: false
+    label:
+      en_US: Orchestration Prompt Template
+      zh_Hans: 编排提示模板
+    human_description:
+      en_US: Custom prompt template for orchestration
+      zh_Hans: 用于编排的自定义提示模板
+    form: form
+
+  - name: orchestration_additional_model_fields
+    type: string
+    required: false
+    label:
+      en_US: Orchestration Additional Model Fields
+      zh_Hans: 编排额外模型字段
+    human_description:
+      en_US: JSON formatted additional fields for orchestration model configuration
+      zh_Hans: JSON格式的编排模型额外配置字段
+    default: "{}"
+    form: form

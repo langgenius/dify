@@ -1,0 +1,49 @@
+identity:
+  name: delete_tables
+  author: Doug Lea
+  label:
+    en_US: Delete Tables
+    zh_Hans: 删除数据表
+description:
+  human:
+    en_US: Batch Delete Data Tables from Multidimensional Table
+    zh_Hans: 批量删除多维表格中的数据表
+  llm: A tool for batch deleting data tables from a multidimensional table. (批量删除多维表格中的数据表)
+parameters:
+  - name: app_token
+    type: string
+    required: true
+    label:
+      en_US: app_token
+      zh_Hans: app_token
+    human_description:
+      en_US: Unique identifier for the multidimensional table, supports inputting document URL.
+      zh_Hans: 多维表格的唯一标识符，支持输入文档 URL。
+    llm_description: 多维表格的唯一标识符，支持输入文档 URL。
+    form: llm
+
+  - name: table_ids
+    type: string
+    required: false
+    label:
+      en_US: Table IDs
+      zh_Hans: 数据表 ID
+    human_description:
+      en_US: |
+        IDs of the tables to be deleted. Each operation supports deleting up to 50 tables. Example: ["tbl1TkhyTWDkSoZ3"]. Ensure that either table_ids or table_names is not empty.
+      zh_Hans: 待删除的数据表的 ID，每次操作最多支持删除 50 个数据表。示例值：["tbl1TkhyTWDkSoZ3"]。请确保 table_ids 和 table_names 至少有一个不为空。
+    llm_description: 待删除的数据表的 ID，每次操作最多支持删除 50 个数据表。示例值：["tbl1TkhyTWDkSoZ3"]。请确保 table_ids 和 table_names 至少有一个不为空。
+    form: llm
+
+  - name: table_names
+    type: string
+    required: false
+    label:
+      en_US: Table Names
+      zh_Hans: 数据表名称
+    human_description:
+      en_US: |
+        Names of the tables to be deleted. Each operation supports deleting up to 50 tables. Example: ["Table1", "Table2"]. Ensure that either table_names or table_ids is not empty.
+      zh_Hans: 待删除的数据表的名称，每次操作最多支持删除 50 个数据表。示例值：["数据表1", "数据表2"]。请确保 table_names 和 table_ids 至少有一个不为空。
+    llm_description: 待删除的数据表的名称，每次操作最多支持删除 50 个数据表。示例值：["数据表1", "数据表2"]。请确保 table_names 和 table_ids 至少有一个不为空。
+    form: llm

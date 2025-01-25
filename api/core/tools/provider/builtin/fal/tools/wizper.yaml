@@ -1,0 +1,489 @@
+identity:
+  name: wizper
+  author: Kalo Chin
+  label:
+    en_US: Wizper
+    zh_Hans: Wizper
+description:
+  human:
+    en_US: Transcribe an audio file using the Whisper model.
+    zh_Hans: 使用 Whisper 模型转录音频文件。
+  llm: Transcribe an audio file using the Whisper model.
+parameters:
+  - name: audio_file
+    type: file
+    required: true
+    label:
+      en_US: Audio File
+      zh_Hans: 音频文件
+    human_description:
+      en_US: "Upload an audio file to transcribe. Supports mp3, mp4, mpeg, mpga, m4a, wav, or webm formats."
+      zh_Hans: "上传要转录的音频文件。支持 mp3、mp4、mpeg、mpga、m4a、wav 或 webm 格式。"
+    llm_description: "Audio file to transcribe. Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, or webm."
+    form: llm
+  - name: task
+    type: select
+    required: true
+    label:
+      en_US: Task
+      zh_Hans: 任务
+    human_description:
+      en_US: "Choose whether to transcribe the audio in its original language or translate it to English"
+      zh_Hans: "选择是以原始语言转录音频还是将其翻译成英语"
+    llm_description: "Task to perform on the audio file. Either transcribe or translate. Default value: 'transcribe'. If 'translate' is selected as the task, the audio will be translated to English, regardless of the language selected."
+    form: form
+    default: transcribe
+    options:
+      - value: transcribe
+        label:
+          en_US: Transcribe
+          zh_Hans: 转录
+      - value: translate
+        label:
+          en_US: Translate
+          zh_Hans: 翻译
+  - name: language
+    type: select
+    required: true
+    label:
+      en_US: Language
+      zh_Hans: 语言
+    human_description:
+      en_US: "Select the primary language spoken in the audio file"
+      zh_Hans: "选择音频文件中使用的主要语言"
+    llm_description: "Language of the audio file."
+    form: form
+    default: en
+    options:
+      - value: af
+        label:
+          en_US: Afrikaans
+          zh_Hans: 南非语
+      - value: am
+        label:
+          en_US: Amharic
+          zh_Hans: 阿姆哈拉语
+      - value: ar
+        label:
+          en_US: Arabic
+          zh_Hans: 阿拉伯语
+      - value: as
+        label:
+          en_US: Assamese
+          zh_Hans: 阿萨姆语
+      - value: az
+        label:
+          en_US: Azerbaijani
+          zh_Hans: 阿塞拜疆语
+      - value: ba
+        label:
+          en_US: Bashkir
+          zh_Hans: 巴什基尔语
+      - value: be
+        label:
+          en_US: Belarusian
+          zh_Hans: 白俄罗斯语
+      - value: bg
+        label:
+          en_US: Bulgarian
+          zh_Hans: 保加利亚语
+      - value: bn
+        label:
+          en_US: Bengali
+          zh_Hans: 孟加拉语
+      - value: bo
+        label:
+          en_US: Tibetan
+          zh_Hans: 藏语
+      - value: br
+        label:
+          en_US: Breton
+          zh_Hans: 布列塔尼语
+      - value: bs
+        label:
+          en_US: Bosnian
+          zh_Hans: 波斯尼亚语
+      - value: ca
+        label:
+          en_US: Catalan
+          zh_Hans: 加泰罗尼亚语
+      - value: cs
+        label:
+          en_US: Czech
+          zh_Hans: 捷克语
+      - value: cy
+        label:
+          en_US: Welsh
+          zh_Hans: 威尔士语
+      - value: da
+        label:
+          en_US: Danish
+          zh_Hans: 丹麦语
+      - value: de
+        label:
+          en_US: German
+          zh_Hans: 德语
+      - value: el
+        label:
+          en_US: Greek
+          zh_Hans: 希腊语
+      - value: en
+        label:
+          en_US: English
+          zh_Hans: 英语
+      - value: es
+        label:
+          en_US: Spanish
+          zh_Hans: 西班牙语
+      - value: et
+        label:
+          en_US: Estonian
+          zh_Hans: 爱沙尼亚语
+      - value: eu
+        label:
+          en_US: Basque
+          zh_Hans: 巴斯克语
+      - value: fa
+        label:
+          en_US: Persian
+          zh_Hans: 波斯语
+      - value: fi
+        label:
+          en_US: Finnish
+          zh_Hans: 芬兰语
+      - value: fo
+        label:
+          en_US: Faroese
+          zh_Hans: 法罗语
+      - value: fr
+        label:
+          en_US: French
+          zh_Hans: 法语
+      - value: gl
+        label:
+          en_US: Galician
+          zh_Hans: 加利西亚语
+      - value: gu
+        label:
+          en_US: Gujarati
+          zh_Hans: 古吉拉特语
+      - value: ha
+        label:
+          en_US: Hausa
+          zh_Hans: 毫萨语
+      - value: haw
+        label:
+          en_US: Hawaiian
+          zh_Hans: 夏威夷语
+      - value: he
+        label:
+          en_US: Hebrew
+          zh_Hans: 希伯来语
+      - value: hi
+        label:
+          en_US: Hindi
+          zh_Hans: 印地语
+      - value: hr
+        label:
+          en_US: Croatian
+          zh_Hans: 克罗地亚语
+      - value: ht
+        label:
+          en_US: Haitian Creole
+          zh_Hans: 海地克里奥尔语
+      - value: hu
+        label:
+          en_US: Hungarian
+          zh_Hans: 匈牙利语
+      - value: hy
+        label:
+          en_US: Armenian
+          zh_Hans: 亚美尼亚语
+      - value: id
+        label:
+          en_US: Indonesian
+          zh_Hans: 印度尼西亚语
+      - value: is
+        label:
+          en_US: Icelandic
+          zh_Hans: 冰岛语
+      - value: it
+        label:
+          en_US: Italian
+          zh_Hans: 意大利语
+      - value: ja
+        label:
+          en_US: Japanese
+          zh_Hans: 日语
+      - value: jw
+        label:
+          en_US: Javanese
+          zh_Hans: 爪哇语
+      - value: ka
+        label:
+          en_US: Georgian
+          zh_Hans: 格鲁吉亚语
+      - value: kk
+        label:
+          en_US: Kazakh
+          zh_Hans: 哈萨克语
+      - value: km
+        label:
+          en_US: Khmer
+          zh_Hans: 高棉语
+      - value: kn
+        label:
+          en_US: Kannada
+          zh_Hans: 卡纳达语
+      - value: ko
+        label:
+          en_US: Korean
+          zh_Hans: 韩语
+      - value: la
+        label:
+          en_US: Latin
+          zh_Hans: 拉丁语
+      - value: lb
+        label:
+          en_US: Luxembourgish
+          zh_Hans: 卢森堡语
+      - value: ln
+        label:
+          en_US: Lingala
+          zh_Hans: 林加拉语
+      - value: lo
+        label:
+          en_US: Lao
+          zh_Hans: 老挝语
+      - value: lt
+        label:
+          en_US: Lithuanian
+          zh_Hans: 立陶宛语
+      - value: lv
+        label:
+          en_US: Latvian
+          zh_Hans: 拉脱维亚语
+      - value: mg
+        label:
+          en_US: Malagasy
+          zh_Hans: 马尔加什语
+      - value: mi
+        label:
+          en_US: Maori
+          zh_Hans: 毛利语
+      - value: mk
+        label:
+          en_US: Macedonian
+          zh_Hans: 马其顿语
+      - value: ml
+        label:
+          en_US: Malayalam
+          zh_Hans: 马拉雅拉姆语
+      - value: mn
+        label:
+          en_US: Mongolian
+          zh_Hans: 蒙古语
+      - value: mr
+        label:
+          en_US: Marathi
+          zh_Hans: 马拉地语
+      - value: ms
+        label:
+          en_US: Malay
+          zh_Hans: 马来语
+      - value: mt
+        label:
+          en_US: Maltese
+          zh_Hans: 马耳他语
+      - value: my
+        label:
+          en_US: Burmese
+          zh_Hans: 缅甸语
+      - value: ne
+        label:
+          en_US: Nepali
+          zh_Hans: 尼泊尔语
+      - value: nl
+        label:
+          en_US: Dutch
+          zh_Hans: 荷兰语
+      - value: nn
+        label:
+          en_US: Norwegian Nynorsk
+          zh_Hans: 新挪威语
+      - value: no
+        label:
+          en_US: Norwegian
+          zh_Hans: 挪威语
+      - value: oc
+        label:
+          en_US: Occitan
+          zh_Hans: 奥克语
+      - value: pa
+        label:
+          en_US: Punjabi
+          zh_Hans: 旁遮普语
+      - value: pl
+        label:
+          en_US: Polish
+          zh_Hans: 波兰语
+      - value: ps
+        label:
+          en_US: Pashto
+          zh_Hans: 普什图语
+      - value: pt
+        label:
+          en_US: Portuguese
+          zh_Hans: 葡萄牙语
+      - value: ro
+        label:
+          en_US: Romanian
+          zh_Hans: 罗马尼亚语
+      - value: ru
+        label:
+          en_US: Russian
+          zh_Hans: 俄语
+      - value: sa
+        label:
+          en_US: Sanskrit
+          zh_Hans: 梵语
+      - value: sd
+        label:
+          en_US: Sindhi
+          zh_Hans: 信德语
+      - value: si
+        label:
+          en_US: Sinhala
+          zh_Hans: 僧伽罗语
+      - value: sk
+        label:
+          en_US: Slovak
+          zh_Hans: 斯洛伐克语
+      - value: sl
+        label:
+          en_US: Slovenian
+          zh_Hans: 斯洛文尼亚语
+      - value: sn
+        label:
+          en_US: Shona
+          zh_Hans: 修纳语
+      - value: so
+        label:
+          en_US: Somali
+          zh_Hans: 索马里语
+      - value: sq
+        label:
+          en_US: Albanian
+          zh_Hans: 阿尔巴尼亚语
+      - value: sr
+        label:
+          en_US: Serbian
+          zh_Hans: 塞尔维亚语
+      - value: su
+        label:
+          en_US: Sundanese
+          zh_Hans: 巽他语
+      - value: sv
+        label:
+          en_US: Swedish
+          zh_Hans: 瑞典语
+      - value: sw
+        label:
+          en_US: Swahili
+          zh_Hans: 斯瓦希里语
+      - value: ta
+        label:
+          en_US: Tamil
+          zh_Hans: 泰米尔语
+      - value: te
+        label:
+          en_US: Telugu
+          zh_Hans: 泰卢固语
+      - value: tg
+        label:
+          en_US: Tajik
+          zh_Hans: 塔吉克语
+      - value: th
+        label:
+          en_US: Thai
+          zh_Hans: 泰语
+      - value: tk
+        label:
+          en_US: Turkmen
+          zh_Hans: 土库曼语
+      - value: tl
+        label:
+          en_US: Tagalog
+          zh_Hans: 他加禄语
+      - value: tr
+        label:
+          en_US: Turkish
+          zh_Hans: 土耳其语
+      - value: tt
+        label:
+          en_US: Tatar
+          zh_Hans: 鞑靼语
+      - value: uk
+        label:
+          en_US: Ukrainian
+          zh_Hans: 乌克兰语
+      - value: ur
+        label:
+          en_US: Urdu
+          zh_Hans: 乌尔都语
+      - value: uz
+        label:
+          en_US: Uzbek
+          zh_Hans: 乌兹别克语
+      - value: vi
+        label:
+          en_US: Vietnamese
+          zh_Hans: 越南语
+      - value: yi
+        label:
+          en_US: Yiddish
+          zh_Hans: 意第绪语
+      - value: yo
+        label:
+          en_US: Yoruba
+          zh_Hans: 约鲁巴语
+      - value: yue
+        label:
+          en_US: Cantonese
+          zh_Hans: 粤语
+      - value: zh
+        label:
+          en_US: Chinese
+          zh_Hans: 中文
+  - name: chunk_level
+    type: select
+    label:
+      en_US: Chunk Level
+      zh_Hans: 分块级别
+    human_description:
+      en_US: "Choose how the transcription should be divided into chunks"
+      zh_Hans: "选择如何将转录内容分成块"
+    llm_description: "Level of the chunks to return."
+    form: form
+    default: segment
+    options:
+      - value: segment
+        label:
+          en_US: Segment
+          zh_Hans: 段
+  - name: version
+    type: select
+    label:
+      en_US: Version
+      zh_Hans: 版本
+    human_description:
+      en_US: "Select which version of the Whisper large model to use"
+      zh_Hans: "选择要使用的 Whisper large 模型版本"
+    llm_description: "Version of the model to use. All of the models are the Whisper large variant."
+    form: form
+    default: "3"
+    options:
+      - value: "3"
+        label:
+          en_US: Version 3
+          zh_Hans: 版本 3

@@ -6,7 +6,7 @@ import pytest
 from core.helper.ssrf_proxy import SSRF_DEFAULT_MAX_RETRIES, STATUS_FORCELIST, make_request
 
 
-@patch("httpx.request")
+@patch("httpx.Client.request")
 def test_successful_request(mock_request):
     mock_response = MagicMock()
     mock_response.status_code = 200
@@ -16,7 +16,7 @@ def test_successful_request(mock_request):
     assert response.status_code == 200
 
 
-@patch("httpx.request")
+@patch("httpx.Client.request")
 def test_retry_exceed_max_retries(mock_request):
     mock_response = MagicMock()
     mock_response.status_code = 500
@@ -29,7 +29,7 @@ def test_retry_exceed_max_retries(mock_request):
     assert str(e.value) == f"Reached maximum retries ({SSRF_DEFAULT_MAX_RETRIES - 1}) for URL http://example.com"
 
 
-@patch("httpx.request")
+@patch("httpx.Client.request")
 def test_retry_logic_success(mock_request):
     side_effects = []
 

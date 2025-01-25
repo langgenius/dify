@@ -73,6 +73,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
 
               <VarItem
                 readonly
+                showLegacyBadge={!isChatMode}
                 payload={{
                   variable: 'sys.files',
                 } as any}
@@ -163,6 +164,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
       {isShowAddVarModal && (
         <ConfigVarModal
           isCreate
+          supportFile
           isShow={isShowAddVarModal}
           onClose={hideAddVarModal}
           onConfirm={handleAddVarConfirm}

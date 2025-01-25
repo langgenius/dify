@@ -1,7 +1,7 @@
 import json
 from typing import Any, Union
 
-from jsonpath_ng import parse
+from jsonpath_ng import parse  # type: ignore
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool

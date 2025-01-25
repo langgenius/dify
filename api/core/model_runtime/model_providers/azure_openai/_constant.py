@@ -37,6 +37,17 @@ def _get_max_tokens(default: int, min_val: int, max_val: int) -> ParameterRule:
     return rule
 
 
+def _get_o1_max_tokens(default: int, min_val: int, max_val: int) -> ParameterRule:
+    rule = ParameterRule(
+        name="max_completion_tokens",
+        **PARAMETER_RULE_TEMPLATE[DefaultParameterName.MAX_TOKENS],
+    )
+    rule.default = default
+    rule.min = min_val
+    rule.max = max_val
+    return rule
+
+
 class AzureBaseModel(BaseModel):
     base_model_name: str
     entity: AIModelEntity
@@ -768,7 +779,83 @@ LLM_BASE_MODELS = [
                     name="frequency_penalty",
                     **PARAMETER_RULE_TEMPLATE[DefaultParameterName.FREQUENCY_PENALTY],
                 ),
-                _get_max_tokens(default=512, min_val=1, max_val=4096),
+                _get_max_tokens(default=512, min_val=1, max_val=16384),
+                ParameterRule(
+                    name="seed",
+                    label=I18nObject(zh_Hans="种子", en_US="Seed"),
+                    type="int",
+                    help=AZURE_DEFAULT_PARAM_SEED_HELP,
+                    required=False,
+                    precision=2,
+                    min=0,
+                    max=1,
+                ),
+                ParameterRule(
+                    name="response_format",
+                    label=I18nObject(zh_Hans="回复格式", en_US="response_format"),
+                    type="string",
+                    help=I18nObject(
+                        zh_Hans="指定模型必须输出的格式", en_US="specifying the format that the model must output"
+                    ),
+                    required=False,
+                    options=["text", "json_object", "json_schema"],
+                ),
+                ParameterRule(
+                    name="json_schema",
+                    label=I18nObject(en_US="JSON Schema"),
+                    type="text",
+                    help=I18nObject(
+                        zh_Hans="设置返回的json schema，llm将按照它返回",
+                        en_US="Set a response json schema will ensure LLM to adhere it.",
+                    ),
+                    required=False,
+                ),
+            ],
+            pricing=PriceConfig(
+                input=5.00,
+                output=15.00,
+                unit=0.000001,
+                currency="USD",
+            ),
+        ),
+    ),
+    AzureBaseModel(
+        base_model_name="gpt-4o-2024-11-20",
+        entity=AIModelEntity(
+            model="fake-deployment-name",
+            label=I18nObject(
+                en_US="fake-deployment-name-label",
+            ),
+            model_type=ModelType.LLM,
+            features=[
+                ModelFeature.AGENT_THOUGHT,
+                ModelFeature.VISION,
+                ModelFeature.MULTI_TOOL_CALL,
+                ModelFeature.STREAM_TOOL_CALL,
+            ],
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_properties={
+                ModelPropertyKey.MODE: LLMMode.CHAT.value,
+                ModelPropertyKey.CONTEXT_SIZE: 128000,
+            },
+            parameter_rules=[
+                ParameterRule(
+                    name="temperature",
+                    **PARAMETER_RULE_TEMPLATE[DefaultParameterName.TEMPERATURE],
+                ),
+                ParameterRule(
+                    name="top_p",
+                    **PARAMETER_RULE_TEMPLATE[DefaultParameterName.TOP_P],
+                ),
+                ParameterRule(
+                    name="presence_penalty",
+                    **PARAMETER_RULE_TEMPLATE[DefaultParameterName.PRESENCE_PENALTY],
+                ),
+                ParameterRule(
+                    name="frequency_penalty",
+                    **PARAMETER_RULE_TEMPLATE[DefaultParameterName.FREQUENCY_PENALTY],
+                ),
+                _get_max_tokens(default=512, min_val=1, max_val=16384),
                 ParameterRule(
                     name="seed",
                     label=I18nObject(zh_Hans="种子", en_US="Seed"),
@@ -1099,14 +1186,6 @@ LLM_BASE_MODELS = [
             },
             parameter_rules=[
                 ParameterRule(
-                    name="temperature",
-                    **PARAMETER_RULE_TEMPLATE[DefaultParameterName.TEMPERATURE],
-                ),
-                ParameterRule(
-                    name="top_p",
-                    **PARAMETER_RULE_TEMPLATE[DefaultParameterName.TOP_P],
-                ),
-                ParameterRule(
                     name="response_format",
                     label=I18nObject(zh_Hans="回复格式", en_US="response_format"),
                     type="string",
@@ -1116,7 +1195,7 @@ LLM_BASE_MODELS = [
                     required=False,
                     options=["text", "json_object"],
                 ),
-                _get_max_tokens(default=512, min_val=1, max_val=32768),
+                _get_o1_max_tokens(default=512, min_val=1, max_val=32768),
             ],
             pricing=PriceConfig(
                 input=15.00,
@@ -1144,14 +1223,6 @@ LLM_BASE_MODELS = [
             },
             parameter_rules=[
                 ParameterRule(
-                    name="temperature",
-                    **PARAMETER_RULE_TEMPLATE[DefaultParameterName.TEMPERATURE],
-                ),
-                ParameterRule(
-                    name="top_p",
-                    **PARAMETER_RULE_TEMPLATE[DefaultParameterName.TOP_P],
-                ),
-                ParameterRule(
                     name="response_format",
                     label=I18nObject(zh_Hans="回复格式", en_US="response_format"),
                     type="string",
@@ -1161,7 +1232,7 @@ LLM_BASE_MODELS = [
                     required=False,
                     options=["text", "json_object"],
                 ),
-                _get_max_tokens(default=512, min_val=1, max_val=65536),
+                _get_o1_max_tokens(default=512, min_val=1, max_val=65536),
             ],
             pricing=PriceConfig(
                 input=3.00,

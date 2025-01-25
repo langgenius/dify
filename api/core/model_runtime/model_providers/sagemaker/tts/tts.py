@@ -5,7 +5,7 @@ import logging
 from enum import Enum
 from typing import Any, Optional
 
-import boto3
+import boto3  # type: ignore
 import requests
 
 from core.model_runtime.entities.common_entities import I18nObject
@@ -159,7 +159,7 @@ class SageMakerText2SpeechModel(TTSModel):
 
         return self._tts_invoke_streaming(model_type, payload, sagemaker_endpoint)
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """

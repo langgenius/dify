@@ -11,7 +11,7 @@ from core.model_runtime.model_providers.openai._common import _CommonOpenAI
 
 class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
     """
-    Model class for OpenAI Speech to text model.
+    Model class for OpenAI text2speech model.
     """
 
     def _invoke(

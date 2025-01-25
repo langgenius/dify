@@ -1,11 +1,13 @@
 import uuid
+from collections import defaultdict
 from collections.abc import Mapping
 from typing import Any, Optional, cast
 
 from pydantic import BaseModel, Field
 
-from core.workflow.entities.node_entities import NodeType
+from configs import dify_config
 from core.workflow.graph_engine.entities.run_condition import RunCondition
+from core.workflow.nodes import NodeType
 from core.workflow.nodes.answer.answer_stream_generate_router import AnswerStreamGeneratorRouter
 from core.workflow.nodes.answer.entities import AnswerStreamGenerateRoute
 from core.workflow.nodes.end.end_stream_generate_router import EndStreamGeneratorRouter
@@ -64,13 +66,21 @@ class Graph(BaseModel):
         edge_configs = graph_config.get("edges")
         if edge_configs is None:
             edge_configs = []
+        # node configs
+        node_configs = graph_config.get("nodes")
+        if not node_configs:
+            raise ValueError("Graph must have at least one node")
 
         edge_configs = cast(list, edge_configs)
+        node_configs = cast(list, node_configs)
 
         # reorganize edges mapping
         edge_mapping: dict[str, list[GraphEdge]] = {}
         reverse_edge_mapping: dict[str, list[GraphEdge]] = {}
         target_edge_ids = set()
+        fail_branch_source_node_id = [
+            node["id"] for node in node_configs if node["data"].get("error_strategy") == "fail-branch"
+        ]
         for edge_config in edge_configs:
             source_node_id = edge_config.get("source")
             if not source_node_id:
@@ -90,8 +100,16 @@ class Graph(BaseModel):
 
             # parse run condition
             run_condition = None
-            if edge_config.get("sourceHandle") and edge_config.get("sourceHandle") != "source":
-                run_condition = RunCondition(type="branch_identify", branch_identify=edge_config.get("sourceHandle"))
+            if edge_config.get("sourceHandle"):
+                if (
+                    edge_config.get("source") in fail_branch_source_node_id
+                    and edge_config.get("sourceHandle") != "fail-branch"
+                ):
+                    run_condition = RunCondition(type="branch_identify", branch_identify="success-branch")
+                elif edge_config.get("sourceHandle") != "source":
+                    run_condition = RunCondition(
+                        type="branch_identify", branch_identify=edge_config.get("sourceHandle")
+                    )
 
             graph_edge = GraphEdge(
                 source_node_id=source_node_id, target_node_id=target_node_id, run_condition=run_condition
@@ -99,13 +117,6 @@ class Graph(BaseModel):
 
             edge_mapping[source_node_id].append(graph_edge)
             reverse_edge_mapping[target_node_id].append(graph_edge)
-
-        # node configs
-        node_configs = graph_config.get("nodes")
-        if not node_configs:
-            raise ValueError("Graph must have at least one node")
-
-        node_configs = cast(list, node_configs)
 
         # fetch nodes that have no predecessor node
         root_node_configs = []
@@ -161,7 +172,9 @@ class Graph(BaseModel):
         for parallel in parallel_mapping.values():
             if parallel.parent_parallel_id:
                 cls._check_exceed_parallel_limit(
-                    parallel_mapping=parallel_mapping, level_limit=3, parent_parallel_id=parallel.parent_parallel_id
+                    parallel_mapping=parallel_mapping,
+                    level_limit=dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
+                    parent_parallel_id=parallel.parent_parallel_id,
                 )
 
         # init answer stream generate routes
@@ -298,26 +311,17 @@ class Graph(BaseModel):
         parallel = None
         if len(target_node_edges) > 1:
             # fetch all node ids in current parallels
-            parallel_branch_node_ids = {}
-            condition_edge_mappings = {}
+            parallel_branch_node_ids = defaultdict(list)
+            condition_edge_mappings = defaultdict(list)
             for graph_edge in target_node_edges:
                 if graph_edge.run_condition is None:
-                    if "default" not in parallel_branch_node_ids:
-                        parallel_branch_node_ids["default"] = []
-
                     parallel_branch_node_ids["default"].append(graph_edge.target_node_id)
                 else:
                     condition_hash = graph_edge.run_condition.hash
-                    if condition_hash not in condition_edge_mappings:
-                        condition_edge_mappings[condition_hash] = []
-
                     condition_edge_mappings[condition_hash].append(graph_edge)
 
             for condition_hash, graph_edges in condition_edge_mappings.items():
                 if len(graph_edges) > 1:
-                    if condition_hash not in parallel_branch_node_ids:
-                        parallel_branch_node_ids[condition_hash] = []
-
                     for graph_edge in graph_edges:
                         parallel_branch_node_ids[condition_hash].append(graph_edge.target_node_id)
 
@@ -406,7 +410,7 @@ class Graph(BaseModel):
             if condition_edge_mappings:
                 for condition_hash, graph_edges in condition_edge_mappings.items():
                     for graph_edge in graph_edges:
-                        current_parallel: GraphParallel | None = cls._get_current_parallel(
+                        current_parallel = cls._get_current_parallel(
                             parallel_mapping=parallel_mapping,
                             graph_edge=graph_edge,
                             parallel=condition_parallels.get(condition_hash),
@@ -609,10 +613,10 @@ class Graph(BaseModel):
         for (node_id, node_id2), branch_node_ids in duplicate_end_node_ids.items():
             # check which node is after
             if cls._is_node2_after_node1(node1_id=node_id, node2_id=node_id2, edge_mapping=edge_mapping):
-                if node_id in merge_branch_node_ids:
+                if node_id in merge_branch_node_ids and node_id2 in merge_branch_node_ids:
                     del merge_branch_node_ids[node_id2]
             elif cls._is_node2_after_node1(node1_id=node_id2, node2_id=node_id, edge_mapping=edge_mapping):
-                if node_id2 in merge_branch_node_ids:
+                if node_id in merge_branch_node_ids and node_id2 in merge_branch_node_ids:
                     del merge_branch_node_ids[node_id]
 
         branches_merge_node_ids: dict[str, str] = {}

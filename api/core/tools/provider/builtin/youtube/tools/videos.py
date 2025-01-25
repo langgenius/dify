@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Union
 
-from googleapiclient.discovery import build
+from googleapiclient.discovery import build  # type: ignore
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool

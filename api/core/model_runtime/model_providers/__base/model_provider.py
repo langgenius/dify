@@ -104,9 +104,10 @@ class ModelProvider(ABC):
         mod = import_module_from_source(
             module_name=f"{parent_module}.{model_type_name}.{model_type_name}", py_file_path=model_type_py_path
         )
+        # FIXME "type" has no attribute "__abstractmethods__" ignore it for now fix it later
         model_class = next(
             filter(
-                lambda x: x.__module__ == mod.__name__ and not x.__abstractmethods__,
+                lambda x: x.__module__ == mod.__name__ and not x.__abstractmethods__,  # type: ignore
                 get_subclasses_from_module(mod, AIModel),
             ),
             None,

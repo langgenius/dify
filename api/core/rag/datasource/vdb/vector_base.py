@@ -51,15 +51,16 @@ class BaseVector(ABC):
 
     def _filter_duplicate_texts(self, texts: list[Document]) -> list[Document]:
         for text in texts.copy():
-            doc_id = text.metadata["doc_id"]
-            exists_duplicate_node = self.text_exists(doc_id)
-            if exists_duplicate_node:
-                texts.remove(text)
+            if text.metadata and "doc_id" in text.metadata:
+                doc_id = text.metadata["doc_id"]
+                exists_duplicate_node = self.text_exists(doc_id)
+                if exists_duplicate_node:
+                    texts.remove(text)
 
         return texts
 
     def _get_uuids(self, texts: list[Document]) -> list[str]:
-        return [text.metadata["doc_id"] for text in texts]
+        return [text.metadata["doc_id"] for text in texts if text.metadata and "doc_id" in text.metadata]
 
     @property
     def collection_name(self):

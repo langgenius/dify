@@ -1,0 +1,43 @@
+identity:
+  name: language
+  author: Xiao Ley
+  label:
+    en_US: Baidu Language
+    zh_Hans: 百度语种识别
+description:
+  human:
+    en_US: A tool for Baidu Language, support Chinese, English, Japanese, Korean, Thai, Vietnamese and Russian
+    zh_Hans: 使用百度进行语种识别，支持的语种：中文、英语、日语、韩语、泰语、越南语和俄语
+  llm: A tool for Baidu Language
+parameters:
+  - name: q
+    type: string
+    required: true
+    label:
+      en_US: Text content
+      zh_Hans: 文本内容
+    human_description:
+      en_US: Text content to be recognized
+      zh_Hans: 需要识别语言的文本内容
+    llm_description: Text content to be recognized
+    form: llm
+  - name: description_language
+    type: select
+    required: true
+    label:
+      en_US: Description language
+      zh_Hans: 描述语言
+    human_description:
+      en_US: Describe the language used to identify the results
+      zh_Hans: 描述识别结果所用的语言
+    default: Chinese
+    form: form
+    options:
+      - value: Chinese
+        label:
+          en_US: Chinese
+          zh_Hans: 中文
+      - value: English
+        label:
+          en_US: English
+          zh_Hans: 英语

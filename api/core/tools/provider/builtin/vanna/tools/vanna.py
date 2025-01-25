@@ -1,6 +1,6 @@
 from typing import Any, Union
 
-from vanna.remote import VannaDefault
+from vanna.remote import VannaDefault  # type: ignore
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolProviderCredentialValidationError
@@ -14,6 +14,9 @@ class VannaTool(BuiltinTool):
         """
         invoke tools
         """
+        # Ensure runtime and credentials
+        if not self.runtime or not self.runtime.credentials:
+            raise ToolProviderCredentialValidationError("Tool runtime or credentials are missing")
         api_key = self.runtime.credentials.get("api_key", None)
         if not api_key:
             raise ToolProviderCredentialValidationError("Please input api key")
@@ -35,7 +38,8 @@ class VannaTool(BuiltinTool):
         password = tool_parameters.get("password", "")
         port = tool_parameters.get("port", 0)
 
-        vn = VannaDefault(model=model, api_key=api_key)
+        base_url = self.runtime.credentials.get("base_url", None)
+        vn = VannaDefault(model=model, api_key=api_key, config={"endpoint": base_url})
 
         db_type = tool_parameters.get("db_type", "")
         if db_type in {"Postgres", "MySQL", "Hive", "ClickHouse"}:

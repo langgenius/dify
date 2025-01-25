@@ -36,6 +36,8 @@ const translation = {
     Translate: 'अनुवाद',
     Programming: 'प्रोग्रामिंग',
     HR: 'मानव संसाधन',
+    Workflow: 'कार्यप्रवाह',
+    Agent: 'आढ़तिया',
   },
 }
 

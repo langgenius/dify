@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiErrorWarningFill,
@@ -93,7 +93,12 @@ const TextGeneration: FC<IMainProps> = ({
   // Notice this situation isCallBatchAPI but not in batch tab
   const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)
   const isInBatchTab = currentTab === 'batch'
-  const [inputs, setInputs] = useState<Record<string, any>>({})
+  const [inputs, doSetInputs] = useState<Record<string, any>>({})
+  const inputsRef = useRef(inputs)
+  const setInputs = useCallback((newInputs: Record<string, any>) => {
+    doSetInputs(newInputs)
+    inputsRef.current = newInputs
+  }, [])
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
@@ -388,8 +393,12 @@ const TextGeneration: FC<IMainProps> = ({
 
       const { user_input_form, more_like_this, file_upload, text_to_speech }: any = appParams
       setVisionConfig({
-        ...file_upload.image,
+        // legacy of image upload compatible
+        ...file_upload,
+        transfer_methods: file_upload.allowed_file_upload_methods || file_upload.allowed_upload_methods,
+        // legacy of image upload compatible
         image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
+        fileUploadConfig: appParams?.system_parameters,
       })
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
       setPromptConfig({
@@ -603,6 +612,7 @@ const TextGeneration: FC<IMainProps> = ({
               <RunOnce
                 siteInfo={siteInfo}
                 inputs={inputs}
+                inputsRef={inputsRef}
                 onInputsChange={setInputs}
                 promptConfig={promptConfig}
                 onSend={handleSend}
@@ -634,10 +644,12 @@ const TextGeneration: FC<IMainProps> = ({
             isInstalledApp ? 'left-[248px]' : 'left-8',
             'fixed  bottom-4  flex space-x-2 text-gray-400 font-normal text-xs',
           )}>
-            <div className="">© {siteInfo.copyright || siteInfo.title} {(new Date()).getFullYear()}</div>
+            {siteInfo.copyright && (
+              <div className="">© {(new Date()).getFullYear()} {siteInfo.copyright}</div>
+            )}
             {siteInfo.privacy_policy && (
               <>
-                <div>·</div>
+                {siteInfo.copyright && <div>·</div>}
                 <div>{t('share.chat.privacyPolicyLeft')}
                   <a
                     className='text-gray-500 px-1'

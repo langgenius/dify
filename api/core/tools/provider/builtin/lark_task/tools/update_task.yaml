@@ -1,0 +1,89 @@
+identity:
+  name: update_task
+  author: Doug Lea
+  label:
+    en_US: Update Lark Task
+    zh_Hans: 更新 Lark 任务
+description:
+  human:
+    en_US: Update Lark Task
+    zh_Hans: 更新 Lark 任务
+  llm: A tool for updating tasks in Lark.(更新 Lark 任务)
+parameters:
+  - name: task_guid
+    type: string
+    required: true
+    label:
+      en_US: Task GUID
+      zh_Hans: 任务 GUID
+    human_description:
+      en_US: |
+        The task ID, supports inputting either the Task ID or the Task link URL. Example of Task ID: 42cad8a0-f8c8-4344-9be2-d1d7e8e91b64; Example of Task link URL: https://applink.larksuite.com/client/todo/detail?guid=1b066afa-96de-406c-90a3-dfd30159a571&suite_entity_num=t100805
+      zh_Hans: |
+        任务ID，支持传入任务 ID 和任务链接 URL。任务 ID 示例: 42cad8a0-f8c8-4344-9be2-d1d7e8e91b64；任务链接 URL 示例: https://applink.larksuite.com/client/todo/detail?guid=1b066afa-96de-406c-90a3-dfd30159a571&suite_entity_num=t100805
+    llm_description: |
+      任务ID，支持传入任务 ID 和任务链接 URL。任务 ID 示例: 42cad8a0-f8c8-4344-9be2-d1d7e8e91b64；任务链接 URL 示例: https://applink.larksuite.com/client/todo/detail?guid=1b066afa-96de-406c-90a3-dfd30159a571&suite_entity_num=t100805
+    form: llm
+
+  - name: summary
+    type: string
+    required: true
+    label:
+      en_US: Task Title
+      zh_Hans: 任务标题
+    human_description:
+      en_US: The title of the task.
+      zh_Hans: 任务标题
+    llm_description: 任务标题
+    form: llm
+
+  - name: description
+    type: string
+    required: false
+    label:
+      en_US: Task Description
+      zh_Hans: 任务备注
+    human_description:
+      en_US: The description or notes for the task.
+      zh_Hans: 任务备注
+    llm_description: 任务备注
+    form: llm
+
+  - name: start_time
+    type: string
+    required: false
+    label:
+      en_US: Start Time
+      zh_Hans: 任务开始时间
+    human_description:
+      en_US: |
+        The start time of the task, in the format: 2006-01-02 15:04:05
+      zh_Hans: 任务开始时间，格式为：2006-01-02 15:04:05
+    llm_description: 任务开始时间，格式为：2006-01-02 15:04:05
+    form: llm
+
+  - name: end_time
+    type: string
+    required: false
+    label:
+      en_US: End Time
+      zh_Hans: 任务结束时间
+    human_description:
+      en_US: |
+        The end time of the task, in the format: 2006-01-02 15:04:05
+      zh_Hans: 任务结束时间，格式为：2006-01-02 15:04:05
+    llm_description: 任务结束时间，格式为：2006-01-02 15:04:05
+    form: llm
+
+  - name: completed_time
+    type: string
+    required: false
+    label:
+      en_US: Completed Time
+      zh_Hans: 任务完成时间
+    human_description:
+      en_US: |
+        The completion time of the task, in the format: 2006-01-02 15:04:05
+      zh_Hans: 任务完成时间，格式为：2006-01-02 15:04:05
+    llm_description: 任务完成时间，格式为：2006-01-02 15:04:05
+    form: llm

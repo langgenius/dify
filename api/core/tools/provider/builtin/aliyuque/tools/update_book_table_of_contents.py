@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-"""
-获取知识库目录
-"""
-
-__author__ = "佐井"
-__created__ = "2024-09-17 15:17:11"
-
 from typing import Any, Union
 
 from core.tools.entities.tool_entities import ToolInvokeMessage

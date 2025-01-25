@@ -16,6 +16,9 @@ const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
       },
     },
     reasoning_mode: ReasoningModeType.prompt,
+    vision: {
+      enabled: false,
+    },
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode
@@ -54,6 +57,8 @@ const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
           errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder`) })
       })
     }
+    if (!errorMessages && payload.vision?.enabled && !payload.vision.configs?.variable_selector?.length)
+      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.errorMsg.fields.visionVariable`) })
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,

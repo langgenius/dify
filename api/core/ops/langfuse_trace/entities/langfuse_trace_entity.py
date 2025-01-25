@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -39,7 +39,7 @@ def validate_input_output(v, field_name):
     return v
 
 
-class LevelEnum(str, Enum):
+class LevelEnum(StrEnum):
     DEBUG = "DEBUG"
     WARNING = "WARNING"
     ERROR = "ERROR"
@@ -178,7 +178,7 @@ class LangfuseSpan(BaseModel):
         return validate_input_output(v, field_name)
 
 
-class UnitEnum(str, Enum):
+class UnitEnum(StrEnum):
     CHARACTERS = "CHARACTERS"
     TOKENS = "TOKENS"
     SECONDS = "SECONDS"

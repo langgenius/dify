@@ -27,10 +27,10 @@ class BaseIndexProcessor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True):
+    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True, **kwargs):
         raise NotImplementedError
 
-    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True):
+    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True, **kwargs):
         raise NotImplementedError
 
     @abstractmethod
@@ -45,25 +45,29 @@ class BaseIndexProcessor(ABC):
     ) -> list[Document]:
         raise NotImplementedError
 
-    def _get_splitter(self, processing_rule: dict, embedding_model_instance: Optional[ModelInstance]) -> TextSplitter:
+    def _get_splitter(
+        self,
+        processing_rule_mode: str,
+        max_tokens: int,
+        chunk_overlap: int,
+        separator: str,
+        embedding_model_instance: Optional[ModelInstance],
+    ) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
         """
-        if processing_rule["mode"] == "custom":
+        if processing_rule_mode in ["custom", "hierarchical"]:
             # The user-defined segmentation rule
-            rules = processing_rule["rules"]
-            segmentation = rules["segmentation"]
             max_segmentation_tokens_length = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
-            if segmentation["max_tokens"] < 50 or segmentation["max_tokens"] > max_segmentation_tokens_length:
+            if max_tokens < 50 or max_tokens > max_segmentation_tokens_length:
                 raise ValueError(f"Custom segment length should be between 50 and {max_segmentation_tokens_length}.")
 
-            separator = segmentation["separator"]
             if separator:
                 separator = separator.replace("\\n", "\n")
 
             character_splitter = FixedRecursiveCharacterTextSplitter.from_encoder(
-                chunk_size=segmentation["max_tokens"],
-                chunk_overlap=segmentation.get("chunk_overlap", 0) or 0,
+                chunk_size=max_tokens,
+                chunk_overlap=chunk_overlap,
                 fixed_separator=separator,
                 separators=["\n\n", "。", ". ", " ", ""],
                 embedding_model_instance=embedding_model_instance,
@@ -77,4 +81,4 @@ class BaseIndexProcessor(ABC):
                 embedding_model_instance=embedding_model_instance,
             )
 
-        return character_splitter
+        return character_splitter  # type: ignore

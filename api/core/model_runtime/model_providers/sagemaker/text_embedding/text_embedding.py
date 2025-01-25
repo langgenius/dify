@@ -4,7 +4,7 @@ import logging
 import time
 from typing import Any, Optional
 
-import boto3
+import boto3  # type: ignore
 
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
@@ -117,7 +117,8 @@ class SageMakerEmbeddingModel(TextEmbeddingModel):
             return TextEmbeddingResult(embeddings=all_embeddings, usage=usage, model=model)
 
         except Exception as e:
-            logger.exception(f"Exception {e}, line : {line}")
+            logger.exception(f"Failed to invoke text embedding model, model: {model}, line: {line}")
+            raise InvokeError(str(e))
 
     def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> int:
         """
@@ -180,7 +181,7 @@ class SageMakerEmbeddingModel(TextEmbeddingModel):
             InvokeBadRequestError: [KeyError],
         }
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """

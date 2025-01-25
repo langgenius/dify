@@ -3,13 +3,12 @@ from decimal import Decimal
 
 import pytz
 from flask import jsonify
-from flask_login import current_user
-from flask_restful import Resource, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, reqparse  # type: ignore
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
 from libs.helper import DatetimeString
 from libs.login import login_required
@@ -274,8 +273,7 @@ FROM
             messages m
             ON c.id = m.conversation_id
         WHERE
-            c.override_model_configs IS NULL
-            AND c.app_id = :app_id"""
+            c.app_id = :app_id"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id}
 
         timezone = pytz.timezone(account.timezone)

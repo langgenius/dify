@@ -1,0 +1,24 @@
+identity:
+  name: google_news
+  author: Steven Sun
+  label:
+    en_US: GoogleNews
+    zh_Hans: 谷歌新闻
+description:
+  human:
+    en_US: google news is a news aggregator service developed by Google. It presents a continuous, customizable flow of articles organized from thousands of publishers and magazines.
+    zh_Hans: 谷歌新闻是由谷歌开发的新闻聚合服务。它提供了一个持续的、可定制的文章流，这些文章是从成千上万的出版商和杂志中整理出来的。
+  llm: A tool to get the latest news from Google News.
+parameters:
+  - name: language_region
+    type: string
+    required: true
+    label:
+      en_US: Language and Region
+      zh_Hans: 语言和地区
+    human_description:
+      en_US: The language and region determine the language and region of the search results, and its value is assigned according to the "National Language Code Comparison Table", such as en-US, which stands for English (United States); zh-CN, stands for Chinese (Simplified).
+      zh_Hans: 语言和地区决定了搜索结果的语言和地区,其赋值按照《国家语言代码对照表》，形如en-US,代表英语（美国）；zh-CN，代表中文（简体）。
+    llm_description: The language and region determine the language and region of the search results, and its value is assigned according to the "National Language Code Comparison Table", such as en-US, which stands for English (United States); zh-CN, stands for Chinese (Simplified).
+    default: en-US
+    form: llm

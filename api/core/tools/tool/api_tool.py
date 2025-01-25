@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 
 import httpx
 
+from core.file.file_manager import download
 from core.helper import ssrf_proxy
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
@@ -31,11 +32,13 @@ class ApiTool(Tool):
         :param meta: the meta data of a tool call processing, tenant_id is required
         :return: the new tool
         """
+        if self.api_bundle is None:
+            raise ValueError("api_bundle is required")
         return self.__class__(
             identity=self.identity.model_copy() if self.identity else None,
             parameters=self.parameters.copy() if self.parameters else None,
             description=self.description.model_copy() if self.description else None,
-            api_bundle=self.api_bundle.model_copy() if self.api_bundle else None,
+            api_bundle=self.api_bundle.model_copy(),
             runtime=Tool.Runtime(**runtime),
         )
 
@@ -60,6 +63,8 @@ class ApiTool(Tool):
 
     def assembling_request(self, parameters: dict[str, Any]) -> dict[str, Any]:
         headers = {}
+        if self.runtime is None:
+            raise ValueError("runtime is required")
         credentials = self.runtime.credentials or {}
 
         if "auth_type" not in credentials:
@@ -79,15 +84,15 @@ class ApiTool(Tool):
             if "api_key_header_prefix" in credentials:
                 api_key_header_prefix = credentials["api_key_header_prefix"]
                 if api_key_header_prefix == "basic" and credentials["api_key_value"]:
-                    credentials["api_key_value"] = f'Basic {credentials["api_key_value"]}'
+                    credentials["api_key_value"] = f"Basic {credentials['api_key_value']}"
                 elif api_key_header_prefix == "bearer" and credentials["api_key_value"]:
-                    credentials["api_key_value"] = f'Bearer {credentials["api_key_value"]}'
+                    credentials["api_key_value"] = f"Bearer {credentials['api_key_value']}"
                 elif api_key_header_prefix == "custom":
                     pass
 
             headers[api_key_header] = credentials["api_key_value"]
 
-        needed_parameters = [parameter for parameter in self.api_bundle.parameters if parameter.required]
+        needed_parameters = [parameter for parameter in (self.api_bundle.parameters or []) if parameter.required]
         for parameter in needed_parameters:
             if parameter.required and parameter.name not in parameters:
                 raise ToolParameterValidationError(f"Missing required parameter {parameter.name}")
@@ -136,8 +141,10 @@ class ApiTool(Tool):
 
         params = {}
         path_params = {}
-        body = {}
+        # FIXME: body should be a dict[str, Any] but it changed a lot in this function
+        body: Any = {}
         cookies = {}
+        files = []
 
         # check parameters
         for parameter in self.api_bundle.openapi.get("parameters", []):
@@ -166,8 +173,12 @@ class ApiTool(Tool):
                     properties = body_schema.get("properties", {})
                     for name, property in properties.items():
                         if name in parameters:
-                            # convert type
-                            body[name] = self._convert_body_property_type(property, parameters[name])
+                            if property.get("format") == "binary":
+                                f = parameters[name]
+                                files.append((name, (f.filename, download(f), f.mime_type)))
+                            else:
+                                # convert type
+                                body[name] = self._convert_body_property_type(property, parameters[name])
                         elif name in required:
                             raise ToolParameterValidationError(
                                 f"Missing required parameter {name} in operation {self.api_bundle.operation_id}"
@@ -182,7 +193,7 @@ class ApiTool(Tool):
         for name, value in path_params.items():
             url = url.replace(f"{{{name}}}", f"{value}")
 
-        # parse http body data if needed, for GET/HEAD/OPTIONS/TRACE, the body is ignored
+        # parse http body data if needed
         if "Content-Type" in headers:
             if headers["Content-Type"] == "application/json":
                 body = json.dumps(body)
@@ -191,19 +202,35 @@ class ApiTool(Tool):
             else:
                 body = body
 
-        if method in {"get", "head", "post", "put", "delete", "patch"}:
-            response = getattr(ssrf_proxy, method)(
+        if method in {
+            "get",
+            "head",
+            "post",
+            "put",
+            "delete",
+            "patch",
+            "options",
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "HEAD",
+            "OPTIONS",
+        }:
+            response: httpx.Response = getattr(ssrf_proxy, method.lower())(
                 url,
                 params=params,
                 headers=headers,
                 cookies=cookies,
                 data=body,
+                files=files,
                 timeout=API_TOOL_DEFAULT_TIMEOUT,
                 follow_redirects=True,
             )
             return response
         else:
-            raise ValueError(f"Invalid http method {self.method}")
+            raise ValueError(f"Invalid http method {method}")
 
     def _convert_body_property_any_of(
         self, property: dict[str, Any], value: Any, any_of: list[dict[str, Any]], max_recursive=10
@@ -263,9 +290,6 @@ class ApiTool(Tool):
                 elif property["type"] == "object" or property["type"] == "array":
                     if isinstance(value, str):
                         try:
-                            # an array str like '[1,2]' also can convert to list [1,2] through json.loads
-                            # json not support single quote, but we can support it
-                            value = value.replace("'", '"')
                             return json.loads(value)
                         except ValueError:
                             return value
@@ -284,6 +308,7 @@ class ApiTool(Tool):
         """
         invoke http request
         """
+        response: httpx.Response | str = ""
         # assemble request
         headers = self.assembling_request(tool_parameters)
 

@@ -71,7 +71,7 @@ Dify 依赖以下工具和库：
 - [Docker Compose](https://docs.docker.com/compose/install/)
 - [Node.js v18.x (LTS)](http://nodejs.org)
 - [npm](https://www.npmjs.com/) version 8.x.x or [Yarn](https://yarnpkg.com/)
-- [Python](https://www.python.org/) version 3.10.x
+- [Python](https://www.python.org/) version 3.11.x or 3.12.x
 
 ### 4. 安装
 

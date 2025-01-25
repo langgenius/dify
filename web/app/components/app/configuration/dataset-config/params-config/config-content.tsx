@@ -55,39 +55,28 @@ const ConfigContent: FC<Props> = ({
         retrieval_model: RETRIEVE_TYPE.multiWay,
       }, isInWorkflow)
     }
-  }, [type])
+  }, [type, datasetConfigs, isInWorkflow, onChange])
 
   const {
     modelList: rerankModelList,
-    defaultModel: rerankDefaultModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   const {
     currentModel: currentRerankModel,
   } = useCurrentProviderAndModel(
     rerankModelList,
-    rerankDefaultModel
-      ? {
-        ...rerankDefaultModel,
-        provider: rerankDefaultModel.provider.provider,
-      }
-      : undefined,
+    {
+      provider: datasetConfigs.reranking_model?.reranking_provider_name,
+      model: datasetConfigs.reranking_model?.reranking_model_name,
+    },
   )
 
-  const rerankModel = (() => {
-    if (datasetConfigs.reranking_model?.reranking_provider_name) {
-      return {
-        provider_name: datasetConfigs.reranking_model.reranking_provider_name,
-        model_name: datasetConfigs.reranking_model.reranking_model_name,
-      }
+  const rerankModel = useMemo(() => {
+    return {
+      provider_name: datasetConfigs?.reranking_model?.reranking_provider_name ?? '',
+      model_name: datasetConfigs?.reranking_model?.reranking_model_name ?? '',
     }
-    else if (rerankDefaultModel) {
-      return {
-        provider_name: rerankDefaultModel.provider.provider,
-        model_name: rerankDefaultModel.model,
-      }
-    }
-  })()
+  }, [datasetConfigs.reranking_model])
 
   const handleParamChange = (key: string, value: number) => {
     if (key === 'top_k') {
@@ -132,6 +121,12 @@ const ConfigContent: FC<Props> = ({
   }
 
   const handleRerankModeChange = (mode: RerankingModeEnum) => {
+    if (mode === datasetConfigs.reranking_mode)
+      return
+
+    if (mode === RerankingModeEnum.RerankingModel && !currentRerankModel)
+      Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
+
     onChange({
       ...datasetConfigs,
       reranking_mode: mode,
@@ -160,32 +155,26 @@ const ConfigContent: FC<Props> = ({
   const selectedRerankMode = datasetConfigs.reranking_mode || RerankingModeEnum.RerankingModel
 
   const canManuallyToggleRerank = useMemo(() => {
-    return !(
-      (selectedDatasetsMode.allInternal && selectedDatasetsMode.allEconomic)
-      || selectedDatasetsMode.allExternal
-    )
+    return (selectedDatasetsMode.allInternal && selectedDatasetsMode.allEconomic)
+    || selectedDatasetsMode.allExternal
   }, [selectedDatasetsMode.allEconomic, selectedDatasetsMode.allExternal, selectedDatasetsMode.allInternal])
 
   const showRerankModel = useMemo(() => {
     if (!canManuallyToggleRerank)
-      return false
+      return true
 
     return datasetConfigs.reranking_enable
-  }, [canManuallyToggleRerank, datasetConfigs.reranking_enable])
+  }, [datasetConfigs.reranking_enable, canManuallyToggleRerank])
 
-  const handleDisabledSwitchClick = useCallback(() => {
-    if (!currentRerankModel && !showRerankModel)
+  const handleDisabledSwitchClick = useCallback((enable: boolean) => {
+    if (!currentRerankModel && enable)
       Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
-  }, [currentRerankModel, showRerankModel, t])
-
-  useEffect(() => {
-    if (!canManuallyToggleRerank && showRerankModel !== datasetConfigs.reranking_enable) {
-      onChange({
-        ...datasetConfigs,
-        reranking_enable: showRerankModel,
-      })
-    }
-  }, [canManuallyToggleRerank, showRerankModel, datasetConfigs, onChange])
+    onChange({
+      ...datasetConfigs,
+      reranking_enable: enable,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentRerankModel, datasetConfigs, onChange])
 
   return (
     <div>
@@ -265,25 +254,13 @@ const ConfigContent: FC<Props> = ({
               <div className='mt-2'>
                 <div className='flex items-center'>
                   {
-                    selectedDatasetsMode.allEconomic && (
-                      <div
-                        className='flex items-center'
-                        onClick={handleDisabledSwitchClick}
-                      >
-                        <Switch
-                          size='md'
-                          defaultValue={showRerankModel}
-                          disabled={!currentRerankModel || !canManuallyToggleRerank}
-                          onChange={(v) => {
-                            if (canManuallyToggleRerank) {
-                              onChange({
-                                ...datasetConfigs,
-                                reranking_enable: v,
-                              })
-                            }
-                          }}
-                        />
-                      </div>
+                    selectedDatasetsMode.allEconomic && !selectedDatasetsMode.mixtureInternalAndExternal && (
+                      <Switch
+                        size='md'
+                        defaultValue={showRerankModel}
+                        disabled={!canManuallyToggleRerank}
+                        onChange={handleDisabledSwitchClick}
+                      />
                     )
                   }
                   <div className='leading-[32px] ml-1 text-text-secondary system-sm-semibold'>{t('common.modelProvider.rerankModel.key')}</div>
@@ -297,21 +274,24 @@ const ConfigContent: FC<Props> = ({
                     triggerClassName='ml-1 w-4 h-4'
                   />
                 </div>
-                <div>
-                  <ModelSelector
-                    defaultModel={rerankModel && { provider: rerankModel?.provider_name, model: rerankModel?.model_name }}
-                    onSelect={(v) => {
-                      onChange({
-                        ...datasetConfigs,
-                        reranking_model: {
-                          reranking_provider_name: v.provider,
-                          reranking_model_name: v.model,
-                        },
-                      })
-                    }}
-                    modelList={rerankModelList}
-                  />
-                </div>
+                {
+                  showRerankModel && (
+                    <div>
+                      <ModelSelector
+                        defaultModel={rerankModel && { provider: rerankModel?.provider_name, model: rerankModel?.model_name }}
+                        onSelect={(v) => {
+                          onChange({
+                            ...datasetConfigs,
+                            reranking_model: {
+                              reranking_provider_name: v.provider,
+                              reranking_model_name: v.model,
+                            },
+                          })
+                        }}
+                        modelList={rerankModelList}
+                      />
+                    </div>
+                  )}
               </div>
             )
           }

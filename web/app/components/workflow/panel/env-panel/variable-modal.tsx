@@ -4,6 +4,7 @@ import { v4 as uuid4 } from 'uuid'
 import { RiCloseLine } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import Tooltip from '@/app/components/base/tooltip'
 import { ToastContext } from '@/app/components/base/toast'
 import { useStore } from '@/app/components/workflow/store'
@@ -117,9 +118,7 @@ const VariableModal = ({
         <div className='mb-4'>
           <div className='mb-1 h-6 flex items-center text-text-secondary system-sm-semibold'>{t('workflow.env.modal.name')}</div>
           <div className='flex'>
-            <input
-              tabIndex={0}
-              className='block px-3 w-full h-8 bg-components-input-bg-normal system-sm-regular radius-md border border-transparent appearance-none outline-none caret-primary-600 hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:system-sm-regular placeholder:text-components-input-text-placeholder'
+            <Input
               placeholder={t('workflow.env.modal.namePlaceholder') || ''}
               value={name}
               onChange={e => setName(e.target.value || '')}
@@ -132,9 +131,7 @@ const VariableModal = ({
         <div className=''>
           <div className='mb-1 h-6 flex items-center text-text-secondary system-sm-semibold'>{t('workflow.env.modal.value')}</div>
           <div className='flex'>
-            <input
-              tabIndex={0}
-              className='block px-3 w-full h-8 bg-components-input-bg-normal system-sm-regular radius-md border border-transparent appearance-none outline-none caret-primary-600 hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:system-sm-regular placeholder:text-components-input-text-placeholder'
+            <Input
               placeholder={t('workflow.env.modal.valuePlaceholder') || ''}
               value={value}
               onChange={e => setValue(e.target.value)}

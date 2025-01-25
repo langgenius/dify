@@ -1,0 +1,22 @@
+identity:
+  name: asr
+  author: hjlarry
+  label:
+    en_US: Speech To Text
+description:
+  human:
+    en_US: Convert audio file to text.
+    zh_Hans: 将音频文件转换为文本。
+  llm: Convert audio file to text.
+parameters:
+  - name: audio_file
+    type: file
+    required: true
+    label:
+      en_US: Audio File
+      zh_Hans: 音频文件
+    human_description:
+      en_US: The audio file to be converted.
+      zh_Hans: 要转换的音频文件。
+    llm_description: The audio file to be converted.
+    form: llm

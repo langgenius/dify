@@ -1,381 +1,385 @@
 from collections.abc import Sequence
-from typing import Any, Optional
+from typing import Any, Literal
 
-from core.file.file_obj import FileVar
+from core.file import FileAttribute, file_manager
+from core.variables import ArrayFileSegment
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.utils.condition.entities import Condition
-from core.workflow.utils.variable_template_parser import VariableTemplateParser
+
+from .entities import Condition, SubCondition, SupportedComparisonOperator
 
 
 class ConditionProcessor:
-    def process_conditions(self, variable_pool: VariablePool, conditions: Sequence[Condition]):
-        input_conditions = []
-        group_result = []
-
-        index = 0
-        for condition in conditions:
-            index += 1
-            actual_value = variable_pool.get_any(condition.variable_selector)
-
-            expected_value = None
-            if condition.value is not None:
-                variable_template_parser = VariableTemplateParser(template=condition.value)
-                variable_selectors = variable_template_parser.extract_variable_selectors()
-                if variable_selectors:
-                    for variable_selector in variable_selectors:
-                        value = variable_pool.get_any(variable_selector.value_selector)
-                        expected_value = variable_template_parser.format({variable_selector.variable: value})
-
-                    if expected_value is None:
-                        expected_value = condition.value
-                else:
-                    expected_value = condition.value
-
-            comparison_operator = condition.comparison_operator
-            input_conditions.append(
-                {
-                    "actual_value": actual_value,
-                    "expected_value": expected_value,
-                    "comparison_operator": comparison_operator,
-                }
-            )
-
-            result = self.evaluate_condition(actual_value, comparison_operator, expected_value)
-            group_result.append(result)
-
-        return input_conditions, group_result
-
-    def evaluate_condition(
+    def process_conditions(
         self,
-        actual_value: Optional[str | int | float | dict[Any, Any] | list[Any] | FileVar | None],
-        comparison_operator: str,
-        expected_value: Optional[str] = None,
-    ) -> bool:
-        """
-        Evaluate condition
-        :param actual_value: actual value
-        :param expected_value: expected value
-        :param comparison_operator: comparison operator
+        *,
+        variable_pool: VariablePool,
+        conditions: Sequence[Condition],
+        operator: Literal["and", "or"],
+    ):
+        input_conditions = []
+        group_results = []
 
-        :return: bool
-        """
-        if comparison_operator == "contains":
-            return self._assert_contains(actual_value, expected_value)
-        elif comparison_operator == "not contains":
-            return self._assert_not_contains(actual_value, expected_value)
-        elif comparison_operator == "start with":
-            return self._assert_start_with(actual_value, expected_value)
-        elif comparison_operator == "end with":
-            return self._assert_end_with(actual_value, expected_value)
-        elif comparison_operator == "is":
-            return self._assert_is(actual_value, expected_value)
-        elif comparison_operator == "is not":
-            return self._assert_is_not(actual_value, expected_value)
-        elif comparison_operator == "empty":
-            return self._assert_empty(actual_value)
-        elif comparison_operator == "not empty":
-            return self._assert_not_empty(actual_value)
-        elif comparison_operator == "=":
-            return self._assert_equal(actual_value, expected_value)
-        elif comparison_operator == "≠":
-            return self._assert_not_equal(actual_value, expected_value)
-        elif comparison_operator == ">":
-            return self._assert_greater_than(actual_value, expected_value)
-        elif comparison_operator == "<":
-            return self._assert_less_than(actual_value, expected_value)
-        elif comparison_operator == "≥":
-            return self._assert_greater_than_or_equal(actual_value, expected_value)
-        elif comparison_operator == "≤":
-            return self._assert_less_than_or_equal(actual_value, expected_value)
-        elif comparison_operator == "null":
-            return self._assert_null(actual_value)
-        elif comparison_operator == "not null":
-            return self._assert_not_null(actual_value)
-        else:
-            raise ValueError(f"Invalid comparison operator: {comparison_operator}")
+        for condition in conditions:
+            variable = variable_pool.get(condition.variable_selector)
+            if variable is None:
+                raise ValueError(f"Variable {condition.variable_selector} not found")
 
-    def _assert_contains(self, actual_value: Optional[str | list], expected_value: str) -> bool:
-        """
-        Assert contains
-        :param actual_value: actual value
-        :param expected_value: expected value
-        :return:
-        """
-        if not actual_value:
-            return False
+            if isinstance(variable, ArrayFileSegment) and condition.comparison_operator in {
+                "contains",
+                "not contains",
+                "all of",
+            }:
+                # check sub conditions
+                if not condition.sub_variable_condition:
+                    raise ValueError("Sub variable is required")
+                result = _process_sub_conditions(
+                    variable=variable,
+                    sub_conditions=condition.sub_variable_condition.conditions,
+                    operator=condition.sub_variable_condition.logical_operator,
+                )
+            elif condition.comparison_operator in {
+                "exists",
+                "not exists",
+            }:
+                result = _evaluate_condition(
+                    value=variable.value,
+                    operator=condition.comparison_operator,
+                    expected=None,
+                )
+            else:
+                actual_value = variable.value if variable else None
+                expected_value = condition.value
+                if isinstance(expected_value, str):
+                    expected_value = variable_pool.convert_template(expected_value).text
+                input_conditions.append(
+                    {
+                        "actual_value": actual_value,
+                        "expected_value": expected_value,
+                        "comparison_operator": condition.comparison_operator,
+                    }
+                )
+                result = _evaluate_condition(
+                    value=actual_value,
+                    operator=condition.comparison_operator,
+                    expected=expected_value,
+                )
+            group_results.append(result)
 
-        if not isinstance(actual_value, str | list):
-            raise ValueError("Invalid actual value type: string or array")
+        final_result = all(group_results) if operator == "and" else any(group_results)
+        return input_conditions, group_results, final_result
 
-        if expected_value not in actual_value:
-            return False
-        return True
 
-    def _assert_not_contains(self, actual_value: Optional[str | list], expected_value: str) -> bool:
-        """
-        Assert not contains
-        :param actual_value: actual value
-        :param expected_value: expected value
-        :return:
-        """
-        if not actual_value:
-            return True
+def _evaluate_condition(
+    *,
+    operator: SupportedComparisonOperator,
+    value: Any,
+    expected: str | Sequence[str] | None,
+) -> bool:
+    match operator:
+        case "contains":
+            return _assert_contains(value=value, expected=expected)
+        case "not contains":
+            return _assert_not_contains(value=value, expected=expected)
+        case "start with":
+            return _assert_start_with(value=value, expected=expected)
+        case "end with":
+            return _assert_end_with(value=value, expected=expected)
+        case "is":
+            return _assert_is(value=value, expected=expected)
+        case "is not":
+            return _assert_is_not(value=value, expected=expected)
+        case "empty":
+            return _assert_empty(value=value)
+        case "not empty":
+            return _assert_not_empty(value=value)
+        case "=":
+            return _assert_equal(value=value, expected=expected)
+        case "≠":
+            return _assert_not_equal(value=value, expected=expected)
+        case ">":
+            return _assert_greater_than(value=value, expected=expected)
+        case "<":
+            return _assert_less_than(value=value, expected=expected)
+        case "≥":
+            return _assert_greater_than_or_equal(value=value, expected=expected)
+        case "≤":
+            return _assert_less_than_or_equal(value=value, expected=expected)
+        case "null":
+            return _assert_null(value=value)
+        case "not null":
+            return _assert_not_null(value=value)
+        case "in":
+            return _assert_in(value=value, expected=expected)
+        case "not in":
+            return _assert_not_in(value=value, expected=expected)
+        case "all of" if isinstance(expected, list):
+            return _assert_all_of(value=value, expected=expected)
+        case "exists":
+            return _assert_exists(value=value)
+        case "not exists":
+            return _assert_not_exists(value=value)
+        case _:
+            raise ValueError(f"Unsupported operator: {operator}")
 
-        if not isinstance(actual_value, str | list):
-            raise ValueError("Invalid actual value type: string or array")
 
-        if expected_value in actual_value:
-            return False
-        return True
-
-    def _assert_start_with(self, actual_value: Optional[str], expected_value: str) -> bool:
-        """
-        Assert start with
-        :param actual_value: actual value
-        :param expected_value: expected value
-        :return:
-        """
-        if not actual_value:
-            return False
-
-        if not isinstance(actual_value, str):
-            raise ValueError("Invalid actual value type: string")
-
-        if not actual_value.startswith(expected_value):
-            return False
-        return True
-
-    def _assert_end_with(self, actual_value: Optional[str], expected_value: str) -> bool:
-        """
-        Assert end with
-        :param actual_value: actual value
-        :param expected_value: expected value
-        :return:
-        """
-        if not actual_value:
-            return False
-
-        if not isinstance(actual_value, str):
-            raise ValueError("Invalid actual value type: string")
-
-        if not actual_value.endswith(expected_value):
-            return False
-        return True
-
-    def _assert_is(self, actual_value: Optional[str], expected_value: str) -> bool:
-        """
-        Assert is
-        :param actual_value: actual value
-        :param expected_value: expected value
-        :return:
-        """
-        if actual_value is None:
-            return False
-
-        if not isinstance(actual_value, str):
-            raise ValueError("Invalid actual value type: string")
-
-        if actual_value != expected_value:
-            return False
-        return True
-
-    def _assert_is_not(self, actual_value: Optional[str], expected_value: str) -> bool:
-        """
-        Assert is not
-        :param actual_value: actual value
-        :param expected_value: expected value
-        :return:
-        """
-        if actual_value is None:
-            return False
-
-        if not isinstance(actual_value, str):
-            raise ValueError("Invalid actual value type: string")
-
-        if actual_value == expected_value:
-            return False
-        return True
-
-    def _assert_empty(self, actual_value: Optional[str]) -> bool:
-        """
-        Assert empty
-        :param actual_value: actual value
-        :return:
-        """
-        if not actual_value:
-            return True
+def _assert_contains(*, value: Any, expected: Any) -> bool:
+    if not value:
         return False
 
-    def _assert_not_empty(self, actual_value: Optional[str]) -> bool:
-        """
-        Assert not empty
-        :param actual_value: actual value
-        :return:
-        """
-        if actual_value:
-            return True
+    if not isinstance(value, str | list):
+        raise ValueError("Invalid actual value type: string or array")
+
+    if expected not in value:
+        return False
+    return True
+
+
+def _assert_not_contains(*, value: Any, expected: Any) -> bool:
+    if not value:
+        return True
+
+    if not isinstance(value, str | list):
+        raise ValueError("Invalid actual value type: string or array")
+
+    if expected in value:
+        return False
+    return True
+
+
+def _assert_start_with(*, value: Any, expected: Any) -> bool:
+    if not value:
         return False
 
-    def _assert_equal(self, actual_value: Optional[int | float], expected_value: str | int | float) -> bool:
-        """
-        Assert equal
-        :param actual_value: actual value
-        :param expected_value: expected value
-        :return:
-        """
-        if actual_value is None:
-            return False
+    if not isinstance(value, str):
+        raise ValueError("Invalid actual value type: string")
 
-        if not isinstance(actual_value, int | float):
-            raise ValueError("Invalid actual value type: number")
+    if not value.startswith(expected):
+        return False
+    return True
 
-        if isinstance(actual_value, int):
-            expected_value = int(expected_value)
-        else:
-            expected_value = float(expected_value)
 
-        if actual_value != expected_value:
-            return False
-        return True
-
-    def _assert_not_equal(self, actual_value: Optional[int | float], expected_value: str | int | float) -> bool:
-        """
-        Assert not equal
-        :param actual_value: actual value
-        :param expected_value: expected value
-        :return:
-        """
-        if actual_value is None:
-            return False
-
-        if not isinstance(actual_value, int | float):
-            raise ValueError("Invalid actual value type: number")
-
-        if isinstance(actual_value, int):
-            expected_value = int(expected_value)
-        else:
-            expected_value = float(expected_value)
-
-        if actual_value == expected_value:
-            return False
-        return True
-
-    def _assert_greater_than(self, actual_value: Optional[int | float], expected_value: str | int | float) -> bool:
-        """
-        Assert greater than
-        :param actual_value: actual value
-        :param expected_value: expected value
-        :return:
-        """
-        if actual_value is None:
-            return False
-
-        if not isinstance(actual_value, int | float):
-            raise ValueError("Invalid actual value type: number")
-
-        if isinstance(actual_value, int):
-            expected_value = int(expected_value)
-        else:
-            expected_value = float(expected_value)
-
-        if actual_value <= expected_value:
-            return False
-        return True
-
-    def _assert_less_than(self, actual_value: Optional[int | float], expected_value: str | int | float) -> bool:
-        """
-        Assert less than
-        :param actual_value: actual value
-        :param expected_value: expected value
-        :return:
-        """
-        if actual_value is None:
-            return False
-
-        if not isinstance(actual_value, int | float):
-            raise ValueError("Invalid actual value type: number")
-
-        if isinstance(actual_value, int):
-            expected_value = int(expected_value)
-        else:
-            expected_value = float(expected_value)
-
-        if actual_value >= expected_value:
-            return False
-        return True
-
-    def _assert_greater_than_or_equal(
-        self, actual_value: Optional[int | float], expected_value: str | int | float
-    ) -> bool:
-        """
-        Assert greater than or equal
-        :param actual_value: actual value
-        :param expected_value: expected value
-        :return:
-        """
-        if actual_value is None:
-            return False
-
-        if not isinstance(actual_value, int | float):
-            raise ValueError("Invalid actual value type: number")
-
-        if isinstance(actual_value, int):
-            expected_value = int(expected_value)
-        else:
-            expected_value = float(expected_value)
-
-        if actual_value < expected_value:
-            return False
-        return True
-
-    def _assert_less_than_or_equal(
-        self, actual_value: Optional[int | float], expected_value: str | int | float
-    ) -> bool:
-        """
-        Assert less than or equal
-        :param actual_value: actual value
-        :param expected_value: expected value
-        :return:
-        """
-        if actual_value is None:
-            return False
-
-        if not isinstance(actual_value, int | float):
-            raise ValueError("Invalid actual value type: number")
-
-        if isinstance(actual_value, int):
-            expected_value = int(expected_value)
-        else:
-            expected_value = float(expected_value)
-
-        if actual_value > expected_value:
-            return False
-        return True
-
-    def _assert_null(self, actual_value: Optional[int | float]) -> bool:
-        """
-        Assert null
-        :param actual_value: actual value
-        :return:
-        """
-        if actual_value is None:
-            return True
+def _assert_end_with(*, value: Any, expected: Any) -> bool:
+    if not value:
         return False
 
-    def _assert_not_null(self, actual_value: Optional[int | float]) -> bool:
-        """
-        Assert not null
-        :param actual_value: actual value
-        :return:
-        """
-        if actual_value is not None:
-            return True
+    if not isinstance(value, str):
+        raise ValueError("Invalid actual value type: string")
+
+    if not value.endswith(expected):
+        return False
+    return True
+
+
+def _assert_is(*, value: Any, expected: Any) -> bool:
+    if value is None:
         return False
 
+    if not isinstance(value, str):
+        raise ValueError("Invalid actual value type: string")
 
-class ConditionAssertionError(Exception):
-    def __init__(self, message: str, conditions: list[dict], sub_condition_compare_results: list[dict]) -> None:
-        self.message = message
-        self.conditions = conditions
-        self.sub_condition_compare_results = sub_condition_compare_results
-        super().__init__(self.message)
+    if value != expected:
+        return False
+    return True
+
+
+def _assert_is_not(*, value: Any, expected: Any) -> bool:
+    if value is None:
+        return False
+
+    if not isinstance(value, str):
+        raise ValueError("Invalid actual value type: string")
+
+    if value == expected:
+        return False
+    return True
+
+
+def _assert_empty(*, value: Any) -> bool:
+    if not value:
+        return True
+    return False
+
+
+def _assert_not_empty(*, value: Any) -> bool:
+    if value:
+        return True
+    return False
+
+
+def _assert_equal(*, value: Any, expected: Any) -> bool:
+    if value is None:
+        return False
+
+    if not isinstance(value, int | float):
+        raise ValueError("Invalid actual value type: number")
+
+    if isinstance(value, int):
+        expected = int(expected)
+    else:
+        expected = float(expected)
+
+    if value != expected:
+        return False
+    return True
+
+
+def _assert_not_equal(*, value: Any, expected: Any) -> bool:
+    if value is None:
+        return False
+
+    if not isinstance(value, int | float):
+        raise ValueError("Invalid actual value type: number")
+
+    if isinstance(value, int):
+        expected = int(expected)
+    else:
+        expected = float(expected)
+
+    if value == expected:
+        return False
+    return True
+
+
+def _assert_greater_than(*, value: Any, expected: Any) -> bool:
+    if value is None:
+        return False
+
+    if not isinstance(value, int | float):
+        raise ValueError("Invalid actual value type: number")
+
+    if isinstance(value, int):
+        expected = int(expected)
+    else:
+        expected = float(expected)
+
+    if value <= expected:
+        return False
+    return True
+
+
+def _assert_less_than(*, value: Any, expected: Any) -> bool:
+    if value is None:
+        return False
+
+    if not isinstance(value, int | float):
+        raise ValueError("Invalid actual value type: number")
+
+    if isinstance(value, int):
+        expected = int(expected)
+    else:
+        expected = float(expected)
+
+    if value >= expected:
+        return False
+    return True
+
+
+def _assert_greater_than_or_equal(*, value: Any, expected: Any) -> bool:
+    if value is None:
+        return False
+
+    if not isinstance(value, int | float):
+        raise ValueError("Invalid actual value type: number")
+
+    if isinstance(value, int):
+        expected = int(expected)
+    else:
+        expected = float(expected)
+
+    if value < expected:
+        return False
+    return True
+
+
+def _assert_less_than_or_equal(*, value: Any, expected: Any) -> bool:
+    if value is None:
+        return False
+
+    if not isinstance(value, int | float):
+        raise ValueError("Invalid actual value type: number")
+
+    if isinstance(value, int):
+        expected = int(expected)
+    else:
+        expected = float(expected)
+
+    if value > expected:
+        return False
+    return True
+
+
+def _assert_null(*, value: Any) -> bool:
+    if value is None:
+        return True
+    return False
+
+
+def _assert_not_null(*, value: Any) -> bool:
+    if value is not None:
+        return True
+    return False
+
+
+def _assert_in(*, value: Any, expected: Any) -> bool:
+    if not value:
+        return False
+
+    if not isinstance(expected, list):
+        raise ValueError("Invalid expected value type: array")
+
+    if value not in expected:
+        return False
+    return True
+
+
+def _assert_not_in(*, value: Any, expected: Any) -> bool:
+    if not value:
+        return True
+
+    if not isinstance(expected, list):
+        raise ValueError("Invalid expected value type: array")
+
+    if value in expected:
+        return False
+    return True
+
+
+def _assert_all_of(*, value: Any, expected: Sequence[str]) -> bool:
+    if not value:
+        return False
+
+    if not all(item in value for item in expected):
+        return False
+    return True
+
+
+def _assert_exists(*, value: Any) -> bool:
+    return value is not None
+
+
+def _assert_not_exists(*, value: Any) -> bool:
+    return value is None
+
+
+def _process_sub_conditions(
+    variable: ArrayFileSegment,
+    sub_conditions: Sequence[SubCondition],
+    operator: Literal["and", "or"],
+) -> bool:
+    files = variable.value
+    group_results = []
+    for condition in sub_conditions:
+        key = FileAttribute(condition.key)
+        values = [file_manager.get_attr(file=file, attr=key) for file in files]
+        sub_group_results = [
+            _evaluate_condition(
+                value=value,
+                operator=condition.comparison_operator,
+                expected=condition.value,
+            )
+            for value in values
+        ]
+        # Determine the result based on the presence of "not" in the comparison operator
+        result = all(sub_group_results) if "not" in condition.comparison_operator else any(sub_group_results)
+        group_results.append(result)
+    return all(group_results) if operator == "and" else any(group_results)

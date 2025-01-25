@@ -1,9 +1,0 @@
-.divider {
-  @apply bg-gray-200;
-}
-.horizontal {
-  @apply w-full h-[0.5px] my-2;
-}
-.vertical {
-  @apply w-[1px] h-full mx-2;
-}

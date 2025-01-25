@@ -1,114 +1,13 @@
 [project]
-requires-python = ">=3.10,<3.13"
+name = "dify-api"
+requires-python = ">=3.11,<3.13"
+dynamic = [ "dependencies" ]
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.ruff]
-exclude=[
-    "migrations/*",
-]
-line-length = 120
-
-[tool.ruff.lint]
-preview = true
-select = [
-    "B", # flake8-bugbear rules
-    "C4", # flake8-comprehensions
-    "E", # pycodestyle E rules
-    "F", # pyflakes rules
-    "FURB", # refurb rules
-    "I", # isort rules
-    "N", # pep8-naming
-    "PT", # flake8-pytest-style rules
-    "PLC0208", # iteration-over-set
-    "PLC2801", # unnecessary-dunder-call
-    "PLC0414", # useless-import-alias
-    "PLR0402", # manual-from-import
-    "PLR1711", # useless-return
-    "PLR1714", # repeated-equality-comparison
-    "RUF013", # implicit-optional
-    "RUF019", # unnecessary-key-check
-    "RUF100", # unused-noqa
-    "RUF101", # redirected-noqa
-    "S506", # unsafe-yaml-load
-    "SIM", # flake8-simplify rules
-    "UP", # pyupgrade rules
-    "W191", # tab-indentation
-    "W605", # invalid-escape-sequence
-]
-ignore = [
-    "E402", # module-import-not-at-top-of-file
-    "E711", # none-comparison
-    "E712", # true-false-comparison
-    "E721", # type-comparison
-    "E722", # bare-except
-    "E731", # lambda-assignment
-    "F821", # undefined-name
-    "F841", # unused-variable
-    "FURB113", # repeated-append
-    "FURB152", # math-constant
-    "UP007", # non-pep604-annotation
-    "UP032", # f-string
-    "B005", # strip-with-multi-characters
-    "B006", # mutable-argument-default
-    "B007", # unused-loop-control-variable
-    "B026", # star-arg-unpacking-after-keyword-arg
-    "B904", # raise-without-from-inside-except
-    "B905", # zip-without-explicit-strict
-    "N806", # non-lowercase-variable-in-function
-    "N815", # mixed-case-variable-in-class-scope
-    "PT011", # pytest-raises-too-broad
-    "SIM102", # collapsible-if
-    "SIM103", # needless-bool
-    "SIM105", # suppressible-exception
-    "SIM107", # return-in-try-except-finally
-    "SIM108", # if-else-block-instead-of-if-exp
-    "SIM113", # eumerate-for-loop
-    "SIM117", # multiple-with-statements
-    "SIM210", # if-expr-with-true-false
-    "SIM300", # yoda-conditions,
-]
-
-[tool.ruff.lint.per-file-ignores]
-"app.py" = [
-]
-"__init__.py" = [
-    "F401", # unused-import
-    "F811", # redefined-while-unused
-]
-"configs/*" = [
-    "N802", # invalid-function-name
-]
-"libs/gmpy2_pkcs10aep_cipher.py" = [
-    "N803", # invalid-argument-name
-]
-"tests/*" = [
-    "F811", # redefined-while-unused
-    "F401", # unused-import
-    "PT001", # missing-function-docstring
-    "PT004", # missing-parameter-docstring
-]
-"core/rag/extractor/word_extractor.py" = [
-    "RUF100", # Unused `noqa` directive
-]
-"core/tools/provider/builtin/gitlab/tools/gitlab_commits.py" = [
-    "PLR1714", # Consider merging multiple comparisons
-]
-
-[tool.ruff.lint.pyflakes]
-extend-generics=[
-    "_pytest.monkeypatch",
-    "tests.integration_tests",
-]
-
-[tool.ruff.format]
-exclude = [
-]
-
 [tool.poetry]
-name = "dify-api"
 package-mode = false
 
 ############################################################
@@ -122,21 +21,22 @@ azure-ai-inference = "~1.0.0b3"
 azure-ai-ml = "~1.20.0"
 azure-identity = "1.16.1"
 beautifulsoup4 = "4.12.2"
-boto3 = "1.35.17"
+boto3 = "1.36.4"
 bs4 = "~0.0.1"
 cachetools = "~5.3.0"
-celery = "~5.3.6"
+celery = "~5.4.0"
 chardet = "~5.1.0"
 cohere = "~5.2.4"
 dashscope = { version = "~1.17.0", extras = ["tokenizer"] }
-flask = "~3.0.1"
-flask-compress = "~1.14"
+fal-client = "0.5.6"
+flask = "~3.1.0"
+flask-compress = "~1.17"
 flask-cors = "~4.0.0"
 flask-login = "~0.6.3"
-flask-migrate = "~4.0.5"
+flask-migrate = "~4.0.7"
 flask-restful = "~0.3.10"
 flask-sqlalchemy = "~3.1.1"
-gevent = "~23.9.1"
+gevent = "~24.11.1"
 gmpy2 = "~2.2.1"
 google-ai-generativelanguage = "0.6.9"
 google-api-core = "2.18.0"
@@ -146,7 +46,7 @@ google-auth-httplib2 = "0.2.0"
 google-cloud-aiplatform = "1.49.0"
 google-generativeai = "0.8.1"
 googleapis-common-protos = "1.63.0"
-gunicorn = "~22.0.0"
+gunicorn = "~23.0.0"
 httpx = { version = "~0.27.0", extras = ["socks"] }
 huggingface-hub = "~0.16.4"
 jieba = "0.42.1"
@@ -158,39 +58,44 @@ nomic = "~3.1.2"
 novita-client = "~0.5.7"
 numpy = "~1.26.4"
 oci = "~2.135.1"
-openai = "~1.51.2"
+openai = "~1.52.0"
 openpyxl = "~3.1.5"
+opik = "~1.3.4"
 pandas = { version = "~2.2.2", extras = ["performance", "excel"] }
+pandas-stubs = "~2.2.3.241009"
+psycogreen = "~1.0.2"
 psycopg2-binary = "~2.9.6"
 pycryptodome = "3.19.1"
-pydantic = "~2.8.2"
-pydantic-settings = "~2.4.0"
+pydantic = "~2.9.2"
+pydantic-settings = "~2.6.0"
 pydantic_extra_types = "~2.9.0"
 pyjwt = "~2.8.0"
-pypdfium2 = "~4.17.0"
-python = ">=3.10,<3.13"
+pypdfium2 = "~4.30.0"
+python = ">=3.11,<3.13"
 python-docx = "~1.1.0"
-python-dotenv = "1.0.0"
+python-dotenv = "1.0.1"
 pyyaml = "~6.0.1"
 readabilipy = "0.2.0"
 redis = { version = "~5.0.3", extras = ["hiredis"] }
 replicate = "~0.22.0"
 resend = "~0.7.0"
-sagemaker = "2.231.0"
+sagemaker = "~2.231.0"
 scikit-learn = "~1.5.1"
 sentry-sdk = { version = "~1.44.1", extras = ["flask"] }
 sqlalchemy = "~2.0.29"
-tencentcloud-sdk-python-hunyuan = "~3.0.1158"
+starlette = "0.41.0"
+tencentcloud-sdk-python-hunyuan = "~3.0.1294"
 tiktoken = "~0.8.0"
 tokenizers = "~0.15.0"
 transformers = "~4.35.0"
-unstructured = { version = "~0.10.27", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"] }
+types-pytz = "~2024.2.0.20241003"
+unstructured = { version = "~0.16.1", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"] }
 validators = "0.21.0"
 volcengine-python-sdk = {extras = ["ark"], version = "~1.0.98"}
 websocket-client = "~1.7.0"
-werkzeug = "~3.0.1"
 xinference-client = "0.15.2"
-yarl = "~1.9.4"
+yarl = "~1.18.3"
+youtube-transcript-api = "~0.6.2"
 zhipuai = "~2.1.5"
 # Before adding new dependency, consider place it in alphabet order (a-z) and suitable group.
 
@@ -213,12 +118,14 @@ cloudscraper = "1.2.71"
 duckduckgo-search = "~6.3.0"
 jsonpath-ng = "1.6.1"
 matplotlib = "~3.8.2"
+mplfonts = "~0.0.8"
 newspaper3k = "0.2.8"
-nltk = "3.8.1"
+nltk = "3.9.1"
 numexpr = "~2.9.0"
+pydub = "~0.25.1"
 qrcode = "~7.4.2"
 twilio = "~9.0.4"
-vanna = { version = "0.7.3", extras = ["postgres", "mysql", "clickhouse", "duckdb"] }
+vanna = { version = "0.7.5", extras = ["postgres", "mysql", "clickhouse", "duckdb", "oracle"] }
 wikipedia = "1.4.0"
 yfinance = "~0.2.40"
 
@@ -232,6 +139,7 @@ bce-python-sdk = "~0.9.23"
 cos-python-sdk-v5 = "1.9.30"
 esdk-obs-python = "3.24.6.1"
 google-cloud-storage = "2.16.0"
+opendal = "~0.45.12"
 oss2 = "2.18.5"
 supabase = "~2.8.1"
 tos = "~2.7.1"
@@ -243,18 +151,21 @@ tos = "~2.7.1"
 [tool.poetry.group.vdb.dependencies]
 alibabacloud_gpdb20160503 = "~3.8.0"
 alibabacloud_tea_openapi = "~0.3.9"
-chromadb = "0.5.1"
+chromadb = "0.5.20"
 clickhouse-connect = "~0.7.16"
+couchbase = "~4.3.0"
 elasticsearch = "8.14.0"
 opensearch-py = "2.4.0"
 oracledb = "~2.2.1"
 pgvecto-rs = { version = "~0.2.1", extras = ['sqlalchemy'] }
 pgvector = "0.2.5"
-pymilvus = "~2.4.4"
+pymilvus = "~2.5.0"
 pymochow = "1.3.1"
+pyobvector = "~0.1.6"
 qdrant-client = "1.7.3"
 tcvectordb = "1.3.2"
 tidb-vector = "0.0.9"
+upstash-vector = "0.6.0"
 volcengine-compat = "~1.0.156"
 weaviate-client = "~3.21.0"
 
@@ -266,6 +177,8 @@ weaviate-client = "~3.21.0"
 optional = true
 [tool.poetry.group.dev.dependencies]
 coverage = "~7.2.4"
+faker = "~32.1.0"
+mypy = "~1.13.0"
 pytest = "~8.3.2"
 pytest-benchmark = "~4.0.0"
 pytest-env = "~1.1.3"
@@ -279,4 +192,4 @@ pytest-mock = "~3.14.0"
 optional = true
 [tool.poetry.group.lint.dependencies]
 dotenv-linter = "~0.5.0"
-ruff = "~0.6.9"
+ruff = "~0.9.2"

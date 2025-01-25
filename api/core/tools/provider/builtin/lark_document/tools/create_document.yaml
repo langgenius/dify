@@ -1,0 +1,48 @@
+identity:
+  name: create_document
+  author: Doug Lea
+  label:
+    en_US: Create Lark document
+    zh_Hans: 创建 Lark 文档
+description:
+  human:
+    en_US: Create Lark document
+    zh_Hans: 创建 Lark 文档，支持创建空文档和带内容的文档，支持 markdown 语法创建。应用需要开启机器人能力(https://open.larksuite.com/document/faq/trouble-shooting/how-to-enable-bot-ability)。
+  llm: A tool for creating Lark documents.
+parameters:
+  - name: title
+    type: string
+    required: false
+    label:
+      en_US: Document title
+      zh_Hans: 文档标题
+    human_description:
+      en_US: Document title, only supports plain text content.
+      zh_Hans: 文档标题，只支持纯文本内容。
+    llm_description: 文档标题，只支持纯文本内容，可以为空。
+    form: llm
+
+  - name: content
+    type: string
+    required: false
+    label:
+      en_US: Document content
+      zh_Hans: 文档内容
+    human_description:
+      en_US: Document content, supports markdown syntax, can be empty.
+      zh_Hans: 文档内容，支持 markdown 语法，可以为空。
+    llm_description: 文档内容，支持 markdown 语法，可以为空。
+    form: llm
+
+  - name: folder_token
+    type: string
+    required: false
+    label:
+      en_US: folder_token
+      zh_Hans: 文档所在文件夹的 Token
+    human_description:
+      en_US: |
+        The token of the folder where the document is located. If it is not passed or is empty, it means the root directory. For Example: https://lark-japan.jp.larksuite.com/drive/folder/Lf8uf6BoAlWkUfdGtpMjUV0PpZd
+      zh_Hans: 文档所在文件夹的 Token，不传或传空表示根目录。例如：https://lark-japan.jp.larksuite.com/drive/folder/Lf8uf6BoAlWkUfdGtpMjUV0PpZd。
+    llm_description: 文档所在文件夹的 Token，不传或传空表示根目录。例如：https://lark-japan.jp.larksuite.com/drive/folder/Lf8uf6BoAlWkUfdGtpMjUV0PpZd。
+    form: llm

@@ -1,13 +1,13 @@
 import json
+from typing import cast
 
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource  # type: ignore
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from core.agent.entities import AgentToolEntity
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
@@ -27,7 +27,9 @@ class ModelConfigResource(Resource):
         """Modify app model config"""
         # validate config
         model_configuration = AppModelConfigService.validate_configuration(
-            tenant_id=current_user.current_tenant_id, config=request.json, app_mode=AppMode.value_of(app_model.mode)
+            tenant_id=current_user.current_tenant_id,
+            config=cast(dict, request.json),
+            app_mode=AppMode.value_of(app_model.mode),
         )
 
         new_app_model_config = AppModelConfig(
@@ -39,9 +41,11 @@ class ModelConfigResource(Resource):
 
         if app_model.mode == AppMode.AGENT_CHAT.value or app_model.is_agent:
             # get original app model config
-            original_app_model_config: AppModelConfig = (
+            original_app_model_config = (
                 db.session.query(AppModelConfig).filter(AppModelConfig.id == app_model.app_model_config_id).first()
             )
+            if original_app_model_config is None:
+                raise ValueError("Original app model config not found")
             agent_mode = original_app_model_config.agent_mode_dict
             # decrypt agent tool parameters if it's secret-input
             parameter_map = {}
@@ -66,7 +70,7 @@ class ModelConfigResource(Resource):
                         provider_type=agent_tool_entity.provider_type,
                         identity_id=f"AGENT.{app_model.id}",
                     )
-                except Exception as e:
+                except Exception:
                     continue
 
                 # get decrypted parameters
@@ -98,7 +102,7 @@ class ModelConfigResource(Resource):
                             app_id=app_model.id,
                             agent_tool=agent_tool_entity,
                         )
-                    except Exception as e:
+                    except Exception:
                         continue
 
                 manager = ToolParameterConfigurationManager(

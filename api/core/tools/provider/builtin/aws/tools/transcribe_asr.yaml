@@ -1,0 +1,133 @@
+identity:
+  name: transcribe_asr
+  author: AWS
+  label:
+    en_US: TranscribeASR
+    zh_Hans: Transcribe语音识别转录
+    pt_BR: TranscribeASR
+  icon: icon.svg
+description:
+  human:
+    en_US: A tool for ASR (Automatic Speech Recognition) - https://github.com/aws-samples/dify-aws-tool
+    zh_Hans: AWS 语音识别转录服务, 请参考 https://aws.amazon.com/cn/pm/transcribe/#Learn_More_About_Amazon_Transcribe
+    pt_BR: A tool for ASR (Automatic Speech Recognition).
+  llm: A tool for ASR (Automatic Speech Recognition).
+parameters:
+  - name: file_url
+    type: string
+    required: true
+    label:
+      en_US: video or audio file url for transcribe
+      zh_Hans: 语音或者视频文件url
+      pt_BR: video or audio file url for transcribe
+    human_description:
+      en_US: video or audio file url for transcribe
+      zh_Hans: 语音或者视频文件url
+      pt_BR: video or audio file url for transcribe
+    llm_description: video or audio file url for transcribe
+    form: llm
+  - name: language_code
+    type: string
+    required: false
+    label:
+      en_US: Language Code
+      zh_Hans: 语言编码
+      pt_BR: Language Code
+    human_description:
+      en_US: The language code used to create your transcription job.  refer to :https://docs.aws.amazon.com/transcribe/latest/dg/supported-languages.html
+      zh_Hans: 语言编码,例如zh-CN, en-US 可参考 https://docs.aws.amazon.com/transcribe/latest/dg/supported-languages.html
+      pt_BR: The language code used to create your transcription job.  refer to :https://docs.aws.amazon.com/transcribe/latest/dg/supported-languages.html
+    llm_description: The language code used to create your transcription job.
+    form: llm
+  - name: identify_language
+    type: boolean
+    default: true
+    required: false
+    label:
+      en_US: Automactically Identify Language
+      zh_Hans: 自动识别语言
+      pt_BR: Automactically Identify Language
+    human_description:
+      en_US: Automactically Identify Language
+      zh_Hans: 自动识别语言
+      pt_BR: Automactically Identify Language
+    llm_description: Enable Automactically Identify Language
+    form: form
+  - name: identify_multiple_languages
+    type: boolean
+    required: false
+    label:
+      en_US: Automactically Identify Multiple Languages
+      zh_Hans: 自动识别多种语言
+      pt_BR: Automactically Identify Multiple Languages
+    human_description:
+      en_US: Automactically Identify Multiple Languages
+      zh_Hans: 自动识别多种语言
+      pt_BR: Automactically Identify Multiple Languages
+    llm_description: Enable Automactically Identify Multiple Languages
+    form: form
+  - name: language_options
+    type: string
+    required: false
+    label:
+      en_US: Language Options
+      zh_Hans: 语言种类选项
+      pt_BR: Language Options
+    human_description:
+      en_US: Seperated by |, e.g:zh-CN|en-US, You can specify two or more language codes that represent the languages you think may be present in your media
+      zh_Hans: 您可以指定两个或更多的语言代码来表示您认为可能出现在媒体中的语言。用｜分隔,如 zh-CN|en-US
+      pt_BR: Seperated by |, e.g:zh-CN|en-US, You can specify two or more language codes that represent the languages you think may be present in your media
+    llm_description: Seperated by |, e.g:zh-CN|en-US, You can specify two or more language codes that represent the languages you think may be present in your media
+    form: llm
+  - name: s3_bucket_name
+    type: string
+    required: true
+    label:
+      en_US: s3 bucket name
+      zh_Hans: s3 存储桶名称
+      pt_BR: s3 bucket name
+    human_description:
+      en_US: s3 bucket name to store transcribe files  (don't add prefix s3://)
+      zh_Hans: s3 存储桶名称,用于存储转录文件  (不需要前缀 s3://)
+      pt_BR: s3 bucket name to store transcribe files  (don't add prefix s3://)
+    llm_description: s3 bucket name to store transcribe files
+    form: form
+  - name: ShowSpeakerLabels
+    type: boolean
+    required: true
+    default: true
+    label:
+      en_US: ShowSpeakerLabels
+      zh_Hans: 显示说话人标签
+      pt_BR: ShowSpeakerLabels
+    human_description:
+      en_US: Enables speaker partitioning (diarization) in your transcription output
+      zh_Hans: 在转录输出中启用说话人分区（说话人分离）
+      pt_BR: Enables speaker partitioning (diarization) in your transcription output
+    llm_description: Enables speaker partitioning (diarization) in your transcription output
+    form: form
+  - name: MaxSpeakerLabels
+    type: number
+    required: true
+    default: 2
+    label:
+      en_US: MaxSpeakerLabels
+      zh_Hans: 说话人标签数量
+      pt_BR: MaxSpeakerLabels
+    human_description:
+      en_US: Specify the maximum number of speakers you want to partition in your media
+      zh_Hans: 指定您希望在媒体中划分的最多演讲者数量。
+      pt_BR: Specify the maximum number of speakers you want to partition in your media
+    llm_description: Specify the maximum number of speakers you want to partition in your media
+    form: form
+  - name: aws_region
+    type: string
+    required: false
+    label:
+      en_US: AWS Region
+      zh_Hans: AWS 区域
+    human_description:
+      en_US: Please enter the AWS region for the transcribe service, for example 'us-east-1'.
+      zh_Hans: 请输入Transcribe的 AWS 区域，例如 'us-east-1'。
+    llm_description: Please enter the AWS region for the transcribe service, for example 'us-east-1'.
+    form: form

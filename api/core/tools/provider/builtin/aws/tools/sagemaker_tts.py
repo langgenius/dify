@@ -2,7 +2,7 @@ import json
 from enum import Enum
 from typing import Any, Optional, Union
 
-import boto3
+import boto3  # type: ignore
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
@@ -17,7 +17,7 @@ class TTSModelType(Enum):
 
 class SageMakerTTSTool(BuiltinTool):
     sagemaker_client: Any = None
-    sagemaker_endpoint: str = None
+    sagemaker_endpoint: str | None = None
     s3_client: Any = None
     comprehend_client: Any = None
 

@@ -1,8 +1,9 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.nodes.base import BaseNode
+from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.iteration.entities import IterationNodeData, IterationStartNodeData
 from models.workflow import WorkflowNodeExecutionStatus
 

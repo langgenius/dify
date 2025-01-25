@@ -1,5 +1,6 @@
 import uuid
-from typing import Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 from core.agent.entities import AgentEntity
 from core.app.app_config.base_app_config_manager import BaseAppConfigManager
@@ -60,7 +61,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
             app_model_config_dict = app_model_config.to_dict()
             config_dict = app_model_config_dict.copy()
         else:
-            config_dict = override_config_dict
+            config_dict = override_config_dict or {}
 
         app_mode = AppMode.value_of(app_model.mode)
         app_config = AgentChatAppConfig(
@@ -85,7 +86,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         return app_config
 
     @classmethod
-    def config_validate(cls, tenant_id: str, config: dict) -> dict:
+    def config_validate(cls, tenant_id: str, config: Mapping[str, Any]) -> dict:
         """
         Validate for agent chat app model config
 

@@ -1,12 +1,12 @@
 import json
 import logging
 from collections.abc import Generator
-from datetime import datetime, timezone
-from typing import Optional, Union
+from datetime import UTC, datetime
+from typing import Optional, Union, cast
 
 from sqlalchemy import and_
 
-from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
+from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import (
@@ -26,7 +26,8 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
-from models.account import Account
+from models import Account
+from models.enums import CreatedByRole
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
@@ -41,7 +42,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             ChatAppGenerateEntity,
             CompletionAppGenerateEntity,
             AgentChatAppGenerateEntity,
-            AdvancedChatAppGenerateEntity,
+            AgentChatAppGenerateEntity,
         ],
         queue_manager: AppQueueManager,
         conversation: Conversation,
@@ -69,17 +70,16 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             queue_manager=queue_manager,
             conversation=conversation,
             message=message,
-            user=user,
             stream=stream,
         )
 
         try:
             return generate_task_pipeline.process()
         except ValueError as e:
-            if e.args[0] == "I/O operation on closed file.":  # ignore this error
+            if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedError()
             else:
-                logger.exception(e)
+                logger.exception(f"Failed to handle response, conversation_id: {conversation.id}")
                 raise e
 
     def _get_conversation_by_user(
@@ -89,6 +89,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             Conversation.id == conversation_id,
             Conversation.app_id == app_model.id,
             Conversation.status == "normal",
+            Conversation.is_deleted.is_(False),
         ]
 
         if isinstance(user, Account):
@@ -143,7 +144,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :conversation conversation
         :return:
         """
-        app_config = application_generate_entity.app_config
+        app_config: EasyUIBasedAppConfig = cast(EasyUIBasedAppConfig, application_generate_entity.app_config)
 
         # get from source
         end_user_id = None
@@ -199,7 +200,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             db.session.commit()
             db.session.refresh(conversation)
         else:
-            conversation.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            conversation.updated_at = datetime.now(UTC).replace(tzinfo=None)
             db.session.commit()
 
         message = Message(
@@ -235,13 +236,13 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         for file in application_generate_entity.files:
             message_file = MessageFile(
                 message_id=message.id,
-                type=file.type.value,
-                transfer_method=file.transfer_method.value,
+                type=file.type,
+                transfer_method=file.transfer_method,
                 belongs_to="user",
-                url=file.url,
+                url=file.remote_url,
                 upload_file_id=file.related_id,
-                created_by_role=("account" if account_id else "end_user"),
-                created_by=account_id or end_user_id,
+                created_by_role=(CreatedByRole.ACCOUNT if account_id else CreatedByRole.END_USER),
+                created_by=account_id or end_user_id or "",
             )
             db.session.add(message_file)
             db.session.commit()
@@ -266,7 +267,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             except KeyError:
                 pass
 
-        return introduction
+        return introduction or ""
 
     def _get_conversation(self, conversation_id: str):
         """
@@ -281,7 +282,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
         return conversation
 
-    def _get_message(self, message_id: str) -> Message:
+    def _get_message(self, message_id: str) -> Optional[Message]:
         """
         Get message by message id
         :param message_id: message id

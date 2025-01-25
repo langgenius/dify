@@ -1,0 +1,22 @@
+identity:
+  author: Kalo Chin
+  name: slidespeak
+  label:
+    en_US: SlideSpeak
+    zh_Hans: SlideSpeak
+  description:
+    en_US: Generate presentation slides using SlideSpeak API
+    zh_Hans: 使用 SlideSpeak API 生成演示幻灯片
+  icon: icon.png
+
+credentials_for_provider:
+  slidespeak_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: API Key
+      zh_Hans: API 密钥
+    placeholder:
+      en_US: Enter your SlideSpeak API key
+      zh_Hans: 输入您的 SlideSpeak API 密钥
+    url: https://app.slidespeak.co/settings/developer

@@ -38,3 +38,28 @@ parameters:
       pt_BR: Content to sent to the channel or person.
     llm_description: Content of the message
     form: llm
+  - name: username
+    type: string
+    required: false
+    label:
+      en_US: Discord Webhook Username
+      zh_Hans: Discord Webhook用户名
+      pt_BR: Discord Webhook Username
+    human_description:
+      en_US: Discord Webhook Username
+      zh_Hans: Discord Webhook用户名
+      pt_BR: Discord Webhook Username
+    llm_description: Discord Webhook Username
+    form: llm
+  - name: avatar_url
+    type: string
+    required: false
+    label:
+      en_US: Discord Webhook Avatar
+      zh_Hans: Discord Webhook头像
+      pt_BR: Discord Webhook Avatar
+    human_description:
+      en_US: Discord Webhook Avatar URL
+      zh_Hans: Discord Webhook头像地址
+      pt_BR: Discord Webhook Avatar URL
+    form: form

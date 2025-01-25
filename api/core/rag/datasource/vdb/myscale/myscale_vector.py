@@ -74,15 +74,16 @@ class MyScaleVector(BaseVector):
         columns = ["id", "text", "vector", "metadata"]
         values = []
         for i, doc in enumerate(documents):
-            doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
-            row = (
-                doc_id,
-                self.escape_str(doc.page_content),
-                embeddings[i],
-                json.dumps(doc.metadata) if doc.metadata else {},
-            )
-            values.append(str(row))
-            ids.append(doc_id)
+            if doc.metadata is not None:
+                doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
+                row = (
+                    doc_id,
+                    self.escape_str(doc.page_content),
+                    embeddings[i],
+                    json.dumps(doc.metadata) if doc.metadata else {},
+                )
+                values.append(str(row))
+                ids.append(doc_id)
         sql = f"""
             INSERT INTO {self._config.database}.{self._collection_name}
             ({",".join(columns)}) VALUES {",".join(values)}
@@ -99,6 +100,8 @@ class MyScaleVector(BaseVector):
         return results.row_count > 0
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        if not ids:
+            return
         self._client.command(
             f"DELETE FROM {self._config.database}.{self._collection_name} WHERE id IN {str(tuple(ids))}"
         )
@@ -142,7 +145,7 @@ class MyScaleVector(BaseVector):
                 for r in self._client.query(sql).named_results()
             ]
         except Exception as e:
-            logging.error(f"\033[91m\033[1m{type(e)}\033[0m \033[95m{str(e)}\033[0m")
+            logging.exception(f"\033[91m\033[1m{type(e)}\033[0m \033[95m{str(e)}\033[0m")  # noqa:TRY401
             return []
 
     def delete(self) -> None:

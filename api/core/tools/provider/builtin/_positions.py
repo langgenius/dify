@@ -5,7 +5,7 @@ from core.tools.entities.api_entities import UserToolProvider
 
 
 class BuiltinToolProviderSort:
-    _position = {}
+    _position: dict[str, int] = {}
 
     @classmethod
     def sort(cls, providers: list[UserToolProvider]) -> list[UserToolProvider]:

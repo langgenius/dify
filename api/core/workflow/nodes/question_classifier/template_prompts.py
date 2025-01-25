@@ -8,7 +8,7 @@ QUESTION_CLASSIFIER_SYSTEM_PROMPT = """
     ### Constraint
     DO NOT include anything other than the JSON array in your response.
     ### Memory
-    Here is the chat histories between human and assistant, inside <histories></histories> XML tags.
+    Here are the chat histories between human and assistant, inside <histories></histories> XML tags.
     <histories>
     {histories}
     </histories>
@@ -66,7 +66,7 @@ User:{{"input_text": ["bad service, slow to bring the food"], "categories": [{{"
 Assistant:{{"keywords": ["bad service", "slow", "food", "tip", "terrible", "waitresses"],"category_id": "f6ff5bc3-aca0-4e4a-8627-e760d0aca78f","category_name": "Experience"}}
 </example> 
 ### Memory
-Here is the chat histories between human and assistant, inside <histories></histories> XML tags.
+Here are the chat histories between human and assistant, inside <histories></histories> XML tags.
 <histories>
 {histories}
 </histories>

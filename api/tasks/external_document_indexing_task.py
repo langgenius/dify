@@ -3,9 +3,9 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 
-from core.indexing_runner import DocumentIsPausedException
+from core.indexing_runner import DocumentIsPausedError
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.dataset import Dataset, ExternalKnowledgeApis
@@ -68,11 +68,9 @@ def external_document_indexing_task(
         settings = ExternalDatasetService.get_external_knowledge_api_settings(
             json.loads(external_knowledge_api.settings)
         )
-        # assemble headers
-        headers = ExternalDatasetService.assembling_headers(settings.authorization, settings.headers)
 
         # do http request
-        response = ExternalDatasetService.process_external_api(settings, headers, process_parameter, files)
+        response = ExternalDatasetService.process_external_api(settings, files)
         job_id = response.json().get("job_id")
         if job_id:
             # save job_id to dataset
@@ -86,7 +84,7 @@ def external_document_indexing_task(
                 fg="green",
             )
         )
-    except DocumentIsPausedException as ex:
+    except DocumentIsPausedError as ex:
         logging.info(click.style(str(ex), fg="yellow"))
 
     except Exception:

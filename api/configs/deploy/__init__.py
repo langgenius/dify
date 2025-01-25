@@ -17,11 +17,6 @@ class DeploymentConfig(BaseSettings):
         default=False,
     )
 
-    TESTING: bool = Field(
-        description="Enable testing mode for running automated tests",
-        default=False,
-    )
-
     EDITION: str = Field(
         description="Deployment edition of the application (e.g., 'SELF_HOSTED', 'CLOUD')",
         default="SELF_HOSTED",
