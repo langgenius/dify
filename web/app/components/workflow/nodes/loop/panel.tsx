@@ -36,9 +36,6 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
     handleRun,
     handleStop,
     runResult,
-    inputVarValues,
-    setInputVarValues,
-    usedOutVars,
     loopRunResult,
     handleAddCondition,
     handleUpdateCondition,
@@ -107,16 +104,11 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
         <BeforeRunForm
           nodeName={inputs.title}
           onHide={hideSingleRun}
-          forms={[
-            {
-              inputs: [...usedOutVars],
-              values: inputVarValues,
-              onChange: setInputVarValues,
-            },
-          ]}
+          forms={[]}
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}
+          {...logsParams}
           result={
             <ResultPanel {...runResult} showSteps={false} nodeInfo={nodeInfo} {...logsParams} />
           }

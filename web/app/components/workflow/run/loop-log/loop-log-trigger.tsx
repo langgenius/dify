@@ -35,7 +35,7 @@ const LoopLogTrigger = ({
   const handleOnShowLoopDetail = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     e.nativeEvent.stopImmediatePropagation()
-    onShowLoopResultList(nodeInfo.details || [], nodeInfo?.iterDurationMap || nodeInfo.execution_metadata?.loop_duration_map || {})
+    onShowLoopResultList(nodeInfo.details || [], nodeInfo?.loopDurationMap || nodeInfo.execution_metadata?.loop_duration_map || {})
   }
   return (
     <Button
