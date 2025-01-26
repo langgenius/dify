@@ -1,15 +1,15 @@
-from argparse import ArgumentParser
 
 from flask import request
 from flask_login import current_user  # type: ignore
-from flask_restful import Resource  # type: ignore
+from flask_restful import Resource, reqparse  # type: ignore
 
 from libs.helper import extract_remote_ip
 from libs.login import login_required
 from services.billing_service import BillingService
 
 from .. import api
-from ..wraps import account_initialization_required, only_edition_cloud, setup_required
+from ..wraps import (account_initialization_required, only_edition_cloud,
+                     setup_required)
 
 
 class ComplianceListApi(Resource):
@@ -30,8 +30,8 @@ class ComplianceApi(Resource):
     @account_initialization_required
     @only_edition_cloud
     def get(self):
-        parser = ArgumentParser()
-        parser.add_argument("doc_name", type=str, required=True)
+        parser = reqparse.RequestParser()
+        parser.add_argument("doc_name", type=str, required=True, location="args")
         args = parser.parse_args()
 
         ip_address = extract_remote_ip(request)
