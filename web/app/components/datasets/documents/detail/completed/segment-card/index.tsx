@@ -1,14 +1,13 @@
 import React, { type FC, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
-import { StatusItem } from '../../list'
-import { useDocumentContext } from '../index'
-import ChildSegmentList from './child-segment-list'
-import Tag from './common/tag'
-import Dot from './common/dot'
-import { SegmentIndexTag } from './common/segment-index-tag'
-import ParentChunkCardSkeleton from './skeleton/parent-chunk-card-skeleton'
-import { useSegmentListContext } from './index'
+import { StatusItem } from '../../../list'
+import { useDocumentContext } from '../../index'
+import ChildSegmentList from '../child-segment-list'
+import Tag from '../common/tag'
+import Dot from '../common/dot'
+import { SegmentIndexTag } from '../common/segment-index-tag'
+import ParentChunkCardSkeleton from '../skeleton/parent-chunk-card-skeleton'
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
@@ -18,6 +17,7 @@ import cn from '@/utils/classnames'
 import Badge from '@/app/components/base/badge'
 import { isAfter } from '@/utils/time'
 import Tooltip from '@/app/components/base/tooltip'
+import ChunkContent from './chunk-content'
 
 type ISegmentCardProps = {
   loading: boolean
@@ -59,6 +59,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     position,
     enabled,
     content,
+    sign_content,
     word_count,
     hit_count,
     answer,
@@ -68,7 +69,6 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     updated_at,
   } = detail as Required<ISegmentCardProps>['detail']
   const [showModal, setShowModal] = useState(false)
-  const isCollapsed = useSegmentListContext(s => s.isCollapsed)
   const mode = useDocumentContext(s => s.mode)
   const parentMode = useDocumentContext(s => s.parentMode)
 
@@ -102,33 +102,6 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     if (mode !== 'hierarchical' || parentMode !== 'full-doc')
       onClick?.()
   }, [mode, parentMode, onClick])
-
-  const renderContent = () => {
-    if (answer) {
-      return (
-        <>
-          <div className='flex gap-x-1'>
-            <div className='w-4 text-[13px] font-medium leading-[20px] text-text-tertiary shrink-0'>Q</div>
-            <div
-              className={cn('text-text-secondary body-md-regular',
-                isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
-              )}>
-              {content}
-            </div>
-          </div>
-          <div className='flex gap-x-1'>
-            <div className='w-4 text-[13px] font-medium leading-[20px] text-text-tertiary shrink-0'>A</div>
-            <div className={cn('text-text-secondary body-md-regular',
-              isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
-            )}>
-              {answer}
-            </div>
-          </div>
-        </>
-      )
-    }
-    return content
-  }
 
   const wordCountText = useMemo(() => {
     const total = formatNumber(word_count)
@@ -234,12 +207,15 @@ const SegmentCard: FC<ISegmentCardProps> = ({
             : null}
         </>
       </div>
-      <div className={cn('text-text-secondary body-md-regular -tracking-[0.07px] mt-0.5',
-        contentOpacity,
-        isFullDocMode ? 'line-clamp-3' : isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
-      )}>
-        {renderContent()}
-      </div>
+      <ChunkContent
+        detail={{
+          answer,
+          content,
+          sign_content,
+        }}
+        isFullDocMode={isFullDocMode}
+        className={contentOpacity}
+      />
       {isGeneralMode && <div className={cn('flex flex-wrap items-center gap-2 py-1.5', contentOpacity)}>
         {keywords?.map(keyword => <Tag key={keyword} text={keyword} />)}
       </div>}
