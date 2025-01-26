@@ -2,8 +2,9 @@
 import { useTranslation } from 'react-i18next'
 import type { FC } from 'react'
 import ToolCall from './tool-call'
-import cn from '@/utils/classnames'
+import Divider from '@/app/components/base/divider'
 import type { AgentIteration } from '@/models/log'
+import cn from '@/utils/classnames'
 
 type Props = {
   isFinal: boolean
@@ -18,12 +19,12 @@ const Iteration: FC<Props> = ({ iterationInfo, isFinal, index }) => {
     <div className={cn('px-4 py-2')}>
       <div className='flex items-center'>
         {isFinal && (
-          <div className='shrink-0 mr-3 text-gray-500 text-xs leading-[18px] font-semibold'>{t('appLog.agentLogDetail.finalProcessing')}</div>
+          <div className='shrink-0 mr-3 text-text-tertiary text-xs leading-[18px] font-semibold'>{t('appLog.agentLogDetail.finalProcessing')}</div>
         )}
         {!isFinal && (
-          <div className='shrink-0 mr-3 text-gray-500 text-xs leading-[18px] font-semibold'>{`${t('appLog.agentLogDetail.iteration').toUpperCase()} ${index}`}</div>
+          <div className='shrink-0 mr-3 text-text-tertiary text-xs leading-[18px] font-semibold'>{`${t('appLog.agentLogDetail.iteration').toUpperCase()} ${index}`}</div>
         )}
-        <div className='grow h-[1px] bg-gradient-to-r from-[#f3f4f6] to-gray-50'></div>
+        <Divider bgStyle='gradient' className='grow h-[1px] mx-0'/>
       </div>
       <ToolCall
         isLLM
