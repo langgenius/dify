@@ -28,10 +28,6 @@ services:
       # different from console domain.
       # example: http://api.dify.ai
       SERVICE_API_URL: ''
-      # The URL prefix for Web APP frontend, refers to the Web App base URL of WEB service if web app domain is different from
-      # console or api domain.
-      # example: http://udify.app
-      APP_WEB_URL: ''
       # File preview or download Url prefix.
       # used to display File preview or download Url to the front-end or as Multi-model inputs;
       # Url is signed and has expiration time.

@@ -284,8 +284,6 @@ export type SiteConfig = {
   customize_token_strategy: 'must' | 'allow' | 'not_allow'
   /** Is Prompt Public */
   prompt_public: boolean
-  /** Web API and APP Base Domain Name */
-  app_base_url: string
   /** Copyright */
   copyright: string
   /** Privacy Policy */

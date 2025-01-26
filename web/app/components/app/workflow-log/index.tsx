@@ -83,7 +83,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           ? <Loading type='app' />
           : total > 0
             ? <List logs={workflowLogs} appDetail={appDetail} onRefresh={mutate} />
-            : <EmptyElement appUrl={`${appDetail.site.app_base_url}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />
+            : <EmptyElement appUrl={`${window.location.origin}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />
         }
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)

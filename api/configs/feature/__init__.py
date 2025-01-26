@@ -155,11 +155,6 @@ class EndpointConfig(BaseSettings):
         default="",
     )
 
-    APP_WEB_URL: str = Field(
-        description="Base URL for the web application, used for frontend references",
-        default="",
-    )
-
 
 class FileAccessConfig(BaseSettings):
     """

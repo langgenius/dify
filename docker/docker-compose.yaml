@@ -9,7 +9,6 @@ x-shared-env: &shared-api-worker-env
   CONSOLE_WEB_URL: ${CONSOLE_WEB_URL:-}
   SERVICE_API_URL: ${SERVICE_API_URL:-}
   APP_API_URL: ${APP_API_URL:-}
-  APP_WEB_URL: ${APP_WEB_URL:-}
   FILES_URL: ${FILES_URL:-}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
   LOG_FILE: ${LOG_FILE:-/app/logs/server.log}

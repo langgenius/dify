@@ -62,7 +62,6 @@ The `.env.example` file provided in the Docker setup is extensive and covers a w
 
 1. **Common Variables**:
     - `CONSOLE_API_URL`, `SERVICE_API_URL`: URLs for different API services.
-    - `APP_WEB_URL`: Frontend application URL.
     - `FILES_URL`: Base URL for file downloads and previews.
 
 2. **Server Configuration**:

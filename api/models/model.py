@@ -1379,10 +1379,6 @@ class Site(db.Model):  # type: ignore[name-defined]
 
             return result
 
-    @property
-    def app_base_url(self):
-        return dify_config.APP_WEB_URL or request.url_root.rstrip("/")
-
 
 class ApiToken(db.Model):  # type: ignore[name-defined]
     __tablename__ = "api_tokens"

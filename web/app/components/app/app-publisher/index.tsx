@@ -65,8 +65,9 @@ const AppPublisher = ({
   const [published, setPublished] = useState(false)
   const [open, setOpen] = useState(false)
   const appDetail = useAppStore(state => state.appDetail)
-  const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
+  const { access_token: accessToken = '' } = appDetail?.site ?? {}
   const appMode = (appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow') ? 'chat' : appDetail.mode
+  const appBaseURL = window.location.origin
   const appURL = `${appBaseURL}/${appMode}/${accessToken}`
 
   const language = useGetLanguage()
