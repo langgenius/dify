@@ -31,7 +31,7 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import { getLastAnswer } from '@/app/components/base/chat/utils'
 
-interface ChatItemProps {
+type ChatItemProps = {
   modelAndParameter: ModelAndParameter
 }
 const ChatItem: FC<ChatItemProps> = ({

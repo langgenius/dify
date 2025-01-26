@@ -19,6 +19,7 @@ import {
 } from '@/app/components/app/configuration/debug/hooks'
 import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
 import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import type {
@@ -895,13 +896,13 @@ const Configuration: FC = () => {
           <div className="flex flex-col h-full">
             <div className='relative flex grow h-[200px] pt-14'>
               {/* Header */}
-              <div className='absolute top-0 left-0 w-full bg-white h-14'>
+              <div className='absolute top-0 left-0 w-full bg-default-subtle h-14'>
                 <div className='flex items-center justify-between px-6 h-14'>
                   <div className='flex items-center'>
-                    <div className='text-base font-semibold leading-6 text-gray-900'>{t('appDebug.orchestrate')}</div>
+                    <div className='system-xl-semibold text-text-primary'>{t('appDebug.orchestrate')}</div>
                     <div className='flex items-center h-[14px] space-x-1 text-xs'>
                       {isAdvancedMode && (
-                        <div className='ml-1 flex items-center h-5 px-1.5 border border-gray-100 rounded-md text-[11px] font-medium text-gray-500 uppercase'>{t('appDebug.promptMode.advanced')}</div>
+                        <div className='ml-1 flex items-center h-5 px-1.5 border border-components-button-secondary-border rounded-md system-xs-medium-uppercase text-text-tertiary uppercase'>{t('appDebug.promptMode.advanced')}</div>
                       )}
                     </div>
                   </div>
@@ -937,13 +938,13 @@ const Configuration: FC = () => {
                           debugWithMultipleModel={debugWithMultipleModel}
                           onDebugWithMultipleModelChange={handleDebugWithMultipleModelChange}
                         />
-                        <div className='mx-2 w-[1px] h-[14px] bg-gray-200'></div>
+                        <Divider type='vertical' className='mx-2 h-[14px]' />
                       </>
                     )}
                     {isMobile && (
-                      <Button className='!h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
+                      <Button className='mr-2 !h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
                         <span className='mr-1'>{t('appDebug.operation.debugConfig')}</span>
-                        <CodeBracketIcon className="w-4 h-4 text-gray-500" />
+                        <CodeBracketIcon className="w-4 h-4 text-text-tertiary" />
                       </Button>
                     )}
                     <AppPublisher {...{
@@ -1014,7 +1015,7 @@ const Configuration: FC = () => {
             />
           )}
           {isMobile && (
-            <Drawer showClose isOpen={isShowDebugPanel} onClose={hideDebugPanel} mask footer={null} panelClassname='!bg-gray-50'>
+            <Drawer showClose isOpen={isShowDebugPanel} onClose={hideDebugPanel} mask footer={null}>
               <Debug
                 isAPIKeySet={isAPIKeySet}
                 onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}

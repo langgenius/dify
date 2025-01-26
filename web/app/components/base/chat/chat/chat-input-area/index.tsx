@@ -173,7 +173,7 @@ const ChatInputArea = ({
               <Textarea
                 ref={textareaRef}
                 className={cn(
-                  'p-1 w-full leading-6 body-lg-regular text-text-tertiary outline-none',
+                  'p-1 w-full leading-6 body-lg-regular text-text-tertiary bg-transparent outline-none',
                 )}
                 placeholder={t('common.chat.inputPlaceholder') || ''}
                 autoFocus

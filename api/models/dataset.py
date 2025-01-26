@@ -583,6 +583,10 @@ class DocumentSegment(db.Model):  # type: ignore[name-defined]
                 return []
         else:
             return []
+    
+    @property
+    def sign_content(self):
+        return self.get_sign_content()
 
     def get_sign_content(self):
         signed_urls = []

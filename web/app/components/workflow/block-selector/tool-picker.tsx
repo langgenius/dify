@@ -12,7 +12,7 @@ import type {
   Placement,
 } from '@floating-ui/react'
 import AllTools from '@/app/components/workflow/block-selector/all-tools'
-import type { ToolDefaultValue } from './types'
+import type { ToolDefaultValue, ToolValue } from './types'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useTranslation } from 'react-i18next'
@@ -35,6 +35,7 @@ type Props = {
   onSelect: (tool: ToolDefaultValue) => void
   supportAddCustomTool?: boolean
   scope?: string
+  selectedTools?: ToolValue[]
 }
 
 const ToolPicker: FC<Props> = ({
@@ -47,6 +48,7 @@ const ToolPicker: FC<Props> = ({
   onSelect,
   supportAddCustomTool,
   scope = 'all',
+  selectedTools,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -137,7 +139,7 @@ const ToolPicker: FC<Props> = ({
       </PortalToFollowElemTrigger>
 
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className="relative w-[356px] min-h-20 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg">
+        <div className="relative w-[356px] min-h-20 rounded-xl backdrop-blur-sm bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg">
           <div className='p-2 pb-1'>
             <SearchBox
               search={searchText}
@@ -160,6 +162,7 @@ const ToolPicker: FC<Props> = ({
             supportAddCustomTool={supportAddCustomTool}
             onAddedCustomTool={handleAddedCustomTool}
             onShowAddCustomCollectionModal={showEditCustomCollectionModal}
+            selectedTools={selectedTools}
           />
         </div>
       </PortalToFollowElemContent>

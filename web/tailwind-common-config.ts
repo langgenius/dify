@@ -60,11 +60,11 @@ const config = {
         ...tailwindThemeVarDefine,
       },
       screens: {
-        mobile: '100px',
+        'mobile': '100px',
         // => @media (min-width: 100px) { ... }
-        tablet: '640px', // 391
+        'tablet': '640px', // 391
         // => @media (min-width: 600px) { ... }
-        pc: '769px',
+        'pc': '769px',
         // => @media (min-width: 769px) { ... }
         '2k': '2560px',
       },
@@ -87,6 +87,7 @@ const config = {
       backgroundImage: {
         'chatbot-bg': 'var(--color-chatbot-bg)',
         'chat-bubble-bg': 'var(--color-chat-bubble-bg)',
+        'chat-input-mask': 'var(--color-chat-input-mask)',
         'workflow-process-bg': 'var(--color-workflow-process-bg)',
         'mask-top2bottom-gray-50-to-transparent': 'var(--mask-top2bottom-gray-50-to-transparent)',
         'marketplace-divider-bg': 'var(--color-marketplace-divider-bg)',

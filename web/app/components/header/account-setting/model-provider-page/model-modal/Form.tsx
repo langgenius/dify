@@ -315,7 +315,6 @@ function Form<
         required,
         scope,
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
-
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
@@ -329,6 +328,7 @@ function Form<
             scope={scope}
             disabled={readonly}
             value={value[variable]}
+            // selectedTools={value[variable] ? [value[variable]] : []}
             onSelect={item => handleFormChange(variable, item as any)}
             onDelete={() => handleFormChange(variable, null as any)}
           />
