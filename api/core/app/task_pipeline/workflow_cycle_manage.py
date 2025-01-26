@@ -352,7 +352,10 @@ class WorkflowCycleManage:
         self,
         *,
         session: Session,
-        event: QueueNodeFailedEvent | QueueNodeInIterationFailedEvent | QueueNodeInLoopFailedEvent | QueueNodeExceptionEvent,
+        event: QueueNodeFailedEvent
+        | QueueNodeInIterationFailedEvent
+        | QueueNodeInLoopFailedEvent
+        | QueueNodeExceptionEvent,
     ) -> WorkflowNodeExecution:
         """
         Workflow node execution failed

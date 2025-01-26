@@ -5,6 +5,7 @@ from pydantic import Field
 from core.workflow.nodes.base import BaseLoopNodeData, BaseLoopState, BaseNodeData
 from core.workflow.utils.condition.entities import Condition
 
+
 class LoopNodeData(BaseLoopNodeData):
     """
     Loop Node Data.
@@ -21,6 +22,7 @@ class LoopStartNodeData(BaseNodeData):
     """
 
     pass
+
 
 class LoopState(BaseLoopState):
     """

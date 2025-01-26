@@ -1,18 +1,24 @@
 import logging
+from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime, timezone
-from collections.abc import Generator
-from typing import Any, Mapping, Sequence, cast
+from typing import Any, cast
 
 from configs import dify_config
 from core.variables import IntegerSegment
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.graph_engine.entities.event import (
-    BaseGraphEvent, BaseNodeEvent, BaseParallelBranchEvent,
-    GraphRunFailedEvent, InNodeEvent, LoopRunFailedEvent,
-    LoopRunNextEvent, LoopRunStartedEvent,
-    LoopRunSucceededEvent, NodeRunFailedEvent,
-    NodeRunSucceededEvent,
+    BaseGraphEvent,
+    BaseNodeEvent,
+    BaseParallelBranchEvent,
+    GraphRunFailedEvent,
+    InNodeEvent,
+    LoopRunFailedEvent,
+    LoopRunNextEvent,
+    LoopRunStartedEvent,
+    LoopRunSucceededEvent,
+    NodeRunFailedEvent,
     NodeRunStreamChunkEvent,
+    NodeRunSucceededEvent,
 )
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.nodes.base import BaseNode
@@ -24,10 +30,12 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 logger = logging.getLogger(__name__)
 
+
 class LoopNode(BaseNode[LoopNodeData]):
     """
     Loop Node.
     """
+
     _node_data_cls = LoopNodeData
     _node_type = NodeType.LOOP
 
@@ -44,10 +52,7 @@ class LoopNode(BaseNode[LoopNodeData]):
             raise ValueError(f"field start_node_id in loop {self.node_id} not found")
 
         # Initialize graph
-        loop_graph = Graph.init(
-            graph_config=self.graph_config, 
-            root_node_id=self.node_data.start_node_id
-        )
+        loop_graph = Graph.init(graph_config=self.graph_config, root_node_id=self.node_data.start_node_id)
         if not loop_graph:
             raise ValueError("loop graph not found")
 
@@ -89,7 +94,7 @@ class LoopNode(BaseNode[LoopNodeData]):
             metadata={"loop_length": loop_count},
             predecessor_node_id=self.previous_node_id,
         )
-        
+
         yield LoopRunNextEvent(
             loop_id=self.id,
             loop_node_id=self.node_id,
@@ -132,7 +137,7 @@ class LoopNode(BaseNode[LoopNodeData]):
                                             error=f"Invalid index variable type: {type(index_variable)}",
                                             metadata={
                                                 NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens
-                                            }
+                                            },
                                         )
                                     )
                                     return
@@ -181,7 +186,7 @@ class LoopNode(BaseNode[LoopNodeData]):
                                     error=event.error,
                                     metadata={
                                         NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens
-                                    }
+                                    },
                                 )
                             )
                             return
@@ -208,7 +213,7 @@ class LoopNode(BaseNode[LoopNodeData]):
                                 error=event.error,
                                 metadata={
                                     NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens
-                                }
+                                },
                             )
                         )
                         return
@@ -227,7 +232,7 @@ class LoopNode(BaseNode[LoopNodeData]):
                 if not isinstance(current_index_variable, IntegerSegment):
                     raise ValueError(f"loop {self.node_id} current index not found")
 
-                next_index = current_index_variable.value + 1 
+                next_index = current_index_variable.value + 1
                 variable_pool.add([self.node_id, "index"], next_index)
 
                 yield LoopRunNextEvent(
@@ -236,7 +241,7 @@ class LoopNode(BaseNode[LoopNodeData]):
                     loop_node_type=self.node_type,
                     loop_node_data=self.node_data,
                     index=next_index,
-                    pre_loop_output=None
+                    pre_loop_output=None,
                 )
 
             # Loop completed successfully
@@ -251,15 +256,13 @@ class LoopNode(BaseNode[LoopNodeData]):
                 metadata={
                     NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
                     "completed_reason": "loop_break" if check_break_result else "loop_completed",
-                }
+                },
             )
 
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                    metadata={
-                        NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens
-                    },
+                    metadata={NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens},
                 )
             )
 
@@ -285,17 +288,14 @@ class LoopNode(BaseNode[LoopNodeData]):
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     error=str(e),
-                    metadata={
-                        NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens
-                    }
+                    metadata={NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens},
                 )
             )
 
         finally:
             # Clean up
             variable_pool.remove([self.node_id, "index"])
-            
-            
+
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
         cls,

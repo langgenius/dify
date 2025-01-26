@@ -376,7 +376,13 @@ class AdvancedChatAppGenerateTaskPipeline:
 
                 if node_finish_resp:
                     yield node_finish_resp
-            elif isinstance(event, QueueNodeFailedEvent | QueueNodeInIterationFailedEvent | QueueNodeInLoopFailedEvent | QueueNodeExceptionEvent):
+            elif isinstance(
+                event,
+                QueueNodeFailedEvent
+                | QueueNodeInIterationFailedEvent
+                | QueueNodeInLoopFailedEvent
+                | QueueNodeExceptionEvent,
+            ):
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_failed(
                         session=session, event=event

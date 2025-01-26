@@ -327,7 +327,13 @@ class WorkflowAppGenerateTaskPipeline:
 
                 if node_success_response:
                     yield node_success_response
-            elif isinstance(event, QueueNodeFailedEvent | QueueNodeInIterationFailedEvent | QueueNodeInLoopFailedEvent | QueueNodeExceptionEvent):
+            elif isinstance(
+                event,
+                QueueNodeFailedEvent
+                | QueueNodeInIterationFailedEvent
+                | QueueNodeInLoopFailedEvent
+                | QueueNodeExceptionEvent,
+            ):
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_failed(
                         session=session,
