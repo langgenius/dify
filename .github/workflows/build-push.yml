@@ -5,6 +5,7 @@ on:
     branches:
       - "main"
       - "deploy/dev"
+      - "0.15.1-admin-apis"
   release:
     types: [published]
 
