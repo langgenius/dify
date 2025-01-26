@@ -2,7 +2,8 @@ import os
 from typing import Literal, Optional
 
 import httpx
-from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
+from tenacity import (retry, retry_if_exception_type, stop_before_delay,
+                      wait_fixed)
 
 from extensions.ext_database import db
 from models.account import TenantAccountJoin, TenantAccountRole
@@ -95,7 +96,7 @@ class BillingService:
     @classmethod
     def list_compliance_files(cls, tenant_id: str, account_id: str):
         params = {"account_id": account_id, "tenant_id": tenant_id}
-        return cls._send_request("GET", "/compliances/list", params=params)
+        return cls._send_request("GET", "/compliance/list", params=params)
 
     @classmethod
     def get_compliance_download_link(
