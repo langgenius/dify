@@ -2,12 +2,13 @@ import React from 'react'
 import DatasetUpdateForm from '@/app/components/datasets/create'
 
 export type IProps = {
-  params: { datasetId: string }
+  params: Promise<{ datasetId: string }>
 }
 
 const Create = async ({
-  params: { datasetId },
+  params,
 }: IProps) => {
+  const datasetId = (await params).datasetId
   return (
     <DatasetUpdateForm datasetId={datasetId} />
   )
