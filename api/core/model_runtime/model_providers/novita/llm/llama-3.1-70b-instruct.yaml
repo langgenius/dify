@@ -7,7 +7,7 @@ features:
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 8192
+  context_size: 32768
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -35,7 +35,7 @@ parameter_rules:
     max: 2
     default: 0
 pricing:
-  input: '0.0055'
-  output: '0.0076'
+  input: '0.0034'
+  output: '0.0039'
   unit: '0.0001'
   currency: USD

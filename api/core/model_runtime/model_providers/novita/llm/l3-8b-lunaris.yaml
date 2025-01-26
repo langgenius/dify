@@ -1,13 +1,13 @@
-model: meta-llama/llama-3.1-8b-instruct
+model: sao10k/l3-8b-lunaris
 label:
-  zh_Hans: meta-llama/llama-3.1-8b-instruct
-  en_US: meta-llama/llama-3.1-8b-instruct
+  zh_Hans: sao10k/l3-8b-lunaris
+  en_US: sao10k/l3-8b-lunaris
 model_type: llm
 features:
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 16384
+  context_size: 8192
 parameter_rules:
   - name: temperature
     use_template: temperature

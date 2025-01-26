@@ -1,7 +1,7 @@
-model: meta-llama/llama-3.1-8b-instruct
+model: meta-llama/llama-3.1-8b-instruct-max
 label:
-  zh_Hans: meta-llama/llama-3.1-8b-instruct
-  en_US: meta-llama/llama-3.1-8b-instruct
+  zh_Hans: meta-llama/llama-3.1-8b-instruct-max
+  en_US: meta-llama/llama-3.1-8b-instruct-max
 model_type: llm
 features:
   - agent-thought

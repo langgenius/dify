@@ -1,13 +1,13 @@
-model: meta-llama/llama-3.1-405b-instruct
+model: Sao10K/L3-8B-Stheno-v3.2
 label:
-  zh_Hans: meta-llama/llama-3.1-405b-instruct
-  en_US: meta-llama/llama-3.1-405b-instruct
+  zh_Hans: Sao10K/L3-8B-Stheno-v3.2
+  en_US: Sao10K/L3-8B-Stheno-v3.2
 model_type: llm
 features:
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 32768
+  context_size: 8192
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -35,7 +35,7 @@ parameter_rules:
     max: 2
     default: 0
 pricing:
-  input: '0.03'
-  output: '0.05'
+  input: '0.0005'
+  output: '0.0005'
   unit: '0.0001'
   currency: USD
