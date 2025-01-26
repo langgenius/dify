@@ -417,7 +417,7 @@ const useOneStepRun = <T>({
           },
         )
       }
-      if (res.error)
+      if (res && res.error)
         throw new Error(res.error)
     }
     catch (e: any) {
