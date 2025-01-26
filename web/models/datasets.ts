@@ -12,9 +12,9 @@ export enum DataSourceType {
 export type DatasetPermission = 'only_me' | 'all_team_members' | 'partial_members'
 
 export enum ChunkingMode {
-  'text' = 'text_model', // General text
-  'qa' = 'qa_model', // General QA
-  'parentChild' = 'hierarchical_model', // Parent-Child
+  text = 'text_model', // General text
+  qa = 'qa_model', // General QA
+  parentChild = 'hierarchical_model', // Parent-Child
 }
 
 export type DataSet = {
@@ -441,6 +441,7 @@ export type SegmentDetailModel = {
   position: number
   document_id: string
   content: string
+  sign_content: string
   word_count: number
   tokens: number
   keywords: string[]
@@ -509,6 +510,7 @@ export type Segment = {
   id: string
   document: Document
   content: string
+  sign_content: string
   position: number
   word_count: number
   tokens: number
