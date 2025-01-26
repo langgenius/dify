@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import { RiArrowDownSLine, RiLogoutBoxRLine } from '@remixicon/react'
 import Link from 'next/link'
-import { Menu, Transition } from '@headlessui/react'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import Indicator from '../indicator'
 import AccountAbout from '../account-about'
 import { mailToSupport } from '../utils/util'
@@ -58,7 +58,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
         {
           ({ open }) => (
             <>
-              <Menu.Button
+              <MenuButton
                 className={`
                     inline-flex items-center
                     rounded-[20px] py-1 pr-2.5 pl-1 text-sm
@@ -72,7 +72,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                   {userProfile.name}
                   <RiArrowDownSLine className="w-3 h-3 ml-1 text-gray-700" />
                 </>}
-              </Menu.Button>
+              </MenuButton>
               <Transition
                 as={Fragment}
                 enter="transition ease-out duration-100"
@@ -82,14 +82,14 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                 leaveFrom="transform opacity-100 scale-100"
                 leaveTo="transform opacity-0 scale-95"
               >
-                <Menu.Items
+                <MenuItems
                   className="
                     absolute right-0 mt-1.5 w-60 max-w-80
                     divide-y divide-divider-subtle origin-top-right rounded-lg bg-components-panel-bg-blur
                     shadow-lg focus:outline-none
                   "
                 >
-                  <Menu.Item disabled>
+                  <MenuItem disabled>
                     <div className='flex flex-nowrap items-center px-4 py-[13px]'>
                       <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} className='mr-3' />
                       <div className='grow'>
@@ -97,9 +97,9 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         <div className='system-xs-regular text-text-tertiary break-all'>{userProfile.email}</div>
                       </div>
                     </div>
-                  </Menu.Item>
+                  </MenuItem>
                   <div className="px-1 py-1">
-                    <Menu.Item>
+                    <MenuItem>
                       {({ active }) => <Link
                         className={classNames(itemClassName, 'group justify-between',
                           active && 'bg-state-base-hover',
@@ -109,15 +109,15 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         <div>{t('common.account.account')}</div>
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
                       </Link>}
-                    </Menu.Item>
-                    <Menu.Item>
+                    </MenuItem>
+                    <MenuItem>
                       {({ active }) => <div className={classNames(itemClassName,
                         active && 'bg-state-base-hover',
                       )} onClick={() => setShowAccountSettingModal({ payload: 'members' })}>
                         <div>{t('common.userProfile.settings')}</div>
                       </div>}
-                    </Menu.Item>
-                    {canEmailSupport && <Menu.Item>
+                    </MenuItem>
+                    {canEmailSupport && <MenuItem>
                       {({ active }) => <a
                         className={classNames(itemClassName, 'group justify-between',
                           active && 'bg-state-base-hover',
@@ -127,8 +127,8 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         <div>{t('common.userProfile.emailSupport')}</div>
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
                       </a>}
-                    </Menu.Item>}
-                    <Menu.Item>
+                    </MenuItem>}
+                    <MenuItem>
                       {({ active }) => <Link
                         className={classNames(itemClassName, 'group justify-between',
                           active && 'bg-state-base-hover',
@@ -138,8 +138,8 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         <div>{t('common.userProfile.communityFeedback')}</div>
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
                       </Link>}
-                    </Menu.Item>
-                    <Menu.Item>
+                    </MenuItem>
+                    <MenuItem>
                       {({ active }) => <Link
                         className={classNames(itemClassName, 'group justify-between',
                           active && 'bg-state-base-hover',
@@ -149,8 +149,8 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         <div>{t('common.userProfile.community')}</div>
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
                       </Link>}
-                    </Menu.Item>
-                    <Menu.Item>
+                    </MenuItem>
+                    <MenuItem>
                       {({ active }) => <Link
                         className={classNames(itemClassName, 'group justify-between',
                           active && 'bg-state-base-hover',
@@ -162,8 +162,8 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         <div>{t('common.userProfile.helpCenter')}</div>
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
                       </Link>}
-                    </Menu.Item>
-                    <Menu.Item>
+                    </MenuItem>
+                    <MenuItem>
                       {({ active }) => <Link
                         className={classNames(itemClassName, 'group justify-between',
                           active && 'bg-state-base-hover',
@@ -173,10 +173,10 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         <div>{t('common.userProfile.roadmap')}</div>
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-text-tertiary group-hover:flex' />
                       </Link>}
-                    </Menu.Item>
+                    </MenuItem>
                     {
                       document?.body?.getAttribute('data-public-site-about') !== 'hide' && (
-                        <Menu.Item>
+                        <MenuItem>
                           {({ active }) => <div className={classNames(itemClassName, 'justify-between',
                             active && 'bg-state-base-hover',
                           )} onClick={() => setAboutVisible(true)}>
@@ -186,11 +186,11 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                               <Indicator color={langeniusVersionInfo.current_version === langeniusVersionInfo.latest_version ? 'green' : 'orange'} />
                             </div>
                           </div>}
-                        </Menu.Item>
+                        </MenuItem>
                       )
                     }
                   </div>
-                  <Menu.Item>
+                  <MenuItem>
                     {({ active }) => <div className='p-1' onClick={() => handleLogout()}>
                       <div
                         className={
@@ -201,8 +201,8 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         <RiLogoutBoxRLine className='hidden w-4 h-4 text-text-tertiary group-hover:flex' />
                       </div>
                     </div>}
-                  </Menu.Item>
-                </Menu.Items>
+                  </MenuItem>
+                </MenuItems>
               </Transition>
             </>
           )

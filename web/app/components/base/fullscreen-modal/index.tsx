@@ -1,4 +1,4 @@
-import { Dialog, Transition } from '@headlessui/react'
+import { Dialog, DialogPanel, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { RiCloseLargeLine } from '@remixicon/react'
 import classNames from '@/utils/classnames'
@@ -27,7 +27,7 @@ export default function FullScreenModal({
   return (
     <Transition show={open} as={Fragment}>
       <Dialog as="div" className={classNames('modal-dialog', wrapperClassName)} onClose={onClose}>
-        <Transition.Child
+        {/* <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
           enterFrom="opacity-0"
@@ -37,7 +37,9 @@ export default function FullScreenModal({
           leaveTo="opacity-0"
         >
           <div className="fixed inset-0 bg-background-overlay-backdrop backdrop-blur-[6px]" />
-        </Transition.Child>
+        </Transition.Child> */}
+        {/* TODO: to new Transition */}
+        <div className="fixed inset-0 bg-background-overlay-backdrop backdrop-blur-[6px]" />
 
         <div
           className="fixed inset-0 h-screen w-screen p-4"
@@ -47,7 +49,7 @@ export default function FullScreenModal({
           }}
         >
           <div className="w-full h-full bg-background-default-subtle rounded-2xl border border-effects-highlight relative">
-            <Transition.Child
+            {/* <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
               enterFrom="opacity-0 scale-95"
@@ -56,7 +58,7 @@ export default function FullScreenModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className={classNames(
+              <DialogPanel className={classNames(
                 'h-full',
                 overflowVisible ? 'overflow-visible' : 'overflow-hidden',
                 className,
@@ -72,8 +74,26 @@ export default function FullScreenModal({
                     <RiCloseLargeLine className='w-3.5 h-3.5 text-components-button-tertiary-text' />
                   </div>}
                 {children}
-              </Dialog.Panel>
-            </Transition.Child>
+              </DialogPanel>
+            </Transition.Child> */}
+            {/* TODO: to new Transition */}
+            <DialogPanel className={classNames(
+              'h-full',
+              overflowVisible ? 'overflow-visible' : 'overflow-hidden',
+              className,
+            )}>
+              {closable
+                && <div
+                  className='absolute z-50 top-3 right-3 w-9 h-9 flex items-center justify-center rounded-[10px]
+                  bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover cursor-pointer'
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onClose()
+                  }}>
+                  <RiCloseLargeLine className='w-3.5 h-3.5 text-components-button-tertiary-text' />
+                </div>}
+              {children}
+            </DialogPanel>
           </div>
         </div>
       </Dialog>

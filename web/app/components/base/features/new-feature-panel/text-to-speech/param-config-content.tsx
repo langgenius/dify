@@ -5,7 +5,7 @@ import React, { Fragment } from 'react'
 import { usePathname } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
-import { Listbox, Transition } from '@headlessui/react'
+import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from '@headlessui/react'
 import { CheckIcon, ChevronDownIcon } from '@heroicons/react/20/solid'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import type { Item } from '@/app/components/base/select'
@@ -67,7 +67,7 @@ const VoiceParamConfig = ({
     <>
       <div className='mb-4 flex items-center justify-between'>
         <div className='text-text-primary system-xl-semibold'>{t('appDebug.voice.voiceSettings.title')}</div>
-        <div className='p-1 cursor-pointer' onClick={onClose}><RiCloseLine className='w-4 h-4 text-text-tertiary'/></div>
+        <div className='p-1 cursor-pointer' onClick={onClose}><RiCloseLine className='w-4 h-4 text-text-tertiary' /></div>
       </div>
       <div className='mb-3'>
         <div className='mb-1 py-1 flex items-center text-text-secondary system-sm-semibold'>
@@ -92,7 +92,7 @@ const VoiceParamConfig = ({
           }}
         >
           <div className='relative h-8'>
-            <Listbox.Button
+            <ListboxButton
               className={'w-full h-full rounded-lg border-0 bg-gray-100 py-1.5 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 cursor-pointer'}>
               <span className={classNames('block truncate text-left', !languageItem?.name && 'text-gray-400')}>
                 {languageItem?.name ? t(`common.voice.language.${languageItem?.value.replace('-', '')}`) : localLanguagePlaceholder}
@@ -103,7 +103,7 @@ const VoiceParamConfig = ({
                   aria-hidden="true"
                 />
               </span>
-            </Listbox.Button>
+            </ListboxButton>
             <Transition
               as={Fragment}
               leave="transition ease-in duration-100"
@@ -111,10 +111,10 @@ const VoiceParamConfig = ({
               leaveTo="opacity-0"
             >
 
-              <Listbox.Options
+              <ListboxOptions
                 className="absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm">
                 {languages.map((item: Item) => (
-                  <Listbox.Option
+                  <ListboxOption
                     key={item.value}
                     className={({ active }) =>
                       `relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-gray-100 text-gray-700 ${active ? 'bg-gray-100' : ''
@@ -133,14 +133,14 @@ const VoiceParamConfig = ({
                               'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
                             )}
                           >
-                            <CheckIcon className="h-5 w-5" aria-hidden="true"/>
+                            <CheckIcon className="h-5 w-5" aria-hidden="true" />
                           </span>
                         )}
                       </>
                     )}
-                  </Listbox.Option>
+                  </ListboxOption>
                 ))}
-              </Listbox.Options>
+              </ListboxOptions>
             </Transition>
           </div>
         </Listbox>
@@ -160,7 +160,7 @@ const VoiceParamConfig = ({
             }}
           >
             <div className={'grow relative h-8'}>
-              <Listbox.Button
+              <ListboxButton
                 className={'w-full h-full rounded-lg border-0 bg-gray-100 py-1.5 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 cursor-pointer'}>
                 <span
                   className={classNames('block truncate text-left', !voiceItem?.name && 'text-gray-400')}>{voiceItem?.name ?? localVoicePlaceholder}</span>
@@ -170,7 +170,7 @@ const VoiceParamConfig = ({
                     aria-hidden="true"
                   />
                 </span>
-              </Listbox.Button>
+              </ListboxButton>
               <Transition
                 as={Fragment}
                 leave="transition ease-in duration-100"
@@ -178,10 +178,10 @@ const VoiceParamConfig = ({
                 leaveTo="opacity-0"
               >
 
-                <Listbox.Options
+                <ListboxOptions
                   className="absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm">
                   {voiceItems?.map((item: Item) => (
-                    <Listbox.Option
+                    <ListboxOption
                       key={item.value}
                       className={({ active }) =>
                         `relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-gray-100 text-gray-700 ${active ? 'bg-gray-100' : ''
@@ -199,14 +199,14 @@ const VoiceParamConfig = ({
                                 'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
                               )}
                             >
-                              <CheckIcon className="h-5 w-5" aria-hidden="true"/>
+                              <CheckIcon className="h-5 w-5" aria-hidden="true" />
                             </span>
                           )}
                         </>
                       )}
-                    </Listbox.Option>
+                    </ListboxOption>
                   ))}
-                </Listbox.Options>
+                </ListboxOptions>
               </Transition>
             </div>
           </Listbox>
