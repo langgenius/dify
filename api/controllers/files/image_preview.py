@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from flask import Response, request
 from flask_restful import Resource, reqparse  # type: ignore
 from werkzeug.exceptions import NotFound
@@ -7,7 +9,6 @@ from controllers.files import api
 from controllers.files.error import UnsupportedFileTypeError
 from services.account_service import TenantService
 from services.file_service import FileService
-from urllib.parse import quote
 
 
 class ImagePreviewApi(Resource):
