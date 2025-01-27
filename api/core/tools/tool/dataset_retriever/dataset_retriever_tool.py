@@ -3,11 +3,12 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.models.document import Document as RetrievalDocument
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.tool.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
-from models.dataset import Dataset, Document, DocumentSegment
+from models.dataset import Dataset, Document, DocumentSegment, ChildChunk
 from services.external_knowledge_service import ExternalDatasetService
 
 default_retrieval_model = {
@@ -135,13 +136,26 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                             document_score_list[item.metadata["doc_id"]] = item.metadata["score"]
                 document_context_list = []
                 index_node_ids = [document.metadata["doc_id"] for document in documents]
-                segments = DocumentSegment.query.filter(
-                    DocumentSegment.dataset_id == self.dataset_id,
-                    DocumentSegment.completed_at.isnot(None),
-                    DocumentSegment.status == "completed",
-                    DocumentSegment.enabled == True,
-                    DocumentSegment.index_node_id.in_(index_node_ids),
-                ).all()
+
+                if dataset.doc_form == IndexType.PARENT_CHILD_INDEX:
+                    segments = (
+                        db.session.query(DocumentSegment)
+                            .join(ChildChunk, ChildChunk.segment_id == DocumentSegment.id)
+                            .filter(
+                            ChildChunk.index_node_id.in_(index_node_ids),
+                            DocumentSegment.dataset_id == self.dataset_id,
+                            DocumentSegment.enabled == True,
+                            DocumentSegment.status == "completed",
+                        ).distinct().all()
+                    )
+                else:
+                    segments = DocumentSegment.query.filter(
+                        DocumentSegment.dataset_id == self.dataset_id,
+                        DocumentSegment.completed_at.isnot(None),
+                        DocumentSegment.status == "completed",
+                        DocumentSegment.enabled == True,
+                        DocumentSegment.index_node_id.in_(index_node_ids),
+                    ).all()
 
                 if segments:
                     index_node_id_to_position = {id: position for position, id in enumerate(index_node_ids)}
