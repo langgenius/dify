@@ -48,4 +48,3 @@ class PerfXCloudEmbeddingModel(OAICompatEmbeddingModel):
             credentials["endpoint_url"] = "https://cloud.perfxlab.cn/v1/"
 
         OAICompatEmbeddingModel.validate_credentials(self, model, credentials)
-
