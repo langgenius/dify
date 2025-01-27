@@ -464,6 +464,8 @@ class QueueNodeInIterationFailedEvent(AppQueueEvent):
     """parent parallel start node id if node is in parallel"""
     in_iteration_id: Optional[str] = None
     """iteration id if node is in iteration"""
+    in_loop_id: Optional[str] = None
+    """loop id if node is in loop"""
     start_at: datetime
 
     inputs: Optional[Mapping[str, Any]] = None
@@ -493,6 +495,8 @@ class QueueNodeInLoopFailedEvent(AppQueueEvent):
     """parent parallel id if node is in parallel"""
     parent_parallel_start_node_id: Optional[str] = None
     """parent parallel start node id if node is in parallel"""
+    in_iteration_id: Optional[str] = None
+    """iteration id if node is in iteration"""
     in_loop_id: Optional[str] = None
     """loop id if node is in loop"""
     start_at: datetime

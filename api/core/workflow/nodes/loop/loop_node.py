@@ -125,23 +125,26 @@ class LoopNode(BaseNode[LoopNodeData]):
 
                     if isinstance(event, NodeRunSucceededEvent):
                         if event.route_node_state.node_run_result:
-                            # Update metadata
-                            metadata = event.route_node_state.node_run_result.metadata or {}
+                            metadata = event.route_node_state.node_run_result.metadata
+                            if not metadata:
+                                metadata = {}
                             if NodeRunMetadataKey.LOOP_ID not in metadata:
-                                metadata[NodeRunMetadataKey.LOOP_ID] = self.node_id
                                 index_variable = variable_pool.get([self.node_id, "index"])
                                 if not isinstance(index_variable, IntegerSegment):
+                                    total_tokens = graph_engine.graph_runtime_state.total_tokens
                                     yield RunCompletedEvent(
                                         run_result=NodeRunResult(
                                             status=WorkflowNodeExecutionStatus.FAILED,
                                             error=f"Invalid index variable type: {type(index_variable)}",
-                                            metadata={
-                                                NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens
-                                            },
+                                            metadata={NodeRunMetadataKey.TOTAL_TOKENS: total_tokens},
                                         )
                                     )
                                     return
-                                metadata[NodeRunMetadataKey.LOOP_INDEX] = index_variable.value
+                                metadata = {
+                                    **metadata,
+                                    NodeRunMetadataKey.LOOP_ID: self.node_id,
+                                    NodeRunMetadataKey.LOOP_INDEX: index_variable.value,
+                                }
                                 event.route_node_state.node_run_result.metadata = metadata
 
                         yield event
