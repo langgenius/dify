@@ -43,8 +43,8 @@ class ComfyUiClient:
         ws_protocol = "ws"
         if self.base_url.scheme == "https":
             ws_protocol = "wss"
-        ws_url = self.base_url.with_scheme(ws_protocol).join(URL('ws'))
-        ws_address = str(ws_url.with_query({'clientId': client_id}))
+        ws_url = self.base_url.with_scheme(ws_protocol).join(URL("ws"))
+        ws_address = str(ws_url.with_query({"clientId": client_id}))
         ws.connect(ws_address)
         return ws, client_id
 
