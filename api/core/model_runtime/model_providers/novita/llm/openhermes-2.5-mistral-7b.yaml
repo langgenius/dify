@@ -1,7 +1,7 @@
 model: teknium/openhermes-2.5-mistral-7b
 label:
-  zh_Hans: teknium/openhermes-2.5-mistral-7b
-  en_US: teknium/openhermes-2.5-mistral-7b
+  zh_Hans: Openhermes2.5 Mistral 7B
+  en_US: Openhermes2.5 Mistral 7B
 model_type: llm
 features:
   - agent-thought

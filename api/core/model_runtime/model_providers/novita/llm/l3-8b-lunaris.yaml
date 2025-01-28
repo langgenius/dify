@@ -1,7 +1,7 @@
 model: sao10k/l3-8b-lunaris
 label:
-  zh_Hans: sao10k/l3-8b-lunaris
-  en_US: sao10k/l3-8b-lunaris
+  zh_Hans: "Sao10k L3 8B Lunaris"
+  en_US: "Sao10k L3 8B Lunaris"
 model_type: llm
 features:
   - agent-thought

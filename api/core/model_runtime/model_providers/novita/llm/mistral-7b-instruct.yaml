@@ -1,7 +1,7 @@
 model: mistralai/mistral-7b-instruct
 label:
-  zh_Hans: mistralai/mistral-7b-instruct
-  en_US: mistralai/mistral-7b-instruct
+  zh_Hans: Mistral 7B Instruct
+  en_US: Mistral 7B Instruct
 model_type: llm
 features:
   - agent-thought

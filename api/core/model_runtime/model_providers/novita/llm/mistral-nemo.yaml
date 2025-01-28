@@ -1,7 +1,7 @@
 model: mistralai/mistral-nemo
 label:
-  zh_Hans: mistralai/mistral-nemo
-  en_US: mistralai/mistral-nemo
+  zh_Hans: Mistral Nemo
+  en_US: Mistral Nemo
 model_type: llm
 features:
   - agent-thought

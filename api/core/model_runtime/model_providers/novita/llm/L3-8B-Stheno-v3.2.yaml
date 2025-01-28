@@ -1,7 +1,7 @@
 model: Sao10K/L3-8B-Stheno-v3.2
 label:
-  zh_Hans: Sao10K/L3-8B-Stheno-v3.2
-  en_US: Sao10K/L3-8B-Stheno-v3.2
+  zh_Hans: L3 8B Stheno V3.2
+  en_US: L3 8B Stheno V3.2
 model_type: llm
 features:
   - agent-thought

@@ -1,7 +1,7 @@
 model: openchat/openchat-7b
 label:
-  zh_Hans: openchat/openchat-7b
-  en_US: openchat/openchat-7b
+  zh_Hans: OpenChat 7B
+  en_US: OpenChat 7B
 model_type: llm
 features:
   - agent-thought
