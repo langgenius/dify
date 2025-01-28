@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32px" height="32px" viewBox="0 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect fill="#4A90E2" x="0" y="0" width="32" height="32" rx="6"/>
+        <text font-family="Arial-BoldMT, Arial" font-size="12" font-weight="bold" fill="#FFFFFF">
+            <tspan x="4" y="20">B64</tspan>
+        </text>
+    </g>
+</svg>

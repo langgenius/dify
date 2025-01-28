@@ -1,0 +1,66 @@
+identity:
+  name: url_to_base64
+  author: vitalijsatilov
+  label:
+    en_US: URL to Base64
+    zh_Hans: URL转Base64
+    ru_RU: URL в Base64
+
+description:
+  human:
+    en_US: Convert URL or local file to base64 string
+    zh_Hans: 将URL或本地文件转换为base64字符串
+    ru_RU: Конвертировать URL или локальный файл в строку base64
+  llm: Convert a file from URL or local storage to base64 string format
+
+parameters:
+  - name: file_source
+    type: string
+    required: true
+    label:
+      en_US: File Source
+      zh_Hans: 文件来源
+      ru_RU: Источник файла
+    human_description:
+      en_US: Source of the file (url or local)
+      zh_Hans: 文件来源（url或本地）
+      ru_RU: Источник файла (url или локальный)
+    llm_description: Specify the source of the file. Use "url" for external URLs or "local" for files from Dify storage.
+    options:
+      - value: url
+        label:
+          en_US: URL
+          zh_Hans: URL
+          ru_RU: URL
+      - value: local
+        label:
+          en_US: Local File
+          zh_Hans: 本地文件
+          ru_RU: Локальный файл
+    form: llm
+  - name: url
+    type: string
+    required: false
+    label:
+      en_US: URL
+      zh_Hans: URL
+      ru_RU: URL
+    human_description:
+      en_US: URL of the file to convert (required if file_source is "url")
+      zh_Hans: 要转换的文件的URL（当file_source为"url"时必填）
+      ru_RU: URL файла для конвертации (обязательно если file_source - "url")
+    llm_description: URL of the file to convert to base64. Only required when file_source is "url".
+    form: llm
+  - name: file
+    type: file
+    required: false
+    label:
+      en_US: File
+      zh_Hans: 文件
+      ru_RU: Файл
+    human_description:
+      en_US: Local file to convert (required if file_source is "local")
+      zh_Hans: 要转换的本地文件（当file_source为"local"时必填）
+      ru_RU: Локальный файл для конвертации (обязательно если file_source - "local")
+    llm_description: Local file to convert to base64. Only required when file_source is "local".
+    form: llm

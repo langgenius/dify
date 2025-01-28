@@ -1,0 +1,16 @@
+identity:
+  author: bikevit2008
+  name: url_to_base64
+  label:
+    en_US: URL to Base64
+    ru_RU: URL в Base64
+    zh_Hans: URL 转 Base64
+  description:
+    en_US: A tool for converting files from URL to base64 string format
+    ru_RU: Инструмент для конвертации файлов из URL в формат base64
+    zh_Hans: 将 URL 文件转换为 base64 字符串的工具
+  icon: icon.svg
+  tags:
+    - utilities
+
+credentials_for_provider: {}
