@@ -1,13 +1,13 @@
-model: lzlv_70b
+model: meta-llama/llama-3.3-70b-instruct
 label:
-  zh_Hans: lzlv_70b
-  en_US: lzlv_70b
+  zh_Hans: meta-llama/llama-3.3-70b-instruct
+  en_US: meta-llama/llama-3.3-70b-instruct
 model_type: llm
 features:
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 4096
+  context_size: 131072
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -35,7 +35,7 @@ parameter_rules:
     max: 2
     default: 0
 pricing:
-  input: '0.0058'
-  output: '0.0078'
+  input: '0.0039'
+  output: '0.0039'
   unit: '0.0001'
   currency: USD

@@ -253,9 +253,9 @@ class Executor:
         )
         if executor_response.size > threshold_size:
             raise ResponseSizeError(
-                f'{"File" if executor_response.is_file else "Text"} size is too large,'
-                f' max size is {threshold_size / 1024 / 1024:.2f} MB,'
-                f' but current size is {executor_response.readable_size}.'
+                f"{'File' if executor_response.is_file else 'Text'} size is too large,"
+                f" max size is {threshold_size / 1024 / 1024:.2f} MB,"
+                f" but current size is {executor_response.readable_size}."
             )
 
         return executor_response
@@ -338,7 +338,7 @@ class Executor:
                 if self.auth.config and self.auth.config.header:
                     authorization_header = self.auth.config.header
                 if k.lower() == authorization_header.lower():
-                    raw += f'{k}: {"*" * len(v)}\r\n'
+                    raw += f"{k}: {'*' * len(v)}\r\n"
                     continue
             raw += f"{k}: {v}\r\n"
 

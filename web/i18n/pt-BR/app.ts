@@ -155,6 +155,10 @@ const translation = {
       removeConfirmContent: 'A configuração atual está em uso, removê-la desligará o recurso de Rastreamento.',
     },
     view: 'Vista',
+    opik: {
+      description: 'Opik é uma plataforma de código aberto para avaliar, testar e monitorar aplicativos LLM.',
+      title: 'Opik',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Se o ícone do WebApp deve ser usado para substituir 🤖 no Explore',

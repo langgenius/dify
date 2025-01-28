@@ -65,6 +65,8 @@ const translation = {
           customDisclaimer: '사용자 지정 면책 조항',
           customDisclaimerPlaceholder: '사용자 지정 면책 조항 텍스트를 입력합니다.',
           customDisclaimerTip: '사용자 지정 고지 사항 텍스트는 클라이언트 쪽에 표시되어 응용 프로그램에 대한 추가 정보를 제공합니다',
+          copyrightTip: '웹앱에 저작권 정보 표시',
+          copyrightTooltip: '프로페셔널 플랜 이상으로 업그레이드하세요.',
         },
         sso: {
           label: 'SSO 인증',
@@ -72,6 +74,7 @@ const translation = {
           tooltip: '관리자에게 문의하여 WebApp SSO를 사용하도록 설정합니다.',
           description: '모든 사용자는 WebApp을 사용하기 전에 SSO로 로그인해야 합니다.',
         },
+        modalTip: '클라이언트 쪽 웹앱 설정.',
       },
       embedded: {
         entry: '임베드',

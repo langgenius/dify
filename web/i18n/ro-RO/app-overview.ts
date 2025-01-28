@@ -65,6 +65,8 @@ const translation = {
           customDisclaimerPlaceholder: 'Introduceți textul personalizat de declinare a responsabilității',
           customDisclaimerTip: 'Textul personalizat de declinare a responsabilității va fi afișat pe partea clientului, oferind informații suplimentare despre aplicație',
           customDisclaimer: 'Declinarea responsabilității personalizate',
+          copyrightTip: 'Afișați informații despre drepturile de autor în aplicația web',
+          copyrightTooltip: 'Vă rugăm să faceți upgrade la planul Professional sau la o versiune ulterioară',
         },
         sso: {
           label: 'Autentificare SSO',
@@ -72,6 +74,7 @@ const translation = {
           description: 'Toți utilizatorii trebuie să se conecteze cu SSO înainte de a utiliza WebApp',
           tooltip: 'Contactați administratorul pentru a activa WebApp SSO',
         },
+        modalTip: 'Setările aplicației web pe partea clientului.',
       },
       embedded: {
         entry: 'Încorporat',

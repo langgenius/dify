@@ -76,7 +76,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.input`)}
           operations={(
-            <div className='flex items-center h-[18px] px-1 border border-black/8 rounded-[5px] text-xs font-medium text-gray-500 capitalize'>Array</div>
+            <div className='flex items-center h-[18px] px-1 border border-divider-deep rounded-[5px] system-2xs-medium-uppercase text-text-tertiary capitalize'>Array</div>
           )}
         >
           <VarReferencePicker
@@ -94,7 +94,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.output`)}
           operations={(
-            <div className='flex items-center h-[18px] px-1 border border-black/8 rounded-[5px] text-xs font-medium text-gray-500 capitalize'>Array</div>
+            <div className='flex items-center h-[18px] px-1 border border-divider-deep rounded-[5px] system-2xs-medium-uppercase text-text-tertiary capitalize'>Array</div>
           )}
         >
           <VarReferencePicker
@@ -134,8 +134,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
 
       <div className='px-4 py-2'>
         <Field title={t(`${i18nPrefix}.errorResponseMethod`)} >
-          <Select items={responseMethod} defaultValue={inputs.error_handle_mode} onSelect={changeErrorResponseMode} allowSearch={false}>
-          </Select>
+          <Select items={responseMethod} defaultValue={inputs.error_handle_mode} onSelect={changeErrorResponseMode} allowSearch={false} />
         </Field>
       </div>
 

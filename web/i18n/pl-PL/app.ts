@@ -162,6 +162,10 @@ const translation = {
       removeConfirmContent: 'Obecna konfiguracja jest w użyciu, jej usunięcie wyłączy funkcję Śledzenia.',
     },
     view: 'Widok',
+    opik: {
+      description: 'Opik to platforma typu open source do oceny, testowania i monitorowania aplikacji LLM.',
+      title: 'Opik',
+    },
   },
   answerIcon: {
     description: 'Czy w aplikacji udostępnionej ma być używana ikona aplikacji internetowej do zamiany 🤖.',

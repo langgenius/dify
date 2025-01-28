@@ -396,7 +396,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: akiyu303/lefeng-api:latest
+    image: langgenius/dify-api:0.15.2
     restart: always
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -421,7 +421,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: akiyu303/lefeng-api:latest
+    image: langgenius/dify-api:0.15.2
     restart: always
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -445,7 +445,7 @@ services:
 
   # Frontend web application.
   web:
-    image: akiyu303/lefeng-web:latest
+    image: langgenius/dify-web:0.15.2
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -455,6 +455,7 @@ services:
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
       TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
 
   # The postgres database.
   db:
