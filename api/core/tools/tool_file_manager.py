@@ -16,6 +16,7 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import MessageFile
 from models.tools import ToolFile
+from constants import MIME_TO_EXTENSION
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,18 @@ class ToolFileManager:
         file_binary: bytes,
         mimetype: str,
     ) -> ToolFile:
-        extension = guess_extension(mimetype) or ".bin"
+        logger.info(f"Creating file with mimetype: {mimetype}")
+        
+        # Проверяем наше сопоставление MIME-типов
+        extension = MIME_TO_EXTENSION.get(mimetype)
+        if not extension:
+            # Если нет в нашем сопоставлении, пробуем стандартный способ
+            extension = guess_extension(mimetype)
+            if not extension:
+                logger.warning(f"Could not determine extension for mimetype {mimetype}, using .bin")
+                extension = ".bin"
+        
+        logger.info(f"Using extension: {extension}")
         unique_name = uuid4().hex
         filename = f"{unique_name}{extension}"
         filepath = f"tools/{tenant_id}/{filename}"
@@ -102,7 +114,18 @@ class ToolFileManager:
             raise ValueError(f"timeout when downloading file from {file_url}")
 
         mimetype = guess_type(file_url)[0] or "octet/stream"
-        extension = guess_extension(mimetype) or ".bin"
+        logger.info(f"Creating file from URL with mimetype: {mimetype}")
+        
+        # Проверяем наше сопоставление MIME-типов
+        extension = MIME_TO_EXTENSION.get(mimetype)
+        if not extension:
+            # Если нет в нашем сопоставлении, пробуем стандартный способ
+            extension = guess_extension(mimetype)
+            if not extension:
+                logger.warning(f"Could not determine extension for mimetype {mimetype}, using .bin")
+                extension = ".bin"
+                
+        logger.info(f"Using extension: {extension}")
         unique_name = uuid4().hex
         filename = f"{unique_name}{extension}"
         filepath = f"tools/{tenant_id}/{filename}"
