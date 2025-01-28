@@ -11,12 +11,12 @@ from uuid import uuid4
 import httpx
 
 from configs import dify_config
+from constants import MIME_TO_EXTENSION
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import MessageFile
 from models.tools import ToolFile
-from constants import MIME_TO_EXTENSION
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ class ToolFileManager:
         mimetype: str,
     ) -> ToolFile:
         logger.info(f"Creating file with mimetype: {mimetype}")
-        
+
         # Проверяем наше сопоставление MIME-типов
         extension = MIME_TO_EXTENSION.get(mimetype)
         if not extension:
@@ -75,7 +75,7 @@ class ToolFileManager:
             if not extension:
                 logger.warning(f"Could not determine extension for mimetype {mimetype}, using .bin")
                 extension = ".bin"
-        
+
         logger.info(f"Using extension: {extension}")
         unique_name = uuid4().hex
         filename = f"{unique_name}{extension}"
@@ -115,7 +115,7 @@ class ToolFileManager:
 
         mimetype = guess_type(file_url)[0] or "octet/stream"
         logger.info(f"Creating file from URL with mimetype: {mimetype}")
-        
+
         # Проверяем наше сопоставление MIME-типов
         extension = MIME_TO_EXTENSION.get(mimetype)
         if not extension:
@@ -124,7 +124,7 @@ class ToolFileManager:
             if not extension:
                 logger.warning(f"Could not determine extension for mimetype {mimetype}, using .bin")
                 extension = ".bin"
-                
+
         logger.info(f"Using extension: {extension}")
         unique_name = uuid4().hex
         filename = f"{unique_name}{extension}"

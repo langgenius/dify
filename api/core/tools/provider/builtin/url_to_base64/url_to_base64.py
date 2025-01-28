@@ -1,5 +1,6 @@
-from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.provider.builtin.url_to_base64.tools.url_to_base64_converter import URLToBase64Converter
+from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
+
 
 class URLToBase64Provider(BuiltinToolProviderController):
     @property
@@ -13,7 +14,7 @@ class URLToBase64Provider(BuiltinToolProviderController):
         return [
             URLToBase64Converter(),
         ]
-    
+
     def _validate_credentials(self, credentials: dict) -> bool:
         """
         Validate the credentials.
