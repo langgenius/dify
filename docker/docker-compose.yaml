@@ -431,23 +431,6 @@ services:
     networks:
       - ssrf_proxy_network
       - default
-  
-  search:
-    image: getmeili/meilisearch:v1.11
-    restart: always
-    environment:
-      MEILI_ENV: ${MEILI_ENV:-production}
-      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-b3BlbnNlc2FtZQo=}
-      MEILI_NO_ANALYTICS: ${MEILI_NO_ANALYTICS:-true}
-    ports:
-      - 7700:7700
-    volumes:
-      - ./volumes/meili:/meili_data
-    networks:
-      - default
-    extra_hosts:
-      - "search:172.17.0.1"
-      - "host.docker.internal:host-gateway"
 
   # Frontend web application.
   web:
