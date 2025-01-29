@@ -94,8 +94,14 @@ class GoogleNewsTool(BuiltinTool):
 
         api_key = self.runtime.credentials["searchapi_api_key"]
         result = SearchAPI(api_key).run(
-            query, result_type=result_type, num=num, google_domain=google_domain, gl=gl, hl=hl, location=location,
-            time_period=time_period
+            query,
+            result_type=result_type,
+            num=num,
+            google_domain=google_domain,
+            gl=gl,
+            hl=hl,
+            location=location,
+            time_period=time_period,
         )
 
         if result_type == "text":
