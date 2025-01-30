@@ -1,7 +1,7 @@
 model: sao10k/l31-70b-euryale-v2.2
 label:
-  zh_Hans: sao10k/l31-70b-euryale-v2.2
-  en_US: sao10k/l31-70b-euryale-v2.2
+  zh_Hans: L31 70B Euryale V2.2
+  en_US: L31 70B Euryale V2.2
 model_type: llm
 features:
   - agent-thought

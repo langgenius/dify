@@ -38,9 +38,8 @@ class WebsiteService:
             only_main_content = options.get("only_main_content", False)
             if not crawl_sub_pages:
                 params = {
-                    "includes": [],
-                    "excludes": [],
-                    "generateImgAltText": True,
+                    "includePaths": [],
+                    "excludePaths": [],
                     "limit": 1,
                     "scrapeOptions": {"onlyMainContent": only_main_content},
                 }
@@ -48,9 +47,8 @@ class WebsiteService:
                 includes = options.get("includes").split(",") if options.get("includes") else []
                 excludes = options.get("excludes").split(",") if options.get("excludes") else []
                 params = {
-                    "includes": includes,
-                    "excludes": excludes,
-                    "generateImgAltText": True,
+                    "includePaths": includes,
+                    "excludePaths": excludes,
                     "limit": options.get("limit", 1),
                     "scrapeOptions": {"onlyMainContent": only_main_content},
                 }

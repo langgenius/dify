@@ -1,7 +1,7 @@
 model: deepseek/deepseek_v3
 label:
-  zh_Hans: deepseek/deepseek_v3
-  en_US: deepseek/deepseek_v3
+  zh_Hans: DeepSeek V3
+  en_US: DeepSeek V3
 model_type: llm
 features:
   - agent-thought

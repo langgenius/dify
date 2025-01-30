@@ -1,7 +1,7 @@
 model: meta-llama/llama-3.1-8b-instruct-bf16
 label:
-  zh_Hans: meta-llama/llama-3.1-8b-instruct-bf16
-  en_US: meta-llama/llama-3.1-8b-instruct-bf16
+  zh_Hans: Llama 3.1 8B Instruct BF16
+  en_US: Llama 3.1 8B Instruct BF16
 model_type: llm
 features:
   - agent-thought
