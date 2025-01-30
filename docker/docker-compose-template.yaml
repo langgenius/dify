@@ -2,7 +2,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: akiyu303/lefeng-api:latest
+    image: langgenius/dify-api:0.15.2
     restart: always
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -27,7 +27,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: akiyu303/lefeng-api:latest
+    image: langgenius/dify-api:0.15.2
     restart: always
     extra_hosts:
       - "host.docker.internal:host-gateway"
