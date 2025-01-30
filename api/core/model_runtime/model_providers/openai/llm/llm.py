@@ -341,9 +341,6 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         :param credentials: provider credentials
         :return:
         """
-        # get predefined models
-        predefined_models = self.predefined_models()
-        predefined_models_map = {model.model: model for model in predefined_models}
 
         # transform credentials to kwargs for model instance
         credentials_kwargs = self._to_credential_kwargs(credentials)
@@ -359,9 +356,10 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             base_model = model.id.split(":")[1]
 
             base_model_schema = None
-            for predefined_model_name, predefined_model in predefined_models_map.items():
-                if predefined_model_name in base_model:
+            for predefined_model in self.predefined_models():
+                if predefined_model.model in base_model:
                     base_model_schema = predefined_model
+                    break
 
             if not base_model_schema:
                 continue
@@ -1186,12 +1184,14 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             base_model = model.split(":")[1]
 
         # get model schema
-        models = self.predefined_models()
-        model_map = {model.model: model for model in models}
-        if base_model not in model_map:
-            raise ValueError(f"Base model {base_model} not found")
+        base_model_schema = None
+        for predefined_model in self.predefined_models():
+            if base_model == predefined_model.model:
+                base_model_schema = predefined_model
+                break
 
-        base_model_schema = model_map[base_model]
+        if not base_model_schema:
+            raise ValueError(f"Base model {base_model} not found")
 
         base_model_schema_features = base_model_schema.features or []
         base_model_schema_model_properties = base_model_schema.model_properties
