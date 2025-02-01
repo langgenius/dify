@@ -2812,7 +2812,7 @@ version = "0.9.7.1"
 description = "Extract swagger specs from your flask project"
 optional = false
 python-versions = "*"
-groups = ["tools"]
+groups = ["main", "tools"]
 markers = "python_version == \"3.11\" or python_version >= \"3.12\""
 files = [
     {file = "flasgger-0.9.7.1.tar.gz", hash = "sha256:ca098e10bfbb12f047acc6299cc70a33851943a746e550d86e65e60d4df245fb"},
@@ -5728,7 +5728,7 @@ version = "3.1.0"
 description = "A sane and fast Markdown parser with useful plugins and renderers"
 optional = false
 python-versions = ">=3.8"
-groups = ["tools"]
+groups = ["main", "tools"]
 markers = "python_version == \"3.11\" or python_version >= \"3.12\""
 files = [
     {file = "mistune-3.1.0-py3-none-any.whl", hash = "sha256:b05198cf6d671b3deba6c87ec6cf0d4eb7b72c524636eddb6dbf13823b52cee1"},
@@ -12247,4 +12247,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "a8fff72e974a1bd5c28f4ae326d120410a5628ad0bc65d87adca4e943130ec8f"
+content-hash = "b26521378e2b5423ccebc7b1af0890275ddbc3dbcea748de74b83efd1c06e877"
