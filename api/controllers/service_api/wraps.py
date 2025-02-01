@@ -34,6 +34,7 @@ class FetchUserArg(BaseModel):
     required: bool = False
 
 
+# TODO: add auth jwt token check
 def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optional[FetchUserArg] = None):
     def decorator(view_func):
         @wraps(view_func)
