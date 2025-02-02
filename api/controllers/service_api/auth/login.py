@@ -4,8 +4,6 @@ import flask_login  # type: ignore
 from flask import request
 from flask_restful import Resource, reqparse  # type: ignore
 
-import services
-from configs import dify_config
 from constants.languages import languages
 from controllers.service_api import api
 from controllers.service_api.auth.error import (
@@ -21,10 +19,8 @@ from controllers.service_api.error import (
 )
 from events.tenant_event import tenant_was_created
 from libs.helper import email, extract_remote_ip
-from libs.password import valid_password
 from models.account import Account
-from services.account_service import AccountService, RegisterService, TenantService
-from services.billing_service import BillingService
+from services.account_service import AccountService, TenantService
 from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
@@ -34,11 +30,23 @@ class LogoutApi(Resource):
     def get(self):
         """Logout user.
         ---
+        tags:
+          - user-end
         summary: Logout User
-        description: Logs out the authenticated user and invalidates the session.
+        description: Logs out the authenticated user and invalidates the session
+        security:
+          - JWT: []
         responses:
           200:
-            description: Successfully logged out.
+            description: Successfully logged out
+            schema:
+              type: object
+              properties:
+                result:
+                  type: string
+                  example: "success"
+          401:
+            description: Unauthorized, invalid or missing token
         """
         account = cast(Account, flask_login.current_user)
         if isinstance(account, flask_login.AnonymousUserMixin):
@@ -52,26 +60,42 @@ class EmailCodeLoginSendEmailApi(Resource):
     def post(self):
         """Send email code for login.
         ---
+        tags:
+          - user-end
         summary: Email Code Login Email Sending
-        description: Sends an email with a verification code for login.
+        description: Sends an email with a verification code for login
         parameters:
           - in: body
-            name: email
+            name: body
             required: true
-            type: string
-            description: The user's email.
-          - in: body
-            name: language
-            required: false
-            type: string
-            description: Preferred language for the email.
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  description: The user's email
+                language:
+                  type: string
+                  description: Preferred language for the email
+                  enum: ["en-US", "zh-Hans"]
         responses:
           200:
-            description: Successfully sent the email code along with token data.
+            description: Successfully sent the email code
+            schema:
+              type: object
+              properties:
+                result:
+                  type: string
+                  example: "success"
+                data:
+                  type: object
+                  description: Token data
           429:
-            description: Too many requests, IP limit reached.
+            description: Too many requests, IP limit reached
           404:
-            description: Account not found.
+            description: Account not found
         """
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
@@ -106,29 +130,44 @@ class EmailCodeLoginApi(Resource):
     def post(self):
         """Login using email code.
         ---
+        tags:
+          - user-end
         summary: Email Code Login
-        description: Allows the user to login using a verification code and token sent via email.
+        description: Allows the user to login using a verification code and token sent via email
         parameters:
           - in: body
-            name: email
+            name: body
             required: true
-            type: string
-            description: The user's email.
-          - in: body
-            name: code
-            required: true
-            type: string
-            description: The verification code sent to the email.
-          - in: body
-            name: token
-            required: true
-            type: string
-            description: The token associated with the email code login.
+            schema:
+              type: object
+              required:
+                - email
+                - code
+                - token
+              properties:
+                email:
+                  type: string
+                  description: The user's email
+                code:
+                  type: string
+                  description: The verification code sent to the email
+                token:
+                  type: string
+                  description: The token associated with the email code login
         responses:
           200:
-            description: Successfully logged in, returns token pair data.
+            description: Successfully logged in
+            schema:
+              type: object
+              properties:
+                result:
+                  type: string
+                  example: "success"
+                data:
+                  type: object
+                  description: Token pair data
           400:
-            description: Invalid token, email or code.
+            description: Invalid token, email or code
         """
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=str, required=True, location="json")
@@ -182,19 +221,38 @@ class RefreshTokenApi(Resource):
     def post(self):
         """Refresh authentication token.
         ---
+        tags:
+          - user-end
         summary: Refresh Token
-        description: Refreshes an access token using a valid refresh token.
+        description: Refreshes an access token using a valid refresh token
+        security:
+          - JWT: []
         parameters:
           - in: body
-            name: refresh_token
+            name: body
             required: true
-            type: string
-            description: The refresh token provided in the request.
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+                  description: The refresh token provided in the request
         responses:
           200:
-            description: Successfully refreshed token, returns new token pair.
+            description: Successfully refreshed token
+            schema:
+              type: object
+              properties:
+                result:
+                  type: string
+                  example: "success"
+                data:
+                  type: object
+                  description: New token pair data
           401:
-            description: Failed to refresh the token due to invalid or expired refresh token.
+            description: Unauthorized, invalid or missing token
         """
         parser = reqparse.RequestParser()
         parser.add_argument("refresh_token", type=str, required=True, location="json")
