@@ -185,6 +185,8 @@ class LLMNode(BaseNode[LLMNodeData]):
                     result_text = event.text
                     usage = event.usage
                     finish_reason = event.finish_reason
+                    # deduct quota
+                    self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                     break
         except LLMNodeError as e:
             yield RunCompletedEvent(
@@ -240,17 +242,7 @@ class LLMNode(BaseNode[LLMNodeData]):
             user=self.user_id,
         )
 
-        # handle invoke result
-        generator = self._handle_invoke_result(invoke_result=invoke_result)
-
-        usage = LLMUsage.empty_usage()
-        for event in generator:
-            yield event
-            if isinstance(event, ModelInvokeCompletedEvent):
-                usage = event.usage
-
-        # deduct quota
-        self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
+        return self._handle_invoke_result(invoke_result=invoke_result)
 
     def _handle_invoke_result(self, invoke_result: LLMResult | Generator) -> Generator[NodeEvent, None, None]:
         if isinstance(invoke_result, LLMResult):
