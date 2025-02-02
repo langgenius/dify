@@ -5,13 +5,17 @@ from typing import Any, Optional
 
 from sqlalchemy import or_
 
+from configs import dify_config
+from core.helper.position_helper import is_filtered, sort_by_pin_list_only
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.api_entities import UserTool, UserToolProvider
 from core.tools.provider.tool_provider import ToolProviderController
-from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
+from core.tools.provider.workflow_tool_provider import \
+    WorkflowToolProviderController
 from core.tools.tool.tool import Tool
 from core.tools.tool_label_manager import ToolLabelManager
-from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
+from core.tools.utils.workflow_configuration_sync import \
+    WorkflowToolConfigurationUtils
 from extensions.ext_database import db
 from models.model import App
 from models.tools import WorkflowToolProvider
@@ -203,6 +207,14 @@ class WorkflowToolManageService:
             user_tool_provider = ToolTransformService.workflow_provider_to_user_provider(
                 provider_controller=tool, labels=labels.get(tool.provider_id, [])
             )
+            if is_filtered(
+                include_set=dify_config.POSITION_WORKFLOW_INCLUDES_SET,
+                exclude_set=dify_config.POSITION_WORKFLOW_EXCLUDES_SET,
+                data=user_tool_provider,
+                name_func=lambda x: x.name,
+            ):
+                continue
+
             ToolTransformService.repack_provider(user_tool_provider)
             to_user_tool: Optional[list[Tool]] = tool.get_tools(user_id, tenant_id)
             if to_user_tool is None or len(to_user_tool) == 0:
@@ -211,6 +223,13 @@ class WorkflowToolManageService:
                 ToolTransformService.tool_to_user_tool(to_user_tool[0], labels=labels.get(tool.provider_id, []))
             ]
             result.append(user_tool_provider)
+
+        # sort by pinned position
+        result = sort_by_pin_list_only(
+            pin_list=dify_config.POSITION_PROVIDER_PINS_LIST,
+            data=result,
+            name_func=lambda x: x.name,
+        )
 
         return result
 

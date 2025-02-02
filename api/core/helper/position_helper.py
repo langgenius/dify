@@ -120,6 +120,30 @@ def sort_by_position_map(
     return sorted(data, key=lambda x: position_map.get(name_func(x), float("inf")))
 
 
+def sort_by_pin_list_only(
+    pin_list: list[str],
+    data: list[Any],
+    name_func: Callable[[Any], str],
+) -> list[Any]:
+    """
+    Sort the objects by the pin list, order within the pin list is perserved.
+    If the name of the object is not in the pin list, it will be put at the end.
+    :param pin_list: the list of names to be pinned
+    :param name_func: the function to get the name of the object
+    :param data: the data to be sorted
+    :return: the sorted objects
+    """
+    if not pin_list or not data:
+        return data
+
+    pin_set = set(pin_list)
+    data_name_map = {name_func(item): data for item in data}
+    pinned = [data_name_map[name] for name in pin_list if name in data_name_map]
+    rest = [item for item in data if name_func(item) not in pin_set]
+
+    return pinned + rest
+
+
 def sort_to_dict_by_position_map(
     position_map: dict[str, int],
     data: list[Any],

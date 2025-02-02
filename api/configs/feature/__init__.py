@@ -1,15 +1,8 @@
 from typing import Annotated, Literal, Optional
 
-from pydantic import (
-    AliasChoices,
-    Field,
-    HttpUrl,
-    NegativeInt,
-    NonNegativeInt,
-    PositiveFloat,
-    PositiveInt,
-    computed_field,
-)
+from pydantic import (AliasChoices, Field, HttpUrl, NegativeInt,
+                      NonNegativeInt, PositiveFloat, PositiveInt,
+                      computed_field)
 from pydantic_settings import BaseSettings
 
 from configs.feature.hosted_service import HostedServiceConfig
@@ -723,6 +716,21 @@ class PositionConfig(BaseSettings):
         default="",
     )
 
+    POSITION_WORKFLOW_PINS: str = Field(
+        description="Comma-separated list of pinned workflows",
+        default="",
+    )
+
+    POSITION_WORKFLOW_INCLUDES: str = Field(
+        description="Comma-separated list of included workflows",
+        default="",
+    )
+
+    POSITION_WORKFLOW_EXCLUDES: str = Field(
+        description="Comma-separated list of excluded workflows",
+        default="",
+    )
+
     @property
     def POSITION_PROVIDER_PINS_LIST(self) -> list[str]:
         return [item.strip() for item in self.POSITION_PROVIDER_PINS.split(",") if item.strip() != ""]
@@ -746,6 +754,18 @@ class PositionConfig(BaseSettings):
     @property
     def POSITION_TOOL_EXCLUDES_SET(self) -> set[str]:
         return {item.strip() for item in self.POSITION_TOOL_EXCLUDES.split(",") if item.strip() != ""}
+
+    @property
+    def POSITION_WORKFLOW_PINS_LIST(self) -> list[str]:
+        return [item.strip() for item in self.POSITION_WORKFLOW_PINS.split(",") if item.strip() != ""]
+
+    @property
+    def POSITION_WORKFLOW_INCLUDES_SET(self) -> set[str]:
+        return {item.strip() for item in self.POSITION_WORKFLOW_INCLUDES.split(",") if item.strip() != ""}
+
+    @property
+    def POSITION_WORKFLOW_EXCLUDES_SET(self) -> set[str]:
+        return {item.strip() for item in self.POSITION_WORKFLOW_EXCLUDES.split(",") if item.strip() != ""}
 
 
 class LoginConfig(BaseSettings):
