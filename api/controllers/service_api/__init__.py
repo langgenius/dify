@@ -8,4 +8,4 @@ api = ExternalApi(bp)
 from . import index
 from .app import app, audio, completion, conversation, file, message, workflow
 from .dataset import dataset, document, hit_testing, segment, upload_file
-from .auth import activate, forgot_password, login, signup
+from .auth import login
