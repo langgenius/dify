@@ -88,7 +88,6 @@ tencentcloud-sdk-python-hunyuan = "~3.0.1294"
 tiktoken = "~0.8.0"
 tokenizers = "~0.15.0"
 transformers = "~4.35.0"
-types-pytz = "~2024.2.0.20241003"
 unstructured = { version = "~0.16.1", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"] }
 validators = "0.21.0"
 volcengine-python-sdk = {extras = ["ark"], version = "~1.0.98"}
