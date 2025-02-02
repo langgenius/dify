@@ -93,7 +93,6 @@ class CompletionStopApi(Resource):
 
 
 class ChatApi(Resource):
-    @login_required
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser):
         app_mode = AppMode.value_of(app_model.mode)
