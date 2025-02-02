@@ -396,7 +396,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.15.2
+    image: akiyu303/jim-api:latest
     restart: always
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -421,7 +421,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.15.2
+    image: akiyu303/jim-api:latest
     restart: always
     extra_hosts:
       - "host.docker.internal:host-gateway"

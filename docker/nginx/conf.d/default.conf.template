@@ -24,6 +24,11 @@ server {
       include proxy.conf;
     }
 
+    location /apidocs {
+      proxy_pass http://api:5001;
+      include proxy.conf; 
+    }
+
     location / {
       proxy_pass http://web:3000;
       include proxy.conf;
