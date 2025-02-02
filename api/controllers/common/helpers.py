@@ -25,7 +25,7 @@ except ImportError:
         )
     else:
         warnings.warn("To use python-magic guess MIMETYPE, you need to install `libmagic`", stacklevel=2)
-    magic = None
+    magic = None  # type: ignore
 
 from pydantic import BaseModel
 
