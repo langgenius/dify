@@ -1,7 +1,7 @@
 model: nousresearch/hermes-2-pro-llama-3-8b
 label:
-  zh_Hans: nousresearch/hermes-2-pro-llama-3-8b
-  en_US: nousresearch/hermes-2-pro-llama-3-8b
+  zh_Hans: Hermes 2 Pro Llama 3 8B
+  en_US: Hermes 2 Pro Llama 3 8B
 model_type: llm
 features:
   - agent-thought

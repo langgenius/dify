@@ -17,8 +17,11 @@ login_manager = flask_login.LoginManager()
 @login_manager.request_loader
 def load_user_from_request(request_from_flask_login):
     """Load user based on the request."""
-    if request.blueprint not in {"console", "inner_api"}:
+    # TODO: if in the service_api, then we need to check the jwt token
+
+    if request.blueprint not in {"console", "inner_api", "service_api", "admin_api"}:
         return None
+
     # Check if the user_id contains a dot, indicating the old format
     auth_header = request.headers.get("Authorization", "")
     if not auth_header:

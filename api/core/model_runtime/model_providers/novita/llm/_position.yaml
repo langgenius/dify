@@ -1,0 +1,41 @@
+# Deepseek Models
+- deepseek/deepseek-r1
+- deepseek/deepseek_v3
+
+# LLaMA Models
+- meta-llama/llama-3.3-70b-instruct
+- meta-llama/llama-3.2-11b-vision-instruct
+- meta-llama/llama-3.2-3b-instruct
+- meta-llama/llama-3.2-1b-instruct
+- meta-llama/llama-3.1-70b-instruct
+- meta-llama/llama-3.1-8b-instruct
+- meta-llama/llama-3.1-8b-instruct-max
+- meta-llama/llama-3.1-8b-instruct-bf16
+- meta-llama/llama-3-70b-instruct
+- meta-llama/llama-3-8b-instruct
+
+# Mistral Models
+- mistralai/mistral-nemo
+- mistralai/mistral-7b-instruct
+
+# Qwen Models
+- qwen/qwen-2.5-72b-instruct
+- qwen/qwen-2-72b-instruct
+- qwen/qwen-2-vl-72b-instruct
+- qwen/qwen-2-7b-instruct
+
+# Other Models
+- sao10k/L3-8B-Stheno-v3.2
+- sao10k/l3-70b-euryale-v2.1
+- sao10k/l31-70b-euryale-v2.2
+- sao10k/l3-8b-lunaris
+- jondurbin/airoboros-l2-70b
+- cognitivecomputations/dolphin-mixtral-8x22b
+- google/gemma-2-9b-it
+- nousresearch/hermes-2-pro-llama-3-8b
+- sophosympatheia/midnight-rose-70b
+- gryphe/mythomax-l2-13b
+- nousresearch/nous-hermes-llama2-13b
+- openchat/openchat-7b
+- teknium/openhermes-2.5-mistral-7b
+- microsoft/wizardlm-2-8x22b

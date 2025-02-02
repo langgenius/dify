@@ -1,7 +1,7 @@
 model: google/gemma-2-9b-it
 label:
-  zh_Hans: google/gemma-2-9b-it
-  en_US: google/gemma-2-9b-it
+  zh_Hans: Gemma 2 9B
+  en_US: Gemma 2 9B
 model_type: llm
 features:
   - agent-thought

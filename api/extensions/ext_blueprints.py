@@ -12,6 +12,7 @@ def init_app(app: DifyApp):
     from controllers.inner_api import bp as inner_api_bp
     from controllers.service_api import bp as service_api_bp
     from controllers.web import bp as web_bp
+    from controllers.admin import bp as admin_bp
 
     CORS(
         service_api_bp,
@@ -46,3 +47,10 @@ def init_app(app: DifyApp):
     app.register_blueprint(files_bp)
 
     app.register_blueprint(inner_api_bp)
+
+    CORS(
+        admin_bp,
+        resources={r"/*": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS}},
+        supports_credentials=True,
+    )
+    app.register_blueprint(admin_bp)

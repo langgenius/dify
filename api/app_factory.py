@@ -51,6 +51,7 @@ def initialize_extensions(app: DifyApp):
         ext_storage,
         ext_timezone,
         ext_warnings,
+        ext_swagger
     )
 
     extensions = [
@@ -74,6 +75,7 @@ def initialize_extensions(app: DifyApp):
         ext_proxy_fix,
         ext_blueprints,
         ext_commands,
+        ext_swagger
     ]
     for ext in extensions:
         short_name = ext.__name__.split(".")[-1]

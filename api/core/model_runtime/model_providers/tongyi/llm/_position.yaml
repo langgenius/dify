@@ -33,6 +33,8 @@
 - qwen2.5-3b-instruct
 - qwen2.5-1.5b-instruct
 - qwen2.5-0.5b-instruct
+- qwen2.5-14b-instruct-1m
+- qwen2.5-7b-instruct-1m
 - qwen2.5-coder-7b-instruct
 - qwen2-math-72b-instruct
 - qwen2-math-7b-instruct
