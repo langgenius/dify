@@ -143,6 +143,9 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         if not dataset:
             raise ValueError("Dataset is not exist.")
 
+        # indexing_technique is already set in dataset since this is an update
+        args["indexing_technique"] = dataset.indexing_technique
+
         # Validate metadata if provided
         if args.get("doc_type") or args.get("doc_metadata"):
             if not args.get("doc_type") or not args.get("doc_metadata"):
