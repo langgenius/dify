@@ -8,3 +8,4 @@ api = ExternalApi(bp)
 from .auth import login
 from .stats import stats
 from .students import students
+from .settings import settings
