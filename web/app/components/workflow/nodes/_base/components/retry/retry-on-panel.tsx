@@ -8,6 +8,7 @@ import type {
   Node,
 } from '@/app/components/workflow/types'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { MAX_RETRIES_DEFAULT, MAX_RETRIES_UPPER_BOUND_DEFAULT, RETRY_INTERVAL_DEFAULT, RETRY_INTERVAL_UPPER_BOUND_DEFAULT } from '@/config'
 
 type RetryOnPanelProps = Pick<Node, 'id' | 'data'>
 const RetryOnPanel = ({
@@ -21,32 +22,39 @@ const RetryOnPanel = ({
   const handleRetryEnabledChange = (value: boolean) => {
     handleRetryConfigChange({
       retry_enabled: value,
-      max_retries: retry_config?.max_retries || 3,
-      retry_interval: retry_config?.retry_interval || 1000,
+      max_retries: retry_config?.max_retries || MAX_RETRIES_DEFAULT,
+      retry_interval: retry_config?.retry_interval || RETRY_INTERVAL_DEFAULT,
+      max_retries_upper_bound: retry_config?.max_retries_upper_bound || MAX_RETRIES_UPPER_BOUND_DEFAULT,
+      retry_interval_upper_bound: retry_config?.retry_interval_upper_bound || RETRY_INTERVAL_UPPER_BOUND_DEFAULT,
     })
   }
 
   const handleMaxRetriesChange = (value: number) => {
-    if (value > 10)
-      value = 10
+    if (value > (retry_config?.max_retries_upper_bound || MAX_RETRIES_UPPER_BOUND_DEFAULT))
+      value = (retry_config?.max_retries_upper_bound || MAX_RETRIES_UPPER_BOUND_DEFAULT)
     else if (value < 1)
       value = 1
     handleRetryConfigChange({
       retry_enabled: true,
       max_retries: value,
-      retry_interval: retry_config?.retry_interval || 1000,
+      retry_interval: retry_config?.retry_interval || RETRY_INTERVAL_DEFAULT,
+      max_retries_upper_bound: retry_config?.max_retries_upper_bound || MAX_RETRIES_UPPER_BOUND_DEFAULT,
+      retry_interval_upper_bound: retry_config?.retry_interval_upper_bound || RETRY_INTERVAL_UPPER_BOUND_DEFAULT,
     })
   }
 
   const handleRetryIntervalChange = (value: number) => {
-    if (value > 5000)
-      value = 5000
+    // リトライインターバルの制限をデフォルト値に基づき変更
+    if (value > (retry_config?.retry_interval_upper_bound || RETRY_INTERVAL_UPPER_BOUND_DEFAULT))
+      value = (retry_config?.retry_interval_upper_bound || RETRY_INTERVAL_UPPER_BOUND_DEFAULT)
     else if (value < 100)
       value = 100
     handleRetryConfigChange({
       retry_enabled: true,
-      max_retries: retry_config?.max_retries || 3,
+      max_retries: retry_config?.max_retries || MAX_RETRIES_DEFAULT,
       retry_interval: value,
+      max_retries_upper_bound: retry_config?.max_retries_upper_bound || MAX_RETRIES_UPPER_BOUND_DEFAULT,
+      retry_interval_upper_bound: retry_config?.retry_interval_upper_bound || RETRY_INTERVAL_UPPER_BOUND_DEFAULT,
     })
   }
 
@@ -58,7 +66,7 @@ const RetryOnPanel = ({
             <div className='mr-0.5 system-sm-semibold-uppercase text-text-secondary'>{t('workflow.nodes.common.retry.retryOnFailure')}</div>
           </div>
           <Switch
-            defaultValue={retry_config?.retry_enabled}
+            defaultValue={retry_config?.retry_enabled ?? false}
             onChange={v => handleRetryEnabledChange(v)}
           />
         </div>
@@ -69,18 +77,18 @@ const RetryOnPanel = ({
                 <div className='grow mr-2 system-xs-medium-uppercase'>{t('workflow.nodes.common.retry.maxRetries')}</div>
                 <Slider
                   className='mr-3 w-[108px]'
-                  value={retry_config?.max_retries || 3}
+                  value={retry_config?.max_retries || MAX_RETRIES_DEFAULT}
                   onChange={handleMaxRetriesChange}
                   min={1}
-                  max={10}
+                  max={retry_config?.max_retries_upper_bound || MAX_RETRIES_UPPER_BOUND_DEFAULT}
                 />
                 <Input
                   type='number'
                   wrapperClassName='w-[80px]'
-                  value={retry_config?.max_retries || 3}
+                  value={retry_config?.max_retries || MAX_RETRIES_DEFAULT}
                   onChange={e => handleMaxRetriesChange(e.target.value as any)}
                   min={1}
-                  max={10}
+                  max={retry_config?.max_retries_upper_bound || MAX_RETRIES_UPPER_BOUND_DEFAULT}
                   unit={t('workflow.nodes.common.retry.times') || ''}
                   className={s.input}
                 />
@@ -89,18 +97,18 @@ const RetryOnPanel = ({
                 <div className='grow mr-2 system-xs-medium-uppercase'>{t('workflow.nodes.common.retry.retryInterval')}</div>
                 <Slider
                   className='mr-3 w-[108px]'
-                  value={retry_config?.retry_interval || 1000}
+                  value={retry_config?.retry_interval || RETRY_INTERVAL_DEFAULT}
                   onChange={handleRetryIntervalChange}
                   min={100}
-                  max={5000}
+                  max={retry_config?.retry_interval_upper_bound || RETRY_INTERVAL_UPPER_BOUND_DEFAULT}
                 />
                 <Input
                   type='number'
                   wrapperClassName='w-[80px]'
-                  value={retry_config?.retry_interval || 1000}
+                  value={retry_config?.retry_interval || RETRY_INTERVAL_DEFAULT}
                   onChange={e => handleRetryIntervalChange(e.target.value as any)}
                   min={100}
-                  max={5000}
+                  max={retry_config?.retry_interval_upper_bound || RETRY_INTERVAL_UPPER_BOUND_DEFAULT}
                   unit={t('workflow.nodes.common.retry.ms') || ''}
                   className={s.input}
                 />

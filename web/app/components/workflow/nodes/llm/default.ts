@@ -2,6 +2,7 @@ import { BlockEnum, EditionType } from '../../types'
 import { type NodeDefault, type PromptItem, PromptRole } from '../../types'
 import type { LLMNodeType } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
+import { MAX_RETRIES_DEFAULT_LLM_NODE, MAX_RETRIES_UPPER_BOUND_LLM_NODE, RETRY_ENABLED_DEFAULT_LLM_NODE, RETRY_INTERVAL_DEFAULT_LLM_NODE, RETRY_INTERVAL_UPPER_BOUND_LLM_NODE } from '@/config'
 
 const i18nPrefix = 'workflow.errorMsg'
 
@@ -25,6 +26,13 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
     },
     vision: {
       enabled: false,
+    },
+    retry_config: {
+      retry_enabled: RETRY_ENABLED_DEFAULT_LLM_NODE,
+      max_retries: MAX_RETRIES_DEFAULT_LLM_NODE,
+      retry_interval: RETRY_INTERVAL_DEFAULT_LLM_NODE,
+      max_retries_upper_bound: MAX_RETRIES_UPPER_BOUND_LLM_NODE,
+      retry_interval_upper_bound: RETRY_INTERVAL_UPPER_BOUND_LLM_NODE,
     },
   },
   getAvailablePrevNodes(isChatMode: boolean) {
