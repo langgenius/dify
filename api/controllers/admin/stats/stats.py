@@ -12,7 +12,7 @@ class RiskStats(Resource):
         summary: Get risk level user counts
         description: Get counts of users at different risk levels and their changes
         security:
-          - JWT: []
+          - ApiKeyAuth: []
         parameters:
           - name: start_date
             in: query
@@ -58,7 +58,7 @@ class UserStats(Resource):
         summary: Get daily active and new user counts
         description: Get statistics of daily active users and new users
         security:
-          - JWT: []
+          - ApiKeyAuth: []
         parameters:
           - name: start_date
             in: query
@@ -106,7 +106,7 @@ class ConversationStats(Resource):
         summary: Get daily conversation counts and averages
         description: Get statistics of daily total conversations and average conversations per user
         security:
-          - JWT: []
+          - ApiKeyAuth: []
         parameters:
           - name: start_date
             in: query

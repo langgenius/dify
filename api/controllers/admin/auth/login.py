@@ -104,7 +104,7 @@ class LogoutApi(Resource):
         summary: Admin Logout
         description: Logs out the authenticated admin and invalidates the JWT token
         security:
-          - JWT: []
+          - ApiKeyAuth: []
         responses:
           200:
             description: Logout successful

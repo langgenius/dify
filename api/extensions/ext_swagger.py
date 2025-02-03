@@ -8,12 +8,15 @@ def init_app(app: DifyApp):
     app.config['SWAGGER'] = {
         'title': 'API Docs',
         'uiversion': 3,
+        'url_prefix': '/openapi',
+        'specs_route': '/',
+        'static_url_path': '/flasgger_static',
         'securityDefinitions': {
-            'JWT': {
+            'ApiKeyAuth': {
                 'type': 'apiKey',
-                'name': 'access-token',  # name of the cookie
-                'in': 'header',  # specify that auth is in cookie
-                'description': 'JWT Authorization cookie'
+                'name': 'Authorization',
+                'in': 'header',
+                'description': 'API Key Authorization header using Bearer scheme. Example: "Bearer {token}"'
             }
         }
     }

@@ -35,7 +35,7 @@ class LogoutApi(Resource):
         summary: Logout User
         description: Logs out the authenticated user and invalidates the session
         security:
-          - JWT: []
+          - ApiKeyAuth: []
         responses:
           200:
             description: Successfully logged out
@@ -226,7 +226,7 @@ class RefreshTokenApi(Resource):
         summary: Refresh Token
         description: Refreshes an access token using a valid refresh token
         security:
-          - JWT: []
+          - ApiKeyAuth: []
         parameters:
           - in: body
             name: body
