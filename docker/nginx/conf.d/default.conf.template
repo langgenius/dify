@@ -24,7 +24,7 @@ server {
       include proxy.conf;
     }
 
-    location /apidocs {
+    location /openapi {
       proxy_pass http://api:5001;
       include proxy.conf; 
     }
