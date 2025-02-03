@@ -1,7 +1,7 @@
 import json
 import logging
 import mimetypes
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from os import listdir, path
 from threading import Lock, Thread
 from typing import Any, Optional, Union, cast
@@ -236,7 +236,12 @@ class ToolManager:
 
     @classmethod
     def get_agent_tool_runtime(
-        cls, tenant_id: str, app_id: str, agent_tool: AgentToolEntity, invoke_from: InvokeFrom = InvokeFrom.DEBUGGER
+        cls,
+        tenant_id: str,
+        app_id: str,
+        agent_tool: AgentToolEntity,
+        variables_inputs: Optional[Mapping[str, Any]] = None,
+        invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
     ) -> Tool:
         """
         get the agent tool runtime
@@ -265,8 +270,13 @@ class ToolManager:
                 raise ValueError(f"file type parameter {parameter.name} not supported in agent")
 
             if parameter.form == ToolParameter.ToolParameterForm.FORM:
-                # save tool parameter to tool entity memory
+                if variables_inputs:
+                    for key, value in variables_inputs.items():
+                        agent_tool.tool_parameters[parameter.name] = agent_tool.tool_parameters[parameter.name].replace(
+                            f"{{{{{key}}}}}", str(value)
+                        )
                 value = cls._init_runtime_parameter(parameter, agent_tool.tool_parameters)
+                # save tool parameter to tool entity memory
                 runtime_parameters[parameter.name] = value
 
         # decrypt runtime parameters

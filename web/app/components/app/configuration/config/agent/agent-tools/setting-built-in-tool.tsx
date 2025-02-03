@@ -16,6 +16,7 @@ import Loading from '@/app/components/base/loading'
 import { DiagonalDividingLine } from '@/app/components/base/icons/src/public/common'
 import { getLanguage } from '@/i18n/language'
 import AppIcon from '@/app/components/base/app-icon'
+import ConfigContext from '@/context/debug-configuration'
 
 type Props = {
   collection: Collection
@@ -38,6 +39,8 @@ const SettingBuiltInTool: FC<Props> = ({
   onHide,
   onSave,
 }) => {
+  const { modelConfig } = useContext(ConfigContext)
+
   const { locale } = useContext(I18n)
   const language = getLanguage(locale)
   const { t } = useTranslation()
@@ -47,7 +50,15 @@ const SettingBuiltInTool: FC<Props> = ({
   const currTool = tools.find(tool => tool.name === toolName)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
   const infoSchemas = formSchemas.filter((item: any) => item.form === 'llm')
-  const settingSchemas = formSchemas.filter((item: any) => item.form !== 'llm')
+  const settingSchemas = formSchemas
+    .filter((item: any) => item.form !== 'llm')
+    .map((item: any) => ({
+      ...item,
+      inputs: modelConfig.configs.prompt_variables.map(variable => ({
+        name: variable.key,
+        value: variable.key,
+      })),
+    }))
   const hasSetting = settingSchemas.length > 0
   const [tempSetting, setTempSetting] = useState(setting)
   const [currType, setCurrType] = useState('info')

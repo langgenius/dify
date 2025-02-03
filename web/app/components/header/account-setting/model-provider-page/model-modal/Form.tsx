@@ -17,6 +17,8 @@ import cn from '@/utils/classnames'
 import { SimpleSelect } from '@/app/components/base/select'
 import Tooltip from '@/app/components/base/tooltip'
 import Radio from '@/app/components/base/radio'
+import PromptEditor from '@/app/components/base/prompt-editor'
+
 type FormProps = {
   className?: string
   itemClassName?: string
@@ -82,6 +84,7 @@ const Form: FC<FormProps> = ({
     if (formSchema.type === FormTypeEnum.textInput || formSchema.type === FormTypeEnum.secretInput || formSchema.type === FormTypeEnum.textNumber) {
       const {
         variable,
+        inputs = [],
         label,
         placeholder,
         required,
@@ -92,6 +95,7 @@ const Form: FC<FormProps> = ({
         return null
 
       const disabled = readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
+      const fieldValue = (isShowDefaultValue && ((value[variable] as string) === '' || value[variable] === undefined || value[variable] === null)) ? formSchema.default : value[variable]
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-sm text-gray-900')}>
@@ -103,16 +107,30 @@ const Form: FC<FormProps> = ({
             }
             {tooltipContent}
           </div>
-          <Input
-            className={cn(inputClassName, `${disabled && 'cursor-not-allowed opacity-60'}`)}
-            value={(isShowDefaultValue && ((value[variable] as string) === '' || value[variable] === undefined || value[variable] === null)) ? formSchema.default : value[variable]}
-            onChange={val => handleFormChange(variable, val)}
-            validated={validatedSuccess}
-            placeholder={placeholder?.[language] || placeholder?.en_US}
-            disabled={disabled}
-            type={formSchema.type === FormTypeEnum.textNumber ? 'number' : 'text'}
-            {...(formSchema.type === FormTypeEnum.textNumber ? { min: (formSchema as CredentialFormSchemaNumberInput).min, max: (formSchema as CredentialFormSchemaNumberInput).max } : {})}
-          />
+          {inputs.length
+            ? <div className={'rounded-lg border border-transparent bg-gray-50 px-3 py-[6px] hover:border-[rgba(0,0,0,0.08)]'}>
+              <PromptEditor
+                value={fieldValue}
+                onChange={val => handleFormChange(variable, val)}
+                placeholder={placeholder?.[language] || placeholder?.en_US || 'enter \'/\' to reference a variable'}
+                variableBlock={{
+                  show: true,
+                  variables: inputs,
+                }}
+                compact
+                editable
+              />
+            </div>
+            : <Input
+              className={cn(inputClassName, `${disabled && 'cursor-not-allowed opacity-60'}`)}
+              value={fieldValue}
+              onChange={val => handleFormChange(variable, val)}
+              validated={validatedSuccess}
+              placeholder={placeholder?.[language] || placeholder?.en_US}
+              disabled={disabled}
+              type={formSchema.type === FormTypeEnum.textNumber ? 'number' : 'text'}
+              {...(formSchema.type === FormTypeEnum.textNumber ? { min: (formSchema as CredentialFormSchemaNumberInput).min, max: (formSchema as CredentialFormSchemaNumberInput).max } : {})}
+            />}
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
         </div>
