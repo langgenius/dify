@@ -8,7 +8,7 @@ class SendVerificationCodeApi(Resource):
         """Send verification code to admin's phone number.
         ---
         tags:
-          - admin
+          - admin/auth
         summary: Send Verification Code
         description: Sends a verification code to the provided admin phone number for authentication
         parameters:
@@ -46,7 +46,7 @@ class LoginApi(Resource):
         """Admin login with phone number and verification code.
         ---
         tags:
-          - admin
+          - admin/auth
         summary: Admin Login
         description: Authenticates an admin using phone number and verification code
         parameters:
@@ -100,7 +100,7 @@ class LogoutApi(Resource):
         """Admin logout.
         ---
         tags:
-          - admin
+          - admin/auth
         summary: Admin Logout
         description: Logs out the authenticated admin and invalidates the JWT token
         security:
@@ -118,7 +118,47 @@ class LogoutApi(Resource):
         """
         pass
 
+class RefreshTokenApi(Resource):
+    def post(self):
+        """Refresh authentication token.
+        ---
+        tags:
+          - admin/auth
+        summary: Refresh Token
+        description: Refreshes an access token using a valid refresh token
+        security:
+          - ApiKeyAuth: []
+        parameters:
+          - in: body
+            name: body
+            required: true
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+                  description: The refresh token provided in the request
+        responses:
+          200:
+            description: Successfully refreshed token
+            schema:
+              type: object
+              properties:
+                result:
+                  type: string
+                  example: "success"
+                data:
+                  type: object
+                  description: New token pair data
+          401:
+            description: Unauthorized, invalid or missing token
+        """
+        pass
+
 # Register the resources
 api.add_resource(SendVerificationCodeApi, '/auth/send-code')
 api.add_resource(LoginApi, '/auth/login')
 api.add_resource(LogoutApi, '/auth/logout')
+api.add_resource(RefreshTokenApi, '/auth/refresh-token')
