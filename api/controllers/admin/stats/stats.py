@@ -146,6 +146,6 @@ class ConversationStats(Resource):
         """
         pass
 
-api.add_resource(RiskStats, '/risk-stats')
-api.add_resource(UserStats, '/user-stats') 
-api.add_resource(ConversationStats, '/conversation-stats')
+api.add_resource(RiskStats, '/stats/risk')
+api.add_resource(UserStats, '/stats/user') 
+api.add_resource(ConversationStats, '/stats/conversation')

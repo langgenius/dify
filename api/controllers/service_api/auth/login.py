@@ -265,7 +265,7 @@ class RefreshTokenApi(Resource):
             return {"result": "fail", "data": str(e)}, 401
 
 
-api.add_resource(LogoutApi, "/logout")
-api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
-api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")
-api.add_resource(RefreshTokenApi, "/refresh-token")
+api.add_resource(LogoutApi, "/auth/logout")
+api.add_resource(EmailCodeLoginSendEmailApi, "/auth/email-code-login")
+api.add_resource(EmailCodeLoginApi, "/auth/email-code-login/validity")
+api.add_resource(RefreshTokenApi, "/auth/refresh-token")
