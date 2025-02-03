@@ -201,7 +201,7 @@ const translation = {
   },
   automatic: {
     title: 'Orquestación automatizada de aplicaciones',
-    description: 'Describe tu escenario, Dify orquestará una aplicación para ti.',
+    description: 'Describe tu escenario, Tiby orquestará una aplicación para ti.',
     intendedAudience: '¿Quién es el público objetivo?',
     intendedAudiencePlaceHolder: 'p.ej. Estudiante',
     solveProblem: '¿Qué problemas esperan que la IA pueda resolver para ellos?',

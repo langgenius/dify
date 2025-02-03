@@ -196,7 +196,7 @@ const translation = {
   },
   otherDataSource: {
     learnMore: 'Aprende más',
-    description: 'Actualmente, la base de conocimientos de Ifiy solo tiene fuentes de datos limitadas. Contribuir con una fuente de datos a la base de conocimientos de Dify es una manera fantástica de ayudar a mejorar la flexibilidad y el poder de la plataforma para todos los usuarios. Nuestra guía de contribuciones hace que sea fácil comenzar. Haga clic en el enlace a continuación para obtener más información.',
+    description: 'Actualmente, la base de conocimientos de Ifiy solo tiene fuentes de datos limitadas. Contribuir con una fuente de datos a la base de conocimientos de Tiby es una manera fantástica de ayudar a mejorar la flexibilidad y el poder de la plataforma para todos los usuarios. Nuestra guía de contribuciones hace que sea fácil comenzar. Haga clic en el enlace a continuación para obtener más información.',
     title: '¿Conectarse a otras fuentes de datos?',
   },
 }

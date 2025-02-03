@@ -84,7 +84,7 @@ const translation = {
         'La modifica manuale e l\'annotazione delle risposte forniscono capacità di risposta a domande personalizzabili di alta qualità per le app. (Applicabile solo nelle app di chat)',
     },
     ragAPIRequestTooltip:
-      'Si riferisce al numero di chiamate API che invocano solo le capacità di elaborazione della base di conoscenza di Dify.',
+      'Si riferisce al numero di chiamate API che invocano solo le capacità di elaborazione della base di conoscenza di Tiby.',
     receiptInfo:
       'Solo il proprietario del team e l\'amministratore del team possono abbonarsi e visualizzare le informazioni di fatturazione',
   },

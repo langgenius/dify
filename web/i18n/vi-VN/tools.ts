@@ -9,7 +9,7 @@ const translation = {
   },
   contribute: {
     line1: 'Tôi quan tâm đến việc ',
-    line2: 'đóng góp công cụ cho Dify.',
+    line2: 'đóng góp công cụ cho Tiby.',
     viewGuide: 'Xem hướng dẫn',
   },
   author: 'Tác giả',
@@ -148,7 +148,7 @@ const translation = {
     emptyTipCustom: 'Tạo công cụ tùy chỉnh',
   },
   toolNameUsageTip: 'Tên cuộc gọi công cụ để lý luận và nhắc nhở tổng đài viên',
-  customToolTip: 'Tìm hiểu thêm về các công cụ tùy chỉnh Dify',
+  customToolTip: 'Tìm hiểu thêm về các công cụ tùy chỉnh Tiby',
   openInStudio: 'Mở trong Studio',
 }
 

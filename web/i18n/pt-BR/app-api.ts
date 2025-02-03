@@ -26,7 +26,7 @@ const translation = {
   },
   completionMode: {
     title: 'Completar App API',
-    info: 'Para geração de texto de alta qualidade, como artigos, resumos e traduções, use a API de mensagens de conclusão com entrada do usuário. A geração de texto depende dos parâmetros do modelo e dos modelos de prompt definidos no Dify Prompt Engineering.',
+    info: 'Para geração de texto de alta qualidade, como artigos, resumos e traduções, use a API de mensagens de conclusão com entrada do usuário. A geração de texto depende dos parâmetros do modelo e dos modelos de prompt definidos no Tiby Prompt Engineering.',
     createCompletionApi: 'Criar Mensagem de Conclusão',
     createCompletionApiTip: 'Crie uma Mensagem de Conclusão para suportar o modo pergunta e resposta.',
     inputsTips: '(Opcional) Forneça campos de entrada do usuário como pares chave-valor, correspondendo a variáveis no Prompt Eng. A chave é o nome da variável, o valor é o valor do parâmetro. Se o tipo do campo for Select, o Valor enviado deve ser uma das opções predefinidas.',
@@ -42,7 +42,7 @@ const translation = {
   },
   chatMode: {
     title: 'Chat App API',
-    info: 'Para aplicativos de conversação versáteis usando um formato de pergunta e resposta, chame a API de mensagens de chat para iniciar o diálogo. Mantenha conversas em andamento passando o conversation_id retornado. Os parâmetros de resposta e modelos dependem das configurações do Dify Prompt Eng.',
+    info: 'Para aplicativos de conversação versáteis usando um formato de pergunta e resposta, chame a API de mensagens de chat para iniciar o diálogo. Mantenha conversas em andamento passando o conversation_id retornado. Os parâmetros de resposta e modelos dependem das configurações do Tiby Prompt Eng.',
     createChatApi: 'Criar mensagem de chat',
     createChatApiTip: 'Crie uma nova mensagem de conversa ou continue um diálogo existente.',
     inputsTips: '(Opcional) Forneça campos de entrada do usuário como pares chave-valor, correspondendo a variáveis no Prompt Eng. A chave é o nome da variável, o valor é o valor do parâmetro. Se o tipo do campo for Select, o Valor enviado deve ser uma das opções predefinidas.',

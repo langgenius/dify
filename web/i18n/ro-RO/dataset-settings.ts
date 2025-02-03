@@ -7,7 +7,7 @@ const translation = {
     nameError: 'Numele nu poate fi gol',
     desc: 'Descrierea cunoștințelor',
     descInfo: 'Vă rugăm să scrieți o descriere textuală clară pentru a contura conținutul cunoștințelor. Această descriere va fi utilizată ca bază pentru potrivire atunci când se selectează din mai multe cunoștințe pentru inferență.',
-    descPlaceholder: 'Descrieți ce se află în aceste cunoștințe. O descriere detaliată permite AI să acceseze conținutul cunoștințelor într-un timp oportun. Dacă este gol, Dify va folosi strategia implicită.',
+    descPlaceholder: 'Descrieți ce se află în aceste cunoștințe. O descriere detaliată permite AI să acceseze conținutul cunoștințelor într-un timp oportun. Dacă este gol, Tiby va folosi strategia implicită.',
     descWrite: 'Aflați cum să scrieți o descriere bună a cunoștințelor.',
     permissions: 'Permisiuni',
     permissionsOnlyMe: 'Doar eu',

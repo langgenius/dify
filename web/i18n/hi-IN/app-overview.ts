@@ -28,7 +28,7 @@ const translation = {
     callTimes: 'कॉल समय',
     usedToken: 'उपयोग किया गया टोकन',
     setAPIBtn: 'मॉडल प्रदाता सेटअप पर जाएं',
-    tryCloud: 'या मुफ्त कोटा के साथ Dify का क्लाउड संस्करण आज़माएं',
+    tryCloud: 'या मुफ्त कोटा के साथ Tiby का क्लाउड संस्करण आज़माएं',
   },
   overview: {
     title: 'अवलोकन',
@@ -66,7 +66,7 @@ const translation = {
           privacyPolicy: 'गोपनीयता नीति',
           privacyPolicyPlaceholder: 'गोपनीयता नीति लिंक दर्ज करें',
           privacyPolicyTip:
-            'आगंतुकों को यह समझने में मदद करता है कि एप्लिकेशन कौन सा डेटा एकत्र करता है, देखें Dify की <privacyPolicyLink>गोपनीयता नीति</privacyPolicyLink>।',
+            'आगंतुकों को यह समझने में मदद करता है कि एप्लिकेशन कौन सा डेटा एकत्र करता है, देखें Tiby की <privacyPolicyLink>गोपनीयता नीति</privacyPolicyLink>।',
           customDisclaimer: 'कस्टम अस्वीकरण',
           customDisclaimerPlaceholder: 'कस्टम अस्वीकरण टेक्स्ट दर्ज करें',
           customDisclaimerTip:
@@ -90,7 +90,7 @@ const translation = {
           'अपनी वेबसाइट के किसी भी हिस्से पर चैट ऐप जोड़ने के लिए, इस iframe को अपने HTML कोड में जोड़ें।',
         scripts:
           'अपनी वेबसाइट के निचले दाएं कोने में चैट ऐप जोड़ने के लिए इस कोड को अपने HTML में जोड़ें।',
-        chromePlugin: 'Dify चैटबॉट क्रोम एक्सटेंशन इंस्टॉल करें',
+        chromePlugin: 'Tiby चैटबॉट क्रोम एक्सटेंशन इंस्टॉल करें',
         copied: 'कॉपी किया गया',
         copy: 'कॉपी करें',
       },
@@ -110,7 +110,7 @@ const translation = {
           step1: 'क्लाइंट कोड को फोर्क करें और संशोधित करें',
           step1Tip:
             'स्रोत कोड को अपने GitHub खाते में फोर्क करने और कोड संशोधित करने के लिए यहां क्लिक करें',
-          step1Operation: 'Dify-WebClient',
+          step1Operation: 'Tiby-WebClient',
           step2: 'Vercel पर डिप्लॉय करें',
           step2Tip:
             'भंडार को Vercel में आयात करने और डिप्लॉय करने के लिए यहां क्लिक करें',

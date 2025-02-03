@@ -114,7 +114,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
                 />
               </div>
               <div className='my-8 flex justify-between items-center h-8'>
-                <a className='flex items-center space-x-1 leading-[18px] text-xs font-normal text-[#155EEF]' target='_blank' href='https://www.firecrawl.dev/account'>
+                <a className='flex items-center space-x-1 leading-[18px] text-xs font-normal text-[#542cb7]' target='_blank' href='https://www.firecrawl.dev/account'>
                   <span>{t(`${I18N_PREFIX}.getApiKeyLinkText`)}</span>
                   <LinkExternal02 className='w-3 h-3' />
                 </a>

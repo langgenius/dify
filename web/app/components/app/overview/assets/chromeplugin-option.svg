@@ -129,7 +129,7 @@
 <radialGradient id="paint0_angular_40_1547" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(156.667 5) rotate(90) scale(2 1.91353)">
 <stop stop-color="#001FC2"/>
 <stop offset="0.711334" stop-color="#0667F8" stop-opacity="0.2"/>
-<stop offset="1" stop-color="#155EEF" stop-opacity="0"/>
+<stop offset="1" stop-color="#542cb7" stop-opacity="0"/>
 </radialGradient>
 <radialGradient id="paint1_radial_40_1547" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(64.5) rotate(135.735) scale(55.1589 31.9368)">
 <stop stop-color="#101828" stop-opacity="0.1"/>

@@ -6,7 +6,7 @@ const translation = {
   },
   webapp: {
     title: 'Personalizza il marchio WebApp',
-    removeBrand: 'Rimuovi Powered by Dify',
+    removeBrand: 'Rimuovi Powered by Tiby',
     changeLogo: 'Cambia immagine del marchio Powered by',
     changeLogoTip: 'Formato SVG o PNG con una dimensione minima di 40x40px',
   },

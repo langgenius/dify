@@ -30,7 +30,7 @@ const translation = {
   },
   completionMode: {
     title: '완성 모드 API',
-    info: '문서, 요약, 번역 등 고품질 텍스트 생성을 위해 사용자 입력을 사용하는 완성 메시지 API를 사용합니다. 텍스트 생성은 Dify Prompt Engineering에서 설정한 모델 매개변수와 프롬프트 템플릿에 의존합니다.',
+    info: '문서, 요약, 번역 등 고품질 텍스트 생성을 위해 사용자 입력을 사용하는 완성 메시지 API를 사용합니다. 텍스트 생성은 Tiby Prompt Engineering에서 설정한 모델 매개변수와 프롬프트 템플릿에 의존합니다.',
     createCompletionApi: '완성 메시지 생성',
     createCompletionApiTip: '질의 응답 모드를 지원하기 위해 완성 메시지를 생성합니다.',
     inputsTips:
@@ -47,7 +47,7 @@ const translation = {
   },
   chatMode: {
     title: '채팅 모드 API',
-    info: '질의 응답 형식을 사용하는 다목적 대화형 응용 프로그램에는 채팅 메시지 API를 호출하여 대화를 시작합니다. 반환된 conversation_id를 전달하여 계속된 대화를 유지합니다. 응답 매개변수 및 템플릿은 Dify Prompt Eng의 설정에 의존합니다.',
+    info: '질의 응답 형식을 사용하는 다목적 대화형 응용 프로그램에는 채팅 메시지 API를 호출하여 대화를 시작합니다. 반환된 conversation_id를 전달하여 계속된 대화를 유지합니다. 응답 매개변수 및 템플릿은 Tiby Prompt Eng의 설정에 의존합니다.',
     createChatApi: '채팅 메시지 생성',
     createChatApiTip: '새로운 대화 메시지를 생성하거나 기존 대화를 계속합니다.',
     inputsTips:

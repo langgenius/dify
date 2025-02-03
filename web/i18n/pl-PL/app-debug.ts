@@ -218,7 +218,7 @@ const translation = {
   automatic: {
     title: 'Zautomatyzowana orkiestracja aplikacji',
     description:
-      'Opisz swój scenariusz, Dify zorkiestruje aplikację dla Ciebie.',
+      'Opisz swój scenariusz, Tiby zorkiestruje aplikację dla Ciebie.',
     intendedAudience: 'Dla kogo jest przeznaczona ta aplikacja?',
     intendedAudiencePlaceHolder: 'np. Uczeń',
     solveProblem:

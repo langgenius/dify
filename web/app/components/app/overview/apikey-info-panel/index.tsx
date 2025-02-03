@@ -54,7 +54,7 @@ const APIKeyInfoPanel: FC = () => {
       </Button>
       {!isCloud && (
         <a
-          className='mt-2 flex items-center h-[26px] text-xs  font-medium text-[#155EEF] p-1 space-x-1'
+          className='mt-2 flex items-center h-[26px] text-xs  font-medium text-[#542cb7] p-1 space-x-1'
           href='https://cloud.dify.ai/apps'
           target='_blank' rel='noopener noreferrer'
         >

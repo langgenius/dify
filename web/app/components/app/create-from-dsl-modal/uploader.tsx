@@ -107,7 +107,7 @@ const Uploader: FC<Props> = ({
               <UploadCloud01 className='w-6 h-6 mr-2' />
               <div className='text-gray-500'>
                 {t('datasetCreation.stepOne.uploader.button')}
-                <span className='pl-1 text-[#155eef] cursor-pointer' onClick={selectHandle}>{t('datasetDocuments.list.batchModal.browse')}</span>
+                <span className='pl-1 text-[#542cb7] cursor-pointer' onClick={selectHandle}>{t('datasetDocuments.list.batchModal.browse')}</span>
               </div>
             </div>
             {dragging && <div ref={dragRef} className='absolute w-full h-full top-0 left-0' />}

@@ -77,7 +77,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
               </div>
             </div>
             <div
-              className='px-4 py-3 text-xs text-[#155EEF] border-t border-black/5 rounded-b-xl cursor-pointer'
+              className='px-4 py-3 text-xs text-[#542cb7] border-t border-black/5 rounded-b-xl cursor-pointer'
               onClick={onEditRole}
             >
               {t('common.promptEditor.history.modal.edit')}

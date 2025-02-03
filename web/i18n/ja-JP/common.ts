@@ -473,8 +473,8 @@ const translation = {
   about: {
     changeLog: '変更ログ',
     updateNow: '今すぐ更新',
-    nowAvailable: 'Dify {{version}} が利用可能です。',
-    latestAvailable: 'Dify {{version}} が最新バージョンです。',
+    nowAvailable: 'Tiby {{version}} が利用可能です。',
+    latestAvailable: 'Tiby {{version}} が最新バージョンです。',
   },
   appMenus: {
     overview: '監視',

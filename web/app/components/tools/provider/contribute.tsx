@@ -29,7 +29,7 @@ const Contribute: FC = () => {
         <div className='text-gradient'>{t('tools.contribute.line1')}</div>
         <div className='text-gradient'>{t('tools.contribute.line2')}</div>
       </div>
-      <div className='px-4 py-3 border-t-[0.5px] border-black/5 flex items-center space-x-1 text-[#155EEF]'>
+      <div className='px-4 py-3 border-t-[0.5px] border-black/5 flex items-center space-x-1 text-[#542cb7]'>
         <BookOpen01 className='w-3 h-3' />
         <div className='grow leading-[18px] text-xs font-normal'>{t('tools.contribute.viewGuide')}</div>
         <ArrowUpRight className='w-3 h-3' />

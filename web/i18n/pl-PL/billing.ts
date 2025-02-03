@@ -82,7 +82,7 @@ const translation = {
         'Ręczna edycja i adnotacja odpowiedzi zapewniają możliwość dostosowania wysokiej jakości odpowiedzi na pytania dla aplikacji. (Stosowane tylko w aplikacjach czatowych)',
     },
     ragAPIRequestTooltip:
-      'Odnosi się do liczby wywołań API wykorzystujących tylko zdolności przetwarzania bazy wiedzy Dify.',
+      'Odnosi się do liczby wywołań API wykorzystujących tylko zdolności przetwarzania bazy wiedzy Tiby.',
     receiptInfo:
       'Tylko właściciel zespołu i administrator zespołu mogą subskrybować i przeglądać informacje o rozliczeniach',
     annotationQuota: 'Przydział adnotacji',

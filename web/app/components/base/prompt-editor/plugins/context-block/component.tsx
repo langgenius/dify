@@ -82,7 +82,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
                     ))
                   }
                 </div>
-                <div className='flex items-center h-8 text-[#155EEF] cursor-pointer' onClick={onAddContext}>
+                <div className='flex items-center h-8 text-[#542cb7] cursor-pointer' onClick={onAddContext}>
                   <div className='shrink-0 flex justify-center items-center mr-2 w-6 h-6 rounded-md border-[0.5px] border-gray-100'>
                     <RiAddLine className='w-[14px] h-[14px]' />
                   </div>

@@ -30,7 +30,7 @@ const translation = {
   },
   completionMode: {
     title: 'Completar App API',
-    info: 'Para generar texto de alta calidad, como artículos, resúmenes y traducciones, utiliza la API de mensajes de completado con la entrada del usuario. La generación de texto depende de los parámetros del modelo y las plantillas de inicio establecidas en Dify Prompt Engineering.',
+    info: 'Para generar texto de alta calidad, como artículos, resúmenes y traducciones, utiliza la API de mensajes de completado con la entrada del usuario. La generación de texto depende de los parámetros del modelo y las plantillas de inicio establecidas en Tiby Prompt Engineering.',
     createCompletionApi: 'Crear mensaje de completado',
     createCompletionApiTip: 'Crea un mensaje de completado para admitir el modo de pregunta y respuesta.',
     inputsTips: '(Opcional) Proporciona campos de entrada de usuario como pares clave-valor, que corresponden a las variables en Prompt Eng. La clave es el nombre de la variable, el valor es el valor del parámetro. Si el tipo de campo es Select, el valor enviado debe ser una de las opciones predefinidas.',
@@ -46,7 +46,7 @@ const translation = {
   },
   chatMode: {
     title: 'Chat App API',
-    info: 'Para aplicaciones de conversación versátiles que utilizan un formato de preguntas y respuestas, llama a la API de mensajes de chat para iniciar el diálogo. Mantén conversaciones en curso pasando el conversation_id devuelto. Los parámetros de respuesta y las plantillas dependen de la configuración de Dify Prompt Eng.',
+    info: 'Para aplicaciones de conversación versátiles que utilizan un formato de preguntas y respuestas, llama a la API de mensajes de chat para iniciar el diálogo. Mantén conversaciones en curso pasando el conversation_id devuelto. Los parámetros de respuesta y las plantillas dependen de la configuración de Tiby Prompt Eng.',
     createChatApi: 'Crear mensaje de chat',
     createChatApiTip: 'Crea un nuevo mensaje de conversación o continúa un diálogo existente.',
     inputsTips: '(Opcional) Proporciona campos de entrada de usuario como pares clave-valor, que corresponden a las variables en Prompt Eng. La clave es el nombre de la variable, el valor es el valor del parámetro. Si el tipo de campo es Select, el valor enviado debe ser una de las opciones predefinidas.',

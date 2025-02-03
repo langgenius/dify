@@ -74,7 +74,7 @@ const translation = {
       title: 'Kontingentgrenzen für Annotationen',
       tooltip: 'Manuelle Bearbeitung und Annotation von Antworten bieten anpassbare, hochwertige Frage-Antwort-Fähigkeiten für Apps. (Nur anwendbar in Chat-Apps)',
     },
-    ragAPIRequestTooltip: 'Bezieht sich auf die Anzahl der API-Aufrufe, die nur die Wissensdatenbankverarbeitungsfähigkeiten von Dify aufrufen.',
+    ragAPIRequestTooltip: 'Bezieht sich auf die Anzahl der API-Aufrufe, die nur die Wissensdatenbankverarbeitungsfähigkeiten von Tiby aufrufen.',
     receiptInfo: 'Nur der Teaminhaber und der Teamadministrator können abonnieren und Abrechnungsinformationen einsehen',
     annotationQuota: 'Kontingent für Anmerkungen',
   },

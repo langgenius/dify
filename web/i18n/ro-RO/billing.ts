@@ -74,7 +74,7 @@ const translation = {
       title: 'Limite de cotă de anotare',
       tooltip: 'Editarea și anotarea manuală a răspunsurilor oferă capacități de întrebări și răspunsuri personalizabile și de înaltă calitate pentru aplicații. (Aplicabil numai în aplicațiile de chat)',
     },
-    ragAPIRequestTooltip: 'Se referă la numărul de apeluri API care invocă doar capacitățile de procesare a bazei de cunoștințe a Dify.',
+    ragAPIRequestTooltip: 'Se referă la numărul de apeluri API care invocă doar capacitățile de procesare a bazei de cunoștințe a Tiby.',
     receiptInfo: 'Doar proprietarul echipei și administratorul echipei pot să se aboneze și să vizualizeze informațiile de facturare',
     annotationQuota: 'Cota de adnotare',
   },

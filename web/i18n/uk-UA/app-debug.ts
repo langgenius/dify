@@ -201,7 +201,7 @@ const translation = {
   },
   automatic: {
     title: 'Автоматизована оркестрація застосунків',
-    description: 'Опишіть свій сценарій, Dify збере для вас застосунок.',
+    description: 'Опишіть свій сценарій, Tiby збере для вас застосунок.',
     intendedAudience: 'Хто є цільовою аудиторією?',
     intendedAudiencePlaceHolder: 'напр. Студент',
     solveProblem: 'Які проблеми вони сподіваються вирішити за допомогою AI?',

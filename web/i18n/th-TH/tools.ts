@@ -1,7 +1,7 @@
 const translation = {
   title: 'เครื่อง มือ',
   createCustomTool: 'สร้างเครื่องมือที่กําหนดเอง',
-  customToolTip: 'เรียนรู้เพิ่มเติมเกี่ยวกับเครื่องมือแบบกําหนดเองของ Dify',
+  customToolTip: 'เรียนรู้เพิ่มเติมเกี่ยวกับเครื่องมือแบบกําหนดเองของ Tiby',
   type: {
     all: 'ทั้งหมด',
     builtIn: 'ในตัว',
@@ -10,7 +10,7 @@ const translation = {
   },
   contribute: {
     line1: 'ฉันสนใจใน',
-    line2: 'เครื่องมือที่มีส่วนร่วมใน Dify',
+    line2: 'เครื่องมือที่มีส่วนร่วมใน Tiby',
     viewGuide: 'ดูคู่มือ',
   },
   author: 'โดย',

@@ -58,7 +58,7 @@ const translation = {
     registrationNotAllowed: 'アカウントが見つかりません。登録するためにシステム管理者に連絡してください。',
   },
   license: {
-    tip: 'GitHubのオープンソースライセンスを確認してから、Dify Community Editionを開始してください。',
+    tip: 'GitHubのオープンソースライセンスを確認してから、Tiby Community Editionを開始してください。',
     link: 'オープンソースライセンス',
   },
   join: '参加する',
@@ -100,9 +100,9 @@ const translation = {
   enterYourName: 'ユーザー名を入力してください',
   resetPasswordDesc: 'Difyへのサインアップに使用したメールアドレスを入力すると、パスワードリセットメールが送信されます。',
   licenseLost: 'ライセンスを失った',
-  licenseExpiredTip: 'ワークスペースの Dify Enterprise ライセンスの有効期限が切れています。Difyを引き続き使用するには、管理者に連絡してください。',
+  licenseExpiredTip: 'ワークスペースの Tiby Enterprise ライセンスの有効期限が切れています。Difyを引き続き使用するには、管理者に連絡してください。',
   licenseInactive: 'ライセンスが非アクティブです',
-  licenseInactiveTip: 'ワークスペースの Dify Enterprise ライセンスが非アクティブです。Difyを引き続き使用するには、管理者に連絡してください。',
+  licenseInactiveTip: 'ワークスペースの Tiby Enterprise ライセンスが非アクティブです。Difyを引き続き使用するには、管理者に連絡してください。',
   licenseExpired: 'ライセンスの有効期限が切れています',
   licenseLostTip: 'Difyライセンスサーバーへの接続に失敗しました。続けてDifyを使用するために管理者に連絡してください。',
 }

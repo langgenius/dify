@@ -9,7 +9,7 @@ const translation = {
   },
   contribute: {
     line1: 'Interesuje mnie ',
-    line2: 'współtworzenie narzędzi dla Dify.',
+    line2: 'współtworzenie narzędzi dla Tiby.',
     viewGuide: 'Zobacz przewodnik',
   },
   author: 'Przez',
@@ -152,7 +152,7 @@ const translation = {
     emptyTipCustom: 'Tworzenie narzędzia niestandardowego',
   },
   openInStudio: 'Otwieranie w Studio',
-  customToolTip: 'Dowiedz się więcej o niestandardowych narzędziach Dify',
+  customToolTip: 'Dowiedz się więcej o niestandardowych narzędziach Tiby',
   toolNameUsageTip: 'Nazwa wywołania narzędzia do wnioskowania i podpowiadania agentowi',
 }
 

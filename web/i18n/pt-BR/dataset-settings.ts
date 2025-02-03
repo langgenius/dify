@@ -7,7 +7,7 @@ const translation = {
     nameError: 'O nome não pode estar vazio',
     desc: 'Descrição do conhecimento',
     descInfo: 'Por favor, escreva uma descrição textual clara para delinear o conteúdo do conhecimento. Esta descrição será usada como base para a correspondência ao selecionar entre vários conhecimentos para inferência.',
-    descPlaceholder: 'Descreva o que está neste conhecimento. Uma descrição detalhada permite que a IA acesse o conteúdo do conhecimento de forma oportuna. Se estiver vazio, o Dify usará a estratégia de correspondência padrão.',
+    descPlaceholder: 'Descreva o que está neste conhecimento. Uma descrição detalhada permite que a IA acesse o conteúdo do conhecimento de forma oportuna. Se estiver vazio, o Tiby usará a estratégia de correspondência padrão.',
     descWrite: 'Aprenda como escrever uma boa descrição do conhecimento.',
     permissions: 'Permissões',
     permissionsOnlyMe: 'Apenas eu',

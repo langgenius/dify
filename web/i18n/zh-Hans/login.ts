@@ -1,6 +1,6 @@
 const translation = {
   pageTitle: '嗨，近来可好',
-  welcome: '👋 欢迎来到 Dify, 登录以继续',
+  welcome: '👋 欢迎来到 Tiby, 登录以继续',
   email: '邮箱',
   emailPlaceholder: '输入邮箱地址',
   password: '密码',
@@ -24,7 +24,7 @@ const translation = {
   invitationCodePlaceholder: '输入邀请码',
   interfaceLanguage: '界面语言',
   timezone: '时区',
-  go: '跳转至 Dify',
+  go: '跳转至 Tiby',
   sendUsMail: '发封邮件介绍你自己，我们会尽快处理。',
   acceptPP: '我已阅读并接受隐私政策',
   reset: '请运行以下命令重置密码',
@@ -64,14 +64,14 @@ const translation = {
     registrationNotAllowed: '账户不存在，请联系系统管理员注册账户',
   },
   license: {
-    tip: '启动 Dify 社区版之前, 请阅读 GitHub 上的',
+    tip: '启动 Tiby 社区版之前, 请阅读 GitHub 上的',
     link: '开源协议',
   },
   join: '加入 ',
   joinTipStart: '邀请你加入 ',
   joinTipEnd: ' 团队',
   invalid: '链接已失效',
-  explore: '探索 Dify',
+  explore: '探索 Tiby',
   activatedTipStart: '您已加入',
   activatedTipEnd: '团队',
   activated: '现在登录',
@@ -100,11 +100,11 @@ const translation = {
   noLoginMethod: '未配置身份认证方式',
   noLoginMethodTip: '请联系系统管理员添加身份认证方式',
   licenseExpired: '许可证已过期',
-  licenseExpiredTip: '您所在空间的 Dify Enterprise 许可证已过期，请联系管理员以继续使用 Dify。',
+  licenseExpiredTip: '您所在空间的 Tiby Enterprise 许可证已过期，请联系管理员以继续使用 Tiby。',
   licenseLost: '许可证丢失',
-  licenseLostTip: '无法连接 Dify 许可证服务器，请联系管理员以继续使用 Dify。',
+  licenseLostTip: '无法连接 Tiby 许可证服务器，请联系管理员以继续使用 Tiby。',
   licenseInactive: '许可证未激活',
-  licenseInactiveTip: '您所在空间的 Dify Enterprise 许可证尚未激活，请联系管理员以继续使用 Dify。',
+  licenseInactiveTip: '您所在空间的 Tiby Enterprise 许可证尚未激活，请联系管理员以继续使用 Tiby。',
 }
 
 export default translation

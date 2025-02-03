@@ -31,7 +31,7 @@ const translation = {
   },
   completionMode: {
     title: 'API za dokončanje aplikacije',
-    info: 'Za visokokakovostno generiranje besedil, kot so članki, povzetki in prevodi, uporabite API za dokončanje sporočil z vnosom uporabnika. Generiranje besedil temelji na parametrih modela in predlogah pozivov, določenih v Dify Prompt Engineering.',
+    info: 'Za visokokakovostno generiranje besedil, kot so članki, povzetki in prevodi, uporabite API za dokončanje sporočil z vnosom uporabnika. Generiranje besedil temelji na parametrih modela in predlogah pozivov, določenih v Tiby Prompt Engineering.',
     createCompletionApi: 'Ustvari sporočilo o dokončanju',
     createCompletionApiTip: 'Ustvari sporočilo o dokončanju za podporo načinu vprašanj in odgovorov.',
     inputsTips: '(Neobvezno) Navedite vnosna polja uporabnikov kot ključ-vrednost pare, ki ustrezajo spremenljivkam v Prompt Eng. Ključ je ime spremenljivke, vrednost pa vrednost parametra. Če je vrsta polja Izberi, mora biti posredovana vrednost ena izmed vnaprej določenih možnosti.',
@@ -47,7 +47,7 @@ const translation = {
   },
   chatMode: {
     title: 'API za klepet aplikacije',
-    info: 'Za vsestranske pogovorne aplikacije, ki uporabljajo obliko vprašanj in odgovorov, pokličite API za klepetna sporočila, da začnete dialog. Ohranite tekoče pogovore tako, da prenesete vrnjeni conversation_id. Parametri odgovorov in predloge so odvisni od nastavitev Dify Prompt Eng.',
+    info: 'Za vsestranske pogovorne aplikacije, ki uporabljajo obliko vprašanj in odgovorov, pokličite API za klepetna sporočila, da začnete dialog. Ohranite tekoče pogovore tako, da prenesete vrnjeni conversation_id. Parametri odgovorov in predloge so odvisni od nastavitev Tiby Prompt Eng.',
     createChatApi: 'Ustvari klepetno sporočilo',
     createChatApiTip: 'Ustvari novo pogovorno sporočilo ali nadaljuj obstoječi pogovor.',
     inputsTips: '(Neobvezno) Navedite vnosna polja uporabnikov kot ključ-vrednost pare, ki ustrezajo spremenljivkam v Prompt Eng. Ključ je ime spremenljivke, vrednost pa vrednost parametra. Če je vrsta polja Izberi, mora biti posredovana vrednost ena izmed vnaprej določenih možnosti.',

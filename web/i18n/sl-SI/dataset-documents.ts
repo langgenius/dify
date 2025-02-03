@@ -1,7 +1,7 @@
 const translation = {
   list: {
     title: 'Dokumenti',
-    desc: 'Vse datoteke znanja so prikazane tukaj, celotno znanje pa je mogoče povezati s citati Dify ali indeksirati prek vtičnika Chat.',
+    desc: 'Vse datoteke znanja so prikazane tukaj, celotno znanje pa je mogoče povezati s citati Tiby ali indeksirati prek vtičnika Chat.',
     addFile: 'Dodaj datoteko',
     addPages: 'Dodaj strani',
     addUrl: 'Dodaj URL',
@@ -53,7 +53,7 @@ const translation = {
         tip: 'Lahko naložite datoteke, sinhronizirate z spletno stranjo ali aplikacijami, kot so Notion, GitHub itd.',
       },
       sync: {
-        tip: 'Dify bo občasno prenesel datoteke iz Notion in dokončal obdelavo.',
+        tip: 'Tiby bo občasno prenesel datoteke iz Notion in dokončal obdelavo.',
       },
     },
     delete: {

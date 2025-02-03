@@ -1,7 +1,7 @@
 const translation = {
   title: 'ابزارها',
   createCustomTool: 'ایجاد ابزار سفارشی',
-  customToolTip: 'بیشتر در مورد ابزارهای سفارشی Dify بیاموزید',
+  customToolTip: 'بیشتر در مورد ابزارهای سفارشی Tiby بیاموزید',
   type: {
     all: 'همه',
     builtIn: 'سفارشی شده',
@@ -10,7 +10,7 @@ const translation = {
   },
   contribute: {
     line1: 'من علاقه‌مند به ',
-    line2: 'مشارکت در ابزارهای Dify هستم.',
+    line2: 'مشارکت در ابزارهای Tiby هستم.',
     viewGuide: 'مشاهده راهنما',
   },
   author: 'توسط',

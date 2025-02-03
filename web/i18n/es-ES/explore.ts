@@ -16,7 +16,7 @@ const translation = {
     },
   },
   apps: {
-    title: 'Explorar aplicaciones de Dify',
+    title: 'Explorar aplicaciones de Tiby',
     description: 'Utiliza estas aplicaciones de plantilla al instante o personaliza tus propias aplicaciones basadas en las plantillas.',
     allCategories: 'Recomendado',
   },

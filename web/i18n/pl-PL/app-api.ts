@@ -31,7 +31,7 @@ const translation = {
   },
   completionMode: {
     title: 'Zakończenie App API',
-    info: 'Do generowania tekstu wysokiej jakości, takiego jak artykuły, podsumowania i tłumaczenia, użyj API completion-messages z danymi wejściowymi użytkownika. Generowanie tekstu zależy od parametrów modelu i szablonów promptów ustawionych w Dify Prompt Engineering.',
+    info: 'Do generowania tekstu wysokiej jakości, takiego jak artykuły, podsumowania i tłumaczenia, użyj API completion-messages z danymi wejściowymi użytkownika. Generowanie tekstu zależy od parametrów modelu i szablonów promptów ustawionych w Tiby Prompt Engineering.',
     createCompletionApi: 'Utwórz Wiadomość Zakończenia',
     createCompletionApiTip:
       'Utwórz Wiadomość Zakończenia, aby obsługiwać tryb pytanie-odpowiedź.',
@@ -53,7 +53,7 @@ const translation = {
   },
   chatMode: {
     title: 'Chat App API',
-    info: 'Do wszechstronnych aplikacji konwersacyjnych w formacie Q&A, wywołaj API chat-messages, aby rozpocząć dialog. Utrzymuj trwające rozmowy, przekazując zwrócone conversation_id. Parametry odpowiedzi i szablony zależą od ustawień Dify Prompt Eng.',
+    info: 'Do wszechstronnych aplikacji konwersacyjnych w formacie Q&A, wywołaj API chat-messages, aby rozpocząć dialog. Utrzymuj trwające rozmowy, przekazując zwrócone conversation_id. Parametry odpowiedzi i szablony zależą od ustawień Tiby Prompt Eng.',
     createChatApi: 'Utwórz wiadomość czatu',
     createChatApiTip:
       'Utwórz nową wiadomość konwersacji lub kontynuuj istniejący dialog.',

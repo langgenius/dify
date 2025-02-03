@@ -21,7 +21,7 @@ html[data-theme="dark"] {
   --color-components-tooltip-bg: #18181BF2;
 
   --color-components-button-primary-text: #FFFFFFF2;
-  --color-components-button-primary-bg: #155AEF;
+  --color-components-button-primary-bg: #542CB7;
   --color-components-button-primary-border: #FFFFFF1F;
   --color-components-button-primary-bg-hover: #296DFF;
   --color-components-button-primary-border-hover: #FFFFFF33;
@@ -271,9 +271,9 @@ html[data-theme="dark"] {
   --color-components-premium-badge-blue-stroke-stop-100: #296DFF;
   --color-components-premium-badge-blue-text-stop-0: #EFF4FF;
   --color-components-premium-badge-blue-text-stop-100: #B2CAFF;
-  --color-components-premium-badge-blue-glow: #004AEB;
+  --color-components-premium-badge-blue-glow: #41228E;
   --color-components-premium-badge-blue-bg-stop-0-hover: #84ABFF;
-  --color-components-premium-badge-blue-bg-stop-100-hover: #004AEB;
+  --color-components-premium-badge-blue-bg-stop-100-hover: #41228E;
   --color-components-premium-badge-blue-glow-hover: #D1E0FF;
   --color-components-premium-badge-blue-stroke-stop-0-hover: #FFFFFF80;
   --color-components-premium-badge-blue-stroke-stop-100-hover: #296DFF;
@@ -333,7 +333,7 @@ html[data-theme="dark"] {
   --color-components-icon-bg-green-solid: #4CA30D;
   --color-components-icon-bg-teal-solid: #0E9384;
   --color-components-icon-bg-blue-light-solid: #0BA5EC;
-  --color-components-icon-bg-blue-solid: #155AEF;
+  --color-components-icon-bg-blue-solid: #542CB7;
   --color-components-icon-bg-indigo-solid: #444CE7;
   --color-components-icon-bg-violet-solid: #7839EE;
   --color-components-icon-bg-midnight-solid: #5D698D;
@@ -614,8 +614,8 @@ html[data-theme="dark"] {
   --color-util-colors-blue-brand-blue-brand-50: #002066;
   --color-util-colors-blue-brand-blue-brand-100: #00329E;
   --color-util-colors-blue-brand-blue-brand-200: #003DC1;
-  --color-util-colors-blue-brand-blue-brand-300: #004AEB;
-  --color-util-colors-blue-brand-blue-brand-400: #155AEF;
+  --color-util-colors-blue-brand-blue-brand-300: #41228E;
+  --color-util-colors-blue-brand-blue-brand-400: #542CB7;
   --color-util-colors-blue-brand-blue-brand-500: #296DFF;
   --color-util-colors-blue-brand-blue-brand-600: #5289FF;
   --color-util-colors-blue-brand-blue-brand-700: #84ABFF;

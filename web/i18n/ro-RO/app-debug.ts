@@ -201,7 +201,7 @@ const translation = {
   },
   automatic: {
     title: 'Orchestrarea automată a aplicațiilor',
-    description: 'Descrieți scenariul dvs., Dify vă va orchestra o aplicație pentru dvs.',
+    description: 'Descrieți scenariul dvs., Tiby vă va orchestra o aplicație pentru dvs.',
     intendedAudience: 'Care este publicul țintă?',
     intendedAudiencePlaceHolder: 'de ex. Student',
     solveProblem: 'Ce probleme speră ei că IA le poate rezolva?',

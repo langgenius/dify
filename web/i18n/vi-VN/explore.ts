@@ -16,7 +16,7 @@ const translation = {
     },
   },
   apps: {
-    title: 'Khám phá ứng dụng bởi Dify',
+    title: 'Khám phá ứng dụng bởi Tiby',
     description: 'Sử dụng ngay các ứng dụng mẫu này hoặc tùy chỉnh ứng dụng của bạn dựa trên các mẫu có sẵn.',
     allCategories: 'Tất cả danh mục',
   },

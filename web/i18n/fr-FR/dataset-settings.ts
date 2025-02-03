@@ -7,7 +7,7 @@ const translation = {
     nameError: 'Le nom ne peut pas être vide',
     desc: 'Description des connaissances',
     descInfo: 'Veuillez rédiger une description textuelle claire pour décrire le contenu de la Connaissance. Cette description sera utilisée comme base pour la correspondance lors de la sélection parmi plusieurs Connaissances pour l\'inférence.',
-    descPlaceholder: 'Décrivez ce qui se trouve dans cette Connaissance. Une description détaillée permet à l\'IA d\'accéder au contenu de la Connaissance en temps opportun. Si vide, Dify utilisera la stratégie de hit par défaut.',
+    descPlaceholder: 'Décrivez ce qui se trouve dans cette Connaissance. Une description détaillée permet à l\'IA d\'accéder au contenu de la Connaissance en temps opportun. Si vide, Tiby utilisera la stratégie de hit par défaut.',
     descWrite: 'Apprenez comment rédiger une bonne description de connaissance.',
     permissions: 'Autorisations',
     permissionsOnlyMe: 'Seulement moi',

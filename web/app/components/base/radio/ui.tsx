@@ -11,7 +11,7 @@ const RadioUI: FC<Props> = ({
   isChecked,
 }) => {
   return (
-    <div className={cn(isChecked ? 'border-[5px] border-[#155eef]' : 'border-[2px] border-gray-200', 'w-4 h-4  rounded-full')}>
+    <div className={cn(isChecked ? 'border-[5px] border-[#542cb7]' : 'border-[2px] border-gray-200', 'w-4 h-4  rounded-full')}>
     </div>
   )
 }

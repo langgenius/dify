@@ -7,7 +7,7 @@ const translation = {
     nameError: '名稱不能為空',
     desc: '知識庫描述',
     descInfo: '請寫出清楚的文字描述來概述知識庫的內容。當從多個知識庫中進行選擇匹配時，該描述將用作匹配的基礎。',
-    descPlaceholder: '描述這個知識庫中的內容。詳細的描述可以讓 AI 及時訪問知識庫的內容。如果為空，Dify 將使用預設的命中策略。',
+    descPlaceholder: '描述這個知識庫中的內容。詳細的描述可以讓 AI 及時訪問知識庫的內容。如果為空，Tiby 將使用預設的命中策略。',
     descWrite: '瞭解如何編寫更好的知識庫描述。',
     permissions: '可見許可權',
     permissionsOnlyMe: '只有我',

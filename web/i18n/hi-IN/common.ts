@@ -182,8 +182,8 @@ const translation = {
     newPassword: 'नया पासवर्ड',
     confirmPassword: 'पासवर्ड की पुष्टि करें',
     notEqual: 'दो पासवर्ड अलग हैं।',
-    langGeniusAccount: 'Dify खाता',
-    langGeniusAccountTip: 'आपका Dify खाता और संबंधित उपयोगकर्ता डेटा।',
+    langGeniusAccount: 'Tiby खाता',
+    langGeniusAccountTip: 'आपका Tiby खाता और संबंधित उपयोगकर्ता डेटा।',
     editName: 'नाम संपादित करें',
     showAppLength: '{{length}} ऐप्स दिखाएं',
     deleteConfirmTip: 'पुष्टि करने के लिए, कृपया अपने पंजीकृत ईमेल से निम्नलिखित भेजें',
@@ -284,7 +284,7 @@ const translation = {
       openaiHosted: 'होस्टेड OpenAI',
       onTrial: 'परीक्षण पर',
       exhausted: 'कोटा समाप्त',
-      desc: 'Dify द्वारा प्रदान की गई OpenAI होस्टिंग सेवा आपको GPT-3.5 जैसे मॉडल का उपयोग करने की अनुमति देती है। आपके परीक्षण कोटा के समाप्त होने से पहले, आपको अन्य मॉडल प्रदाताओं को सेट करने की आवश्यकता है।',
+      desc: 'Tiby द्वारा प्रदान की गई OpenAI होस्टिंग सेवा आपको GPT-3.5 जैसे मॉडल का उपयोग करने की अनुमति देती है। आपके परीक्षण कोटा के समाप्त होने से पहले, आपको अन्य मॉडल प्रदाताओं को सेट करने की आवश्यकता है।',
       callTimes: 'कॉल बार',
       usedUp: 'परीक्षण कोटा समाप्त हो गया। अपना मॉडल प्रदाता जोड़ें।',
       useYourModel: 'वर्तमान में अपना मॉडल प्रदाता उपयोग कर रहे हैं।',
@@ -459,7 +459,7 @@ const translation = {
   },
   apiBasedExtension: {
     title:
-      'एपीआई एक्सटेंशन केंद्रीकृत एपीआई प्रबंधन प्रदान करते हैं, जो Dify के अनुप्रयोगों में आसान उपयोग के लिए कॉन्फ़िगरेशन को सरल बनाते हैं।',
+      'एपीआई एक्सटेंशन केंद्रीकृत एपीआई प्रबंधन प्रदान करते हैं, जो Tiby के अनुप्रयोगों में आसान उपयोग के लिए कॉन्फ़िगरेशन को सरल बनाते हैं।',
     link: 'अपना खुद का एपीआई एक्सटेंशन कैसे विकसित करें, यह जानें।',
     linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
     add: 'एपीआई एक्सटेंशन जोड़ें',
@@ -490,8 +490,8 @@ const translation = {
   about: {
     changeLog: 'परिवर्तन लॉग',
     updateNow: 'अभी अपडेट करें',
-    nowAvailable: 'Dify {{version}} अब उपलब्ध है।',
-    latestAvailable: 'Dify {{version}} नवीनतम उपलब्ध संस्करण है।',
+    nowAvailable: 'Tiby {{version}} अब उपलब्ध है।',
+    latestAvailable: 'Tiby {{version}} नवीनतम उपलब्ध संस्करण है।',
   },
   appMenus: {
     overview: 'निगरानी',

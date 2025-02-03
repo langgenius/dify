@@ -30,7 +30,7 @@ const translation = {
   },
   completionMode: {
     title: 'Completion Uygulama API',
-    info: 'Makale, özet ve çeviri gibi yüksek kaliteli metin üretimi için, completion-messages API\'sini kullanıcı girişi ile birlikte kullanın. Metin üretimi, Dify Prompt Engineering\'de ayarlanan model parametrelerine ve prompt şablonlarına dayanır.',
+    info: 'Makale, özet ve çeviri gibi yüksek kaliteli metin üretimi için, completion-messages API\'sini kullanıcı girişi ile birlikte kullanın. Metin üretimi, Tiby Prompt Engineering\'de ayarlanan model parametrelerine ve prompt şablonlarına dayanır.',
     createCompletionApi: 'Completion Mesajı Oluştur',
     createCompletionApiTip: 'Soru-cevap modunu desteklemek için bir Completion Mesajı oluşturun.',
     inputsTips: '(İsteğe bağlı) Prompt Eng\'deki değişkenlere karşılık gelen kullanıcı giriş alanlarını anahtar-değer çiftleri olarak sağlayın. Anahtar, değişken adıdır, Değer ise parametre değeridir. Alan türü Select ise, gönderilen Değer önceden ayarlanmış seçeneklerden biri olmalıdır.',
@@ -46,7 +46,7 @@ const translation = {
   },
   chatMode: {
     title: 'Chat Uygulama API',
-    info: 'Soru-Cevap formatını kullanan çok yönlü sohbet uygulamaları için, diyalogu başlatmak üzere chat-messages API\'sini çağırın. conversation_id\'yi ileterek devam eden konuşmaları sürdürün. Yanıt parametreleri ve şablonları, Dify Prompt Engineering ayarlarına bağlıdır.',
+    info: 'Soru-Cevap formatını kullanan çok yönlü sohbet uygulamaları için, diyalogu başlatmak üzere chat-messages API\'sini çağırın. conversation_id\'yi ileterek devam eden konuşmaları sürdürün. Yanıt parametreleri ve şablonları, Tiby Prompt Engineering ayarlarına bağlıdır.',
     createChatApi: 'Sohbet mesajı oluştur',
     createChatApiTip: 'Yeni bir konuşma mesajı oluşturun veya mevcut diyaloğu devam ettirin.',
     inputsTips: '(İsteğe bağlı) Prompt Eng\'deki değişkenlere karşılık gelen kullanıcı giriş alanlarını anahtar-değer çiftleri olarak sağlayın. Anahtar, değişken adıdır, Değer ise parametre değeridir. Alan türü Select ise, gönderilen Değer önceden ayarlanmış seçeneklerden biri olmalıdır.',

@@ -171,7 +171,7 @@ const NodePanel: FC<Props> = ({
                       <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
                     )
                     : (
-                      <div className='flex items-center space-x-1 text-[#155EEF]'>
+                      <div className='flex items-center space-x-1 text-[#542cb7]'>
                         <div className='text-[13px] font-normal '>{t('workflow.common.viewDetailInTracingPanel')}</div>
                         <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
                       </div>

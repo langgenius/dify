@@ -75,7 +75,7 @@ const translation = {
       title: 'Omejitve kvote za označevanje',
       tooltip: 'Ročno urejanje in označevanje odgovorov omogoča prilagojeno visoko kakovostno odgovarjanje na vprašanja v aplikacijah. (Velja samo za klepetalne aplikacije)',
     },
-    ragAPIRequestTooltip: 'Nanaša se na število API klicev, ki vključujejo samo sposobnosti obdelave baze znanja Dify.',
+    ragAPIRequestTooltip: 'Nanaša se na število API klicev, ki vključujejo samo sposobnosti obdelave baze znanja Tiby.',
     receiptInfo: 'Le lastnik ekipe in skrbnik ekipe lahko naročita in si ogledate podatke o plačilih',
   },
   plans: {

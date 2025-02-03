@@ -31,7 +31,7 @@ const translation = {
   },
   completionMode: {
     title: 'API dell\'App di Completamento',
-    info: 'Per una generazione di testo di alta qualità, come articoli, riassunti e traduzioni, utilizza l\'API completion-messages con l\'input dell\'utente. La generazione del testo si basa sui parametri del modello e sui modelli di prompt impostati in Dify Prompt Engineering.',
+    info: 'Per una generazione di testo di alta qualità, come articoli, riassunti e traduzioni, utilizza l\'API completion-messages con l\'input dell\'utente. La generazione del testo si basa sui parametri del modello e sui modelli di prompt impostati in Tiby Prompt Engineering.',
     createCompletionApi: 'Crea Messaggio di Completamento',
     createCompletionApiTip:
       'Crea un Messaggio di Completamento per supportare la modalità domanda e risposta.',
@@ -53,7 +53,7 @@ const translation = {
   },
   chatMode: {
     title: 'API dell\'App di Chat',
-    info: 'Per app conversazionali versatili utilizzando un formato Q&A, chiama l\'API chat-messages per avviare il dialogo. Mantieni conversazioni in corso passando l\'conversation_id restituito. I parametri di risposta e i modelli dipendono dalle impostazioni di Dify Prompt Eng.',
+    info: 'Per app conversazionali versatili utilizzando un formato Q&A, chiama l\'API chat-messages per avviare il dialogo. Mantieni conversazioni in corso passando l\'conversation_id restituito. I parametri di risposta e i modelli dipendono dalle impostazioni di Tiby Prompt Eng.',
     createChatApi: 'Crea messaggio di chat',
     createChatApiTip:
       'Crea un nuovo messaggio di conversazione o continua un dialogo esistente.',

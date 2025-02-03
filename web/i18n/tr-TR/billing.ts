@@ -75,7 +75,7 @@ const translation = {
       title: 'Ek Açıklama Kota Sınırları',
       tooltip: 'Yanıtların elle düzenlenmesi ve ek açıklanması, uygulamalar için özelleştirilebilir yüksek kaliteli soru-cevap yetenekleri sağlar. (Sadece sohbet uygulamalarında geçerlidir)',
     },
-    ragAPIRequestTooltip: 'Dify\'nin sadece bilgi tabanı işleme yeteneklerini çağıran API çağrıları sayısını ifade eder.',
+    ragAPIRequestTooltip: 'Tiby\'nin sadece bilgi tabanı işleme yeteneklerini çağıran API çağrıları sayısını ifade eder.',
     receiptInfo: 'Sadece takım sahibi ve takım yöneticisi abone olabilir ve faturalandırma bilgilerini görüntüleyebilir',
   },
   plans: {

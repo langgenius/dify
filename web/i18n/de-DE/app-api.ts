@@ -29,7 +29,7 @@ const translation = {
   },
   completionMode: {
     title: 'Completion App API',
-    info: 'Für die Erzeugung von hochwertigem Text, wie z.B. Artikel, Zusammenfassungen und Übersetzungen, verwenden Sie die Completion-Messages API mit Benutzereingaben. Die Texterzeugung basiert auf den Modellparametern und Vorlagen für Aufforderungen in Dify Prompt Engineering.',
+    info: 'Für die Erzeugung von hochwertigem Text, wie z.B. Artikel, Zusammenfassungen und Übersetzungen, verwenden Sie die Completion-Messages API mit Benutzereingaben. Die Texterzeugung basiert auf den Modellparametern und Vorlagen für Aufforderungen in Tiby Prompt Engineering.',
     createCompletionApi: 'Completion Nachricht erstellen',
     createCompletionApiTip: 'Erstellen Sie eine Completion Nachricht, um den Frage-Antwort-Modus zu unterstützen.',
     inputsTips: '(Optional) Geben Sie Benutzereingabefelder als Schlüssel-Wert-Paare an, die Variablen in Prompt Eng. entsprechen. Schlüssel ist der Variablenname, Wert ist der Parameterwert. Wenn der Feldtyp Select ist, muss der übermittelte Wert eine der voreingestellten Optionen sein.',
@@ -45,7 +45,7 @@ const translation = {
   },
   chatMode: {
     title: 'Chat App API',
-    info: 'Für vielseitige Gesprächsanwendungen im Q&A-Format rufen Sie die chat-messages API auf, um einen Dialog zu initiieren. Führen Sie laufende Gespräche fort, indem Sie die zurückgegebene conversation_id übergeben. Antwortparameter und -vorlagen hängen von den Einstellungen in Dify Prompt Eng. ab.',
+    info: 'Für vielseitige Gesprächsanwendungen im Q&A-Format rufen Sie die chat-messages API auf, um einen Dialog zu initiieren. Führen Sie laufende Gespräche fort, indem Sie die zurückgegebene conversation_id übergeben. Antwortparameter und -vorlagen hängen von den Einstellungen in Tiby Prompt Eng. ab.',
     createChatApi: 'Chatnachricht erstellen',
     createChatApiTip: 'Eine neue Konversationsnachricht erstellen oder einen bestehenden Dialog fortsetzen.',
     inputsTips: '(Optional) Geben Sie Benutzereingabefelder als Schlüssel-Wert-Paare an, die Variablen in Prompt Eng. entsprechen. Schlüssel ist der Variablenname, Wert ist der Parameterwert. Wenn der Feldtyp Select ist, muss der übermittelte Wert eine der voreingestellten Optionen sein.',

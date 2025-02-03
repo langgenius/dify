@@ -12,7 +12,7 @@ const translation = {
   datasetDeleted: 'Bộ kiến thức đã được xóa',
   datasetDeleteFailed: 'Xóa bộ kiến thức không thành công',
   didYouKnow: 'Bạn có biết?',
-  intro1: 'Bộ kiến thức có thể được tích hợp vào ứng dụng Dify ',
+  intro1: 'Bộ kiến thức có thể được tích hợp vào ứng dụng Tiby ',
   intro2: 'như một ngữ cảnh',
   intro3: ',',
   intro4: 'hoặc ',
@@ -145,7 +145,7 @@ const translation = {
   externalKnowledgeName: 'Tên kiến thức bên ngoài',
   externalKnowledgeIdPlaceholder: 'Vui lòng nhập ID kiến thức',
   createNewExternalAPI: 'Tạo API Kiến thức Bên ngoài mới',
-  externalAPIPanelDescription: 'API kiến thức bên ngoài được sử dụng để kết nối với cơ sở kiến thức bên ngoài Dify và truy xuất kiến thức từ cơ sở kiến thức đó.',
+  externalAPIPanelDescription: 'API kiến thức bên ngoài được sử dụng để kết nối với cơ sở kiến thức bên ngoài Tiby và truy xuất kiến thức từ cơ sở kiến thức đó.',
   chunkingMode: {
     general: 'Tổng quát',
     parentChild: 'Cha mẹ-con cái',

@@ -16,7 +16,7 @@ type Props = {
 const ITem: FC<{ isActive: boolean; value: PlanRange; text: string; onClick: (value: PlanRange) => void }> = ({ isActive, value, text, onClick }) => {
   return (
     <div
-      className={cn(isActive ? 'bg-[#155EEF] text-white' : 'text-gray-900', 'flex items-center px-8 h-11 rounded-[32px] cursor-pointer text-[15px] font-medium')}
+      className={cn(isActive ? 'bg-[#542cb7] text-white' : 'text-gray-900', 'flex items-center px-8 h-11 rounded-[32px] cursor-pointer text-[15px] font-medium')}
       onClick={() => onClick(value)}
     >
       {text}

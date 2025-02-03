@@ -7,7 +7,7 @@ const translation = {
     nameError: 'Tên không thể để trống',
     desc: 'Mô tả Kiến thức',
     descInfo: 'Vui lòng viết mô tả rõ ràng về nội dung của Kiến thức. Mô tả này sẽ được sử dụng làm cơ sở cho việc kết hợp khi lựa chọn từ nhiều Kiến thức trong quá trình suy luận.',
-    descPlaceholder: 'Mô tả những gì có trong Kiến thức này. Một mô tả chi tiết giúp AI truy cập nội dung của Kiến thức một cách hiệu quả. Nếu để trống, Dify sẽ sử dụng chiến lược truy xuất mặc định.',
+    descPlaceholder: 'Mô tả những gì có trong Kiến thức này. Một mô tả chi tiết giúp AI truy cập nội dung của Kiến thức một cách hiệu quả. Nếu để trống, Tiby sẽ sử dụng chiến lược truy xuất mặc định.',
     descWrite: 'Tìm hiểu cách viết mô tả Kiến thức tốt.',
     permissions: 'Quyền hạn',
     permissionsOnlyMe: 'Chỉ mình tôi',

@@ -78,7 +78,7 @@
 								"name": "stop",
 								"attributes": {
 									"offset": "1",
-									"stop-color": "#155EEF",
+									"stop-color": "#542cb7",
 									"stop-opacity": "0"
 								},
 								"children": []

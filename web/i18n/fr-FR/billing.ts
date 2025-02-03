@@ -74,7 +74,7 @@ const translation = {
       title: 'Limites de quota d\'annotation',
       tooltip: 'L\'édition manuelle et l\'annotation des réponses fournissent des capacités de réponse aux questions de haute qualité personnalisables pour les applications. (Applicable uniquement dans les applications de chat)',
     },
-    ragAPIRequestTooltip: 'Fait référence au nombre d\'appels API invoquant uniquement les capacités de traitement de la base de connaissances de Dify.',
+    ragAPIRequestTooltip: 'Fait référence au nombre d\'appels API invoquant uniquement les capacités de traitement de la base de connaissances de Tiby.',
     receiptInfo: 'Seuls le propriétaire de l\'équipe et l\'administrateur de l\'équipe peuvent s\'abonner et consulter les informations de facturation',
     annotationQuota: 'Quota d’annotation',
   },

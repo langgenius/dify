@@ -9,7 +9,7 @@ const translation = {
     descInfo:
       'Per favore scrivi una descrizione chiara per delineare il contenuto della Conoscenza. Questa descrizione sarà utilizzata come base per la corrispondenza quando si seleziona tra più Conoscenze per l\'inferenza.',
     descPlaceholder:
-      'Descrivi cosa c\'è in questa Conoscenza. Una descrizione dettagliata permette all\'IA di accedere al contenuto della Conoscenza in modo tempestivo. Se vuota, Dify utilizzerà la strategia di recupero predefinita.',
+      'Descrivi cosa c\'è in questa Conoscenza. Una descrizione dettagliata permette all\'IA di accedere al contenuto della Conoscenza in modo tempestivo. Se vuota, Tiby utilizzerà la strategia di recupero predefinita.',
     descWrite: 'Scopri come scrivere una buona descrizione della Conoscenza.',
     permissions: 'Permessi',
     permissionsOnlyMe: 'Solo io',

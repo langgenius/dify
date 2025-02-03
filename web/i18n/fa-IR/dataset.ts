@@ -12,7 +12,7 @@ const translation = {
   datasetDeleted: 'دانش حذف شد',
   datasetDeleteFailed: 'حذف دانش ناموفق بود',
   didYouKnow: 'آیا می‌دانستید؟',
-  intro1: 'دانش می‌تواند در برنامه Dify ',
+  intro1: 'دانش می‌تواند در برنامه Tiby ',
   intro2: 'به عنوان یک زمینه',
   intro3: 'ادغام شود',
   intro4: 'یا می‌تواند ',
@@ -143,7 +143,7 @@ const translation = {
   createNewExternalAPI: 'ایجاد یک API دانش خارجی جدید',
   learnHowToWriteGoodKnowledgeDescription: 'یاد بگیرید که چگونه یک توضیحات دانش خوب بنویسید.',
   editExternalAPIFormTitle: 'ویرایش API دانش خارجی',
-  externalAPIPanelDescription: 'API دانش خارجی برای اتصال به یک پایگاه دانش خارج از Dify و بازیابی دانش از آن پایگاه دانش استفاده می شود.',
+  externalAPIPanelDescription: 'API دانش خارجی برای اتصال به یک پایگاه دانش خارج از Tiby و بازیابی دانش از آن پایگاه دانش استفاده می شود.',
   allExternalTip: 'هنگامی که فقط از دانش خارجی استفاده می کنید، کاربر می تواند انتخاب کند که آیا مدل Rerank را فعال کند یا خیر. اگر فعال نباشد، تکه های بازیابی شده بر اساس امتیازات مرتب می شوند. هنگامی که استراتژی های بازیابی پایگاه های دانش مختلف متناقض باشد، نادرست خواهد بود.',
   mixtureInternalAndExternalTip: 'مدل Rerank برای آمیختگی دانش درونی و بیرونی مورد نیاز است.',
   chunkingMode: {

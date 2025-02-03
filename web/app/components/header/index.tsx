@@ -62,7 +62,7 @@ const Header = () => {
           <Link href="/apps" className='flex items-center mr-4'>
             <LogoSite className='object-contain' />
           </Link>
-          {systemFeatures.license.status === LicenseStatus.NONE && <GithubStar />}
+          {/* {systemFeatures.license.status === LicenseStatus.NONE && <GithubStar />} */}
         </>}
       </div>
       {isMobile && (

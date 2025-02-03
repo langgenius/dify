@@ -11,7 +11,7 @@ const translation = {
   datasetDeleted: '지식이 삭제되었습니다',
   datasetDeleteFailed: '지식 삭제에 실패했습니다',
   didYouKnow: '알고 계셨나요?',
-  intro1: '지식을 Dify 애플리케이션에 ',
+  intro1: '지식을 Tiby 애플리케이션에 ',
   intro2: '컨텍스트로',
   intro3: ' 통합할 수 있습니다.',
   intro4: '혹은, ',
@@ -143,7 +143,7 @@ const translation = {
   externalKnowledgeId: '외부 지식 ID',
   externalKnowledgeIdPlaceholder: '지식 ID를 입력하십시오.',
   allExternalTip: '외부 지식만 사용하는 경우 사용자는 리랭크 모델을 사용할지 여부를 선택할 수 있습니다. 활성화하지 않으면 검색된 청크가 점수에 따라 정렬됩니다. 서로 다른 기술 자료의 검색 전략이 일관되지 않으면 부정확합니다.',
-  externalAPIPanelDescription: '외부 지식 API는 Dify 외부의 기술 자료에 연결하고 해당 기술 자료에서 지식을 검색하는 데 사용됩니다.',
+  externalAPIPanelDescription: '외부 지식 API는 Tiby 외부의 기술 자료에 연결하고 해당 기술 자료에서 지식을 검색하는 데 사용됩니다.',
   noExternalKnowledge: '아직 외부 지식 API가 없으므로 여기를 클릭하여 생성하십시오.',
   chunkingMode: {
     parentChild: '부모-자식',

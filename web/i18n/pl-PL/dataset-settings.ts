@@ -9,7 +9,7 @@ const translation = {
     descInfo:
       'Proszę napisać klarowny opis tekstowy, aby zarysować zawartość Wiedzy. Ten opis będzie wykorzystywany jako podstawa do dopasowywania podczas wyboru z wielu wiedz dla wnioskowania.',
     descPlaceholder:
-      'Opisz, co znajduje się w tej Wiedzy. Szczegółowy opis pozwala sztucznej inteligencji na dostęp do treści Wiedzy w odpowiednim czasie. Jeśli jest pusty, Dify użyje domyślnej strategii trafień.',
+      'Opisz, co znajduje się w tej Wiedzy. Szczegółowy opis pozwala sztucznej inteligencji na dostęp do treści Wiedzy w odpowiednim czasie. Jeśli jest pusty, Tiby użyje domyślnej strategii trafień.',
     descWrite: 'Dowiedz się, jak napisać dobry opis Wiedzy.',
     permissions: 'Uprawnienia',
     permissionsOnlyMe: 'Tylko ja',

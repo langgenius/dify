@@ -196,7 +196,7 @@ const translation = {
   },
   otherDataSource: {
     title: 'Conectați-vă la alte surse de date?',
-    description: 'În prezent, baza de cunoștințe a Dify are doar surse de date limitate. Contribuția cu o sursă de date la baza de cunoștințe Dify este o modalitate fantastică de a ajuta la îmbunătățirea flexibilității și puterii platformei pentru toți utilizatorii. Ghidul nostru de contribuție vă ajută să începeți. Vă rugăm să faceți clic pe linkul de mai jos pentru a afla mai multe.',
+    description: 'În prezent, baza de cunoștințe a Tiby are doar surse de date limitate. Contribuția cu o sursă de date la baza de cunoștințe Tiby este o modalitate fantastică de a ajuta la îmbunătățirea flexibilității și puterii platformei pentru toți utilizatorii. Ghidul nostru de contribuție vă ajută să începeți. Vă rugăm să faceți clic pe linkul de mai jos pentru a afla mai multe.',
     learnMore: 'Află mai multe',
   },
 }

@@ -59,7 +59,7 @@
 }
 
 .indexItem .warningTip .click {
-  color: #155EEF;
+  color: #542cb7;
   cursor: pointer;
 }
 
@@ -154,7 +154,7 @@
 }
 
 .radioItem:hover .radio {
-  border-color: #155eef;
+  border-color: #542cb7;
 }
 
 .radioItem.active {
@@ -167,7 +167,7 @@
   top: 25.5px;
   right: 19.5px;
   border-width: 5px;
-  border-color: #155EEF;
+  border-color: #542cb7;
 }
 
 .radioItem.active:hover {

@@ -213,7 +213,7 @@ const translation = {
   otherDataSource: {
     learnMore: 'Dowiedz się więcej',
     title: 'Połączyć się z innymi źródłami danych?',
-    description: 'Obecnie baza wiedzy Dify ma tylko ograniczone źródła danych. Dodanie źródła danych do bazy wiedzy Dify to fantastyczny sposób na zwiększenie elastyczności i możliwości platformy dla wszystkich użytkowników. Nasz przewodnik po wkładach ułatwia rozpoczęcie pracy. Kliknij poniższy link, aby dowiedzieć się więcej.',
+    description: 'Obecnie baza wiedzy Tiby ma tylko ograniczone źródła danych. Dodanie źródła danych do bazy wiedzy Tiby to fantastyczny sposób na zwiększenie elastyczności i możliwości platformy dla wszystkich użytkowników. Nasz przewodnik po wkładach ułatwia rozpoczęcie pracy. Kliknij poniższy link, aby dowiedzieć się więcej.',
   },
 }
 

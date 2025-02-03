@@ -7,7 +7,7 @@ const translation = {
     nameError: 'El nombre no puede estar vacío',
     desc: 'Descripción del conjunto de datos',
     descInfo: 'Por favor escribe una descripción textual clara para delinear el contenido del conjunto de datos. Esta descripción se utilizará como base para la coincidencia al seleccionar entre múltiples conjuntos de datos para la inferencia.',
-    descPlaceholder: 'Describe lo que hay en este conjunto de datos. Una descripción detallada permite que la IA acceda al contenido del conjunto de datos de manera oportuna. Si está vacío, Dify utilizará la estrategia de coincidencia predeterminada.',
+    descPlaceholder: 'Describe lo que hay en este conjunto de datos. Una descripción detallada permite que la IA acceda al contenido del conjunto de datos de manera oportuna. Si está vacío, Tiby utilizará la estrategia de coincidencia predeterminada.',
     descWrite: 'Aprende cómo escribir una buena descripción del conjunto de datos.',
     permissions: 'Permisos',
     permissionsOnlyMe: 'Solo yo',

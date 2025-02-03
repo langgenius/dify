@@ -196,7 +196,7 @@ const translation = {
   },
   otherDataSource: {
     title: 'Kết nối với các nguồn dữ liệu khác?',
-    description: 'Hiện tại, cơ sở tri thức của Dify chỉ có nguồn dữ liệu hạn chế. Đóng góp nguồn dữ liệu vào cơ sở kiến thức Dify là một cách tuyệt vời để giúp nâng cao tính linh hoạt và sức mạnh của nền tảng cho tất cả người dùng. Hướng dẫn đóng góp của chúng tôi giúp bạn dễ dàng bắt đầu. Vui lòng nhấp vào liên kết bên dưới để tìm hiểu thêm.',
+    description: 'Hiện tại, cơ sở tri thức của Tiby chỉ có nguồn dữ liệu hạn chế. Đóng góp nguồn dữ liệu vào cơ sở kiến thức Tiby là một cách tuyệt vời để giúp nâng cao tính linh hoạt và sức mạnh của nền tảng cho tất cả người dùng. Hướng dẫn đóng góp của chúng tôi giúp bạn dễ dàng bắt đầu. Vui lòng nhấp vào liên kết bên dưới để tìm hiểu thêm.',
     learnMore: 'Tìm hiểu thêm',
   },
 }

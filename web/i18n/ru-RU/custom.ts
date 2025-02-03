@@ -6,7 +6,7 @@ const translation = {
   },
   webapp: {
     title: 'Настроить бренд веб-приложения',
-    removeBrand: 'Удалить Powered by Dify',
+    removeBrand: 'Удалить Powered by Tiby',
     changeLogo: 'Изменить изображение бренда Powered by',
     changeLogoTip: 'Формат SVG или PNG с минимальным размером 40x40px',
   },

@@ -196,7 +196,7 @@ const translation = {
   },
   otherDataSource: {
     title: 'Connect to other data sources?',
-    description: 'Currently, Dify\'s knowledge base only has limited data sources. Contributing a data source to the Dify knowledge base is a fantastic way to help enhance the platform\'s flexibility and power for all users. Our contribution guide makes it easy to get started. Please click on the link below to learn more.',
+    description: 'Currently, Tiby\'s knowledge base only has limited data sources. Contributing a data source to the Tiby knowledge base is a fantastic way to help enhance the platform\'s flexibility and power for all users. Our contribution guide makes it easy to get started. Please click on the link below to learn more.',
     learnMore: 'Learn more',
   },
 }

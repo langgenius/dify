@@ -1,7 +1,7 @@
 const translation = {
   list: {
     title: '文件',
-    desc: '知識庫的所有檔案都在這裡顯示，整個知識庫都可以連結到 Dify 引用或透過 Chat 外掛進行索引。',
+    desc: '知識庫的所有檔案都在這裡顯示，整個知識庫都可以連結到 Tiby 引用或透過 Chat 外掛進行索引。',
     addFile: '新增檔案',
     addPages: '新增頁面',
     table: {
@@ -52,7 +52,7 @@ const translation = {
         tip: '您可以上傳檔案，從網站同步，或者從網路應用程式（如概念、GitHub 等）同步。',
       },
       sync: {
-        tip: 'Dify 會定期從您的 Notion 中下載檔案並完成處理。',
+        tip: 'Tiby 會定期從您的 Notion 中下載檔案並完成處理。',
       },
     },
     delete: {

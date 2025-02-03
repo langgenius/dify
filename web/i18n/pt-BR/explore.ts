@@ -16,7 +16,7 @@ const translation = {
     },
   },
   apps: {
-    title: 'Explorar Aplicações por Dify',
+    title: 'Explorar Aplicações por Tiby',
     description: 'Use esses aplicativos modelo instantaneamente ou personalize seus próprios aplicativos com base nos modelos.',
     allCategories: 'Recomendado',
   },

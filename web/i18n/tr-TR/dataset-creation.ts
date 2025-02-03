@@ -196,7 +196,7 @@ const translation = {
   },
   otherDataSource: {
     learnMore: 'Daha fazla bilgi edinin',
-    description: 'Şu anda, Dify\'ın bilgi tabanı yalnızca sınırlı veri kaynaklarına sahiptir. Dify bilgi tabanına bir veri kaynağına katkıda bulunmak, tüm kullanıcılar için platformun esnekliğini ve gücünü artırmaya yardımcı olmanın harika bir yoludur. Katkı kılavuzumuz, başlamanızı kolaylaştırır. Daha fazla bilgi edinmek için lütfen aşağıdaki bağlantıya tıklayın.',
+    description: 'Şu anda, Tiby\'ın bilgi tabanı yalnızca sınırlı veri kaynaklarına sahiptir. Tiby bilgi tabanına bir veri kaynağına katkıda bulunmak, tüm kullanıcılar için platformun esnekliğini ve gücünü artırmaya yardımcı olmanın harika bir yoludur. Katkı kılavuzumuz, başlamanızı kolaylaştırır. Daha fazla bilgi edinmek için lütfen aşağıdaki bağlantıya tıklayın.',
     title: 'Diğer veri kaynaklarına bağlanılıyor mu?',
   },
 }

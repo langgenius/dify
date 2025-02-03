@@ -182,8 +182,8 @@ const translation = {
     newPassword: 'Nuova password',
     confirmPassword: 'Conferma password',
     notEqual: 'Le due password sono diverse.',
-    langGeniusAccount: 'Account Dify',
-    langGeniusAccountTip: 'Il tuo account Dify e i dati utente associati.',
+    langGeniusAccount: 'Account Tiby',
+    langGeniusAccountTip: 'Il tuo account Tiby e i dati utente associati.',
     editName: 'Modifica Nome',
     showAppLength: 'Mostra {{length}} app',
     delete: 'Elimina Account',
@@ -193,7 +193,7 @@ const translation = {
       'Per confermare, invia il seguente messaggio dalla tua email registrata a ',
     myAccount: 'Il mio account',
     account: 'Conto',
-    studio: 'Dify Studio',
+    studio: 'Tiby Studio',
     deletePrivacyLinkTip: 'Per ulteriori informazioni su come gestiamo i tuoi dati, consulta il nostro',
     deletePrivacyLink: 'Informativa sulla privacy.',
     deleteSuccessTip: 'Il tuo account ha bisogno di tempo per completare l\'eliminazione. Ti invieremo un\'e-mail quando tutto sarà finito.',
@@ -236,7 +236,7 @@ const translation = {
     invitedAsRole: 'Invitato come utente {{role}}',
     invitationSent: 'Invito inviato',
     invitationSentTip:
-      'Invito inviato, e possono accedere a Dify per accedere ai dati del tuo team.',
+      'Invito inviato, e possono accedere a Tiby per accedere ai dati del tuo team.',
     invitationLink: 'Link di Invito',
     failedInvitationEmails:
       'Gli utenti seguenti non sono stati invitati con successo',
@@ -287,7 +287,7 @@ const translation = {
       openaiHosted: 'OpenAI Ospitato',
       onTrial: 'IN PROVA',
       exhausted: 'QUOTA ESAURITA',
-      desc: 'Il servizio di hosting OpenAI fornito da Dify ti consente di utilizzare modelli come GPT-3.5. Prima che la tua quota di prova sia esaurita, devi configurare altri fornitori di modelli.',
+      desc: 'Il servizio di hosting OpenAI fornito da Tiby ti consente di utilizzare modelli come GPT-3.5. Prima che la tua quota di prova sia esaurita, devi configurare altri fornitori di modelli.',
       callTimes: 'Numero di chiamate',
       usedUp: 'Quota di prova esaurita. Aggiungi il tuo fornitore di modelli.',
       useYourModel: 'Attualmente utilizzando il proprio fornitore di modelli.',
@@ -466,7 +466,7 @@ const translation = {
   },
   apiBasedExtension: {
     title:
-      'Le estensioni API forniscono una gestione centralizzata delle API, semplificando la configurazione per un facile utilizzo nelle applicazioni di Dify.',
+      'Le estensioni API forniscono una gestione centralizzata delle API, semplificando la configurazione per un facile utilizzo nelle applicazioni di Tiby.',
     link: 'Scopri come sviluppare la tua estensione API.',
     linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
     add: 'Aggiungi Estensione API',
@@ -498,8 +498,8 @@ const translation = {
   about: {
     changeLog: 'Registro delle modifiche',
     updateNow: 'Aggiorna ora',
-    nowAvailable: 'Dify {{version}} è ora disponibile.',
-    latestAvailable: 'Dify {{version}} è l\'ultima versione disponibile.',
+    nowAvailable: 'Tiby {{version}} è ora disponibile.',
+    latestAvailable: 'Tiby {{version}} è l\'ultima versione disponibile.',
   },
   appMenus: {
     overview: 'Monitoraggio',

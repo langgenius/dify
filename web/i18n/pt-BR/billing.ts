@@ -71,7 +71,7 @@ const translation = {
       title: 'Limites de Cota de Anotação',
       tooltip: 'A edição manual e anotação de respostas oferece habilidades personalizadas de perguntas e respostas de alta qualidade para aplicativos. (Aplicável apenas em aplicativos de chat)',
     },
-    ragAPIRequestTooltip: 'Refere-se ao número de chamadas de API que invocam apenas as capacidades de processamento da base de conhecimento do Dify.',
+    ragAPIRequestTooltip: 'Refere-se ao número de chamadas de API que invocam apenas as capacidades de processamento da base de conhecimento do Tiby.',
     receiptInfo: 'Somente proprietários e administradores de equipe podem se inscrever e visualizar informações de cobrança',
     customTools: 'Ferramentas personalizadas',
     documentsUploadQuota: 'Cota de upload de documentos',

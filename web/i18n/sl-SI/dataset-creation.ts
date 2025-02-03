@@ -197,7 +197,7 @@ const translation = {
   otherDataSource: {
     learnMore: 'Izvedi več',
     title: 'Vzpostavite povezavo z drugimi viri podatkov?',
-    description: 'Trenutno ima baza znanja Dify le omejene vire podatkov. Prispevanje vira podatkov v bazo znanja Dify je fantastičen način za izboljšanje prilagodljivosti in moči platforme za vse uporabnike. Naš vodnik za prispevke olajša začetek. Če želite izvedeti več, kliknite spodnjo povezavo.',
+    description: 'Trenutno ima baza znanja Tiby le omejene vire podatkov. Prispevanje vira podatkov v bazo znanja Tiby je fantastičen način za izboljšanje prilagodljivosti in moči platforme za vse uporabnike. Naš vodnik za prispevke olajša začetek. Če želite izvedeti več, kliknite spodnjo povezavo.',
   },
 }
 

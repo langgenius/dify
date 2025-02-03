@@ -4,126 +4,126 @@
       "value": "en-US",
       "name": "English (United States)",
       "prompt_name": "English",
-      "example": "Hello, Dify!",
+      "example": "Hello, Tiby!",
       "supported": true
     },
     {
       "value": "zh-Hans",
       "name": "简体中文",
       "prompt_name": "Chinese Simplified",
-      "example": "你好，Dify！",
+      "example": "你好，Tiby！",
       "supported": true
     },
     {
       "value": "zh-Hant",
       "name": "繁體中文",
       "prompt_name": "Chinese Traditional",
-      "example": "你好，Dify！",
+      "example": "你好，Tiby！",
       "supported": true
     },
     {
       "value": "pt-BR",
       "name": "Português (Brasil)",
       "prompt_name": "Portuguese",
-      "example": "Olá, Dify!",
+      "example": "Olá, Tiby!",
       "supported": true
     },
     {
       "value": "es-ES",
       "name": "Español (España)",
       "prompt_name": "Spanish",
-      "example": "Saluton, Dify!",
+      "example": "Saluton, Tiby!",
       "supported": true
     },
     {
       "value": "fr-FR",
       "name": "Français (France)",
       "prompt_name": "French",
-      "example": "Bonjour, Dify!",
+      "example": "Bonjour, Tiby!",
       "supported": true
     },
     {
       "value": "de-DE",
       "name": "Deutsch (Deutschland)",
       "prompt_name": "German",
-      "example": "Hallo, Dify!",
+      "example": "Hallo, Tiby!",
       "supported": true
     },
     {
       "value": "ja-JP",
       "name": "日本語 (日本)",
       "prompt_name": "Japanese",
-      "example": "こんにちは、Dify!",
+      "example": "こんにちは、Tiby!",
       "supported": true
     },
     {
       "value": "ko-KR",
       "name": "한국어 (대한민국)",
       "prompt_name": "Korean",
-      "example": "안녕하세요, Dify!",
+      "example": "안녕하세요, Tiby!",
       "supported": true
     },
     {
       "value": "ru-RU",
       "name": "Русский (Россия)",
       "prompt_name": "Russian",
-      "example": " Привет, Dify!",
+      "example": " Привет, Tiby!",
       "supported": true
     },
     {
       "value": "it-IT",
       "name": "Italiano (Italia)",
       "prompt_name": "Italian",
-      "example": "Ciao, Dify!",
+      "example": "Ciao, Tiby!",
       "supported": true
     },
     {
       "value": "th-TH",
       "name": "ไทย (ประเทศไทย)",
       "prompt_name": "Thai",
-      "example": "สวัสดี Dify!",
+      "example": "สวัสดี Tiby!",
       "supported": true
     },
     {
       "value": "id-ID",
       "name": "Bahasa Indonesia",
       "prompt_name": "Indonesian",
-      "example": "Saluto, Dify!",
+      "example": "Saluto, Tiby!",
       "supported": false
     },
     {
       "value": "uk-UA",
       "name": "Українська (Україна)",
       "prompt_name": "Ukrainian",
-      "example": "Привет, Dify!",
+      "example": "Привет, Tiby!",
       "supported": true
     },
     {
       "value": "vi-VN",
       "name": "Tiếng Việt (Việt Nam)",
       "prompt_name": "Vietnamese",
-      "example": "Xin chào, Dify!",
+      "example": "Xin chào, Tiby!",
       "supported": true
     },
     {
       "value": "ro-RO",
       "name": "Română (România)",
       "prompt_name": "Romanian",
-      "example": "Salut, Dify!",
+      "example": "Salut, Tiby!",
       "supported": true
     },
     {
       "value": "pl-PL",
       "name": "Polski (Polish)",
       "prompt_name": "Polish",
-      "example": "Cześć, Dify!",
+      "example": "Cześć, Tiby!",
       "supported": true
     },
     {
       "value": "hi-IN",
       "name": "Hindi (India)",
       "prompt_name": "Hindi",
-      "example": "नमस्ते, Dify!",
+      "example": "नमस्ते, Tiby!",
       "supported": "true"
     },
     {
@@ -144,7 +144,7 @@
       "value": "sl-SI",
       "name": "Slovensko (Slovenija)",
       "prompt_name": "Slovensko",
-      "example": "Zdravo, Dify!",
+      "example": "Zdravo, Tiby!",
       "supported": true
     }
   ]

@@ -30,7 +30,7 @@ const translation = {
   },
   completionMode: {
     title: 'API completare aplicație',
-    info: 'Pentru generarea de text de înaltă calitate, cum ar fi articole, rezumate și traduceri, utilizați API-ul de mesaje de completare cu intrare de la utilizator. Generarea de text se bazează pe parametrii modelului și șabloanele de prompturi stabilite în Ingineria Prompturilor Dify.',
+    info: 'Pentru generarea de text de înaltă calitate, cum ar fi articole, rezumate și traduceri, utilizați API-ul de mesaje de completare cu intrare de la utilizator. Generarea de text se bazează pe parametrii modelului și șabloanele de prompturi stabilite în Ingineria Prompturilor Tiby.',
     createCompletionApi: 'Creează mesaj de completare',
     createCompletionApiTip: 'Creează un mesaj de completare pentru a sprijini modul de întrebare și răspuns.',
     inputsTips: '(Opțional) Furnizați câmpuri de intrare pentru utilizator ca perechi cheie-valoare, corespunzătoare variabilelor din Ingineria Prompt. Cheia este numele variabilei, Valoarea este valoarea parametrului. Dacă tipul de câmp este Select, Valoarea trimisă trebuie să fie una dintre opțiunile prestabilite.',
@@ -46,7 +46,7 @@ const translation = {
   },
   chatMode: {
     title: 'API chat aplicație',
-    info: 'Pentru aplicații conversaționale versatile folosind un format Q&A, apelați API-ul de mesaje de chat pentru a iniția un dialog. Mențineți conversațiile continue transmitând conversation_id returnat. Parametrii de răspuns și șabloanele depind de setările Ingineriei Prompt Dify.',
+    info: 'Pentru aplicații conversaționale versatile folosind un format Q&A, apelați API-ul de mesaje de chat pentru a iniția un dialog. Mențineți conversațiile continue transmitând conversation_id returnat. Parametrii de răspuns și șabloanele depind de setările Ingineriei Prompt Tiby.',
     createChatApi: 'Creează mesaj de chat',
     createChatApiTip: 'Creează un nou mesaj de conversație sau continuă un dialog existent.',
     inputsTips: '(Opțional) Furnizați câmpuri de intrare pentru utilizator ca perechi cheie-valoare, corespunzătoare variabilelor din Ingineria Prompt. Cheia este numele variabilei, Valoarea este valoarea parametrului. Dacă tipul de câmp este Select, Valoarea trimisă trebuie să fie una dintre opțiunile prestabilite.',

@@ -20,7 +20,8 @@ const LogoSite: FC<LogoSiteProps> = ({
   return (
     <img
       src={src}
-      className={classNames('block w-auto h-10', className)}
+      className={classNames('block w-auto h-12', className)}
+      style={{ borderRadius: '50px 50px 50px 50px' }}
       alt='logo'
     />
   )

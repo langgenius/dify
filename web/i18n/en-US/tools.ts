@@ -1,7 +1,7 @@
 const translation = {
   title: 'Tools',
   createCustomTool: 'Create Custom Tool',
-  customToolTip: 'Learn more about Dify custom tools',
+  customToolTip: 'Learn more about Tiby custom tools',
   type: {
     all: 'All',
     builtIn: 'Built-in',
@@ -10,7 +10,7 @@ const translation = {
   },
   contribute: {
     line1: 'I\'m interested in ',
-    line2: 'contributing tools to Dify.',
+    line2: 'contributing tools to Tiby.',
     viewGuide: 'View the guide',
   },
   author: 'By',

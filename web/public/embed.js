@@ -151,7 +151,7 @@
           width: var(--${containerDiv.id}-width, 50px);
           height: var(--${containerDiv.id}-height, 50px);
           border-radius: var(--${containerDiv.id}-border-radius, 25px);
-          background-color: var(--${containerDiv.id}-bg-color, #155EEF);
+          background-color: var(--${containerDiv.id}-bg-color, #542cb7);
           box-shadow: var(--${containerDiv.id}-box-shadow, rgba(0, 0, 0, 0.2) 0px 4px 8px 0px);
           cursor: pointer;
           z-index: 2147483647;

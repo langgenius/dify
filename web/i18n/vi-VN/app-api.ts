@@ -29,7 +29,7 @@ const translation = {
   },
   completionMode: {
     title: 'API ứng dụng hoàn thành',
-    info: 'Đối với việc tạo văn bản chất lượng cao như bài viết, tóm tắt và dịch thuật, hãy sử dụng API hoàn thành tin nhắn với đầu vào từ người dùng. Việc tạo văn bản dựa trên các thông số mô hình và mẫu đề xuất được thiết lập trong Dify Prompt Engineering.',
+    info: 'Đối với việc tạo văn bản chất lượng cao như bài viết, tóm tắt và dịch thuật, hãy sử dụng API hoàn thành tin nhắn với đầu vào từ người dùng. Việc tạo văn bản dựa trên các thông số mô hình và mẫu đề xuất được thiết lập trong Tiby Prompt Engineering.',
     createCompletionApi: 'Tạo tin nhắn hoàn thành',
     createCompletionApiTip: 'Tạo một tin nhắn hoàn thành để hỗ trợ chế độ câu hỏi và trả lời.',
     inputsTips: '(Tùy chọn) Cung cấp các trường đầu vào người dùng dưới dạng cặp khóa-giá trị, tương ứng với các biến trong Prompt Eng. Khóa là tên biến, Giá trị là giá trị tham số. Nếu loại trường là Lựa chọn, Giá trị đã gửi phải là một trong các lựa chọn đã thiết lập trước.',
@@ -45,7 +45,7 @@ const translation = {
   },
   chatMode: {
     title: 'API ứng dụng trò chuyện',
-    info: 'Đối với ứng dụng trò chuyện linh hoạt sử dụng định dạng Câu hỏi và Trả lời, gọi API tin nhắn trò chuyện để bắt đầu cuộc trò chuyện. Duy trì cuộc trò chuyện liên tục bằng cách chuyển conversation_id đã trả về. Các tham số phản hồi và mẫu phụ thuộc vào các cài đặt của Dify Prompt Eng.',
+    info: 'Đối với ứng dụng trò chuyện linh hoạt sử dụng định dạng Câu hỏi và Trả lời, gọi API tin nhắn trò chuyện để bắt đầu cuộc trò chuyện. Duy trì cuộc trò chuyện liên tục bằng cách chuyển conversation_id đã trả về. Các tham số phản hồi và mẫu phụ thuộc vào các cài đặt của Tiby Prompt Eng.',
     createChatApi: 'Tạo tin nhắn trò chuyện',
     createChatApiTip: 'Tạo một tin nhắn trò chuyện mới hoặc tiếp tục một cuộc trò chuyện đang tồn tại.',
     inputsTips: '(Tùy chọn) Cung cấp các trường đầu vào người dùng dưới dạng cặp khóa-giá trị, tương ứng với các biến trong Prompt Eng. Khóa là tên biến, Giá trị là giá trị tham số. Nếu loại trường là Lựa chọn, Giá trị đã gửi phải là một trong các lựa chọn đã thiết lập trước.',

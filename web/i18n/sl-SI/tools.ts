@@ -1,7 +1,7 @@
 const translation = {
   title: 'Orodja',
   createCustomTool: 'Ustvari prilagojeno orodje',
-  customToolTip: 'Izvedite več o prilagojenih orodjih Dify',
+  customToolTip: 'Izvedite več o prilagojenih orodjih Tiby',
   type: {
     all: 'Vsa',
     builtIn: 'Vgrajena',
@@ -10,7 +10,7 @@ const translation = {
   },
   contribute: {
     line1: 'Zanima me ',
-    line2: 'prispevanje orodij k Dify.',
+    line2: 'prispevanje orodij k Tiby.',
     viewGuide: 'Oglejte si vodič',
   },
   author: 'Avtor',

@@ -16,7 +16,7 @@ const translation = {
     },
   },
   apps: {
-    title: 'Esplora App di Dify',
+    title: 'Esplora App di Tiby',
     description:
       'Usa queste app modello istantaneamente o personalizza le tue app basate sui modelli.',
     allCategories: 'Consigliato',

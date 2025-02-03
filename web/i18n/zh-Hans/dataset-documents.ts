@@ -1,7 +1,7 @@
 const translation = {
   list: {
     title: '文档',
-    desc: '知识库的所有文件都在这里显示，整个知识库都可以链接到 Dify 引用或通过 Chat 插件进行索引。',
+    desc: '知识库的所有文件都在这里显示，整个知识库都可以链接到 Tiby 引用或通过 Chat 插件进行索引。',
     learnMore: '了解更多',
     addFile: '添加文件',
     addPages: '添加页面',
@@ -54,7 +54,7 @@ const translation = {
         tip: '您可以上传文件，从网站同步，或者从网络应用程序（如概念、GitHub 等）同步。',
       },
       sync: {
-        tip: 'Dify 会定期从您的 Notion 中下载文件并完成处理。',
+        tip: 'Tiby 会定期从您的 Notion 中下载文件并完成处理。',
       },
     },
     delete: {

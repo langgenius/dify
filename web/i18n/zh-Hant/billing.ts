@@ -74,7 +74,7 @@ const translation = {
       title: '標註回覆數',
       tooltip: '標註回覆功能透過人工編輯標註為應用提供了可定製的高質量問答回覆能力',
     },
-    ragAPIRequestTooltip: '指單獨呼叫 Dify 知識庫資料處理能力的 API。',
+    ragAPIRequestTooltip: '指單獨呼叫 Tiby 知識庫資料處理能力的 API。',
     receiptInfo: '只有團隊所有者和團隊管理員才能訂閱和檢視賬單資訊',
     annotationQuota: '註釋配額',
   },

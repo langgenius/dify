@@ -6,7 +6,7 @@
 <radialGradient id="paint0_angular_19344_240446" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(7.9434 8) rotate(90) scale(8.75 8.75)">
 <stop stop-color="#001FC2"/>
 <stop offset="0.711334" stop-color="#0667F8" stop-opacity="0.2"/>
-<stop offset="1" stop-color="#155EEF" stop-opacity="0"/>
+<stop offset="1" stop-color="#542cb7" stop-opacity="0"/>
 </radialGradient>
 <linearGradient id="paint1_linear_19344_240446" x1="8.06244" y1="8.43754" x2="7.93744" y2="9.20317" gradientUnits="userSpaceOnUse">
 <stop stop-color="white" stop-opacity="0"/>

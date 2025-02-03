@@ -7,7 +7,7 @@ const translation = {
     nameError: 'İsim boş olamaz',
     desc: 'Bilgi açıklaması',
     descInfo: 'Lütfen Bilginin içeriğini özetlemek için net bir metinsel açıklama yazın. Bu açıklama, çıkarım için birden fazla Bilgi arasından seçim yaparken eşleştirme temeli olarak kullanılacaktır.',
-    descPlaceholder: 'Bu Bilginin içeriğini açıklayın. Ayrıntılı bir açıklama, AI\'nın Bilginin içeriğine zamanında erişmesini sağlar. Boş bırakılırsa, Dify varsayılan isabet stratejisini kullanır.',
+    descPlaceholder: 'Bu Bilginin içeriğini açıklayın. Ayrıntılı bir açıklama, AI\'nın Bilginin içeriğine zamanında erişmesini sağlar. Boş bırakılırsa, Tiby varsayılan isabet stratejisini kullanır.',
     descWrite: 'İyi bir Bilgi açıklamasının nasıl yazılacağını öğrenin.',
     permissions: 'İzinler',
     permissionsOnlyMe: 'Sadece ben',

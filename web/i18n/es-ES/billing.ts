@@ -75,7 +75,7 @@ const translation = {
       title: 'Límites de Cuota de Anotación',
       tooltip: 'Edición manual y anotación de respuestas proporciona habilidades de respuesta a preguntas personalizadas y de alta calidad para aplicaciones (aplicable solo en aplicaciones de chat).',
     },
-    ragAPIRequestTooltip: 'Se refiere al número de llamadas API que invocan solo las capacidades de procesamiento de base de conocimientos de Dify.',
+    ragAPIRequestTooltip: 'Se refiere al número de llamadas API que invocan solo las capacidades de procesamiento de base de conocimientos de Tiby.',
     receiptInfo: 'Solo el propietario del equipo y el administrador del equipo pueden suscribirse y ver la información de facturación.',
   },
   plans: {

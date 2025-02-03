@@ -1,7 +1,7 @@
 const translation = {
   title: '도구',
   createCustomTool: '커스텀 도구 만들기',
-  customToolTip: 'Dify 커스텀 도구에 대해 더 알아보기',
+  customToolTip: 'Tiby 커스텀 도구에 대해 더 알아보기',
   type: {
     all: '모두',
     builtIn: '내장',
