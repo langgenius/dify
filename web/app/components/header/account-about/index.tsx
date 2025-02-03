@@ -1,7 +1,6 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
-import dayjs from 'dayjs'
 import { RiCloseLine } from '@remixicon/react'
 import s from './index.module.css'
 import classNames from '@/utils/classnames'
@@ -39,7 +38,7 @@ export default function AccountAbout({
           <LogoSite className='mx-auto mb-2' />
           <div className='mb-3 text-center text-xs font-normal text-gray-500'>Version {langeniusVersionInfo?.current_version}</div>
           <div className='mb-4 text-center text-xs font-normal text-gray-700'>
-            <div>© {dayjs().year()} LangGenius, Inc., Contributors.</div>
+
             <div className='text-[#1C64F2]'>
               {
                 IS_CE_EDITION

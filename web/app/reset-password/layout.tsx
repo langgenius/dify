@@ -31,7 +31,7 @@ export default async function SignInLayout({ children }: any) {
           </div>
         </div>
         <div className='px-8 py-6 system-xs-regular text-text-tertiary'>
-          © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
+          © {new Date().getFullYear()} Tiby.ai, All rights reserved.
         </div>
       </div>
     </div>
