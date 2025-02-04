@@ -2,45 +2,6 @@ from flask import Blueprint
 
 from libs.external_api import ExternalApi
 
-from .app.app_import import AppImportApi, AppImportConfirmApi
-from .explore.audio import ChatAudioApi, ChatTextApi
-from .explore.completion import ChatApi, ChatStopApi, CompletionApi, CompletionStopApi
-from .explore.conversation import (
-    ConversationApi,
-    ConversationListApi,
-    ConversationPinApi,
-    ConversationRenameApi,
-    ConversationUnPinApi,
-)
-from .explore.message import (
-    MessageFeedbackApi,
-    MessageListApi,
-    MessageMoreLikeThisApi,
-    MessageSuggestedQuestionApi,
-)
-from .explore.workflow import (
-    InstalledAppWorkflowRunApi,
-    InstalledAppWorkflowTaskStopApi,
-)
-from .files import FileApi, FilePreviewApi, FileSupportTypeApi
-from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
-
-bp = Blueprint("console", __name__, url_prefix="/console/api")
-api = ExternalApi(bp)
-
-# File
-api.add_resource(FileApi, "/files/upload")
-api.add_resource(FilePreviewApi, "/files/<uuid:file_id>/preview")
-api.add_resource(FileSupportTypeApi, "/files/support-type")
-
-# Remote files
-api.add_resource(RemoteFileInfoApi, "/remote-files/<path:url>")
-api.add_resource(RemoteFileUploadApi, "/remote-files/upload")
-
-# Import App
-api.add_resource(AppImportApi, "/apps/imports")
-api.add_resource(AppImportConfirmApi, "/apps/imports/<string:import_id>/confirm")
-
 # Import other controllers
 from . import admin, apikey, extension, feature, ping, setup, version
 
@@ -65,6 +26,7 @@ from .app import (
     workflow_run,
     workflow_statistic,
 )
+from .app.app_import import AppImportApi, AppImportConfirmApi
 
 # Import auth controllers
 from .auth import activate, data_source_bearer_auth, data_source_oauth, forgot_password, login, oauth
@@ -90,6 +52,49 @@ from .explore import (
     recommended_app,
     saved_message,
 )
+from .explore.audio import ChatAudioApi, ChatTextApi
+from .explore.completion import ChatApi, ChatStopApi, CompletionApi, CompletionStopApi
+from .explore.conversation import (
+    ConversationApi,
+    ConversationListApi,
+    ConversationPinApi,
+    ConversationRenameApi,
+    ConversationUnPinApi,
+)
+from .explore.message import (
+    MessageFeedbackApi,
+    MessageListApi,
+    MessageMoreLikeThisApi,
+    MessageSuggestedQuestionApi,
+)
+from .explore.workflow import (
+    InstalledAppWorkflowRunApi,
+    InstalledAppWorkflowTaskStopApi,
+)
+from .files import FileApi, FilePreviewApi, FileSupportTypeApi
+from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
+
+# Import tag controllers
+from .tag import tags
+
+# Import workspace controllers
+from .workspace import account, load_balancing_config, members, model_providers, models, tool_providers, workspace
+
+bp = Blueprint("console", __name__, url_prefix="/console/api")
+api = ExternalApi(bp)
+
+# File
+api.add_resource(FileApi, "/files/upload")
+api.add_resource(FilePreviewApi, "/files/<uuid:file_id>/preview")
+api.add_resource(FileSupportTypeApi, "/files/support-type")
+
+# Remote files
+api.add_resource(RemoteFileInfoApi, "/remote-files/<path:url>")
+api.add_resource(RemoteFileUploadApi, "/remote-files/upload")
+
+# Import App
+api.add_resource(AppImportApi, "/apps/imports")
+api.add_resource(AppImportConfirmApi, "/apps/imports/<string:import_id>/confirm")
 
 # Explore Audio
 api.add_resource(ChatAudioApi, "/installed-apps/<uuid:installed_app_id>/audio-to-text", endpoint="installed_app_audio")
@@ -161,9 +166,3 @@ api.add_resource(InstalledAppWorkflowRunApi, "/installed-apps/<uuid:installed_ap
 api.add_resource(
     InstalledAppWorkflowTaskStopApi, "/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop"
 )
-
-# Import tag controllers
-from .tag import tags
-
-# Import workspace controllers
-from .workspace import account, load_balancing_config, members, model_providers, models, tool_providers, workspace

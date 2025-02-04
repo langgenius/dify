@@ -3,13 +3,13 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, model_validator
 
+from core.rag.models.document import Document
+from extensions.ext_redis import redis_client
+
 _import_err_msg = (
     "`alibabacloud_gpdb20160503` and `alibabacloud_tea_openapi` packages not found, "
     "please run `pip install alibabacloud_gpdb20160503 alibabacloud_tea_openapi`"
 )
-
-from core.rag.models.document import Document
-from extensions.ext_redis import redis_client
 
 
 class AnalyticdbVectorOpenAPIConfig(BaseModel):

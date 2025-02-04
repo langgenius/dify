@@ -41,7 +41,6 @@ select = [
 ]
 
 ignore = [
-    "E402", # module-import-not-at-top-of-file
     "E711", # none-comparison
     "E712", # true-false-comparison
     "E721", # type-comparison
