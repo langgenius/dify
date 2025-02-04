@@ -58,9 +58,11 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 const preprocessLaTeX = (content: string) => {
   if (typeof content !== 'string')
     return content
-  return content.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`)
+  return content
+    .replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`)
     .replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`)
-    .replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`)
+    .replace(/(?<!\\)\${2}([^$]+?)\${2}/g, (match) => match)
+    .replace(/(?<!\\)\$(?!\$)([^$\n]+?)\$(?!\$)/g, (match) => match)
 }
 
 export function PreCode(props: { children: any }) {
