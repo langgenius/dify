@@ -58,11 +58,9 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 const preprocessLaTeX = (content: string) => {
   if (typeof content !== 'string')
     return content
-  return content
-    .replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`)
+  return content.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`)
     .replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`)
-    .replace(/(?<!\\)\${2}([^$]+?)\${2}/g, (match) => match)
-    .replace(/(?<!\\)\$(?!\$)([^$\n]+?)\$(?!\$)/g, (match) => match)
+    .replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`)
 }
 
 export function PreCode(props: { children: any }) {
@@ -231,7 +229,11 @@ export function Markdown(props: { content: string; className?: string }) {
   return (
     <div className={cn(props.className, 'markdown-body')}>
       <ReactMarkdown
-        remarkPlugins={[RemarkGfm, RemarkMath, RemarkBreaks]}
+        remarkPlugins={[
+          RemarkGfm,
+          [RemarkMath, { singleDollarTextMath: false }],
+          RemarkBreaks,
+        ]}
         rehypePlugins={[
           RehypeKatex,
           RehypeRaw as any,
