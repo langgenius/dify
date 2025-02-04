@@ -22,7 +22,7 @@ from extensions.ext_database import db
 from models.enums import UserFrom
 from models.provider import ProviderType
 
-# """FOR MOCK FIXTURES, DO NOT REMOVE"""
+# FOR MOCK FIXTURES, DO NOT REMOVE
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 from tests.integration_tests.model_runtime.__mock.anthropic import setup_anthropic_mock
 from tests.integration_tests.model_runtime.__mock.openai import setup_openai_mock
