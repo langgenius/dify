@@ -1,22 +1,19 @@
-model: o1
+model: o3-mini-2025-01-31
 label:
-  zh_Hans: o1
-  en_US: o1
+  zh_Hans: o3-mini-2025-01-31
+  en_US: o3-mini-2025-01-31
 model_type: llm
 features:
-  - multi-tool-call
   - agent-thought
-  - stream-tool-call
-  - vision
 model_properties:
   mode: chat
   context_size: 200000
 parameter_rules:
   - name: max_tokens
     use_template: max_tokens
-    default: 50000
+    default: 100000
     min: 1
-    max: 50000
+    max: 100000
   - name: reasoning_effort
     label:
       zh_Hans: 推理工作
@@ -43,7 +40,7 @@ parameter_rules:
       - text
       - json_object
 pricing:
-  input: '15.00'
-  output: '60.00'
+  input: '1.10'
+  output: '4.40'
   unit: '0.000001'
   currency: USD
