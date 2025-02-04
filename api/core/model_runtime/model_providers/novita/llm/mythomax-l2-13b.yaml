@@ -1,7 +1,7 @@
 model: gryphe/mythomax-l2-13b
 label:
-  zh_Hans: gryphe/mythomax-l2-13b
-  en_US: gryphe/mythomax-l2-13b
+  zh_Hans: Mythomax L2 13B
+  en_US: Mythomax L2 13B
 model_type: llm
 features:
   - agent-thought
@@ -35,7 +35,7 @@ parameter_rules:
     max: 2
     default: 0
 pricing:
-  input: '0.00119'
-  output: '0.00119'
+  input: '0.0009'
+  output: '0.0009'
   unit: '0.0001'
   currency: USD

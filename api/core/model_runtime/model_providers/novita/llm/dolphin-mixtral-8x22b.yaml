@@ -1,7 +1,7 @@
 model: cognitivecomputations/dolphin-mixtral-8x22b
 label:
-  zh_Hans: cognitivecomputations/dolphin-mixtral-8x22b
-  en_US: cognitivecomputations/dolphin-mixtral-8x22b
+  zh_Hans: Dolphin Mixtral 8x22B
+  en_US: Dolphin Mixtral 8x22B
 model_type: llm
 features:
   - agent-thought
