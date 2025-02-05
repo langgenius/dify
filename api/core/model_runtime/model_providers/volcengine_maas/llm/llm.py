@@ -251,7 +251,7 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
             for chunk in chunks:
                 content = ""
                 if chunk.choices:
-                    if hasattr(chunk.choices[0].delta, 'reasoning_content'):
+                    if hasattr(chunk.choices[0].delta, "reasoning_content"):
                         delta_content = ""
                         if not is_reasoning_started:
                             is_reasoning_started = True
@@ -276,9 +276,7 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
                     prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=0,
-                        message=AssistantPromptMessage(
-                            content=content, tool_calls=[]
-                        ),
+                        message=AssistantPromptMessage(content=content, tool_calls=[]),
                         usage=self._calc_response_usage(
                             model=model,
                             credentials=credentials,

@@ -543,7 +543,6 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                         delta_content = "\n\n" + delta_content
                         is_reasoning_started = False
 
-
                     assistant_message_tool_calls = None
 
                     if "tool_calls" in delta and credentials.get("function_calling_type", "no_call") == "tool_call":
