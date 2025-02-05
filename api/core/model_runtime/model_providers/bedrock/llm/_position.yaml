@@ -12,6 +12,13 @@
 - cohere.command-text-v14
 - cohere.command-r-plus-v1.0
 - cohere.command-r-v1.0
+- deepseek-llm-r1-distill-llama-8b
+- deepseek-llm-r1-distill-llama-70b
+- deepseek-llm-r1-distill-qwen-1.5b
+- deepseek-llm-r1-distill-qwen-7b
+- deepseek-llm-r1-distill-qwen-14b
+- deepseek-llm-r1-distill-qwen-32b
+- deepseek-llm-r1
 - meta.llama3-1-8b-instruct-v1:0
 - meta.llama3-1-70b-instruct-v1:0
 - meta.llama3-1-405b-instruct-v1:0
