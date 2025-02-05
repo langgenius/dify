@@ -23,7 +23,7 @@
             alt="X(Twitter)'da takip et"></a>
     <a href="https://www.linkedin.com/company/langgenius/" target="_blank">
         <img src="https://custom-icon-badges.demolab.com/badge/LinkedIn-0A66C2?logo=linkedin-white&logoColor=fff"
-            alt="follow on LinkedIn"></a>
+            alt="LinkedIn'da takip et"></a>
     <a href="https://hub.docker.com/u/langgenius" target="_blank">
         <img alt="Docker Çekmeleri" src="https://img.shields.io/docker/pulls/langgenius/dify-web?labelColor=%20%23FDB062&color=%20%23f79009"></a>
     <a href="https://github.com/langgenius/dify/graphs/commit-activity" target="_blank">
