@@ -123,36 +123,6 @@ const ConfigPopup: FC<PopupProps> = ({
     />
   )
 
-  const configuredProviderPanel = () => {
-    const configuredPanels: ProviderPanel[] = []
-
-    if (langSmithConfig)
-      configuredPanels.push(langSmithPanel)
-
-    if (langFuseConfig)
-      configuredPanels.push(langfusePanel)
-
-    if (opikConfig)
-      configuredPanels.push(opikPanel)
-
-    return configuredPanels
-  }
-
-  const moreProviderPanel = () => {
-    const notConfiguredPanels: ProviderPanel[] = []
-
-    if (!langSmithConfig)
-      notConfiguredPanels.push(langSmithPanel)
-
-    if (!langFuseConfig)
-      notConfiguredPanels.push(langfusePanel)
-
-    if (!opikConfig)
-      notConfiguredPanels.push(opikPanel)
-
-    return notConfiguredPanels
-  }
-
   const configuredProviderConfig = () => {
     if (currentProvider === TracingProvider.langSmith)
       return langSmithConfig

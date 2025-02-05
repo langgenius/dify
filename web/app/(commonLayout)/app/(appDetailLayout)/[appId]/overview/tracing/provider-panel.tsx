@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next'
 import { TracingProvider } from './type'
 import cn from '@/utils/classnames'
 import { LangfuseIconBig, LangsmithIconBig, OpikIconBig } from '@/app/components/base/icons/src/public/tracing'
-import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import { Eye as View } from '@/app/components/base/icons/src/vender/solid/general'
 
 const I18N_PREFIX = 'app.tracing'
