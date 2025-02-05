@@ -9,7 +9,11 @@ export enum DataSourceType {
   WEB = 'website_crawl',
 }
 
-export type DatasetPermission = 'only_me' | 'all_team_members' | 'partial_members'
+export enum DatasetPermission {
+  'onlyMe' = 'only_me',
+  'allTeamMembers' = 'all_team_members',
+  'partialMembers' = 'partial_members',
+}
 
 export enum ChunkingMode {
   'text' = 'text_model', // General text

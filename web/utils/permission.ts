@@ -1,4 +1,4 @@
-import type { DatasetPermission } from '@/models/datasets'
+import { DatasetPermission } from '@/models/datasets'
 
 type DatasetConfig = {
   createdBy: string
@@ -8,11 +8,11 @@ type DatasetConfig = {
 
 export const hasEditPermissionForDataset = (userId: string, datasetConfig: DatasetConfig) => {
   const { createdBy, partialMemberList, permission } = datasetConfig
-  if (permission === 'only_me')
+  if (permission === DatasetPermission.onlyMe)
     return userId === createdBy
-  if (permission === 'all_team_members')
+  if (permission === DatasetPermission.allTeamMembers)
     return true
-  if (permission === 'partial_members')
+  if (permission === DatasetPermission.partialMembers)
     return partialMemberList.includes(userId)
   return false
 }
