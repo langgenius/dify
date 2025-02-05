@@ -1,8 +1,8 @@
 services:
   pd0:
     image: pingcap/pd:v8.5.1
-    ports:
-      - "2379"
+    # ports:
+    #  - "2379"
     volumes:
       - ./config/pd.toml:/pd.toml:ro
       - ./volumes/data:/data
