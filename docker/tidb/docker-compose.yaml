@@ -35,8 +35,8 @@ services:
     restart: on-failure
   tidb:
     image: pingcap/tidb:v8.5.1
-    ports:
-      - "4000:4000"
+    # ports:
+    #   - "4000:4000"
     volumes:
       - ./volumes/logs:/logs
     command:
