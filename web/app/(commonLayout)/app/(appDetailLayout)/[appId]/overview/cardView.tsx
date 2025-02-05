@@ -24,9 +24,10 @@ import AppContext from '@/context/app-context'
 
 export type ICardViewProps = {
   appId: string
+  className?: string
 }
 
-const CardView: FC<ICardViewProps> = ({ appId }) => {
+const CardView: FC<ICardViewProps> = ({ appId, className }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const appDetail = useAppStore(state => state.appDetail)
@@ -120,7 +121,7 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
     return <Loading />
 
   return (
-    <div className="grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6">
+    <div className={className ? className : `grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6`}>
       <AppCard
         appInfo={appDetail}
         cardType="webapp"

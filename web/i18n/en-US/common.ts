@@ -27,6 +27,7 @@ const translation = {
     sure: 'I\'m sure',
     download: 'Download',
     delete: 'Delete',
+    deleteApp: 'Delete App',
     settings: 'Settings',
     setup: 'Setup',
     getForFree: 'Get for free',
