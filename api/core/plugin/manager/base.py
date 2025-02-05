@@ -29,7 +29,7 @@ from core.plugin.manager.exc import (
     PluginUniqueIdentifierError,
 )
 
-plugin_daemon_inner_api_baseurl = dify_config.PLUGIN_DAEMON_URL
+plugin_daemon_inner_api_baseurl = dify_config.PLUGIN_API_URL
 plugin_daemon_inner_api_key = dify_config.PLUGIN_API_KEY
 
 T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
