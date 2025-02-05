@@ -473,6 +473,8 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
 
         finish_reason = None  # The default value of finish_reason is None
         message_id, usage = None, None
+        is_reasoning_started = False
+        is_reasoning_started_tag = False
         for chunk in response.iter_lines(decode_unicode=True, delimiter=delimiter):
             chunk = chunk.strip()
             if chunk:
@@ -513,6 +515,34 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                 if "delta" in choice:
                     delta = choice["delta"]
                     delta_content = delta.get("content")
+
+                    if not is_reasoning_started_tag and "<think>" in delta_content:
+                        is_reasoning_started_tag = True
+                        delta_content = "> 💭 " + delta_content.replace("<think>", "")
+                    elif is_reasoning_started_tag and "</think>" in delta_content:
+                        delta_content = delta_content.replace("</think>", "") + "\n\n"
+                        is_reasoning_started_tag = False
+                    elif is_reasoning_started_tag:
+                        if "\n\n" in delta_content:
+                            delta_content = delta_content.replace("\n\n", "\n> ")
+                        elif "\n" in delta_content:
+                            delta_content = delta_content.replace("\n", "\n> ")
+
+                    reasoning_content = delta.get("reasoning_content")
+                    if reasoning_content:
+                        if not is_reasoning_started:
+                            delta_content = "> 💭 " + reasoning_content
+                            is_reasoning_started = True
+                        elif "\n\n" in delta_content:
+                            delta_content = reasoning_content.replace("\n\n", "\n> ")
+                        elif "\n" in delta_content:
+                            delta_content = reasoning_content.replace("\n", "\n> ")
+                    elif is_reasoning_started:
+                        # If we were in reasoning mode but now getting regular content,
+                        # add \n\n to close the reasoning block
+                        delta_content = "\n\n" + delta_content
+                        is_reasoning_started = False
+
 
                     assistant_message_tool_calls = None
 
