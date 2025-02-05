@@ -1,7 +1,8 @@
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
+from typing import Optional
 
-from azure.identity import DefaultAzureCredential
+from azure.identity import ChainedTokenCredential, DefaultAzureCredential
 from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
 
 from configs import dify_config
@@ -19,6 +20,7 @@ class AzureBlobStorage(BaseStorage):
         self.account_name = dify_config.AZURE_BLOB_ACCOUNT_NAME
         self.account_key = dify_config.AZURE_BLOB_ACCOUNT_KEY
 
+        self.credential: Optional[ChainedTokenCredential] = None
         if self.account_key == "managedidentity":
             self.credential = DefaultAzureCredential()
         else:
