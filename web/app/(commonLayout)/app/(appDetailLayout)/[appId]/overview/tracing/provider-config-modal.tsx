@@ -123,7 +123,8 @@ const ProviderConfigModal: FC<Props> = ({
     }
 
     if (type === TracingProvider.opik) {
-      const postData = config as OpikConfig
+      // todo: check field validity
+      // const postData = config as OpikConfig
     }
 
     return errorMessage
