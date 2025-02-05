@@ -77,15 +77,27 @@ class BedrockRetrieveTool(BuiltinTool):
         """
         invoke tools
         """
-        line = 0
         try:
+            line = 0
+            # Initialize Bedrock client if not already initialized
             if not self.bedrock_client:
                 aws_region = tool_parameters.get("aws_region")
-                if aws_region:
-                    self.bedrock_client = boto3.client("bedrock-agent-runtime", region_name=aws_region)
-                else:
-                    self.bedrock_client = boto3.client("bedrock-agent-runtime")
+                aws_access_key_id = tool_parameters.get("aws_access_key_id")
+                aws_secret_access_key = tool_parameters.get("aws_secret_access_key")
 
+                client_kwargs = {"service_name": "bedrock-agent-runtime", "region_name": aws_region or None}
+
+                # Only add credentials if both access key and secret key are provided
+                if aws_access_key_id and aws_secret_access_key:
+                    client_kwargs.update(
+                        {"aws_access_key_id": aws_access_key_id, "aws_secret_access_key": aws_secret_access_key}
+                    )
+
+                self.bedrock_client = boto3.client(**client_kwargs)
+        except Exception as e:
+            return self.create_text_message(f"Failed to initialize Bedrock client: {str(e)}")
+
+        try:
             line = 1
             if not self.knowledge_base_id:
                 self.knowledge_base_id = tool_parameters.get("knowledge_base_id")
@@ -123,7 +135,14 @@ class BedrockRetrieveTool(BuiltinTool):
             sorted_docs = sorted(retrieved_docs, key=operator.itemgetter("score"), reverse=True)
 
             line = 6
-            return [self.create_json_message(res) for res in sorted_docs]
+            result_type = tool_parameters.get("result_type")
+            if result_type == "json":
+                return [self.create_json_message(res) for res in sorted_docs]
+            else:
+                text = ""
+                for i, res in enumerate(sorted_docs):
+                    text += f"{i + 1}: {res['content']}\n"
+                return self.create_text_message(text)
 
         except Exception as e:
             return self.create_text_message(f"Exception {str(e)}, line : {line}")
@@ -138,7 +157,6 @@ class BedrockRetrieveTool(BuiltinTool):
         if not parameters.get("query"):
             raise ValueError("query is required")
 
-        # 可选：可以验证元数据过滤条件是否为有效的 JSON 字符串（如果提供）
         metadata_filter_str = parameters.get("metadata_filter")
         if metadata_filter_str and not isinstance(json.loads(metadata_filter_str), dict):
             raise ValueError("metadata_filter must be a valid JSON object")
