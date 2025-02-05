@@ -21,26 +21,22 @@ class BedrockRetrieveAndGenerateTool(BuiltinTool):
                 aws_region = tool_parameters.get("aws_region")
                 aws_access_key_id = tool_parameters.get("aws_access_key_id")
                 aws_secret_access_key = tool_parameters.get("aws_secret_access_key")
-                
-                client_kwargs = {
-                    "service_name": "bedrock-agent-runtime",
-                    "region_name": aws_region or None
-                }
-                
+
+                client_kwargs = {"service_name": "bedrock-agent-runtime", "region_name": aws_region or None}
+
                 # Only add credentials if both access key and secret key are provided
                 if aws_access_key_id and aws_secret_access_key:
-                    client_kwargs.update({
-                        "aws_access_key_id": aws_access_key_id,
-                        "aws_secret_access_key": aws_secret_access_key
-                    })
-                
+                    client_kwargs.update(
+                        {"aws_access_key_id": aws_access_key_id, "aws_secret_access_key": aws_secret_access_key}
+                    )
+
                 self.bedrock_client = boto3.client(**client_kwargs)
         except Exception as e:
             return self.create_text_message(f"Failed to initialize Bedrock client: {str(e)}")
 
         try:
             request_config = {}
-            
+
             # Set input configuration
             input_text = tool_parameters.get("input")
             if input_text:
@@ -77,10 +73,7 @@ class BedrockRetrieveAndGenerateTool(BuiltinTool):
             response = self.bedrock_client.retrieve_and_generate(**request_config)
 
             # Process response
-            result = {
-                "output": response.get("output", {}).get("text", ""), 
-                "citations": []
-            }
+            result = {"output": response.get("output", {}).get("text", ""), "citations": []}
 
             # Process citations
             for citation in response.get("citations", []):
@@ -142,4 +135,3 @@ class BedrockRetrieveAndGenerateTool(BuiltinTool):
             raise ValueError("knowledge_base_configuration is required when type is KNOWLEDGE_BASE")
         elif config_type == "EXTERNAL_SOURCES" and not parameters.get("external_sources_configuration"):
             raise ValueError("external_sources_configuration is required when type is EXTERNAL_SOURCES")
-        
