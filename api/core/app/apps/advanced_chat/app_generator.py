@@ -265,9 +265,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={"auto_generate_conversation_name": False},
-            single_loop_run=AdvancedChatAppGenerateEntity.SingleLoopRunEntity(
-                node_id=node_id, inputs=args["inputs"]
-            ),
+            single_loop_run=AdvancedChatAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args["inputs"]),
         )
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
         contexts.plugin_tool_providers.set({})

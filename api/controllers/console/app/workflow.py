@@ -590,9 +590,7 @@ api.add_resource(
     AdvancedChatDraftRunLoopNodeApi,
     "/apps/<uuid:app_id>/advanced-chat/workflows/draft/loop/nodes/<string:node_id>/run",
 )
-api.add_resource(
-    WorkflowDraftRunLoopNodeApi, "/apps/<uuid:app_id>/workflows/draft/loop/nodes/<string:node_id>/run"
-)
+api.add_resource(WorkflowDraftRunLoopNodeApi, "/apps/<uuid:app_id>/workflows/draft/loop/nodes/<string:node_id>/run")
 api.add_resource(PublishedWorkflowApi, "/apps/<uuid:app_id>/workflows/publish")
 api.add_resource(PublishedAllWorkflowApi, "/apps/<uuid:app_id>/workflows")
 api.add_resource(DefaultBlockConfigsApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs")

@@ -247,9 +247,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
         Publish loop completed
         """
         self.print_text(
-            "\n[LoopRunSucceededEvent]"
-            if isinstance(event, LoopRunSucceededEvent)
-            else "\n[LoopRunFailedEvent]",
+            "\n[LoopRunSucceededEvent]" if isinstance(event, LoopRunSucceededEvent) else "\n[LoopRunFailedEvent]",
             color="blue",
         )
         self.print_text(f"Node ID: {event.loop_id}", color="blue")

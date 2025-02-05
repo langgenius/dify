@@ -288,9 +288,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={"auto_generate_conversation_name": False},
-            single_loop_run=WorkflowAppGenerateEntity.SingleLoopRunEntity(
-                node_id=node_id, inputs=args["inputs"]
-            ),
+            single_loop_run=WorkflowAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args["inputs"]),
             workflow_run_id=str(uuid.uuid4()),
         )
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
