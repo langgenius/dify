@@ -64,7 +64,7 @@ class AzureBlobStorage(BaseStorage):
 
     def _sync_client(self):
         if self.account_key == "managedidentity":
-            return BlobServiceClient(account_url=self.account_url, credential=self.credential) # type: ignore
+            return BlobServiceClient(account_url=self.account_url, credential=self.credential)  # type: ignore
 
         cache_key = "azure_blob_sas_token_{}_{}".format(self.account_name, self.account_key)
         cache_result = redis_client.get(cache_key)
