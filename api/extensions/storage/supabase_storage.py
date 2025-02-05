@@ -32,7 +32,7 @@ class SupabaseStorage(BaseStorage):
         self.client.storage.from_(self.bucket_name).upload(filename, data)
 
     def load_once(self, filename: str) -> bytes:
-        content = self.client.storage.from_(self.bucket_name).download(filename)
+        content: bytes = self.client.storage.from_(self.bucket_name).download(filename)
         return content
 
     def load_stream(self, filename: str) -> Generator:

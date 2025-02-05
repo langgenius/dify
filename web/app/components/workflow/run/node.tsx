@@ -8,6 +8,7 @@ import {
   RiCheckboxCircleFill,
   RiErrorWarningLine,
   RiLoader2Line,
+  RiRestartFill,
 } from '@remixicon/react'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
@@ -20,6 +21,7 @@ import Button from '@/app/components/base/button'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
+import { hasRetryNode } from '@/app/components/workflow/utils'
 
 type Props = {
   className?: string
@@ -28,8 +30,10 @@ type Props = {
   hideInfo?: boolean
   hideProcessDetail?: boolean
   onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
+  onShowRetryDetail?: (detail: NodeTracing[]) => void
   notShowIterationNav?: boolean
   justShowIterationNavArrow?: boolean
+  justShowRetryNavArrow?: boolean
 }
 
 const NodePanel: FC<Props> = ({
@@ -39,6 +43,7 @@ const NodePanel: FC<Props> = ({
   hideInfo = false,
   hideProcessDetail,
   onShowIterationDetail,
+  onShowRetryDetail,
   notShowIterationNav,
   justShowIterationNavArrow,
 }) => {
@@ -88,10 +93,16 @@ const NodePanel: FC<Props> = ({
   }, [nodeInfo.expand, setCollapseState])
 
   const isIterationNode = nodeInfo.node_type === BlockEnum.Iteration
+  const isRetryNode = hasRetryNode(nodeInfo.node_type) && nodeInfo.retryDetail
   const handleOnShowIterationDetail = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     e.nativeEvent.stopImmediatePropagation()
     onShowIterationDetail?.(nodeInfo.details || [], nodeInfo?.iterDurationMap || nodeInfo.execution_metadata?.iteration_duration_map || {})
+  }
+  const handleOnShowRetryDetail = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    e.nativeEvent.stopImmediatePropagation()
+    onShowRetryDetail?.(nodeInfo.retryDetail || [])
   }
   return (
     <div className={cn('px-2 py-1', className)}>
@@ -169,6 +180,19 @@ const NodePanel: FC<Props> = ({
                 <Split className='mt-2' />
               </div>
             )}
+            {isRetryNode && (
+              <Button
+                className='flex items-center justify-between mb-1 w-full'
+                variant='tertiary'
+                onClick={handleOnShowRetryDetail}
+              >
+                <div className='flex items-center'>
+                  <RiRestartFill className='mr-0.5 w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
+                  {t('workflow.nodes.common.retry.retries', { num: nodeInfo.retryDetail?.length })}
+                </div>
+                <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
+              </Button>
+            )}
             <div className={cn('mb-1', hideInfo && '!px-2 !py-0.5')}>
               {(nodeInfo.status === 'stopped') && (
                 <StatusContainer status='stopped'>
@@ -188,6 +212,11 @@ const NodePanel: FC<Props> = ({
                 </StatusContainer>
               )}
               {nodeInfo.status === 'failed' && (
+                <StatusContainer status='failed'>
+                  {nodeInfo.error}
+                </StatusContainer>
+              )}
+              {nodeInfo.status === 'retry' && (
                 <StatusContainer status='failed'>
                   {nodeInfo.error}
                 </StatusContainer>

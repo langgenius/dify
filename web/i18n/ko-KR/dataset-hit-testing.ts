@@ -25,6 +25,11 @@ const translation = {
   viewChart: '벡터 차트 보기',
   settingTitle: '검색 설정',
   viewDetail: '자세히보기',
+  open: '열다',
+  records: '레코드',
+  hitChunks: '{{num}}개의 자식 청크를 히트했습니다.',
+  keyword: '키워드',
+  chunkDetail: '청크 디테일(Chunk Detail)',
 }
 
 export default translation

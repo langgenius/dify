@@ -25,6 +25,11 @@ const translation = {
   viewChart: 'Vizualizați GRAFICUL VECTORIAL',
   settingTitle: 'Setare de recuperare',
   viewDetail: 'Vezi detalii',
+  keyword: 'Cuvinte cheie',
+  chunkDetail: 'Detalii bucăți',
+  open: 'Deschide',
+  hitChunks: 'Accesează {{num}} bucăți copil',
+  records: 'Înregistrări',
 }
 
 export default translation

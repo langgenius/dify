@@ -1,7 +1,7 @@
-import concurrent
 import logging
-from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
+from collections.abc import Mapping
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from typing import Any, Optional
 
 from flask import Flask, current_app
 
@@ -17,9 +17,9 @@ class ExternalDataFetch:
         tenant_id: str,
         app_id: str,
         external_data_tools: list[ExternalDataVariableEntity],
-        inputs: dict,
+        inputs: Mapping[str, Any],
         query: str,
-    ) -> dict:
+    ) -> Mapping[str, Any]:
         """
         Fill in variable inputs from external data tools if exists.
 
@@ -30,13 +30,14 @@ class ExternalDataFetch:
         :param query: the query
         :return: the filled inputs
         """
-        results = {}
+        results: dict[str, Any] = {}
+        inputs = dict(inputs)
         with ThreadPoolExecutor() as executor:
             futures = {}
             for tool in external_data_tools:
-                future = executor.submit(
+                future: Future[tuple[str | None, str | None]] = executor.submit(
                     self._query_external_data_tool,
-                    current_app._get_current_object(),
+                    current_app._get_current_object(),  # type: ignore
                     tenant_id,
                     app_id,
                     tool,
@@ -46,9 +47,10 @@ class ExternalDataFetch:
 
                 futures[future] = tool
 
-            for future in concurrent.futures.as_completed(futures):
+            for future in as_completed(futures):
                 tool_variable, result = future.result()
-                results[tool_variable] = result
+                if tool_variable is not None:
+                    results[tool_variable] = result
 
         inputs.update(results)
         return inputs
@@ -59,7 +61,7 @@ class ExternalDataFetch:
         tenant_id: str,
         app_id: str,
         external_data_tool: ExternalDataVariableEntity,
-        inputs: dict,
+        inputs: Mapping[str, Any],
         query: str,
     ) -> tuple[Optional[str], Optional[str]]:
         """

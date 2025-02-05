@@ -1,4 +1,4 @@
-from novita_client import (
+from novita_client import (  # type: ignore
     Txt2ImgV3Embedding,
     Txt2ImgV3HiresFix,
     Txt2ImgV3LoRA,

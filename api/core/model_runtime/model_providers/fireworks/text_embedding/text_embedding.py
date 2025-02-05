@@ -1,5 +1,4 @@
 import time
-from collections.abc import Mapping
 from typing import Optional, Union
 
 import numpy as np
@@ -93,7 +92,7 @@ class FireworksTextEmbeddingModel(_CommonFireworks, TextEmbeddingModel):
         """
         return sum(self._get_num_tokens_by_gpt2(text) for text in texts)
 
-    def validate_credentials(self, model: str, credentials: Mapping) -> None:
+    def validate_credentials(self, model: str, credentials: dict) -> None:
         """
         Validate model credentials
 

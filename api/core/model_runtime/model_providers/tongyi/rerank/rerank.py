@@ -1,7 +1,7 @@
 from typing import Optional
 
-import dashscope
-from dashscope.common.error import (
+import dashscope  # type: ignore
+from dashscope.common.error import (  # type: ignore
     AuthenticationError,
     InvalidParameter,
     RequestFailure,
@@ -51,7 +51,7 @@ class GTERerankModel(RerankModel):
         :return: rerank result
         """
         if len(docs) == 0:
-            return RerankResult(model=model, docs=docs)
+            return RerankResult(model=model, docs=[])
 
         # initialize client
         dashscope.api_key = credentials["dashscope_api_key"]
@@ -64,7 +64,7 @@ class GTERerankModel(RerankModel):
             return_documents=True,
         )
 
-        rerank_documents = []
+        rerank_documents: list[RerankDocument] = []
         if not response.output:
             return RerankResult(model=model, docs=rerank_documents)
         for _, result in enumerate(response.output.results):

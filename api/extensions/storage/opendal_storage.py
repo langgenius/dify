@@ -3,7 +3,7 @@ import os
 from collections.abc import Generator
 from pathlib import Path
 
-import opendal
+import opendal  # type: ignore[import]
 from dotenv import dotenv_values
 
 from extensions.storage.base_storage import BaseStorage
@@ -18,7 +18,7 @@ def _get_opendal_kwargs(*, scheme: str, env_file_path: str = ".env", prefix: str
         if key.startswith(config_prefix):
             kwargs[key[len(config_prefix) :].lower()] = value
 
-    file_env_vars = dotenv_values(env_file_path)
+    file_env_vars: dict = dotenv_values(env_file_path) or {}
     for key, value in file_env_vars.items():
         if key.startswith(config_prefix) and key[len(config_prefix) :].lower() not in kwargs and value:
             kwargs[key[len(config_prefix) :].lower()] = value
@@ -34,7 +34,6 @@ class OpenDALStorage(BaseStorage):
             root = kwargs.get("root", "storage")
             Path(root).mkdir(parents=True, exist_ok=True)
 
-        # self.op = opendal.Operator(scheme=scheme, **kwargs)
         self.op = opendal.Operator(scheme=scheme, **kwargs)
         logger.debug(f"opendal operator created with scheme {scheme}")
         retry_layer = opendal.layers.RetryLayer(max_times=3, factor=2.0, jitter=True)
@@ -49,7 +48,7 @@ class OpenDALStorage(BaseStorage):
         if not self.exists(filename):
             raise FileNotFoundError("File not found")
 
-        content = self.op.read(path=filename)
+        content: bytes = self.op.read(path=filename)
         logger.debug(f"file {filename} loaded")
         return content
 
@@ -76,7 +75,7 @@ class OpenDALStorage(BaseStorage):
         # error handler here when opendal python-binding has a exists method, we should use it
         # more https://github.com/apache/opendal/blob/main/bindings/python/src/operator.rs
         try:
-            res = self.op.stat(path=filename).mode.is_file()
+            res: bool = self.op.stat(path=filename).mode.is_file()
             logger.debug(f"file {filename} checked")
             return res
         except Exception:

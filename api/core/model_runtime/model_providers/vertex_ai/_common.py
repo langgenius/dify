@@ -12,4 +12,4 @@ class _CommonVertexAi:
 
         :return: Invoke error mapping
         """
-        pass
+        raise NotImplementedError

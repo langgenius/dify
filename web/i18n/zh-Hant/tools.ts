@@ -144,6 +144,8 @@ const translation = {
     category: '類別',
     emptyTitle: '沒有可用的工作流程工具',
     emptyTip: '轉到“工作流 - >發佈為工具”',
+    emptyTipCustom: '創建自訂工具',
+    emptyTitleCustom: '沒有可用的自訂工具',
   },
   customToolTip: '瞭解有關 Dify 自訂工具的更多資訊',
   toolNameUsageTip: '用於代理推理和提示的工具調用名稱',

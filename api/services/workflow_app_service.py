@@ -27,7 +27,7 @@ class WorkflowAppService:
             query = query.join(WorkflowRun, WorkflowRun.id == WorkflowAppLog.workflow_run_id)
 
         if keyword:
-            keyword_like_val = f"%{args['keyword'][:30]}%"
+            keyword_like_val = f"%{keyword[:30].encode('unicode_escape').decode('utf-8')}%".replace(r"\u", r"\\u")
             keyword_conditions = [
                 WorkflowRun.inputs.ilike(keyword_like_val),
                 WorkflowRun.outputs.ilike(keyword_like_val),

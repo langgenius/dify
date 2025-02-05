@@ -13,9 +13,10 @@ class FirecrawlWebExtractor(BaseExtractor):
         api_key: The API key for Firecrawl.
         base_url: The base URL for the Firecrawl API. Defaults to 'https://api.firecrawl.dev'.
         mode: The mode of operation. Defaults to 'scrape'. Options are 'crawl', 'scrape' and 'crawl_return_urls'.
+        only_main_content: Only return the main content of the page excluding headers, navs, footers, etc.
     """
 
-    def __init__(self, url: str, job_id: str, tenant_id: str, mode: str = "crawl", only_main_content: bool = False):
+    def __init__(self, url: str, job_id: str, tenant_id: str, mode: str = "crawl", only_main_content: bool = True):
         """Initialize with url, api_key, base_url and mode."""
         self._url = url
         self.job_id = job_id

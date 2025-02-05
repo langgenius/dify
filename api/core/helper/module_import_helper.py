@@ -14,12 +14,13 @@ def import_module_from_source(*, module_name: str, py_file_path: AnyStr, use_laz
         if existed_spec:
             spec = existed_spec
             if not spec.loader:
-                raise Exception(f"Failed to load module {module_name} from {py_file_path}")
+                raise Exception(f"Failed to load module {module_name} from {py_file_path!r}")
         else:
             # Refer to: https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
-            spec = importlib.util.spec_from_file_location(module_name, py_file_path)
+            # FIXME: mypy does not support the type of spec.loader
+            spec = importlib.util.spec_from_file_location(module_name, py_file_path)  # type: ignore
             if not spec or not spec.loader:
-                raise Exception(f"Failed to load module {module_name} from {py_file_path}")
+                raise Exception(f"Failed to load module {module_name} from {py_file_path!r}")
             if use_lazy_loader:
                 # Refer to: https://docs.python.org/3/library/importlib.html#implementing-lazy-imports
                 spec.loader = importlib.util.LazyLoader(spec.loader)
@@ -29,7 +30,7 @@ def import_module_from_source(*, module_name: str, py_file_path: AnyStr, use_laz
         spec.loader.exec_module(module)
         return module
     except Exception as e:
-        logging.exception(f"Failed to load module {module_name} from script file '{py_file_path}'")
+        logging.exception(f"Failed to load module {module_name} from script file '{py_file_path!r}'")
         raise e
 
 
@@ -57,6 +58,6 @@ def load_single_subclass_from_source(
         case 1:
             return subclasses[0]
         case 0:
-            raise Exception(f"Missing subclass of {parent_type.__name__} in {script_path}")
+            raise Exception(f"Missing subclass of {parent_type.__name__} in {script_path!r}")
         case _:
-            raise Exception(f"Multiple subclasses of {parent_type.__name__} in {script_path}")
+            raise Exception(f"Multiple subclasses of {parent_type.__name__} in {script_path!r}")

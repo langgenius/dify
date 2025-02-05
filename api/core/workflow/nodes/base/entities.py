@@ -38,7 +38,8 @@ class DefaultValue(BaseModel):
     @staticmethod
     def _validate_array(value: Any, element_type: DefaultValueType) -> bool:
         """Unified array type validation"""
-        return isinstance(value, list) and all(isinstance(x, element_type) for x in value)
+        # FIXME, type ignore here for do not find the reason mypy complain, if find the root cause, please fix it
+        return isinstance(value, list) and all(isinstance(x, element_type) for x in value)  # type: ignore
 
     @staticmethod
     def _convert_number(value: str) -> float:
@@ -84,7 +85,7 @@ class DefaultValue(BaseModel):
             },
         }
 
-        validator = type_validators.get(self.type)
+        validator: dict[str, Any] = type_validators.get(self.type, {})
         if not validator:
             if self.type == DefaultValueType.ARRAY_FILES:
                 # Handle files type
@@ -106,12 +107,25 @@ class DefaultValue(BaseModel):
         return self
 
 
+class RetryConfig(BaseModel):
+    """node retry config"""
+
+    max_retries: int = 0  # max retry times
+    retry_interval: int = 0  # retry interval in milliseconds
+    retry_enabled: bool = False  # whether retry is enabled
+
+    @property
+    def retry_interval_seconds(self) -> float:
+        return self.retry_interval / 1000
+
+
 class BaseNodeData(ABC, BaseModel):
     title: str
     desc: Optional[str] = None
     error_strategy: Optional[ErrorStrategy] = None
     default_value: Optional[list[DefaultValue]] = None
     version: str = "1"
+    retry_config: RetryConfig = RetryConfig()
 
     @property
     def default_value_dict(self):

@@ -1,5 +1,7 @@
+from typing import Optional
+
 import pytz
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
 from core.tools.tool_manager import ToolManager
@@ -14,7 +16,7 @@ class AgentService:
         """
         Service to get agent logs
         """
-        conversation: Conversation = (
+        conversation: Optional[Conversation] = (
             db.session.query(Conversation)
             .filter(
                 Conversation.id == conversation_id,
@@ -26,7 +28,7 @@ class AgentService:
         if not conversation:
             raise ValueError(f"Conversation not found: {conversation_id}")
 
-        message: Message = (
+        message: Optional[Message] = (
             db.session.query(Message)
             .filter(
                 Message.id == message_id,
@@ -72,7 +74,10 @@ class AgentService:
         }
 
         agent_config = AgentConfigManager.convert(app_model.app_model_config.to_dict())
-        agent_tools = agent_config.tools
+        if not agent_config:
+            return result
+
+        agent_tools = agent_config.tools or []
 
         def find_agent_tool(tool_name: str):
             for agent_tool in agent_tools:

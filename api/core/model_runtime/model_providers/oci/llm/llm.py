@@ -5,8 +5,8 @@ import logging
 from collections.abc import Generator
 from typing import Optional, Union
 
-import oci
-from oci.generative_ai_inference.models.base_chat_response import BaseChatResponse
+import oci  # type: ignore
+from oci.generative_ai_inference.models.base_chat_response import BaseChatResponse  # type: ignore
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (

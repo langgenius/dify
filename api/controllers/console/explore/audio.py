@@ -4,7 +4,6 @@ from flask import request
 from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.console import api
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -67,7 +66,7 @@ class ChatAudioApi(InstalledAppResource):
 
 class ChatTextApi(InstalledAppResource):
     def post(self, installed_app):
-        from flask_restful import reqparse
+        from flask_restful import reqparse  # type: ignore
 
         app_model = installed_app.app
         try:
@@ -118,9 +117,3 @@ class ChatTextApi(InstalledAppResource):
         except Exception as e:
             logging.exception("internal server error.")
             raise InternalServerError()
-
-
-api.add_resource(ChatAudioApi, "/installed-apps/<uuid:installed_app_id>/audio-to-text", endpoint="installed_app_audio")
-api.add_resource(ChatTextApi, "/installed-apps/<uuid:installed_app_id>/text-to-audio", endpoint="installed_app_text")
-# api.add_resource(ChatTextApiWithMessageId, '/installed-apps/<uuid:installed_app_id>/text-to-audio/message-id',
-#                  endpoint='installed_app_text_with_message_id')

@@ -83,5 +83,5 @@ class DIDApp:
             if status["status"] == "done":
                 return status
             elif status["status"] == "error" or status["status"] == "rejected":
-                raise HTTPError(f'Talks {id} failed: {status["status"]} {status.get("error", {}).get("description")}')
+                raise HTTPError(f"Talks {id} failed: {status['status']} {status.get('error', {}).get('description')}")
             time.sleep(poll_interval)

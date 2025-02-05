@@ -21,7 +21,7 @@ class KeywordsModeration(Moderation):
         if not config.get("keywords"):
             raise ValueError("keywords is required")
 
-        if len(config.get("keywords")) > 10000:
+        if len(config.get("keywords", [])) > 10000:
             raise ValueError("keywords length must be less than 10000")
 
         keywords_row_len = config["keywords"].split("\n")
@@ -31,6 +31,8 @@ class KeywordsModeration(Moderation):
     def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
         flagged = False
         preset_response = ""
+        if self.config is None:
+            raise ValueError("The config is not set.")
 
         if self.config["inputs_config"]["enabled"]:
             preset_response = self.config["inputs_config"]["preset_response"]
@@ -50,6 +52,8 @@ class KeywordsModeration(Moderation):
     def moderation_for_outputs(self, text: str) -> ModerationOutputsResult:
         flagged = False
         preset_response = ""
+        if self.config is None:
+            raise ValueError("The config is not set.")
 
         if self.config["outputs_config"]["enabled"]:
             # Filter out empty values

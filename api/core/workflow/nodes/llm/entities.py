@@ -50,6 +50,7 @@ class PromptConfig(BaseModel):
 
 
 class LLMNodeChatModelMessage(ChatModelMessage):
+    text: str = ""
     jinja2_text: Optional[str] = None
 
 

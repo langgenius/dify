@@ -31,6 +31,8 @@ const translation = {
     manageInTools: 'مدیریت در ابزارها',
     emptyTitle: 'هیچ ابزار جریان کاری در دسترس نیست',
     emptyTip: 'به "جریان کاری -> انتشار به عنوان ابزار" بروید',
+    emptyTipCustom: 'ایجاد یک ابزار سفارشی',
+    emptyTitleCustom: 'هیچ ابزار سفارشی در دسترس نیست',
   },
   createTool: {
     title: 'ایجاد ابزار سفارشی',
