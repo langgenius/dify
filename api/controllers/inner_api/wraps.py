@@ -65,7 +65,7 @@ def enterprise_inner_api_user_auth(view):
 def plugin_inner_api_only(view):
     @wraps(view)
     def decorated(*args, **kwargs):
-        if not dify_config.PLUGIN_API_KEY:
+        if not dify_config.PLUGIN_DAEMON_KEY:
             abort(404)
 
         # get header 'X-Inner-Api-Key'
