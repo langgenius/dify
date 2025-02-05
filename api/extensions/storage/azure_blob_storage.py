@@ -1,6 +1,7 @@
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 
+from azure.identity import DefaultAzureCredential
 from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
 
 from configs import dify_config
@@ -17,6 +18,11 @@ class AzureBlobStorage(BaseStorage):
         self.account_url = dify_config.AZURE_BLOB_ACCOUNT_URL
         self.account_name = dify_config.AZURE_BLOB_ACCOUNT_NAME
         self.account_key = dify_config.AZURE_BLOB_ACCOUNT_KEY
+
+        if self.account_key == "managedidentity":
+            self.credential = DefaultAzureCredential()
+        else:
+            self.credential = None
 
     def save(self, filename, data):
         client = self._sync_client()
@@ -57,6 +63,9 @@ class AzureBlobStorage(BaseStorage):
         blob_container.delete_blob(filename)
 
     def _sync_client(self):
+        if self.account_key == "managedidentity":
+            return BlobServiceClient(account_url=self.account_url, credential=self.credential)
+
         cache_key = "azure_blob_sas_token_{}_{}".format(self.account_name, self.account_key)
         cache_result = redis_client.get(cache_key)
         if cache_result is not None:
