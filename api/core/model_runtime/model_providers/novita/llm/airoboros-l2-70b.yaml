@@ -1,7 +1,7 @@
 model: jondurbin/airoboros-l2-70b
 label:
-  zh_Hans: jondurbin/airoboros-l2-70b
-  en_US: jondurbin/airoboros-l2-70b
+  zh_Hans: Airoboros L2 70B
+  en_US: Airoboros L2 70B
 model_type: llm
 features:
   - agent-thought

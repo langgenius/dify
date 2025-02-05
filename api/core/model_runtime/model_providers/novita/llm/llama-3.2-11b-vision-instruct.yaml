@@ -1,7 +1,7 @@
 model: meta-llama/llama-3.2-11b-vision-instruct
 label:
-  zh_Hans: meta-llama/llama-3.2-11b-vision-instruct
-  en_US: meta-llama/llama-3.2-11b-vision-instruct
+  zh_Hans: "Llama 3.2 11B Vision Instruct\t"
+  en_US: "Llama 3.2 11B Vision Instruct\t"
 model_type: llm
 features:
   - agent-thought
