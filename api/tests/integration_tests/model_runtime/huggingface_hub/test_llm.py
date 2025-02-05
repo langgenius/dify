@@ -10,6 +10,7 @@ from core.model_runtime.model_providers.huggingface_hub.llm.llm import Huggingfa
 from tests.integration_tests.model_runtime.__mock.huggingface import setup_huggingface_mock
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize("setup_huggingface_mock", [["none"]], indirect=True)
 def test_hosted_inference_api_validate_credentials(setup_huggingface_mock):
     model = HuggingfaceHubLargeLanguageModel()

@@ -18,6 +18,7 @@ from controllers.service_api.app.error import (
 from controllers.service_api.dataset.error import (
     ArchivedDocumentImmutableError,
     DocumentIndexingError,
+    InvalidMetadataError,
 )
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_resource_check
 from core.errors.error import ProviderTokenNotInitError
@@ -50,6 +51,9 @@ class DocumentAddByTextApi(DatasetApiResource):
             "indexing_technique", type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False, location="json"
         )
         parser.add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
+        parser.add_argument("doc_type", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("doc_metadata", type=dict, required=False, nullable=True, location="json")
+
         args = parser.parse_args()
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
@@ -60,6 +64,28 @@ class DocumentAddByTextApi(DatasetApiResource):
 
         if not dataset.indexing_technique and not args["indexing_technique"]:
             raise ValueError("indexing_technique is required.")
+
+        # Validate metadata if provided
+        if args.get("doc_type") or args.get("doc_metadata"):
+            if not args.get("doc_type") or not args.get("doc_metadata"):
+                raise InvalidMetadataError("Both doc_type and doc_metadata must be provided when adding metadata")
+
+            if args["doc_type"] not in DocumentService.DOCUMENT_METADATA_SCHEMA:
+                raise InvalidMetadataError(
+                    "Invalid doc_type. Must be one of: " + ", ".join(DocumentService.DOCUMENT_METADATA_SCHEMA.keys())
+                )
+
+            if not isinstance(args["doc_metadata"], dict):
+                raise InvalidMetadataError("doc_metadata must be a dictionary")
+
+            # Validate metadata schema based on doc_type
+            if args["doc_type"] != "others":
+                metadata_schema = DocumentService.DOCUMENT_METADATA_SCHEMA[args["doc_type"]]
+                for key, value in args["doc_metadata"].items():
+                    if key in metadata_schema and not isinstance(value, metadata_schema[key]):
+                        raise InvalidMetadataError(f"Invalid type for metadata field {key}")
+            # set to MetaDataConfig
+            args["metadata"] = {"doc_type": args["doc_type"], "doc_metadata": args["doc_metadata"]}
 
         text = args.get("text")
         name = args.get("name")
@@ -107,6 +133,8 @@ class DocumentUpdateByTextApi(DatasetApiResource):
             "doc_language", type=str, default="English", required=False, nullable=False, location="json"
         )
         parser.add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
+        parser.add_argument("doc_type", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("doc_metadata", type=dict, required=False, nullable=True, location="json")
         args = parser.parse_args()
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
@@ -114,6 +142,32 @@ class DocumentUpdateByTextApi(DatasetApiResource):
 
         if not dataset:
             raise ValueError("Dataset is not exist.")
+
+        # indexing_technique is already set in dataset since this is an update
+        args["indexing_technique"] = dataset.indexing_technique
+
+        # Validate metadata if provided
+        if args.get("doc_type") or args.get("doc_metadata"):
+            if not args.get("doc_type") or not args.get("doc_metadata"):
+                raise InvalidMetadataError("Both doc_type and doc_metadata must be provided when adding metadata")
+
+            if args["doc_type"] not in DocumentService.DOCUMENT_METADATA_SCHEMA:
+                raise InvalidMetadataError(
+                    "Invalid doc_type. Must be one of: " + ", ".join(DocumentService.DOCUMENT_METADATA_SCHEMA.keys())
+                )
+
+            if not isinstance(args["doc_metadata"], dict):
+                raise InvalidMetadataError("doc_metadata must be a dictionary")
+
+            # Validate metadata schema based on doc_type
+            if args["doc_type"] != "others":
+                metadata_schema = DocumentService.DOCUMENT_METADATA_SCHEMA[args["doc_type"]]
+                for key, value in args["doc_metadata"].items():
+                    if key in metadata_schema and not isinstance(value, metadata_schema[key]):
+                        raise InvalidMetadataError(f"Invalid type for metadata field {key}")
+
+            # set to MetaDataConfig
+            args["metadata"] = {"doc_type": args["doc_type"], "doc_metadata": args["doc_metadata"]}
 
         if args["text"]:
             text = args.get("text")
@@ -161,6 +215,30 @@ class DocumentAddByFileApi(DatasetApiResource):
             args["doc_form"] = "text_model"
         if "doc_language" not in args:
             args["doc_language"] = "English"
+
+        # Validate metadata if provided
+        if args.get("doc_type") or args.get("doc_metadata"):
+            if not args.get("doc_type") or not args.get("doc_metadata"):
+                raise InvalidMetadataError("Both doc_type and doc_metadata must be provided when adding metadata")
+
+            if args["doc_type"] not in DocumentService.DOCUMENT_METADATA_SCHEMA:
+                raise InvalidMetadataError(
+                    "Invalid doc_type. Must be one of: " + ", ".join(DocumentService.DOCUMENT_METADATA_SCHEMA.keys())
+                )
+
+            if not isinstance(args["doc_metadata"], dict):
+                raise InvalidMetadataError("doc_metadata must be a dictionary")
+
+            # Validate metadata schema based on doc_type
+            if args["doc_type"] != "others":
+                metadata_schema = DocumentService.DOCUMENT_METADATA_SCHEMA[args["doc_type"]]
+                for key, value in args["doc_metadata"].items():
+                    if key in metadata_schema and not isinstance(value, metadata_schema[key]):
+                        raise InvalidMetadataError(f"Invalid type for metadata field {key}")
+
+            # set to MetaDataConfig
+            args["metadata"] = {"doc_type": args["doc_type"], "doc_metadata": args["doc_metadata"]}
+
         # get dataset info
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
@@ -227,6 +305,29 @@ class DocumentUpdateByFileApi(DatasetApiResource):
             args["doc_form"] = "text_model"
         if "doc_language" not in args:
             args["doc_language"] = "English"
+
+        # Validate metadata if provided
+        if args.get("doc_type") or args.get("doc_metadata"):
+            if not args.get("doc_type") or not args.get("doc_metadata"):
+                raise InvalidMetadataError("Both doc_type and doc_metadata must be provided when adding metadata")
+
+            if args["doc_type"] not in DocumentService.DOCUMENT_METADATA_SCHEMA:
+                raise InvalidMetadataError(
+                    "Invalid doc_type. Must be one of: " + ", ".join(DocumentService.DOCUMENT_METADATA_SCHEMA.keys())
+                )
+
+            if not isinstance(args["doc_metadata"], dict):
+                raise InvalidMetadataError("doc_metadata must be a dictionary")
+
+            # Validate metadata schema based on doc_type
+            if args["doc_type"] != "others":
+                metadata_schema = DocumentService.DOCUMENT_METADATA_SCHEMA[args["doc_type"]]
+                for key, value in args["doc_metadata"].items():
+                    if key in metadata_schema and not isinstance(value, metadata_schema[key]):
+                        raise InvalidMetadataError(f"Invalid type for metadata field {key}")
+
+            # set to MetaDataConfig
+            args["metadata"] = {"doc_type": args["doc_type"], "doc_metadata": args["doc_metadata"]}
 
         # get dataset info
         dataset_id = str(dataset_id)

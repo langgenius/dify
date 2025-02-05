@@ -13,6 +13,7 @@ def get_bedrock_client(service_name: str, credentials: Mapping[str, str]):
     client_config = Config(region_name=region_name)
     aws_access_key_id = credentials.get("aws_access_key_id")
     aws_secret_access_key = credentials.get("aws_secret_access_key")
+    bedrock_endpoint_url = credentials.get("bedrock_endpoint_url")
 
     if aws_access_key_id and aws_secret_access_key:
         # use aksk to call bedrock
@@ -21,6 +22,7 @@ def get_bedrock_client(service_name: str, credentials: Mapping[str, str]):
             config=client_config,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
+            **({"endpoint_url": bedrock_endpoint_url} if bedrock_endpoint_url else {}),
         )
     else:
         # use iam without aksk to call
