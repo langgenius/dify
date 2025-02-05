@@ -266,7 +266,7 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
 
                         content = delta_content
                     elif is_reasoning_started:
-                        content = "\n\n" + content
+                        content = "\n\n" + chunk.choices[0].delta.content
                         is_reasoning_started = False
                     else:
                         content = chunk.choices[0].delta.content
@@ -277,7 +277,7 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
                     delta=LLMResultChunkDelta(
                         index=0,
                         message=AssistantPromptMessage(
-                            content=chunk.choices[0].delta.content if chunk.choices else "", tool_calls=[]
+                            content=content, tool_calls=[]
                         ),
                         usage=self._calc_response_usage(
                             model=model,
