@@ -102,7 +102,7 @@ const DatasetItem: FC<Props> = ({
       {
         payload.provider === 'external' && <Badge
           className='group-hover/dataset-item:hidden shrink-0'
-          text={t('dataset.externalTag')}
+          text={t('dataset.externalTag') as string}
         />
       }
 
