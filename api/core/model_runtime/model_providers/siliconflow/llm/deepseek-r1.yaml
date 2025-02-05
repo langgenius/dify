@@ -1,0 +1,21 @@
+model: deepseek-ai/DeepSeek-R1
+label:
+  zh_Hans: deepseek-ai/DeepSeek-R1
+  en_US: deepseek-ai/DeepSeek-R1
+model_type: llm
+features:
+  - agent-thought
+model_properties:
+  mode: chat
+  context_size: 64000
+parameter_rules:
+  - name: max_tokens
+    use_template: max_tokens
+    min: 1
+    max: 8192
+    default: 4096
+pricing:
+  input: "4"
+  output: "16"
+  unit: "0.000001"
+  currency: RMB
