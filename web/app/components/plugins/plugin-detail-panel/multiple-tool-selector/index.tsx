@@ -44,6 +44,7 @@ const MultipleToolSelector = ({
 
   // add tool
   const [open, setOpen] = React.useState(false)
+  const [panelShowState, setPanelShowState] = React.useState(true)
   const handleAdd = (val: ToolValue) => {
     const newValue = [...value, val]
     // deduplication
@@ -109,7 +110,10 @@ const MultipleToolSelector = ({
           </>
         )}
         {!disabled && (
-          <ActionButton className='mx-1' onClick={() => setOpen(!open)}>
+          <ActionButton className='mx-1' onClick={() => {
+            setOpen(!open)
+            setPanelShowState(true)
+          }}>
             <RiAddLine className='w-4 h-4' />
           </ActionButton>
         )}
@@ -126,6 +130,9 @@ const MultipleToolSelector = ({
             trigger={
               <div className=''></div>
             }
+            panelShowState={panelShowState}
+            onPanelShowStateChange={setPanelShowState}
+
           />
           {value.length === 0 && (
             <div className='p-3 flex justify-center rounded-[10px] bg-background-section text-text-tertiary system-xs-regular'>{t('plugin.detailPanel.toolSelector.empty')}</div>
