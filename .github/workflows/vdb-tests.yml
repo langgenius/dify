@@ -77,7 +77,7 @@ jobs:
             elasticsearch
 
       - name: Check TiDB Ready
-        run: poetry run -C api python api/tests/integration_tests/vdb/tidb_vector/check_tiflash_ready.py
+        run: poetry run -P api python api/tests/integration_tests/vdb/tidb_vector/check_tiflash_ready.py
 
       - name: Test Vector Stores
         run: poetry run -P api bash dev/pytest/pytest_vdb.sh
