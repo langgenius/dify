@@ -124,7 +124,7 @@ const ConfigPopup: FC<PopupProps> = ({
   )
 
   const configuredProviderPanel = () => {
-    const configuredPanels: ProviderPanel[] = []
+    const configuredPanels: any[] = []
 
     if (langSmithConfig)
       configuredPanels.push(langSmithPanel)
@@ -139,7 +139,7 @@ const ConfigPopup: FC<PopupProps> = ({
   }
 
   const moreProviderPanel = () => {
-    const notConfiguredPanels: ProviderPanel[] = []
+    const notConfiguredPanels: any[] = []
 
     if (!langSmithConfig)
       notConfiguredPanels.push(langSmithPanel)
@@ -208,12 +208,12 @@ const ConfigPopup: FC<PopupProps> = ({
           : (
             <>
               <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${I18N_PREFIX}.configProviderTitle.configured`)}</div>
-              <div className='mt-2'>
-                {langSmithConfig ? langSmithPanel : langfusePanel}
+              <div className='mt-2 space-y-2'>
+                {configuredProviderPanel()}
               </div>
               <div className='mt-3 system-xs-medium-uppercase text-text-tertiary'>{t(`${I18N_PREFIX}.configProviderTitle.moreProvider`)}</div>
-              <div className='mt-2'>
-                {!langSmithConfig ? langSmithPanel : langfusePanel}
+              <div className='mt-2 space-y-2'>
+                {moreProviderPanel()}
               </div>
             </>
           )}

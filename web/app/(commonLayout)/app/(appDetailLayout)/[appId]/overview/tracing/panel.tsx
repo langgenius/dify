@@ -7,11 +7,11 @@ import {
 import { useTranslation } from 'react-i18next'
 import { usePathname } from 'next/navigation'
 import { useBoolean } from 'ahooks'
-import type { LangFuseConfig, LangSmithConfig } from './type'
+import type { LangFuseConfig, LangSmithConfig, OpikConfig } from './type'
 import { TracingProvider } from './type'
 import TracingIcon from './tracing-icon'
 import ConfigButton from './config-button'
-import { LangfuseIcon, LangsmithIcon } from '@/app/components/base/icons/src/public/tracing'
+import { LangfuseIcon, LangsmithIcon, OpikIcon } from '@/app/components/base/icons/src/public/tracing'
 import Indicator from '@/app/components/header/indicator'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
 import type { TracingStatus } from '@/models/app'
@@ -80,9 +80,7 @@ const Panel: FC = () => {
       ? LangsmithIcon
       : inUseTracingProvider === TracingProvider.langfuse
         ? LangfuseIcon
-        : inUseTracingProvider === TracingProvider.opik
-          ? OpikIcon
-          : null
+        : OpikIcon
 
   const [langSmithConfig, setLangSmithConfig] = useState<LangSmithConfig | null>(null)
   const [langFuseConfig, setLangFuseConfig] = useState<LangFuseConfig | null>(null)
@@ -106,7 +104,7 @@ const Panel: FC = () => {
     const { tracing_config } = await doFetchTracingConfig({ appId, provider })
     if (provider === TracingProvider.langSmith)
       setLangSmithConfig(tracing_config as LangSmithConfig)
-    else if (provider === TracingProvider.langSmith)
+    else if (provider === TracingProvider.langfuse)
       setLangFuseConfig(tracing_config as LangFuseConfig)
     else if (provider === TracingProvider.opik)
       setOpikConfig(tracing_config as OpikConfig)
@@ -115,7 +113,7 @@ const Panel: FC = () => {
   const handleTracingConfigRemoved = (provider: TracingProvider) => {
     if (provider === TracingProvider.langSmith)
       setLangSmithConfig(null)
-    else if (provider === TracingProvider.langSmith)
+    else if (provider === TracingProvider.langfuse)
       setLangFuseConfig(null)
     else if (provider === TracingProvider.opik)
       setOpikConfig(null)
@@ -177,6 +175,7 @@ const Panel: FC = () => {
                 onChooseProvider={handleChooseProvider}
                 langSmithConfig={langSmithConfig}
                 langFuseConfig={langFuseConfig}
+                opikConfig={opikConfig}
                 onConfigUpdated={handleTracingConfigUpdated}
                 onConfigRemoved={handleTracingConfigRemoved}
                 controlShowPopup={controlShowPopup}
@@ -210,6 +209,7 @@ const Panel: FC = () => {
                 onChooseProvider={handleChooseProvider}
                 langSmithConfig={langSmithConfig}
                 langFuseConfig={langFuseConfig}
+                opikConfig={opikConfig}
                 onConfigUpdated={handleTracingConfigUpdated}
                 onConfigRemoved={handleTracingConfigRemoved}
                 controlShowPopup={controlShowPopup}
@@ -217,24 +217,6 @@ const Panel: FC = () => {
             </div>
           </>
         )}
-        <div className='flex items-center' onClick={e => e.stopPropagation()}>
-          <ConfigButton
-            appId={appId}
-            readOnly={readOnly}
-            hasConfigured
-            className='ml-2'
-            enabled={enabled}
-            onStatusChange={handleTracingEnabledChange}
-            chosenProvider={inUseTracingProvider}
-            onChooseProvider={handleChooseProvider}
-            langSmithConfig={langSmithConfig}
-            langFuseConfig={langFuseConfig}
-            opikConfig={opikConfig}
-            onConfigUpdated={handleTracingConfigUpdated}
-            onConfigRemoved={handleTracingConfigRemoved}
-            controlShowPopup={controlShowPopup}
-          />
-        </div>
       </div>
     </div>
   )
