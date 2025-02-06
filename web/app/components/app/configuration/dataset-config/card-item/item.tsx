@@ -23,13 +23,14 @@ type ItemProps = {
   onRemove: (id: string) => void
   readonly?: boolean
   onSave: (newDataset: DataSet) => void
+  editable?: boolean
 }
 
 const Item: FC<ItemProps> = ({
   config,
   onSave,
   onRemove,
-  readonly,
+  editable = true,
 }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -75,22 +76,22 @@ const Item: FC<ItemProps> = ({
             />}
         </div>
       </div>
-      {!readonly && (
-        <div className='hidden rounded-lg group-hover:flex items-center justify-end absolute right-0 top-0 bottom-0 pr-2 w-[124px] bg-gradient-to-r from-white/50 to-white to-50%'>
-          <div
+      <div className='hidden rounded-lg group-hover:flex items-center justify-end absolute right-0 top-0 bottom-0 pr-2 w-[124px] bg-gradient-to-r from-white/50 to-white to-50%'>
+        {
+          editable && <div
             className='flex items-center justify-center mr-1 w-6 h-6 hover:bg-black/5 rounded-md cursor-pointer'
             onClick={() => setShowSettingsModal(true)}
           >
             <RiEditLine className='w-4 h-4 text-gray-500' />
           </div>
-          <div
-            className='group/action flex items-center justify-center w-6 h-6 hover:bg-[#FEE4E2] rounded-md cursor-pointer'
-            onClick={() => onRemove(config.id)}
-          >
-            <RiDeleteBinLine className='w-4 h-4 text-gray-500 group-hover/action:text-[#D92D20]' />
-          </div>
+        }
+        <div
+          className='group/action flex items-center justify-center w-6 h-6 hover:bg-[#FEE4E2] rounded-md cursor-pointer'
+          onClick={() => onRemove(config.id)}
+        >
+          <RiDeleteBinLine className='w-4 h-4 text-gray-500 group-hover/action:text-[#D92D20]' />
         </div>
-      )}
+      </div>
       <Drawer isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
         <SettingsModal
           currentDataset={config}

@@ -44,12 +44,12 @@ const DatasetList: FC<Props> = ({
     return list.map((item) => {
       const datasetConfig = {
         createdBy: item.created_by,
-        partialMemberList: item.partial_member_list as string[],
+        partialMemberList: item.partial_member_list || [],
         permission: item.permission,
       }
       return {
         ...item,
-        readonly: !hasEditPermissionForDataset(userProfile?.id as string, datasetConfig),
+        editable: hasEditPermissionForDataset(userProfile?.id || '', datasetConfig),
       }
     })
   }, [list, userProfile?.id])
@@ -64,7 +64,8 @@ const DatasetList: FC<Props> = ({
               payload={item}
               onRemove={handleRemove(index)}
               onChange={handleChange(index)}
-              readonly={readonly || item.readonly}
+              readonly={readonly}
+              editable={item.editable}
             />
           )
         })

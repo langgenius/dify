@@ -112,12 +112,12 @@ const DatasetConfig: FC = () => {
     return dataSet.map((item) => {
       const datasetConfig = {
         createdBy: item.created_by,
-        partialMemberList: item.partial_member_list as string[],
+        partialMemberList: item.partial_member_list || [],
         permission: item.permission,
       }
       return {
         ...item,
-        readonly: !hasEditPermissionForDataset(userProfile?.id as string, datasetConfig),
+        editable: hasEditPermissionForDataset(userProfile?.id || '', datasetConfig),
       }
     })
   }, [dataSet, userProfile?.id])
@@ -145,7 +145,7 @@ const DatasetConfig: FC = () => {
                 config={item}
                 onRemove={onRemove}
                 onSave={handleSave}
-                readonly={item.readonly}
+                editable={item.editable}
               />
             ))}
           </div>
