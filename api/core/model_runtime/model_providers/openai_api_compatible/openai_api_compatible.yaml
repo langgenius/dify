@@ -115,7 +115,7 @@ model_credential_schema:
         en_US: Agent Thought
       type: select
       required: false
-      default: not_support
+      default: not_supported
       options:
         - value: supported
           label:
