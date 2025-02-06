@@ -3,6 +3,7 @@ import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, cast
 
+from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import QuotaUnit
@@ -732,10 +733,7 @@ class LLMNode(BaseNode[LLMNodeData]):
             if quota_unit == QuotaUnit.TOKENS:
                 used_quota = usage.total_tokens
             elif quota_unit == QuotaUnit.CREDITS:
-                used_quota = 1
-
-                if "gpt-4" in model_instance.model:
-                    used_quota = 20
+                used_quota = dify_config.get_model_credits(model_instance.model)
             else:
                 used_quota = 1
 
