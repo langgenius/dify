@@ -14,6 +14,19 @@ parameter_rules:
     default: 100000
     min: 1
     max: 100000
+  - name: reasoning_effort
+    label:
+      zh_Hans: 推理工作
+      en_US: reasoning_effort
+    type: string
+    help:
+      zh_Hans: 限制推理模型的推理工作
+      en_US: constrains effort on reasoning for reasoning models
+    required: false
+    options:
+      - low
+      - medium
+      - high
   - name: response_format
     label:
       zh_Hans: 回复格式
