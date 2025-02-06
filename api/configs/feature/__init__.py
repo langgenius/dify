@@ -144,7 +144,7 @@ class PluginConfig(BaseSettings):
         default="http://localhost:5002",
     )
 
-    PLUGIN_API_KEY: str = Field(
+    PLUGIN_DAEMON_KEY: str = Field(
         description="Plugin API key",
         default="plugin-api-key",
     )
