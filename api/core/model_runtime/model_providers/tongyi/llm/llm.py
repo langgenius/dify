@@ -219,8 +219,12 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         if response.status_code not in {200, HTTPStatus.OK}:
             raise ServiceUnavailableError(response.message)
         # transform assistant message to prompt message
+        resp_content = response.output.choices[0].message.content
+        # special for qwen-vl
+        if isinstance(resp_content, list):
+            resp_content = resp_content[0]["text"]
         assistant_prompt_message = AssistantPromptMessage(
-            content=response.output.choices[0].message.content,
+            content=resp_content,
         )
 
         # transform usage
