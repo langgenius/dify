@@ -36,7 +36,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
 
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
-  const { userProfile, langeniusVersionInfo } = useAppContext()
+  const { userProfile, langeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
   const { setShowAccountSettingModal } = useModalContext()
 
   const handleLogout = async () => {
@@ -111,7 +111,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         href='/account'
                         target='_self' rel='noopener noreferrer'>
                         <RiAccountCircleLine className='size-4 flex-shrink-0 text-text-tertiary' />
-                        <div className='flex-grow system-md-regular text-text-secondary'>{t('common.account.account')}</div>
+                        <div className='flex-grow system-md-regular text-text-secondary px-1'>{t('common.account.account')}</div>
                         <RiArrowRightUpLine className='size-[14px] flex-shrink-0 text-text-tertiary' />
                       </Link>}
                     </Menu.Item>
@@ -120,7 +120,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         active && 'bg-state-base-hover',
                       )} onClick={() => setShowAccountSettingModal({ payload: 'members' })}>
                         <RiSettings3Line className='size-4 flex-shrink-0 text-text-tertiary' />
-                        <div className='flex-grow system-md-regular text-text-secondary'>{t('common.userProfile.settings')}</div>
+                        <div className='flex-grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.settings')}</div>
                       </div>}
                     </Menu.Item>
                   </div>
@@ -135,12 +135,12 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         }
                         target='_blank' rel='noopener noreferrer'>
                         <RiBookOpenLine className='flex-shrink-0 size-4 text-text-tertiary' />
-                        <div className='flex-grow system-md-regular text-text-secondary'>{t('common.userProfile.helpCenter')}</div>
+                        <div className='flex-grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.helpCenter')}</div>
                         <RiArrowRightUpLine className='flex-shrink-0 size-[14px] text-text-tertiary' />
                       </Link>}
                     </Menu.Item>
                     <Support />
-                    <Compliance />
+                    {isCurrentWorkspaceOwner && <Compliance />}
                   </div>
                   <div className='p-1'>
                     <Menu.Item>
@@ -151,11 +151,11 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         href='https://roadmap.dify.ai'
                         target='_blank' rel='noopener noreferrer'>
                         <RiMap2Line className='flex-shrink-0 size-4 text-text-tertiary' />
-                        <div className='flex-grow system-md-regular text-text-secondary'>{t('common.userProfile.roadmap')}</div>
+                        <div className='flex-grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.roadmap')}</div>
                         <RiArrowRightUpLine className='flex-shrink-0 size-[14px] text-text-tertiary' />
                       </Link>}
                     </Menu.Item>
-                    {systemFeatures.license.status !== LicenseStatus.NONE && <Menu.Item>
+                    {systemFeatures.license.status === LicenseStatus.NONE && <Menu.Item>
                       {({ active }) => <Link
                         className={classNames(itemClassName, 'group justify-between',
                           active && 'bg-state-base-hover',
@@ -163,7 +163,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         href='https://github.com/langgenius/dify/stargazers'
                         target='_blank' rel='noopener noreferrer'>
                         <RiGithubLine className='flex-shrink-0 size-4 text-text-tertiary' />
-                        <div className='flex-grow system-md-regular text-text-secondary'>{t('common.userProfile.github')}</div>
+                        <div className='flex-grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.github')}</div>
                         <div className='flex items-center gap-0.5 px-[5px] py-[3px] border border-divider-deep rounded-[5px] bg-components-badge-bg-dimm'>
                           <RiStarLine className='flex-shrink-0 size-3 text-text-tertiary' />
                           <GithubStar className='system-2xs-medium-uppercase text-text-tertiary' />
@@ -177,7 +177,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                             active && 'bg-state-base-hover',
                           )} onClick={() => setAboutVisible(true)}>
                             <RiInformation2Line className='flex-shrink-0 size-4 text-text-tertiary' />
-                            <div className='flex-grow system-md-regular text-text-secondary'>{t('common.userProfile.about')}</div>
+                            <div className='flex-grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.about')}</div>
                             <div className='flex-shrink-0 flex items-center'>
                               <div className='mr-2 system-xs-regular text-text-tertiary'>{langeniusVersionInfo.current_version}</div>
                               <Indicator color={langeniusVersionInfo.current_version === langeniusVersionInfo.latest_version ? 'green' : 'orange'} />
@@ -195,7 +195,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                         )}
                       >
                         <RiLogoutBoxRLine className='flex-shrink-0 size-4 text-text-tertiary' />
-                        <div className='flex-grow system-md-regular text-text-secondary'>{t('common.userProfile.logout')}</div>
+                        <div className='flex-grow system-md-regular text-text-secondary px-1'>{t('common.userProfile.logout')}</div>
                       </div>
                     </div>}
                   </Menu.Item>

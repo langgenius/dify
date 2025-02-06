@@ -26,6 +26,8 @@ const translation = {
     lineBreak: 'Line break',
     sure: 'I\'m sure',
     download: 'Download',
+    downloadSuccess: 'Download Completed.',
+    downloadFailed: 'Download failed. Please try again later.',
     delete: 'Delete',
     settings: 'Settings',
     setup: 'Setup',
@@ -153,6 +155,14 @@ const translation = {
     community: 'Community',
     about: 'About',
     logout: 'Log out',
+  },
+  compliance: {
+    soc2Type1: 'SOC 2 Type I Report',
+    soc2Type2: 'SOC 2 Type II Report',
+    iso27001: 'ISO 27001:2022 Certification',
+    gdpr: 'GDPR DPA',
+    sandboxUpgradeTooltip: 'Only available with a Professional or Team plan.',
+    professionalUpgradeTooltip: 'Only available with a Team plan or above.',
   },
   settings: {
     accountGroup: 'GENERAL',

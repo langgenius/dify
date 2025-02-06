@@ -17,7 +17,7 @@ const itemIconClassName = `
   shrink-0 mr-2 flex items-center justify-center w-6 h-6 bg-[#EFF4FF] rounded-md text-xs font-medium text-text-accent
 `
 const itemNameClassName = `
-  grow mr-2 text-sm text-gray-700 text-left
+  grow mr-2 text-sm text-text-secondary text-left
 `
 const itemCheckClassName = `
   shrink-0 w-4 h-4 text-text-accent
@@ -54,7 +54,7 @@ const WorkplaceSelector = () => {
               open && 'bg-state-base-hover',
             )}>
               <div className={itemIconClassName}>{currentWorkspace?.name[0].toLocaleUpperCase()}</div>
-              <div className={`${itemNameClassName} truncate`}>{currentWorkspace?.name}</div>
+              <div className={`${itemNameClassName} truncate px-1`}>{currentWorkspace?.name}</div>
               <ChevronRight className='shrink-0 size-[14px] text-text-tertiary' />
             </Menu.Button>
             <Transition
