@@ -193,3 +193,4 @@ api/.vscode
 
 .idea/
 .vscode
+.aider*

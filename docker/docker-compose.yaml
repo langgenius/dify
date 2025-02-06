@@ -393,7 +393,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.15.2
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/langgenius/dify-api:0.15.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -416,7 +416,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.15.2
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/langgenius/dify-api:0.15.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -438,7 +438,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.15.2
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/langgenius/dify-web:0.15.2
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -452,7 +452,7 @@ services:
 
   # The postgres database.
   db:
-    image: postgres:15-alpine
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/postgres:15-alpine
     restart: always
     environment:
       PGUSER: ${PGUSER:-postgres}
@@ -475,7 +475,7 @@ services:
 
   # The redis cache.
   redis:
-    image: redis:6-alpine
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/redis:6-alpine
     restart: always
     environment:
       REDISCLI_AUTH: ${REDIS_PASSWORD:-difyai123456}
@@ -489,7 +489,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.10
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/langgenius/dify-sandbox:0.2.10
     restart: always
     environment:
       # The DifySandbox configurations
@@ -513,7 +513,7 @@ services:
   # for more information, please refer to
   # https://docs.dify.ai/learn-more/faq/install-faq#id-18.-why-is-ssrf_proxy-needed
   ssrf_proxy:
-    image: ubuntu/squid:latest
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/ubuntu/squid:latest
     restart: always
     volumes:
       - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
@@ -533,7 +533,7 @@ services:
   # Certbot service
   # use `docker-compose --profile certbot up` to start the certbot service.
   certbot:
-    image: certbot/certbot
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/certbot/certbot
     profiles:
       - certbot
     volumes:
@@ -553,7 +553,7 @@ services:
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
   nginx:
-    image: nginx:latest
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nginx:latest
     restart: always
     volumes:
       - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
@@ -593,7 +593,7 @@ services:
   # The TiDB vector store.
   # For production use, please refer to https://github.com/pingcap/tidb-docker-compose
   tidb:
-    image: pingcap/tidb:v8.4.0
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/pingcap/tidb:v8.4.0
     profiles:
       - tidb
     command:
@@ -602,7 +602,7 @@ services:
 
   # The Weaviate vector store.
   weaviate:
-    image: semitechnologies/weaviate:1.19.0
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/semitechnologies/weaviate:1.19.0
     profiles:
       - ''
       - weaviate
@@ -627,7 +627,7 @@ services:
   # Qdrant vector store.
   # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)
   qdrant:
-    image: langgenius/qdrant:v1.7.3
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/langgenius/qdrant:v1.7.3
     profiles:
       - qdrant
     restart: always
@@ -671,7 +671,7 @@ services:
 
   # The pgvector vector database.
   pgvector:
-    image: pgvector/pgvector:pg16
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/pgvector/pgvector:pg16
     profiles:
       - pgvector
     restart: always
@@ -693,7 +693,7 @@ services:
 
   # pgvecto-rs vector store
   pgvecto-rs:
-    image: tensorchord/pgvecto-rs:pg16-v0.3.0
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/tensorchord/pgvecto-rs:pg16-v0.3.0
     profiles:
       - pgvecto-rs
     restart: always
@@ -715,7 +715,7 @@ services:
 
   # Chroma vector database
   chroma:
-    image: ghcr.io/chroma-core/chroma:0.5.20
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/ghcr.io/chroma-core/chroma:0.5.20
     profiles:
       - chroma
     restart: always
@@ -728,7 +728,7 @@ services:
 
   # OceanBase vector database
   oceanbase:
-    image: quay.io/oceanbase/oceanbase-ce:4.3.3.0-100000142024101215
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/quay.io/oceanbase/oceanbase-ce:4.3.3.0-100000142024101215
     profiles:
       - oceanbase
     restart: always
@@ -745,7 +745,7 @@ services:
 
   # Oracle vector database
   oracle:
-    image: container-registry.oracle.com/database/free:latest
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/container-registry.oracle.com/database/free:latest
     profiles:
       - oracle
     restart: always
@@ -761,7 +761,7 @@ services:
   # Milvus vector database services
   etcd:
     container_name: milvus-etcd
-    image: quay.io/coreos/etcd:v3.5.5
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/quay.io/coreos/etcd:v3.5.5
     profiles:
       - milvus
     environment:
@@ -782,7 +782,7 @@ services:
 
   minio:
     container_name: milvus-minio
-    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/minio/minio:RELEASE.2023-03-20T20-16-18Z
     profiles:
       - milvus
     environment:
@@ -801,7 +801,7 @@ services:
 
   milvus-standalone:
     container_name: milvus-standalone
-    image: milvusdb/milvus:v2.5.0-beta
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/milvusdb/milvus:v2.5.0-beta
     profiles:
       - milvus
     command: [ 'milvus', 'run', 'standalone' ]
@@ -829,7 +829,7 @@ services:
   # Opensearch vector database
   opensearch:
     container_name: opensearch
-    image: opensearchproject/opensearch:latest
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/opensearchproject/opensearch:latest
     profiles:
       - opensearch
     environment:
@@ -851,7 +851,7 @@ services:
 
   opensearch-dashboards:
     container_name: opensearch-dashboards
-    image: opensearchproject/opensearch-dashboards:latest
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/opensearchproject/opensearch-dashboards:latest
     profiles:
       - opensearch
     environment:
@@ -866,7 +866,7 @@ services:
   # MyScale vector database
   myscale:
     container_name: myscale
-    image: myscale/myscaledb:1.6.4
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/myscale/myscaledb:1.6.4
     profiles:
       - myscale
     restart: always
@@ -881,7 +881,7 @@ services:
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.14.3
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.elastic.co/elasticsearch/elasticsearch:8.14.3
     container_name: elasticsearch
     profiles:
       - elasticsearch
@@ -916,7 +916,7 @@ services:
   # https://www.elastic.co/guide/en/kibana/current/docker.html
   # https://www.elastic.co/guide/en/kibana/current/settings.html
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.14.3
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.elastic.co/kibana/kibana:8.14.3
     container_name: kibana
     profiles:
       - elasticsearch
@@ -944,7 +944,7 @@ services:
   # unstructured .
   # (if used, you need to set ETL_TYPE to Unstructured in the api & worker service.)
   unstructured:
-    image: downloads.unstructured.io/unstructured-io/unstructured-api:latest
+    image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/downloads.unstructured.io/unstructured-io/unstructured-api:latest
     profiles:
       - unstructured
     restart: always
