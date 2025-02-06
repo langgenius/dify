@@ -1,7 +1,7 @@
-model: meta.llama-3-70b-instruct
+model: meta.llama-3.1-70b-instruct
 label:
-  zh_Hans: meta.llama-3-70b-instruct
-  en_US: meta.llama-3-70b-instruct
+  zh_Hans: meta.llama-3.1-70b-instruct
+  en_US: meta.llama-3.1-70b-instruct
 model_type: llm
 features:
   - agent-thought
@@ -43,10 +43,9 @@ parameter_rules:
   - name: maxTokens
     use_template: max_tokens
     default: 600
-    max: 8000
+    max: 4000
 pricing:
-  input: '0.015'
-  output: '0.015'
+  input: '0.0075'
+  output: '0.0075'
   unit: '0.0001'
   currency: USD
-deprecated: true
