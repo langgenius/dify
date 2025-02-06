@@ -49,7 +49,8 @@ class Pdf2ImgTool(BuiltinTool):
         pdf_stream = io.BytesIO(pdf_bytes)
         doc = fitz.open(stream=pdf_stream, filetype="pdf")
         if 'encryption' in doc.metadata and doc.metadata['encryption'] is not None:
-            return
+            if not doc.authenticate(""):
+                return
 
         images = []
         for pageNo in range(doc.page_count):
