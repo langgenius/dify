@@ -154,6 +154,10 @@ const translation = {
       removeConfirmTitle: '移除{{key}}配置？',
       removeConfirmContent: '當前配置正在使用中，移除它將關閉追蹤功能。',
     },
+    opik: {
+      title: '奧皮克',
+      description: 'Opik 是一個用於評估、測試和監控 LLM 應用程式的開源平臺。',
+    },
   },
   answerIcon: {
     descriptionInExplore: '是否使用 WebApp 圖示在 Explore 中取代 🤖',

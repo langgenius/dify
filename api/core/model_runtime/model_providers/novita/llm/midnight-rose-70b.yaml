@@ -1,7 +1,7 @@
 model: sophosympatheia/midnight-rose-70b
 label:
-  zh_Hans: sophosympatheia/midnight-rose-70b
-  en_US: sophosympatheia/midnight-rose-70b
+  zh_Hans: Midnight Rose 70B
+  en_US: Midnight Rose 70B
 model_type: llm
 features:
   - agent-thought

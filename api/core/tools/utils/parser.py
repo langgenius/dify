@@ -149,7 +149,7 @@ class ApiBasedToolSchemaParser:
                 if not path:
                     path = str(uuid.uuid4())
 
-                interface["operation"]["operationId"] = f'{path}_{interface["method"]}'
+                interface["operation"]["operationId"] = f"{path}_{interface['method']}"
 
             bundles.append(
                 ApiToolBundle(

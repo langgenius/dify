@@ -73,6 +73,8 @@ const translation = {
             'Inserisci il testo del disclaimer personalizzato',
           customDisclaimerTip:
             'Il testo del disclaimer personalizzato verrà visualizzato sul lato client, fornendo informazioni aggiuntive sull\'applicazione',
+          copyrightTip: 'Visualizzare le informazioni sul copyright nella webapp',
+          copyrightTooltip: 'Si prega di eseguire l\'upgrade al piano Professional o superiore',
         },
         sso: {
           label: 'Autenticazione SSO',
@@ -80,6 +82,7 @@ const translation = {
           description: 'Tutti gli utenti devono effettuare l\'accesso con SSO prima di utilizzare WebApp',
           tooltip: 'Contattare l\'amministratore per abilitare l\'SSO di WebApp',
         },
+        modalTip: 'Impostazioni dell\'app Web lato client.',
       },
       embedded: {
         entry: 'Incorporato',

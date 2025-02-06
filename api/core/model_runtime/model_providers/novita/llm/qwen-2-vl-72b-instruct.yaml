@@ -1,7 +1,7 @@
-model: Nous-Hermes-2-Mixtral-8x7B-DPO
+model: qwen/qwen-2-vl-72b-instruct
 label:
-  zh_Hans: Nous-Hermes-2-Mixtral-8x7B-DPO
-  en_US: Nous-Hermes-2-Mixtral-8x7B-DPO
+  zh_Hans: Qwen 2 VL 72B Instruct
+  en_US: Qwen 2 VL 72B Instruct
 model_type: llm
 features:
   - agent-thought
@@ -35,7 +35,7 @@ parameter_rules:
     max: 2
     default: 0
 pricing:
-  input: '0.0027'
-  output: '0.0027'
+  input: '0.0045'
+  output: '0.0045'
   unit: '0.0001'
   currency: USD

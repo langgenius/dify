@@ -24,7 +24,7 @@ export class VariableValueBlockNode extends TextNode {
 
   createDOM(config: EditorConfig): HTMLElement {
     const element = super.createDOM(config)
-    element.classList.add('inline-flex', 'items-center', 'px-0.5', 'h-[22px]', 'text-[#155EEF]', 'rounded-[5px]', 'align-middle')
+    element.classList.add('inline-flex', 'items-center', 'px-0.5', 'h-[22px]', 'text-text-accent', 'rounded-[5px]', 'align-middle')
     return element
   }
 
