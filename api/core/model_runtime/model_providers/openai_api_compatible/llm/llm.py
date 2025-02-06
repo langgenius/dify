@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from collections.abc import Generator
 from decimal import Decimal
 from typing import Optional, Union, cast
@@ -515,6 +516,8 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                 if "delta" in choice:
                     delta = choice["delta"]
                     delta_content = delta.get("content")
+                    if not delta_content:
+                        delta_content = ""
 
                     if not is_reasoning_started_tag and "<think>" in delta_content:
                         is_reasoning_started_tag = True
@@ -523,20 +526,21 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                         delta_content = delta_content.replace("</think>", "") + "\n\n"
                         is_reasoning_started_tag = False
                     elif is_reasoning_started_tag:
-                        if "\n\n" in delta_content:
-                            delta_content = delta_content.replace("\n\n", "\n> ")
-                        elif "\n" in delta_content:
-                            delta_content = delta_content.replace("\n", "\n> ")
+                        if "\n" in delta_content:
+                            delta_content = re.sub(r"\n(?!(>|\n))", "\n> ", delta_content)
 
                     reasoning_content = delta.get("reasoning_content")
-                    if reasoning_content:
+                    if is_reasoning_started and not reasoning_content and not delta_content:
+                        delta_content = ""
+                    elif reasoning_content:
                         if not is_reasoning_started:
                             delta_content = "> 💭 " + reasoning_content
                             is_reasoning_started = True
-                        elif "\n\n" in delta_content:
-                            delta_content = reasoning_content.replace("\n\n", "\n> ")
-                        elif "\n" in delta_content:
-                            delta_content = reasoning_content.replace("\n", "\n> ")
+                        else:
+                            delta_content = reasoning_content
+
+                        if "\n" in delta_content:
+                            delta_content = re.sub(r"\n(?!(>|\n))", "\n> ", delta_content)
                     elif is_reasoning_started:
                         # If we were in reasoning mode but now getting regular content,
                         # add \n\n to close the reasoning block
