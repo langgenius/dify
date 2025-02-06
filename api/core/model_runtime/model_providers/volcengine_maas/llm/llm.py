@@ -247,15 +247,36 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
             req_params["tools"] = tools
 
         def _handle_stream_chat_response(chunks: Generator[ChatCompletionChunk]) -> Generator:
+            is_reasoning_started = False
             for chunk in chunks:
+                content = ""
+                if chunk.choices:
+                    if hasattr(chunk.choices[0].delta, "reasoning_content"):
+                        delta_content = ""
+                        if not is_reasoning_started:
+                            is_reasoning_started = True
+                            delta_content = "> 💭 " + chunk.choices[0].delta.reasoning_content
+                        else:
+                            delta_content = chunk.choices[0].delta.reasoning_content
+
+                        if "\n\n" in delta_content:
+                            delta_content = delta_content.replace("\n\n", "\n> ")
+                        elif "\n" in delta_content:
+                            delta_content = delta_content.replace("\n", "\n> ")
+
+                        content = delta_content
+                    elif is_reasoning_started:
+                        content = "\n\n" + chunk.choices[0].delta.content
+                        is_reasoning_started = False
+                    else:
+                        content = chunk.choices[0].delta.content
+
                 yield LLMResultChunk(
                     model=model,
                     prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=0,
-                        message=AssistantPromptMessage(
-                            content=chunk.choices[0].delta.content if chunk.choices else "", tool_calls=[]
-                        ),
+                        message=AssistantPromptMessage(content=content, tool_calls=[]),
                         usage=self._calc_response_usage(
                             model=model,
                             credentials=credentials,
