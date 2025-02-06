@@ -30,7 +30,7 @@ parameters: # 参数列表
     human_description:
       en_US: width
       zh_Hans: 生成图片宽度
-    form: llm
+    form: form
   - name: length
     type: number
     required: false
@@ -40,7 +40,7 @@ parameters: # 参数列表
     human_description:
       en_US: length
       zh_Hans: 生成图片长度
-    form: llm
+    form: form
   - name: dpi
     type: number
     required: false
@@ -50,4 +50,4 @@ parameters: # 参数列表
     human_description:
       en_US: dpi
       zh_Hans: dpi
-    form: llm
+    form: form
