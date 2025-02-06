@@ -6,12 +6,15 @@ from tenacity import (retry, retry_if_exception_type, stop_before_delay,
                       wait_fixed)
 
 from extensions.ext_database import db
+from libs.helper import RateLimiter
 from models.account import TenantAccountJoin, TenantAccountRole
 
 
 class BillingService:
     base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
     secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
+
+    compliance_download_rate_limiter = RateLimiter("compliance_download_rate_limiter", 3, 60)
 
     @classmethod
     def get_info(cls, tenant_id: str):
@@ -107,6 +110,11 @@ class BillingService:
         ip: str,
         device_info: str,
     ):
+        limiter_key = f"{account_id}:{tenant_id}"
+        if cls.compliance_download_rate_limiter.is_rate_limited(limiter_key):
+            from controllers.console.error import CompilanceRateLimitError
+            raise CompilanceRateLimitError()
+
         json = {
             "doc_name": doc_name,
             "account_id": account_id,
@@ -114,4 +122,6 @@ class BillingService:
             "ip_address": ip,
             "device_info": device_info,
         }
-        return cls._send_request("POST", "/compliance/download", json=json)
+        res = cls._send_request("POST", "/compliance/download", json=json)
+        cls.compliance_download_rate_limiter.increment(limiter_key)
+        return res
