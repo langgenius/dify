@@ -242,7 +242,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           onChange={e => onDesChange(e.target.value)}
           placeholder={t(`${prefixSettings}.webDescPlaceholder`) as string}
         />
-        {isChatBot && (
+        {isChat && (
           <div className='w-full mt-4'>
             <div className='flex justify-between items-center'>
               <div className={cn('system-sm-semibold text-text-secondary')}>{t('app.answerIcon.title')}</div>
