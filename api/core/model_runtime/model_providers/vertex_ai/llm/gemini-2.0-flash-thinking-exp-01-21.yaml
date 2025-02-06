@@ -1,6 +1,6 @@
 model: gemini-2.0-flash-thinking-exp-01-21
 label:
-  en_US: Gemini 2.0 Flash Thinking Exp 01-21
+  en_US: Gemini 2.0 Flash Thinking Exp 0121
 model_type: llm
 features:
   - agent-thought
