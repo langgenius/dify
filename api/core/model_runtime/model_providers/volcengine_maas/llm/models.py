@@ -32,7 +32,7 @@ configs: dict[str, ModelConfig] = {
     ),
     "DeepSeek-V3": ModelConfig(
         properties=ModelProperties(context_size=64000, max_tokens=8192, mode=LLMMode.CHAT),
-        features=[ModelFeature.AGENT_THOUGHT],
+        features=[ModelFeature.AGENT_THOUGHT, ModelFeature.TOOL_CALL, ModelFeature.STREAM_TOOL_CALL],
     ),
     "Doubao-1.5-vision-pro-32k": ModelConfig(
         properties=ModelProperties(context_size=32768, max_tokens=12288, mode=LLMMode.CHAT),
