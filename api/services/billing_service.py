@@ -123,5 +123,5 @@ class BillingService:
             "device_info": device_info,
         }
         res = cls._send_request("POST", "/compliance/download", json=json)
-        cls.compliance_download_rate_limiter.increment(limiter_key)
+        cls.compliance_download_rate_limiter.increment_rate_limit(limiter_key)
         return res
