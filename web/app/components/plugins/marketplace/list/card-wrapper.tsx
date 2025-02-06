@@ -15,11 +15,13 @@ type CardWrapperProps = {
   plugin: Plugin
   showInstallButton?: boolean
   locale?: string
+  installed?: boolean
 }
 const CardWrapper = ({
   plugin,
   showInstallButton,
   locale,
+  installed,
 }: CardWrapperProps) => {
   const { t } = useMixedTranslation(locale)
   const [isShowInstallFromMarketplace, {
@@ -38,6 +40,7 @@ const CardWrapper = ({
           key={plugin.name}
           payload={plugin}
           locale={locale}
+          installed={installed}
           footer={
             <CardMoreInfo
               downloadCount={plugin.install_count}

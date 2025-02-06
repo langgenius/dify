@@ -8,6 +8,7 @@ import { getLanguage } from '@/i18n/language'
 import cn from '@/utils/classnames'
 import type { SearchParamsFromCollection } from '@/app/components/plugins/marketplace/types'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
+import { useInstalledPluginList } from '@/service/use-plugins'
 
 type ListWithCollectionProps = {
   marketplaceCollections: MarketplaceCollection[]
@@ -28,7 +29,7 @@ const ListWithCollection = ({
   onMoreClick,
 }: ListWithCollectionProps) => {
   const { t } = useMixedTranslation(locale)
-
+  const { data: installedPluginList } = useInstalledPluginList()
   return (
     <>
       {
@@ -63,12 +64,17 @@ const ListWithCollection = ({
                   if (cardRender)
                     return cardRender(plugin)
 
+                  const isInstalled = installedPluginList?.plugins.some(
+                    installedPlugin => installedPlugin.name === plugin.name,
+                  )
+
                   return (
                     <CardWrapper
                       key={plugin.name}
                       plugin={plugin}
                       showInstallButton={showInstallButton}
                       locale={locale}
+                      installed={isInstalled}
                     />
                   )
                 })

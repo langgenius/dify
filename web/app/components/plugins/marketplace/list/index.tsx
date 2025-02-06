@@ -1,5 +1,5 @@
 'use client'
-import type { Plugin } from '../../types'
+import type { Plugin, PluginDetail } from '../../types'
 import type { MarketplaceCollection } from '../types'
 import ListWithCollection from './list-with-collection'
 import CardWrapper from './card-wrapper'
@@ -11,6 +11,7 @@ type ListProps = {
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   plugins?: Plugin[]
   showInstallButton?: boolean
+  installedPluginList?: PluginDetail[]
   locale: string
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => JSX.Element | null
@@ -22,6 +23,7 @@ const List = ({
   marketplaceCollectionPluginsMap,
   plugins,
   showInstallButton,
+  installedPluginList,
   locale,
   cardContainerClassName,
   cardRender,
@@ -54,12 +56,17 @@ const List = ({
                 if (cardRender)
                   return cardRender(plugin)
 
+                const isInstalled = installedPluginList?.some(
+                  installedPlugin => installedPlugin.name === plugin.name,
+                )
+
                 return (
                   <CardWrapper
                     key={plugin.name}
                     plugin={plugin}
                     showInstallButton={showInstallButton}
                     locale={locale}
+                    installed={isInstalled}
                   />
                 )
               })

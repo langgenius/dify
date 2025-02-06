@@ -7,6 +7,7 @@ import List from './index'
 import SortDropdown from '../sort-dropdown'
 import Loading from '@/app/components/base/loading'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
+import { useInstalledPluginList } from '@/service/use-plugins'
 
 type ListWrapperProps = {
   marketplaceCollections: MarketplaceCollection[]
@@ -30,6 +31,7 @@ const ListWrapper = ({
   const handleQueryPlugins = useMarketplaceContext(v => v.handleQueryPlugins)
   const page = useMarketplaceContext(v => v.page)
   const handleMoreClick = useMarketplaceContext(v => v.handleMoreClick)
+  const { data: installedPluginList } = useInstalledPluginList()
 
   useEffect(() => {
     if (!marketplaceCollectionsFromClient?.length && isSuccessCollections)
@@ -61,6 +63,7 @@ const ListWrapper = ({
             marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMapFromClient || marketplaceCollectionPluginsMap}
             plugins={plugins}
             showInstallButton={showInstallButton}
+            installedPluginList={installedPluginList?.plugins}
             locale={locale}
             onMoreClick={handleMoreClick}
           />
