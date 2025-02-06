@@ -25,6 +25,10 @@ class Pdf2ImgTool(BuiltinTool):
         """
         logger.info("run shopee pdf2img")
         file_variable = tool_parameters.get("file")
+        width = tool_parameters.get("width", 0)
+        length = tool_parameters.get("length", 0)
+        dpi = tool_parameters.get("dpi", 0)
+
         logger.info(f'{file_variable}')
         # 不是pdf直接返回
         if file_variable.type != FileType.DOCUMENT:
@@ -35,13 +39,13 @@ class Pdf2ImgTool(BuiltinTool):
         if not image_binary:
             return self.create_text_message("Image not found, please request user to generate image firstly.")
 
-        res = self.handle(image_binary)
+        res = self.handle(image_binary, width, length, dpi)
         if not res:
             return self.create_text_message("Pdf2Img error, maybe pdf is encrypted")
 
         return self.create_blob_message(blob=res, meta={"mime_type": "image/jpeg"})
 
-    def handle(self, pdf_bytes):
+    def handle(self, pdf_bytes, width, length, dpi):
         pdf_stream = io.BytesIO(pdf_bytes)
         doc = fitz.open(stream=pdf_stream, filetype="pdf")
         if 'encryption' in doc.metadata and doc.metadata['encryption'] is not None:
@@ -51,14 +55,14 @@ class Pdf2ImgTool(BuiltinTool):
         for pageNo in range(doc.page_count):
             page = doc.load_page(pageNo)
             pix = page.get_pixmap()
-            images.append(Image.frombytes("RGB", [pix.width, pix.height], pix.samples))
+            images.append(Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
 
-        res = self.concat_images(images)
+        res = self.concat_images(images, width, length, dpi)
         doc.close()
         pdf_stream.close()
         return res
 
-    def concat_images(self, images):
+    def concat_images(self, images, target_width, target_length, dpi):
         width = 0
         height = 0
         for image in images:
@@ -73,9 +77,14 @@ class Pdf2ImgTool(BuiltinTool):
             tmp, _ = image.size
             last_image_width += tmp
         # return result
+        if target_width > 0 and target_length > 0:
+            result = result.resize((target_width, target_length))
 
         image_stream = io.BytesIO()
-        result.save(image_stream, format='JPEG')
+        if dpi > 0:
+            result.save(image_stream, format='JPEG', dpi=(dpi, dpi))
+        else:
+            result.save(image_stream, format='JPEG')
         image_binary_data = image_stream.getvalue()
         image_stream.close()
         return image_binary_data
