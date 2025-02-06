@@ -286,7 +286,7 @@ class AppAnnotationService:
             df = pd.read_csv(file)
             result = []
             for index, row in df.iterrows():
-                content = {"question": row[0], "answer": row[1]}
+                content = {"question": row.iloc[0], "answer": row.iloc[1]}
                 result.append(content)
             if len(result) == 0:
                 raise ValueError("The CSV file is empty.")

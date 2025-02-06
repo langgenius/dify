@@ -49,6 +49,7 @@ const translation = {
     view: 'Vedere',
     submit: 'Prezinte',
     skip: 'Navă',
+    imageCopied: 'Imagine copiată',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',

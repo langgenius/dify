@@ -65,6 +65,8 @@ const translation = {
           customDisclaimer: 'カスタム免責事項',
           customDisclaimerPlaceholder: '免責事項を入力してください',
           customDisclaimerTip: 'アプリケーションの使用に関する免責事項を提供します。',
+          copyrightTooltip: 'プロフェッショナルプラン以上にアップグレードしてください',
+          copyrightTip: 'ウェブアプリに著作権情報を表示する',
         },
         sso: {
           title: 'WebアプリのSSO',
@@ -72,6 +74,7 @@ const translation = {
           label: 'SSO認証',
           description: 'すべてのユーザーは、Webアプリを使用する前にSSOでログインする必要があります',
         },
+        modalTip: 'クライアント側の Web アプリ設定。',
       },
       embedded: {
         entry: '埋め込み',

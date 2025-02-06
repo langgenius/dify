@@ -27,10 +27,10 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import { getLastAnswer } from '@/app/components/base/chat/utils'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 
-interface DebugWithSingleModelProps {
+type DebugWithSingleModelProps = {
   checkCanSend?: () => boolean
 }
-export interface DebugWithSingleModelRefType {
+export type DebugWithSingleModelRefType = {
   handleRestart: () => void
 }
 const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSingleModelProps>(({
@@ -175,7 +175,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       onRegenerate={doRegenerate}
       onStopResponding={handleStop}
       showPromptLog
-      questionIcon={<Avatar name={userProfile.name} size={40} />}
+      questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={40} />}
       allToolIcons={allToolIcons}
       onAnnotationEdited={handleAnnotationEdited}
       onAnnotationAdded={handleAnnotationAdded}

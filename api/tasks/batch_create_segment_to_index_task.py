@@ -5,7 +5,8 @@ import uuid
 
 import click
 from celery import shared_task  # type: ignore
-from sqlalchemy import func
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -18,7 +19,12 @@ from services.vector_service import VectorService
 
 @shared_task(queue="dataset")
 def batch_create_segment_to_index_task(
-    job_id: str, content: list, dataset_id: str, document_id: str, tenant_id: str, user_id: str
+    job_id: str,
+    content: list,
+    dataset_id: str,
+    document_id: str,
+    tenant_id: str,
+    user_id: str,
 ):
     """
     Async batch create segment to index
@@ -37,25 +43,35 @@ def batch_create_segment_to_index_task(
     indexing_cache_key = "segment_batch_import_{}".format(job_id)
 
     try:
-        dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
-        if not dataset:
-            raise ValueError("Dataset not exist.")
+        with Session(db.engine) as session:
+            dataset = session.get(Dataset, dataset_id)
+            if not dataset:
+                raise ValueError("Dataset not exist.")
 
-        dataset_document = db.session.query(Document).filter(Document.id == document_id).first()
-        if not dataset_document:
-            raise ValueError("Document not exist.")
+            dataset_document = session.get(Document, document_id)
+            if not dataset_document:
+                raise ValueError("Document not exist.")
 
-        if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != "completed":
-            raise ValueError("Document is not available.")
-        document_segments = []
-        embedding_model = None
-        if dataset.indexing_technique == "high_quality":
-            model_manager = ModelManager()
-            embedding_model = model_manager.get_model_instance(
-                tenant_id=dataset.tenant_id,
-                provider=dataset.embedding_model_provider,
-                model_type=ModelType.TEXT_EMBEDDING,
-                model=dataset.embedding_model,
+            if (
+                not dataset_document.enabled
+                or dataset_document.archived
+                or dataset_document.indexing_status != "completed"
+            ):
+                raise ValueError("Document is not available.")
+            document_segments = []
+            embedding_model = None
+            if dataset.indexing_technique == "high_quality":
+                model_manager = ModelManager()
+                embedding_model = model_manager.get_model_instance(
+                    tenant_id=dataset.tenant_id,
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model,
+                )
+            word_count_change = 0
+            segments_to_insert: list[str] = []
+            max_position_stmt = select(func.max(DocumentSegment.position)).where(
+                DocumentSegment.document_id == dataset_document.id
             )
         word_count_change = 0
         if embedding_model:
@@ -103,7 +119,10 @@ def batch_create_segment_to_index_task(
         redis_client.setex(indexing_cache_key, 600, "completed")
         end_at = time.perf_counter()
         logging.info(
-            click.style("Segment batch created job: {} latency: {}".format(job_id, end_at - start_at), fg="green")
+            click.style(
+                "Segment batch created job: {} latency: {}".format(job_id, end_at - start_at),
+                fg="green",
+            )
         )
     except Exception:
         logging.exception("Segments batch created index failed")

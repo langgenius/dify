@@ -4,10 +4,11 @@ import React, { useEffect, useMemo } from 'react'
 import cn from '@/utils/classnames'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useGetLanguage } from '@/context/i18n'
+import type { Tool as ToolType } from '../../../tools/types'
 import { CollectionType } from '../../../tools/types'
 import type { ToolWithProvider } from '../../types'
 import { BlockEnum } from '../../types'
-import type { ToolDefaultValue } from '../types'
+import type { ToolDefaultValue, ToolValue } from '../types'
 import { ViewType } from '../view-type-select'
 import ActonItem from './action-item'
 import BlockIcon from '../../block-icon'
@@ -20,6 +21,7 @@ type Props = {
   isShowLetterIndex: boolean
   hasSearchText: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  selectedTools?: ToolValue[]
 }
 
 const Tool: FC<Props> = ({
@@ -29,6 +31,7 @@ const Tool: FC<Props> = ({
   isShowLetterIndex,
   hasSearchText,
   onSelect,
+  selectedTools,
 }) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -36,6 +39,10 @@ const Tool: FC<Props> = ({
   const actions = payload.tools
   const hasAction = true // Now always support actions
   const [isFold, setFold] = React.useState<boolean>(true)
+  const getIsDisabled = (tool: ToolType) => {
+    if (!selectedTools || !selectedTools.length) return false
+    return selectedTools.some(selectedTool => selectedTool.provider_name === payload.name && selectedTool.tool_name === tool.name)
+  }
   useEffect(() => {
     if (hasSearchText && isFold) {
       setFold(false)
@@ -68,7 +75,7 @@ const Tool: FC<Props> = ({
     >
       <div className={cn(className)}>
         <div
-          className='flex items-center justify-between pl-3 pr-1 w-full rounded-lg hover:bg-gray-50 cursor-pointer select-none'
+          className='flex items-center justify-between pl-3 pr-1 w-full rounded-lg hover:bg-state-base-hover cursor-pointer select-none'
           onClick={() => {
             if (hasAction)
               setFold(!isFold)
@@ -96,7 +103,7 @@ const Tool: FC<Props> = ({
               type={BlockEnum.Tool}
               toolIcon={payload.icon}
             />
-            <div className='ml-2 text-sm text-gray-900 flex-1 w-0 grow truncate'>{payload.label[language]}</div>
+            <div className='ml-2 text-sm text-text-primary flex-1 w-0 grow truncate'>{payload.label[language]}</div>
           </div>
 
           <div className='flex items-center'>
@@ -116,6 +123,7 @@ const Tool: FC<Props> = ({
               provider={payload}
               payload={action}
               onSelect={onSelect}
+              disabled={getIsDisabled(action)}
             />
           ))
         )}

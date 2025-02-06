@@ -49,6 +49,7 @@ const translation = {
     close: 'ปิด',
     skip: 'เรือ',
     submit: 'ส่ง',
+    imageCopied: 'ภาพที่คัดลอก',
   },
   errorMsg: {
     fieldRequired: '{{field}} เป็นสิ่งจําเป็น',

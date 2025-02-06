@@ -158,6 +158,23 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     return vars
   })()
 
+  const outputSchema = useMemo(() => {
+    const res: any[] = []
+    if (!inputs.output_schema)
+      return []
+    Object.keys(inputs.output_schema.properties).forEach((outputKey) => {
+      const output = inputs.output_schema.properties[outputKey]
+      res.push({
+        name: outputKey,
+        type: output.type === 'array'
+          ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]`
+          : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}`,
+        description: output.description,
+      })
+    })
+    return res
+  }, [inputs.output_schema])
+
   return {
     readOnly,
     inputs,
@@ -184,6 +201,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     setRunInputData,
     runResult,
     varInputs,
+    outputSchema,
   }
 }
 

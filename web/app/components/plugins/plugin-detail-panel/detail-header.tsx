@@ -100,7 +100,9 @@ const DetailHeader = ({
       return
     }
 
-    const fetchedReleases = await fetchReleases(author, name)
+    const owner = meta!.repo.split('/')[0] || author
+    const repo = meta!.repo.split('/')[1] || name
+    const fetchedReleases = await fetchReleases(owner, repo)
     if (fetchedReleases.length === 0) return
     const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta!.version)
     Toast.notify(toastProps)

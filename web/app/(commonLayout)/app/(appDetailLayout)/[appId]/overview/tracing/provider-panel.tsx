@@ -7,7 +7,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { TracingProvider } from './type'
 import cn from '@/utils/classnames'
-import { LangfuseIconBig, LangsmithIconBig } from '@/app/components/base/icons/src/public/tracing'
+import { LangfuseIconBig, LangsmithIconBig, OpikIconBig } from '@/app/components/base/icons/src/public/tracing'
 import { Eye as View } from '@/app/components/base/icons/src/vender/solid/general'
 
 const I18N_PREFIX = 'app.tracing'
@@ -26,6 +26,7 @@ const getIcon = (type: TracingProvider) => {
   return ({
     [TracingProvider.langSmith]: LangsmithIconBig,
     [TracingProvider.langfuse]: LangfuseIconBig,
+    [TracingProvider.opik]: OpikIconBig,
   })[type]
 }
 
@@ -79,7 +80,7 @@ const ProviderPanel: FC<Props> = ({
           <div className={'flex justify-between items-center space-x-1'}>
             {hasConfigured && (
               <div className='flex px-2 items-center h-6 bg-components-button-secondary-bg rounded-md border-[0.5px] border-components-button-secondary-border shadow-xs cursor-pointer text-text-secondary space-x-1' onClick={viewBtnClick} >
-                <View className='w-3 h-3'/>
+                <View className='w-3 h-3' />
                 <div className='text-xs font-medium'>{t(`${I18N_PREFIX}.view`)}</div>
               </div>
             )}

@@ -9,16 +9,11 @@ services:
       <<: *shared-api-worker-env
       # Startup mode, 'api' starts the API server.
       MODE: api
-      CONSOLE_API_URL: ${CONSOLE_API_URL:-http://localhost:5001}
-      CONSOLE_WEB_URL: ${CONSOLE_WEB_URL:-http://localhost:3000}
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
-      MARKETPLACE_ENABLED: ${MARKETPLACE_ENABLED:-true}
-      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
-      ENDPOINT_URL_TEMPLATE: ${ENDPOINT_URL_TEMPLATE:-http://localhost/e/{hook_id}}
     depends_on:
       - db
       - redis
@@ -42,12 +37,8 @@ services:
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
-      PLUGIN_API_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
-      PLUGIN_API_URL: ${PLUGIN_DAEMON_URL:-http://plugin_daemon:5002}
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
-      MARKETPLACE_ENABLED: ${MARKETPLACE_ENABLED:-false}
-      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
     depends_on:
       - db
       - redis
@@ -72,6 +63,7 @@ services:
       MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
       MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
       TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
 
   # The postgres database.
   db:

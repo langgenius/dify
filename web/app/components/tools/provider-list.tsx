@@ -48,7 +48,7 @@ const ProviderList = () => {
       if (tagFilterValue.length > 0 && (!collection.labels || collection.labels.every(label => !tagFilterValue.includes(label))))
         return false
       if (keywords)
-        return collection.name.toLowerCase().includes(keywords.toLowerCase())
+        return Object.values(collection.label).some(value => value.toLowerCase().includes(keywords.toLowerCase()))
       return true
     })
   }, [activeTab, tagFilterValue, keywords, collectionList])
@@ -113,6 +113,8 @@ const ProviderList = () => {
                     payload={{
                       ...collection,
                       brief: collection.description,
+                      org: collection.plugin_id ? collection.plugin_id.split('/')[0] : '',
+                      name: collection.plugin_id ? collection.plugin_id.split('/')[1] : collection.name,
                     } as any}
                     footer={
                       <CardMoreInfo

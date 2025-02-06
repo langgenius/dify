@@ -166,6 +166,8 @@ const translation = {
   documentsDisabled: '已禁用 {{num}} 個文檔 - 處於非活動狀態超過 30 天',
   localDocs: '本地文件',
   preprocessDocument: '{{num}}預處理文件',
+  allKnowledge: '所有知識',
+  allKnowledgeDescription: '選擇以顯示此工作區中的所有知識。只有 Workspace 擁有者可以管理所有知識。',
 }
 
 export default translation

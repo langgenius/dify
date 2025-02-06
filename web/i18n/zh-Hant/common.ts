@@ -49,6 +49,7 @@ const translation = {
     regenerate: '再生',
     submit: '提交',
     skip: '船',
+    imageCopied: '複製的圖片',
   },
   placeholder: {
     input: '請輸入',
@@ -606,7 +607,7 @@ const translation = {
     pasteFileLink: '粘貼文件連結',
     pasteFileLinkInputPlaceholder: '輸入網址...',
     uploadFromComputerReadError: '檔案讀取失敗，請重試。',
-    uploadFromComputerUploadError: '檔上傳失敗，請重新上傳。',
+    uploadFromComputerUploadError: '檔案上傳失敗，請重新上傳。',
     pasteFileLinkInvalid: '無效的文件連結',
     uploadFromComputer: '本地上傳',
     fileExtensionNotSupport: '不支援檔擴展名',

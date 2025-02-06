@@ -72,9 +72,9 @@ const Tabs: FC<TabsProps> = ({
             searchText={searchText}
             onSelect={onSelect}
             tags={tags}
-            buildInTools={buildInTools}
-            customTools={customTools}
-            workflowTools={workflowTools}
+            buildInTools={buildInTools || []}
+            customTools={customTools || []}
+            workflowTools={workflowTools || []}
           />
         )
       }

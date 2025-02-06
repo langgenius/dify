@@ -13,6 +13,7 @@ from typing import Any, cast
 
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped
 
 from configs import dify_config
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -515,7 +516,7 @@ class DocumentSegment(db.Model):  # type: ignore[name-defined]
     tenant_id = db.Column(StringUUID, nullable=False)
     dataset_id = db.Column(StringUUID, nullable=False)
     document_id = db.Column(StringUUID, nullable=False)
-    position = db.Column(db.Integer, nullable=False)
+    position: Mapped[int]
     content = db.Column(db.Text, nullable=False)
     answer = db.Column(db.Text, nullable=True)
     word_count = db.Column(db.Integer, nullable=False)
@@ -582,7 +583,7 @@ class DocumentSegment(db.Model):  # type: ignore[name-defined]
                 return []
         else:
             return []
-    
+
     @property
     def sign_content(self):
         return self.get_sign_content()
@@ -747,7 +748,7 @@ class DatasetKeywordTable(db.Model):  # type: ignore[name-defined]
                 if keyword_table_text:
                     return json.loads(keyword_table_text.decode("utf-8"), cls=SetDecoder)
                 return None
-            except Exception as e:
+            except Exception:
                 logging.exception(f"Failed to load keyword table from file: {file_key}")
                 return None
 

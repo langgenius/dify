@@ -141,10 +141,10 @@ class PluginConfig(BaseSettings):
 
     PLUGIN_DAEMON_URL: HttpUrl = Field(
         description="Plugin API URL",
-        default="http://plugin:5002",
+        default="http://localhost:5002",
     )
 
-    PLUGIN_API_KEY: str = Field(
+    PLUGIN_DAEMON_KEY: str = Field(
         description="Plugin API key",
         default="plugin-api-key",
     )
@@ -200,7 +200,7 @@ class EndpointConfig(BaseSettings):
     )
 
     CONSOLE_WEB_URL: str = Field(
-        description="Base URL for the console web interface," "used for frontend references and CORS configuration",
+        description="Base URL for the console web interface,used for frontend references and CORS configuration",
         default="",
     )
 

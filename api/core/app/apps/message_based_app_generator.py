@@ -89,6 +89,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             Conversation.id == conversation_id,
             Conversation.app_id == app_model.id,
             Conversation.status == "normal",
+            Conversation.is_deleted.is_(False),
         ]
 
         if isinstance(user, Account):

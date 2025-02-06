@@ -48,6 +48,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
     runInputData,
     setRunInputData,
     varInputs,
+    outputSchema,
   } = useConfig(props.id, props.data)
   const { t } = useTranslation()
   const nodeInfo = useMemo(() => {
@@ -121,12 +122,12 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
           type='Array[Object]'
           description={t(`${i18nPrefix}.outputVars.json`)}
         />
-        {inputs.output_schema && Object.entries(inputs.output_schema).map(([name, schema]) => (
+        {outputSchema.map(({ name, type, description }) => (
           <VarItem
             key={name}
             name={name}
-            type={schema.type}
-            description={schema.description}
+            type={type}
+            description={description}
           />
         ))}
       </OutputVars>
