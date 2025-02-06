@@ -71,11 +71,11 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const [filteredConfiguredProviders, filteredNotConfiguredProviders] = useMemo(() => {
     const filteredConfiguredProviders = configuredProviders.filter(
       provider => provider.provider.toLowerCase().includes(debouncedSearchText.toLowerCase())
-      || Object.values(provider.label).some(text => text.toLowerCase().includes(debouncedSearchText.toLowerCase())),
+        || Object.values(provider.label).some(text => text.toLowerCase().includes(debouncedSearchText.toLowerCase())),
     )
     const filteredNotConfiguredProviders = notConfiguredProviders.filter(
       provider => provider.provider.toLowerCase().includes(debouncedSearchText.toLowerCase())
-      || Object.values(provider.label).some(text => text.toLowerCase().includes(debouncedSearchText.toLowerCase())),
+        || Object.values(provider.label).some(text => text.toLowerCase().includes(debouncedSearchText.toLowerCase())),
     )
 
     return [filteredConfiguredProviders, filteredNotConfiguredProviders]
@@ -143,7 +143,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
       )}
       {!!filteredNotConfiguredProviders?.length && (
         <>
-          <div className='flex items-center mb-2 pt-2 text-text-primary system-md-semibold'>{t('common.modelProvider.configureRequired')}</div>
+          <div className='flex items-center mb-2 pt-2 text-text-primary system-md-semibold'>{t('common.modelProvider.toBeConfigured')}</div>
           <div className='relative'>
             {filteredNotConfiguredProviders?.map(provider => (
               <ProviderAddedCard
