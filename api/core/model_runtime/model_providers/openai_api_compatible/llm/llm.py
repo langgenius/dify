@@ -178,6 +178,10 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
         """
         features = []
 
+        agent_though_support = credentials.get("agent_though_support", "not_supported")
+        if agent_though_support == "supported":
+            features.append(ModelFeature.AGENT_THOUGHT)
+
         function_calling_type = credentials.get("function_calling_type", "no_call")
         if function_calling_type == "function_call":
             features.append(ModelFeature.TOOL_CALL)
