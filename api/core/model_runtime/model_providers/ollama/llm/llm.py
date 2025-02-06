@@ -370,7 +370,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 text = chunk_json["response"]
             if "<think>" in text:
                 is_reasoning_started = True
-                text = text.replace("<think>", "> 💭 ") 
+                text = text.replace("<think>", "> 💭 ")
             elif "</think>" in text:
                 is_reasoning_started = False
                 text = text.replace("</think>", "") + "\n\n"
