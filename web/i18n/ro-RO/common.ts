@@ -50,6 +50,7 @@ const translation = {
     submit: 'Prezinte',
     skip: 'Navă',
     imageCopied: 'Imagine copiată',
+    deleteApp: 'Ștergeți aplicația',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',

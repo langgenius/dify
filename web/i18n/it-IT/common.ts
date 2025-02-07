@@ -50,6 +50,7 @@ const translation = {
     submit: 'Invia',
     skip: 'Nave',
     imageCopied: 'Immagine copiata',
+    deleteApp: 'Elimina app',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',

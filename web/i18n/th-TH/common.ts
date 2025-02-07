@@ -50,6 +50,7 @@ const translation = {
     skip: 'เรือ',
     submit: 'ส่ง',
     imageCopied: 'ภาพที่คัดลอก',
+    deleteApp: 'ลบแอพ',
   },
   errorMsg: {
     fieldRequired: '{{field}} เป็นสิ่งจําเป็น',
