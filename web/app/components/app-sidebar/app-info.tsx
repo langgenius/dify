@@ -210,9 +210,9 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
           </div>
           {
             expand && (
-              <div className='flex flex-col justify-center items-start gap-1 self-stretch'>
-                <div className='flex items-center gap-1 w-full'>
-                  <div className='text-text-secondary system-md-semibold truncate w-full'>{appDetail.name}</div>
+              <div className='flex flex-col items-start gap-1'>
+                <div className='flex w-full'>
+                  <div className='text-text-secondary system-md-semibold truncate'>{appDetail.name}</div>
                 </div>
                 <div className='text-text-tertiary system-2xs-medium-uppercase'>{appDetail.mode === 'advanced-chat' ? t('app.types.chatbot') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
               </div>
