@@ -30,8 +30,8 @@ const ContentDialog = ({
         leaveFrom="opacity-100"
         leaveTo="opacity-0"
       >
-        <div 
-          className="absolute left-0 inset-0 w-full bg-app-detail-overlay-bg" 
+        <div
+          className="absolute left-0 inset-0 w-full bg-app-detail-overlay-bg"
           onClick={onClose}
         />
       </Transition.Child>
@@ -47,7 +47,7 @@ const ContentDialog = ({
       >
         <div className={classNames(
           'absolute left-0 w-full bg-app-detail-bg border-r border-divider-burn',
-          className
+          className,
         )}>
           {children}
         </div>
