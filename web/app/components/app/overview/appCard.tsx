@@ -230,7 +230,7 @@ function AppCard({
                 >
                   <div className="flex items-center justify-center gap-[1px]">
                     <op.opIcon className="h-3.5 w-3.5" />
-                    <div className="text-text-tertiary system-xs-medium px-[3px]">{op.opName}</div>
+                    <div className={`${runningStatus ? 'text-text-tertiary' : 'text-components-button-ghost-text-disabled'} system-xs-medium px-[3px]`}>{op.opName}</div>
                   </div>
                 </Tooltip>
               </Button>
