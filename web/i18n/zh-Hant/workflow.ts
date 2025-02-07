@@ -335,7 +335,7 @@ const translation = {
         retryFailed: '重試失敗',
         retryFailedTimes: '{{times}} 次重試失敗',
         times: '次',
-        ms: '女士',
+        ms: '毫秒',
         retries: '{{num}}重試',
       },
     },

@@ -12,7 +12,7 @@ import Divider from '@/app/components/base/divider'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { type DataSet } from '@/models/datasets'
+import { type DataSet, DatasetPermission } from '@/models/datasets'
 import { useToastContext } from '@/app/components/base/toast'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useAppContext } from '@/context/app-context'
@@ -134,7 +134,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
           }),
         },
       } as any
-      if (permission === 'partial_members') {
+      if (permission === DatasetPermission.partialMembers) {
         requestParams.body.partial_member_list = selectedMemberIDs.map((id) => {
           return {
             user_id: id,

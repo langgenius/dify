@@ -17,7 +17,7 @@ import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { updateDatasetSetting } from '@/service/datasets'
-import { type DataSetListResponse } from '@/models/datasets'
+import { type DataSetListResponse, DatasetPermission } from '@/models/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { type RetrievalConfig } from '@/types/app'
 import { useAppContext } from '@/context/app-context'
@@ -145,7 +145,7 @@ const Form = () => {
           }),
         },
       } as any
-      if (permission === 'partial_members') {
+      if (permission === DatasetPermission.partialMembers) {
         requestParams.body.partial_member_list = selectedMemberIDs.map((id) => {
           return {
             user_id: id,

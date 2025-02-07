@@ -1,7 +1,7 @@
 model: sao10k/l3-70b-euryale-v2.1
 label:
-  zh_Hans: sao10k/l3-70b-euryale-v2.1
-  en_US: sao10k/l3-70b-euryale-v2.1
+  zh_Hans: "L3 70B Euryale V2.1\t"
+  en_US: "L3 70B Euryale V2.1\t"
 model_type: llm
 features:
   - agent-thought

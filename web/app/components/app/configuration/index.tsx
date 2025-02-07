@@ -491,7 +491,7 @@ const Configuration: FC = () => {
   }, [formattingChangedDispatcher, setShowAppConfigureFeaturesModal])
   const handleAddPromptVariable = useCallback((variable: PromptVariable[]) => {
     const newModelConfig = produce(modelConfig, (draft: ModelConfig) => {
-      draft.configs.prompt_variables = variable
+      draft.configs.prompt_variables = [...draft.configs.prompt_variables, ...variable]
     })
     setModelConfig(newModelConfig)
   }, [modelConfig])
