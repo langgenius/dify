@@ -11,7 +11,6 @@ import Tooltip from '@/app/components/base/tooltip'
 import AppBasic from '@/app/components/app-sidebar/basic'
 import { asyncRunSafe, randomString } from '@/utils'
 import Button from '@/app/components/base/button'
-import Tag from '@/app/components/base/tag'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import CopyFeedback from '@/app/components/base/copy-feedback'
@@ -134,8 +133,8 @@ function AppCard({
         `shadow-xs border-l-[0.5px] border-t rounded-xl border-effects-highlight w-full max-w-full ${className ?? ''}`}
     >
       <div className={`${customBgColor ?? bgColor} rounded-xl`}>
-        <div className='flex flex-col p-3 justify-center items-start gap-3 self-stretch border-b-[0.5px] border-divider-subtle'>
-          <div className='flex items-center gap-3 self-stretch'>
+        <div className='flex flex-col p-3 justify-center items-start gap-3 self-stretch border-b-[0.5px] border-divider-subtle w-full'>
+          <div className='flex items-center gap-3 self-stretch w-full'>
             <AppBasic
               iconType={cardType}
               icon={appInfo.icon}
@@ -169,12 +168,12 @@ function AppCard({
                   {isApp ? appUrl : apiUrl}
                 </div>
               </div>
-              <Divider type="vertical" className="!h-3.5 shrink-0 !mx-0.5" />
-              {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} className='z-50' selectorId={randomString(8)} />}
               <CopyFeedback
                 content={isApp ? appUrl : apiUrl}
-                className={'hover:bg-gray-200'}
+                className={'!size-6'}
               />
+              {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} className='z-50 !size-6 hover:bg-state-base-hover rounded-md' selectorId={randomString(8)} />}
+              {isApp && <Divider type="vertical" className="!h-3.5 shrink-0 !mx-0.5" />}
               {/* button copy link/ button regenerate */}
               {showConfirmDelete && (
                 <Confirm
@@ -194,7 +193,7 @@ function AppCard({
                   popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
                 >
                   <div
-                    className="w-8 h-8 ml-0.5 cursor-pointer hover:bg-gray-200 rounded-lg"
+                    className="w-6 h-6 cursor-pointer hover:bg-state-base-hover rounded-md"
                     onClick={() => setShowConfirmDelete(true)}
                   >
                     <div

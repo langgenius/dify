@@ -71,8 +71,10 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
 
       }
       {mode === 'expand' && <div className="group">
-        <div className={`flex flex-row items-center system-md-semibold text-text-secondary group-hover:text-gray-900 break-all ${textStyle?.main ?? ''}`}>
-          {name}
+        <div className={`flex flex-row items-center system-md-semibold text-text-secondary group-hover:text-text-primary ${textStyle?.main ?? ''}`}>
+          <div className="max-w-[180px] truncate">
+            {name}
+          </div>
           {hoverTip
             && <Tooltip
               popupContent={

@@ -193,7 +193,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
         }}
         className='block w-full'
       >
-        <div className={cn('flex rounded-lg gap-2', expand ? 'p-2 pb-2.5 flex-col' : 'p-1', open && 'bg-state-base-hover', isCurrentWorkspaceEditor && 'hover:bg-state-base-hover cursor-pointer')}>
+        <div className={cn('flex rounded-lg', expand ? 'p-2 pb-2.5 flex-col gap-2' : 'p-1 gap-1 justify-center items-start', open && 'bg-state-base-hover', isCurrentWorkspaceEditor && 'hover:bg-state-base-hover cursor-pointer')}>
           <div className={`flex items-center self-stretch ${expand ? 'justify-between' : 'flex-col gap-1'}`}>
             <AppIcon
               size={expand ? 'large' : 'small'}
@@ -211,8 +211,8 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
           {
             expand && (
               <div className='flex flex-col justify-center items-start gap-1 self-stretch'>
-                <div className='flex items-center gap-1'>
-                  <div className='text-text-secondary system-md-semibold truncate'>{appDetail.name}</div>
+                <div className='flex items-center gap-1 w-full'>
+                  <div className='text-text-secondary system-md-semibold truncate w-full'>{appDetail.name}</div>
                 </div>
                 <div className='text-text-tertiary system-2xs-medium-uppercase'>{appDetail.mode === 'advanced-chat' ? t('app.types.chatbot') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
               </div>
@@ -234,8 +234,8 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               background={appDetail.icon_background}
               imageUrl={appDetail.icon_url}
             />
-            <div className='flex flex-col justify-center items-start grow'>
-               <div className='text-text-secondary system-md-semibold truncate'>{appDetail.name}</div>
+            <div className='flex flex-col justify-center items-start grow w-full'>
+               <div className='text-text-secondary system-md-semibold truncate w-full'>{appDetail.name}</div>
                <div className='text-text-tertiary system-2xs-medium-uppercase'>{appDetail.mode === 'advanced-chat' ? t('app.types.chatbot') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
             </div>
           </div>
