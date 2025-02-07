@@ -51,11 +51,12 @@ class Pdf2ImgTool(BuiltinTool):
         if 'encryption' in doc.metadata and doc.metadata['encryption'] is not None:
             if not doc.authenticate(""):
                 return
-
+        zoom = 5  # 5倍缩放
+        matrix = fitz.Matrix(zoom, zoom)
         images = []
         for pageNo in range(doc.page_count):
             page = doc.load_page(pageNo)
-            pix = page.get_pixmap()
+            pix = page.get_pixmap(matrix=matrix)
             images.append(Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
 
         res = self.concat_images(images, width, length, dpi)
@@ -78,11 +79,11 @@ class Pdf2ImgTool(BuiltinTool):
             tmp, _ = image.size
             last_image_width += tmp
         # return result
-        if target_width > 0 and target_length > 0:
+        if target_width is not None and target_width > 0 and target_length is not None and target_length > 0:
             result = result.resize((target_width, target_length))
 
         image_stream = io.BytesIO()
-        if dpi > 0:
+        if dpi is not None and dpi > 0:
             result.save(image_stream, format='JPEG', dpi=(dpi, dpi))
         else:
             result.save(image_stream, format='JPEG')
