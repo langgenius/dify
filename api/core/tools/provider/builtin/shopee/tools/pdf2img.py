@@ -62,12 +62,12 @@ class Pdf2ImgTool(BuiltinTool):
             pix = page.get_pixmap(matrix=matrix)
             images.append(Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
 
-        res = self.concat_images(images, width, length, dpi)
+        res = self.concat_images(images, width, length)
         doc.close()
         pdf_stream.close()
         return res
 
-    def concat_images(self, images, target_width, target_length, dpi):
+    def concat_images(self, images, target_width, target_length):
         width = 0
         height = 0
         for image in images:
@@ -86,10 +86,7 @@ class Pdf2ImgTool(BuiltinTool):
             result = result.resize((target_width, target_length))
 
         image_stream = io.BytesIO()
-        if dpi is not None and dpi > 0:
-            result.save(image_stream, format='JPEG', dpi=(dpi, dpi))
-        else:
-            result.save(image_stream, format='JPEG')
+        result.save(image_stream, format='JPEG')
         image_binary_data = image_stream.getvalue()
         image_stream.close()
         return image_binary_data
