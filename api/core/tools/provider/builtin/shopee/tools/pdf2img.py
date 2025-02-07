@@ -1,5 +1,6 @@
 import io
 import logging
+import math
 import time
 
 import fitz
@@ -45,13 +46,15 @@ class Pdf2ImgTool(BuiltinTool):
 
         return self.create_blob_message(blob=res, meta={"mime_type": "image/jpeg"})
 
-    def handle(self, pdf_bytes, width, length, dpi):
+    def handle(self, pdf_bytes, width, length, dpi=350):
         pdf_stream = io.BytesIO(pdf_bytes)
         doc = fitz.open(stream=pdf_stream, filetype="pdf")
         if 'encryption' in doc.metadata and doc.metadata['encryption'] is not None:
             if not doc.authenticate(""):
                 return
-        zoom = 5  # 5倍缩放
+        if dpi is None or dpi == 0:
+            dpi = 350
+        zoom = int(math.ceil(dpi / 72))  # 10倍缩放
         matrix = fitz.Matrix(zoom, zoom)
         images = []
         for pageNo in range(doc.page_count):
