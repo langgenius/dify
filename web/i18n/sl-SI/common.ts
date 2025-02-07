@@ -50,6 +50,7 @@ const translation = {
     submit: 'Predložiti',
     skip: 'Ladja',
     imageCopied: 'Kopirana slika',
+    deleteApp: 'Izbriši aplikacijo',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
