@@ -31,7 +31,7 @@ from core.model_runtime.model_providers.__base.ai_model import AIModel
 logger = logging.getLogger(__name__)
 
 HTML_THINKING_TAG = (
-    '<details style="color:gray;background-color: #f5f5f5;padding: 8px;border-radius: 4px;" open> '
+    '<details style="color:gray;background-color: #f8f8f8;padding: 8px;border-radius: 4px;" open> '
     "<summary> Thinking... </summary>"
 )
 
