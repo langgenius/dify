@@ -54,7 +54,7 @@ class Pdf2ImgTool(BuiltinTool):
                 return
         if dpi is None or dpi == 0:
             dpi = 350
-        zoom = int(math.ceil(dpi / 72))  # 10倍缩放
+        zoom = int(math.ceil(dpi / 72))
         matrix = fitz.Matrix(zoom, zoom)
         images = []
         for pageNo in range(doc.page_count):
