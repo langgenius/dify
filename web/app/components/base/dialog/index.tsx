@@ -1,6 +1,6 @@
 import { Fragment, useCallback } from 'react'
 import type { ElementType, ReactNode } from 'react'
-import { Dialog, DialogPanel, DialogTitle, Transition } from '@headlessui/react'
+import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
 import classNames from '@/utils/classnames'
 
 // https://headlessui.com/react/dialog
@@ -34,32 +34,25 @@ const CustomDialog = ({
   return (
     <Transition appear show={show} as={Fragment}>
       <Dialog as="div" className="relative z-40" onClose={close}>
-        {/* <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
-        </Transition.Child> */}
-        {/* TODO: to new Transition */}
-        <div className="fixed inset-0 bg-black bg-opacity-25" />
+        <TransitionChild>
+          <div className={classNames(
+            'fixed inset-0 bg-black bg-opacity-25',
+            'data-[closed]:opacity-0',
+            'data-[enter]:ease-out data-[enter]:duration-300 data-[enter]:opacity-100',
+            'data-[leave]:ease-in data-[leave]:duration-200 data-[leave]:opacity-0',
+          )} />
+        </TransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex items-center justify-center min-h-full">
-            {/* <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
-            >
-              <DialogPanel className={classNames('w-full max-w-[800px] p-6 overflow-hidden transition-all transform bg-components-panel-bg border-[0.5px] border-components-panel-border shadow-xl rounded-2xl', className)}>
+            <TransitionChild>
+              <DialogPanel className={classNames(
+                'w-full max-w-[800px] p-6 overflow-hidden transition-all transform bg-components-panel-bg border-[0.5px] border-components-panel-border shadow-xl rounded-2xl',
+                'data-[closed]:opacity-0  data-[closed]:scale-95',
+                'data-[enter]:ease-out data-[enter]:duration-300 data-[enter]:opacity-100 data-[enter]:scale-100',
+                'data-[leave]:ease-in data-[leave]:duration-200 data-[leave]:opacity-0 data-[enter]:scale-95',
+                className,
+              )}>
                 {Boolean(title) && (
                   <DialogTitle
                     as={titleAs || 'h3'}
@@ -77,26 +70,7 @@ const CustomDialog = ({
                   </div>
                 )}
               </DialogPanel>
-            </Transition.Child> */}
-            {/* TODO: to new Transition */}
-            <DialogPanel className={classNames('w-full max-w-[800px] p-6 overflow-hidden transition-all transform bg-components-panel-bg border-[0.5px] border-components-panel-border shadow-xl rounded-2xl', className)}>
-              {Boolean(title) && (
-                <DialogTitle
-                  as={titleAs || 'h3'}
-                  className={classNames('pr-8 pb-3 title-2xl-semi-bold text-text-primary', titleClassName)}
-                >
-                  {title}
-                </DialogTitle>
-              )}
-              <div className={classNames(bodyClassName)}>
-                {children}
-              </div>
-              {Boolean(footer) && (
-                <div className={classNames('flex items-center justify-end gap-2 px-6 pb-6 pt-3', footerClassName)}>
-                  {footer}
-                </div>
-              )}
-            </DialogPanel>
+            </TransitionChild>
           </div>
         </div>
       </Dialog>

@@ -116,10 +116,7 @@ const VoiceParamConfig = ({
                 {languages.map((item: Item) => (
                   <ListboxOption
                     key={item.value}
-                    className={({ active }) =>
-                      `relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-gray-100 text-gray-700 ${active ? 'bg-gray-100' : ''
-                      }`
-                    }
+                    className='relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-gray-100 text-gray-700 data-[active]:bg-gray-100'
                     value={item}
                     disabled={false}
                   >
@@ -183,10 +180,7 @@ const VoiceParamConfig = ({
                   {voiceItems?.map((item: Item) => (
                     <ListboxOption
                       key={item.value}
-                      className={({ active }) =>
-                        `relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-gray-100 text-gray-700 ${active ? 'bg-gray-100' : ''
-                        }`
-                      }
+                      className='relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-gray-100 text-gray-700 data-[active]:bg-gray-100'
                       value={item}
                       disabled={false}
                     >
