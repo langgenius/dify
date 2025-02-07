@@ -2,11 +2,17 @@ import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
 import React, { useCallback, useState } from 'react'
+import {
+  RiDeleteBinLine,
+  RiEditLine,
+  RiEqualizer2Line,
+  RiFileCopy2Line,
+  RiFileDownloadLine,
+  RiFileUploadLine,
+} from '@remixicon/react'
 import AppIcon from '../base/app-icon'
 import SwitchAppModal from '../app/switch-app-modal'
-import s from './style.module.css'
 import cn from '@/utils/classnames'
-import Divider from '@/app/components/base/divider'
 import Confirm from '@/app/components/base/confirm'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
@@ -23,17 +29,9 @@ import UpdateDSLModal from '@/app/components/workflow/update-dsl-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-modal'
 import { fetchWorkflowDraft } from '@/service/workflow'
-import { RiEqualizer2Line } from '@remixicon/react'
 import ContentDialog from '@/app/components/base/content-dialog'
 import Button from '@/app/components/base/button'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/cardView'
-import { 
-  RiEditLine,
-  RiFileCopy2Line,
-  RiFileDownloadLine,
-  RiFileUploadLine,
-  RiDeleteBinLine,
-} from '@remixicon/react'
 
 export type IAppInfoProps = {
   expand: boolean
@@ -235,8 +233,8 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               imageUrl={appDetail.icon_url}
             />
             <div className='flex flex-col justify-center items-start grow w-full'>
-               <div className='text-text-secondary system-md-semibold truncate w-full'>{appDetail.name}</div>
-               <div className='text-text-tertiary system-2xs-medium-uppercase'>{appDetail.mode === 'advanced-chat' ? t('app.types.chatbot') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
+              <div className='text-text-secondary system-md-semibold truncate w-full'>{appDetail.name}</div>
+              <div className='text-text-tertiary system-2xs-medium-uppercase'>{appDetail.mode === 'advanced-chat' ? t('app.types.chatbot') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
             </div>
           </div>
           {/* description */}
@@ -245,8 +243,8 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
           )}
           {/* operations */}
           <div className='flex items-center gap-1 self-stretch'>
-            <Button 
-              size={'small'} 
+            <Button
+              size={'small'}
               variant={'secondary'}
               className='gap-[1px]'
               onClick={() => {
@@ -257,8 +255,8 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               <RiEditLine className='w-3.5 h-3.5 text-components-button-secondary-text' />
               <span className='text-components-button-secondary-text system-xs-medium'>{t('app.editApp')}</span>
             </Button>
-            <Button 
-              size={'small'} 
+            <Button
+              size={'small'}
               variant={'secondary'}
               className='gap-[1px]'
               onClick={() => {
@@ -269,8 +267,8 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               <RiFileCopy2Line className='w-3.5 h-3.5 text-components-button-secondary-text' />
               <span className='text-components-button-secondary-text system-xs-medium'>{t('app.duplicate')}</span>
             </Button>
-            <Button 
-              size={'small'} 
+            <Button
+              size={'small'}
               variant={'secondary'}
               className='gap-[1px]'
               onClick={exportCheck}
@@ -280,8 +278,8 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
             </Button>
             {
               (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow') && (
-                <Button 
-                  size={'small'} 
+                <Button
+                  size={'small'}
                   variant={'secondary'}
                   className='gap-[1px]'
                   onClick={() => {
@@ -297,7 +295,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
           </div>
         </div>
         <div className='flex flex-1'>
-          <CardView 
+          <CardView
             appId={appDetail.id}
             isInPanel={true}
             className='flex flex-col px-2 py-1 gap-2 grow overflow-auto'
@@ -305,8 +303,8 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
         </div>
         <div className='flex p-2 flex-col justify-center items-start gap-3 self-stretch border-t-[0.5px] border-divider-subtle shrink-0 min-h-fit'>
           <Button
-            size={"medium"}
-            variant={"ghost"}
+            size={'medium'}
+            variant={'ghost'}
             className='gap-0.5'
             onClick={() => {
               setOpen(false)

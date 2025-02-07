@@ -2,6 +2,13 @@
 import React, { useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
+import {
+  RiBookOpenLine,
+  RiEqualizer2Line,
+  RiExternalLinkLine,
+  RiPaintBrushLine,
+  RiWindowLine,
+} from '@remixicon/react'
 import SettingsModal from './settings'
 import EmbeddedModal from './embedded'
 import CustomizeModal from './customize'
@@ -21,13 +28,6 @@ import type { AppDetailResponse } from '@/models/app'
 import { useAppContext } from '@/context/app-context'
 import type { AppSSO } from '@/types/app'
 import Indicator from '@/app/components/header/indicator'
-import { 
-  RiExternalLinkLine,
-  RiWindowLine,
-  RiPaintBrushLine,
-  RiEqualizer2Line,
-  RiBookOpenLine,
- } from '@remixicon/react'
 
 export type IAppCardProps = {
   className?: string
@@ -91,8 +91,6 @@ function AppCard({
   const appUrl = `${app_base_url}/${appMode}/${access_token}`
   const apiUrl = appInfo?.api_base_url
 
-  let bgColor = 'bg-background-default'
-
   const genClickFuncByName = (opName: string) => {
     switch (opName) {
       case t('appOverview.overview.appInfo.launch'):
@@ -134,7 +132,7 @@ function AppCard({
       className={
         `${isInPanel ? 'border-l-[0.5px] border-t' : 'shadow-xs border-[0.5px]'} rounded-xl border-effects-highlight w-full max-w-full ${className ?? ''}`}
     >
-      <div className={`${customBgColor ?? bgColor} rounded-xl`}>
+      <div className={`${customBgColor ?? 'bg-background-default'} rounded-xl`}>
         <div className='flex flex-col p-3 justify-center items-start gap-3 self-stretch border-b-[0.5px] border-divider-subtle w-full'>
           <div className='flex items-center gap-3 self-stretch w-full'>
             <AppBasic
@@ -219,7 +217,7 @@ function AppCard({
               <Button
                 className="mr-1 min-w-[88px]"
                 size="small"
-                variant={"ghost"}
+                variant={'ghost'}
                 key={op.opName}
                 onClick={genClickFuncByName(op.opName)}
                 disabled={disabled}
