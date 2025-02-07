@@ -3,8 +3,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-from core.model_runtime.entities import ImagePromptMessageContent
-from core.model_runtime.entities.llm_entities import LLMMode
+from core.model_runtime.entities import ImagePromptMessageContent, LLMMode
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.nodes.base import BaseNodeData
@@ -13,7 +12,7 @@ from core.workflow.nodes.base import BaseNodeData
 class ModelConfig(BaseModel):
     provider: str
     name: str
-    mode: LLMMode = LLMMode.COMPLETION
+    mode: LLMMode
     completion_params: dict[str, Any] = {}
 
 
