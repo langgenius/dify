@@ -93,7 +93,7 @@ function AppCard({
 
   const genClickFuncByName = (opName: string) => {
     switch (opName) {
-      case t('appOverview.overview.appInfo.preview'):
+      case t('appOverview.overview.appInfo.launch'):
         return () => {
           window.open(appUrl, '_blank')
         }
