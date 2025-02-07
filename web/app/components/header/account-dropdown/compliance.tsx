@@ -1,6 +1,6 @@
 import { Menu, Transition } from '@headlessui/react'
 import { RiArrowDownCircleLine, RiArrowRightSLine, RiVerifiedBadgeLine } from '@remixicon/react'
-import type { FC } from 'react'
+import type { FC, MouseEvent } from 'react'
 import { Fragment, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
@@ -71,9 +71,12 @@ const UpgradeOrDownload: FC<UpgradeOrDownloadProps> = ({ doc_name }) => {
   }
 
   const isCurrentPlanCanDownload = whichPlanCanDownloadCompliance[doc_name].includes(plan.type)
-
+  const handleDownloadClick = useCallback((e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    downloadCompliance()
+  }, [downloadCompliance])
   if (isCurrentPlanCanDownload) {
-    return <Button loading={isPending} disabled={isPending} size='small' variant='secondary' className='flex gap-[1px] items-center' onClick={() => downloadCompliance()}>
+    return <Button loading={isPending} disabled={isPending} size='small' variant='secondary' className='flex gap-[1px] items-center' onClick={handleDownloadClick}>
       <RiArrowDownCircleLine className='size-[14px] text-components-button-secondary-text-disabled' />
       <span className='px-[3px] system-xs-medium text-components-button-secondary-text'>{t('common.operation.download')}</span>
     </Button>
