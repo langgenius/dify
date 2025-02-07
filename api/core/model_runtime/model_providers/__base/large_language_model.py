@@ -439,7 +439,6 @@ if you are not sure about the structure.
         """
         return content.replace("<think>", HTML_THINKING_TAG).replace("</think>", "</details>")
 
-
     def _invoke_result_generator(
         self,
         model: str,
