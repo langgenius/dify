@@ -1,4 +1,3 @@
-import re
 from collections.abc import Generator, Iterator
 from typing import Optional, cast
 
