@@ -20,6 +20,7 @@ import AppContext, { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { LanguagesSupported } from '@/i18n/language'
 import { LicenseStatus } from '@/types/feature'
+import { IS_CLOUD_EDITION } from '@/config'
 
 export type IAppSelector = {
   isMobile: boolean
@@ -140,7 +141,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                       </Link>}
                     </Menu.Item>
                     <Support />
-                    {isCurrentWorkspaceOwner && <Compliance />}
+                    {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
                   </div>
                   <div className='p-1'>
                     <Menu.Item>
