@@ -26,9 +26,9 @@ class Pdf2ImgTool(BuiltinTool):
         """
         logger.info("run shopee pdf2img")
         file_variable = tool_parameters.get("file")
-        width = tool_parameters.get("width", 0)
-        length = tool_parameters.get("length", 0)
-        dpi = tool_parameters.get("dpi", 0)
+        max_size = tool_parameters.get("max_size")
+        quality = tool_parameters.get("quality")
+        dpi = tool_parameters.get("dpi")
 
         logger.info(f'{file_variable}')
         # 不是pdf直接返回
@@ -40,40 +40,45 @@ class Pdf2ImgTool(BuiltinTool):
         if not image_binary:
             return self.create_text_message("Image not found, please request user to generate image firstly.")
 
-        res = self.handle(image_binary, width, length, dpi)
+        res = self.handle(image_binary, max_size, quality, dpi)
         if not res:
             return self.create_text_message("Pdf2Img error, maybe pdf is encrypted")
 
         return self.create_blob_message(blob=res, meta={"mime_type": "image/jpeg"})
 
-    def handle(self, pdf_bytes, width, length, dpi=350):
+    def handle(self, pdf_bytes, max_size, quality, dpi):
         pdf_stream = io.BytesIO(pdf_bytes)
         doc = fitz.open(stream=pdf_stream, filetype="pdf")
         if 'encryption' in doc.metadata and doc.metadata['encryption'] is not None:
             if not doc.authenticate(""):
                 return
-        if dpi is None or dpi == 0:
-            dpi = 350
         zoom = int(math.ceil(dpi / 72))
         matrix = fitz.Matrix(zoom, zoom)
         images = []
         for pageNo in range(doc.page_count):
             page = doc.load_page(pageNo)
             pix = page.get_pixmap(matrix=matrix)
-            images.append(Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
+            image = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+            original_width, original_length = image.size
+            ratio = min(max_size / original_width, max_size / original_length)
 
-        res = self.concat_images(images, width, length)
+            # 计算新的尺寸
+            new_size = (int(original_width * ratio), int(original_length * ratio))
+            image = image.resize(new_size, Image.LANCZOS)
+            images.append(image)
+
+        res = self.concat_images(images, quality)
         doc.close()
         pdf_stream.close()
         return res
 
-    def concat_images(self, images, target_width, target_length):
+    def concat_images(self, images, quality):
         width = 0
         height = 0
         for image in images:
             cur_width, cur_height = image.size
             width += cur_width
-            height = max(cur_width, height)
+            height = max(cur_height, height)
 
         result = Image.new('RGB', (width, height))
         last_image_width = 0
@@ -81,12 +86,9 @@ class Pdf2ImgTool(BuiltinTool):
             result.paste(image, (last_image_width, 0))
             tmp, _ = image.size
             last_image_width += tmp
-        # return result
-        if target_width is not None and target_width > 0 and target_length is not None and target_length > 0:
-            result = result.resize((target_width, target_length))
 
         image_stream = io.BytesIO()
-        result.save(image_stream, format='JPEG')
+        result.save(image_stream, format='JPEG', quality=quality)
         image_binary_data = image_stream.getvalue()
         image_stream.close()
         return image_binary_data

@@ -21,26 +21,32 @@ parameters: # 参数列表
       zh_Hans: pdf
     llm_description: pdf # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
     form: llm
-  - name: width
+  - name: max_size
     type: number
     required: false
     label:
-      en_US: width
-      zh_Hans: 生成图片宽度
+      en_US: max_size
+      zh_Hans: 生成图片最大长/宽
     human_description:
-      en_US: width
-      zh_Hans: 生成图片宽度
+      en_US: max_size
+      zh_Hans: 生成图片最大长/宽
     form: form
-  - name: length
+    default: 2048
+    min: 256
+    max: 4096
+  - name: quality
     type: number
     required: false
     label:
-      en_US: length
-      zh_Hans: 生成图片长度
+      en_US: quality
+      zh_Hans: 生成图片质量参数
     human_description:
-      en_US: length
-      zh_Hans: 生成图片长度
+      en_US: quality
+      zh_Hans: 生成图片质量参数
     form: form
+    default: 90
+    min: 1
+    max: 100
   - name: dpi
     type: number
     required: false
@@ -51,3 +57,6 @@ parameters: # 参数列表
       en_US: dpi
       zh_Hans: dpi
     form: form
+    default: 150
+    min: 1
+    max: 500
