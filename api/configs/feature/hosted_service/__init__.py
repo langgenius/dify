@@ -28,7 +28,7 @@ class HostedCreditConfig(BaseSettings):
 
             # Search for matching model pattern
             for pattern, credit in credit_map.items():
-                if pattern.strip() in model_name:
+                if pattern.strip() == model_name:
                     return int(credit)
             return 1  # Default quota if no match found
         except (ValueError, AttributeError):
