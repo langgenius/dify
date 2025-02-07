@@ -24,9 +24,16 @@ const svgToBase64 = (svgGraph: string) => {
   })
 }
 
-const Flowchart = React.forwardRef((props: {
-  PrimitiveCode: string
-}, ref) => {
+const Flowchart = (
+  {
+    ref,
+    ...props
+  }: {
+    PrimitiveCode: string
+  } & {
+    ref: React.RefObject<unknown>;
+  },
+) => {
   const { t } = useTranslation()
   const [svgCode, setSvgCode] = useState(null)
   const [look, setLook] = useState<'classic' | 'handDrawn'>('classic')
@@ -85,7 +92,7 @@ const Flowchart = React.forwardRef((props: {
   return (
     // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
-    <div ref={ref}>
+    (<div ref={ref}>
       <div className="msh-segmented msh-segmented-sm css-23bs09 css-var-r1">
         <div className="msh-segmented-group">
           <label className="msh-segmented-item flex items-center space-x-1 m-2 w-[200px]">
@@ -132,9 +139,9 @@ const Flowchart = React.forwardRef((props: {
       {
         imagePreviewUrl && (<ImagePreview title='mermaid_chart' url={imagePreviewUrl} onCancel={() => setImagePreviewUrl('')} />)
       }
-    </div>
+    </div>)
   )
-})
+}
 
 Flowchart.displayName = 'Flowchart'
 
