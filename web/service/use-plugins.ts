@@ -29,6 +29,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { useInvalidateAllBuiltInTools } from './use-tools'
+import usePermission from '@/app/components/plugins/plugin-page/use-permission'
 
 const NAME_SPACE = 'plugins'
 
@@ -357,11 +358,15 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[])
 const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
 export const usePluginTaskList = () => {
   const {
+    canManagement,
+  } = usePermission()
+  const {
     data,
     isFetched,
     refetch,
     ...rest
   } = useQuery({
+    enabled: canManagement,
     queryKey: usePluginTaskListKey,
     queryFn: () => get<{ tasks: PluginTask[] }>('/workspaces/current/plugin/tasks?page=1&page_size=100'),
     refetchInterval: (lastQuery) => {
