@@ -61,13 +61,13 @@ const ShareQRCode = ({ content, selectorId, className }: Props) => {
         {isShow && (
           <div
             ref={qrCodeRef}
-            className={QrcodeStyle.qrcodeform}
+            className={`${QrcodeStyle.qrcodeform} !absolute right-0 top-0`}
             onClick={handlePanelClick}
           >
             <QRCodeSVG size={160} value={content} className={QrcodeStyle.qrcodeimage}/>
             <div className={QrcodeStyle.text}>
-              <div className={`text-gray-500 ${QrcodeStyle.scan}`}>{t('appOverview.overview.appInfo.qrcode.scan')}</div>
-              <div className={`text-gray-500 ${QrcodeStyle.scan}`}>·</div>
+              <div className={`text-text-tertiary ${QrcodeStyle.scan}`}>{t('appOverview.overview.appInfo.qrcode.scan')}</div>
+              <div className={`text-text-tertiary ${QrcodeStyle.scan}`}>·</div>
               <div className={QrcodeStyle.download} onClick={downloadQR}>{t('appOverview.overview.appInfo.qrcode.download')}</div>
             </div>
           </div>
