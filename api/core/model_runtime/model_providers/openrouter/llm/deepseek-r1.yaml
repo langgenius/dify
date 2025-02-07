@@ -1,12 +1,12 @@
-model: deepseek/deepseek-chat
+model: deepseek/deepseek-r1
 label:
-  en_US: deepseek-chat
+  en_US: deepseek-r1
 model_type: llm
 features:
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 32000
+  context_size: 163840
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -53,7 +53,7 @@ parameter_rules:
       zh_Hans: 介于 -2.0 和 2.0 之间的数字。如果该值为正，那么新 token 会根据其在已有文本中的出现频率受到相应的惩罚，降低模型重复相同内容的可能性。
       en_US: A number between -2.0 and 2.0. If the value is positive, new tokens are penalized based on their frequency of occurrence in existing text, reducing the likelihood that the model will repeat the same content.
 pricing:
-  input: "0.49"
-  output: "0.89"
+  input: "3"
+  output: "8"
   unit: "0.000001"
   currency: USD

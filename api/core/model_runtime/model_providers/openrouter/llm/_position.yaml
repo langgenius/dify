@@ -30,5 +30,6 @@
 - mistralai/mistral-7b-instruct
 - qwen/qwen-2.5-72b-instruct
 - qwen/qwen-2-72b-instruct
+- deepseek/deepseek-r1
 - deepseek/deepseek-chat
 - deepseek/deepseek-coder
