@@ -165,7 +165,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
                   onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
                   labelClassName={focused ? 'bg-state-accent-solid text-text-primary-on-surface' : ''}
                   labelInnerClassName={'text-[10px] font-semibold align-bottom leading-6'}
-                  contentClassName={classNames('!leading-6', focused ? 'bg-state-accent-hover-alt text-text-primary' : '')}
+                  contentClassName={classNames('!leading-6', focused ? 'bg-state-accent-hover-alt text-text-primary' : 'text-text-secondary')}
                   showDivider={false}
                   onClick={(e) => {
                     e.stopPropagation()
