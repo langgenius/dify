@@ -43,7 +43,7 @@ jobs:
         uses: actions/setup-node@v4
         if: steps.changed-files.outputs.any_changed == 'true'
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
           cache-dependency-path: ./web/package.json
 
