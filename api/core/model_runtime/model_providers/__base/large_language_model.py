@@ -405,7 +405,7 @@ if you are not sure about the structure.
                     ),
                 )
 
-    def _wrap_thinking_by_reasoning_content(self, delta: dict, is_reasoning: bool) -> (str, bool):
+    def _wrap_thinking_by_reasoning_content(self, delta: dict, is_reasoning: bool) -> tuple[str, bool]:
         """
         If the reasoning response is from delta.get("reasoning_content"), we wrap
         it with HTML details tag.
