@@ -2,7 +2,6 @@ import logging
 import queue
 import time
 import uuid
-from collections import defaultdict
 from collections.abc import Generator, Mapping
 from concurrent.futures import ThreadPoolExecutor, wait
 from copy import copy, deepcopy
@@ -349,13 +348,17 @@ class GraphEngine:
 
                 next_node_id = edge.target_node_id
             else:
+                final_node_id = None
+
                 if any(edge.run_condition for edge in edge_mappings):
+                    # if nodes has run conditions, get node id which branch to take based on the run condition results
                     condition_edge_mappings: dict[str, list[GraphEdge]] = {}
                     for edge in edge_mappings:
                         if edge.run_condition:
                             run_condition_hash = edge.run_condition.hash
                             if run_condition_hash not in condition_edge_mappings:
                                 condition_edge_mappings[run_condition_hash] = []
+
                             condition_edge_mappings[run_condition_hash].append(edge)
 
                     for _, sub_edge_mappings in condition_edge_mappings.items():
@@ -380,29 +383,7 @@ class GraphEngine:
                             continue
 
                         if len(sub_edge_mappings) == 1:
-                            next_node_id = edge.target_node_id
-                            generator = self._run(
-                                start_node_id=next_node_id,
-                                in_parallel_id=in_parallel_id,
-                                parent_parallel_id=parent_parallel_id,
-                                parent_parallel_start_node_id=parent_parallel_start_node_id,
-                                handle_exceptions=handle_exceptions,
-                            )
-                            for item in generator:
-                                yield item
-
-                            next_edges = self.graph.edge_mapping.get(next_node_id, [])
-                            if next_edges:
-                                next_node_id = next_edges[0].target_node_id
-                                generator = self._run(
-                                    start_node_id=next_node_id,
-                                    in_parallel_id=in_parallel_id,
-                                    parent_parallel_id=parent_parallel_id,
-                                    parent_parallel_start_node_id=parent_parallel_start_node_id,
-                                    handle_exceptions=handle_exceptions,
-                                )
-                                for item in generator:
-                                    yield item
+                            final_node_id = edge.target_node_id
                         else:
                             parallel_generator = self._run_parallel_branches(
                                 edge_mappings=sub_edge_mappings,
@@ -413,21 +394,16 @@ class GraphEngine:
 
                             for parallel_result in parallel_generator:
                                 if isinstance(parallel_result, str):
-                                    next_node_id = parallel_result
-                                    generator = self._run(
-                                        start_node_id=next_node_id,
-                                        in_parallel_id=in_parallel_id,
-                                        parent_parallel_id=parent_parallel_id,
-                                        parent_parallel_start_node_id=parent_parallel_start_node_id,
-                                        handle_exceptions=handle_exceptions,
-                                    )
-                                    for item in generator:
-                                        yield item
+                                    final_node_id = parallel_result
                                 else:
                                     yield parallel_result
 
-                    break
+                        break
 
+                    if not final_node_id:
+                        break
+
+                    next_node_id = final_node_id
                 elif (
                     node_instance.node_data.error_strategy == ErrorStrategy.FAIL_BRANCH
                     and node_instance.should_continue_on_error
@@ -442,7 +418,6 @@ class GraphEngine:
                         handle_exceptions=handle_exceptions,
                     )
 
-                    final_node_id = None
                     for generated_item in parallel_generator:
                         if isinstance(generated_item, str):
                             final_node_id = generated_item
@@ -464,83 +439,83 @@ class GraphEngine:
         parallel_start_node_id: Optional[str] = None,
         handle_exceptions: list[str] = [],
     ) -> Generator[GraphEngineEvent | str, None, None]:
-        target_nodes: defaultdict[str, list[GraphEdge]] = defaultdict(list)
-        for edge in edge_mappings:
-            target_nodes[edge.target_node_id].append(edge)
+        # if nodes has no run conditions, parallel run all nodes
+        parallel_id = self.graph.node_parallel_mapping.get(edge_mappings[0].target_node_id)
+        if not parallel_id:
+            node_id = edge_mappings[0].target_node_id
+            node_config = self.graph.node_id_config_mapping.get(node_id)
+            if not node_config:
+                raise GraphRunFailedError(
+                    f"Node {node_id} related parallel not found or incorrectly connected to multiple parallel branches."
+                )
 
-        executed_node_ids = set()
+            node_title = node_config.get("data", {}).get("title")
+            raise GraphRunFailedError(
+                f"Node {node_title} related parallel not found or incorrectly connected to multiple parallel branches."
+            )
+
+        parallel = self.graph.parallel_mapping.get(parallel_id)
+        if not parallel:
+            raise GraphRunFailedError(f"Parallel {parallel_id} not found.")
+
+        # run parallel nodes, run in new thread and use queue to get results
         q: queue.Queue = queue.Queue()
-        all_futures = []
 
-        for target_node_id, edges in target_nodes.items():
-            if target_node_id in executed_node_ids:
+        # Create a list to store the threads
+        futures = []
+
+        # new thread
+        for edge in edge_mappings:
+            if (
+                edge.target_node_id not in self.graph.node_parallel_mapping
+                or self.graph.node_parallel_mapping.get(edge.target_node_id, "") != parallel_id
+            ):
                 continue
 
-            parallel_id = self.graph.node_parallel_mapping.get(target_node_id)
-            if not parallel_id:
-                raise GraphRunFailedError(f"Node {target_node_id} parallel not found")
+            future = self.thread_pool.submit(
+                self._run_parallel_node,
+                **{
+                    "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
+                    "q": q,
+                    "parallel_id": parallel_id,
+                    "parallel_start_node_id": edge.target_node_id,
+                    "parent_parallel_id": in_parallel_id,
+                    "parent_parallel_start_node_id": parallel_start_node_id,
+                    "handle_exceptions": handle_exceptions,
+                },
+            )
 
-            parallel = self.graph.parallel_mapping.get(parallel_id)
-            if not parallel:
-                raise GraphRunFailedError(f"Parallel {parallel_id} not found.")
+            future.add_done_callback(self.thread_pool.task_done_callback)
 
-            for edge in edges:
-                if edge.target_node_id in executed_node_ids:
-                    continue
-                if (
-                    edge.target_node_id not in self.graph.node_parallel_mapping
-                    or self.graph.node_parallel_mapping.get(edge.target_node_id, "") != parallel_id
-                ):
-                    continue
-
-                executed_node_ids.add(edge.target_node_id)
-
-                future = self.thread_pool.submit(
-                    self._run_parallel_node,
-                    **{
-                        "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
-                        "q": q,
-                        "parallel_id": parallel_id,
-                        "parallel_start_node_id": edge.target_node_id,
-                        "parent_parallel_id": in_parallel_id,
-                        "parent_parallel_start_node_id": parallel_start_node_id,
-                        "handle_exceptions": handle_exceptions,
-                    },
-                )
-                future.add_done_callback(self.thread_pool.task_done_callback)
-                all_futures.append((parallel_id, future))
+            futures.append(future)
 
         succeeded_count = 0
-        branch_results = []
-
-        while succeeded_count < len(all_futures):
+        while True:
             try:
                 event = q.get(timeout=1)
                 if event is None:
                     break
 
                 yield event
+                if event.parallel_id == parallel_id:
+                    if isinstance(event, ParallelBranchRunSucceededEvent):
+                        succeeded_count += 1
+                        if succeeded_count == len(futures):
+                            q.put(None)
 
-                if isinstance(event, ParallelBranchRunSucceededEvent):
-                    succeeded_count += 1
-                    branch_results.append(event)
-
-                    if succeeded_count == len(all_futures):
-                        q.put(None)
-
-                        for parallel_id, _ in all_futures:
-                            parallel = self.graph.parallel_mapping[parallel_id]
-                            final_node_id = parallel.end_to_node_id
-                            if final_node_id:
-                                yield final_node_id
-
-                elif isinstance(event, ParallelBranchRunFailedEvent):
-                    raise GraphRunFailedError(event.error)
-
+                        continue
+                    elif isinstance(event, ParallelBranchRunFailedEvent):
+                        raise GraphRunFailedError(event.error)
             except queue.Empty:
                 continue
 
-        wait([f for _, f in all_futures])
+        # wait all threads
+        wait(futures)
+
+        # get final node id
+        final_node_id = parallel.end_to_node_id
+        if final_node_id:
+            yield final_node_id
 
     def _run_parallel_node(
         self,
@@ -745,7 +720,6 @@ class GraphEngine:
                                 if run_result.metadata and run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS):
                                     # plus state total_tokens
                                     self.graph_runtime_state.total_tokens += int(
-                                        # type: ignore[arg-type]
                                         run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS)  # type: ignore[arg-type]
                                     )
 
