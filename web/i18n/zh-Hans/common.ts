@@ -27,6 +27,7 @@ const translation = {
     sure: '我确定',
     download: '下载',
     delete: '删除',
+    deleteApp: '删除应用',
     settings: '设置',
     setup: '设置',
     getForFree: '免费获取',
