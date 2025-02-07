@@ -83,7 +83,7 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
     def _add_custom_parameters(self, credentials: dict, model: str) -> None:
         credentials["mode"] = "chat"
 
-        if self.MODEL_SUFFIX_MAP[model]:
+        if self.MODEL_SUFFIX_MAP.get(model):
             credentials["server_url"] = f"https://ai.api.nvidia.com/v1/{self.MODEL_SUFFIX_MAP[model]}"
             credentials.pop("endpoint_url")
         else:

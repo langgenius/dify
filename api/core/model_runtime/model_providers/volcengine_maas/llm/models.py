@@ -18,6 +18,22 @@ class ModelConfig(BaseModel):
 
 
 configs: dict[str, ModelConfig] = {
+    "DeepSeek-R1-Distill-Qwen-32B": ModelConfig(
+        properties=ModelProperties(context_size=64000, max_tokens=8192, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT],
+    ),
+    "DeepSeek-R1-Distill-Qwen-7B": ModelConfig(
+        properties=ModelProperties(context_size=64000, max_tokens=8192, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT],
+    ),
+    "DeepSeek-R1": ModelConfig(
+        properties=ModelProperties(context_size=64000, max_tokens=8192, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT],
+    ),
+    "DeepSeek-V3": ModelConfig(
+        properties=ModelProperties(context_size=64000, max_tokens=8192, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT, ModelFeature.TOOL_CALL, ModelFeature.STREAM_TOOL_CALL],
+    ),
     "Doubao-1.5-vision-pro-32k": ModelConfig(
         properties=ModelProperties(context_size=32768, max_tokens=12288, mode=LLMMode.CHAT),
         features=[ModelFeature.AGENT_THOUGHT, ModelFeature.VISION],
