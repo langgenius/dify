@@ -24,10 +24,11 @@ import AppContext from '@/context/app-context'
 
 export type ICardViewProps = {
   appId: string
+  isInPanel?: boolean
   className?: string
 }
 
-const CardView: FC<ICardViewProps> = ({ appId, className }) => {
+const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const appDetail = useAppStore(state => state.appDetail)
@@ -125,6 +126,7 @@ const CardView: FC<ICardViewProps> = ({ appId, className }) => {
       <AppCard
         appInfo={appDetail}
         cardType="webapp"
+        isInPanel={isInPanel}
         onChangeStatus={onChangeSiteStatus}
         onGenerateCode={onGenerateCode}
         onSaveSiteConfig={onSaveSiteConfig}
@@ -132,6 +134,7 @@ const CardView: FC<ICardViewProps> = ({ appId, className }) => {
       <AppCard
         cardType="api"
         appInfo={appDetail}
+        isInPanel={isInPanel}
         onChangeStatus={onChangeApiStatus}
       />
     </div>

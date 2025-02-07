@@ -298,7 +298,8 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
         </div>
         <div className='flex flex-1'>
           <CardView 
-            appId={appDetail.id} 
+            appId={appDetail.id}
+            isInPanel={true}
             className='flex flex-col px-2 py-1 gap-2 grow overflow-auto'
           />
         </div>

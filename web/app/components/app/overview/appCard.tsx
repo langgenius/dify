@@ -32,6 +32,7 @@ import {
 export type IAppCardProps = {
   className?: string
   appInfo: AppDetailResponse & Partial<AppSSO>
+  isInPanel?: boolean
   cardType?: 'api' | 'webapp'
   customBgColor?: string
   onChangeStatus: (val: boolean) => Promise<void>
@@ -41,6 +42,7 @@ export type IAppCardProps = {
 
 function AppCard({
   appInfo,
+  isInPanel,
   cardType = 'webapp',
   customBgColor,
   onChangeStatus,
@@ -130,7 +132,7 @@ function AppCard({
   return (
     <div
       className={
-        `shadow-xs border-l-[0.5px] border-t rounded-xl border-effects-highlight w-full max-w-full ${className ?? ''}`}
+        `${isInPanel ? 'border-l-[0.5px] border-t' : 'shadow-xs border-[0.5px]'} rounded-xl border-effects-highlight w-full max-w-full ${className ?? ''}`}
     >
       <div className={`${customBgColor ?? bgColor} rounded-xl`}>
         <div className='flex flex-col p-3 justify-center items-start gap-3 self-stretch border-b-[0.5px] border-divider-subtle w-full'>
@@ -162,7 +164,7 @@ function AppCard({
                 ? t('appOverview.overview.appInfo.accessibleAddress')
                 : t('appOverview.overview.apiInfo.accessibleAddress')}
             </div>
-            <div className="w-full h-9 pl-2 p-1 bg-components-input-bg-normal rounded-lg border items-center inline-flex gap-0.5">
+            <div className="w-full h-9 pl-2 p-1 bg-components-input-bg-normal rounded-lg items-center inline-flex gap-0.5">
               <div className="h-4 px-1 justify-start items-start gap-2 flex flex-1 min-w-0">
                 <div className="text-text-secondary text-xs font-medium text-ellipsis overflow-hidden whitespace-nowrap">
                   {isApp ? appUrl : apiUrl}
