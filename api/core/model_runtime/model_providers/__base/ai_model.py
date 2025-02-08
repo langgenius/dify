@@ -3,8 +3,11 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from core.model_runtime.entities.common_entities import I18nObject
+from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
+    DefaultParameterName,
     ModelType,
     PriceConfig,
     PriceInfo,
@@ -18,6 +21,7 @@ from core.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
+from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginModelProviderEntity
 from core.plugin.manager.model import PluginModelManager
 
@@ -144,3 +148,102 @@ class AIModel(BaseModel):
             model=model,
             credentials=credentials or {},
         )
+
+    def get_customizable_model_schema_from_credentials(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+        """
+        Get customizable model schema from credentials
+
+        :param model: model name
+        :param credentials: model credentials
+        :return: model schema
+        """
+        return self._get_customizable_model_schema(model, credentials)
+
+    def _get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+        """
+        Get customizable model schema and fill in the template
+        """
+        schema = self.get_customizable_model_schema(model, credentials)
+
+        if not schema:
+            return None
+
+        # fill in the template
+        new_parameter_rules = []
+        for parameter_rule in schema.parameter_rules:
+            if parameter_rule.use_template:
+                try:
+                    default_parameter_name = DefaultParameterName.value_of(parameter_rule.use_template)
+                    default_parameter_rule = self._get_default_parameter_rule_variable_map(default_parameter_name)
+                    if not parameter_rule.max and "max" in default_parameter_rule:
+                        parameter_rule.max = default_parameter_rule["max"]
+                    if not parameter_rule.min and "min" in default_parameter_rule:
+                        parameter_rule.min = default_parameter_rule["min"]
+                    if not parameter_rule.default and "default" in default_parameter_rule:
+                        parameter_rule.default = default_parameter_rule["default"]
+                    if not parameter_rule.precision and "precision" in default_parameter_rule:
+                        parameter_rule.precision = default_parameter_rule["precision"]
+                    if not parameter_rule.required and "required" in default_parameter_rule:
+                        parameter_rule.required = default_parameter_rule["required"]
+                    if not parameter_rule.help and "help" in default_parameter_rule:
+                        parameter_rule.help = I18nObject(
+                            en_US=default_parameter_rule["help"]["en_US"],
+                        )
+                    if (
+                        parameter_rule.help
+                        and not parameter_rule.help.en_US
+                        and ("help" in default_parameter_rule and "en_US" in default_parameter_rule["help"])
+                    ):
+                        parameter_rule.help.en_US = default_parameter_rule["help"]["en_US"]
+                    if (
+                        parameter_rule.help
+                        and not parameter_rule.help.zh_Hans
+                        and ("help" in default_parameter_rule and "zh_Hans" in default_parameter_rule["help"])
+                    ):
+                        parameter_rule.help.zh_Hans = default_parameter_rule["help"].get(
+                            "zh_Hans", default_parameter_rule["help"]["en_US"]
+                        )
+                except ValueError:
+                    pass
+
+            new_parameter_rules.append(parameter_rule)
+
+        schema.parameter_rules = new_parameter_rules
+
+        return schema
+
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+        """
+        Get customizable model schema
+
+        :param model: model name
+        :param credentials: model credentials
+        :return: model schema
+        """
+        return None
+
+    def _get_default_parameter_rule_variable_map(self, name: DefaultParameterName) -> dict:
+        """
+        Get default parameter rule for given name
+
+        :param name: parameter name
+        :return: parameter rule
+        """
+        default_parameter_rule = PARAMETER_RULE_TEMPLATE.get(name)
+
+        if not default_parameter_rule:
+            raise Exception(f"Invalid model parameter rule name {name}")
+
+        return default_parameter_rule
+
+    def _get_num_tokens_by_gpt2(self, text: str) -> int:
+        """
+        Get number of tokens for given prompt messages by gpt2
+        Some provider models do not provide an interface for obtaining the number of tokens.
+        Here, the gpt2 tokenizer is used to calculate the number of tokens.
+        This method can be executed offline, and the gpt2 tokenizer has been cached in the project.
+
+        :param text: plain text of prompt. You need to convert the original message to plain text
+        :return: number of tokens
+        """
+        return GPT2Tokenizer.get_num_tokens(text)

@@ -29,6 +29,7 @@ const translation = {
     download: 'Download',
     viewDetails: 'View Details',
     delete: 'Delete',
+    deleteApp: 'Delete App',
     settings: 'Settings',
     setup: 'Setup',
     getForFree: 'Get for free',

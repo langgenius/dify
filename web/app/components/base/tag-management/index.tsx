@@ -75,7 +75,7 @@ const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
           autoFocus
           value={name}
           onChange={e => setName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && createNewTag()}
+          onKeyDown={e => e.key === 'Enter' && !e.nativeEvent.isComposing && createNewTag()}
           onBlur={createNewTag}
         />
         {tagList.map(tag => (

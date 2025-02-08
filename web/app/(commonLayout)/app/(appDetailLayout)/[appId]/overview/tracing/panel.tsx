@@ -11,6 +11,7 @@ import type { LangFuseConfig, LangSmithConfig, OpikConfig } from './type'
 import { TracingProvider } from './type'
 import TracingIcon from './tracing-icon'
 import ConfigButton from './config-button'
+import cn from '@/utils/classnames'
 import { LangfuseIcon, LangsmithIcon, OpikIcon } from '@/app/components/base/icons/src/public/tracing'
 import Indicator from '@/app/components/header/indicator'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
@@ -19,7 +20,6 @@ import Toast from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
 import Loading from '@/app/components/base/loading'
 import Divider from '@/app/components/base/divider'
-import cn from '@/utils/classnames'
 
 const I18N_PREFIX = 'app.tracing'
 
@@ -80,7 +80,9 @@ const Panel: FC = () => {
       ? LangsmithIcon
       : inUseTracingProvider === TracingProvider.langfuse
         ? LangfuseIcon
-        : OpikIcon
+        : inUseTracingProvider === TracingProvider.opik
+          ? OpikIcon
+          : null
 
   const [langSmithConfig, setLangSmithConfig] = useState<LangSmithConfig | null>(null)
   const [langFuseConfig, setLangFuseConfig] = useState<LangFuseConfig | null>(null)

@@ -29,6 +29,7 @@ const translation = {
     download: '下载',
     viewDetails: '查看详情',
     delete: '删除',
+    deleteApp: '删除应用',
     settings: '设置',
     setup: '设置',
     getForFree: '免费获取',

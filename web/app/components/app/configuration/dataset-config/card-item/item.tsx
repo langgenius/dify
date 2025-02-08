@@ -24,12 +24,14 @@ type ItemProps = {
   onRemove: (id: string) => void
   readonly?: boolean
   onSave: (newDataset: DataSet) => void
+  editable?: boolean
 }
 
 const Item: FC<ItemProps> = ({
   config,
   onSave,
   onRemove,
+  editable = true,
 }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -70,22 +72,22 @@ const Item: FC<ItemProps> = ({
       <div className='grow'>
         <div className='flex items-center h-[18px]'>
           <div className='grow text-[13px] font-medium text-text-secondary truncate' title={config.name}>{config.name}</div>
-          <div className='group-hover:hidden flex items-center'>
-            {config.provider === 'external'
-              ? <Badge text={t('dataset.externalTag')}></Badge>
-              : <Badge
-                text={formatIndexingTechniqueAndMethod(config.indexing_technique, config.retrieval_model_dict?.search_method)}
-              />}
+          {config.provider === 'external'
+            ? <Badge text={t('dataset.externalTag') as string} />
+            : <Badge
+              text={formatIndexingTechniqueAndMethod(config.indexing_technique, config.retrieval_model_dict?.search_method)}
+            />}
+        </div>
+      </div >
+      <div className='hidden rounded-lg group-hover:flex items-center justify-end absolute right-0 top-0 bottom-0 pr-2 w-[124px] bg-gradient-to-r from-white/50 to-white to-50%'>
+        {
+          editable && <div
+            className='flex items-center justify-center mr-1 w-6 h-6 hover:bg-black/5 rounded-md cursor-pointer'
+            onClick={() => setShowSettingsModal(true)}
+          >
+            <RiEditLine className='w-4 h-4 text-text-tertiary' />
           </div>
-        </div>
-      </div>
-      <div className='hidden rounded-lg group-hover:flex items-center justify-end absolute right-0 top-0 bottom-0 pr-2 w-[124px]'>
-        <div
-          className='flex items-center justify-center mr-1 w-6 h-6 hover:bg-black/5 rounded-md cursor-pointer'
-          onClick={() => setShowSettingsModal(true)}
-        >
-          <RiEditLine className='w-4 h-4 text-text-tertiary' />
-        </div>
+        }
         <div
           className='flex items-center justify-center w-6 h-6  text-text-tertiary cursor-pointer hover:text-text-destructive'
           onClick={() => onRemove(config.id)}
@@ -102,7 +104,7 @@ const Item: FC<ItemProps> = ({
           onSave={handleSave}
         />
       </Drawer>
-    </div>
+    </div >
   )
 }
 

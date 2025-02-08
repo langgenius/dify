@@ -68,7 +68,6 @@ RUN pnpm add -g pm2 \
     && chown -R 1001:0 /.pm2 /app/web \
     && chmod -R g=u /.pm2 /app/web
 
-
 ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}
 
