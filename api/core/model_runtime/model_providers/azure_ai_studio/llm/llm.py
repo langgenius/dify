@@ -20,7 +20,7 @@ from azure.core.exceptions import (
 )
 
 from core.model_runtime.callbacks.base_callback import Callback
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
@@ -30,6 +30,7 @@ from core.model_runtime.entities.model_entities import (
     AIModelEntity,
     FetchFrom,
     I18nObject,
+    ModelPropertyKey,
     ModelType,
     ParameterRule,
     ParameterType,
@@ -334,7 +335,10 @@ class AzureAIStudioLargeLanguageModel(LargeLanguageModel):
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.LLM,
             features=[],
-            model_properties={},
+            model_properties={
+                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size", "4096")),
+                ModelPropertyKey.MODE: credentials.get("mode", LLMMode.CHAT),
+            },
             parameter_rules=rules,
         )
 

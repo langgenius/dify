@@ -314,7 +314,6 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
         """
         full_text = ""
         chunk_index = 0
-        is_reasoning_started = False
 
         def create_final_llm_result_chunk(
             index: int, message: AssistantPromptMessage, finish_reason: str
@@ -368,14 +367,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
 
                 # transform assistant message to prompt message
                 text = chunk_json["response"]
-            if "<think>" in text:
-                is_reasoning_started = True
-                text = text.replace("<think>", "> 💭 ")
-            elif "</think>" in text:
-                is_reasoning_started = False
-                text = text.replace("</think>", "") + "\n\n"
-            elif is_reasoning_started:
-                text = text.replace("\n", "\n> ")
+            text = self._wrap_thinking_by_tag(text)
 
             assistant_prompt_message = AssistantPromptMessage(content=text)
 

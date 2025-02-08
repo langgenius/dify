@@ -99,6 +99,8 @@ const config = {
         'chatbot-bg': 'var(--color-chatbot-bg)',
         'chat-bubble-bg': 'var(--color-chat-bubble-bg)',
         'workflow-process-bg': 'var(--color-workflow-process-bg)',
+        'app-detail-bg': 'var(--color-app-detail-bg)',
+        'app-detail-overlay-bg': 'var(--color-app-detail-overlay-bg)',
         'dataset-chunk-process-success-bg': 'var(--color-dataset-chunk-process-success-bg)',
         'dataset-chunk-process-error-bg': 'var(--color-dataset-chunk-process-error-bg)',
         'dataset-chunk-detail-card-hover-bg': 'var(--color-dataset-chunk-detail-card-hover-bg)',

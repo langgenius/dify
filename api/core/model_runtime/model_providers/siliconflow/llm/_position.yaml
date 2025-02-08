@@ -17,6 +17,13 @@
 - deepseek-ai/DeepSeek-V2.5
 - deepseek-ai/DeepSeek-V3
 - deepseek-ai/DeepSeek-Coder-V2-Instruct
+- deepseek-ai/DeepSeek-R1-Distill-Llama-8B
+- deepseek-ai/DeepSeek-R1-Distill-Llama-70B
+- deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
+- deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+- deepseek-ai/DeepSeek-R1-Distill-Qwen-14B
+- deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
+- deepseek-ai/Janus-Pro-7B
 - THUDM/glm-4-9b-chat
 - 01-ai/Yi-1.5-34B-Chat-16K
 - 01-ai/Yi-1.5-9B-Chat-16K

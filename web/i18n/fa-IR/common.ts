@@ -50,6 +50,7 @@ const translation = {
     submit: 'ارسال',
     skip: 'کشتی',
     imageCopied: 'تصویر کپی شده',
+    deleteApp: 'حذف برنامه',
   },
   errorMsg: {
     fieldRequired: '{{field}} الزامی است',
