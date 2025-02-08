@@ -4,7 +4,7 @@ import tailwind from 'eslint-plugin-tailwindcss'
 import ts from 'typescript-eslint'
 
 const antConfig = await antfu({ jsonc: false })
-// ...compat.extends("next/core-web-vitals", "next/typescript"),
+
 const eslintConfig = [
   ...antConfig,
   js.configs.recommended,
@@ -22,6 +22,11 @@ const eslintConfig = [
           '!**/.*',
           '!**/dist',
           '!**/build',
+          '!**/.storybook',
+          '!**/.next',
+          '!**/.output',
+          '!**/public',
+          '!**/out',
         ],
         cssFilesRefreshRate: 5_000,
         removeDuplicates: true,
@@ -33,7 +38,12 @@ const eslintConfig = [
     },
   },
   {
-    ignores: ['node_modules/**', '.next/**', 'build/**', 'dist/**', 'out/**'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+  {
+    ignores: ['node_modules/**', '.next/**', 'build/**', 'dist/**', 'out/**', 'public/**'],
   },
 ]
 
