@@ -211,10 +211,10 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
   const invalidDocumentList = useInvalidDocumentList()
   const navToDocumentList = () => {
     invalidDocumentList()
-    router.push(`/datasets/${datasetId}/documents`)
+    router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/datasets/${datasetId}/documents`)
   }
   const navToApiDocs = () => {
-    router.push('/datasets?category=api')
+    router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/datasets?category=api`)
   }
 
   const isEmbedding = useMemo(() => {

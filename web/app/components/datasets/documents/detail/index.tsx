@@ -64,7 +64,7 @@ export const DocumentTitle: FC<DocumentTitleProps> = ({ datasetId, extension, na
           parentMode: parent_mode,
         }}
         onChange={(doc) => {
-          router.push(`/datasets/${datasetId}/documents/${doc.id}`)
+          router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/datasets/${datasetId}/documents/${doc.id}`)
         }}
       />
     </div>
@@ -142,7 +142,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   })
 
   const backToPrev = () => {
-    router.push(`/datasets/${datasetId}/documents`)
+    router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/datasets/${datasetId}/documents`)
   }
 
   const isDetailLoading = !documentDetail && !error

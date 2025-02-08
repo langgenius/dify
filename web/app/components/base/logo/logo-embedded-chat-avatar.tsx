@@ -8,7 +8,7 @@ const LogoEmbeddedChatAvatar: FC<LogoEmbeddedChatAvatarProps> = ({
 }) => {
   return (
     <img
-      src='/logo/logo-embedded-chat-avatar.png'
+      src={`${process.env.NEXT_PUBLIC_BASE_PATH}/logo/logo-embedded-chat-avatar.png`}
       className={`block w-10 h-10 ${className}`}
       alt='logo'
     />

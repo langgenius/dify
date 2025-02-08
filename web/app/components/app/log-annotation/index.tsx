@@ -47,7 +47,7 @@ const LogAnnotation: FC<Props> = ({
           className='shrink-0'
           value={pageType}
           onChange={(value) => {
-            router.push(`/app/${appDetail.id}/${value === PageType.log ? 'logs' : 'annotations'}`)
+            router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/app/${appDetail.id}/${value === PageType.log ? 'logs' : 'annotations'}`)
           }}
           options={options}
         />

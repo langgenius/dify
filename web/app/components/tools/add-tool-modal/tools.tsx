@@ -53,7 +53,7 @@ const Blocks = ({
       >
         <div className='flex items-center justify-between w-full pl-3 pr-1 h-[22px] text-xs font-medium text-gray-500'>
           {toolWithProvider.label[language]}
-          <a className='hidden cursor-pointer items-center group-hover:flex' href={`/tools?category=${toolWithProvider.type}`} target='_blank'>{t('tools.addToolModal.manageInTools')}<ArrowUpRight className='ml-0.5 w-3 h-3' /></a>
+          <a className='hidden cursor-pointer items-center group-hover:flex' href={`${process.env.NEXT_PUBLIC_BASE_PATH}/tools?category=${toolWithProvider.type}`} target='_blank'>{t('tools.addToolModal.manageInTools')}<ArrowUpRight className='ml-0.5 w-3 h-3' /></a>
         </div>
         {list.map((tool) => {
           const labelContent = (() => {

@@ -56,7 +56,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({
         style={{ transform: `scale(${scale})`, transformOrigin: 'center', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         <PdfLoader
-          workerSrc='/pdf.worker.min.mjs'
+          workerSrc={`${process.env.NEXT_PUBLIC_BASE_PATH}/pdf.worker.min.mjs`}
           url={url}
           beforeLoad={<div className='flex justify-center items-center h-64'><Loading type='app' /></div>}
         >

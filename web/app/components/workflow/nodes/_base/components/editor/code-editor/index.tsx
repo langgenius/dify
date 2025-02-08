@@ -12,7 +12,7 @@ import {
 import './style.css'
 
 // load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
-loader.config({ paths: { vs: '/vs' } })
+loader.config({ paths: { vs: `${process.env.NEXT_PUBLIC_BASE_PATH}/vs` } })
 
 const CODE_EDITOR_LINE_HEIGHT = 18
 

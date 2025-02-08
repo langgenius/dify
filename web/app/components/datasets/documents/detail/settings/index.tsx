@@ -31,7 +31,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const invalidDocumentDetail = useInvalidDocumentDetailKey()
   const saveHandler = () => {
     invalidDocumentDetail()
-    router.push(`/datasets/${datasetId}/documents/${documentId}`)
+    router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/datasets/${datasetId}/documents/${documentId}`)
   }
 
   const cancelHandler = () => router.back()

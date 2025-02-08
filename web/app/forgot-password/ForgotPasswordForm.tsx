@@ -55,7 +55,7 @@ const ForgotPasswordForm = () => {
 
   const handleSendResetPasswordClick = async () => {
     if (isEmailSent) {
-      router.push('/signin')
+      router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/signin`)
     }
     else {
       const isValid = await trigger('email')

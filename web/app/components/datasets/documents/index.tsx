@@ -172,7 +172,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       setNotionPageSelectorModalVisible(true)
       return
     }
-    router.push(`/datasets/${datasetId}/documents/create`)
+    router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/datasets/${datasetId}/documents/create`)
   }
 
   const isLoading = isListLoading // !documentsRes && !error

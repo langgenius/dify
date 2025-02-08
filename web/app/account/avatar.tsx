@@ -27,7 +27,7 @@ export default function AppSelector() {
     localStorage.removeItem('console_token')
     localStorage.removeItem('refresh_token')
 
-    router.push('/signin')
+    router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/signin`)
   }
 
   return (

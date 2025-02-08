@@ -55,7 +55,7 @@ const InstallForm = () => {
         ...data,
       },
     })
-    router.push('/signin')
+    router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/signin`)
   }
 
   const handleSetting = async () => {

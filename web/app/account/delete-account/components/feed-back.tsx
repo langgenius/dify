@@ -25,12 +25,12 @@ export default function FeedBack(props: DeleteAccountProps) {
   const handleSuccess = useCallback(async () => {
     try {
       await logout({
-        url: '/logout',
+        url: `${process.env.NEXT_PUBLIC_BASE_PATH}/logout`,
         params: {},
       })
       localStorage.removeItem('refresh_token')
       localStorage.removeItem('console_token')
-      router.push('/signin')
+      router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/signin`)
       Toast.notify({ type: 'info', message: t('common.account.deleteSuccessTip') })
     }
     catch (error) { console.error(error) }

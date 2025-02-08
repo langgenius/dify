@@ -56,7 +56,7 @@ const DatasetNav = () => {
         icon_background: dataset.icon_background,
       })) as NavItem[]}
       createText={t('common.menus.newDataset')}
-      onCreate={() => router.push('/datasets/create')}
+      onCreate={() => router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/datasets/create`)}
       onLoadmore={handleLoadmore}
     />
   )
