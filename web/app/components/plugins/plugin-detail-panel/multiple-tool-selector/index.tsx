@@ -23,7 +23,6 @@ type Props = {
   supportCollapse?: boolean
   scope?: string
   onChange: (value: ToolValue[]) => void
-  supportVariables?: boolean
   nodeOutputVars: NodeOutPutVar[],
   availableNodes: Node[],
   nodeId?: string
@@ -38,7 +37,6 @@ const MultipleToolSelector = ({
   supportCollapse,
   scope,
   onChange,
-  supportVariables,
   nodeOutputVars,
   availableNodes,
   nodeId,
@@ -131,7 +129,6 @@ const MultipleToolSelector = ({
       {!collapse && (
         <>
           <ToolSelector
-            supportVariables={supportVariables}
             nodeId={nodeId}
             nodeOutputVars={nodeOutputVars}
             availableNodes={availableNodes}
@@ -154,7 +151,6 @@ const MultipleToolSelector = ({
           {value.length > 0 && value.map((item, index) => (
             <div className='mb-1' key={index}>
               <ToolSelector
-                supportVariables={supportVariables}
                 nodeId={nodeId}
                 nodeOutputVars={nodeOutputVars}
                 availableNodes={availableNodes}

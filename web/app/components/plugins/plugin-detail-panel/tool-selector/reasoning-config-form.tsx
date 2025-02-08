@@ -62,18 +62,18 @@ const ReasoningConfigForm: React.FC<Props> = ({
   //     })
   //   }
   // }, [])
-  const handleNotMixedTypeChange = useCallback((variable: string, toString = false) => {
+  const handleNotMixedTypeChange = useCallback((variable: string) => {
     return (varValue: ValueSelector | string, varKindType: VarKindType) => {
       const newValue = produce(value, (draft: ToolVarInputs) => {
         const target = draft[variable].value
         if (target) {
           target.type = varKindType
-          target.value = toString ? `${varValue}` : varValue
+          target.value = varValue
         }
         else {
           draft[variable].value = {
             type: varKindType,
-            value: toString ? `${varValue}` : varValue,
+            value: varValue,
           }
         }
       })
@@ -170,7 +170,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             {tooltipContent}
           </div>
           <div className='flex items-center gap-1 px-2 py-1 rounded-[6px] border border-divider-subtle bg-background-default-lighter cursor-pointer hover:bg-state-base-hover' onClick={() => handleAutomatic(variable, !auto)}>
-            <span className='text-text-secondary system-xs-medium'>automatic</span>
+            <span className='text-text-secondary system-xs-medium'>{t('plugin.detailPanel.toolSelector.auto')}</span>
             <Switch
               size='xs'
               defaultValue={!!auto}
@@ -198,8 +198,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 readonly={false}
                 isShowNodeName
                 nodeId={nodeId}
-                value={varInput?.value || []}
-                onChange={handleNotMixedTypeChange(variable, true)}
+                value={varInput?.value || ''}
+                onChange={handleNotMixedTypeChange(variable)}
                 defaultVarKindType={VarKindType.variable}
                 filterVar={(varPayload: Var) => varPayload.type === VarType.number || varPayload.type === VarType.secret || varPayload.type === VarType.string}
               />
