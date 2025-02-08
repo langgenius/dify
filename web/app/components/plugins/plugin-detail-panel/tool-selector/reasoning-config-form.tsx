@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import {
@@ -6,6 +6,7 @@ import {
 } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
+import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
@@ -36,7 +37,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
   onChange,
   schemas,
   nodeOutputVars,
-  // availableNodes,
+  availableNodes,
   nodeId,
 }) => {
   const { t } = useTranslation()
@@ -51,17 +52,17 @@ const ReasoningConfigForm: React.FC<Props> = ({
     })
   }
 
-  // const [inputsIsFocus, setInputsIsFocus] = useState<Record<string, boolean>>({})
-  // const handleInputFocus = useCallback((variable: string) => {
-  //   return (value: boolean) => {
-  //     setInputsIsFocus((prev) => {
-  //       return {
-  //         ...prev,
-  //         [variable]: value,
-  //       }
-  //     })
-  //   }
-  // }, [])
+  const [inputsIsFocus, setInputsIsFocus] = useState<Record<string, boolean>>({})
+  const handleInputFocus = useCallback((variable: string) => {
+    return (value: boolean) => {
+      setInputsIsFocus((prev) => {
+        return {
+          ...prev,
+          [variable]: value,
+        }
+      })
+    }
+  }, [])
   const handleNotMixedTypeChange = useCallback((variable: string) => {
     return (varValue: ValueSelector | string, varKindType: VarKindType) => {
       const newValue = produce(value, (draft: ToolVarInputs) => {
@@ -80,23 +81,23 @@ const ReasoningConfigForm: React.FC<Props> = ({
       onChange(newValue)
     }
   }, [value, onChange])
-  // const handleMixedTypeChange = useCallback((variable: string) => {
-  //   return (itemValue: string) => {
-  //     const newValue = produce(value, (draft: ToolVarInputs) => {
-  //       const target = draft[variable].value
-  //       if (target) {
-  //         target.value = itemValue
-  //       }
-  //       else {
-  //         draft[variable].value = {
-  //           type: VarKindType.mixed,
-  //           value: itemValue,
-  //         }
-  //       }
-  //     })
-  //     onChange(newValue)
-  //   }
-  // }, [value, onChange])
+  const handleMixedTypeChange = useCallback((variable: string) => {
+    return (itemValue: string) => {
+      const newValue = produce(value, (draft: ToolVarInputs) => {
+        const target = draft[variable].value
+        if (target) {
+          target.value = itemValue
+        }
+        else {
+          draft[variable].value = {
+            type: VarKindType.mixed,
+            value: itemValue,
+          }
+        }
+      })
+      onChange(newValue)
+    }
+  }, [value, onChange])
   const handleFileChange = useCallback((variable: string) => {
     return (varValue: ValueSelector | string) => {
       const newValue = produce(value, (draft: ToolVarInputs) => {
@@ -180,7 +181,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
         </div>
         {auto === 0 && (
           <>
-            {/* {isString && (
+            {isString && (
               <Input
                 className={cn(inputsIsFocus[variable] ? 'shadow-xs bg-gray-50 border-gray-300' : 'bg-gray-100 border-gray-100', 'rounded-lg px-3 py-[6px] border')}
                 value={varInput?.value as string || ''}
@@ -191,8 +192,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
                 placeholderClassName='!leading-[21px]'
               />
-            )} */}
-            {isString && (
+            )}
+            {/* {isString && (
               <VarReferencePicker
                 zIndex={1001}
                 readonly={false}
@@ -203,7 +204,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 defaultVarKindType={VarKindType.variable}
                 filterVar={(varPayload: Var) => varPayload.type === VarType.number || varPayload.type === VarType.secret || varPayload.type === VarType.string}
               />
-            )}
+            )} */}
             {(isNumber || isSelect) && (
               <VarReferencePicker
                 zIndex={1001}
