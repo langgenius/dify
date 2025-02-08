@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import (
     GenericProviderID,
+    MissingPluginDependency,
     PluginDeclaration,
     PluginEntity,
     PluginInstallation,
@@ -175,14 +176,16 @@ class PluginInstallationManager(BasePluginManager):
             headers={"Content-Type": "application/json"},
         )
 
-    def fetch_missing_dependencies(self, tenant_id: str, plugin_unique_identifiers: list[str]) -> list[str]:
+    def fetch_missing_dependencies(
+        self, tenant_id: str, plugin_unique_identifiers: list[str]
+    ) -> list[MissingPluginDependency]:
         """
         Fetch missing dependencies
         """
         return self._request_with_plugin_daemon_response(
             "POST",
             f"plugin/{tenant_id}/management/installation/missing",
-            list[str],
+            list[MissingPluginDependency],
             data={"plugin_unique_identifiers": plugin_unique_identifiers},
             headers={"Content-Type": "application/json"},
         )
