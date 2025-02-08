@@ -50,6 +50,7 @@ const translation = {
     submit: 'Trình',
     skip: 'Tàu',
     imageCopied: 'Hình ảnh sao chép',
+    deleteApp: 'Xóa ứng dụng',
   },
   placeholder: {
     input: 'Vui lòng nhập',

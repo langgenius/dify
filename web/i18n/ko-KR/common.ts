@@ -50,6 +50,7 @@ const translation = {
     submit: '전송',
     skip: '배',
     imageCopied: '복사된 이미지',
+    deleteApp: '앱 삭제',
   },
   placeholder: {
     input: '입력해주세요',

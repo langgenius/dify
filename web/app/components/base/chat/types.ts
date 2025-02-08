@@ -14,32 +14,32 @@ export type {
   PromptVariable,
 } from '@/models/debug'
 
-export interface UserInputForm {
+export type UserInputForm = {
   default: string
   label: string
   required: boolean
   variable: string
 }
 
-export interface UserInputFormTextInput {
+export type UserInputFormTextInput = {
   'text-input': UserInputForm & {
     max_length: number
   }
 }
 
-export interface UserInputFormSelect {
+export type UserInputFormSelect = {
   select: UserInputForm & {
     options: string[]
   }
 }
 
-export interface UserInputFormParagraph {
+export type UserInputFormParagraph = {
   paragraph: UserInputForm
 }
 
 export type VisionConfig = VisionSettings
 
-export interface EnableType {
+export type EnableType = {
   enabled: boolean
 }
 
@@ -50,7 +50,7 @@ export type ChatConfig = Omit<ModelConfig, 'model'> & {
   supportCitationHitInfo?: boolean
 }
 
-export interface WorkflowProcess {
+export type WorkflowProcess = {
   status: WorkflowRunningStatus
   tracing: NodeTracing[]
   expand?: boolean // for UI
@@ -67,16 +67,19 @@ export type ChatItem = IChatItem & {
 
 export type ChatItemInTree = {
   children?: ChatItemInTree[]
-} & IChatItem
+} & ChatItem
 
-export type OnSend = (message: string, files?: FileEntity[], last_answer?: ChatItem | null) => void
+export type OnSend = {
+  (message: string, files?: FileEntity[]): void
+  (message: string, files: FileEntity[] | undefined, isRegenerate: boolean, lastAnswer?: ChatItem | null): void
+}
 
 export type OnRegenerate = (chatItem: ChatItem) => void
 
-export interface Callback {
+export type Callback = {
   onSuccess: () => void
 }
 
-export interface Feedback {
+export type Feedback = {
   rating: 'like' | 'dislike' | null
 }

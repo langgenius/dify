@@ -1,6 +1,6 @@
 import type { NodeDefault } from '../../types'
 import type { StartNodeType } from './types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
+import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 
 const nodeDefault: NodeDefault<StartNodeType> = {
   defaultValue: {

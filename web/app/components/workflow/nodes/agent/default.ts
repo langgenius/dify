@@ -1,5 +1,5 @@
 import type { StrategyDetail, StrategyPluginDetail } from '@/app/components/plugins/types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '../../constants'
+import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 import type { NodeDefault } from '../../types'
 import type { AgentNodeType } from './types'
 import { renderI18nObject } from '@/hooks/use-i18n'

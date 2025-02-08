@@ -191,7 +191,8 @@ class AgentChatAppRunner(AppRunner):
         # change function call strategy based on LLM model
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
         model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
-        assert model_schema is not None
+        if not model_schema:
+            raise ValueError("Model schema not found")
 
         if {ModelFeature.MULTI_TOOL_CALL, ModelFeature.TOOL_CALL}.intersection(model_schema.features or []):
             agent_entity.strategy = AgentEntity.Strategy.FUNCTION_CALLING
@@ -246,30 +247,4 @@ class AgentChatAppRunner(AppRunner):
             queue_manager=queue_manager,
             stream=application_generate_entity.stream,
             agent=True,
-        )
-
-    def _get_usage_of_all_agent_thoughts(
-        self, model_config: ModelConfigWithCredentialsEntity, message: Message
-    ) -> LLMUsage:
-        """
-        Get usage of all agent thoughts
-        :param model_config: model config
-        :param message: message
-        :return:
-        """
-        agent_thoughts = (
-            db.session.query(MessageAgentThought).filter(MessageAgentThought.message_id == message.id).all()
-        )
-
-        all_message_tokens = 0
-        all_answer_tokens = 0
-        for agent_thought in agent_thoughts:
-            all_message_tokens += agent_thought.message_tokens
-            all_answer_tokens += agent_thought.answer_tokens
-
-        model_type_instance = model_config.provider_model_bundle.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
-
-        return model_type_instance._calc_response_usage(
-            model_config.model, model_config.credentials, all_message_tokens, all_answer_tokens
         )
