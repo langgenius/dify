@@ -26,6 +26,7 @@ type Props = {
   supportVariables?: boolean
   nodeOutputVars: NodeOutPutVar[],
   availableNodes: Node[],
+  nodeId?: string
 }
 
 const MultipleToolSelector = ({
@@ -40,6 +41,7 @@ const MultipleToolSelector = ({
   supportVariables,
   nodeOutputVars,
   availableNodes,
+  nodeId,
 }: Props) => {
   const { t } = useTranslation()
   const enabledCount = value.filter(item => item.enabled).length
@@ -130,6 +132,7 @@ const MultipleToolSelector = ({
         <>
           <ToolSelector
             supportVariables={supportVariables}
+            nodeId={nodeId}
             nodeOutputVars={nodeOutputVars}
             availableNodes={availableNodes}
             scope={scope}
@@ -152,6 +155,7 @@ const MultipleToolSelector = ({
             <div className='mb-1' key={index}>
               <ToolSelector
                 supportVariables={supportVariables}
+                nodeId={nodeId}
                 nodeOutputVars={nodeOutputVars}
                 availableNodes={availableNodes}
                 scope={scope}

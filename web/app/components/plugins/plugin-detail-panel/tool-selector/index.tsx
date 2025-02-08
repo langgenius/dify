@@ -73,6 +73,7 @@ type Props = {
   supportVariables?: boolean
   nodeOutputVars: NodeOutPutVar[],
   availableNodes: Node[],
+  nodeId?: string,
 }
 const ToolSelector: FC<Props> = ({
   value,
@@ -91,6 +92,7 @@ const ToolSelector: FC<Props> = ({
   onPanelShowStateChange,
   nodeOutputVars,
   availableNodes,
+  nodeId = '',
 }) => {
   const { t } = useTranslation()
   const [isShow, onShowChange] = useState(false)
@@ -414,6 +416,7 @@ const ToolSelector: FC<Props> = ({
                         schemas={paramsFormSchemas as any}
                         nodeOutputVars={nodeOutputVars}
                         availableNodes={availableNodes}
+                        nodeId={nodeId}
                       />
                     )}
                   </>
