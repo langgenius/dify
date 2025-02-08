@@ -37,7 +37,7 @@
 
 4. Create environment.
 
-   Dify API service uses [Poetry](https://python-poetry.org/docs/) to manage dependencies. First, you need to add shell plugin so run the following code
+   Dify API service uses [Poetry](https://python-poetry.org/docs/) to manage dependencies. First, you need to add the poetry shell plugin so run the following code
 
    ```bash
    poetry self add poetry-plugin-shell
