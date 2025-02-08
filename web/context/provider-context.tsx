@@ -4,6 +4,7 @@ import { createContext, useContext, useContextSelector } from 'use-context-selec
 import useSWR from 'swr'
 import { useEffect, useState } from 'react'
 import dayjs from 'dayjs'
+import { useTranslation } from 'react-i18next'
 import {
   fetchModelList,
   fetchModelProviders,
@@ -113,6 +114,7 @@ export const ProviderContextProvider = ({
     fetchPlan()
   }, [])
 
+  const { t } = useTranslation()
   useEffect(() => {
     if (localStorage.getItem('anthropic_quota_notice') === 'true')
       return
@@ -127,7 +129,7 @@ export const ProviderContextProvider = ({
         if (quota && quota.is_valid && quota.quota_used < quota.quota_limit) {
           Toast.notify({
             type: 'info',
-            message: 'Your Anthropic quota is not enough, please go to the billing page to upgrade your plan.',
+            message: t('common.provider.anthropicHosted.trialQuotaTip'),
             duration: 6000,
             onClose: () => {
               localStorage.setItem('anthropic_quota_notice', 'true')
@@ -136,7 +138,7 @@ export const ProviderContextProvider = ({
         }
       }
     }
-  }, [providersData])
+  }, [providersData, t])
 
   return (
     <ProviderContext.Provider value={{

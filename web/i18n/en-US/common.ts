@@ -290,6 +290,7 @@ const translation = {
       usedUp: 'Trial quota used up. Add own Model Provider.',
       useYourModel: 'Currently using own Model Provider.',
       close: 'Close',
+      trialQuotaTip: 'Your Anthropic trial quota will expire on 2025/03/10.',
     },
     anthropic: {
       using: 'The embedding capability is using',

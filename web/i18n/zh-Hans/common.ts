@@ -290,6 +290,7 @@ const translation = {
       usedUp: '试用额度已用完，请在下方添加自己的模型供应商',
       useYourModel: '当前正在使用你自己的模型供应商。',
       close: '关闭',
+      trialQuotaTip: '您的 Anthropic 体验额度将于 2025/03/10 过期。',
     },
     anthropic: {
       using: '嵌入能力正在使用',

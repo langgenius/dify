@@ -291,6 +291,7 @@ const translation = {
       usedUp: 'トライアルクォータが使い果たされました。独自のモデルプロバイダを追加してください。',
       useYourModel: '現在、独自のモデルプロバイダを使用しています。',
       close: '閉じる',
+      trialQuotaTip: 'あなたの Anthropic の試用クレジットは 2025/03/10 に失効します。',
     },
     anthropic: {
       using: '埋め込み機能は使用中です',
