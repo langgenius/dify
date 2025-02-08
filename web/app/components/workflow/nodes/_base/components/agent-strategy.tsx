@@ -142,7 +142,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
   ]
   const renderField: ComponentProps<typeof Form<CustomField>>['customRenderField'] = (schema, props) => {
     switch (schema.type) {
-      case 'tool-selector': {
+      case FormTypeEnum.toolSelector: {
         const value = props.value[schema.variable]
         const onChange = (value: any) => {
           props.onChange({ ...props.value, [schema.variable]: value })
@@ -166,7 +166,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           </Field>
         )
       }
-      case 'array[tools]': {
+      case FormTypeEnum.multiToolSelector: {
         const value = props.value[schema.variable]
         const onChange = (value: any) => {
           props.onChange({ ...props.value, [schema.variable]: value })
