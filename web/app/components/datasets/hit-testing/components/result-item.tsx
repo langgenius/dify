@@ -46,10 +46,16 @@ const ResultItem: FC<Props> = ({
 
       {/* Main */}
       <div className='mt-1 px-3'>
-        <div className='line-clamp-2 body-md-regular break-all'>{content}</div>
+        <div className='line-clamp-2 body-md-regular text-text-secondary break-all'>{content}</div>
         {isParentChildRetrieval && (
           <div className='mt-1'>
-            <div className={cn('inline-flex items-center h-6 space-x-0.5 text-text-secondary select-none rounded-lg cursor-pointer', isFold && 'pl-1 bg-[linear-gradient(90deg,_rgba(200,_206,_218,_0.20)_0%,_rgba(200,_206,_218,_0.04)_100%)]')} onClick={toggleFold}>
+            <div
+              className={cn('inline-flex items-center h-6 space-x-0.5 text-text-secondary select-none rounded-lg cursor-pointer', isFold && 'pl-1 bg-workflow-process-bg')}
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleFold()
+              }}
+            >
               <Icon className={cn('w-4 h-4', isFold && 'opacity-50')} />
               <div className='text-xs font-semibold uppercase'>{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
             </div>
