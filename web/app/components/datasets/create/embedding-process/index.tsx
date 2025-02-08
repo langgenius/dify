@@ -314,7 +314,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
                 }
               </div>
               {isSourceEmbedding(indexingStatusDetail) && (
-                <div className="shrink-0 text-xs">{`${getSourcePercent(indexingStatusDetail)}%`}</div>
+                <div className="shrink-0 text-xs text-text-secondary">{`${getSourcePercent(indexingStatusDetail)}%`}</div>
               )}
               {indexingStatusDetail.indexing_status === 'error' && (
                 <Tooltip
