@@ -1,7 +1,7 @@
 import logging
 import uuid
 from enum import StrEnum
-from typing import Optional
+from typing import Mapping, Optional
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -256,6 +256,16 @@ class AppDslService:
             check_dependencies_pending_data = None
             if dependencies:
                 check_dependencies_pending_data = [PluginDependency.model_validate(d) for d in dependencies]
+            elif imported_version <= "0.1.5":
+                if "workflow" in data:
+                    graph = data.get("workflow", {}).get("graph", {})
+                    dependencies_list = self._extract_dependencies_from_workflow_graph(graph)
+                else:
+                    dependencies_list = self._extract_dependencies_from_model_config(data.get("model_config", {}))
+
+                check_dependencies_pending_data = DependenciesAnalysisService.generate_latest_dependencies(
+                    dependencies_list
+                )
 
             # Create or update app
             app = self._create_or_update_app(
@@ -558,7 +568,7 @@ class AppDslService:
             raise ValueError("Missing app configuration, please check.")
 
         export_data["model_config"] = app_model_config.to_dict()
-        dependencies = cls._extract_dependencies_from_model_config(app_model_config)
+        dependencies = cls._extract_dependencies_from_model_config(app_model_config.to_dict())
         export_data["dependencies"] = [
             jsonable_encoder(d.model_dump())
             for d in DependenciesAnalysisService.generate_dependencies(
@@ -574,6 +584,16 @@ class AppDslService:
         :return: dependencies list format like ["langgenius/google"]
         """
         graph = workflow.graph_dict
+        dependencies = cls._extract_dependencies_from_workflow_graph(graph)
+        return dependencies
+
+    @classmethod
+    def _extract_dependencies_from_workflow_graph(cls, graph: Mapping) -> list[str]:
+        """
+        Extract dependencies from workflow graph
+        :param graph: Workflow graph
+        :return: dependencies list format like ["langgenius/google"]
+        """
         dependencies = []
         for node in graph.get("nodes", []):
             try:
@@ -647,24 +667,24 @@ class AppDslService:
         return dependencies
 
     @classmethod
-    def _extract_dependencies_from_model_config(cls, model_config: AppModelConfig) -> list[str]:
+    def _extract_dependencies_from_model_config(cls, model_config: Mapping) -> list[str]:
         """
         Extract dependencies from model config
-        :param model_config: AppModelConfig instance
-        :return: dependencies list format like ["langgenius/google:1.0.0@abcdef1234567890"]
+        :param model_config: model config dict
+        :return: dependencies list format like ["langgenius/google"]
         """
         dependencies = []
 
         try:
             # completion model
-            model_dict = model_config.model_dict
+            model_dict = model_config.get("model", {})
             if model_dict:
                 dependencies.append(
                     DependenciesAnalysisService.analyze_model_provider_dependency(model_dict.get("provider", ""))
                 )
 
             # reranking model
-            dataset_configs = model_config.dataset_configs_dict
+            dataset_configs = model_config.get("dataset_configs", {})
             if dataset_configs:
                 for dataset_config in dataset_configs.get("datasets", {}).get("datasets", []):
                     if dataset_config.get("reranking_model"):
@@ -677,7 +697,7 @@ class AppDslService:
                         )
 
             # tools
-            agent_configs = model_config.agent_mode_dict
+            agent_configs = model_config.get("agent_mode", {})
             if agent_configs:
                 for agent_config in agent_configs.get("tools", []):
                     dependencies.append(
