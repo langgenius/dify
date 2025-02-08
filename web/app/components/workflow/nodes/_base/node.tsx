@@ -1,6 +1,6 @@
 import type {
   FC,
-  ReactElement,
+  ReactNode,
 } from 'react'
 import {
   cloneElement,
@@ -45,7 +45,7 @@ import BlockIcon from '@/app/components/workflow/block-icon'
 import Tooltip from '@/app/components/base/tooltip'
 
 type BaseNodeProps = {
-  children: ReactElement
+  children: ReactNode
 } & NodeProps
 
 const BaseNode: FC<BaseNodeProps> = ({

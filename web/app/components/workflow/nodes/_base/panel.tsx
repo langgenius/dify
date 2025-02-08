@@ -1,6 +1,6 @@
 import type {
   FC,
-  ReactElement,
+  ReactNode,
 } from 'react'
 import {
   cloneElement,
@@ -48,7 +48,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore } from '@/app/components/workflow/store'
 
 type BasePanelProps = {
-  children: ReactElement
+  children: ReactNode
 } & Node
 
 const BasePanel: FC<BasePanelProps> = ({
@@ -61,7 +61,7 @@ const BasePanel: FC<BasePanelProps> = ({
     showMessageLogModal: state.showMessageLogModal,
   })))
   const showSingleRunPanel = useStore(s => s.showSingleRunPanel)
-  const panelWidth = localStorage.getItem('workflow-node-panel-width') ? parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420
+  const panelWidth = localStorage.getItem('workflow-node-panel-width') ? Number.parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420
   const {
     setPanelWidth,
   } = useWorkflow()
