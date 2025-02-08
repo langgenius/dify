@@ -9,7 +9,7 @@ import {
   comparisonOperatorNotRequireValue,
   isComparisonOperatorNeedTranslate,
 } from '../utils'
-import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '../default'
+import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '../../constants'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import cn from '@/utils/classnames'
@@ -20,7 +20,7 @@ import type {
   Node,
 } from '@/app/components/workflow/types'
 
-interface ConditionValueProps {
+type ConditionValueProps = {
   variableSelector: string[]
   labelName?: string
   operator: ComparisonOperator
