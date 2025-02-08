@@ -32,7 +32,7 @@ type BeforeRunFormProps = {
   onRun: (submitData: Record<string, any>) => void
   onStop: () => void
   runningStatus: NodeRunningStatus
-  result?: JSX.Element
+  result?: React.JSX.Element
   forms: FormProps[]
   showSpecialResultPanel?: boolean
 } & Partial<SpecialResultPanelProps>

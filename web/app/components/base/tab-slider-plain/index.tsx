@@ -3,12 +3,12 @@ import type { FC } from 'react'
 import React from 'react'
 import cn from '@/utils/classnames'
 
-interface Option {
+type Option = {
   value: string
-  text: string | JSX.Element
+  text: string | React.JSX.Element
 }
 
-interface ItemProps {
+type ItemProps = {
   className?: string
   isActive: boolean
   onClick: (v: string) => void
@@ -38,7 +38,7 @@ const Item: FC<ItemProps> = ({
   )
 }
 
-interface Props {
+type Props = {
   className?: string
   value: string
   onChange: (v: string) => void

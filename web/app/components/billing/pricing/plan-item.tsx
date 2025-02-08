@@ -21,7 +21,7 @@ type Props = {
   canPay: boolean
 }
 
-const KeyValue = ({ label, value, tooltip }: { label: string; value: string | number | JSX.Element; tooltip?: string }) => {
+const KeyValue = ({ label, value, tooltip }: { label: string; value: string | number | React.JSX.Element; tooltip?: string }) => {
   return (
     <div className='mt-3.5 leading-[125%] text-[13px] font-medium'>
       <div className='flex items-center text-gray-500 space-x-1'>

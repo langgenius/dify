@@ -19,7 +19,7 @@ const NoteEditorContext = createContext<NoteEditorStore | null>(null)
 
 type NoteEditorContextProviderProps = {
   value: string
-  children: JSX.Element | string | (JSX.Element | string)[]
+  children: React.JSX.Element | string | (React.JSX.Element | string)[]
 }
 export const NoteEditorContextProvider = memo(({
   value,

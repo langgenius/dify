@@ -5,10 +5,10 @@ import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 type Props = {
   className?: string
-  icon: JSX.Element
+  icon: React.JSX.Element
   name: string
   description: string
-  children: JSX.Element
+  children: React.JSX.Element
 }
 
 const ItemPanel: FC<Props> = ({

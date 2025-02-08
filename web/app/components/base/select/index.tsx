@@ -31,7 +31,7 @@ export type Item = {
 export type ISelectProps = {
   className?: string
   wrapperClassName?: string
-  renderTrigger?: (value: Item | null) => JSX.Element | null
+  renderTrigger?: (value: Item | null) => React.JSX.Element | null
   items?: Item[]
   defaultValue?: number | string
   disabled?: boolean
@@ -292,7 +292,7 @@ type PortalSelectProps = {
   items: Item[]
   placeholder?: string
   installedValue?: string | number
-  renderTrigger?: (value?: Item) => JSX.Element | null
+  renderTrigger?: (value?: Item) => React.JSX.Element | null
   triggerClassName?: string
   triggerClassNameFn?: (open: boolean) => string
   popupClassName?: string

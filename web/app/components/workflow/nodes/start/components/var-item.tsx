@@ -13,12 +13,12 @@ import { Edit03 } from '@/app/components/base/icons/src/vender/solid/general'
 import Badge from '@/app/components/base/badge'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 
-interface Props {
+type Props = {
   readonly: boolean
   payload: InputVar
   onChange?: (item: InputVar, moreInfo?: MoreInfo) => void
   onRemove?: () => void
-  rightContent?: JSX.Element
+  rightContent?: React.JSX.Element
   varKeys?: string[]
   showLegacyBadge?: boolean
 }

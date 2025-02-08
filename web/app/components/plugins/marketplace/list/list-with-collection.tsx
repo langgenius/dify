@@ -15,7 +15,7 @@ type ListWithCollectionProps = {
   showInstallButton?: boolean
   locale: string
   cardContainerClassName?: string
-  cardRender?: (plugin: Plugin) => JSX.Element | null
+  cardRender?: (plugin: Plugin) => React.JSX.Element | null
   onMoreClick?: (searchParams?: SearchParamsFromCollection) => void
 }
 const ListWithCollection = ({

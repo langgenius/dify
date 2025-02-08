@@ -35,7 +35,7 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
       return VAR_PLACEHOLDER
     })
 
-    const html: JSX.Element[] = strWithVarPlaceholder.split(VAR_PLACEHOLDER).map((str, index) => {
+    const html: React.JSX.Element[] = strWithVarPlaceholder.split(VAR_PLACEHOLDER).map((str, index) => {
       if (!vars[index])
         return <span className='relative top-[-3px] leading-[16px]' key={index}>{str}</span>
 

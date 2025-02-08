@@ -6,8 +6,8 @@ export { default as FieldCollapse } from './field-collapse'
 
 type CollapseProps = {
   disabled?: boolean
-  trigger: JSX.Element
-  children: JSX.Element
+  trigger: React.JSX.Element
+  children: React.JSX.Element
   collapsed?: boolean
   onCollapse?: (collapsed: boolean) => void
 }

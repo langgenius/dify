@@ -10,7 +10,7 @@ export type TRadioGroupProps = {
   onChange?: (value: any) => void
 }
 
-export default function Group({ children, value, onChange, className = '' }: TRadioGroupProps): JSX.Element {
+export default function Group({ children, value, onChange, className = '' }: TRadioGroupProps): React.JSX.Element {
   const onRadioChange = (value: any) => {
     onChange?.(value)
   }
