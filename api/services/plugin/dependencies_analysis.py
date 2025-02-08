@@ -13,6 +13,8 @@ class DependenciesAnalysisService:
         """
         try:
             tool_provider_id = GenericProviderID(tool_id)
+            if tool_id in ["jina", "siliconflow"]:
+                tool_provider_id.plugin_name = tool_provider_id.plugin_name + "_tool"
             return tool_provider_id.plugin_id
         except Exception as e:
             raise e
@@ -26,6 +28,9 @@ class DependenciesAnalysisService:
         """
         try:
             generic_provider_id = GenericProviderID(model_provider_id)
+            if model_provider_id == "google":
+                generic_provider_id.plugin_name = "gemini"
+
             return generic_provider_id.plugin_id
         except Exception as e:
             raise e
