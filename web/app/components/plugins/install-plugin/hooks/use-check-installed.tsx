@@ -15,7 +15,6 @@ const useCheckInstalled = (props: Props) => {
 
     const res: Record<string, VersionInfo> = {}
     data?.plugins.forEach((plugin) => {
-      console.log(plugin)
       res[plugin.plugin_id] = {
         installedId: plugin.id,
         installedVersion: plugin.declaration.version,
