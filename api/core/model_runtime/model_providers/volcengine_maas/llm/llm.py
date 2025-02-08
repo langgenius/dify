@@ -1,5 +1,4 @@
 import logging
-import re
 from collections.abc import Generator
 from typing import Optional
 
@@ -258,14 +257,13 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
                     elif hasattr(delta, "reasoning_content"):
                         if not is_reasoning_started:
                             is_reasoning_started = True
-                            content = "> 💭 " + delta.reasoning_content
+                            content = "<think>\n" + delta.reasoning_content
                         else:
                             content = delta.reasoning_content
-
-                        if "\n" in content:
-                            content = re.sub(r"\n(?!(>|\n))", "\n> ", content)
+                        # if "\n" in content:
+                        #     content = re.sub(r"\n(?!(>|\n))", "\n> ", content)
                     elif is_reasoning_started:
-                        content = "\n\n" + delta.content
+                        content = "\n</think>" + delta.content
                         is_reasoning_started = False
                     else:
                         content = delta.content
