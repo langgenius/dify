@@ -2,7 +2,7 @@ import logging
 import re
 import time
 from abc import abstractmethod
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Generator, Sequence
 from typing import Optional, Union
 
 from pydantic import ConfigDict
@@ -30,6 +30,11 @@ from core.model_runtime.model_providers.__base.ai_model import AIModel
 
 logger = logging.getLogger(__name__)
 
+HTML_THINKING_TAG = (
+    '<details style="color:gray;background-color: #f8f8f8;padding: 8px;border-radius: 4px;" open> '
+    "<summary> Thinking... </summary>"
+)
+
 
 class LargeLanguageModel(AIModel):
     """
@@ -48,7 +53,7 @@ class LargeLanguageModel(AIModel):
         prompt_messages: list[PromptMessage],
         model_parameters: Optional[dict] = None,
         tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        stop: Optional[list[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
@@ -291,12 +296,12 @@ if you are not sure about the structure.
                 content = piece.delta.message.content
                 piece.delta.message.content = ""
                 yield piece
-                piece = content
+                content_piece = content
             else:
                 yield piece
                 continue
             new_piece: str = ""
-            for char in piece:
+            for char in content_piece:
                 char = str(char)
                 if state == "normal":
                     if char == "`":
@@ -350,7 +355,7 @@ if you are not sure about the structure.
                 piece.delta.message.content = ""
                 # Yield a piece with cleared content before processing it to maintain the generator structure
                 yield piece
-                piece = content
+                content_piece = content
             else:
                 # Yield pieces without content directly
                 yield piece
@@ -360,7 +365,7 @@ if you are not sure about the structure.
                 continue
 
             new_piece: str = ""
-            for char in piece:
+            for char in content_piece:
                 if state == "search_start":
                     if char == "`":
                         backtick_count += 1
@@ -399,6 +404,40 @@ if you are not sure about the structure.
                         message=AssistantPromptMessage(content=new_piece, tool_calls=[]),
                     ),
                 )
+
+    def _wrap_thinking_by_reasoning_content(self, delta: dict, is_reasoning: bool) -> tuple[str, bool]:
+        """
+        If the reasoning response is from delta.get("reasoning_content"), we wrap
+        it with HTML details tag.
+
+        :param delta: delta dictionary from LLM streaming response
+        :param is_reasoning: is reasoning
+        :return: tuple of (processed_content, is_reasoning)
+        """
+
+        content = delta.get("content") or ""
+        reasoning_content = delta.get("reasoning_content")
+
+        if reasoning_content:
+            if not is_reasoning:
+                content = HTML_THINKING_TAG + reasoning_content
+                is_reasoning = True
+            else:
+                content = reasoning_content
+        elif is_reasoning:
+            content = "</details>" + content
+            is_reasoning = False
+        return content, is_reasoning
+
+    def _wrap_thinking_by_tag(self, content: str) -> str:
+        """
+        if the reasoning response is a <think>...</think> block from delta.get("content"),
+        we replace <think> to <detail>.
+
+        :param content: delta.get("content")
+        :return: processed_content
+        """
+        return content.replace("<think>", HTML_THINKING_TAG).replace("</think>", "</details>")
 
     def _invoke_result_generator(
         self,
@@ -535,7 +574,7 @@ if you are not sure about the structure.
 
         return []
 
-    def get_model_mode(self, model: str, credentials: Optional[Mapping] = None) -> LLMMode:
+    def get_model_mode(self, model: str, credentials: Optional[dict] = None) -> LLMMode:
         """
         Get model mode
 

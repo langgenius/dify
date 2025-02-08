@@ -37,6 +37,9 @@ const translation = {
     externalKnowledgeID: 'बाहरी ज्ञान ID',
     externalKnowledgeAPI: 'बाहरी ज्ञान एपीआई',
     retrievalSettings: 'पुनर्प्राप्ति सेटिंग्स',
+    indexMethodChangeToEconomyDisabledTip: 'मुख्यालय से ईसीओ में डाउनग्रेड करने के लिए उपलब्ध नहीं है',
+    helpText: 'एक अच्छा डेटासेट विवरण लिखना सीखें।',
+    upgradeHighQualityTip: 'एक बार उच्च गुणवत्ता मोड में अपग्रेड करने के बाद, किफायती मोड में वापस जाना उपलब्ध नहीं है',
   },
 }
 

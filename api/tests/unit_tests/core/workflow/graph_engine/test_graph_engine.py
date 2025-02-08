@@ -488,14 +488,12 @@ def test_run_branch(mock_close, mock_remove):
     items = []
     generator = graph_engine.run()
     for item in generator:
-        # print(type(item), item)
         items.append(item)
 
     assert len(items) == 10
     assert items[3].route_node_state.node_id == "if-else-1"
     assert items[4].route_node_state.node_id == "if-else-1"
     assert isinstance(items[5], NodeRunStreamChunkEvent)
-    assert items[5].chunk_content == "1 "
     assert isinstance(items[6], NodeRunStreamChunkEvent)
     assert items[6].chunk_content == "takato"
     assert items[7].route_node_state.node_id == "answer-1"

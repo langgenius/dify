@@ -5,7 +5,7 @@ import logging
 from enum import Enum
 from typing import Any, Optional
 
-import boto3
+import boto3  # type: ignore
 import requests
 
 from core.model_runtime.entities.common_entities import I18nObject

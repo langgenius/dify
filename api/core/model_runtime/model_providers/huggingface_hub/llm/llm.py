@@ -1,9 +1,9 @@
 from collections.abc import Generator
 from typing import Optional, Union
 
-from huggingface_hub import InferenceClient
-from huggingface_hub.hf_api import HfApi
-from huggingface_hub.utils import BadRequestError
+from huggingface_hub import InferenceClient  # type: ignore
+from huggingface_hub.hf_api import HfApi  # type: ignore
+from huggingface_hub.utils import BadRequestError  # type: ignore
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE

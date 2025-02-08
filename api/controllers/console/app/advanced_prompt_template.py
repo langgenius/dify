@@ -1,4 +1,4 @@
-from flask_restful import Resource, reqparse
+from flask_restful import Resource, reqparse  # type: ignore
 
 from controllers.console import api
 from controllers.console.wraps import account_initialization_required, setup_required

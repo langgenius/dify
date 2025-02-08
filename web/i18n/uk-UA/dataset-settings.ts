@@ -32,6 +32,9 @@ const translation = {
     externalKnowledgeAPI: 'API зовнішніх знань',
     externalKnowledgeID: 'Зовнішній ідентифікатор знань',
     retrievalSettings: 'Налаштування отримання',
+    helpText: 'Дізнайтеся, як написати хороший опис набору даних.',
+    indexMethodChangeToEconomyDisabledTip: 'Недоступно для пониження з HQ до ECO',
+    upgradeHighQualityTip: 'Після оновлення до режиму високої якості повернення до економного режиму недоступне',
   },
 }
 

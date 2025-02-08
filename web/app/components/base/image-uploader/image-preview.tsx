@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { t } from 'i18next'
 import { createPortal } from 'react-dom'
 import { RiAddBoxLine, RiCloseLine, RiDownloadCloud2Line, RiFileCopyLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
+import { useHotkeys } from 'react-hotkeys-hook'
 import Tooltip from '@/app/components/base/tooltip'
 import Toast from '@/app/components/base/toast'
 
@@ -10,6 +11,8 @@ type ImagePreviewProps = {
   url: string
   title: string
   onCancel: () => void
+  onPrev?: () => void
+  onNext?: () => void
 }
 
 const isBase64 = (str: string): boolean => {
@@ -25,6 +28,8 @@ const ImagePreview: FC<ImagePreviewProps> = ({
   url,
   title,
   onCancel,
+  onPrev,
+  onNext,
 }) => {
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
@@ -32,7 +37,6 @@ const ImagePreview: FC<ImagePreviewProps> = ({
   const imgRef = useRef<HTMLImageElement>(null)
   const dragStartRef = useRef({ x: 0, y: 0 })
   const [isCopied, setIsCopied] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
 
   const openInNewTab = () => {
     // Open in a new window, considering the case when the page is inside an iframe
@@ -51,6 +55,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       })
     }
   }
+
   const downloadImage = () => {
     // Open in a new window, considering the case when the page is inside an iframe
     if (url.startsWith('http') || url.startsWith('https')) {
@@ -188,23 +193,11 @@ const ImagePreview: FC<ImagePreviewProps> = ({
     }
   }, [handleMouseUp])
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape')
-        onCancel()
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-
-    // Set focus to the container element
-    if (containerRef.current)
-      containerRef.current.focus()
-
-    // Cleanup function
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [onCancel])
+  useHotkeys('esc', onCancel)
+  useHotkeys('up', zoomIn)
+  useHotkeys('down', zoomOut)
+  useHotkeys('left', onPrev || (() => {}))
+  useHotkeys('right', onNext || (() => {}))
 
   return createPortal(
     <div className='fixed inset-0 p-8 flex items-center justify-center bg-black/80 z-[1000] image-preview-container'

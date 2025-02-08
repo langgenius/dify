@@ -1,3 +1,4 @@
+import { RiCheckLine } from '@remixicon/react'
 import s from './index.module.css'
 import cn from '@/utils/classnames'
 
@@ -6,16 +7,32 @@ type CheckboxProps = {
   onCheck?: () => void
   className?: string
   disabled?: boolean
+  mixed?: boolean
 }
 
-const Checkbox = ({ checked, onCheck, className, disabled }: CheckboxProps) => {
+const Checkbox = ({ checked, onCheck, className, disabled, mixed }: CheckboxProps) => {
+  if (!checked) {
+    return (
+      <div
+        className={cn(
+          'w-4 h-4 rounded-[4px] bg-components-checkbox-bg-unchecked border border-components-checkbox-border hover:bg-components-checkbox-bg-unchecked-hover hover:border-components-checkbox-border-hover shadow-xs cursor-pointer',
+          disabled && 'border-components-checkbox-border-disabled bg-components-checkbox-bg-disabled hover:border-components-checkbox-border-disabled hover:bg-components-checkbox-bg-disabled cursor-not-allowed',
+          mixed && s.mixed,
+          className,
+        )}
+        onClick={() => {
+          if (disabled)
+            return
+          onCheck?.()
+        }}
+      ></div>
+    )
+  }
   return (
     <div
       className={cn(
-        s.wrapper,
-        checked && s.checked,
-        disabled && s.disabled,
-        'w-4 h-4 border rounded border-gray-300',
+        'w-4 h-4 flex items-center justify-center rounded-[4px] bg-components-checkbox-bg hover:bg-components-checkbox-bg-hover text-components-checkbox-icon shadow-xs cursor-pointer',
+        disabled && 'bg-components-checkbox-bg-disabled-checked hover:bg-components-checkbox-bg-disabled-checked text-components-checkbox-icon-disabled cursor-not-allowed',
         className,
       )}
       onClick={() => {
@@ -24,7 +41,9 @@ const Checkbox = ({ checked, onCheck, className, disabled }: CheckboxProps) => {
 
         onCheck?.()
       }}
-    />
+    >
+      <RiCheckLine className={cn('w-3 h-3')} />
+    </div>
   )
 }
 

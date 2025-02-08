@@ -2,11 +2,11 @@ import json
 import logging
 from collections.abc import Generator
 from datetime import UTC, datetime
-from typing import Optional, Union
+from typing import Optional, Union, cast
 
 from sqlalchemy import and_
 
-from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
+from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import (
@@ -42,7 +42,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             ChatAppGenerateEntity,
             CompletionAppGenerateEntity,
             AgentChatAppGenerateEntity,
-            AdvancedChatAppGenerateEntity,
+            AgentChatAppGenerateEntity,
         ],
         queue_manager: AppQueueManager,
         conversation: Conversation,
@@ -70,14 +70,13 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             queue_manager=queue_manager,
             conversation=conversation,
             message=message,
-            user=user,
             stream=stream,
         )
 
         try:
             return generate_task_pipeline.process()
         except ValueError as e:
-            if e.args[0] == "I/O operation on closed file.":  # ignore this error
+            if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedError()
             else:
                 logger.exception(f"Failed to handle response, conversation_id: {conversation.id}")
@@ -90,6 +89,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             Conversation.id == conversation_id,
             Conversation.app_id == app_model.id,
             Conversation.status == "normal",
+            Conversation.is_deleted.is_(False),
         ]
 
         if isinstance(user, Account):
@@ -144,7 +144,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :conversation conversation
         :return:
         """
-        app_config = application_generate_entity.app_config
+        app_config: EasyUIBasedAppConfig = cast(EasyUIBasedAppConfig, application_generate_entity.app_config)
 
         # get from source
         end_user_id = None
@@ -267,7 +267,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             except KeyError:
                 pass
 
-        return introduction
+        return introduction or ""
 
     def _get_conversation(self, conversation_id: str):
         """
@@ -282,7 +282,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
         return conversation
 
-    def _get_message(self, message_id: str) -> Message:
+    def _get_message(self, message_id: str) -> Optional[Message]:
         """
         Get message by message id
         :param message_id: message id

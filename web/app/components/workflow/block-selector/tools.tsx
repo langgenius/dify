@@ -45,7 +45,7 @@ const Blocks = ({
             <Tooltip
               key={tool.name}
               position='right'
-              popupClassName='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
+              popupClassName='w-[200px]'
               popupContent={(
                 <div>
                   <BlockIcon
@@ -54,13 +54,13 @@ const Blocks = ({
                     type={BlockEnum.Tool}
                     toolIcon={toolWithProvider.icon}
                   />
-                  <div className='mb-1 text-sm leading-5 text-gray-900'>{tool.label[language]}</div>
-                  <div className='text-xs text-gray-700 leading-[18px]'>{tool.description[language]}</div>
+                  <div className='mb-1 system-md-medium text-text-primary'>{tool.label[language]}</div>
+                  <div className='system-xs-regular text-text-tertiary'>{tool.description[language]}</div>
                 </div>
               )}
             >
               <div
-                className='flex items-center px-3 w-full h-8 rounded-lg hover:bg-gray-50 cursor-pointer'
+                className='flex items-center px-3 w-full h-8 rounded-lg hover:bg-state-base-hover cursor-pointer'
                 onClick={() => onSelect(BlockEnum.Tool, {
                   provider_id: toolWithProvider.id,
                   provider_type: toolWithProvider.type,
@@ -75,7 +75,7 @@ const Blocks = ({
                   type={BlockEnum.Tool}
                   toolIcon={toolWithProvider.icon}
                 />
-                <div className='text-sm text-gray-900 flex-1 min-w-0 truncate'>{tool.label[language]}</div>
+                <div className='text-sm text-text-secondary flex-1 min-w-0 truncate'>{tool.label[language]}</div>
               </div>
             </Tooltip>
           ))
@@ -100,7 +100,7 @@ const Blocks = ({
     <div className='p-1 max-w-[320px] max-h-[464px] overflow-y-auto'>
       {
         !tools.length && !showWorkflowEmpty && (
-          <div className='flex items-center px-3 h-[22px] text-xs font-medium text-gray-500'>{t('workflow.tabs.noResult')}</div>
+          <div className='flex items-center px-3 h-[22px] text-xs font-medium text-text-tertiary'>{t('workflow.tabs.noResult')}</div>
         )
       }
       {!tools.length && showWorkflowEmpty && (

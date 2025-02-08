@@ -11,9 +11,9 @@ class MinimaxMessage:
 
     role: str = Role.USER.value
     content: str
-    usage: dict[str, int] = None
+    usage: dict[str, int] | None = None
     stop_reason: str = ""
-    function_call: dict[str, Any] = None
+    function_call: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         if self.function_call and self.role == MinimaxMessage.Role.ASSISTANT.value:

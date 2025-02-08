@@ -2,7 +2,7 @@ import os
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from huggingface_hub import InferenceClient
+from huggingface_hub import InferenceClient  # type: ignore
 
 from tests.integration_tests.model_runtime.__mock.huggingface_chat import MockHuggingfaceChatClass
 

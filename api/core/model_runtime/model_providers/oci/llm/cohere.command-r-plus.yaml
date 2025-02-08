@@ -50,3 +50,4 @@ pricing:
   output: '0.0219'
   unit: '0.0001'
   currency: USD
+deprecated: true

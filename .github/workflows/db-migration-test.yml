@@ -48,6 +48,8 @@ jobs:
           cp .env.example .env
 
       - name: Run DB Migration
+        env:
+          DEBUG: true
         run: |
           cd api
           poetry run python -m flask upgrade-db

@@ -23,7 +23,7 @@ class EndStreamProcessor(StreamProcessor):
             self.route_position[end_node_id] = 0
         self.current_stream_chunk_generating_node_ids: dict[str, list[str]] = {}
         self.has_output = False
-        self.output_node_ids = set()
+        self.output_node_ids: set[str] = set()
 
     def process(self, generator: Generator[GraphEngineEvent, None, None]) -> Generator[GraphEngineEvent, None, None]:
         for event in generator:

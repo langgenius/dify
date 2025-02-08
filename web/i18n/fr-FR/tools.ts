@@ -144,6 +144,8 @@ const translation = {
     category: 'catégorie',
     manageInTools: 'Gérer dans Outils',
     emptyTip: 'Allez dans « Flux de travail -> Publier en tant qu’outil »',
+    emptyTitleCustom: 'Aucun outil personnalisé disponible',
+    emptyTipCustom: 'Créer un outil personnalisé',
   },
   openInStudio: 'Ouvrir dans Studio',
   customToolTip: 'En savoir plus sur les outils personnalisés Dify',

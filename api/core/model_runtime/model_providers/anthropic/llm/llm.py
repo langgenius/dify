@@ -1,5 +1,4 @@
 import base64
-import io
 import json
 from collections.abc import Generator, Sequence
 from typing import Optional, Union, cast
@@ -18,7 +17,6 @@ from anthropic.types import (
 )
 from anthropic.types.beta.tools import ToolsBetaMessage
 from httpx import Timeout
-from PIL import Image
 
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities import (
@@ -483,6 +481,10 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                 if isinstance(message, UserPromptMessage):
                     message = cast(UserPromptMessage, message)
                     if isinstance(message.content, str):
+                        # handle empty user prompt see #10013 #10520
+                        # responses, ignore user prompts containing only whitespace, the Claude API can't handle it.
+                        if not message.content.strip():
+                            continue
                         message_dict = {"role": "user", "content": message.content}
                         prompt_message_dicts.append(message_dict)
                     else:
@@ -494,22 +496,19 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                                 sub_messages.append(sub_message_dict)
                             elif message_content.type == PromptMessageContentType.IMAGE:
                                 message_content = cast(ImagePromptMessageContent, message_content)
-                                if not message_content.data.startswith("data:"):
+                                if not message_content.base64_data:
                                     # fetch image data from url
                                     try:
-                                        image_content = requests.get(message_content.data).content
-                                        with Image.open(io.BytesIO(image_content)) as img:
-                                            mime_type = f"image/{img.format.lower()}"
+                                        image_content = requests.get(message_content.url).content
                                         base64_data = base64.b64encode(image_content).decode("utf-8")
                                     except Exception as ex:
                                         raise ValueError(
                                             f"Failed to fetch image data from url {message_content.data}, {ex}"
                                         )
                                 else:
-                                    data_split = message_content.data.split(";base64,")
-                                    mime_type = data_split[0].replace("data:", "")
-                                    base64_data = data_split[1]
+                                    base64_data = message_content.base64_data
 
+                                mime_type = message_content.mime_type
                                 if mime_type not in {"image/jpeg", "image/png", "image/gif", "image/webp"}:
                                     raise ValueError(
                                         f"Unsupported image type {mime_type}, "
@@ -530,9 +529,9 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                                 sub_message_dict = {
                                     "type": "document",
                                     "source": {
-                                        "type": message_content.encode_format,
+                                        "type": "base64",
                                         "media_type": message_content.mime_type,
-                                        "data": message_content.data,
+                                        "data": message_content.base64_data,
                                     },
                                 }
                                 sub_messages.append(sub_message_dict)

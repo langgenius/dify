@@ -3,10 +3,10 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '../../base/app-unavailable'
 import { ModelTypeEnum } from '../../header/account-setting/model-provider-page/declarations'
-import StepsNavBar from './steps-nav-bar'
 import StepOne from './step-one'
 import StepTwo from './step-two'
 import StepThree from './step-three'
+import { Topbar } from './top-bar'
 import { DataSourceType } from '@/models/datasets'
 import type { CrawlOptions, CrawlResultItem, DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
 import { fetchDataSource } from '@/service/common'
@@ -36,6 +36,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const [dataSourceType, setDataSourceType] = useState<DataSourceType>(DataSourceType.FILE)
   const [step, setStep] = useState(1)
   const [indexingTypeCache, setIndexTypeCache] = useState('')
+  const [retrievalMethodCache, setRetrievalMethodCache] = useState('')
   const [fileList, setFiles] = useState<FileItem[]>([])
   const [result, setResult] = useState<createDocumentResponse | undefined>()
   const [hasError, setHasError] = useState(false)
@@ -80,6 +81,9 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const updateResultCache = (res?: createDocumentResponse) => {
     setResult(res)
   }
+  const updateRetrievalMethodCache = (method: string) => {
+    setRetrievalMethodCache(method)
+  }
 
   const nextStep = useCallback(() => {
     setStep(step + 1)
@@ -118,33 +122,29 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     return <AppUnavailable code={500} unknownReason={t('datasetCreation.error.unavailable') as string} />
 
   return (
-    <div className='flex' style={{ height: 'calc(100vh - 56px)' }}>
-      <div className="flex flex-col w-11 sm:w-56 overflow-y-auto bg-white border-r border-gray-200 shrink-0">
-        <StepsNavBar step={step} datasetId={datasetId} />
-      </div>
-      <div className="grow bg-white">
-        <div className={step === 1 ? 'block h-full' : 'hidden'}>
-          <StepOne
-            hasConnection={hasConnection}
-            onSetting={() => setShowAccountSettingModal({ payload: 'data-source' })}
-            datasetId={datasetId}
-            dataSourceType={dataSourceType}
-            dataSourceTypeDisable={!!detail?.data_source_type}
-            changeType={setDataSourceType}
-            files={fileList}
-            updateFile={updateFile}
-            updateFileList={updateFileList}
-            notionPages={notionPages}
-            updateNotionPages={updateNotionPages}
-            onStepChange={nextStep}
-            websitePages={websitePages}
-            updateWebsitePages={setWebsitePages}
-            onWebsiteCrawlProviderChange={setWebsiteCrawlProvider}
-            onWebsiteCrawlJobIdChange={setWebsiteCrawlJobId}
-            crawlOptions={crawlOptions}
-            onCrawlOptionsChange={setCrawlOptions}
-          />
-        </div>
+    <div className='flex flex-col bg-components-panel-bg' style={{ height: 'calc(100vh - 56px)' }}>
+      <Topbar activeIndex={step - 1} />
+      <div style={{ height: 'calc(100% - 52px)' }}>
+        {step === 1 && <StepOne
+          hasConnection={hasConnection}
+          onSetting={() => setShowAccountSettingModal({ payload: 'data-source' })}
+          datasetId={datasetId}
+          dataSourceType={dataSourceType}
+          dataSourceTypeDisable={!!detail?.data_source_type}
+          changeType={setDataSourceType}
+          files={fileList}
+          updateFile={updateFile}
+          updateFileList={updateFileList}
+          notionPages={notionPages}
+          updateNotionPages={updateNotionPages}
+          onStepChange={nextStep}
+          websitePages={websitePages}
+          updateWebsitePages={setWebsitePages}
+          onWebsiteCrawlProviderChange={setWebsiteCrawlProvider}
+          onWebsiteCrawlJobIdChange={setWebsiteCrawlJobId}
+          crawlOptions={crawlOptions}
+          onCrawlOptionsChange={setCrawlOptions}
+        />}
         {(step === 2 && (!datasetId || (datasetId && !!detail))) && <StepTwo
           isAPIKeySet={!!embeddingsDefaultModel}
           onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
@@ -158,6 +158,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           websiteCrawlJobId={websiteCrawlJobId}
           onStepChange={changeStep}
           updateIndexingTypeCache={updateIndexingTypeCache}
+          updateRetrievalMethodCache={updateRetrievalMethodCache}
           updateResultCache={updateResultCache}
           crawlOptions={crawlOptions}
         />}
@@ -165,6 +166,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           datasetId={datasetId}
           datasetName={detail?.name}
           indexingType={detail?.indexing_technique || indexingTypeCache}
+          retrievalMethod={detail?.retrieval_model_dict?.search_method || retrievalMethodCache}
           creationCache={result}
         />}
       </div>

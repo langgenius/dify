@@ -3,7 +3,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
 # 对话型应用 API
 
-对话应用支持会话持久化，可将之前的聊天记录作为上下进行回答，可适用于聊天/客服 AI 等。
+对话应用支持会话持久化，可将之前的聊天记录作为上下文进行回答，可适用于聊天/客服 AI 等。
 
 <div>
   ### 基础 URL
@@ -423,6 +423,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='user' type='string' key='user'>
           用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
       </Property>
+      <Property name='content' type='string' key='content'>
+          消息反馈的具体信息。
+      </Property>
     </Properties>
 
     ### Response
@@ -430,7 +433,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123",\n    "content": "message feedback information"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \
@@ -438,7 +441,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     --header 'Content-Type: application/json' \
     --data-raw '{
         "rating": "like",
-        "user": "abc-123"
+        "user": "abc-123",
+        "content": "message feedback information"
     }'
     ```
 
@@ -543,7 +547,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - `data` (array[object])  消息列表
     - `id`  (string) 消息 ID
     - `conversation_id` (string)  会话 ID
-    - `inputs` (array[object]) 用户输入参数。
+    - `inputs` (object) 用户输入参数。
     - `query`  (string) 用户输入 / 提问内容。
     - `message_files` (array[object]) 消息文件
       - `id` (string) ID
@@ -697,16 +701,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
       </Property>
       <Property name='last_id' type='string' key='last_id'>
-        当前页最后面一条记录的 ID，默认 null
+        （选填）当前页最后面一条记录的 ID，默认 null
       </Property>
       <Property name='limit' type='int' key='limit'>
-        一次请求返回多少条记录
-      </Property>
-      <Property name='pinned' type='bool' key='pinned'>
-        只返回置顶 true，只返回非置顶 false
+        （选填）一次请求返回多少条记录，默认 20 条，最大 100 条，最小 1 条。
       </Property>
       <Property name='sort_by' type='string' key='sort_by'>
-        排序字段（选题），默认 -updated_at(按更新时间倒序排列)
+        （选填）排序字段，默认 -updated_at(按更新时间倒序排列)
         - 可选值：created_at, -created_at, updated_at, -updated_at
         - 字段前面的符号代表顺序或倒序，-代表倒序
       </Property>
@@ -716,9 +717,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - `data` (array[object]) 会话列表
       - `id`  (string) 会话 ID
       - `name`  (string) 会话名称，默认为会话中用户最开始问题的截取。
-      - `inputs` (array[object]) 用户输入参数。
+      - `inputs` (object) 用户输入参数。
+      - `status` (string) 会话状态
       - `introduction` (string) 开场白
       - `created_at` (timestamp) 创建时间
+      - `updated_at` (timestamp) 更新时间
     - `has_more` (bool)
     - `limit` (int) 返回条数，若传入超过系统限制，返回系统限制数量
 
@@ -748,7 +751,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
               "myName": "Lucy"
           },
           "status": "normal",
-          "created_at": 1679667915
+          "created_at": 1679667915,
+          "updated_at": 1679667915
         },
         {
           "id": "hSIhXBhNe8X1d8Et"
@@ -831,10 +835,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
     <Properties>
       <Property name='name' type='string' key='name'>
-        名称，若 `auto_generate` 为 `true` 时，该参数可不传。
+        （选填）名称，若 `auto_generate` 为 `true` 时，该参数可不传。
       </Property>
-      <Property name='auto_generate' type='string' key='auto_generate'>
-        自动生成标题，默认 false。
+      <Property name='auto_generate' type='bool' key='auto_generate'>
+        （选填）自动生成标题，默认 false。
       </Property>
       <Property name='user' type='string' key='user'>
         用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
@@ -844,13 +848,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     ### Response
     - `id`  (string) 会话 ID
     - `name`  (string) 会话名称
-    - `inputs` array[object] 用户输入参数。
+    - `inputs` (object) 用户输入参数
+    - `status` (string) 会话状态
     - `introduction` (string) 开场白
     - `created_at` (timestamp) 创建时间
+    - `updated_at` (timestamp) 更新时间
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "auto_generate": true, \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
@@ -858,6 +864,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     --header 'Content-Type: application/json' \
     --data-raw '{
         "name": "",
+        "auto_generate": true,
         "user": "abc-123"
     }'
     ```
@@ -867,7 +874,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "result": "success"
+      "id": "34d511d5-56de-4f16-a997-57b379508443",
+      "name": "hello",
+      "inputs": {},
+      "status": "normal",
+      "introduction": "",
+      "created_at": 1732731141,
+      "updated_at": 1732734510
     }
     ```
     </CodeGroup>
@@ -969,26 +982,55 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     </CodeGroup>
   </Col>
 </Row>
+---
+
+<Heading
+  url='/info'
+  method='GET'
+  title='获取应用基本信息'
+  name='#info'
+/>
+<Row>
+  <Col>
+  用于获取应用的基本信息
+  ### Response
+  - `name` (string) 应用名称
+  - `description` (string) 应用描述
+  - `tags` (array[string]) 应用标签
+  </Col>
+  <Col>
+    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X GET '${props.appDetail.api_base_url}/info' \
+      -H 'Authorization: Bearer {api_key}'
+      ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "name": "My App",
+      "description": "This is my app.",
+      "tags": [
+        "tag1",
+        "tag2"
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
 
 ---
 
 <Heading
   url='/parameters'
   method='GET'
-  title='获取应用配置信息'
+  title='获取应用参数'
   name='#parameters'
 />
 <Row>
   <Col>
     用于进入页面一开始，获取功能开关、输入参数名称、类型及默认值等使用。
-
-    ### Query
-
-    <Properties>
-      <Property name='user' type='string' key='user'>
-        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
-      </Property>
-    </Properties>
 
     ### Response
     - `opening_statement` (string) 开场白
@@ -1035,7 +1077,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'\\\n--header 'Authorization: Bearer {api_key}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
+    curl -X GET '${props.appDetail.api_base_url}/parameters' \
     --header 'Authorization: Bearer {api_key}'
     ```
 
@@ -1092,13 +1134,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 <Row>
   <Col>
   用于获取工具icon
-  ### Query
-    <Properties>
-
-   <Property name='user' type='string' key='user'>
-      用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
-    </Property>
-      </Properties>
   ### Response
   - `tool_icons`(object[string]) 工具图标
     - `工具名称` (string)
@@ -1109,9 +1144,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - (string) 图标URL
   </Col>
   <Col>
-  <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/meta?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
+  <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/meta' \\\n-H 'Authorization: Bearer {api_key}'`}>
     ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/meta?user=abc-123' \
+    curl -X GET '${props.appDetail.api_base_url}/meta' \
     -H 'Authorization: Bearer {api_key}'
     ```
 

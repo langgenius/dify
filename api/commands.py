@@ -159,8 +159,7 @@ def migrate_annotation_vector_database():
         try:
             # get apps info
             apps = (
-                db.session.query(App)
-                .filter(App.status == "normal")
+                App.query.filter(App.status == "normal")
                 .order_by(App.created_at.desc())
                 .paginate(page=page, per_page=50)
             )
@@ -259,7 +258,7 @@ def migrate_knowledge_vector_database():
     skipped_count = 0
     total_count = 0
     vector_type = dify_config.VECTOR_STORE
-    upper_colletion_vector_types = {
+    upper_collection_vector_types = {
         VectorType.MILVUS,
         VectorType.PGVECTOR,
         VectorType.RELYT,
@@ -267,7 +266,7 @@ def migrate_knowledge_vector_database():
         VectorType.ORACLE,
         VectorType.ELASTICSEARCH,
     }
-    lower_colletion_vector_types = {
+    lower_collection_vector_types = {
         VectorType.ANALYTICDB,
         VectorType.CHROMA,
         VectorType.MYSCALE,
@@ -285,8 +284,7 @@ def migrate_knowledge_vector_database():
     while True:
         try:
             datasets = (
-                db.session.query(Dataset)
-                .filter(Dataset.indexing_technique == "high_quality")
+                Dataset.query.filter(Dataset.indexing_technique == "high_quality")
                 .order_by(Dataset.created_at.desc())
                 .paginate(page=page, per_page=50)
             )
@@ -307,7 +305,7 @@ def migrate_knowledge_vector_database():
                         continue
                 collection_name = ""
                 dataset_id = dataset.id
-                if vector_type in upper_colletion_vector_types:
+                if vector_type in upper_collection_vector_types:
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                 elif vector_type == VectorType.QDRANT:
                     if dataset.collection_binding_id:
@@ -323,7 +321,7 @@ def migrate_knowledge_vector_database():
                     else:
                         collection_name = Dataset.gen_collection_name_by_id(dataset_id)
 
-                elif vector_type in lower_colletion_vector_types:
+                elif vector_type in lower_collection_vector_types:
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
                 else:
                     raise ValueError(f"Vector store {vector_type} is not supported.")
@@ -450,7 +448,8 @@ def convert_to_agent_apps():
                 if app_id not in proceeded_app_ids:
                     proceeded_app_ids.append(app_id)
                     app = db.session.query(App).filter(App.id == app_id).first()
-                    apps.append(app)
+                    if app is not None:
+                        apps.append(app)
 
             if len(apps) == 0:
                 break
@@ -555,14 +554,20 @@ def create_tenant(email: str, language: Optional[str] = None, name: Optional[str
     if language not in languages:
         language = "en-US"
 
-    name = name.strip()
+    # Validates name encoding for non-Latin characters.
+    name = name.strip().encode("utf-8").decode("utf-8") if name else None
 
     # generate random password
     new_password = secrets.token_urlsafe(16)
 
     # register account
-    account = RegisterService.register(email=email, name=account_name, password=new_password, language=language)
-
+    account = RegisterService.register(
+        email=email,
+        name=account_name,
+        password=new_password,
+        language=language,
+        create_workspace_required=False,
+    )
     TenantService.create_owner_tenant_if_not_exist(account, name)
 
     click.echo(
@@ -582,7 +587,7 @@ def upgrade_db():
             click.echo(click.style("Starting database migration.", fg="green"))
 
             # run db migration
-            import flask_migrate
+            import flask_migrate  # type: ignore
 
             flask_migrate.upgrade()
 
@@ -620,6 +625,10 @@ where sites.id is null limit 1000"""
 
                 try:
                     app = db.session.query(App).filter(App.id == app_id).first()
+                    if not app:
+                        print(f"App {app_id} not found")
+                        continue
+
                     tenant = app.tenant
                     if tenant:
                         accounts = tenant.get_accounts()
@@ -640,15 +649,3 @@ where sites.id is null limit 1000"""
                 break
 
     click.echo(click.style("Fix for missing app-related sites completed successfully!", fg="green"))
-
-
-def register_commands(app):
-    app.cli.add_command(reset_password)
-    app.cli.add_command(reset_email)
-    app.cli.add_command(reset_encrypt_key_pair)
-    app.cli.add_command(vdb_migrate)
-    app.cli.add_command(convert_to_agent_apps)
-    app.cli.add_command(add_qdrant_doc_id_index)
-    app.cli.add_command(create_tenant)
-    app.cli.add_command(upgrade_db)
-    app.cli.add_command(fix_app_site_missing)

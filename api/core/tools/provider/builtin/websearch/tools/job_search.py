@@ -43,7 +43,7 @@ class SerplyApi:
     def parse_results(res: dict) -> str:
         """Process response from Serply Job Search."""
         jobs = res.get("jobs", [])
-        if not jobs:
+        if not res or "jobs" not in res:
             raise ValueError(f"Got error from Serply: {res}")
 
         string = []

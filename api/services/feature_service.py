@@ -63,6 +63,7 @@ class SystemFeatureModel(BaseModel):
     enable_social_oauth_login: bool = False
     is_allow_register: bool = False
     is_allow_create_workspace: bool = False
+    is_email_setup: bool = False
     license: LicenseModel = LicenseModel()
 
 
@@ -73,7 +74,7 @@ class FeatureService:
 
         cls._fulfill_params_from_env(features)
 
-        if dify_config.BILLING_ENABLED:
+        if dify_config.BILLING_ENABLED and tenant_id:
             cls._fulfill_params_from_billing_api(features, tenant_id)
 
         return features
@@ -98,6 +99,7 @@ class FeatureService:
         system_features.enable_social_oauth_login = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
         system_features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
+        system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
 
     @classmethod
     def _fulfill_params_from_env(cls, features: FeatureModel):
@@ -171,8 +173,10 @@ class FeatureService:
             features.is_allow_create_workspace = enterprise_info["is_allow_create_workspace"]
 
         if "license" in enterprise_info:
-            if "status" in enterprise_info["license"]:
-                features.license.status = enterprise_info["license"]["status"]
+            license_info = enterprise_info["license"]
 
-            if "expired_at" in enterprise_info["license"]:
-                features.license.expired_at = enterprise_info["license"]["expired_at"]
+            if "status" in license_info:
+                features.license.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
+
+            if "expired_at" in license_info:
+                features.license.expired_at = license_info["expired_at"]

@@ -38,8 +38,8 @@ export const VariableMenuItem = memo(({
   return (
     <div
       className={`
-        flex items-center px-3 h-6 rounded-md hover:bg-primary-50 cursor-pointer
-        ${isSelected && 'bg-primary-50'}
+        flex items-center px-3 h-6 rounded-md hover:bg-state-base-hover cursor-pointer
+        ${isSelected && 'bg-state-base-hover'}
       `}
       tabIndex={-1}
       ref={setRefElement}
@@ -48,9 +48,9 @@ export const VariableMenuItem = memo(({
       <div className='mr-2'>
         {icon}
       </div>
-      <div className='grow text-[13px] text-gray-900 truncate' title={title}>
+      <div className='grow text-[13px] text-text-secondary truncate' title={title}>
         {before}
-        <span className='text-[#2970FF]'>{middle}</span>
+        <span className='text-text-accent'>{middle}</span>
         {after}
       </div>
       {extraElement}

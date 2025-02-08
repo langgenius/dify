@@ -25,6 +25,7 @@ export type I18nText = {
   'hi-IN': string
   'fa-IR': string
   'sl-SI': string
+  'th-TH': string
 }
 
 export const languages = data.languages
@@ -55,6 +56,7 @@ export const NOTICE_I18N = {
     it_IT: 'Avviso Importante',
     fa_IR: 'هشدار مهم',
     sl_SI: 'Pomembno obvestilo',
+    th_TH: 'ประกาศสำคัญ',
   },
   desc: {
     en_US:
@@ -87,6 +89,8 @@ export const NOTICE_I18N = {
       'سیستم ما از ساعت 19:00 تا 24:00 UTC در تاریخ 28 اوت برای ارتقاء در دسترس نخواهد بود. برای سؤالات، لطفاً با تیم پشتیبانی ما (support@dify.ai) تماس بگیرید. ما برای صبر شما ارزش قائلیم.',
     sl_SI:
       'Naš sistem ne bo na voljo od 19:00 do 24:00 UTC 28. avgusta zaradi nadgradnje. Za vprašanja se obrnite na našo skupino za podporo (support@dify.ai). Cenimo vašo potrpežljivost.',
+    th_TH:
+      'ระบบของเราจะไม่สามารถใช้งานได้ตั้งแต่เวลา 19:00 ถึง 24:00 UTC ในวันที่ 28 สิงหาคม เพื่อทำการอัปเกรด หากมีคำถามใดๆ กรุณาติดต่อทีมสนับสนุนของเรา (support@dify.ai) เราขอขอบคุณในความอดทนของท่าน',
   },
   href: '#',
 }

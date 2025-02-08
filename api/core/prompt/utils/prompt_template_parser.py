@@ -1,4 +1,5 @@
 import re
+from collections.abc import Mapping
 
 REGEX = re.compile(r"\{\{([a-zA-Z_][a-zA-Z0-9_]{0,29}|#histories#|#query#|#context#)\}\}")
 WITH_VARIABLE_TMPL_REGEX = re.compile(
@@ -28,7 +29,7 @@ class PromptTemplateParser:
         # Regular expression to match the template rules
         return re.findall(self.regex, self.template)
 
-    def format(self, inputs: dict, remove_template_variables: bool = True) -> str:
+    def format(self, inputs: Mapping[str, str], remove_template_variables: bool = True) -> str:
         def replacer(match):
             key = match.group(1)
             value = inputs.get(key, match.group(0))  # return original matched string if key not found

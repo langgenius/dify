@@ -1,6 +1,5 @@
 import { Popover, Transition } from '@headlessui/react'
 import { Fragment, cloneElement, useRef } from 'react'
-import s from './style.module.css'
 import cn from '@/utils/classnames'
 
 export type HtmlContentProps = {
@@ -63,19 +62,19 @@ export default function CustomPopover({
               <Popover.Button
                 ref={buttonRef}
                 disabled={disabled}
-                className={`group ${s.popupBtn} ${open ? '' : 'bg-gray-100'} ${!btnClassName
-                  ? ''
-                  : typeof btnClassName === 'string'
-                    ? btnClassName
-                    : btnClassName?.(open)
-                }`}
+                className={cn(
+                  'group inline-flex items-center bg-components-button-secondary-bg px-3 py-2 rounded-lg text-base border border-components-button-secondary-border font-medium hover:bg-components-button-secondary-bg-hover hover:border-components-button-secondary-border-hover focus:outline-none',
+                  open && 'bg-components-button-secondary-bg-hover border-components-button-secondary-border',
+                  (btnClassName && typeof btnClassName === 'string') && btnClassName,
+                  (btnClassName && typeof btnClassName !== 'string') && btnClassName?.(open),
+                )}
               >
                 {btnElement}
               </Popover.Button>
               <Transition as={Fragment}>
                 <Popover.Panel
                   className={cn(
-                    s.popupPanel,
+                    'absolute z-10 w-full max-w-sm px-4 mt-1 sm:px-0 lg:max-w-3xl',
                     position === 'bottom' && '-translate-x-1/2 left-1/2',
                     position === 'bl' && 'left-0',
                     position === 'br' && 'right-0',
@@ -91,7 +90,7 @@ export default function CustomPopover({
                 >
                   {({ close }) => (
                     <div
-                      className={cn(s.panelContainer, popupClassName)}
+                      className={cn('overflow-hidden bg-components-panel-bg w-fit min-w-[130px] rounded-lg shadow-lg ring-1 ring-black ring-opacity-5', popupClassName)}
                       {...(trigger !== 'hover'
                         ? {}
                         : {

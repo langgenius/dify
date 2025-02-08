@@ -9,6 +9,7 @@ import { useWorkspacesContext } from '@/context/workspace-context'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { ToastContext } from '@/app/components/base/toast'
+import classNames from '@/utils/classnames'
 
 const itemClassName = `
   flex items-center px-3 py-2 h-10 cursor-pointer
@@ -50,7 +51,7 @@ const WorkplaceSelector = () => {
             <Menu.Button className={cn(
               `
                 ${itemClassName} w-full
-                group hover:bg-gray-50 cursor-pointer ${open && 'bg-gray-50'} rounded-lg
+                group hover:bg-state-base-hover cursor-pointer ${open && 'bg-state-base-hover'} rounded-lg
               `,
             )}>
               <div className={itemIconClassName}>{currentWorkspace?.name[0].toLocaleUpperCase()}</div>
@@ -70,7 +71,7 @@ const WorkplaceSelector = () => {
                 className={cn(
                   `
                     absolute top-[1px] min-w-[200px] max-h-[70vh] overflow-y-scroll z-10 bg-white border-[0.5px] border-gray-200
-                    divide-y divide-gray-100 origin-top-right rounded-xl
+                    divide-y divide-gray-100 origin-top-right rounded-xl focus:outline-none
                   `,
                   s.popup,
                 )}
@@ -78,11 +79,16 @@ const WorkplaceSelector = () => {
                 <div className="px-1 py-1">
                   {
                     workspaces.map(workspace => (
-                      <div className={itemClassName} key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
-                        <div className={itemIconClassName}>{workspace.name[0].toLocaleUpperCase()}</div>
-                        <div className={itemNameClassName}>{workspace.name}</div>
-                        {workspace.current && <Check className={itemCheckClassName} />}
-                      </div>
+                      <Menu.Item key={workspace.id}>
+                        {({ active }) => <div className={classNames(itemClassName,
+                          active && 'bg-state-base-hover',
+                        )} key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
+                          <div className={itemIconClassName}>{workspace.name[0].toLocaleUpperCase()}</div>
+                          <div className={itemNameClassName}>{workspace.name}</div>
+                          {workspace.current && <Check className={itemCheckClassName} />}
+                        </div>}
+
+                      </Menu.Item>
                     ))
                   }
                 </div>

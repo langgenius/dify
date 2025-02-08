@@ -156,7 +156,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     })
     setInputs(newInput)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProvider?.provider, currentModel, rerankDefaultModel])
+  }, [currentProvider?.provider, currentModel, currentRerankModel, rerankDefaultModel])
   const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
   const [rerankModelOpen, setRerankModelOpen] = useState(false)
   const handleRetrievalModeChange = useCallback((newMode: RETRIEVE_TYPE) => {

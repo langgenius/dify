@@ -11,7 +11,10 @@ class ComfyUIProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         ws = websocket.WebSocket()
         base_url = URL(credentials.get("base_url"))
-        ws_address = f"ws://{base_url.authority}/ws?clientId=test123"
+        ws_protocol = "ws"
+        if base_url.scheme == "https":
+            ws_protocol = "wss"
+        ws_address = f"{ws_protocol}://{base_url.authority}/ws?clientId=test123"
 
         try:
             ws.connect(ws_address)

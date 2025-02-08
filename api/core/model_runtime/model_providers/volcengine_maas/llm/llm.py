@@ -1,8 +1,9 @@
 import logging
+import re
 from collections.abc import Generator
 from typing import Optional
 
-from volcenginesdkarkruntime.types.chat import ChatCompletion, ChatCompletionChunk
+from volcenginesdkarkruntime.types.chat import ChatCompletion, ChatCompletionChunk  # type: ignore
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
@@ -132,6 +133,14 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
         messages_dict = [ArkClientV3.convert_prompt_message(m) for m in messages]
         for message in messages_dict:
             for key, value in message.items():
+                # Ignore tokens for image type
+                if isinstance(value, list):
+                    text = ""
+                    for item in value:
+                        if isinstance(item, dict) and item["type"] == "text":
+                            text += item["text"]
+
+                    value = text
                 num_tokens += self._get_num_tokens_by_gpt2(str(key))
                 num_tokens += self._get_num_tokens_by_gpt2(str(value))
 
@@ -239,15 +248,34 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
             req_params["tools"] = tools
 
         def _handle_stream_chat_response(chunks: Generator[ChatCompletionChunk]) -> Generator:
+            is_reasoning_started = False
             for chunk in chunks:
+                content = ""
+                if chunk.choices:
+                    delta = chunk.choices[0].delta
+                    if is_reasoning_started and not hasattr(delta, "reasoning_content") and not delta.content:
+                        content = ""
+                    elif hasattr(delta, "reasoning_content"):
+                        if not is_reasoning_started:
+                            is_reasoning_started = True
+                            content = "> 💭 " + delta.reasoning_content
+                        else:
+                            content = delta.reasoning_content
+
+                        if "\n" in content:
+                            content = re.sub(r"\n(?!(>|\n))", "\n> ", content)
+                    elif is_reasoning_started:
+                        content = "\n\n" + delta.content
+                        is_reasoning_started = False
+                    else:
+                        content = delta.content
+
                 yield LLMResultChunk(
                     model=model,
                     prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=0,
-                        message=AssistantPromptMessage(
-                            content=chunk.choices[0].delta.content if chunk.choices else "", tool_calls=[]
-                        ),
+                        message=AssistantPromptMessage(content=content, tool_calls=[]),
                         usage=self._calc_response_usage(
                             model=model,
                             credentials=credentials,

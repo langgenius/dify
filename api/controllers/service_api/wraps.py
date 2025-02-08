@@ -1,13 +1,15 @@
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from functools import wraps
 from typing import Optional
 
 from flask import current_app, request
-from flask_login import user_logged_in
-from flask_restful import Resource
+from flask_login import user_logged_in  # type: ignore
+from flask_restful import Resource  # type: ignore
 from pydantic import BaseModel
+from sqlalchemy import select, update
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from extensions.ext_database import db
@@ -49,6 +51,8 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
                 raise Forbidden("The app's API service has been disabled.")
 
             tenant = db.session.query(Tenant).filter(Tenant.id == app_model.tenant_id).first()
+            if tenant is None:
+                raise ValueError("Tenant does not exist.")
             if tenant.status == TenantStatus.ARCHIVE:
                 raise Forbidden("The workspace's status is archived.")
 
@@ -154,8 +158,8 @@ def validate_dataset_token(view=None):
                 # Login admin
                 if account:
                     account.current_tenant = tenant
-                    current_app.login_manager._update_request_context_with_user(account)
-                    user_logged_in.send(current_app._get_current_object(), user=_get_user())
+                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
+                    user_logged_in.send(current_app._get_current_object(), user=_get_user())  # type: ignore
                 else:
                     raise Unauthorized("Tenant owner account does not exist.")
             else:
@@ -172,7 +176,7 @@ def validate_dataset_token(view=None):
     return decorator
 
 
-def validate_and_get_api_token(scope=None):
+def validate_and_get_api_token(scope: str | None = None):
     """
     Validate and get API token.
     """
@@ -186,20 +190,29 @@ def validate_and_get_api_token(scope=None):
     if auth_scheme != "bearer":
         raise Unauthorized("Authorization scheme must be 'Bearer'")
 
-    api_token = (
-        db.session.query(ApiToken)
-        .filter(
-            ApiToken.token == auth_token,
-            ApiToken.type == scope,
+    current_time = datetime.now(UTC).replace(tzinfo=None)
+    cutoff_time = current_time - timedelta(minutes=1)
+    with Session(db.engine, expire_on_commit=False) as session:
+        update_stmt = (
+            update(ApiToken)
+            .where(
+                ApiToken.token == auth_token,
+                (ApiToken.last_used_at.is_(None) | (ApiToken.last_used_at < cutoff_time)),
+                ApiToken.type == scope,
+            )
+            .values(last_used_at=current_time)
+            .returning(ApiToken)
         )
-        .first()
-    )
+        result = session.execute(update_stmt)
+        api_token = result.scalar_one_or_none()
 
-    if not api_token:
-        raise Unauthorized("Access token is invalid")
-
-    api_token.last_used_at = datetime.now(UTC).replace(tzinfo=None)
-    db.session.commit()
+        if not api_token:
+            stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
+            api_token = session.scalar(stmt)
+            if not api_token:
+                raise Unauthorized("Access token is invalid")
+        else:
+            session.commit()
 
     return api_token
 
@@ -227,7 +240,7 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type="service_api",
-            is_anonymous=True if user_id == "DEFAULT-USER" else False,
+            is_anonymous=user_id == "DEFAULT-USER",
             session_id=user_id,
         )
         db.session.add(end_user)

@@ -13,6 +13,7 @@ import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import Tooltip from '@/app/components/base/tooltip'
+import classNames from '@/utils/classnames'
 
 type ModelTriggerProps = {
   open: boolean
@@ -32,13 +33,13 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
 
   return (
     <div
-      className={`
-        group flex items-center px-2 h-8 rounded-lg bg-gray-100 
-        ${!readonly && 'hover:bg-gray-200 cursor-pointer'}
-        ${className}
-        ${open && '!bg-gray-200'}
-        ${model.status !== ModelStatusEnum.active && '!bg-[#FFFAEB]'}
-      `}
+      className={classNames(
+        'group flex items-center px-2 h-8 rounded-lg bg-components-input-bg-normal',
+        !readonly && 'hover:bg-components-input-bg-hover cursor-pointer',
+        className,
+        open && '!bg-components-input-bg-hover',
+        model.status !== ModelStatusEnum.active && '!bg-[#FFFAEB]',
+      )}
     >
       <ModelIcon
         className='shrink-0 mr-1.5'
@@ -68,7 +69,6 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
           }
         </div>
       )}
-
     </div>
   )
 }

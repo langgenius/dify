@@ -6,9 +6,9 @@ identity:
     zh_Hans: GitLab 合并请求查询
 description:
   human:
-    en_US: A tool for query GitLab merge requests, Input should be a exists reposity or branch.
+    en_US: A tool for query GitLab merge requests, Input should be a exists repository or branch.
     zh_Hans: 一个用于查询 GitLab 代码合并请求的工具，输入的内容应该是一个已存在的仓库名或者分支。
-  llm: A tool for query GitLab merge requests, Input should be a exists reposity or branch.
+  llm: A tool for query GitLab merge requests, Input should be a exists repository or branch.
 parameters:
   - name: repository
     type: string

@@ -320,6 +320,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='user' type='string' key='user'>
           用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
       </Property>
+      <Property name='content' type='string' key='content'>
+          消息反馈的具体信息。
+      </Property>
     </Properties>
 
     ### Response
@@ -327,7 +330,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123",\n    "content": "message feedback information"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \
@@ -335,7 +338,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     --header 'Content-Type: application/json' \
     --data-raw '{
         "rating": "like",
-        "user": "abc-123"
+        "user": "abc-123",
+        "content": "message feedback information"
     }'
     ```
 
@@ -345,117 +349,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     ```json {{ title: 'Response' }}
     {
       "result": "success"
-    }
-    ```
-    </CodeGroup>
-  </Col>
-</Row>
-
----
-
-<Heading
-  url='/parameters'
-  method='GET'
-  title='获取应用配置信息'
-  name='#parameters'
-/>
-<Row>
-  <Col>
-    用于进入页面一开始，获取功能开关、输入参数名称、类型及默认值等使用。
-
-    ### Query
-
-    <Properties>
-      <Property name='user' type='string' key='user'>
-        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
-      </Property>
-    </Properties>
-
-    ### Response
-    - `opening_statement` (string) 开场白
-    - `suggested_questions` (array[string]) 开场推荐问题列表
-    - `suggested_questions_after_answer` (object) 启用回答后给出推荐问题。
-      - `enabled` (bool) 是否开启
-    - `speech_to_text` (object) 语音转文本
-      - `enabled` (bool) 是否开启
-    - `retriever_resource` (object) 引用和归属
-      - `enabled` (bool) 是否开启
-    - `annotation_reply` (object) 标记回复
-      - `enabled` (bool) 是否开启
-    - `user_input_form` (array[object]) 用户输入表单配置
-      - `text-input` (object) 文本输入控件
-        - `label` (string) 控件展示标签名
-        - `variable` (string) 控件 ID
-        - `required` (bool) 是否必填
-        - `default` (string) 默认值
-      - `paragraph` (object) 段落文本输入控件
-        - `label` (string) 控件展示标签名
-        - `variable` (string) 控件 ID
-        - `required` (bool) 是否必填
-        - `default` (string) 默认值
-      - `select` (object) 下拉控件
-        - `label` (string) 控件展示标签名
-        - `variable` (string) 控件 ID
-        - `required` (bool) 是否必填
-        - `default` (string) 默认值
-        - `options` (array[string]) 选项值
-    - `file_upload` (object) 文件上传配置
-      - `image` (object) 图片设置
-        当前仅支持图片类型：`png`, `jpg`, `jpeg`, `webp`, `gif`
-        - `enabled` (bool) 是否开启
-        - `number_limits` (int) 图片数量限制，默认 3
-        - `transfer_methods` (array[string]) 传递方式列表，remote_url , local_file，必选一个
-    - `system_parameters` (object) 系统参数
-      - `file_size_limit` (int) 文档上传大小限制 (MB)
-      - `image_file_size_limit` (int) 图片文件上传大小限制（MB）
-      - `audio_file_size_limit` (int) 音频文件上传大小限制 (MB)
-      - `video_file_size_limit` (int) 视频文件上传大小限制 (MB)
-  </Col>
-  <Col sticky>
-
-    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'\\\n--header 'Authorization: Bearer {api_key}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
-
-    <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "introduction": "nice to meet you",
-      "user_input_form": [
-        {
-          "text-input": {
-            "label": "a",
-            "variable": "a",
-            "required": true,
-            "max_length": 48,
-            "default": ""
-          }
-        },
-        {
-          // ...
-        }
-      ],
-      "file_upload": {
-        "image": {
-          "enabled": true,
-          "number_limits": 3,
-          "transfer_methods": [
-            "remote_url",
-            "local_file"
-          ]
-        }
-      },
-      "system_parameters": {
-          "file_size_limit": 15,
-          "image_file_size_limit": 10,
-          "audio_file_size_limit": 50,
-          "video_file_size_limit": 100
-      }
     }
     ```
     </CodeGroup>
@@ -510,6 +403,146 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     ```json {{ title: 'headers' }}
     {
       "Content-Type": "audio/wav"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/info'
+  method='GET'
+  title='获取应用基本信息'
+  name='#info'
+/>
+<Row>
+  <Col>
+  用于获取应用的基本信息
+  ### Response
+  - `name` (string) 应用名称
+  - `description` (string) 应用描述
+  - `tags` (array[string]) 应用标签
+  </Col>
+  <Col>
+    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X GET '${props.appDetail.api_base_url}/info' \
+      -H 'Authorization: Bearer {api_key}'
+      ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "name": "My App",
+      "description": "This is my app.",
+      "tags": [
+        "tag1",
+        "tag2"
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/parameters'
+  method='GET'
+  title='获取应用参数'
+  name='#parameters'
+/>
+<Row>
+  <Col>
+    用于进入页面一开始，获取功能开关、输入参数名称、类型及默认值等使用。
+
+    ### Response
+    - `opening_statement` (string) 开场白
+    - `suggested_questions` (array[string]) 开场推荐问题列表
+    - `suggested_questions_after_answer` (object) 启用回答后给出推荐问题。
+      - `enabled` (bool) 是否开启
+    - `speech_to_text` (object) 语音转文本
+      - `enabled` (bool) 是否开启
+    - `retriever_resource` (object) 引用和归属
+      - `enabled` (bool) 是否开启
+    - `annotation_reply` (object) 标记回复
+      - `enabled` (bool) 是否开启
+    - `user_input_form` (array[object]) 用户输入表单配置
+      - `text-input` (object) 文本输入控件
+        - `label` (string) 控件展示标签名
+        - `variable` (string) 控件 ID
+        - `required` (bool) 是否必填
+        - `default` (string) 默认值
+      - `paragraph` (object) 段落文本输入控件
+        - `label` (string) 控件展示标签名
+        - `variable` (string) 控件 ID
+        - `required` (bool) 是否必填
+        - `default` (string) 默认值
+      - `select` (object) 下拉控件
+        - `label` (string) 控件展示标签名
+        - `variable` (string) 控件 ID
+        - `required` (bool) 是否必填
+        - `default` (string) 默认值
+        - `options` (array[string]) 选项值
+    - `file_upload` (object) 文件上传配置
+      - `image` (object) 图片设置
+        当前仅支持图片类型：`png`, `jpg`, `jpeg`, `webp`, `gif`
+        - `enabled` (bool) 是否开启
+        - `number_limits` (int) 图片数量限制，默认 3
+        - `transfer_methods` (array[string]) 传递方式列表，remote_url , local_file，必选一个
+    - `system_parameters` (object) 系统参数
+      - `file_size_limit` (int) 文档上传大小限制 (MB)
+      - `image_file_size_limit` (int) 图片文件上传大小限制（MB）
+      - `audio_file_size_limit` (int) 音频文件上传大小限制 (MB)
+      - `video_file_size_limit` (int) 视频文件上传大小限制 (MB)
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'\\\n--header 'Authorization: Bearer {api_key}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/parameters' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "introduction": "nice to meet you",
+      "user_input_form": [
+        {
+          "text-input": {
+            "label": "a",
+            "variable": "a",
+            "required": true,
+            "max_length": 48,
+            "default": ""
+          }
+        },
+        {
+          // ...
+        }
+      ],
+      "file_upload": {
+        "image": {
+          "enabled": true,
+          "number_limits": 3,
+          "transfer_methods": [
+            "remote_url",
+            "local_file"
+          ]
+        }
+      },
+      "system_parameters": {
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
+      }
     }
     ```
     </CodeGroup>

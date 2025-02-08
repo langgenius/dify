@@ -42,6 +42,15 @@ const translation = {
     zoomIn: 'Ingrandisci',
     openInNewTab: 'Apri in una nuova scheda',
     copyImage: 'Copia immagine',
+    close: 'Chiudere',
+    view: 'Vista',
+    saveAndRegenerate: 'Salva e rigenera i blocchi figlio',
+    regenerate: 'Rigenerare',
+    viewMore: 'SCOPRI DI PIÙ',
+    submit: 'Invia',
+    skip: 'Nave',
+    imageCopied: 'Immagine copiata',
+    deleteApp: 'Elimina app',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',
@@ -186,6 +195,18 @@ const translation = {
     myAccount: 'Il mio account',
     account: 'Conto',
     studio: 'Dify Studio',
+    deletePrivacyLinkTip: 'Per ulteriori informazioni su come gestiamo i tuoi dati, consulta il nostro',
+    deletePrivacyLink: 'Informativa sulla privacy.',
+    deleteSuccessTip: 'Il tuo account ha bisogno di tempo per completare l\'eliminazione. Ti invieremo un\'e-mail quando tutto sarà finito.',
+    deleteLabel: 'Per confermare, digita la tua email qui sotto',
+    deletePlaceholder: 'Inserisci la tua email',
+    sendVerificationButton: 'Invia codice di verifica',
+    verificationLabel: 'Codice di verifica',
+    verificationPlaceholder: 'Incolla il codice a 6 cifre',
+    permanentlyDeleteButton: 'Elimina definitivamente l\'account',
+    feedbackTitle: 'Valutazione',
+    feedbackLabel: 'Dicci perché hai cancellato il tuo account?',
+    feedbackPlaceholder: 'Opzionale',
   },
   members: {
     team: 'Team',
@@ -208,6 +229,7 @@ const translation = {
     inviteTeamMember: 'Aggiungi membro del team',
     inviteTeamMemberTip:
       'Potranno accedere ai dati del tuo team direttamente dopo aver effettuato l\'accesso.',
+    emailNotSetup: 'Il server email non è configurato, quindi non è possibile inviare email di invito. Si prega di notificare agli utenti il link di invito che verrà emesso dopo l\'invito.',
     email: 'Email',
     emailInvalid: 'Formato Email non valido',
     emailPlaceholder: 'Per favore inserisci le email',
@@ -503,6 +525,7 @@ const translation = {
       'La Conoscenza non è stata associata, per favore vai all\'applicazione o al plug-in per completare l\'associazione.',
     viewDoc: 'Visualizza documentazione',
     relatedApp: 'app collegate',
+    noRelatedApp: 'Nessuna app collegata',
   },
   voiceInput: {
     speaking: 'Parla ora...',
@@ -625,6 +648,9 @@ const translation = {
   license: {
     expiring_plural: 'Scadenza tra {{count}} giorni',
     expiring: 'Scadenza in un giorno',
+  },
+  pagination: {
+    perPage: 'Articoli per pagina',
   },
 }
 

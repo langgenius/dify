@@ -17,6 +17,7 @@ import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others
 import { getNodeInfoById, isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
+import { isExceptionVariable } from '@/app/components/workflow/utils'
 
 type VariableTagProps = {
   valueSelector: ValueSelector
@@ -45,6 +46,7 @@ const VariableTag = ({
   const isValid = Boolean(node) || isEnv || isChatVar
 
   const variableName = isSystemVar(valueSelector) ? valueSelector.slice(0).join('.') : valueSelector.slice(1).join('.')
+  const isException = isExceptionVariable(variableName, node?.data.type)
 
   const { t } = useTranslation()
   return (
@@ -67,12 +69,12 @@ const VariableTag = ({
             </>
           )}
           <Line3 className='shrink-0 mx-0.5' />
-          <Variable02 className='shrink-0 mr-0.5 w-3.5 h-3.5 text-text-accent' />
+          <Variable02 className={cn('shrink-0 mr-0.5 w-3.5 h-3.5 text-text-accent', isException && 'text-text-warning')} />
         </>)}
         {isEnv && <Env className='shrink-0 mr-0.5 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
         {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
         <div
-          className={cn('truncate text-text-accent font-medium', (isEnv || isChatVar) && 'text-text-secondary')}
+          className={cn('truncate ml-0.5 text-text-accent font-medium', (isEnv || isChatVar) && 'text-text-secondary', isException && 'text-text-warning')}
           title={variableName}
         >
           {variableName}

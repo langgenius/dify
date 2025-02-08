@@ -4,7 +4,7 @@ from hmac import new as hmac_new
 from json import loads as json_loads
 from threading import Lock
 from time import sleep, time
-from typing import Any
+from typing import Any, Union
 
 from httpx import get, post
 from requests import get as requests_get
@@ -21,23 +21,25 @@ class AIPPTGenerateToolAdapter:
     """
 
     _api_base_url = URL("https://co.aippt.cn/api")
-    _api_token_cache = {}
-    _style_cache = {}
+    _api_token_cache: dict[str, dict[str, Union[str, float]]] = {}
+    _style_cache: dict[str, dict[str, Union[list[dict[str, Any]], float]]] = {}
 
-    _api_token_cache_lock = Lock()
-    _style_cache_lock = Lock()
+    _api_token_cache_lock: Lock = Lock()
+    _style_cache_lock: Lock = Lock()
 
-    _task = {}
+    _task: dict[str, Any] = {}
     _task_type_map = {
         "auto": 1,
         "markdown": 7,
     }
-    _tool: BuiltinTool
+    _tool: BuiltinTool | None
 
-    def __init__(self, tool: BuiltinTool = None):
+    def __init__(self, tool: BuiltinTool | None = None):
         self._tool = tool
 
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
+    def _invoke(
+        self, user_id: str, tool_parameters: dict[str, Any]
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
         Invokes the AIPPT generate tool with the given user ID and tool parameters.
 
@@ -68,8 +70,8 @@ class AIPPTGenerateToolAdapter:
         )
 
         # get suit
-        color: str = tool_parameters.get("color")
-        style: str = tool_parameters.get("style")
+        color: str = tool_parameters.get("color", "")
+        style: str = tool_parameters.get("style", "")
 
         if color == "__default__":
             color_id = ""
@@ -125,7 +127,7 @@ class AIPPTGenerateToolAdapter:
 
         response = response.json()
         if response.get("code") != 0:
-            raise Exception(f'Failed to create task: {response.get("msg")}')
+            raise Exception(f"Failed to create task: {response.get('msg')}")
 
         return response.get("data", {}).get("id")
 
@@ -220,13 +222,13 @@ class AIPPTGenerateToolAdapter:
         elif model == "wenxin":
             response = response.json()
             if response.get("code") != 0:
-                raise Exception(f'Failed to generate content: {response.get("msg")}')
+                raise Exception(f"Failed to generate content: {response.get('msg')}")
 
             return response.get("data", "")
 
         return ""
 
-    def _generate_ppt(self, task_id: str, suit_id: int, user_id) -> tuple[str, str]:
+    def _generate_ppt(self, task_id: str, suit_id: int, user_id: str) -> tuple[str, str]:
         """
         Generate a ppt
 
@@ -252,7 +254,7 @@ class AIPPTGenerateToolAdapter:
 
         response = response.json()
         if response.get("code") != 0:
-            raise Exception(f'Failed to generate ppt: {response.get("msg")}')
+            raise Exception(f"Failed to generate ppt: {response.get('msg')}")
 
         id = response.get("data", {}).get("id")
         cover_url = response.get("data", {}).get("cover_url")
@@ -268,7 +270,7 @@ class AIPPTGenerateToolAdapter:
 
         response = response.json()
         if response.get("code") != 0:
-            raise Exception(f'Failed to generate ppt: {response.get("msg")}')
+            raise Exception(f"Failed to generate ppt: {response.get('msg')}")
 
         export_code = response.get("data")
         if not export_code:
@@ -288,7 +290,7 @@ class AIPPTGenerateToolAdapter:
 
             response = response.json()
             if response.get("code") != 0:
-                raise Exception(f'Failed to generate ppt: {response.get("msg")}')
+                raise Exception(f"Failed to generate ppt: {response.get('msg')}")
 
             if response.get("msg") == "导出中":
                 current_iteration += 1
@@ -341,7 +343,7 @@ class AIPPTGenerateToolAdapter:
             raise Exception(f"Failed to connect to aippt: {response.text}")
         response = response.json()
         if response.get("code") != 0:
-            raise Exception(f'Failed to connect to aippt: {response.get("msg")}')
+            raise Exception(f"Failed to connect to aippt: {response.get('msg')}")
 
         token = response.get("data", {}).get("token")
         expire = response.get("data", {}).get("time_expire")
@@ -362,7 +364,9 @@ class AIPPTGenerateToolAdapter:
         ).decode("utf-8")
 
     @classmethod
-    def _get_styles(cls, credentials: dict[str, str], user_id: str) -> tuple[list[dict], list[dict]]:
+    def _get_styles(
+        cls, credentials: dict[str, str], user_id: str
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """
         Get styles
         """
@@ -375,7 +379,7 @@ class AIPPTGenerateToolAdapter:
                 if cls._style_cache[key]["expire"] < now:
                     del cls._style_cache[key]
 
-            key = f'{credentials["aippt_access_key"]}#@#{user_id}'
+            key = f"{credentials['aippt_access_key']}#@#{user_id}"
             if key in cls._style_cache:
                 return cls._style_cache[key]["colors"], cls._style_cache[key]["styles"]
 
@@ -392,11 +396,11 @@ class AIPPTGenerateToolAdapter:
         response = response.json()
 
         if response.get("code") != 0:
-            raise Exception(f'Failed to connect to aippt: {response.get("msg")}')
+            raise Exception(f"Failed to connect to aippt: {response.get('msg')}")
 
         colors = [
             {
-                "id": f'id-{item.get("id")}',
+                "id": f"id-{item.get('id')}",
                 "name": item.get("name"),
                 "en_name": item.get("en_name", item.get("name")),
             }
@@ -404,7 +408,7 @@ class AIPPTGenerateToolAdapter:
         ]
         styles = [
             {
-                "id": f'id-{item.get("id")}',
+                "id": f"id-{item.get('id')}",
                 "name": item.get("title"),
             }
             for item in response.get("data", {}).get("suit_style") or []
@@ -415,7 +419,7 @@ class AIPPTGenerateToolAdapter:
 
         return colors, styles
 
-    def get_styles(self, user_id: str) -> tuple[list[dict], list[dict]]:
+    def get_styles(self, user_id: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """
         Get styles
 
@@ -450,7 +454,7 @@ class AIPPTGenerateToolAdapter:
         response = response.json()
 
         if response.get("code") != 0:
-            raise Exception(f'Failed to connect to aippt: {response.get("msg")}')
+            raise Exception(f"Failed to connect to aippt: {response.get('msg')}")
 
         if len(response.get("data", {}).get("list") or []) > 0:
             return response.get("data", {}).get("list")[0].get("id")
@@ -507,7 +511,9 @@ class AIPPTGenerateTool(BuiltinTool):
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
+    def _invoke(
+        self, user_id: str, tool_parameters: dict[str, Any]
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         return AIPPTGenerateToolAdapter(self)._invoke(user_id, tool_parameters)
 
     def get_runtime_parameters(self) -> list[ToolParameter]:

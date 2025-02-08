@@ -64,10 +64,12 @@ class AzureOpenAISpeech2TextModel(_CommonAzureOpenAI, Speech2TextModel):
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         ai_model_entity = self._get_ai_model_entity(credentials["base_model_name"], model)
+        if not ai_model_entity:
+            return None
         return ai_model_entity.entity
 
     @staticmethod
-    def _get_ai_model_entity(base_model_name: str, model: str) -> AzureBaseModel:
+    def _get_ai_model_entity(base_model_name: str, model: str) -> Optional[AzureBaseModel]:
         for ai_model_entity in SPEECH2TEXT_BASE_MODELS:
             if ai_model_entity.base_model_name == base_model_name:
                 ai_model_entity_copy = copy.deepcopy(ai_model_entity)

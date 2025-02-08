@@ -37,8 +37,6 @@ class TiDBVectorConfig(BaseModel):
             raise ValueError("config TIDB_VECTOR_PORT is required")
         if not values["user"]:
             raise ValueError("config TIDB_VECTOR_USER is required")
-        if not values["password"]:
-            raise ValueError("config TIDB_VECTOR_PASSWORD is required")
         if not values["database"]:
             raise ValueError("config TIDB_VECTOR_DATABASE is required")
         if not values["program_name"]:
@@ -51,7 +49,7 @@ class TiDBVector(BaseVector):
         return VectorType.TIDB_VECTOR
 
     def _table(self, dim: int) -> Table:
-        from tidb_vector.sqlalchemy import VectorType
+        from tidb_vector.sqlalchemy import VectorType  # type: ignore
 
         return Table(
             self._collection_name,
@@ -243,11 +241,11 @@ class TiDBVectorFactory(AbstractVectorFactory):
         return TiDBVector(
             collection_name=collection_name,
             config=TiDBVectorConfig(
-                host=dify_config.TIDB_VECTOR_HOST,
-                port=dify_config.TIDB_VECTOR_PORT,
-                user=dify_config.TIDB_VECTOR_USER,
-                password=dify_config.TIDB_VECTOR_PASSWORD,
-                database=dify_config.TIDB_VECTOR_DATABASE,
+                host=dify_config.TIDB_VECTOR_HOST or "",
+                port=dify_config.TIDB_VECTOR_PORT or 0,
+                user=dify_config.TIDB_VECTOR_USER or "",
+                password=dify_config.TIDB_VECTOR_PASSWORD or "",
+                database=dify_config.TIDB_VECTOR_DATABASE or "",
                 program_name=dify_config.APPLICATION_NAME,
             ),
         )

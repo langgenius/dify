@@ -3,15 +3,15 @@ from collections.abc import Generator
 from typing import Any, Literal, Optional, Union
 
 from _pytest.monkeypatch import MonkeyPatch
-from huggingface_hub import InferenceClient
-from huggingface_hub.inference._text_generation import (
+from huggingface_hub import InferenceClient  # type: ignore
+from huggingface_hub.inference._text_generation import (  # type: ignore
     Details,
     StreamDetails,
     TextGenerationResponse,
     TextGenerationStreamResponse,
     Token,
 )
-from huggingface_hub.utils import BadRequestError
+from huggingface_hub.utils import BadRequestError  # type: ignore
 
 
 class MockHuggingfaceChatClass:

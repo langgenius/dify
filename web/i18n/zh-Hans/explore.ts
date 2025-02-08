@@ -30,11 +30,13 @@ const translation = {
     nameRequired: '应用程序名称不能为空',
   },
   category: {
+    Agent: 'Agent',
     Assistant: '助手',
     Writing: '写作',
     Translate: '翻译',
     Programming: '编程',
     HR: '人力资源',
+    Workflow: '工作流',
   },
 }
 

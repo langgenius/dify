@@ -11,6 +11,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.provider.tool_provider import ToolProviderController
+from core.tools.tool.tool import Tool
 from core.tools.tool.workflow_tool import WorkflowTool
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from extensions.ext_database import db
@@ -116,6 +117,7 @@ class WorkflowToolProviderController(ToolProviderController):
                         llm_description=parameter.description,
                         required=variable.required,
                         options=options,
+                        placeholder=I18nObject(en_US="", zh_Hans=""),
                     )
                 )
             elif features.file_upload:
@@ -128,6 +130,7 @@ class WorkflowToolProviderController(ToolProviderController):
                         llm_description=parameter.description,
                         required=False,
                         form=parameter.form,
+                        placeholder=I18nObject(en_US="", zh_Hans=""),
                     )
                 )
             else:
@@ -157,7 +160,7 @@ class WorkflowToolProviderController(ToolProviderController):
             label=db_provider.label,
         )
 
-    def get_tools(self, user_id: str, tenant_id: str) -> list[WorkflowTool]:
+    def get_tools(self, user_id: str = "", tenant_id: str = "") -> Optional[list[Tool]]:
         """
         fetch tools from database
 
@@ -168,7 +171,7 @@ class WorkflowToolProviderController(ToolProviderController):
         if self.tools is not None:
             return self.tools
 
-        db_providers: WorkflowToolProvider = (
+        db_providers: Optional[WorkflowToolProvider] = (
             db.session.query(WorkflowToolProvider)
             .filter(
                 WorkflowToolProvider.tenant_id == tenant_id,
@@ -179,12 +182,14 @@ class WorkflowToolProviderController(ToolProviderController):
 
         if not db_providers:
             return []
+        if not db_providers.app:
+            raise ValueError("app not found")
 
         self.tools = [self._get_db_provider_tool(db_providers, db_providers.app)]
 
         return self.tools
 
-    def get_tool(self, tool_name: str) -> Optional[WorkflowTool]:
+    def get_tool(self, tool_name: str) -> Optional[Tool]:
         """
         get tool by name
 
@@ -195,6 +200,8 @@ class WorkflowToolProviderController(ToolProviderController):
             return None
 
         for tool in self.tools:
+            if tool.identity is None:
+                continue
             if tool.identity.name == tool_name:
                 return tool
 

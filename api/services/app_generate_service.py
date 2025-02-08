@@ -43,55 +43,74 @@ class AppGenerateService:
             request_id = rate_limit.enter(request_id)
             if app_model.mode == AppMode.COMPLETION.value:
                 return rate_limit.generate(
-                    CompletionAppGenerator().generate(
-                        app_model=app_model, user=user, args=args, invoke_from=invoke_from, stream=streaming
+                    generator=CompletionAppGenerator().generate(
+                        app_model=app_model,
+                        user=user,
+                        args=args,
+                        invoke_from=invoke_from,
+                        streaming=streaming,
                     ),
-                    request_id,
+                    request_id=request_id,
                 )
             elif app_model.mode == AppMode.AGENT_CHAT.value or app_model.is_agent:
+                generator = AgentChatAppGenerator().generate(
+                    app_model=app_model,
+                    user=user,
+                    args=args,
+                    invoke_from=invoke_from,
+                    streaming=streaming,
+                )
                 return rate_limit.generate(
-                    AgentChatAppGenerator().generate(
-                        app_model=app_model, user=user, args=args, invoke_from=invoke_from, stream=streaming
-                    ),
-                    request_id,
+                    generator=generator,
+                    request_id=request_id,
                 )
             elif app_model.mode == AppMode.CHAT.value:
                 return rate_limit.generate(
-                    ChatAppGenerator().generate(
-                        app_model=app_model, user=user, args=args, invoke_from=invoke_from, stream=streaming
+                    generator=ChatAppGenerator().generate(
+                        app_model=app_model,
+                        user=user,
+                        args=args,
+                        invoke_from=invoke_from,
+                        streaming=streaming,
                     ),
-                    request_id,
+                    request_id=request_id,
                 )
             elif app_model.mode == AppMode.ADVANCED_CHAT.value:
                 workflow = cls._get_workflow(app_model, invoke_from)
                 return rate_limit.generate(
-                    AdvancedChatAppGenerator().generate(
+                    generator=AdvancedChatAppGenerator().generate(
                         app_model=app_model,
                         workflow=workflow,
                         user=user,
                         args=args,
                         invoke_from=invoke_from,
-                        stream=streaming,
+                        streaming=streaming,
                     ),
-                    request_id,
+                    request_id=request_id,
                 )
             elif app_model.mode == AppMode.WORKFLOW.value:
                 workflow = cls._get_workflow(app_model, invoke_from)
+                generator = WorkflowAppGenerator().generate(
+                    app_model=app_model,
+                    workflow=workflow,
+                    user=user,
+                    args=args,
+                    invoke_from=invoke_from,
+                    streaming=streaming,
+                    call_depth=0,
+                    workflow_thread_pool_id=None,
+                )
                 return rate_limit.generate(
-                    WorkflowAppGenerator().generate(
-                        app_model=app_model,
-                        workflow=workflow,
-                        user=user,
-                        args=args,
-                        invoke_from=invoke_from,
-                        stream=streaming,
-                    ),
-                    request_id,
+                    generator=generator,
+                    request_id=request_id,
                 )
             else:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
         except RateLimitError as e:
             raise InvokeRateLimitError(str(e))
+        except Exception:
+            rate_limit.exit(request_id)
+            raise
         finally:
             if not streaming:
                 rate_limit.exit(request_id)
@@ -99,7 +118,7 @@ class AppGenerateService:
     @staticmethod
     def _get_max_active_requests(app_model: App) -> int:
         max_active_requests = app_model.max_active_requests
-        if app_model.max_active_requests is None:
+        if max_active_requests is None:
             max_active_requests = int(dify_config.APP_MAX_ACTIVE_REQUESTS)
         return max_active_requests
 
@@ -108,12 +127,17 @@ class AppGenerateService:
         if app_model.mode == AppMode.ADVANCED_CHAT.value:
             workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
             return AdvancedChatAppGenerator().single_iteration_generate(
-                app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, stream=streaming
+                app_model=app_model,
+                workflow=workflow,
+                node_id=node_id,
+                user=user,
+                args=args,
+                streaming=streaming,
             )
         elif app_model.mode == AppMode.WORKFLOW.value:
             workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
             return WorkflowAppGenerator().single_iteration_generate(
-                app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, stream=streaming
+                app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
             )
         else:
             raise ValueError(f"Invalid app mode {app_model.mode}")
@@ -126,7 +150,7 @@ class AppGenerateService:
         message_id: str,
         invoke_from: InvokeFrom,
         streaming: bool = True,
-    ) -> Union[dict, Generator]:
+    ) -> Union[Mapping, Generator]:
         """
         Generate more like this
         :param app_model: app model

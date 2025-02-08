@@ -11,19 +11,21 @@ from services.model_provider_service import ModelProviderService
 
 class TTSTool(BuiltinTool):
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> list[ToolInvokeMessage]:
-        provider, model = tool_parameters.get("model").split("#")
-        voice = tool_parameters.get(f"voice#{provider}#{model}")
+        provider, model = tool_parameters.get("model", "").split("#")
+        voice = tool_parameters.get(f"voice#{provider}#{model}", "")
         model_manager = ModelManager()
+        if not self.runtime:
+            raise ValueError("Runtime is required")
         model_instance = model_manager.get_model_instance(
-            tenant_id=self.runtime.tenant_id,
+            tenant_id=self.runtime.tenant_id or "",
             provider=provider,
             model_type=ModelType.TTS,
             model=model,
         )
         tts = model_instance.invoke_tts(
-            content_text=tool_parameters.get("text"),
+            content_text=tool_parameters.get("text", ""),
             user=user_id,
-            tenant_id=self.runtime.tenant_id,
+            tenant_id=self.runtime.tenant_id or "",
             voice=voice,
         )
         buffer = io.BytesIO()
@@ -41,8 +43,11 @@ class TTSTool(BuiltinTool):
         ]
 
     def get_available_models(self) -> list[tuple[str, str, list[Any]]]:
+        if not self.runtime:
+            raise ValueError("Runtime is required")
         model_provider_service = ModelProviderService()
-        models = model_provider_service.get_models_by_model_type(tenant_id=self.runtime.tenant_id, model_type="tts")
+        tid: str = self.runtime.tenant_id or ""
+        models = model_provider_service.get_models_by_model_type(tenant_id=tid, model_type="tts")
         items = []
         for provider_model in models:
             provider = provider_model.provider
@@ -62,6 +67,8 @@ class TTSTool(BuiltinTool):
                 ToolParameter(
                     name=f"voice#{provider}#{model}",
                     label=I18nObject(en_US=f"Voice of {model}({provider})"),
+                    human_description=I18nObject(en_US=f"Select a voice for {model} model"),
+                    placeholder=I18nObject(en_US="Select a voice"),
                     type=ToolParameter.ToolParameterType.SELECT,
                     form=ToolParameter.ToolParameterForm.FORM,
                     options=[
@@ -83,6 +90,7 @@ class TTSTool(BuiltinTool):
                 type=ToolParameter.ToolParameterType.SELECT,
                 form=ToolParameter.ToolParameterForm.FORM,
                 required=True,
+                placeholder=I18nObject(en_US="Select a model", zh_Hans="选择模型"),
                 options=options,
             ),
         )

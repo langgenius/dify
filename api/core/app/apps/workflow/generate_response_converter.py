@@ -17,16 +17,16 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
     _blocking_response_type = WorkflowAppBlockingResponse
 
     @classmethod
-    def convert_blocking_full_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict:
+    def convert_blocking_full_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict:  # type: ignore[override]
         """
         Convert blocking full response.
         :param blocking_response: blocking response
         :return:
         """
-        return blocking_response.to_dict()
+        return dict(blocking_response.to_dict())
 
     @classmethod
-    def convert_blocking_simple_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict:
+    def convert_blocking_simple_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict:  # type: ignore[override]
         """
         Convert blocking simple response.
         :param blocking_response: blocking response
@@ -36,7 +36,8 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
 
     @classmethod
     def convert_stream_full_response(
-        cls, stream_response: Generator[WorkflowAppStreamResponse, None, None]
+        cls,
+        stream_response: Generator[WorkflowAppStreamResponse, None, None],  # type: ignore[override]
     ) -> Generator[str, None, None]:
         """
         Convert stream full response.
@@ -65,7 +66,8 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
 
     @classmethod
     def convert_stream_simple_response(
-        cls, stream_response: Generator[WorkflowAppStreamResponse, None, None]
+        cls,
+        stream_response: Generator[WorkflowAppStreamResponse, None, None],  # type: ignore[override]
     ) -> Generator[str, None, None]:
         """
         Convert stream simple response.

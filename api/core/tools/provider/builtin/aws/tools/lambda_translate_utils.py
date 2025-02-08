@@ -1,7 +1,7 @@
 import json
 from typing import Any, Union
 
-import boto3
+import boto3  # type: ignore
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
@@ -12,7 +12,7 @@ class LambdaTranslateUtilsTool(BuiltinTool):
 
     def _invoke_lambda(self, text_content, src_lang, dest_lang, model_id, dictionary_name, request_type, lambda_name):
         msg = {
-            "src_content": text_content,
+            "src_contents": [text_content],
             "src_lang": src_lang,
             "dest_lang": dest_lang,
             "dictionary_id": dictionary_name,

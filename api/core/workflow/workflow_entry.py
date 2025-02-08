@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from configs import dify_config
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
@@ -19,7 +19,7 @@ from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.event import NodeEvent
-from core.workflow.nodes.node_mapping import node_type_classes_mapping
+from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from factories import file_factory
 from models.enums import UserFrom
 from models.workflow import (
@@ -129,11 +129,11 @@ class WorkflowEntry:
         :return:
         """
         # fetch node info from workflow graph
-        graph = workflow.graph_dict
-        if not graph:
+        workflow_graph = workflow.graph_dict
+        if not workflow_graph:
             raise ValueError("workflow graph not found")
 
-        nodes = graph.get("nodes")
+        nodes = workflow_graph.get("nodes")
         if not nodes:
             raise ValueError("nodes not found in workflow graph")
 
@@ -145,11 +145,8 @@ class WorkflowEntry:
 
         # Get node class
         node_type = NodeType(node_config.get("data", {}).get("type"))
-        node_cls = node_type_classes_mapping.get(node_type)
-        node_cls = cast(type[BaseNode], node_cls)
-
-        if not node_cls:
-            raise ValueError(f"Node class not found for node type {node_type}")
+        node_version = node_config.get("data", {}).get("version", "1")
+        node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
         # init variable pool
         variable_pool = VariablePool(environment_variables=workflow.environment_variables)
@@ -199,7 +196,8 @@ class WorkflowEntry:
 
     @staticmethod
     def handle_special_values(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any] | None:
-        return WorkflowEntry._handle_special_values(value)
+        result = WorkflowEntry._handle_special_values(value)
+        return result if isinstance(result, Mapping) or result is None else dict(result)
 
     @staticmethod
     def _handle_special_values(value: Any) -> Any:
@@ -211,10 +209,10 @@ class WorkflowEntry:
                 res[k] = WorkflowEntry._handle_special_values(v)
             return res
         if isinstance(value, list):
-            res = []
+            res_list = []
             for item in value:
-                res.append(WorkflowEntry._handle_special_values(item))
-            return res
+                res_list.append(WorkflowEntry._handle_special_values(item))
+            return res_list
         if isinstance(value, File):
             return value.to_dict()
         return value
@@ -240,6 +238,10 @@ class WorkflowEntry:
                 variable_selector
             ):
                 raise ValueError(f"Variable key {node_variable} not found in user inputs.")
+
+            # environment variable already exist in variable pool, not from user inputs
+            if variable_pool.get(variable_selector):
+                continue
 
             # fetch variable node id from variable selector
             variable_node_id = variable_selector[0]

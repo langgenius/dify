@@ -287,9 +287,9 @@ const Configuration: FC = () => {
 
     setDatasetConfigs({
       ...retrievalConfig,
-      reranking_model: restConfigs.reranking_model && {
-        reranking_provider_name: restConfigs.reranking_model.reranking_provider_name,
-        reranking_model_name: restConfigs.reranking_model.reranking_model_name,
+      reranking_model: {
+        reranking_provider_name: retrievalConfig?.reranking_model?.provider || '',
+        reranking_model_name: retrievalConfig?.reranking_model?.model || '',
       },
       retrieval_model,
       score_threshold_enabled,
@@ -491,7 +491,7 @@ const Configuration: FC = () => {
   }, [formattingChangedDispatcher, setShowAppConfigureFeaturesModal])
   const handleAddPromptVariable = useCallback((variable: PromptVariable[]) => {
     const newModelConfig = produce(modelConfig, (draft: ModelConfig) => {
-      draft.configs.prompt_variables = variable
+      draft.configs.prompt_variables = [...draft.configs.prompt_variables, ...variable]
     })
     setModelConfig(newModelConfig)
   }, [modelConfig])

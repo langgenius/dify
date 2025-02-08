@@ -8,16 +8,9 @@ Please include a summary of the change and which issue is fixed. Please also inc
 
 # Screenshots
 
-<table>
-  <tr>
-  <td>Before: </td>
-  <td>After: </td>
-  </tr>
-  <tr>
-  <td>...</td>
-  <td>...</td>
-  </tr>
-</table>
+| Before | After |
+|--------|-------|
+| ...    | ...   |
 
 # Checklist
 

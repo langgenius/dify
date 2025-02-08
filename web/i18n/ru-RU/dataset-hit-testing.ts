@@ -25,6 +25,11 @@ const translation = {
   viewChart: 'Посмотреть ВЕКТОРНУЮ ДИАГРАММУ',
   viewDetail: 'Подробнее',
   settingTitle: 'Настройка извлечения',
+  records: 'Записи',
+  hitChunks: 'Попадание {{num}} дочерних чанков',
+  chunkDetail: 'Деталь Чанка',
+  open: 'Открытый',
+  keyword: 'Ключевые слова',
 }
 
 export default translation

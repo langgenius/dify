@@ -6,6 +6,7 @@ from pydantic import BaseModel, ValidationInfo, field_validator
 class TracingProviderEnum(Enum):
     LANGFUSE = "langfuse"
     LANGSMITH = "langsmith"
+    OPIK = "opik"
 
 
 class BaseTracingConfig(BaseModel):
@@ -52,6 +53,37 @@ class LangSmithConfig(BaseTracingConfig):
             v = "https://api.smith.langchain.com"
         if not v.startswith("https://"):
             raise ValueError("endpoint must start with https://")
+
+        return v
+
+
+class OpikConfig(BaseTracingConfig):
+    """
+    Model class for Opik tracing config.
+    """
+
+    api_key: str | None = None
+    project: str | None = None
+    workspace: str | None = None
+    url: str = "https://www.comet.com/opik/api/"
+
+    @field_validator("project")
+    @classmethod
+    def project_validator(cls, v, info: ValidationInfo):
+        if v is None or v == "":
+            v = "Default Project"
+
+        return v
+
+    @field_validator("url")
+    @classmethod
+    def url_validator(cls, v, info: ValidationInfo):
+        if v is None or v == "":
+            v = "https://www.comet.com/opik/api/"
+        if not v.startswith(("https://", "http://")):
+            raise ValueError("url must start with https:// or http://")
+        if not v.endswith("/api/"):
+            raise ValueError("url should ends with /api/")
 
         return v
 

@@ -24,10 +24,12 @@ class ToolProviderController(BaseModel, ABC):
 
         :return: the credentials schema
         """
+        if self.credentials_schema is None:
+            return {}
         return self.credentials_schema.copy()
 
     @abstractmethod
-    def get_tools(self) -> list[Tool]:
+    def get_tools(self, user_id: str = "", tenant_id: str = "") -> Optional[list[Tool]]:
         """
         returns a list of tools that the provider can provide
 
@@ -36,7 +38,7 @@ class ToolProviderController(BaseModel, ABC):
         pass
 
     @abstractmethod
-    def get_tool(self, tool_name: str) -> Tool:
+    def get_tool(self, tool_name: str) -> Optional[Tool]:
         """
         returns a tool that the provider can provide
 
@@ -51,10 +53,13 @@ class ToolProviderController(BaseModel, ABC):
         :param tool_name: the name of the tool, defined in `get_tools`
         :return: list of parameters
         """
-        tool = next(filter(lambda x: x.identity.name == tool_name, self.get_tools()), None)
+        tools = self.get_tools()
+        if tools is None:
+            raise ToolNotFoundError(f"tool {tool_name} not found")
+        tool = next((t for t in tools if t.identity and t.identity.name == tool_name), None)
         if tool is None:
             raise ToolNotFoundError(f"tool {tool_name} not found")
-        return tool.parameters
+        return tool.parameters or []
 
     @property
     def provider_type(self) -> ToolProviderType:
@@ -78,55 +83,55 @@ class ToolProviderController(BaseModel, ABC):
         for parameter in tool_parameters_schema:
             tool_parameters_need_to_validate[parameter.name] = parameter
 
-        for parameter in tool_parameters:
-            if parameter not in tool_parameters_need_to_validate:
-                raise ToolParameterValidationError(f"parameter {parameter} not found in tool {tool_name}")
+        for tool_parameter in tool_parameters:
+            if tool_parameter not in tool_parameters_need_to_validate:
+                raise ToolParameterValidationError(f"parameter {tool_parameter} not found in tool {tool_name}")
 
             # check type
-            parameter_schema = tool_parameters_need_to_validate[parameter]
+            parameter_schema = tool_parameters_need_to_validate[tool_parameter]
             if parameter_schema.type == ToolParameter.ToolParameterType.STRING:
-                if not isinstance(tool_parameters[parameter], str):
-                    raise ToolParameterValidationError(f"parameter {parameter} should be string")
+                if not isinstance(tool_parameters[tool_parameter], str):
+                    raise ToolParameterValidationError(f"parameter {tool_parameter} should be string")
 
             elif parameter_schema.type == ToolParameter.ToolParameterType.NUMBER:
-                if not isinstance(tool_parameters[parameter], int | float):
-                    raise ToolParameterValidationError(f"parameter {parameter} should be number")
+                if not isinstance(tool_parameters[tool_parameter], int | float):
+                    raise ToolParameterValidationError(f"parameter {tool_parameter} should be number")
 
-                if parameter_schema.min is not None and tool_parameters[parameter] < parameter_schema.min:
+                if parameter_schema.min is not None and tool_parameters[tool_parameter] < parameter_schema.min:
                     raise ToolParameterValidationError(
-                        f"parameter {parameter} should be greater than {parameter_schema.min}"
+                        f"parameter {tool_parameter} should be greater than {parameter_schema.min}"
                     )
 
-                if parameter_schema.max is not None and tool_parameters[parameter] > parameter_schema.max:
+                if parameter_schema.max is not None and tool_parameters[tool_parameter] > parameter_schema.max:
                     raise ToolParameterValidationError(
-                        f"parameter {parameter} should be less than {parameter_schema.max}"
+                        f"parameter {tool_parameter} should be less than {parameter_schema.max}"
                     )
 
             elif parameter_schema.type == ToolParameter.ToolParameterType.BOOLEAN:
-                if not isinstance(tool_parameters[parameter], bool):
-                    raise ToolParameterValidationError(f"parameter {parameter} should be boolean")
+                if not isinstance(tool_parameters[tool_parameter], bool):
+                    raise ToolParameterValidationError(f"parameter {tool_parameter} should be boolean")
 
             elif parameter_schema.type == ToolParameter.ToolParameterType.SELECT:
-                if not isinstance(tool_parameters[parameter], str):
-                    raise ToolParameterValidationError(f"parameter {parameter} should be string")
+                if not isinstance(tool_parameters[tool_parameter], str):
+                    raise ToolParameterValidationError(f"parameter {tool_parameter} should be string")
 
                 options = parameter_schema.options
                 if not isinstance(options, list):
-                    raise ToolParameterValidationError(f"parameter {parameter} options should be list")
+                    raise ToolParameterValidationError(f"parameter {tool_parameter} options should be list")
 
-                if tool_parameters[parameter] not in [x.value for x in options]:
-                    raise ToolParameterValidationError(f"parameter {parameter} should be one of {options}")
+                if tool_parameters[tool_parameter] not in [x.value for x in options]:
+                    raise ToolParameterValidationError(f"parameter {tool_parameter} should be one of {options}")
 
-            tool_parameters_need_to_validate.pop(parameter)
+            tool_parameters_need_to_validate.pop(tool_parameter)
 
-        for parameter in tool_parameters_need_to_validate:
-            parameter_schema = tool_parameters_need_to_validate[parameter]
+        for tool_parameter_validate in tool_parameters_need_to_validate:
+            parameter_schema = tool_parameters_need_to_validate[tool_parameter_validate]
             if parameter_schema.required:
-                raise ToolParameterValidationError(f"parameter {parameter} is required")
+                raise ToolParameterValidationError(f"parameter {tool_parameter_validate} is required")
 
             # the parameter is not set currently, set the default value if needed
             if parameter_schema.default is not None:
-                tool_parameters[parameter] = parameter_schema.type.cast_value(parameter_schema.default)
+                tool_parameters[tool_parameter_validate] = parameter_schema.type.cast_value(parameter_schema.default)
 
     def validate_credentials_format(self, credentials: dict[str, Any]) -> None:
         """
@@ -144,6 +149,8 @@ class ToolProviderController(BaseModel, ABC):
 
         for credential_name in credentials:
             if credential_name not in credentials_need_to_validate:
+                if self.identity is None:
+                    raise ValueError("identity is not set")
                 raise ToolProviderCredentialValidationError(
                     f"credential {credential_name} not found in provider {self.identity.name}"
                 )

@@ -15,12 +15,12 @@ const TipPopup = ({
   return (
     <Tooltip
       offset={4}
-      popupClassName='!p-0 !bg-gray-25'
+      popupClassName='p-0 bg-transparent'
       popupContent={
-        <div className='flex items-center gap-1 px-2 h-6 text-xs font-medium text-gray-700 rounded-lg border-[0.5px] border-black/5'>
-          {title}
+        <div className='flex items-center gap-1 p-1.5 backdrop-blur-[5px] shadow-lg rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg'>
+          <span className='system-xs-medium text-text-secondary'>{title}</span>
           {
-            shortcuts && <ShortcutsName keys={shortcuts} className='!text-[11px]' />
+            shortcuts && <ShortcutsName keys={shortcuts} />
           }
         </div>
       }

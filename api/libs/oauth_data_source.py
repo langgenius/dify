@@ -1,8 +1,9 @@
 import datetime
 import urllib.parse
+from typing import Any
 
 import requests
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 
 from extensions.ext_database import db
 from models.source import DataSourceOauthBinding
@@ -221,15 +222,29 @@ class NotionOAuth(OAuthDataSource):
         return pages
 
     def notion_page_search(self, access_token: str):
-        data = {"filter": {"value": "page", "property": "object"}}
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {access_token}",
-            "Notion-Version": "2022-06-28",
-        }
-        response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
-        response_json = response.json()
-        results = response_json.get("results", [])
+        results = []
+        next_cursor = None
+        has_more = True
+
+        while has_more:
+            data: dict[str, Any] = {
+                "filter": {"value": "page", "property": "object"},
+                **({"start_cursor": next_cursor} if next_cursor else {}),
+            }
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {access_token}",
+                "Notion-Version": "2022-06-28",
+            }
+
+            response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
+            response_json = response.json()
+
+            results.extend(response_json.get("results", []))
+
+            has_more = response_json.get("has_more", False)
+            next_cursor = response_json.get("next_cursor", None)
+
         return results
 
     def notion_block_parent_page_id(self, access_token: str, block_id: str):
@@ -239,6 +254,9 @@ class NotionOAuth(OAuthDataSource):
         }
         response = requests.get(url=f"{self._NOTION_BLOCK_SEARCH}/{block_id}", headers=headers)
         response_json = response.json()
+        if response.status_code != 200:
+            message = response_json.get("message", "unknown error")
+            raise ValueError(f"Error fetching block parent page ID: {message}")
         parent = response_json["parent"]
         parent_type = parent["type"]
         if parent_type == "block_id":
@@ -260,13 +278,26 @@ class NotionOAuth(OAuthDataSource):
         return "workspace"
 
     def notion_database_search(self, access_token: str):
-        data = {"filter": {"value": "database", "property": "object"}}
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {access_token}",
-            "Notion-Version": "2022-06-28",
-        }
-        response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
-        response_json = response.json()
-        results = response_json.get("results", [])
+        results = []
+        next_cursor = None
+        has_more = True
+
+        while has_more:
+            data: dict[str, Any] = {
+                "filter": {"value": "database", "property": "object"},
+                **({"start_cursor": next_cursor} if next_cursor else {}),
+            }
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {access_token}",
+                "Notion-Version": "2022-06-28",
+            }
+            response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
+            response_json = response.json()
+
+            results.extend(response_json.get("results", []))
+
+            has_more = response_json.get("has_more", False)
+            next_cursor = response_json.get("next_cursor", None)
+
         return results

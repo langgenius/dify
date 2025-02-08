@@ -1,70 +1,103 @@
 'use client'
 import { useTranslation } from 'react-i18next'
-import s from './index.module.css'
+import Image from 'next/image'
+import { useRef } from 'react'
+import { useHover } from 'ahooks'
+import { IndexingType } from '../../create/step-two'
+import { OptionCard } from '../../create/step-two/option-card'
+import { indexMethodIcon } from '../../create/icons'
 import classNames from '@/utils/classnames'
 import type { DataSet } from '@/models/datasets'
+import { ChunkingMode } from '@/models/datasets'
+import Badge from '@/app/components/base/badge'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 
-const itemClass = `
-  w-full sm:w-[234px] p-3 rounded-xl bg-gray-25 border border-gray-100 cursor-pointer
-`
-const radioClass = `
-  w-4 h-4 border-[2px] border-gray-200 rounded-full
-`
 type IIndexMethodRadioProps = {
   value?: DataSet['indexing_technique']
   onChange: (v?: DataSet['indexing_technique']) => void
   disable?: boolean
-  itemClassName?: string
+  docForm?: ChunkingMode
+  currentValue?: DataSet['indexing_technique']
 }
 
 const IndexMethodRadio = ({
   value,
   onChange,
   disable,
-  itemClassName,
+  docForm,
+  currentValue,
 }: IIndexMethodRadioProps) => {
   const { t } = useTranslation()
+  const economyDomRef = useRef<HTMLDivElement>(null)
+  const isHoveringEconomy = useHover(economyDomRef)
+  const isEconomyDisabled = currentValue === IndexingType.QUALIFIED
   const options = [
     {
       key: 'high_quality',
-      text: t('datasetSettings.form.indexMethodHighQuality'),
+      text: <div className='flex items-center'>
+        {t('datasetCreation.stepTwo.qualified')}
+        <Badge uppercase className='ml-auto border-text-accent-secondary text-text-accent-secondary'>
+          {t('datasetCreation.stepTwo.recommend')}
+        </Badge>
+      </div>,
       desc: t('datasetSettings.form.indexMethodHighQualityTip'),
-      icon: 'high-quality',
     },
     {
       key: 'economy',
       text: t('datasetSettings.form.indexMethodEconomy'),
       desc: t('datasetSettings.form.indexMethodEconomyTip'),
-      icon: 'economy',
     },
   ]
 
   return (
-    <div className={classNames(s.wrapper, 'flex justify-between w-full flex-wrap gap-y-2')}>
+    <div className={classNames('flex justify-between w-full gap-2')}>
       {
-        options.map(option => (
-          <div
-            key={option.key}
-            className={classNames(
-              itemClass,
-              itemClassName,
-              s.item,
-              option.key === value && s['item-active'],
-              disable && s.disable,
-            )}
-            onClick={() => {
-              if (!disable)
-                onChange(option.key as DataSet['indexing_technique'])
-            }}
-          >
-            <div className='flex items-center mb-1'>
-              <div className={classNames(s.icon, s[`${option.icon}-icon`])} />
-              <div className='grow text-sm text-gray-900'>{option.text}</div>
-              <div className={classNames(radioClass, s.radio)} />
-            </div>
-            <div className='pl-9 text-xs text-gray-500 leading-[18px]'>{option.desc}</div>
-          </div>
-        ))
+        options.map((option) => {
+          const isParentChild = docForm === ChunkingMode.parentChild
+          return (
+            <PortalToFollowElem
+              key={option.key}
+              open={
+                isHoveringEconomy && option.key === 'economy'
+              }
+              placement={'top'}
+            >
+              <PortalToFollowElemTrigger>
+                <OptionCard
+                  disabled={
+                    disable
+                    || (isEconomyDisabled && option.key === IndexingType.ECONOMICAL)
+                  }
+                  isActive={option.key === value}
+                  onSwitched={() => {
+                    if (isParentChild && option.key === IndexingType.ECONOMICAL)
+                      return
+                    if (isEconomyDisabled && option.key === IndexingType.ECONOMICAL)
+                      return
+                    if (!disable)
+                      onChange(option.key as DataSet['indexing_technique'])
+                  } }
+                  icon={
+                    <Image
+                      src={option.key === 'high_quality' ? indexMethodIcon.high_quality : indexMethodIcon.economical}
+                      alt={option.desc}
+                    />
+                  }
+                  title={option.text}
+                  description={option.desc}
+                  ref={option.key === 'economy' ? economyDomRef : undefined}
+                  className={classNames((isEconomyDisabled && option.key === 'economy') && 'cursor-not-allowed')}
+                >
+                </OptionCard>
+              </PortalToFollowElemTrigger>
+              <PortalToFollowElemContent style={{ zIndex: 60 }}>
+                <div className='p-3 bg-components-tooltip-bg border-components-panel-border text-xs font-medium text-text-secondary rounded-lg shadow-lg'>
+                  {t('datasetSettings.form.indexMethodChangeToEconomyDisabledTip')}
+                </div>
+              </PortalToFollowElemContent>
+            </PortalToFollowElem>
+          )
+        })
       }
     </div>
   )

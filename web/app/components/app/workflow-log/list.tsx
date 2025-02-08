@@ -2,9 +2,7 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-// import s from './style.module.css'
 import DetailPanel from './detail'
-import cn from '@/utils/classnames'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse } from '@/models/log'
 import type { App } from '@/types/app'
 import Loading from '@/app/components/base/loading'
@@ -12,6 +10,7 @@ import Drawer from '@/app/components/base/drawer'
 import Indicator from '@/app/components/header/indicator'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
+import cn from '@/utils/classnames'
 
 type ILogs = {
   logs?: WorkflowLogsResponse
@@ -61,6 +60,14 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         <div className='inline-flex items-center gap-1 system-xs-semibold-uppercase'>
           <Indicator color={'blue'} />
           <span className='text-util-colors-blue-light-blue-light-600'>Running</span>
+        </div>
+      )
+    }
+    if (status === 'partial-succeeded') {
+      return (
+        <div className='inline-flex items-center gap-1 system-xs-semibold-uppercase'>
+          <Indicator color={'green'} />
+          <span className='text-util-colors-green-green-600'>Partial Success</span>
         </div>
       )
     }

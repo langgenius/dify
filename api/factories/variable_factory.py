@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 from configs import dify_config
@@ -36,6 +36,7 @@ from core.variables.variables import (
     StringVariable,
     Variable,
 )
+from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID
 
 
 class InvalidSelectorError(ValueError):
@@ -62,13 +63,29 @@ SEGMENT_TO_VARIABLE_MAP = {
 }
 
 
-def build_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
-    if (value_type := mapping.get("value_type")) is None:
-        raise VariableError("missing value type")
+def build_conversation_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
     if not mapping.get("name"):
         raise VariableError("missing name")
+    return _build_variable_from_mapping(mapping=mapping, selector=[CONVERSATION_VARIABLE_NODE_ID, mapping["name"]])
+
+
+def build_environment_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
+    if not mapping.get("name"):
+        raise VariableError("missing name")
+    return _build_variable_from_mapping(mapping=mapping, selector=[ENVIRONMENT_VARIABLE_NODE_ID, mapping["name"]])
+
+
+def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequence[str]) -> Variable:
+    """
+    This factory function is used to create the environment variable or the conversation variable,
+    not support the File type.
+    """
+    if (value_type := mapping.get("value_type")) is None:
+        raise VariableError("missing value type")
     if (value := mapping.get("value")) is None:
         raise VariableError("missing value")
+    # FIXME: using Any here, fix it later
+    result: Any
     match value_type:
         case SegmentType.STRING:
             result = StringVariable.model_validate(mapping)
@@ -92,7 +109,9 @@ def build_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
             raise VariableError(f"not supported value type {value_type}")
     if result.size > dify_config.MAX_VARIABLE_SIZE:
         raise VariableError(f"variable size {result.size} exceeds limit {dify_config.MAX_VARIABLE_SIZE}")
-    return result
+    if not result.selector:
+        result = result.model_copy(update={"selector": selector})
+    return cast(Variable, result)
 
 
 def build_segment(value: Any, /) -> Segment:
@@ -147,10 +166,13 @@ def segment_to_variable(
         raise UnsupportedSegmentTypeError(f"not supported segment type {segment_type}")
 
     variable_class = SEGMENT_TO_VARIABLE_MAP[segment_type]
-    return variable_class(
-        id=id,
-        name=name,
-        description=description,
-        value=segment.value,
-        selector=selector,
+    return cast(
+        Variable,
+        variable_class(
+            id=id,
+            name=name,
+            description=description,
+            value=segment.value,
+            selector=selector,
+        ),
     )

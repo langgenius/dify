@@ -14,6 +14,8 @@ import type {
 import { BlockEnum } from '../../../../types'
 import Line from './line'
 import Container from './container'
+import { hasErrorHandleNode } from '@/app/components/workflow/utils'
+import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 
 type NextStepProps = {
   selectedNode: Node
@@ -28,25 +30,54 @@ const NextStep = ({
   const branches = useMemo(() => {
     return data._targetBranches || []
   }, [data])
-  const nodeWithBranches = data.type === BlockEnum.IfElse || data.type === BlockEnum.QuestionClassifier
   const edges = useEdges()
   const outgoers = getOutgoers(selectedNode as Node, store.getState().getNodes(), edges)
   const connectedEdges = getConnectedEdges([selectedNode] as Node[], edges).filter(edge => edge.source === selectedNode!.id)
 
-  const branchesOutgoers = useMemo(() => {
-    if (!branches?.length)
-      return []
+  const list = useMemo(() => {
+    let items = []
+    if (branches?.length) {
+      items = branches.map((branch, index) => {
+        const connected = connectedEdges.filter(edge => edge.sourceHandle === branch.id)
+        const nextNodes = connected.map(edge => outgoers.find(outgoer => outgoer.id === edge.target)!)
 
-    return branches.map((branch) => {
-      const connected = connectedEdges.filter(edge => edge.sourceHandle === branch.id)
+        return {
+          branch: {
+            ...branch,
+            name: data.type === BlockEnum.QuestionClassifier ? `${t('workflow.nodes.questionClassifiers.class')} ${index + 1}` : branch.name,
+          },
+          nextNodes,
+        }
+      })
+    }
+    else {
+      const connected = connectedEdges.filter(edge => edge.sourceHandle === 'source')
       const nextNodes = connected.map(edge => outgoers.find(outgoer => outgoer.id === edge.target)!)
 
-      return {
-        branch,
+      items = [{
+        branch: {
+          id: '',
+          name: '',
+        },
         nextNodes,
+      }]
+
+      if (data.error_strategy === ErrorHandleTypeEnum.failBranch && hasErrorHandleNode(data.type)) {
+        const connected = connectedEdges.filter(edge => edge.sourceHandle === ErrorHandleTypeEnum.failBranch)
+        const nextNodes = connected.map(edge => outgoers.find(outgoer => outgoer.id === edge.target)!)
+
+        items.push({
+          branch: {
+            id: ErrorHandleTypeEnum.failBranch,
+            name: t('workflow.common.onFailure'),
+          },
+          nextNodes,
+        })
       }
-    })
-  }, [branches, connectedEdges, outgoers])
+    }
+
+    return items
+  }, [branches, connectedEdges, data.error_strategy, data.type, outgoers, t])
 
   return (
     <div className='flex py-1'>
@@ -57,34 +88,23 @@ const NextStep = ({
         />
       </div>
       <Line
-        list={nodeWithBranches ? branchesOutgoers.map(item => item.nextNodes.length + 1) : [1]}
+        list={list.length ? list.map(item => item.nextNodes.length + 1) : [1]}
       />
       <div className='grow space-y-2'>
         {
-          !nodeWithBranches && (
-            <Container
-              nodeId={selectedNode!.id}
-              nodeData={selectedNode!.data}
-              sourceHandle='source'
-              nextNodes={outgoers}
-            />
-          )
-        }
-        {
-          nodeWithBranches && (
-            branchesOutgoers.map((item, index) => {
-              return (
-                <Container
-                  key={item.branch.id}
-                  nodeId={selectedNode!.id}
-                  nodeData={selectedNode!.data}
-                  sourceHandle={item.branch.id}
-                  nextNodes={item.nextNodes}
-                  branchName={item.branch.name || `${t('workflow.nodes.questionClassifiers.class')} ${index + 1}`}
-                />
-              )
-            })
-          )
+          list.map((item, index) => {
+            return (
+              <Container
+                key={index}
+                nodeId={selectedNode!.id}
+                nodeData={selectedNode!.data}
+                sourceHandle={item.branch.id}
+                nextNodes={item.nextNodes}
+                branchName={item.branch.name}
+                isFailBranch={item.branch.id === ErrorHandleTypeEnum.failBranch}
+              />
+            )
+          })
         }
       </div>
     </div>

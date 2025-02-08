@@ -1,9 +1,10 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
-class HuaweiCloudOBSStorageConfig(BaseModel):
+class HuaweiCloudOBSStorageConfig(BaseSettings):
     """
     Configuration settings for Huawei Cloud Object Storage Service (OBS)
     """
