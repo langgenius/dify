@@ -77,6 +77,7 @@ class AccountService:
         prefix="email_code_account_deletion_rate_limit", max_attempts=1, time_window=60 * 1
     )
     LOGIN_MAX_ERROR_LIMITS = 5
+    FORGOT_PASSWORD_MAX_ERROR_LIMITS = 5
 
     @staticmethod
     def _get_refresh_token_key(refresh_token: str) -> str:
@@ -501,6 +502,32 @@ class AccountService:
     @staticmethod
     def reset_login_error_rate_limit(email: str):
         key = f"login_error_rate_limit:{email}"
+        redis_client.delete(key)
+
+    @staticmethod
+    def add_forgot_password_error_rate_limit(email: str) -> None:
+        key = f"forgot_password_error_rate_limit:{email}"
+        count = redis_client.get(key)
+        if count is None:
+            count = 0
+        count = int(count) + 1
+        redis_client.setex(key, dify_config.FORGOT_PASSWORD_LOCKOUT_DURATION, count)
+
+    @staticmethod
+    def is_forgot_password_error_rate_limit(email: str) -> bool:
+        key = f"forgot_password_error_rate_limit:{email}"
+        count = redis_client.get(key)
+        if count is None:
+            return False
+
+        count = int(count)
+        if count > AccountService.FORGOT_PASSWORD_MAX_ERROR_LIMITS:
+            return True
+        return False
+
+    @staticmethod
+    def reset_forgot_password_error_rate_limit(email: str):
+        key = f"forgot_password_error_rate_limit:{email}"
         redis_client.delete(key)
 
     @staticmethod
