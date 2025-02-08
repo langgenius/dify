@@ -69,11 +69,8 @@ const Installed: FC<Props> = ({
     onStartToInstall?.()
 
     try {
-      if (hasInstalled) {
-        const res = await uninstallPlugin(installedInfoPayload.installedId)
-        if (!res.success)
-          return
-      }
+      if (hasInstalled)
+        await uninstallPlugin(installedInfoPayload.installedId)
 
       const {
         all_installed,
