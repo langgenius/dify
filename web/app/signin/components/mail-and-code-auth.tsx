@@ -44,7 +44,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         const params = new URLSearchParams(searchParams)
         params.set('email', encodeURIComponent(email))
         params.set('token', encodeURIComponent(ret.data))
-        router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/signin/check-code?${params.toString()}`)
+        router.push(`/signin/check-code?${params.toString()}`)
       }
     }
     catch (error) {

@@ -30,7 +30,7 @@ export default function FeedBack(props: DeleteAccountProps) {
       })
       localStorage.removeItem('refresh_token')
       localStorage.removeItem('console_token')
-      router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/signin`)
+      router.push('/signin')
       Toast.notify({ type: 'info', message: t('common.account.deleteSuccessTip') })
     }
     catch (error) { console.error(error) }

@@ -70,7 +70,7 @@ const OneMoreStep = () => {
       dispatch({ type: 'failed', payload: null })
     }
     if (data)
-      router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/apps`)
+      router.push('/apps')
   }, [data, error])
 
   return (

@@ -114,7 +114,7 @@ const AnnotationReply = ({
                     {t('common.operation.params')}
                   </Button>
                   <Button className='w-[178px]' onClick={() => {
-                    router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/app/${appId}/annotations`)
+                    router.push(`/app/${appId}/annotations`)
                   }}>
                     <RiExternalLinkLine className='mr-1 w-4 h-4' />
                     {t('appDebug.feature.annotation.cacheManagement')}

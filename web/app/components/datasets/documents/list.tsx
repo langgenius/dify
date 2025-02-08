@@ -293,7 +293,7 @@ export const OperationAction: FC<{
               !isListScene
                 ? 'p-2 bg-components-button-secondary-bg hover:bg-components-button-secondary-bg-hover border-[0.5px] border-components-button-secondary-border hover:border-components-button-secondary-border-hover shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]'
                 : 'p-0.5 hover:bg-state-base-hover')}
-            onClick={() => router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/datasets/${datasetId}/documents/${detail.id}/settings`)}>
+            onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}>
             <RiEqualizer2Line className='w-4 h-4 text-components-button-secondary-text' />
           </button>
         </Tooltip>
@@ -541,7 +541,7 @@ const DocumentList: FC<IDocumentListProps> = ({
               key={doc.id}
               className={'border-b border-divider-subtle h-8 hover:bg-background-default-hover cursor-pointer'}
               onClick={() => {
-                router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/datasets/${datasetId}/documents/${doc.id}`)
+                router.push(`/datasets/${datasetId}/documents/${doc.id}`)
               }}>
               <td className='text-left align-middle text-text-tertiary text-xs'>
                 <div className='flex items-center' onClick={e => e.stopPropagation()}>

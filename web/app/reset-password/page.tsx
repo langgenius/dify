@@ -42,7 +42,7 @@ export default function CheckCode() {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(res.data))
         params.set('email', encodeURIComponent(email))
-        router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/reset-password/check-code?${params.toString()}`)
+        router.push(`/reset-password/check-code?${params.toString()}`)
       }
       else if (res.code === 'account_not_found') {
         Toast.notify({

@@ -22,7 +22,7 @@ const InitPasswordPopup = () => {
       const response = await initValidate({ body: { password } })
       if (response.result === 'success') {
         setValidated(true)
-        router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/install`) // or render setup form
+        router.push('/install') // or render setup form
       }
       else {
         throw new Error('Validation failed')

@@ -77,7 +77,7 @@ const AnnotationReplyConfig: FC<Props> = ({
             <div
               className='ml-1 flex items-center h-7 px-3 space-x-1 leading-[18px] text-xs font-medium text-gray-700 rounded-md cursor-pointer hover:bg-gray-200'
               onClick={() => {
-                router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/app/${appId}/annotations`)
+                router.push(`/app/${appId}/annotations`)
               }}>
               <div>{t('appDebug.feature.annotation.cacheManagement')}</div>
               <LinkExternal02 className='w-3.5 h-3.5' />

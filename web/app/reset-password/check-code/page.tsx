@@ -39,7 +39,7 @@ export default function CheckCode() {
       }
       setIsLoading(true)
       const ret = await verifyResetPasswordCode({ email, code, token })
-      ret.is_valid && router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/reset-password/set-password?${searchParams.toString()}`)
+      ret.is_valid && router.push(`/reset-password/set-password?${searchParams.toString()}`)
     }
     catch (error) { console.error(error) }
     finally {

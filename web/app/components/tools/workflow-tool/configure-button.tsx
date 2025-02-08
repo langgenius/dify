@@ -212,7 +212,7 @@ const WorkflowToolConfigureButton = ({
                   <Button
                     size='small'
                     className='w-[140px]'
-                    onClick={() => router.push(`${process.env.NEXT_PUBLIC_BASE_PATH}/tools?category=workflow`)}
+                    onClick={() => router.push('/tools?category=workflow')}
                   >
                     {t('workflow.common.manageInTools')}
                     <ArrowUpRight className='ml-1' />
