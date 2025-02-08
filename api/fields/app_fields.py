@@ -198,7 +198,7 @@ app_site_fields = {
     "use_icon_as_answer_icon": fields.Boolean,
 }
 
-leaked_dependency_fields = {"type": fields.String, "value": fields.Raw}
+leaked_dependency_fields = {"type": fields.String, "value": fields.Raw, "current_identifier": fields.String}
 
 app_import_fields = {
     "id": fields.String,

@@ -45,15 +45,22 @@ class DependenciesAnalysisService:
             required_plugin_unique_identifiers.append(dependency.value.plugin_unique_identifier)
 
         manager = PluginInstallationManager()
-        missing_plugin_unique_identifiers = manager.fetch_missing_dependencies(
-            tenant_id, required_plugin_unique_identifiers
-        )
+
+        # get leaked dependencies
+        missing_plugins = manager.fetch_missing_dependencies(tenant_id, required_plugin_unique_identifiers)
+        missing_plugin_unique_identifiers = {plugin.plugin_unique_identifier: plugin for plugin in missing_plugins}
 
         leaked_dependencies = []
         for dependency in dependencies:
             unique_identifier = dependency.value.plugin_unique_identifier
             if unique_identifier in missing_plugin_unique_identifiers:
-                leaked_dependencies.append(dependency)
+                leaked_dependencies.append(
+                    PluginDependency(
+                        type=dependency.type,
+                        value=dependency.value,
+                        current_identifier=missing_plugin_unique_identifiers[unique_identifier].current_identifier,
+                    )
+                )
 
         return leaked_dependencies
 
