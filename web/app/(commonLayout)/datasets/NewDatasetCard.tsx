@@ -15,7 +15,7 @@ const CreateAppCard = forwardRef<HTMLAnchorElement>((_, ref) => {
     <div className='flex flex-col bg-background-default-dimm border-[0.5px] border-components-panel-border rounded-xl
       min-h-[160px] transition-all duration-200 ease-in-out'
     >
-      <a ref={ref} className='group flex flex-grow items-start p-4 cursor-pointer' href={`${BASE_PATH}/datasets/connect`}>
+      <a ref={ref} className='group flex flex-grow items-start p-4 cursor-pointer' href={`${BASE_PATH}/datasets/create`}>
         <div className='flex items-center gap-3'>
           <div className='w-10 h-10 p-2 flex items-center justify-center border border-dashed border-divider-regular rounded-lg
             bg-background-default-lighter group-hover:border-solid group-hover:border-effects-highlight group-hover:bg-background-default-dodge'
