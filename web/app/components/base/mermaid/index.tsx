@@ -40,7 +40,7 @@ const Flowchart = (
 
   const prevPrimitiveCode = usePrevious(props.PrimitiveCode)
   const [isLoading, setIsLoading] = useState(true)
-  const timeRef = useRef<number>()
+  const timeRef = useRef<number>(0)
   const [errMsg, setErrMsg] = useState('')
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
 
@@ -119,22 +119,22 @@ const Flowchart = (
       </div>
       {
         svgCode
-            && <div className="mermaid cursor-pointer h-auto w-full object-fit: cover" onClick={() => setImagePreviewUrl(svgCode)}>
-              {svgCode && <img src={svgCode} alt="mermaid_chart" />}
-            </div>
+        && <div className="mermaid cursor-pointer h-auto w-full object-fit: cover" onClick={() => setImagePreviewUrl(svgCode)}>
+          {svgCode && <img src={svgCode} alt="mermaid_chart" />}
+        </div>
       }
       {isLoading
-            && <div className='py-4 px-[26px]'>
-              <LoadingAnim type='text'/>
-            </div>
+        && <div className='py-4 px-[26px]'>
+          <LoadingAnim type='text' />
+        </div>
       }
       {
         errMsg
-            && <div className='py-4 px-[26px]'>
-              <ExclamationTriangleIcon className='w-6 h-6 text-red-500'/>
-              &nbsp;
-              {errMsg}
-            </div>
+        && <div className='py-4 px-[26px]'>
+          <ExclamationTriangleIcon className='w-6 h-6 text-red-500' />
+          &nbsp;
+          {errMsg}
+        </div>
       }
       {
         imagePreviewUrl && (<ImagePreview title='mermaid_chart' url={imagePreviewUrl} onCancel={() => setImagePreviewUrl('')} />)

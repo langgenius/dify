@@ -19,7 +19,7 @@ const CooldownTimer = ({ secondsRemaining, onFinish }: CooldownTimerProps) => {
     [currentTime],
   )
 
-  const countdownTimeout = useRef<number>(undefined)
+  const countdownTimeout = useRef<number | undefined>(undefined)
   const clearCountdown = useCallback(() => {
     if (countdownTimeout.current) {
       window.clearTimeout(countdownTimeout.current)

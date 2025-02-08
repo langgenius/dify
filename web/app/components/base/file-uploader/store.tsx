@@ -54,7 +54,7 @@ export const FileContextProvider = ({
   value,
   onChange,
 }: FileProviderProps) => {
-  const storeRef = useRef<FileStore>()
+  const storeRef = useRef<FileStore | undefined>(undefined)
 
   if (!storeRef.current)
     storeRef.current = createFileStore(value, onChange)

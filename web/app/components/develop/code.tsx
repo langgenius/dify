@@ -204,8 +204,8 @@ function CodeGroupPanels({ children, targetCode, ...props }: ICodeGroupPanelsPro
 }
 
 function usePreventLayoutShift() {
-  const positionRef = useRef<any>()
-  const rafRef = useRef<any>()
+  const positionRef = useRef<any>(undefined)
+  const rafRef = useRef<any>(undefined)
 
   useEffect(() => {
     return () => {

@@ -24,7 +24,7 @@ import {
   getFilesInLogs,
 } from '@/app/components/base/file-uploader/utils'
 
-export interface IResultProps {
+export type IResultProps = {
   isWorkflow: boolean
   isCallBatchAPI: boolean
   isPC: boolean
@@ -80,14 +80,14 @@ const Result: FC<IResultProps> = ({
   }, [controlStopResponding])
 
   const [completionRes, doSetCompletionRes] = useState<any>('')
-  const completionResRef = useRef<any>()
+  const completionResRef = useRef<any>(undefined)
   const setCompletionRes = (res: any) => {
     completionResRef.current = res
     doSetCompletionRes(res)
   }
   const getCompletionRes = () => completionResRef.current
   const [workflowProcessData, doSetWorkflowProcessData] = useState<WorkflowProcess>()
-  const workflowProcessDataRef = useRef<WorkflowProcess>()
+  const workflowProcessDataRef = useRef<WorkflowProcess | undefined>(undefined)
   const setWorkflowProcessData = (data: WorkflowProcess) => {
     workflowProcessDataRef.current = data
     doSetWorkflowProcessData(data)
