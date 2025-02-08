@@ -424,7 +424,6 @@ if you are not sure about the structure.
             is_reasoning = False
         return content, is_reasoning
 
-
     def _invoke_result_generator(
         self,
         model: str,
