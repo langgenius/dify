@@ -131,6 +131,7 @@ const ToolSelector: FC<Props> = ({
       extra: {
         description: '',
       },
+      schemas: tool.paramSchemas,
     }
     onSelect(toolValue)
     // setIsShowChooseTool(false)
