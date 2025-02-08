@@ -21,8 +21,10 @@ import ToolCredentialForm from '@/app/components/plugins/plugin-detail-panel/too
 import Toast from '@/app/components/base/toast'
 import Textarea from '@/app/components/base/textarea'
 import Divider from '@/app/components/base/divider'
+import TabSlider from '@/app/components/base/tab-slider-plain'
+import ReasoningConfigForm from '@/app/components/plugins/plugin-detail-panel/tool-selector/reasoning-config-form'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
-import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { generateFormValue, getPlainValue, getStructureValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 
 import { useAppContext } from '@/context/app-context'
 import {
@@ -41,6 +43,8 @@ import type {
   Placement,
 } from '@floating-ui/react'
 import { MARKETPLACE_API_PREFIX } from '@/config'
+import type { Node } from 'reactflow'
+import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -54,6 +58,7 @@ type Props = {
     provider_name: string
     tool_name: string
     tool_label: string
+    settings?: Record<string, any>
     parameters?: Record<string, any>
     extra?: Record<string, any>
   }) => void
@@ -65,6 +70,9 @@ type Props = {
   onControlledStateChange?: (state: boolean) => void
   panelShowState?: boolean
   onPanelShowStateChange?: (state: boolean) => void
+  supportVariables?: boolean
+  nodeOutputVars: NodeOutPutVar[],
+  availableNodes: Node[],
 }
 const ToolSelector: FC<Props> = ({
   value,
@@ -81,6 +89,8 @@ const ToolSelector: FC<Props> = ({
   onControlledStateChange,
   panelShowState,
   onPanelShowStateChange,
+  nodeOutputVars,
+  availableNodes,
 }) => {
   const { t } = useTranslation()
   const [isShow, onShowChange] = useState(false)
@@ -107,12 +117,14 @@ const ToolSelector: FC<Props> = ({
 
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
   const handleSelectTool = (tool: ToolDefaultValue) => {
-    const paramValues = addDefaultValue(tool.params, toolParametersToFormSchemas(tool.paramSchemas.filter(param => param.form !== 'llm') as any))
+    const settingValues = generateFormValue(tool.params, toolParametersToFormSchemas(tool.paramSchemas.filter(param => param.form !== 'llm') as any))
+    const paramValues = generateFormValue(tool.params, toolParametersToFormSchemas(tool.paramSchemas.filter(param => param.form === 'llm') as any), true)
     const toolValue = {
       provider_name: tool.provider_id,
       type: tool.provider_type,
       tool_name: tool.tool_name,
       tool_label: tool.tool_label,
+      settings: settingValues,
       parameters: paramValues,
       enabled: tool.is_team_authorization,
       extra: {
@@ -133,14 +145,33 @@ const ToolSelector: FC<Props> = ({
     } as any)
   }
 
-  const currentToolParams = useMemo(() => {
+  // tool settings & params
+  const currentToolSettings = useMemo(() => {
     if (!currentProvider) return []
     return currentProvider.tools.find(tool => tool.name === value?.tool_name)?.parameters.filter(param => param.form !== 'llm') || []
   }, [currentProvider, value])
+  const currentToolParams = useMemo(() => {
+    if (!currentProvider) return []
+    return currentProvider.tools.find(tool => tool.name === value?.tool_name)?.parameters.filter(param => param.form === 'llm') || []
+  }, [currentProvider, value])
+  const [currType, setCurrType] = useState('settings')
+  const showTabSlider = currentToolSettings.length > 0 && currentToolParams.length > 0
+  const userSettingsOnly = currentToolSettings.length > 0 && !currentToolParams.length
+  const reasoningConfigOnly = currentToolParams.length > 0 && !currentToolSettings.length
 
-  const formSchemas = useMemo(() => toolParametersToFormSchemas(currentToolParams), [currentToolParams])
+  const settingsFormSchemas = useMemo(() => toolParametersToFormSchemas(currentToolSettings), [currentToolSettings])
+  const paramsFormSchemas = useMemo(() => toolParametersToFormSchemas(currentToolParams), [currentToolParams])
 
-  const handleFormChange = (v: Record<string, any>) => {
+  const handleSettingsFormChange = (v: Record<string, any>) => {
+    const newValue = getStructureValue(v)
+
+    const toolValue = {
+      ...value,
+      settings: newValue,
+    }
+    onSelect(toolValue as any)
+  }
+  const handleParamsFormChange = (v: Record<string, any>) => {
     const toolValue = {
       ...value,
       parameters: v,
@@ -281,12 +312,9 @@ const ToolSelector: FC<Props> = ({
                 </div>
                 {/* authorization */}
                 {currentProvider && currentProvider.type === CollectionType.builtIn && currentProvider.allow_delete && (
-                  <div className='px-4 pt-3 flex flex-col'>
-                    <div className='flex items-center gap-2'>
-                      <div className='shrink-0 text-text-tertiary system-xs-medium-uppercase'>{t('plugin.detailPanel.toolSelector.auth')}</div>
-                      <Divider bgStyle='gradient' className='grow' />
-                    </div>
-                    <div className='py-2'>
+                  <>
+                    <Divider className='my-1 w-full' />
+                    <div className='px-4 py-2'>
                       {!currentProvider.is_team_authorization && (
                         <Button
                           variant='primary'
@@ -309,37 +337,86 @@ const ToolSelector: FC<Props> = ({
                         </Button>
                       )}
                     </div>
-                  </div>
+                  </>
                 )}
                 {/* tool settings */}
-                {currentToolParams.length > 0 && currentProvider?.is_team_authorization && (
-                  <div className='px-4 pt-3'>
-                    <div className='flex items-center gap-2'>
-                      <div className='shrink-0 text-text-tertiary system-xs-medium-uppercase'>{t('plugin.detailPanel.toolSelector.settings')}</div>
-                      <Divider bgStyle='gradient' className='grow' />
-                    </div>
-                    <div className='py-2'>
-                      <Form
-                        value={value?.parameters || {}}
-                        onChange={handleFormChange}
-                        formSchemas={formSchemas as any}
-                        isEditMode={true}
-                        showOnVariableMap={{}}
-                        validating={false}
-                        inputClassName='bg-components-input-bg-normal hover:bg-components-input-bg-hover'
-                        fieldMoreInfo={item => item.url
-                          ? (<a
-                            href={item.url}
-                            target='_blank' rel='noopener noreferrer'
-                            className='inline-flex items-center text-xs text-text-accent'
-                          >
-                            {t('tools.howToGet')}
-                            <RiArrowRightUpLine className='ml-1 w-3 h-3' />
-                          </a>)
-                          : null}
+                {(currentToolSettings.length > 0 || currentToolParams.length > 0) && currentProvider?.is_team_authorization && (
+                  <>
+                    <Divider className='my-1 w-full' />
+                    {/* tabs */}
+                    {showTabSlider && (
+                      <TabSlider
+                        className='shrink-0 mt-1 px-4'
+                        itemClassName='py-3'
+                        noBorderBottom
+                        smallItem
+                        value={currType}
+                        onChange={(value) => {
+                          setCurrType(value)
+                        }}
+                        options={[
+                          { value: 'settings', text: t('plugin.detailPanel.toolSelector.settings')! },
+                          { value: 'params', text: t('plugin.detailPanel.toolSelector.params')! },
+                        ]}
                       />
-                    </div>
-                  </div>
+                    )}
+                    {showTabSlider && currType === 'params' && (
+                      <div className='px-4 py-2'>
+                        <div className='text-text-tertiary system-xs-regular'>{t('plugin.detailPanel.toolSelector.paramsTip1')}</div>
+                        <div className='text-text-tertiary system-xs-regular'>{t('plugin.detailPanel.toolSelector.paramsTip2')}</div>
+                      </div>
+                    )}
+                    {/* user settings only */}
+                    {userSettingsOnly && (
+                      <div className='p-4 pb-1'>
+                        <div className='text-text-primary system-sm-semibold-uppercase'>{t('plugin.detailPanel.toolSelector.settings')}</div>
+                      </div>
+                    )}
+                    {/* reasoning config only */}
+                    {reasoningConfigOnly && (
+                      <div className='mb-1 p-4 pb-1'>
+                        <div className='text-text-primary system-sm-semibold-uppercase'>{t('plugin.detailPanel.toolSelector.params')}</div>
+                        <div className='pb-1'>
+                          <div className='text-text-tertiary system-xs-regular'>{t('plugin.detailPanel.toolSelector.paramsTip1')}</div>
+                          <div className='text-text-tertiary system-xs-regular'>{t('plugin.detailPanel.toolSelector.paramsTip2')}</div>
+                        </div>
+                      </div>
+                    )}
+                    {/* user settings form */}
+                    {(currType === 'settings' || userSettingsOnly) && (
+                      <div className='px-4 py-2'>
+                        <Form
+                          value={getPlainValue(value?.settings || {})}
+                          onChange={handleSettingsFormChange}
+                          formSchemas={settingsFormSchemas as any}
+                          isEditMode={true}
+                          showOnVariableMap={{}}
+                          validating={false}
+                          inputClassName='bg-components-input-bg-normal hover:bg-components-input-bg-hover'
+                          fieldMoreInfo={item => item.url
+                            ? (<a
+                              href={item.url}
+                              target='_blank' rel='noopener noreferrer'
+                              className='inline-flex items-center text-xs text-text-accent'
+                            >
+                              {t('tools.howToGet')}
+                              <RiArrowRightUpLine className='ml-1 w-3 h-3' />
+                            </a>)
+                            : null}
+                        />
+                      </div>
+                    )}
+                    {/* reasoning config form */}
+                    {(currType === 'params' || reasoningConfigOnly) && (
+                      <ReasoningConfigForm
+                        value={value?.parameters || {}}
+                        onChange={handleParamsFormChange}
+                        schemas={paramsFormSchemas as any}
+                        nodeOutputVars={nodeOutputVars}
+                        availableNodes={availableNodes}
+                      />
+                    )}
+                  </>
                 )}
               </>
             )}

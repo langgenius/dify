@@ -10,6 +10,8 @@ import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 import Divider from '@/app/components/base/divider'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
+import type { Node } from 'reactflow'
+import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -21,6 +23,9 @@ type Props = {
   supportCollapse?: boolean
   scope?: string
   onChange: (value: ToolValue[]) => void
+  supportVariables?: boolean
+  nodeOutputVars: NodeOutPutVar[],
+  availableNodes: Node[],
 }
 
 const MultipleToolSelector = ({
@@ -32,6 +37,9 @@ const MultipleToolSelector = ({
   supportCollapse,
   scope,
   onChange,
+  supportVariables,
+  nodeOutputVars,
+  availableNodes,
 }: Props) => {
   const { t } = useTranslation()
   const enabledCount = value.filter(item => item.enabled).length
@@ -121,6 +129,9 @@ const MultipleToolSelector = ({
       {!collapse && (
         <>
           <ToolSelector
+            supportVariables={supportVariables}
+            nodeOutputVars={nodeOutputVars}
+            availableNodes={availableNodes}
             scope={scope}
             value={undefined}
             selectedTools={value}
@@ -140,6 +151,9 @@ const MultipleToolSelector = ({
           {value.length > 0 && value.map((item, index) => (
             <div className='mb-1' key={index}>
               <ToolSelector
+                supportVariables={supportVariables}
+                nodeOutputVars={nodeOutputVars}
+                availableNodes={availableNodes}
                 scope={scope}
                 value={item}
                 selectedTools={value}
