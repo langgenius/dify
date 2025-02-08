@@ -367,6 +367,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
 
                 # transform assistant message to prompt message
                 text = chunk_json["response"]
+            text = self._wrap_thinking_by_tag(text)
 
             assistant_prompt_message = AssistantPromptMessage(content=text)
 

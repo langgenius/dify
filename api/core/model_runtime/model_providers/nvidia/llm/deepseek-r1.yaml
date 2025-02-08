@@ -1,19 +1,18 @@
-model: meta-llama/llama-3.1-405b-instruct
+model: deepseek-ai/deepseek-r1
 label:
-  zh_Hans: meta-llama/llama-3.1-405b-instruct
-  en_US: meta-llama/llama-3.1-405b-instruct
+  en_US: deepseek-ai/deepseek-r1
 model_type: llm
 features:
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 32768
+  context_size: 128000
 parameter_rules:
   - name: temperature
     use_template: temperature
     min: 0
-    max: 2
-    default: 1
+    max: 1
+    default: 0.5
   - name: top_p
     use_template: top_p
     min: 0
@@ -22,8 +21,8 @@ parameter_rules:
   - name: max_tokens
     use_template: max_tokens
     min: 1
-    max: 2048
-    default: 512
+    max: 1024
+    default: 1024
   - name: frequency_penalty
     use_template: frequency_penalty
     min: -2
@@ -34,8 +33,3 @@ parameter_rules:
     min: -2
     max: 2
     default: 0
-pricing:
-  input: '0.03'
-  output: '0.05'
-  unit: '0.0001'
-  currency: USD

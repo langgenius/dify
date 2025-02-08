@@ -1,7 +1,7 @@
 'use client'
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import QRCode from 'qrcode.react'
+import { QRCodeSVG } from 'qrcode.react'
 import QrcodeStyle from './style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
 
@@ -54,20 +54,20 @@ const ShareQRCode = ({ content, selectorId, className }: Props) => {
       popupContent={t(`${prefixEmbedded}`) || ''}
     >
       <div
-        className={`w-8 h-8 cursor-pointer rounded-lg ${className ?? ''}`}
+        className={`w-8 h-8 cursor-pointer rounded-lg relative ${className ?? ''}`}
         onClick={toggleQRCode}
       >
         <div className={`w-full h-full ${QrcodeStyle.QrcodeIcon} ${isShow ? QrcodeStyle.show : ''}`} />
         {isShow && (
           <div
             ref={qrCodeRef}
-            className={QrcodeStyle.qrcodeform}
+            className={`${QrcodeStyle.qrcodeform} !absolute right-0 top-0`}
             onClick={handlePanelClick}
           >
-            <QRCode size={160} value={content} className={QrcodeStyle.qrcodeimage}/>
+            <QRCodeSVG size={160} value={content} className={QrcodeStyle.qrcodeimage}/>
             <div className={QrcodeStyle.text}>
-              <div className={`text-gray-500 ${QrcodeStyle.scan}`}>{t('appOverview.overview.appInfo.qrcode.scan')}</div>
-              <div className={`text-gray-500 ${QrcodeStyle.scan}`}>·</div>
+              <div className={`text-text-tertiary ${QrcodeStyle.scan}`}>{t('appOverview.overview.appInfo.qrcode.scan')}</div>
+              <div className={`text-text-tertiary ${QrcodeStyle.scan}`}>·</div>
               <div className={QrcodeStyle.download} onClick={downloadQR}>{t('appOverview.overview.appInfo.qrcode.download')}</div>
             </div>
           </div>

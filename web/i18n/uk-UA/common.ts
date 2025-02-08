@@ -50,6 +50,7 @@ const translation = {
     submit: 'Представити',
     skip: 'Корабель',
     imageCopied: 'Скопійоване зображення',
+    deleteApp: 'Видалити програму',
   },
   placeholder: {
     input: 'Будь ласка, введіть текст',

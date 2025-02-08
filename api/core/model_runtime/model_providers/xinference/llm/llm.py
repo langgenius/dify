@@ -635,16 +635,13 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         handle stream chat generate response
         """
         full_response = ""
-
         for chunk in resp:
             if len(chunk.choices) == 0:
                 continue
-
             delta = chunk.choices[0]
-
             if delta.finish_reason is None and (delta.delta.content is None or delta.delta.content == ""):
                 continue
-
+            delta_content = delta.delta.content or ""
             # check if there is a tool call in the response
             function_call = None
             tool_calls = []
@@ -657,9 +654,10 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             if function_call:
                 assistant_message_tool_calls += [self._extract_response_function_call(function_call)]
 
+            delta_content = self._wrap_thinking_by_tag(delta_content)
             # transform assistant message to prompt message
             assistant_prompt_message = AssistantPromptMessage(
-                content=delta.delta.content or "", tool_calls=assistant_message_tool_calls
+                content=delta_content or "", tool_calls=assistant_message_tool_calls
             )
 
             if delta.finish_reason is not None:
@@ -697,7 +695,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                     ),
                 )
 
-                full_response += delta.delta.content
+                full_response += delta_content
 
     def _handle_completion_generate_response(
         self,

@@ -5563,12 +5563,7 @@ debug@^4.4.0:
   dependencies:
     ms "^2.1.3"
 
-decimal.js@^10.4.2:
-  version "10.4.3"
-  resolved "https://registry.npmjs.org/decimal.js/-/decimal.js-10.4.3.tgz"
-  integrity sha512-VBBaLc1MgL5XpzgIP7ny5Z6Nx3UrRkIViUkPUdtl9aya5amy3De1gsUUSB1g3+3sExYNjCAsAznmukyxCb1GRA==
-
-decimal.js@^10.4.3:
+decimal.js@^10.4.2, decimal.js@^10.4.3:
   version "10.4.3"
   resolved "https://registry.yarnpkg.com/decimal.js/-/decimal.js-10.4.3.tgz#1044092884d245d1b7f65725fa4ad4c6f781cc23"
   integrity sha512-VBBaLc1MgL5XpzgIP7ny5Z6Nx3UrRkIViUkPUdtl9aya5amy3De1gsUUSB1g3+3sExYNjCAsAznmukyxCb1GRA==
@@ -8641,10 +8636,10 @@ jwt-decode@^4.0.0:
   resolved "https://registry.npmjs.org/jwt-decode/-/jwt-decode-4.0.0.tgz"
   integrity sha512-+KJGIyHgkGuIq3IEBNftfhW/LfWhXUIY6OmyVWjliu5KH1y0fw7VQ8YndE2O4qZdMSd9SqbnC8GOcZEy0Om7sA==
 
-katex@^0.16.0, katex@^0.16.10, katex@^0.16.9:
-  version "0.16.10"
-  resolved "https://registry.npmjs.org/katex/-/katex-0.16.10.tgz"
-  integrity sha512-ZiqaC04tp2O5utMsl2TEZTXxa6WSC4yo0fv5ML++D3QZv/vx2Mct0mTlRx3O+uUkjfuAgOkzsCmq5MiUEsDDdA==
+katex@^0.16.0, katex@^0.16.21, katex@^0.16.9:
+  version "0.16.21"
+  resolved "https://registry.yarnpkg.com/katex/-/katex-0.16.21.tgz#8f63c659e931b210139691f2cc7bb35166b792a3"
+  integrity sha512-XvqR7FgOHtWupfMiigNzmh+MgUVmDGU2kXZm899ZkPfcuoPuFxyHmXsgATDpFZDAXCI8tvinaVcDo8PIIJSo4A==
   dependencies:
     commander "^8.3.0"
 

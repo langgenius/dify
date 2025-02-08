@@ -2,7 +2,7 @@ version: '3'
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.15.2
+    image: langgenius/dify-api:0.15.3
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -227,7 +227,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.15.2
+    image: langgenius/dify-api:0.15.3
     restart: always
     environment:
       CONSOLE_WEB_URL: ''
@@ -397,7 +397,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.15.2
+    image: langgenius/dify-web:0.15.3
     restart: always
     environment:
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is

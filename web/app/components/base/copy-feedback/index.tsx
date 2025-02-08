@@ -35,7 +35,7 @@ const CopyFeedback = ({ content, className }: Props) => {
       }
     >
       <div
-        className={`w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg ${
+        className={`w-8 h-8 cursor-pointer hover:bg-state-base-hover rounded-md ${
           className ?? ''
         }`}
       >
