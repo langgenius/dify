@@ -82,6 +82,7 @@ const translation = {
       params: '推理配置',
       paramsTip1: '控制 LLM 推理参数。',
       paramsTip2: '当“自动”关闭时，使用默认值。',
+      auto: '自动',
       empty: '点击 "+" 按钮添加工具。您可以添加多个工具。',
       uninstalledTitle: '工具未安装',
       uninstalledContent: '此插件安装自 本地 / GitHub 仓库，请安装后使用。',

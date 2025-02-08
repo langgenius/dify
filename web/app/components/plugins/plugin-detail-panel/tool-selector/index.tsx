@@ -70,7 +70,6 @@ type Props = {
   onControlledStateChange?: (state: boolean) => void
   panelShowState?: boolean
   onPanelShowStateChange?: (state: boolean) => void
-  supportVariables?: boolean
   nodeOutputVars: NodeOutPutVar[],
   availableNodes: Node[],
   nodeId?: string,
@@ -346,7 +345,7 @@ const ToolSelector: FC<Props> = ({
                   <>
                     <Divider className='my-1 w-full' />
                     {/* tabs */}
-                    {showTabSlider && (
+                    {nodeId && showTabSlider && (
                       <TabSlider
                         className='shrink-0 mt-1 px-4'
                         itemClassName='py-3'
@@ -362,7 +361,7 @@ const ToolSelector: FC<Props> = ({
                         ]}
                       />
                     )}
-                    {showTabSlider && currType === 'params' && (
+                    {nodeId && showTabSlider && currType === 'params' && (
                       <div className='px-4 py-2'>
                         <div className='text-text-tertiary system-xs-regular'>{t('plugin.detailPanel.toolSelector.paramsTip1')}</div>
                         <div className='text-text-tertiary system-xs-regular'>{t('plugin.detailPanel.toolSelector.paramsTip2')}</div>
@@ -375,7 +374,7 @@ const ToolSelector: FC<Props> = ({
                       </div>
                     )}
                     {/* reasoning config only */}
-                    {reasoningConfigOnly && (
+                    {nodeId && reasoningConfigOnly && (
                       <div className='mb-1 p-4 pb-1'>
                         <div className='text-text-primary system-sm-semibold-uppercase'>{t('plugin.detailPanel.toolSelector.params')}</div>
                         <div className='pb-1'>
@@ -409,7 +408,7 @@ const ToolSelector: FC<Props> = ({
                       </div>
                     )}
                     {/* reasoning config form */}
-                    {(currType === 'params' || reasoningConfigOnly) && (
+                    {nodeId && (currType === 'params' || reasoningConfigOnly) && (
                       <ReasoningConfigForm
                         value={value?.parameters || {}}
                         onChange={handleParamsFormChange}

@@ -155,7 +155,6 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             tooltip={schema.tooltip && renderI18nObject(schema.tooltip)}
           >
             <ToolSelector
-              supportVariables
               nodeId={props.nodeId || ''}
               nodeOutputVars={props.nodeOutputVars || []}
               availableNodes={props.availableNodes || []}
@@ -174,7 +173,6 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
         }
         return (
           <MultipleToolSelector
-            supportVariables
             nodeId={props.nodeId || ''}
             nodeOutputVars={props.nodeOutputVars || []}
             availableNodes={props.availableNodes || []}

@@ -82,6 +82,7 @@ const translation = {
       params: 'REASONING CONFIG',
       paramsTip1: 'Controls LLM inference parameters.',
       paramsTip2: 'When \'Automatic\' is off, the default value is used.',
+      auto: 'Automatic',
       empty: 'Click the \'+\' button to add tools. You can add multiple tools.',
       uninstalledTitle: 'Tool not installed',
       uninstalledContent: 'This plugin is installed from the local/GitHub repository. Please use after installation.',
