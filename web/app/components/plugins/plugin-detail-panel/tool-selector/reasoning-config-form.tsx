@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import {
@@ -36,7 +36,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
   onChange,
   schemas,
   nodeOutputVars,
-  availableNodes,
+  // availableNodes,
   nodeId,
 }) => {
   const { t } = useTranslation()
@@ -51,52 +51,52 @@ const ReasoningConfigForm: React.FC<Props> = ({
     })
   }
 
-  const [inputsIsFocus, setInputsIsFocus] = useState<Record<string, boolean>>({})
-  const handleInputFocus = useCallback((variable: string) => {
-    return (value: boolean) => {
-      setInputsIsFocus((prev) => {
-        return {
-          ...prev,
-          [variable]: value,
-        }
-      })
-    }
-  }, [])
-  const handleNotMixedTypeChange = useCallback((variable: string) => {
+  // const [inputsIsFocus, setInputsIsFocus] = useState<Record<string, boolean>>({})
+  // const handleInputFocus = useCallback((variable: string) => {
+  //   return (value: boolean) => {
+  //     setInputsIsFocus((prev) => {
+  //       return {
+  //         ...prev,
+  //         [variable]: value,
+  //       }
+  //     })
+  //   }
+  // }, [])
+  const handleNotMixedTypeChange = useCallback((variable: string, toString = false) => {
     return (varValue: ValueSelector | string, varKindType: VarKindType) => {
       const newValue = produce(value, (draft: ToolVarInputs) => {
         const target = draft[variable].value
         if (target) {
           target.type = varKindType
-          target.value = varValue
+          target.value = toString ? `${varValue}` : varValue
         }
         else {
           draft[variable].value = {
             type: varKindType,
-            value: varValue,
+            value: toString ? `${varValue}` : varValue,
           }
         }
       })
       onChange(newValue)
     }
   }, [value, onChange])
-  const handleMixedTypeChange = useCallback((variable: string) => {
-    return (itemValue: string) => {
-      const newValue = produce(value, (draft: ToolVarInputs) => {
-        const target = draft[variable].value
-        if (target) {
-          target.value = itemValue
-        }
-        else {
-          draft[variable].value = {
-            type: VarKindType.mixed,
-            value: itemValue,
-          }
-        }
-      })
-      onChange(newValue)
-    }
-  }, [value, onChange])
+  // const handleMixedTypeChange = useCallback((variable: string) => {
+  //   return (itemValue: string) => {
+  //     const newValue = produce(value, (draft: ToolVarInputs) => {
+  //       const target = draft[variable].value
+  //       if (target) {
+  //         target.value = itemValue
+  //       }
+  //       else {
+  //         draft[variable].value = {
+  //           type: VarKindType.mixed,
+  //           value: itemValue,
+  //         }
+  //       }
+  //     })
+  //     onChange(newValue)
+  //   }
+  // }, [value, onChange])
   const handleFileChange = useCallback((variable: string) => {
     return (varValue: ValueSelector | string) => {
       const newValue = produce(value, (draft: ToolVarInputs) => {
@@ -192,8 +192,21 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 placeholderClassName='!leading-[21px]'
               />
             )} */}
+            {isString && (
+              <VarReferencePicker
+                zIndex={1001}
+                readonly={false}
+                isShowNodeName
+                nodeId={nodeId}
+                value={varInput?.value || []}
+                onChange={handleNotMixedTypeChange(variable, true)}
+                defaultVarKindType={VarKindType.variable}
+                filterVar={(varPayload: Var) => varPayload.type === VarType.number || varPayload.type === VarType.secret || varPayload.type === VarType.string}
+              />
+            )}
             {(isNumber || isSelect) && (
               <VarReferencePicker
+                zIndex={1001}
                 readonly={false}
                 isShowNodeName
                 nodeId={nodeId}
@@ -208,6 +221,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
             {isFile && (
               <VarReferencePicker
+                zIndex={1001}
                 readonly={false}
                 isShowNodeName
                 nodeId={nodeId}

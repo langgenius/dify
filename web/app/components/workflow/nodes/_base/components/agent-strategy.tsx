@@ -156,9 +156,9 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           >
             <ToolSelector
               supportVariables
-              nodeId={nodeId || ''}
-              nodeOutputVars={nodeOutputVars || []}
-              availableNodes={availableNodes || []}
+              nodeId={props.nodeId || ''}
+              nodeOutputVars={props.nodeOutputVars || []}
+              availableNodes={props.availableNodes || []}
               scope={schema.scope}
               value={value}
               onSelect={item => onChange(item)}
@@ -175,9 +175,9 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
         return (
           <MultipleToolSelector
             supportVariables
-            nodeId={nodeId || ''}
-            nodeOutputVars={nodeOutputVars || []}
-            availableNodes={availableNodes || []}
+            nodeId={props.nodeId || ''}
+            nodeOutputVars={props.nodeOutputVars || []}
+            availableNodes={props.availableNodes || []}
             scope={schema.scope}
             value={value || []}
             label={renderI18nObject(schema.label)}
@@ -208,6 +208,9 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             fieldLabelClassName='uppercase'
             customRenderField={renderField}
             override={override}
+            nodeId={nodeId}
+            nodeOutputVars={nodeOutputVars || []}
+            availableNodes={availableNodes || []}
           />
         </div>
         : <ListEmpty
