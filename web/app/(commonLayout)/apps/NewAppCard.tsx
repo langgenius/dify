@@ -24,7 +24,7 @@ const CreateAppCard = (
     className,
     onSuccess,
   }: CreateAppCardProps & {
-    ref: React.RefObject<HTMLDivElement>;
+    ref?: React.RefObject<HTMLDivElement>;
   },
 ) => {
   const { t } = useTranslation()

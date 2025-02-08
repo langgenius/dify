@@ -10,7 +10,7 @@ const Icon = (
   {
     ref,
     ...props
-  }: React.ElementType<SVGElement> & {
+  }: React.SVGProps<SVGSVGElement> & {
     ref?: React.RefObject<React.MutableRefObject<HTMLOrSVGElement>>;
   },
 ) => <IconBase {...props} ref={ref} data={data as IconData} />
