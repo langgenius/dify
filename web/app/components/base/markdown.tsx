@@ -10,7 +10,6 @@ import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import { Component, memo, useMemo, useRef, useState } from 'react'
 import type { CodeComponent } from 'react-markdown/lib/ast-to-react'
-import template from 'lodash/template'
 import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
 import SVGBtn from '@/app/components/base/svg'
@@ -22,6 +21,7 @@ import AudioGallery from '@/app/components/base/audio-gallery'
 import SVGRenderer from '@/app/components/base/svg-gallery'
 import MarkdownButton from '@/app/components/base/markdown-blocks/button'
 import MarkdownForm from '@/app/components/base/markdown-blocks/form'
+
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
   sql: 'SQL',
@@ -64,18 +64,18 @@ const preprocessLaTeX = (content: string) => {
 }
 
 const preprocessThinkTag = (content: string) => {
-  const thinkTemplate = template(`<details open>
-    <summary style="color: gray; font-weight: bold;">Thinking</summary>
-    <div style="color: gray; padding: 10px; margin-left: 10px; background-color: #fafafa; border-left: 3px solid #ddd;">
-  <%- innerContent %>
-    </div>
-  </details>`)
-  if (!content.startsWith('<think>\n'))
+  if (!content.trim().startsWith('<think>\n'))
     return content
 
-  let innerContent = content.slice('<think>\n'.length)
-  innerContent = innerContent.replace(/\n<\/think>$/, '')
-  return thinkTemplate({ innerContent })
+  const thinkDetails = '<details open><summary class="text-gray-500 font-bold">Thinking</summary>'
+    + '<div class="text-gray-500 p-3 ml-2 bg-gray-50 border-l border-gray-300">\n'
+  content = content.replace('<think>\n', thinkDetails)
+  if (content.includes('\n</think>'))
+    content = content.replace('\n</think>', '\n</div></details>')
+  else
+    content += '\n</div></details>'
+
+  return content
 }
 
 export function PreCode(props: { children: any }) {
