@@ -373,6 +373,7 @@ export type VersionListResponse = {
 }
 
 export type VersionInfo = {
+  installedId: string, // use to uninstall
   installedVersion: string,
   uniqueIdentifier: string
 }

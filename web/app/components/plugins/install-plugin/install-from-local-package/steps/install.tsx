@@ -8,8 +8,9 @@ import Button from '@/app/components/base/button'
 import { Trans, useTranslation } from 'react-i18next'
 import { RiLoader2Line } from '@remixicon/react'
 import checkTaskStatus from '../../base/check-task-status'
-import { useInstallPackageFromLocal, usePluginTaskList, useUpdatePackageFromMarketPlace } from '@/service/use-plugins'
+import { useInstallPackageFromLocal, usePluginTaskList } from '@/service/use-plugins'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
+import { uninstallPlugin } from '@/service/plugins'
 import Version from '../../base/version'
 
 const i18nPrefix = 'plugin.installModal'
@@ -50,7 +51,6 @@ const Installed: FC<Props> = ({
 
   const [isInstalling, setIsInstalling] = React.useState(false)
   const { mutateAsync: installPackageFromLocal } = useInstallPackageFromLocal()
-  const { mutateAsync: updatePackageFromMarketPlace } = useUpdatePackageFromMarketPlace()
 
   const {
     check,
@@ -69,27 +69,15 @@ const Installed: FC<Props> = ({
     onStartToInstall?.()
 
     try {
-      let taskId
-      let isInstalled
-      if (hasInstalled) {
-        const {
-          all_installed,
-          task_id,
-        } = await updatePackageFromMarketPlace({
-          original_plugin_unique_identifier: installedInfoPayload.uniqueIdentifier,
-          new_plugin_unique_identifier: uniqueIdentifier,
-        })
-        taskId = task_id
-        isInstalled = all_installed
-      }
-      else {
-        const {
-          all_installed,
-          task_id,
-        } = await installPackageFromLocal(uniqueIdentifier)
-        taskId = task_id
-        isInstalled = all_installed
-      }
+      if (hasInstalled)
+        await uninstallPlugin(installedInfoPayload.installedId)
+
+      const {
+        all_installed,
+        task_id,
+      } = await installPackageFromLocal(uniqueIdentifier)
+      const taskId = task_id
+      const isInstalled = all_installed
 
       if (isInstalled) {
         onInstalled()

@@ -1,3 +1,4 @@
+from core.helper import marketplace
 from core.plugin.entities.plugin import GenericProviderID, PluginDependency, PluginInstallationSource
 from core.plugin.manager.plugin import PluginInstallationManager
 
@@ -98,3 +99,18 @@ class DependenciesAnalysisService:
                 raise ValueError(f"Unknown plugin source: {plugin.source}")
 
         return result
+
+    @classmethod
+    def generate_latest_dependencies(cls, dependencies: list[str]) -> list[PluginDependency]:
+        """
+        Generate the latest version of dependencies
+        """
+        dependencies = list(set(dependencies))
+        deps = marketplace.batch_fetch_plugin_manifests(dependencies)
+        return [
+            PluginDependency(
+                type=PluginDependency.Type.Marketplace,
+                value=PluginDependency.Marketplace(marketplace_plugin_unique_identifier=dep.latest_package_identifier),
+            )
+            for dep in deps
+        ]
