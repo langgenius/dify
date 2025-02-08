@@ -6,14 +6,20 @@ import {
 } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Node } from 'reactflow'
-import type { NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
+import type {
+  NodeOutPutVar,
+  ValueSelector,
+  Var,
+} from '@/app/components/workflow/types'
 import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { VarType } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -22,6 +28,7 @@ type Props = {
   schemas: any[]
   nodeOutputVars: NodeOutPutVar[],
   availableNodes: Node[],
+  nodeId: string
 }
 
 const ReasoningConfigForm: React.FC<Props> = ({
@@ -30,17 +37,15 @@ const ReasoningConfigForm: React.FC<Props> = ({
   schemas,
   nodeOutputVars,
   availableNodes,
+  nodeId,
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
-  const handleFormChange = (key: string, val: string | boolean) => {
-    onChange({ ...value, [key]: val })
-  }
   const handleAutomatic = (key: string, val: any) => {
     onChange({
       ...value,
       [key]: {
-        ...value[key],
+        value: val ? null : value[key]?.value,
         auto: val ? 1 : 0,
       },
     })
@@ -60,13 +65,13 @@ const ReasoningConfigForm: React.FC<Props> = ({
   const handleNotMixedTypeChange = useCallback((variable: string) => {
     return (varValue: ValueSelector | string, varKindType: VarKindType) => {
       const newValue = produce(value, (draft: ToolVarInputs) => {
-        const target = draft[variable]
+        const target = draft[variable].value
         if (target) {
           target.type = varKindType
           target.value = varValue
         }
         else {
-          draft[variable] = {
+          draft[variable].value = {
             type: varKindType,
             value: varValue,
           }
@@ -78,12 +83,12 @@ const ReasoningConfigForm: React.FC<Props> = ({
   const handleMixedTypeChange = useCallback((variable: string) => {
     return (itemValue: string) => {
       const newValue = produce(value, (draft: ToolVarInputs) => {
-        const target = draft[variable]
+        const target = draft[variable].value
         if (target) {
           target.value = itemValue
         }
         else {
-          draft[variable] = {
+          draft[variable].value = {
             type: VarKindType.mixed,
             value: itemValue,
           }
@@ -95,7 +100,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
   const handleFileChange = useCallback((variable: string) => {
     return (varValue: ValueSelector | string) => {
       const newValue = produce(value, (draft: ToolVarInputs) => {
-        draft[variable] = {
+        draft[variable].value = {
           type: VarKindType.variable,
           value: varValue,
         }
@@ -103,7 +108,6 @@ const ReasoningConfigForm: React.FC<Props> = ({
       onChange(newValue)
     }
   }, [value, onChange])
-
   const handleAppChange = useCallback((variable: string) => {
     return (app: {
       app_id: string
@@ -111,7 +115,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
       files?: any[]
     }) => {
       const newValue = produce(value, (draft: ToolVarInputs) => {
-        draft[variable] = app as any
+        draft[variable].value = app as any
       })
       onChange(newValue)
     }
@@ -119,8 +123,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
   const handleModelChange = useCallback((variable: string) => {
     return (model: any) => {
       const newValue = produce(value, (draft: ToolVarInputs) => {
-        draft[variable] = {
-          ...draft[variable],
+        draft[variable].value = {
+          ...draft[variable].value,
           ...model,
         } as any
       })
@@ -188,33 +192,31 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 placeholderClassName='!leading-[21px]'
               />
             )} */}
-            {/* {(isNumber || isSelect) && (
+            {(isNumber || isSelect) && (
               <VarReferencePicker
-                readonly={readOnly}
+                readonly={false}
                 isShowNodeName
                 nodeId={nodeId}
                 value={varInput?.type === VarKindType.constant ? (varInput?.value ?? '') : (varInput?.value ?? [])}
                 onChange={handleNotMixedTypeChange(variable)}
-                onOpen={handleOpen(index)}
                 defaultVarKindType={varInput?.type || (isNumber ? VarKindType.constant : VarKindType.variable)}
-                isSupportConstantValue={isSupportConstantValue}
-                filterVar={isNumber ? filterVar : undefined}
-                availableVars={isSelect ? availableVars : undefined}
+                isSupportConstantValue
+                filterVar={isNumber ? (varPayload: Var) => varPayload.type === schema._type : undefined}
+                availableVars={isSelect ? nodeOutputVars : undefined}
                 schema={schema}
               />
-            )} */}
-            {/* {isFile && (
+            )}
+            {isFile && (
               <VarReferencePicker
-                readonly={readOnly}
+                readonly={false}
                 isShowNodeName
                 nodeId={nodeId}
                 value={varInput?.value || []}
                 onChange={handleFileChange(variable)}
-                onOpen={handleOpen(index)}
                 defaultVarKindType={VarKindType.variable}
                 filterVar={(varPayload: Var) => varPayload.type === VarType.file || varPayload.type === VarType.arrayFile}
               />
-            )} */}
+            )}
             {isAppSelector && (
               <AppSelector
                 disabled={false}

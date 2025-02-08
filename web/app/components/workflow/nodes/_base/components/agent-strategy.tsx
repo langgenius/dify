@@ -36,6 +36,7 @@ export type AgentStrategyProps = {
   onFormValueChange: (value: ToolVarInputs) => void
   nodeOutputVars?: NodeOutPutVar[],
   availableNodes?: Node[],
+  nodeId?: string
 }
 
 type CustomSchema<Type, Field = {}> = Omit<CredentialFormSchema, 'type'> & { type: Type } & Field
@@ -46,7 +47,7 @@ type MultipleToolSelectorSchema = CustomSchema<'array[tools]'>
 type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema
 
 export const AgentStrategy = memo((props: AgentStrategyProps) => {
-  const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange, nodeOutputVars, availableNodes } = props
+  const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange, nodeOutputVars, availableNodes, nodeId } = props
   const { t } = useTranslation()
   const defaultModel = useDefaultModel(ModelTypeEnum.textGeneration)
   const renderI18nObject = useRenderI18nObject()
@@ -155,6 +156,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           >
             <ToolSelector
               supportVariables
+              nodeId={nodeId || ''}
               nodeOutputVars={nodeOutputVars || []}
               availableNodes={availableNodes || []}
               scope={schema.scope}
@@ -173,6 +175,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
         return (
           <MultipleToolSelector
             supportVariables
+            nodeId={nodeId || ''}
             nodeOutputVars={nodeOutputVars || []}
             availableNodes={availableNodes || []}
             scope={schema.scope}

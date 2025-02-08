@@ -103,6 +103,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
         onFormValueChange={onFormChange}
         nodeOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
+        nodeId={props.id}
       />
     </Field>
     <div>
