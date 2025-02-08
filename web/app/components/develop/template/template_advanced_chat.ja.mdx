@@ -903,7 +903,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### リクエストボディ
 
     <Properties>
-      <Property name='message_id' type='str' key='text'>
+      <Property name='message_id' type='str' key='message_id'>
         Difyによって生成されたテキストメッセージの場合、生成されたメッセージIDを直接渡します。バックエンドはメッセージIDを使用して対応する内容を検索し、音声情報を直接合成します。message_idとtextが同時に提供される場合、message_idが優先されます。
       </Property>
       <Property name='text' type='str' key='text'>
