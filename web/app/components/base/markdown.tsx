@@ -63,6 +63,22 @@ const preprocessLaTeX = (content: string) => {
     .replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`)
 }
 
+const preprocessThinkTag = (content: string) => {
+  if (typeof content !== 'string')
+    return content
+  if (!content.trim().startsWith("<think>\n"))
+    return content
+  const thinkDetails = "<details open><summary style=\"color: gray; font-weight: bold;\">Thinking</summary>" +
+    "<div style=\"color: gray; padding: 10px; margin-left: 10px; background-color: #fafafa; border-left: 3px solid #ddd;\">\n"
+  content = content.replace("<think>\n", thinkDetails)
+  if(content.includes("\n</think>")){
+    content = content.replace("\n</think>", "\n</div></details>")
+  } else {
+    content += "\n</div></details>"
+  }
+  return content
+}
+
 export function PreCode(props: { children: any }) {
   const ref = useRef<HTMLPreElement>(null)
 
@@ -225,7 +241,8 @@ const Link = ({ node, ...props }: any) => {
 }
 
 export function Markdown(props: { content: string; className?: string }) {
-  const latexContent = preprocessLaTeX(props.content)
+  const thinkContent = preprocessThinkTag(props.content)
+  const latexContent = preprocessLaTeX(thinkContent || '')
   return (
     <div className={cn(props.className, 'markdown-body')}>
       <ReactMarkdown

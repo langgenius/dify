@@ -654,7 +654,6 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             if function_call:
                 assistant_message_tool_calls += [self._extract_response_function_call(function_call)]
 
-            delta_content = self._wrap_thinking_by_tag(delta_content)
             # transform assistant message to prompt message
             assistant_prompt_message = AssistantPromptMessage(
                 content=delta_content or "", tool_calls=assistant_message_tool_calls

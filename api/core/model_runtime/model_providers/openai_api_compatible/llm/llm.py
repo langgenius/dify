@@ -528,7 +528,6 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                     delta_content, is_reasoning_started = self._wrap_thinking_by_reasoning_content(
                         delta, is_reasoning_started
                     )
-                    delta_content = self._wrap_thinking_by_tag(delta_content)
 
                     assistant_message_tool_calls = None
 
