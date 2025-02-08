@@ -326,6 +326,8 @@ function Form<
           </div>
           <ToolSelector
             scope={scope}
+            nodeOutputVars={[]}
+            availableNodes={[]}
             disabled={readonly}
             value={value[variable]}
             // selectedTools={value[variable] ? [value[variable]] : []}
@@ -351,6 +353,8 @@ function Form<
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <MultipleToolSelector
             disabled={readonly}
+            nodeOutputVars={[]}
+            availableNodes={[]}
             scope={scope}
             label={label[language] || label.en_US}
             required={required}
