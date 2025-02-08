@@ -66,9 +66,9 @@ const Datasets = ({
 
   useEffect(() => {
     const onScroll = debounce(() => {
-      if (!loadingStateRef.current) {
+      if (!loadingStateRef.current && containerRef.current && anchorRef.current) {
         const { scrollTop, clientHeight } = containerRef.current!
-        const anchorOffset = anchorRef.current!.offsetTop
+        const anchorOffset = anchorRef.current.offsetTop
         if (anchorOffset - scrollTop - clientHeight < 100)
           setSize(size => size + 1)
       }
@@ -80,7 +80,7 @@ const Datasets = ({
 
   return (
     <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
-      { isCurrentWorkspaceEditor && <NewDatasetCard ref={anchorRef} /> }
+      {isCurrentWorkspaceEditor && <NewDatasetCard ref={anchorRef} />}
       {data?.map(({ data: datasets }) => datasets.map(dataset => (
         <DatasetCard key={dataset.id} dataset={dataset} onSuccess={mutate} />),
       ))}
