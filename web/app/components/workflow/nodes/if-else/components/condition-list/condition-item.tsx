@@ -21,7 +21,7 @@ import {
 } from '../../types'
 import { comparisonOperatorNotRequireValue, getOperators } from '../../utils'
 import ConditionNumberInput from '../condition-number-input'
-import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '../../default'
+import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '../../../constants'
 import ConditionWrap from '../condition-wrap'
 import ConditionOperator from './condition-operator'
 import ConditionInput from './condition-input'
@@ -39,7 +39,7 @@ import { SimpleSelect as Select } from '@/app/components/base/select'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
 
-interface ConditionItemProps {
+type ConditionItemProps = {
   className?: string
   disabled?: boolean
   caseId: string

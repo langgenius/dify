@@ -12,7 +12,7 @@ import type { CaseItem, HandleAddCondition, HandleAddSubVariableCondition, Handl
 import type { Node, NodeOutPutVar, Var } from '../../../types'
 import { VarType } from '../../../types'
 import { useGetAvailableVars } from '../../variable-assigner/hooks'
-import { SUB_VARIABLES } from '../default'
+import { SUB_VARIABLES } from '../../constants'
 import ConditionList from './condition-list'
 import ConditionAdd from './condition-add'
 import cn from '@/utils/classnames'
