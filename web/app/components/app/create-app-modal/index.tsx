@@ -24,7 +24,7 @@ import Textarea from '@/app/components/base/textarea'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { BASE_PATH, NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import FullScreenModal from '@/app/components/base/fullscreen-modal'
 
@@ -355,11 +355,11 @@ function AppScreenShot({ mode, show }: { mode: AppMode; show: boolean }) {
     'workflow': 'Workflow',
   }
   return <picture>
-    <source media="(resolution: 1x)" srcSet={`${process.env.NEXT_PUBLIC_BASE_PATH}/screenshots/${theme}/${modeToImageMap[mode]}.png`} />
-    <source media="(resolution: 2x)" srcSet={`${process.env.NEXT_PUBLIC_BASE_PATH}/screenshots/${theme}/${modeToImageMap[mode]}@2x.png`} />
-    <source media="(resolution: 3x)" srcSet={`${process.env.NEXT_PUBLIC_BASE_PATH}/screenshots/${theme}/${modeToImageMap[mode]}@3x.png`} />
+    <source media="(resolution: 1x)" srcSet={`${BASE_PATH}/screenshots/${theme}/${modeToImageMap[mode]}.png`} />
+    <source media="(resolution: 2x)" srcSet={`${BASE_PATH}/screenshots/${theme}/${modeToImageMap[mode]}@2x.png`} />
+    <source media="(resolution: 3x)" srcSet={`${BASE_PATH}/screenshots/${theme}/${modeToImageMap[mode]}@3x.png`} />
     <Image className={show ? '' : 'hidden'}
-      src={`${process.env.NEXT_PUBLIC_BASE_PATH}/screenshots/${theme}/${modeToImageMap[mode]}.png`}
+      src={`${BASE_PATH}/screenshots/${theme}/${modeToImageMap[mode]}.png`}
       alt='App Screen Shot'
       width={664} height={448} />
   </picture>

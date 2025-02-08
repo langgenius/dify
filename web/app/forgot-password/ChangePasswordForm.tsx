@@ -10,6 +10,7 @@ import Button from '@/app/components/base/button'
 import { changePasswordWithToken, verifyForgotPasswordToken } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
+import { BASE_PATH } from '@/config'
 
 const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
@@ -163,7 +164,7 @@ const ChangePasswordForm = () => {
           </div>
           <div className="w-full mx-auto mt-6">
             <Button variant='primary' className='w-full'>
-              <a href={`${process.env.NEXT_PUBLIC_BASE_PATH}/signin`}>{t('login.passwordChanged')}</a>
+              <a href={`${BASE_PATH}/signin`}>{t('login.passwordChanged')}</a>
             </Button>
           </div>
         </div>

@@ -8,11 +8,12 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import {
   getFilesInLogs,
 } from '@/app/components/base/file-uploader/utils'
+import { BASE_PATH } from '@/config'
 
 import './style.css'
 
 // load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
-loader.config({ paths: { vs: `${process.env.NEXT_PUBLIC_BASE_PATH}/vs` } })
+loader.config({ paths: { vs: `${BASE_PATH}/vs` } })
 
 const CODE_EDITOR_LINE_HEIGHT = 18
 

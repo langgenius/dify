@@ -1,5 +1,6 @@
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
+import { BASE_PATH } from '@/config'
 
 type UseTabSearchParamsOptions = {
   defaultTab: string
@@ -36,7 +37,7 @@ export const useTabSearchParams = ({
     setTab(newActiveTab)
     if (disableSearchParams)
       return
-    history[`${routingBehavior}State`](null, '', `${process.env.NEXT_PUBLIC_BASE_PATH}${pathName}?${searchParamName}=${newActiveTab}`)
+    history[`${routingBehavior}State`](null, '', `${BASE_PATH}${pathName}?${searchParamName}=${newActiveTab}`)
   }
 
   return [activeTab, setActiveTab] as const

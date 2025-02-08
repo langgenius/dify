@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import classNames from '@/utils/classnames'
 import { useSelector } from '@/context/app-context'
+import { BASE_PATH } from '@/config'
 
 type LogoSiteProps = {
   className?: string
@@ -16,7 +17,7 @@ const LogoSite: FC<LogoSiteProps> = ({
     }
   })
 
-  const src = theme === 'light' ? `${process.env.NEXT_PUBLIC_BASE_PATH}/logo/logo-site.png` : `${process.env.NEXT_PUBLIC_BASE_PATH}/logo/logo-site-${theme}.png`
+  const src = theme === 'light' ? `${BASE_PATH}/logo/logo-site.png` : `${BASE_PATH}/logo/logo-site-${theme}.png`
   return (
     <img
       src={src}

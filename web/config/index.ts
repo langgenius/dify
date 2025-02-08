@@ -260,3 +260,5 @@ export const TEXT_GENERATION_TIMEOUT_MS = textGenerationTimeoutMs
 export const DISABLE_UPLOAD_IMAGE_AS_ICON = process.env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON === 'true'
 
 export const FULL_DOC_PREVIEW_LENGTH = 50
+
+export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || ''
