@@ -9,7 +9,7 @@ import RemarkGfm from 'remark-gfm'
 import RehypeRaw from 'rehype-raw'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
-import { Component, createContext, memo, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { Component, createContext, memo, useContext, useMemo, useRef, useState } from 'react'
 import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
 import SVGBtn from '@/app/components/base/svg'
@@ -241,7 +241,7 @@ const Link: Components['a'] = ({ node, ...props }) => {
 export function Markdown(props: { content: string; className?: string }) {
   const latexContent = preprocessLaTeX(props.content)
   return (
-    <div className={cn(props.className, 'markdown-body')}>
+    <div className={cn('markdown-body', props.className)}>
       <ReactMarkdown
         remarkPlugins={[RemarkGfm, RemarkMath, RemarkBreaks]}
         rehypePlugins={[

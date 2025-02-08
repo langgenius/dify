@@ -275,6 +275,8 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
         category: PluginType.model,
         exclude,
         type: 'plugin',
+        sortBy: 'install_count',
+        sortOrder: 'DESC',
       })
     }
     else {
@@ -284,6 +286,8 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
         type: 'plugin',
         pageSize: 1000,
         exclude,
+        sortBy: 'install_count',
+        sortOrder: 'DESC',
       })
     }
   }, [queryPlugins, queryPluginsWithDebounced, searchText, exclude])

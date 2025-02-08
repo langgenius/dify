@@ -65,11 +65,11 @@ importers:
         specifier: ^4.5.0
         version: 4.5.0(react@19.0.0)
       '@sentry/react':
-        specifier: ^7.54.0
-        version: 7.119.2(react@19.0.0)
+        specifier: ^8.54.0
+        version: 8.54.0(react@19.0.0)
       '@sentry/utils':
-        specifier: ^7.54.0
-        version: 7.119.2
+        specifier: ^8.54.0
+        version: 8.54.0
       '@svgdotjs/svg.js':
         specifier: ^3.2.4
         version: 3.2.4
@@ -83,8 +83,8 @@ importers:
         specifier: ^5.60.5
         version: 5.61.0(@tanstack/react-query@5.61.0(react@19.0.0))(react@19.0.0)
       ahooks:
-        specifier: ^3.8.1
-        version: 3.8.1(react@19.0.0)
+        specifier: ^3.8.4
+        version: 3.8.4(react@19.0.0)
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.0
@@ -140,8 +140,8 @@ importers:
         specifier: ^4.0.0
         version: 4.0.0
       katex:
-        specifier: ^0.16.11
-        version: 0.16.11
+        specifier: ^0.16.21
+        version: 0.16.21
       ky:
         specifier: ^1.7.2
         version: 1.7.2
@@ -176,8 +176,8 @@ importers:
         specifier: ^3.25.0
         version: 3.25.0
       qrcode.react:
-        specifier: ^4.1.0
-        version: 4.1.0(react@19.0.0)
+        specifier: ^4.2.0
+        version: 4.2.0(react@19.0.0)
       qs:
         specifier: ^6.13.0
         version: 6.13.0
@@ -2155,47 +2155,39 @@ packages:
   '@rushstack/eslint-patch@1.10.4':
     resolution: {integrity: sha512-WJgX9nzTqknM393q1QJDJmoW28kUfEnybeTfVNcNAPnIx210RXm2DiXiHzfNPJNIUUb1tJnz/l4QGtJ30PgWmA==}
 
-  '@sentry-internal/feedback@7.119.2':
-    resolution: {integrity: sha512-bnR1yJWVBZfXGx675nMXE8hCXsxluCBfIFy9GQT8PTN/urxpoS9cGz+5F7MA7Xe3Q06/7TT0Mz3fcDvjkqTu3Q==}
-    engines: {node: '>=12'}
+  '@sentry-internal/browser-utils@8.54.0':
+    resolution: {integrity: sha512-DKWCqb4YQosKn6aD45fhKyzhkdG7N6goGFDeyTaJFREJDFVDXiNDsYZu30nJ6BxMM7uQIaARhPAC5BXfoED3pQ==}
+    engines: {node: '>=14.18'}
 
-  '@sentry-internal/replay-canvas@7.119.2':
-    resolution: {integrity: sha512-Lqo8IFyeKkdOrOGRqm9jCEqeBl8kINe5+c2VqULpkO/I6ql6ISwPSYnmG6yL8cCVIaT1893CLog/pS4FxCv8/Q==}
-    engines: {node: '>=12'}
+  '@sentry-internal/feedback@8.54.0':
+    resolution: {integrity: sha512-nQqRacOXoElpE0L0ADxUUII0I3A94niqG9Z4Fmsw6057QvyrV/LvTiMQBop6r5qLjwMqK+T33iR4/NQI5RhsXQ==}
+    engines: {node: '>=14.18'}
 
-  '@sentry-internal/tracing@7.119.2':
-    resolution: {integrity: sha512-V2W+STWrafyGJhQv3ulMFXYDwWHiU6wHQAQBShsHVACiFaDrJ2kPRet38FKv4dMLlLlP2xN+ss2e5zv3tYlTiQ==}
-    engines: {node: '>=8'}
+  '@sentry-internal/replay-canvas@8.54.0':
+    resolution: {integrity: sha512-K/On3OAUBeq/TV2n+1EvObKC+WMV9npVXpVyJqCCyn8HYMm8FUGzuxeajzm0mlW4wDTPCQor6mK9/IgOquUzCw==}
+    engines: {node: '>=14.18'}
 
-  '@sentry/browser@7.119.2':
-    resolution: {integrity: sha512-Wb2RzCsJBTNCmS9KPmbVyV5GGzFXjFdUThAN9xlnN5GgemMBwdQjGu/tRYr8yJAVsRb0EOFH8IuJBNKKNnO49g==}
-    engines: {node: '>=8'}
+  '@sentry-internal/replay@8.54.0':
+    resolution: {integrity: sha512-8xuBe06IaYIGJec53wUC12tY2q4z2Z0RPS2s1sLtbA00EvK1YDGuXp96IDD+HB9mnDMrQ/jW5f97g9TvPsPQUg==}
+    engines: {node: '>=14.18'}
 
-  '@sentry/core@7.119.2':
-    resolution: {integrity: sha512-hQr3d2yWq/2lMvoyBPOwXw1IHqTrCjOsU1vYKhAa6w9vGbJZFGhKGGE2KEi/92c3gqGn+gW/PC7cV6waCTDuVA==}
-    engines: {node: '>=8'}
+  '@sentry/browser@8.54.0':
+    resolution: {integrity: sha512-BgUtvxFHin0fS0CmJVKTLXXZcke0Av729IVfi+2fJ4COX8HO7/HAP02RKaSQGmL2HmvWYTfNZ7529AnUtrM4Rg==}
+    engines: {node: '>=14.18'}
 
-  '@sentry/integrations@7.119.2':
-    resolution: {integrity: sha512-dCuXKvbUE3gXVVa696SYMjlhSP6CxpMH/gl4Jk26naEB8Xjsn98z/hqEoXLg6Nab73rjR9c/9AdKqBbwVMHyrQ==}
-    engines: {node: '>=8'}
+  '@sentry/core@8.54.0':
+    resolution: {integrity: sha512-03bWf+D1j28unOocY/5FDB6bUHtYlm6m6ollVejhg45ZmK9iPjdtxNWbrLsjT1WRym0Tjzowu+A3p+eebYEv0Q==}
+    engines: {node: '>=14.18'}
 
-  '@sentry/react@7.119.2':
-    resolution: {integrity: sha512-fE48R/mtb/bpc4/YVvKurKSAZ0ueUI5Ma0cVSr/Fi09rFdGwLRMcweM1UydREO/ILiyt8FezyZg7L20VAp4/TQ==}
-    engines: {node: '>=8'}
+  '@sentry/react@8.54.0':
+    resolution: {integrity: sha512-42T/fp8snYN19Fy/2P0Mwotu4gcdy+1Lx+uYCNcYP1o7wNGigJ7qb27sW7W34GyCCHjoCCfQgeOqDQsyY8LC9w==}
+    engines: {node: '>=14.18'}
     peerDependencies:
-      react: 15.x || 16.x || 17.x || 18.x
+      react: ^16.14.0 || 17.x || 18.x || 19.x
 
-  '@sentry/replay@7.119.2':
-    resolution: {integrity: sha512-nHDsBt0mlJXTWAHjzQdCzDbhV2fv8B62PPB5mu5SpI+G5h+ir3r5lR0lZZrMT8eurVowb/HnLXAs+XYVug3blg==}
-    engines: {node: '>=12'}
-
-  '@sentry/types@7.119.2':
-    resolution: {integrity: sha512-ydq1tWsdG7QW+yFaTp0gFaowMLNVikIqM70wxWNK+u98QzKnVY/3XTixxNLsUtnAB4Y+isAzFhrc6Vb5GFdFeg==}
-    engines: {node: '>=8'}
-
-  '@sentry/utils@7.119.2':
-    resolution: {integrity: sha512-TLdUCvcNgzKP0r9YD7tgCL1PEUp42TObISridsPJ5rhpVGQJvpr+Six0zIkfDUxerLYWZoK8QMm9KgFlPLNQzA==}
-    engines: {node: '>=8'}
+  '@sentry/utils@8.54.0':
+    resolution: {integrity: sha512-JL8UDjrsKxKclTdLXfuHfE7B3KbrAPEYP7tMyN/xiO2vsF6D84fjwYyalO0ZMtuFZE6vpSze8ZOLEh6hLnPYsw==}
+    engines: {node: '>=14.18'}
 
   '@sinclair/typebox@0.27.8':
     resolution: {integrity: sha512-+Fj43pSMwJs4KRrH/938Uf+uAELIgVBmQzg/q1YG10djyfA3TnrU8N8XzqCh/okZdszqBQTZf96idMfE5lnwTA==}
@@ -3021,8 +3013,8 @@ packages:
     resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
     engines: {node: '>= 6.0.0'}
 
-  ahooks@3.8.1:
-    resolution: {integrity: sha512-JoP9+/RWO7MnI/uSKdvQ8WB10Y3oo1PjLv+4Sv4Vpm19Z86VUMdXh+RhWvMGxZZs06sq2p0xVtFk8Oh5ZObsoA==}
+  ahooks@3.8.4:
+    resolution: {integrity: sha512-39wDEw2ZHvypaT14EpMMk4AzosHWt0z9bulY0BeDsvc9PqJEV+Kjh/4TZfftSsotBMq52iYIOFPd3PR56e0ZJg==}
     engines: {node: '>=8.0.0'}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0
@@ -5105,9 +5097,6 @@ packages:
     engines: {node: '>=16.x'}
     hasBin: true
 
-  immediate@3.0.6:
-    resolution: {integrity: sha512-XXOFtyqDjNDAQxVfYxuF7g9Il/IbWmmlQg2MYKOH8ExIT1qg6xc4zyS3HaEEATgs1btfzxq15ciUiY7gjSXRGQ==}
-
   immer@9.0.21:
     resolution: {integrity: sha512-bc4NBHqOqSfRW7POMkHd51LvClaeMXpm8dx0e8oE2GORbq5aRK7Bxl4FyzVLdGtLmvLKL7BTDBG5ACQm4HWjTA==}
 
@@ -5618,8 +5607,8 @@ packages:
     resolution: {integrity: sha512-+KJGIyHgkGuIq3IEBNftfhW/LfWhXUIY6OmyVWjliu5KH1y0fw7VQ8YndE2O4qZdMSd9SqbnC8GOcZEy0Om7sA==}
     engines: {node: '>=18'}
 
-  katex@0.16.11:
-    resolution: {integrity: sha512-RQrI8rlHY92OLf3rho/Ts8i/XvjgguEjOkO1BEXcU3N8BqPpSzBNwV/G0Ukr+P/l3ivvJUE/Fa/CwbS6HesGNQ==}
+  katex@0.16.21:
+    resolution: {integrity: sha512-XvqR7FgOHtWupfMiigNzmh+MgUVmDGU2kXZm899ZkPfcuoPuFxyHmXsgATDpFZDAXCI8tvinaVcDo8PIIJSo4A==}
     hasBin: true
 
   keyv@4.5.4:
@@ -5678,9 +5667,6 @@ packages:
     engines: {node: '>=16'}
     hasBin: true
 
-  lie@3.1.1:
-    resolution: {integrity: sha512-RiNhHysUjhrDQntfYSfY4MU24coXXdEOgw9WGcKHNeEwffDYbF//u87M1EWaMGzuFoSbqW0C9C6lEEhDOAswfw==}
-
   lilconfig@2.1.0:
     resolution: {integrity: sha512-utWOt/GHzuUxnLKxB6dk81RoOeoNeHgbrXiuGk4yyF5qlRz+iIVWu56E2fqGHFrXz0QNUhLB/8nKqvRH66JKGQ==}
     engines: {node: '>=10'}
@@ -5723,9 +5709,6 @@ packages:
   local-pkg@0.5.1:
     resolution: {integrity: sha512-9rrA30MRRP3gBD3HTGnC6cDFpaE1kVDWxWgqWJUN0RvDNAo+Nz/9GxB+nHOH0ifbVFy0hSA1V6vFDvnx54lTEQ==}
     engines: {node: '>=14'}
-
-  localforage@1.10.0:
-    resolution: {integrity: sha512-14/H1aX7hzBBmmh7sGPd+AOMkkIrHM3Z1PAyGgZigA1H1p5O5ANnMyWzvpAETtG68/dC4pC0ncy3+PPGzXZHPg==}
 
   locate-path@5.0.0:
     resolution: {integrity: sha512-t7hw9pI+WvuwNJXwk5zVHpyhIqzg2qTlklJOf0mVxGSbe3Fp2VieZcduNYjaLDoy6p9uGpQEGWG87WpMKlNq8g==}
@@ -6652,10 +6635,10 @@ packages:
   pure-rand@6.1.0:
     resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
 
-  qrcode.react@4.1.0:
-    resolution: {integrity: sha512-uqXVIIVD/IPgWLYxbOczCNAQw80XCM/LulYDADF+g2xDsPj5OoRwSWtIS4jGyp295wyjKstfG1qIv/I2/rNWpQ==}
+  qrcode.react@4.2.0:
+    resolution: {integrity: sha512-QpgqWi8rD9DsS9EP3z7BT+5lY5SFhsqGjpgW5DY/i3mK4M9DTBNz3ErMi8BWYEfI3L0d8GIbGmcdFAS1uIRGjA==}
     peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   qs@6.13.0:
     resolution: {integrity: sha512-+38qI9SOr8tfZ4QmJNplMUxqjbe7LKvvZgWdExBOmd+egZTtjLB67Gu0HRX3u/XOq7UU2Nx6nsjvS16Z9uwfpg==}
@@ -10238,69 +10221,44 @@ snapshots:
 
   '@rushstack/eslint-patch@1.10.4': {}
 
-  '@sentry-internal/feedback@7.119.2':
+  '@sentry-internal/browser-utils@8.54.0':
     dependencies:
-      '@sentry/core': 7.119.2
-      '@sentry/types': 7.119.2
-      '@sentry/utils': 7.119.2
+      '@sentry/core': 8.54.0
 
-  '@sentry-internal/replay-canvas@7.119.2':
+  '@sentry-internal/feedback@8.54.0':
     dependencies:
-      '@sentry/core': 7.119.2
-      '@sentry/replay': 7.119.2
-      '@sentry/types': 7.119.2
-      '@sentry/utils': 7.119.2
+      '@sentry/core': 8.54.0
 
-  '@sentry-internal/tracing@7.119.2':
+  '@sentry-internal/replay-canvas@8.54.0':
     dependencies:
-      '@sentry/core': 7.119.2
-      '@sentry/types': 7.119.2
-      '@sentry/utils': 7.119.2
+      '@sentry-internal/replay': 8.54.0
+      '@sentry/core': 8.54.0
 
-  '@sentry/browser@7.119.2':
+  '@sentry-internal/replay@8.54.0':
     dependencies:
-      '@sentry-internal/feedback': 7.119.2
-      '@sentry-internal/replay-canvas': 7.119.2
-      '@sentry-internal/tracing': 7.119.2
-      '@sentry/core': 7.119.2
-      '@sentry/integrations': 7.119.2
-      '@sentry/replay': 7.119.2
-      '@sentry/types': 7.119.2
-      '@sentry/utils': 7.119.2
+      '@sentry-internal/browser-utils': 8.54.0
+      '@sentry/core': 8.54.0
 
-  '@sentry/core@7.119.2':
+  '@sentry/browser@8.54.0':
     dependencies:
-      '@sentry/types': 7.119.2
-      '@sentry/utils': 7.119.2
+      '@sentry-internal/browser-utils': 8.54.0
+      '@sentry-internal/feedback': 8.54.0
+      '@sentry-internal/replay': 8.54.0
+      '@sentry-internal/replay-canvas': 8.54.0
+      '@sentry/core': 8.54.0
 
-  '@sentry/integrations@7.119.2':
-    dependencies:
-      '@sentry/core': 7.119.2
-      '@sentry/types': 7.119.2
-      '@sentry/utils': 7.119.2
-      localforage: 1.10.0
+  '@sentry/core@8.54.0': {}
 
-  '@sentry/react@7.119.2(react@19.0.0)':
+  '@sentry/react@8.54.0(react@19.0.0)':
     dependencies:
-      '@sentry/browser': 7.119.2
-      '@sentry/core': 7.119.2
-      '@sentry/types': 7.119.2
-      '@sentry/utils': 7.119.2
+      '@sentry/browser': 8.54.0
+      '@sentry/core': 8.54.0
       hoist-non-react-statics: 3.3.2
       react: 19.0.0
 
-  '@sentry/replay@7.119.2':
+  '@sentry/utils@8.54.0':
     dependencies:
-      '@sentry-internal/tracing': 7.119.2
-      '@sentry/core': 7.119.2
-      '@sentry/types': 7.119.2
-      '@sentry/utils': 7.119.2
-
-  '@sentry/types@7.119.2': {}
-
-  '@sentry/utils@7.119.2':
-    dependencies:
-      '@sentry/types': 7.119.2
+      '@sentry/core': 8.54.0
 
   '@sinclair/typebox@0.27.8': {}
 
@@ -11402,7 +11360,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  ahooks@3.8.1(react@19.0.0):
+  ahooks@3.8.4(react@19.0.0):
     dependencies:
       '@babel/runtime': 7.25.7
       dayjs: 1.11.13
@@ -14028,8 +13986,6 @@ snapshots:
     dependencies:
       queue: 6.0.2
 
-  immediate@3.0.6: {}
-
   immer@9.0.21: {}
 
   immutable@4.3.7: {}
@@ -14734,7 +14690,7 @@ snapshots:
 
   jwt-decode@4.0.0: {}
 
-  katex@0.16.11:
+  katex@0.16.21:
     dependencies:
       commander: 8.3.0
 
@@ -14790,10 +14746,6 @@ snapshots:
     dependencies:
       isomorphic.js: 0.2.5
 
-  lie@3.1.1:
-    dependencies:
-      immediate: 3.0.6
-
   lilconfig@2.1.0: {}
 
   lilconfig@3.1.2: {}
@@ -14845,10 +14797,6 @@ snapshots:
     dependencies:
       mlly: 1.7.3
       pkg-types: 1.2.1
-
-  localforage@1.10.0:
-    dependencies:
-      lie: 3.1.1
 
   locate-path@5.0.0:
     dependencies:
@@ -15154,7 +15102,7 @@ snapshots:
       dagre-d3-es: 7.0.11
       dayjs: 1.11.13
       dompurify: 3.2.3
-      katex: 0.16.11
+      katex: 0.16.21
       khroma: 2.1.0
       lodash-es: 4.17.21
       marked: 13.0.3
@@ -15246,7 +15194,7 @@ snapshots:
     dependencies:
       '@types/katex': 0.16.7
       devlop: 1.1.0
-      katex: 0.16.11
+      katex: 0.16.21
       micromark-factory-space: 2.0.0
       micromark-util-character: 2.1.0
       micromark-util-symbol: 2.0.0
@@ -16096,7 +16044,7 @@ snapshots:
 
   pure-rand@6.1.0: {}
 
-  qrcode.react@4.1.0(react@19.0.0):
+  qrcode.react@4.2.0(react@19.0.0):
     dependencies:
       react: 19.0.0
 
@@ -16542,7 +16490,7 @@ snapshots:
       '@types/katex': 0.16.7
       hast-util-from-html-isomorphic: 2.0.0
       hast-util-to-text: 4.0.2
-      katex: 0.16.11
+      katex: 0.16.21
       unist-util-visit-parents: 6.0.1
       vfile: 6.0.3
 

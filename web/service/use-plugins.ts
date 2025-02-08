@@ -29,6 +29,8 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { useInvalidateAllBuiltInTools } from './use-tools'
+import usePermission from '@/app/components/plugins/plugin-page/use-permission'
+import { uninstallPlugin } from '@/service/plugins'
 
 const NAME_SPACE = 'plugins'
 
@@ -236,10 +238,20 @@ export const useInstallOrUpdate = ({
             }
           }
           if (isInstalled) {
-            await updatePackageFromMarketPlace({
-              original_plugin_unique_identifier: installedPayload?.uniqueIdentifier,
-              new_plugin_unique_identifier: uniqueIdentifier,
-            })
+            if (item.type === 'package') {
+              await uninstallPlugin(installedPayload.installedId)
+              await post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
+                body: {
+                  plugin_unique_identifiers: [uniqueIdentifier],
+                },
+              })
+            }
+            else {
+              await updatePackageFromMarketPlace({
+                original_plugin_unique_identifier: installedPayload?.uniqueIdentifier,
+                new_plugin_unique_identifier: uniqueIdentifier,
+              })
+            }
           }
           return ({ success: true })
         }
@@ -357,11 +369,15 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[])
 const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
 export const usePluginTaskList = () => {
   const {
+    canManagement,
+  } = usePermission()
+  const {
     data,
     isFetched,
     refetch,
     ...rest
   } = useQuery({
+    enabled: canManagement,
     queryKey: usePluginTaskListKey,
     queryFn: () => get<{ tasks: PluginTask[] }>('/workspaces/current/plugin/tasks?page=1&page_size=100'),
     refetchInterval: (lastQuery) => {

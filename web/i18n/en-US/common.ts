@@ -407,7 +407,7 @@ const translation = {
     loadBalancingLeastKeyWarning: 'To enable load balancing at least 2 keys must be enabled.',
     loadBalancingInfo: 'By default, load balancing uses the Round-robin strategy. If rate limiting is triggered, a 1-minute cooldown period will be applied.',
     upgradeForLoadBalancing: 'Upgrade your plan to enable Load Balancing.',
-    configureRequired: 'Configure required',
+    toBeConfigured: 'To be configured',
     configureTip: 'Set up api-key or add model to use',
     installProvider: 'Install model providers',
     discoverMore: 'Discover more in ',

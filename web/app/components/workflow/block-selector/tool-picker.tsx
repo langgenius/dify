@@ -24,8 +24,10 @@ import {
 import type { CustomCollectionBackend } from '@/app/components/tools/types'
 import Toast from '@/app/components/base/toast'
 import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools, useInvalidateAllCustomTools } from '@/service/use-tools'
+import cn from '@/utils/classnames'
 
 type Props = {
+  panelClassName?: string
   disabled: boolean
   trigger: React.ReactNode
   placement?: Placement
@@ -49,6 +51,7 @@ const ToolPicker: FC<Props> = ({
   supportAddCustomTool,
   scope = 'all',
   selectedTools,
+  panelClassName,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -139,7 +142,7 @@ const ToolPicker: FC<Props> = ({
       </PortalToFollowElemTrigger>
 
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className="relative w-[356px] min-h-20 rounded-xl backdrop-blur-sm bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg">
+        <div className={cn('relative w-[356px] min-h-20 rounded-xl backdrop-blur-sm bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg', panelClassName)}>
           <div className='p-2 pb-1'>
             <SearchBox
               search={searchText}

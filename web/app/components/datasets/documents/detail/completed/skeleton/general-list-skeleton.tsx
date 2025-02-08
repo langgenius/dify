@@ -8,7 +8,7 @@ import {
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 
-const CardSkelton = React.memo(() => {
+export const CardSkelton = React.memo(() => {
   return (
     <SkeletonContainer className='p-1 pb-2 gap-y-0'>
       <SkeletonContainer className='px-2 pt-1.5 gap-y-0.5'>

@@ -53,6 +53,7 @@ type Props = {
   onSelect: (tool: {
     provider_name: string
     tool_name: string
+    tool_label: string
     parameters?: Record<string, any>
     extra?: Record<string, any>
   }) => void
@@ -62,6 +63,8 @@ type Props = {
   trigger?: React.ReactNode
   controlledState?: boolean
   onControlledStateChange?: (state: boolean) => void
+  panelShowState?: boolean
+  onPanelShowStateChange?: (state: boolean) => void
 }
 const ToolSelector: FC<Props> = ({
   value,
@@ -76,6 +79,8 @@ const ToolSelector: FC<Props> = ({
   trigger,
   controlledState,
   onControlledStateChange,
+  panelShowState,
+  onPanelShowStateChange,
 }) => {
   const { t } = useTranslation()
   const [isShow, onShowChange] = useState(false)
@@ -244,17 +249,18 @@ const ToolSelector: FC<Props> = ({
                   <div className='flex flex-col gap-1'>
                     <div className='h-6 flex items-center system-sm-semibold text-text-secondary'>{t('plugin.detailPanel.toolSelector.toolLabel')}</div>
                     <ToolPicker
+                      panelClassName='w-[328px]'
                       placement='bottom'
                       offset={offset}
                       trigger={
                         <ToolTrigger
-                          open={isShowChooseTool}
+                          open={panelShowState || isShowChooseTool}
                           value={value}
                           provider={currentProvider}
                         />
                       }
-                      isShow={isShowChooseTool}
-                      onShowChange={setIsShowChooseTool}
+                      isShow={panelShowState || isShowChooseTool}
+                      onShowChange={trigger ? onPanelShowStateChange as any : setIsShowChooseTool}
                       disabled={false}
                       supportAddCustomTool
                       onSelect={handleSelectTool}
