@@ -30,6 +30,7 @@ import {
 } from '@tanstack/react-query'
 import { useInvalidateAllBuiltInTools } from './use-tools'
 import usePermission from '@/app/components/plugins/plugin-page/use-permission'
+import { uninstallPlugin } from '@/service/plugins'
 
 const NAME_SPACE = 'plugins'
 
@@ -237,10 +238,20 @@ export const useInstallOrUpdate = ({
             }
           }
           if (isInstalled) {
-            await updatePackageFromMarketPlace({
-              original_plugin_unique_identifier: installedPayload?.uniqueIdentifier,
-              new_plugin_unique_identifier: uniqueIdentifier,
-            })
+            if (item.type === 'package') {
+              await uninstallPlugin(installedPayload.installedId)
+              await post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
+                body: {
+                  plugin_unique_identifiers: [uniqueIdentifier],
+                },
+              })
+            }
+            else {
+              await updatePackageFromMarketPlace({
+                original_plugin_unique_identifier: installedPayload?.uniqueIdentifier,
+                new_plugin_unique_identifier: uniqueIdentifier,
+              })
+            }
           }
           return ({ success: true })
         }
