@@ -106,8 +106,6 @@ Prosimo, glejte naša pogosta vprašanja [FAQ](https://docs.dify.ai/getting-star
 **7. Backend-as-a-Service**: 
   AVse ponudbe Difyja so opremljene z ustreznimi API-ji, tako da lahko Dify brez težav integrirate v svojo poslovno logiko.
 
-  Below is the translated table in Slovenian:
-
 ## Primerjava Funkcij
 
 <table style="width: 100%;">
