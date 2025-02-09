@@ -410,8 +410,16 @@ if you are not sure about the structure.
         :return: tuple of (processed_content, is_reasoning)
         """
 
-        content = delta.get("content") or ""
-        reasoning_content = delta.get("reasoning_content")
+        content = ""
+        reasoning_content = None
+        if isinstance(delta, dict):
+            content = delta.get("content") or ""
+            reasoning_content = delta.get("reasoning_content")
+        else:
+            if hasattr(delta, "content"):
+                content = delta.content
+            if hasattr(delta, "reasoning_content"):
+                reasoning_content = delta.reasoning_content
 
         if reasoning_content:
             if not is_reasoning:
@@ -419,7 +427,9 @@ if you are not sure about the structure.
                 is_reasoning = True
             else:
                 content = reasoning_content
-        elif is_reasoning:
+        elif is_reasoning and content:
+            # do not end reasoning when content is empty
+            # there may be more reasoning_content later that follows previous reasoning closely
             content = "\n</think>" + content
             is_reasoning = False
         return content, is_reasoning
