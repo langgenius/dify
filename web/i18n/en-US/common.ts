@@ -530,6 +530,8 @@ const translation = {
       hitScore: 'Retrieval Score:',
     },
     inputPlaceholder: 'Talk to Bot',
+    thinking: 'Thinking...',
+    thought: 'Thought',
   },
   promptEditor: {
     placeholder: 'Write your prompt word here, enter \'{\' to insert a variable, enter \'/\' to insert a prompt content block',
