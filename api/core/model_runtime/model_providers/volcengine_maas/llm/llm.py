@@ -1,5 +1,4 @@
 import logging
-import re
 from collections.abc import Generator
 from typing import Optional
 
