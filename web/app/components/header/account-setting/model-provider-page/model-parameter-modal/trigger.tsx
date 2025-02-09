@@ -45,9 +45,9 @@ const Trigger: FC<TriggerProps> = ({
     <div
       className={cn(
         'relative flex items-center px-2 h-8 rounded-lg  cursor-pointer',
-        !isInWorkflow && 'border hover:border-[1.5px]',
-        !isInWorkflow && (disabled ? 'border-[#F79009] bg-[#FFFAEB]' : 'border-[#444CE7] bg-primary-50'),
-        isInWorkflow && 'pr-[30px] bg-gray-100 border border-gray-100  hover:border-gray-200',
+        !isInWorkflow && 'border ring-inset hover:ring-[0.5px]',
+        !isInWorkflow && (disabled ? 'border-text-warning ring-text-warning bg-state-warning-hover' : 'border-util-colors-indigo-indigo-600 ring-util-colors-indigo-indigo-600 bg-state-accent-hover'),
+        isInWorkflow && 'pr-[30px] bg-workflow-block-parma-bg border border-workflow-block-parma-bg  hover:border-gray-200',
       )}
     >
       {
