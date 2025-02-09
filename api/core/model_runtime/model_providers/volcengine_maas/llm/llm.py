@@ -252,21 +252,9 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
                 content = ""
                 if chunk.choices:
                     delta = chunk.choices[0].delta
-                    if is_reasoning_started and not hasattr(delta, "reasoning_content") and not delta.content:
-                        content = ""
-                    elif hasattr(delta, "reasoning_content"):
-                        if not is_reasoning_started:
-                            is_reasoning_started = True
-                            content = "<think>\n" + delta.reasoning_content
-                        else:
-                            content = delta.reasoning_content
-                        # if "\n" in content:
-                        #     content = re.sub(r"\n(?!(>|\n))", "\n> ", content)
-                    elif is_reasoning_started:
-                        content = "\n</think>" + delta.content
-                        is_reasoning_started = False
-                    else:
-                        content = delta.content
+                    content, is_reasoning_started = self._wrap_thinking_by_reasoning_content(
+                        delta.to_dict(), is_reasoning_started
+                    )
 
                 yield LLMResultChunk(
                     model=model,
