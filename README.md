@@ -108,7 +108,20 @@ Please refer to our [FAQ](https://docs.dify.ai/getting-started/install-self-host
 **7. Backend-as-a-Service**: 
   All of Dify's offerings come with corresponding APIs, so you could effortlessly integrate Dify into your own business logic.
 
+##Features
 
+| Feature                               | Dify.AI            | LangChain        | Flowise         | OpenAI Assistants API |
+|---------------------------------------|--------------------|------------------|-----------------|-----------------------|
+| Programming Approach                  | API + App-oriented | Python Code      | App-oriented    | API-oriented          |
+| Supported LLMs                        | Rich Variety       | Rich Variety     | Rich Variety    | OpenAI-only           |
+| RAG Engine                            | ✅                 | ✅               | ✅              | ✅                    |
+| Agent                                 | ✅                 | ✅               | ❌              | ✅                    |
+| Workflow                              | ✅                 | ❌               | ✅              | ❌                    |
+| Observability                         | ✅                 | ✅               | ❌              | ❌                    |
+| Enterprise Feature (SSO/Access control)| ✅                 | ❌               | ❌              | ❌                    |
+| Local Deployment                      | ✅                 | ✅               | ✅              | ❌                    |
+
+You can copy and paste this into your Markdown file.
 ## Using Dify
 
 - **Cloud </br>**
