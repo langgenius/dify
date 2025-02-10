@@ -1,7 +1,6 @@
 import { BlockEnum, type NodeDefault } from '../../types'
 import { type IfElseNodeType, LogicalOperator } from './types'
 import { isEmptyRelatedOperator } from './utils'
-import { TransferMethod } from '@/types/app'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 const i18nPrefix = 'workflow.errorMsg'
 

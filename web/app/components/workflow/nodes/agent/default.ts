@@ -57,11 +57,11 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
         }
         // check form of tool
         else {
-          const schemas = toolValue.schemas
+          const schemas = toolValue.schemas || []
           const userSettings = toolValue.settings
           const reasoningConfig = toolValue.parameters
           schemas.forEach((schema: any) => {
-            if (schema.required) {
+            if (schema?.required) {
               if (schema.form === 'form' && !userSettings[schema.name]?.value) {
                 return {
                   isValid: false,
@@ -102,11 +102,11 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
             errorMessage: '',
           }
           for (const tool of tools) {
-            const schemas = tool.schemas
+            const schemas = tool.schemas || []
             const userSettings = tool.settings
             const reasoningConfig = tool.parameters
             schemas.forEach((schema: any) => {
-              if (schema.required) {
+              if (schema?.required) {
                 if (schema.form === 'form' && !userSettings[schema.name]?.value) {
                   return validState = {
                     isValid: false,
