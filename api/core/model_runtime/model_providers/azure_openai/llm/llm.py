@@ -113,7 +113,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         try:
             client = AzureOpenAI(**self._to_credential_kwargs(credentials))
 
-            if model.startswith("o1"):
+            if model.startswith(("o1", "o3")):
                 client.chat.completions.create(
                     messages=[{"role": "user", "content": "ping"}],
                     model=model,
@@ -311,7 +311,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         prompt_messages = self._clear_illegal_prompt_messages(model, prompt_messages)
 
         block_as_stream = False
-        if model.startswith("o1"):
+        if model.startswith(("o1", "o3")):
             if "max_tokens" in model_parameters:
                 model_parameters["max_completion_tokens"] = model_parameters["max_tokens"]
                 del model_parameters["max_tokens"]
@@ -407,7 +407,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                                 ]
                             )
 
-        if model.startswith("o1"):
+        if model.startswith(("o1", "o3")):
             system_message_count = len([m for m in prompt_messages if isinstance(m, SystemPromptMessage)])
             if system_message_count > 0:
                 new_prompt_messages = []
@@ -647,6 +647,11 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         Official documentation: https://github.com/openai/openai-cookbook/blob/
         main/examples/How_to_format_inputs_to_ChatGPT_models.ipynb"""
         model = credentials["base_model_name"]
+
+        # Currently, we can use gpt4o to calculate chatgpt-4o-latest's token.
+        if model == "chatgpt-4o-latest" or model.startswith(("o1", "o3")):
+            model = "gpt-4o"
+
         try:
             encoding = tiktoken.encoding_for_model(model)
         except KeyError:
@@ -659,7 +664,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
             tokens_per_message = 4
             # if there's a name, the role is omitted
             tokens_per_name = -1
-        elif model.startswith("gpt-35-turbo") or model.startswith("gpt-4") or "o1" in model:
+        elif model.startswith("gpt-35-turbo") or model.startswith("gpt-4") or model.startswith(("o1", "o3")):
             tokens_per_message = 3
             tokens_per_name = 1
         else:

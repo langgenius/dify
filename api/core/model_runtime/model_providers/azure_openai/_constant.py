@@ -1242,6 +1242,55 @@ LLM_BASE_MODELS = [
             ),
         ),
     ),
+    AzureBaseModel(
+        base_model_name="o3-mini",
+        entity=AIModelEntity(
+            model="fake-deployment-name",
+            label=I18nObject(
+                en_US="fake-deployment-name-label",
+            ),
+            model_type=ModelType.LLM,
+            features=[
+                ModelFeature.AGENT_THOUGHT,
+                ModelFeature.MULTI_TOOL_CALL,
+                ModelFeature.STREAM_TOOL_CALL,
+            ],
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_properties={
+                ModelPropertyKey.MODE: LLMMode.CHAT.value,
+                ModelPropertyKey.CONTEXT_SIZE:  200000,
+            },
+            parameter_rules=[
+                ParameterRule(
+                    name="reasoning_effort",
+                    label=I18nObject(zh_Hans="推理工作", en_US="reasoning_effort"),
+                    type="string",
+                    help=I18nObject(
+                        zh_Hans="限制推理模型的推理工作", en_US="constrains effort on reasoning for reasoning models"
+                    ),
+                    required=False,
+                    options=["low", "medium", "high"],
+                ),
+                ParameterRule(
+                    name="response_format",
+                    label=I18nObject(zh_Hans="回复格式", en_US="response_format"),
+                    type="string",
+                    help=I18nObject(
+                        zh_Hans="指定模型必须输出的格式", en_US="specifying the format that the model must output"
+                    ),
+                    required=False,
+                    options=["text", "json_object"],
+                ),
+                _get_o1_max_tokens(default=512, min_val=1, max_val=100000),
+            ],
+            pricing=PriceConfig(  # TBD: pricing table for o3-mini is not available yet in the official AOAI document
+                input=3.00,
+                output=12.00,
+                unit=0.000001,
+                currency="USD",
+            ),
+        ),
+    ),
 ]
 EMBEDDING_BASE_MODELS = [
     AzureBaseModel(
