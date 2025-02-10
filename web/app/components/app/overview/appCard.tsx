@@ -1,6 +1,5 @@
 'use client'
 import React, { useMemo, useState } from 'react'
-
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import {
@@ -165,7 +164,7 @@ function AppCard({
             </div>
             <div className="w-full h-9 pl-2 p-1 bg-components-input-bg-normal rounded-lg items-center inline-flex gap-0.5">
               <div className="h-4 px-1 justify-start items-start gap-2 flex flex-1 min-w-0">
-                <div className="text-text-secondary text-xs font-medium text-ellipsis overflow-hidden whitespace-nowrap">
+                <div className="text-text-secondary system-xs-medium text-ellipsis overflow-hidden whitespace-nowrap">
                   {isApp ? appUrl : apiUrl}
                 </div>
               </div>
@@ -173,7 +172,7 @@ function AppCard({
                 content={isApp ? appUrl : apiUrl}
                 className={'!size-6'}
               />
-              {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} className='z-50 !size-6 hover:bg-state-base-hover rounded-md' selectorId={randomString(8)} />}
+              {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} />}
               {isApp && <Divider type="vertical" className="!h-3.5 shrink-0 !mx-0.5" />}
               {/* button copy link/ button regenerate */}
               {showConfirmDelete && (
@@ -194,7 +193,7 @@ function AppCard({
                   popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
                 >
                   <div
-                    className="w-6 h-6 cursor-pointer hover:bg-state-base-hover rounded-md"
+                    className="w-6 h-6 cursor-pointer hover:bg-state-base-hover rounded-lg"
                     onClick={() => setShowConfirmDelete(true)}
                   >
                     <div
@@ -229,9 +228,9 @@ function AppCard({
                   }
                   popupClassName={disabled ? 'mt-[-8px]' : '!hidden'}
                 >
-                  <div className="flex items-center justify-center gap-[1px]">
+                  <div className={`flex items-center justify-center gap-[1px] ${runningStatus ? 'text-text-tertiary' : 'text-components-button-ghost-text-disabled'}`}>
                     <op.opIcon className="h-3.5 w-3.5" />
-                    <div className={`${runningStatus ? 'text-text-tertiary' : 'text-components-button-ghost-text-disabled'} system-xs-medium px-[3px]`}>{op.opName}</div>
+                    <div className={'system-xs-medium px-[3px]'}>{op.opName}</div>
                   </div>
                 </Tooltip>
               </Button>
