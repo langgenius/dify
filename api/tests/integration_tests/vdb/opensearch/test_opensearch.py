@@ -89,9 +89,9 @@ class TestOpenSearchVector:
         print("Actual document ID:", hits_by_vector[0].metadata["document_id"] if hits_by_vector else "No hits")
 
         assert len(hits_by_vector) > 0, f"Expected at least one hit, got {len(hits_by_vector)}"
-        assert (
-            hits_by_vector[0].metadata["document_id"] == self.example_doc_id
-        ), f"Expected document ID {self.example_doc_id}, got {hits_by_vector[0].metadata['document_id']}"
+        assert hits_by_vector[0].metadata["document_id"] == self.example_doc_id, (
+            f"Expected document ID {self.example_doc_id}, got {hits_by_vector[0].metadata['document_id']}"
+        )
 
     def test_get_ids_by_metadata_field(self):
         mock_response = {"hits": {"total": {"value": 1}, "hits": [{"_id": "mock_id"}]}}

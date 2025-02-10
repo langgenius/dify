@@ -50,6 +50,7 @@ const translation = {
     submit: 'Senden',
     skip: 'Schiff',
     imageCopied: 'Kopiertes Bild',
+    deleteApp: 'App löschen',
   },
   placeholder: {
     input: 'Bitte eingeben',

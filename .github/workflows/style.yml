@@ -17,6 +17,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Check changed files
         id: changed-files
@@ -38,12 +41,12 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           poetry run -C api ruff --version
-          poetry run -C api ruff check ./api
-          poetry run -C api ruff format --check ./api
+          poetry run -C api ruff check ./
+          poetry run -C api ruff format --check ./
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: poetry run -C api dotenv-linter ./api/.env.example ./web/.env.example
+        run: poetry run -P api dotenv-linter ./api/.env.example ./web/.env.example
 
       - name: Lint hints
         if: failure()
@@ -59,6 +62,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Check changed files
         id: changed-files
@@ -89,6 +95,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Check changed files
         id: changed-files
@@ -117,6 +126,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Check changed files
         id: changed-files

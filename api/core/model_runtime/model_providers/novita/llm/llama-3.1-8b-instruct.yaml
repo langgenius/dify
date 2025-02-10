@@ -1,13 +1,13 @@
 model: meta-llama/llama-3.1-8b-instruct
 label:
-  zh_Hans: meta-llama/llama-3.1-8b-instruct
-  en_US: meta-llama/llama-3.1-8b-instruct
+  zh_Hans: Llama 3.1 8B Instruct
+  en_US: Llama 3.1 8B Instruct
 model_type: llm
 features:
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 8192
+  context_size: 16384
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -35,7 +35,7 @@ parameter_rules:
     max: 2
     default: 0
 pricing:
-  input: '0.001'
-  output: '0.001'
+  input: '0.0005'
+  output: '0.0005'
   unit: '0.0001'
   currency: USD

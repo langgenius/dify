@@ -358,8 +358,7 @@ class NotionExtractor(BaseExtractor):
 
         if not data_source_binding:
             raise Exception(
-                f"No notion data source binding found for tenant {tenant_id} "
-                f"and notion workspace {notion_workspace_id}"
+                f"No notion data source binding found for tenant {tenant_id} and notion workspace {notion_workspace_id}"
             )
 
         return cast(str, data_source_binding.access_token)

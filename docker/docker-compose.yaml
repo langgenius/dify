@@ -377,6 +377,10 @@ x-shared-env: &shared-api-worker-env
   SSRF_COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
   SSRF_REVERSE_PROXY_PORT: ${SSRF_REVERSE_PROXY_PORT:-8194}
   SSRF_SANDBOX_HOST: ${SSRF_SANDBOX_HOST:-sandbox}
+  SSRF_DEFAULT_TIME_OUT: ${SSRF_DEFAULT_TIME_OUT:-5}
+  SSRF_DEFAULT_CONNECT_TIME_OUT: ${SSRF_DEFAULT_CONNECT_TIME_OUT:-5}
+  SSRF_DEFAULT_READ_TIME_OUT: ${SSRF_DEFAULT_READ_TIME_OUT:-5}
+  SSRF_DEFAULT_WRITE_TIME_OUT: ${SSRF_DEFAULT_WRITE_TIME_OUT:-5}
   EXPOSE_NGINX_PORT: ${EXPOSE_NGINX_PORT:-80}
   EXPOSE_NGINX_SSL_PORT: ${EXPOSE_NGINX_SSL_PORT:-443}
   POSITION_TOOL_PINS: ${POSITION_TOOL_PINS:-}
@@ -393,7 +397,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.15.1
+    image: langgenius/dify-api:0.15.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -416,7 +420,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.15.1
+    image: langgenius/dify-api:0.15.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -438,7 +442,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.15.1
+    image: langgenius/dify-web:0.15.3
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -448,6 +452,7 @@ services:
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
       TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
 
   # The postgres database.
   db:

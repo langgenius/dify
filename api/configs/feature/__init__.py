@@ -146,7 +146,7 @@ class EndpointConfig(BaseSettings):
     )
 
     CONSOLE_WEB_URL: str = Field(
-        description="Base URL for the console web interface," "used for frontend references and CORS configuration",
+        description="Base URL for the console web interface,used for frontend references and CORS configuration",
         default="",
     )
 
@@ -495,6 +495,11 @@ class AuthConfig(BaseSettings):
 
     LOGIN_LOCKOUT_DURATION: PositiveInt = Field(
         description="Time (in seconds) a user must wait before retrying login after exceeding the rate limit.",
+        default=86400,
+    )
+
+    FORGOT_PASSWORD_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying password reset after exceeding the rate limit.",
         default=86400,
     )
 

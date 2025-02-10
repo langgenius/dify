@@ -68,7 +68,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                     ${open && 'bg-gray-200'}
                   `}
               >
-                <Avatar name={userProfile.name} className='sm:mr-2 mr-0' size={32} />
+                <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='sm:mr-2 mr-0' size={32} />
                 {!isMobile && <>
                   {userProfile.name}
                   <RiArrowDownSLine className="w-3 h-3 ml-1 text-gray-700" />
@@ -92,7 +92,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                 >
                   <Menu.Item disabled>
                     <div className='flex flex-nowrap items-center px-4 py-[13px]'>
-                      <Avatar name={userProfile.name} size={36} className='mr-3' />
+                      <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} className='mr-3' />
                       <div className='grow'>
                         <div className='system-md-medium text-text-primary break-all'>{userProfile.name}</div>
                         <div className='system-xs-regular text-text-tertiary break-all'>{userProfile.email}</div>

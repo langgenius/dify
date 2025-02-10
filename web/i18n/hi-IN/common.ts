@@ -50,6 +50,7 @@ const translation = {
     skip: 'जहाज़',
     submit: 'जमा करें',
     imageCopied: 'कॉपी की गई छवि',
+    deleteApp: 'ऐप हटाएं',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',

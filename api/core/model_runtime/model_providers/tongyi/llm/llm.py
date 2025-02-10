@@ -197,8 +197,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         else:
             # nothing different between chat model and completion model in tongyi
             params["messages"] = self._convert_prompt_messages_to_tongyi_messages(prompt_messages)
-            response = Generation.call(**params, result_format="message", stream=stream)
-
+            response = Generation.call(**params, result_format="message", stream=stream, incremental_output=True)
         if stream:
             return self._handle_generate_stream_response(model, credentials, response, prompt_messages)
 
@@ -219,8 +218,12 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         if response.status_code not in {200, HTTPStatus.OK}:
             raise ServiceUnavailableError(response.message)
         # transform assistant message to prompt message
+        resp_content = response.output.choices[0].message.content
+        # special for qwen-vl
+        if isinstance(resp_content, list):
+            resp_content = resp_content[0]["text"]
         assistant_prompt_message = AssistantPromptMessage(
-            content=response.output.choices[0].message.content,
+            content=resp_content,
         )
 
         # transform usage
@@ -254,11 +257,13 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         """
         full_text = ""
         tool_calls = []
+        is_reasoning_started = False
+        # for index, response in enumerate(responses):
+        index = 0
         for index, response in enumerate(responses):
             if response.status_code not in {200, HTTPStatus.OK}:
                 raise ServiceUnavailableError(
-                    f"Failed to invoke model {model}, status code: {response.status_code}, "
-                    f"message: {response.message}"
+                    f"Failed to invoke model {model}, status code: {response.status_code}, message: {response.message}"
                 )
 
             resp_finish_reason = response.output.choices[0].finish_reason
@@ -308,7 +313,11 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                     ),
                 )
             else:
-                resp_content = response.output.choices[0].message.content
+                message = response.output.choices[0].message
+
+                resp_content, is_reasoning_started = self._wrap_thinking_by_reasoning_content(
+                    message, is_reasoning_started
+                )
                 if not resp_content:
                     if "tool_calls" in response.output.choices[0].message:
                         tool_calls = response.output.choices[0].message["tool_calls"]

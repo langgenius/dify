@@ -1,0 +1,41 @@
+model: gemini-2.0-flash-001
+label:
+  en_US: Gemini 2.0 Flash 001
+model_type: llm
+features:
+  - agent-thought
+  - vision
+  - tool-call
+  - stream-tool-call
+  - document
+  - video
+  - audio
+model_properties:
+  mode: chat
+  context_size: 1048576
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: top_p
+    use_template: top_p
+  - name: top_k
+    label:
+      zh_Hans: 取样数量
+      en_US: Top k
+    type: int
+    help:
+      zh_Hans: 仅从每个后续标记的前 K 个选项中采样。
+      en_US: Only sample from the top K options for each subsequent token.
+    required: false
+  - name: max_output_tokens
+    use_template: max_tokens
+    default: 8192
+    min: 1
+    max: 8192
+  - name: json_schema
+    use_template: json_schema
+pricing:
+  input: '0.00'
+  output: '0.00'
+  unit: '0.000001'
+  currency: USD

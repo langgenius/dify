@@ -1,0 +1,21 @@
+model: deepseek-r1-distill-qwen-32b
+label:
+  zh_Hans: DeepSeek-R1-Distill-Qwen-32B
+  en_US: DeepSeek-R1-Distill-Qwen-32B
+model_type: llm
+features:
+  - agent-thought
+model_properties:
+  mode: chat
+  context_size: 32000
+parameter_rules:
+  - name: max_tokens
+    use_template: max_tokens
+    min: 1
+    max: 8192
+    default: 4096
+pricing:
+  input: "0.002"
+  output: "0.006"
+  unit: "0.001"
+  currency: RMB

@@ -1,7 +1,7 @@
 model: nousresearch/nous-hermes-llama2-13b
 label:
-  zh_Hans: nousresearch/nous-hermes-llama2-13b
-  en_US: nousresearch/nous-hermes-llama2-13b
+  zh_Hans: Nous Hermes Llama2 13B
+  en_US: Nous Hermes Llama2 13B
 model_type: llm
 features:
   - agent-thought

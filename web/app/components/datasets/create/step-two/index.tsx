@@ -98,6 +98,7 @@ export enum IndexingType {
 const DEFAULT_SEGMENT_IDENTIFIER = '\\n\\n'
 const DEFAULT_MAXIMUM_CHUNK_LENGTH = 500
 const DEFAULT_OVERLAP = 50
+const MAXIMUM_CHUNK_TOKEN_LENGTH = parseInt(globalThis.document?.body?.getAttribute('data-public-indexing-max-segmentation-tokens-length') || '4000', 10)
 
 type ParentChildConfig = {
   chunkForContext: ParentMode
@@ -163,7 +164,7 @@ const StepTwo = ({
     doSetSegmentIdentifier(value ? escape(value) : (canEmpty ? '' : DEFAULT_SEGMENT_IDENTIFIER))
   }, [])
   const [maxChunkLength, setMaxChunkLength] = useState(DEFAULT_MAXIMUM_CHUNK_LENGTH) // default chunk length
-  const [limitMaxChunkLength, setLimitMaxChunkLength] = useState(4000)
+  const [limitMaxChunkLength, setLimitMaxChunkLength] = useState(MAXIMUM_CHUNK_TOKEN_LENGTH)
   const [overlap, setOverlap] = useState(DEFAULT_OVERLAP)
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
@@ -342,8 +343,8 @@ const StepTwo = ({
   }
 
   const updatePreview = () => {
-    if (segmentationType === ProcessMode.general && maxChunkLength > 4000) {
-      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
+    if (segmentationType === ProcessMode.general && maxChunkLength > MAXIMUM_CHUNK_TOKEN_LENGTH) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck', { limit: MAXIMUM_CHUNK_TOKEN_LENGTH }) })
       return
     }
     fetchEstimate()
@@ -393,7 +394,7 @@ const StepTwo = ({
       score_threshold_enabled: false,
       score_threshold: 0.5,
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rerankDefaultModel, isRerankDefaultModelValid])
 
   const getCreationParams = () => {
@@ -1001,7 +1002,7 @@ const StepTwo = ({
           )
           : (
             <div className='flex items-center mt-8 py-2'>
-              {!datasetId && <Button loading={isCreating} variant='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.save')}</Button>}
+              <Button loading={isCreating} variant='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.save')}</Button>
               <Button className='ml-2' onClick={onCancel}>{t('datasetCreation.stepTwo.cancel')}</Button>
             </div>
           )}

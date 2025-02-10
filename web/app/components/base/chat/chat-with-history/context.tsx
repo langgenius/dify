@@ -5,7 +5,7 @@ import { createContext, useContext } from 'use-context-selector'
 import type {
   Callback,
   ChatConfig,
-  ChatItem,
+  ChatItemInTree,
   Feedback,
 } from '../types'
 import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
@@ -25,7 +25,7 @@ export type ChatWithHistoryContextValue = {
   appChatListDataLoading?: boolean
   currentConversationId: string
   currentConversationItem?: ConversationItem
-  appPrevChatList: ChatItem[]
+  appPrevChatTree: ChatItemInTree[]
   pinnedConversationList: AppConversationData['data']
   conversationList: AppConversationData['data']
   showConfigPanelBeforeChat: boolean
@@ -53,7 +53,7 @@ export type ChatWithHistoryContextValue = {
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
   currentConversationId: '',
-  appPrevChatList: [],
+  appPrevChatTree: [],
   pinnedConversationList: [],
   conversationList: [],
   showConfigPanelBeforeChat: false,

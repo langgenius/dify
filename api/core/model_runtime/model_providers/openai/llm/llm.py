@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from collections.abc import Generator
 from typing import Any, Optional, Union, cast
 
@@ -340,9 +341,6 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         :param credentials: provider credentials
         :return:
         """
-        # get predefined models
-        predefined_models = self.predefined_models()
-        predefined_models_map = {model.model: model for model in predefined_models}
 
         # transform credentials to kwargs for model instance
         credentials_kwargs = self._to_credential_kwargs(credentials)
@@ -358,9 +356,10 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             base_model = model.id.split(":")[1]
 
             base_model_schema = None
-            for predefined_model_name, predefined_model in predefined_models_map.items():
-                if predefined_model_name in base_model:
+            for predefined_model in self.predefined_models():
+                if predefined_model.model in base_model:
                     base_model_schema = predefined_model
+                    break
 
             if not base_model_schema:
                 continue
@@ -620,11 +619,19 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         # clear illegal prompt messages
         prompt_messages = self._clear_illegal_prompt_messages(model, prompt_messages)
 
-        # o1 compatibility
-        if model.startswith("o1"):
+        # o1, o3 compatibility
+        block_as_stream = False
+        if model.startswith(("o1", "o3")):
             if "max_tokens" in model_parameters:
                 model_parameters["max_completion_tokens"] = model_parameters["max_tokens"]
                 del model_parameters["max_tokens"]
+
+            if re.match(r"^o1(-\d{4}-\d{2}-\d{2})?$", model):
+                if stream:
+                    block_as_stream = True
+                    stream = False
+                    if "stream_options" in extra_model_kwargs:
+                        del extra_model_kwargs["stream_options"]
 
             if "stop" in extra_model_kwargs:
                 del extra_model_kwargs["stop"]
@@ -642,7 +649,45 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         if stream:
             return self._handle_chat_generate_stream_response(model, credentials, response, prompt_messages, tools)
 
-        return self._handle_chat_generate_response(model, credentials, response, prompt_messages, tools)
+        block_result = self._handle_chat_generate_response(model, credentials, response, prompt_messages, tools)
+
+        if block_as_stream:
+            return self._handle_chat_block_as_stream_response(block_result, prompt_messages, stop)
+
+        return block_result
+
+    def _handle_chat_block_as_stream_response(
+        self,
+        block_result: LLMResult,
+        prompt_messages: list[PromptMessage],
+        stop: Optional[list[str]] = None,
+    ) -> Generator[LLMResultChunk, None, None]:
+        """
+        Handle llm chat response
+        :param model: model name
+        :param credentials: credentials
+        :param response: response
+        :param prompt_messages: prompt messages
+        :param tools: tools for tool calling
+        :return: llm response chunk generator
+        """
+        text = block_result.message.content
+        text = cast(str, text)
+
+        if stop:
+            text = self.enforce_stop_tokens(text, stop)
+
+        yield LLMResultChunk(
+            model=block_result.model,
+            prompt_messages=prompt_messages,
+            system_fingerprint=block_result.system_fingerprint,
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=block_result.message,
+                finish_reason="stop",
+                usage=block_result.usage,
+            ),
+        )
 
     def _handle_chat_generate_response(
         self,
@@ -896,7 +941,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                                 ]
                             )
 
-        if model.startswith("o1"):
+        if model.startswith(("o1", "o3")):
             system_message_count = len([m for m in prompt_messages if isinstance(m, SystemPromptMessage)])
             if system_message_count > 0:
                 new_prompt_messages = []
@@ -1008,7 +1053,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             model = model.split(":")[1]
 
         # Currently, we can use gpt4o to calculate chatgpt-4o-latest's token.
-        if model == "chatgpt-4o-latest" or model.startswith("o1"):
+        if model == "chatgpt-4o-latest" or model.startswith(("o1", "o3")):
             model = "gpt-4o"
 
         try:
@@ -1023,7 +1068,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             tokens_per_message = 4
             # if there's a name, the role is omitted
             tokens_per_name = -1
-        elif model.startswith("gpt-3.5-turbo") or model.startswith("gpt-4") or model.startswith("o1"):
+        elif model.startswith("gpt-3.5-turbo") or model.startswith("gpt-4") or model.startswith(("o1", "o3")):
             tokens_per_message = 3
             tokens_per_name = 1
         else:
@@ -1139,12 +1184,14 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             base_model = model.split(":")[1]
 
         # get model schema
-        models = self.predefined_models()
-        model_map = {model.model: model for model in models}
-        if base_model not in model_map:
-            raise ValueError(f"Base model {base_model} not found")
+        base_model_schema = None
+        for predefined_model in self.predefined_models():
+            if base_model == predefined_model.model:
+                base_model_schema = predefined_model
+                break
 
-        base_model_schema = model_map[base_model]
+        if not base_model_schema:
+            raise ValueError(f"Base model {base_model} not found")
 
         base_model_schema_features = base_model_schema.features or []
         base_model_schema_model_properties = base_model_schema.model_properties

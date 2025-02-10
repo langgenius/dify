@@ -12,7 +12,7 @@ import Avatar from '@/app/components/base/avatar'
 import Input from '@/app/components/base/input'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { Users01, UsersPlus } from '@/app/components/base/icons/src/vender/solid/users'
-import type { DatasetPermission } from '@/models/datasets'
+import { DatasetPermission } from '@/models/datasets'
 import { useAppContext } from '@/context/app-context'
 import type { Member } from '@/models/common'
 export type RoleSelectorProps = {
@@ -60,6 +60,10 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
     return memberList.filter(member => (member.name.includes(searchKeywords) || member.email.includes(searchKeywords)) && member.id !== userProfile.id && ['owner', 'admin', 'editor', 'dataset_operator'].includes(member.role))
   }, [memberList, searchKeywords, userProfile])
 
+  const isOnlyMe = permission === DatasetPermission.onlyMe
+  const isAllTeamMembers = permission === DatasetPermission.allTeamMembers
+  const isPartialMembers = permission === DatasetPermission.partialMembers
+
   return (
     <PortalToFollowElem
       open={open}
@@ -72,14 +76,14 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
           onClick={() => !disabled && setOpen(v => !v)}
           className='block'
         >
-          {permission === 'only_me' && (
+          {isOnlyMe && (
             <div className={cn('flex items-center px-3 py-[6px] rounded-lg bg-gray-100 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200', disabled && 'hover:!bg-gray-100 !cursor-default')}>
-              <Avatar name={userProfile.name} className='shrink-0 mr-2' size={24} />
+              <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='shrink-0 mr-2' size={24} />
               <div className='grow mr-2 text-gray-900 text-sm leading-5'>{t('datasetSettings.form.permissionsOnlyMe')}</div>
               {!disabled && <RiArrowDownSLine className='shrink-0 w-4 h-4 text-gray-700' />}
             </div>
           )}
-          {permission === 'all_team_members' && (
+          {isAllTeamMembers && (
             <div className={cn('flex items-center px-3 py-[6px] rounded-lg bg-gray-100 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200')}>
               <div className='mr-2 flex items-center justify-center w-6 h-6 rounded-lg bg-[#EEF4FF]'>
                 <Users01 className='w-3.5 h-3.5 text-[#444CE7]' />
@@ -88,7 +92,7 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
               {!disabled && <RiArrowDownSLine className='shrink-0 w-4 h-4 text-gray-700' />}
             </div>
           )}
-          {permission === 'partial_members' && (
+          {isPartialMembers && (
             <div className={cn('flex items-center px-3 py-[6px] rounded-lg bg-gray-100 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200')}>
               <div className='mr-2 flex items-center justify-center w-6 h-6 rounded-lg bg-[#EEF4FF]'>
                 <Users01 className='w-3.5 h-3.5 text-[#444CE7]' />
@@ -102,17 +106,17 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
           <div className='relative w-[480px] rounded-lg border-[0.5px] bg-white shadow-lg'>
             <div className='p-1'>
               <div className='pl-3 pr-2 py-1 rounded-lg hover:bg-gray-50 cursor-pointer' onClick={() => {
-                onChange('only_me')
+                onChange(DatasetPermission.onlyMe)
                 setOpen(false)
               }}>
                 <div className='flex items-center gap-2'>
-                  <Avatar name={userProfile.name} className='shrink-0 mr-2' size={24} />
+                  <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='shrink-0 mr-2' size={24} />
                   <div className='grow mr-2 text-gray-900 text-sm leading-5'>{t('datasetSettings.form.permissionsOnlyMe')}</div>
-                  {permission === 'only_me' && <Check className='w-4 h-4 text-primary-600' />}
+                  {isOnlyMe && <Check className='w-4 h-4 text-primary-600' />}
                 </div>
               </div>
               <div className='pl-3 pr-2 py-1 rounded-lg hover:bg-gray-50 cursor-pointer' onClick={() => {
-                onChange('all_team_members')
+                onChange(DatasetPermission.allTeamMembers)
                 setOpen(false)
               }}>
                 <div className='flex items-center gap-2'>
@@ -120,23 +124,23 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
                     <Users01 className='w-3.5 h-3.5 text-[#444CE7]' />
                   </div>
                   <div className='grow mr-2 text-gray-900 text-sm leading-5'>{t('datasetSettings.form.permissionsAllMember')}</div>
-                  {permission === 'all_team_members' && <Check className='w-4 h-4 text-primary-600' />}
+                  {isAllTeamMembers && <Check className='w-4 h-4 text-primary-600' />}
                 </div>
               </div>
               <div className='pl-3 pr-2 py-1 rounded-lg hover:bg-gray-50 cursor-pointer' onClick={() => {
-                onChange('partial_members')
+                onChange(DatasetPermission.partialMembers)
                 onMemberSelect([userProfile.id])
               }}>
                 <div className='flex items-center gap-2'>
-                  <div className={cn('mr-2 flex items-center justify-center w-6 h-6 rounded-lg bg-[#FFF6ED]', permission === 'partial_members' && '!bg-[#EEF4FF]')}>
-                    <UsersPlus className={cn('w-3.5 h-3.5 text-[#FB6514]', permission === 'partial_members' && '!text-[#444CE7]')} />
+                  <div className={cn('mr-2 flex items-center justify-center w-6 h-6 rounded-lg bg-[#FFF6ED]', isPartialMembers && '!bg-[#EEF4FF]')}>
+                    <UsersPlus className={cn('w-3.5 h-3.5 text-[#FB6514]', isPartialMembers && '!text-[#444CE7]')} />
                   </div>
                   <div className='grow mr-2 text-gray-900 text-sm leading-5'>{t('datasetSettings.form.permissionsInvitedMembers')}</div>
-                  {permission === 'partial_members' && <Check className='w-4 h-4 text-primary-600' />}
+                  {isPartialMembers && <Check className='w-4 h-4 text-primary-600' />}
                 </div>
               </div>
             </div>
-            {permission === 'partial_members' && (
+            {isPartialMembers && (
               <div className='max-h-[360px] border-t-[1px] border-gray-100 p-1 overflow-y-auto'>
                 <div className='sticky left-0 top-0 p-2 pb-1 bg-white'>
                   <Input
@@ -149,7 +153,7 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
                 </div>
                 {showMe && (
                   <div className='pl-3 pr-[10px] py-1 flex gap-2 items-center rounded-lg'>
-                    <Avatar name={userProfile.name} className='shrink-0' size={24} />
+                    <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='shrink-0' size={24} />
                     <div className='grow'>
                       <div className='text-[13px] text-gray-700 font-medium leading-[18px] truncate'>
                         {userProfile.name}
@@ -162,7 +166,7 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
                 )}
                 {filteredMemberList.map(member => (
                   <div key={member.id} className='pl-3 pr-[10px] py-1 flex gap-2 items-center rounded-lg hover:bg-gray-100 cursor-pointer' onClick={() => selectMember(member)}>
-                    <Avatar name={member.name} className='shrink-0' size={24} />
+                    <Avatar avatar={userProfile.avatar_url} name={member.name} className='shrink-0' size={24} />
                     <div className='grow'>
                       <div className='text-[13px] text-gray-700 font-medium leading-[18px] truncate'>{member.name}</div>
                       <div className='text-xs text-gray-500 leading-[18px] truncate'>{member.email}</div>
