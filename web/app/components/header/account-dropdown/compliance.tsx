@@ -129,7 +129,7 @@ export default function Compliance() {
           >
             <Menu.Items
               className={cn(
-                `absolute top-[1px] w-[320px] max-h-[70vh] overflow-y-scroll z-10 bg-components-panel-bg-blur backdrop-blur-[5px] border-[0.5px] border-components-panel-border
+                `absolute top-[1px] w-[337px] max-h-[70vh] overflow-y-scroll z-10 bg-components-panel-bg-blur backdrop-blur-[5px] border-[0.5px] border-components-panel-border
                 divide-y divide-divider-subtle origin-top-right rounded-xl focus:outline-none shadow-lg -translate-x-full
               `,
               )}
@@ -141,7 +141,7 @@ export default function Compliance() {
                       active && 'bg-state-base-hover',
                     )}>
                     <Soc2 className='flex-shrink-0 size-7' />
-                    <div className='flex-grow system-md-regular text-text-secondary px-1'>{t('common.compliance.soc2Type1')}</div>
+                    <div className='system-md-regular flex-grow text-text-secondary px-1 truncate'>{t('common.compliance.soc2Type1')}</div>
                     <UpgradeOrDownload doc_name={DocName.SOC2_Type_I} />
                   </div>}
                 </Menu.Item>
@@ -151,7 +151,7 @@ export default function Compliance() {
                       active && 'bg-state-base-hover',
                     )}>
                     <Soc2 className='flex-shrink-0 size-7' />
-                    <div className='flex-grow system-md-regular text-text-secondary px-1'>{t('common.compliance.soc2Type2')}</div>
+                    <div className='system-md-regular flex-grow text-text-secondary px-1 truncate'>{t('common.compliance.soc2Type2')}</div>
                     <UpgradeOrDownload doc_name={DocName.SOC2_Type_II} />
                   </div>}
                 </Menu.Item>
@@ -161,7 +161,7 @@ export default function Compliance() {
                       active && 'bg-state-base-hover',
                     )}>
                     <Iso className='flex-shrink-0 size-7' />
-                    <div className='flex-grow system-md-regular text-text-secondary px-1'>{t('common.compliance.iso27001')}</div>
+                    <div className='system-md-regular flex-grow text-text-secondary px-1 truncate'>{t('common.compliance.iso27001')}</div>
                     <UpgradeOrDownload doc_name={DocName.ISO_27001} />
                   </div>}
                 </Menu.Item>
@@ -171,7 +171,7 @@ export default function Compliance() {
                       active && 'bg-state-base-hover',
                     )}>
                     <Gdpr className='flex-shrink-0 size-7' />
-                    <div className='flex-grow system-md-regular text-text-secondary px-1'>{t('common.compliance.gdpr')}</div>
+                    <div className='system-md-regular flex-grow text-text-secondary px-1 truncate'>{t('common.compliance.gdpr')}</div>
                     <UpgradeOrDownload doc_name={DocName.GDPR} />
                   </div>}
                 </Menu.Item>
