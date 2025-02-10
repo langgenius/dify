@@ -364,7 +364,7 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
                     type=ParameterType.INT,
                     min=1,
                     default=1,
-                    label=I18nObject(zh_Hans="Top K", en_US="Top K")
+                    label=I18nObject(zh_Hans="Top K", en_US="Top K"),
                 ),
                 ParameterRule(
                     name="presence_penalty",
