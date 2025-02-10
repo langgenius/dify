@@ -419,7 +419,9 @@ if you are not sure about the structure.
                 is_reasoning = True
             else:
                 content = reasoning_content
-        elif is_reasoning:
+        elif is_reasoning and content:
+            # do not end reasoning when content is empty
+            # there may be more reasoning_content later that follows previous reasoning closely
             content = "\n</think>" + content
             is_reasoning = False
         return content, is_reasoning
