@@ -170,14 +170,7 @@ export default combine(
   tailwind.configs['flat/recommended'],
   {
     rules: {
-      // due to 1k lines of tailwind config, these rule have performance issue
-      'tailwindcss/no-contradicting-classname': 'off',
-      'tailwindcss/no-unnecessary-arbitrary-value': 'off',
-      'tailwindcss/enforces-shorthand': 'off',
-      'tailwindcss/no-custom-classname': 'off',
-
-      // in the future
-      'tailwindcss/classnames-order': 'off',
+      'tailwindcss/no-custom-classname': 'error',
     },
   },
 )
