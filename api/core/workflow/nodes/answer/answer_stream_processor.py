@@ -82,7 +82,7 @@ class AnswerStreamProcessor(StreamProcessor):
         :param event: node run succeeded event
         :return:
         """
-        for answer_node_id, _ in self.route_position.items():
+        for answer_node_id in self.route_position:
             # all depends on answer node id not in rest node ids
             if event.route_node_state.node_id != answer_node_id and (
                 answer_node_id not in self.rest_node_ids
@@ -157,7 +157,8 @@ class AnswerStreamProcessor(StreamProcessor):
                 continue
             # exclude current node id
             answer_dependencies = self.generate_routes.answer_dependencies
-            answer_dependencies[answer_node_id].remove(event.node_id)
+            if event.node_id in answer_dependencies[answer_node_id]:
+                answer_dependencies[answer_node_id].remove(event.node_id)
             answer_dependencies_ids = answer_dependencies.get(answer_node_id, [])
             # all depends on answer node id not in rest node ids
             if all(dep_id not in self.rest_node_ids for dep_id in answer_dependencies_ids):
