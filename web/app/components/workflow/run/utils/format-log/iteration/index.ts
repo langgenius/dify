@@ -3,10 +3,10 @@ import type { NodeTracing } from '@/types/workflow'
 import formatParallelNode from '../parallel'
 function addChildrenToIterationNode(iterationNode: NodeTracing, childrenNodes: NodeTracing[]): NodeTracing {
   const details: NodeTracing[][] = []
-  childrenNodes.forEach((item) => {
+  childrenNodes.forEach((item, index) => {
     if (!item.execution_metadata) return
-    const { parallel_mode_run_id, iteration_index = 0 } = item.execution_metadata
-    const runIndex: number = (parallel_mode_run_id || iteration_index) as number
+    const { iteration_index = 0 } = item.execution_metadata
+    const runIndex: number = iteration_index || index
     if (!details[runIndex])
       details[runIndex] = []
 
