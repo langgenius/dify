@@ -21,14 +21,27 @@ parameters: # 参数列表
       zh_Hans: pdf
     llm_description: pdf # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
     form: llm
-  - name: max_size
+  - name: vector_max_size
     type: number
     required: false
     label:
-      en_US: max_size
+      en_US: vector_max_size
       zh_Hans: 生成图片最大长/宽
     human_description:
-      en_US: max_size
+      en_US: vector_max_size
+      zh_Hans: 生成图片最大长/宽
+    form: form
+    default: 1024
+    min: 256
+    max: 2048
+  - name: bit_max_size
+    type: number
+    required: false
+    label:
+      en_US: bit_max_size
+      zh_Hans: 生成图片最大长/宽
+    human_description:
+      en_US: bit_max_size
       zh_Hans: 生成图片最大长/宽
     form: form
     default: 2048
