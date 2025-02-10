@@ -14,7 +14,7 @@ class BillingService:
     base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
     secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
 
-    compliance_download_rate_limiter = RateLimiter("compliance_download_rate_limiter", 3, 60)
+    compliance_download_rate_limiter = RateLimiter("compliance_download_rate_limiter", 4, 60)
 
     @classmethod
     def get_info(cls, tenant_id: str):
