@@ -1,0 +1,10 @@
+services:
+  api:
+    networks:
+      - firecrawl_backend
+      - ssrf_proxy_network
+      - default
+
+networks:
+  firecrawl_backend:
+    external: true
