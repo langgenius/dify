@@ -430,7 +430,7 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
                 type=ParameterType.INT,
                 use_template="max_tokens",
                 min=1,
-                max=credentials.get("context_length", 2048),
+                max=int(credentials.get("context_length", 2048)),
                 default=512,
                 label=I18nObject(zh_Hans="最大生成长度", en_US="Max Tokens"),
             ),
@@ -448,7 +448,7 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
         if support_vision:
             features.append(ModelFeature.VISION)
 
-        context_length = credentials.get("context_length", 2048)
+        context_length = int(credentials.get("context_length", 2048))
 
         entity = AIModelEntity(
             model=model,
