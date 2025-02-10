@@ -88,7 +88,6 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
             />
           }
         </div>
-        <div className={`text-xs font-normal text-text-tertiary group-hover:text-text-secondary break-all ${textStyle?.extra ?? ''}`}>{type}</div>
         <div className='text-text-tertiary system-2xs-medium-uppercase'>{isExternal ? t('dataset.externalTag') : ''}</div>
       </div>}
     </div>
