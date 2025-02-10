@@ -26,10 +26,10 @@ parameters: # 参数列表
     required: false
     label:
       en_US: vector_max_size
-      zh_Hans: 生成图片最大长/宽
+      zh_Hans: 矢量图最大长/宽
     human_description:
       en_US: vector_max_size
-      zh_Hans: 生成图片最大长/宽
+      zh_Hans: 矢量图最大长/宽
     form: form
     default: 1024
     min: 256
@@ -39,10 +39,10 @@ parameters: # 参数列表
     required: false
     label:
       en_US: bit_max_size
-      zh_Hans: 生成图片最大长/宽
+      zh_Hans: 位图最大长/宽
     human_description:
       en_US: bit_max_size
-      zh_Hans: 生成图片最大长/宽
+      zh_Hans: 位图最大长/宽
     form: form
     default: 2048
     min: 256
