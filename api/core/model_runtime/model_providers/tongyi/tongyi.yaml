@@ -19,9 +19,11 @@ supported_model_types:
   - tts
   - text-embedding
   - rerank
+  - deepseek-r1
 configurate_methods:
   - predefined-model
   - customizable-model
+  - deepseek-r1
 provider_credential_schema:
   credential_form_schemas:
     - variable: dashscope_api_key
