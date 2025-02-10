@@ -287,6 +287,7 @@ const translation = {
       usedUp: 'Testkontingent aufgebraucht. Eigenen Modellanbieter hinzufügen.',
       useYourModel: 'Derzeit wird eigener Modellanbieter verwendet.',
       close: 'Schließen',
+      trialQuotaTip: 'Ihr Anthropic-Testkontingent läuft am 11.03.2025 ab und steht danach nicht mehr zur Verfügung. Bitte machen Sie rechtzeitig davon Gebrauch.',
     },
     anthropic: {
       using: 'Die Einbettungsfähigkeit verwendet',
