@@ -1,0 +1,28 @@
+provider: SambaNova  # Provider identifier
+label:  # Provider display name, can be set in en_US English and zh_Hans Chinese, zh_Hans will default to en_US if not set.
+  en_US: SambaNova
+  zh_Hans: SambaNova
+icon_small:  # Small provider icon, stored in the _assets directory under the corresponding provider implementation directory, same language strategy as label
+  en_US: icon_s_en.png
+icon_large:  # Large provider icon, stored in the _assets directory under the corresponding provider implementation directory, same language strategy as label
+  en_US: icon_l_en.png
+supported_model_types:  # Supported model types, SambaNova only supports LLM  TODO: add vlm, audio
+  - llm
+configurate_methods:  # Supported configuration methods, SambaNova only supports predefined models
+  - predefined-model
+help:
+  title:
+    en_US: Get your API Key from SambaNova Cloud
+    zh_Hans: 從 SambaNova Cloud 獲取 API Key
+  url:
+    en_US: https://cloud.sambanova.ai/
+provider_credential_schema:  # Provider credential rules, as SambaNova only supports predefined models, unified provider credential rules need to be defined
+  credential_form_schemas:  # List of credential form items
+  - variable: SambaNova_api_key  # Credential parameter variable name
+    label:  # Display name
+      en_US: API Key
+    type: secret-input  # Form type, here secret-input represents an encrypted information input box, showing masked information when editing.
+    required: true  # Whether required
+    placeholder:  # Placeholder information
+      zh_Hans: 在此输入您的 API Key
+      en_US: Enter your API Key
