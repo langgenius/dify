@@ -112,6 +112,7 @@ const translation = {
           operation: '檢視文件',
         },
       },
+      launch: '發射',
     },
     apiInfo: {
       title: '後端服務 API',

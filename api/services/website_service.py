@@ -38,30 +38,22 @@ class WebsiteService:
             only_main_content = options.get("only_main_content", False)
             if not crawl_sub_pages:
                 params = {
-                    "crawlerOptions": {
-                        "includes": [],
-                        "excludes": [],
-                        "generateImgAltText": True,
-                        "limit": 1,
-                        "returnOnlyUrls": False,
-                        "pageOptions": {"onlyMainContent": only_main_content, "includeHtml": False},
-                    }
+                    "includePaths": [],
+                    "excludePaths": [],
+                    "limit": 1,
+                    "scrapeOptions": {"onlyMainContent": only_main_content},
                 }
             else:
                 includes = options.get("includes").split(",") if options.get("includes") else []
                 excludes = options.get("excludes").split(",") if options.get("excludes") else []
                 params = {
-                    "crawlerOptions": {
-                        "includes": includes,
-                        "excludes": excludes,
-                        "generateImgAltText": True,
-                        "limit": options.get("limit", 1),
-                        "returnOnlyUrls": False,
-                        "pageOptions": {"onlyMainContent": only_main_content, "includeHtml": False},
-                    }
+                    "includePaths": includes,
+                    "excludePaths": excludes,
+                    "limit": options.get("limit", 1),
+                    "scrapeOptions": {"onlyMainContent": only_main_content},
                 }
                 if options.get("max_depth"):
-                    params["crawlerOptions"]["maxDepth"] = options.get("max_depth")
+                    params["maxDepth"] = options.get("max_depth")
             job_id = firecrawl_app.crawl_url(url, params)
             website_crawl_time_cache_key = f"website_crawl_{job_id}"
             time = str(datetime.datetime.now().timestamp())
@@ -228,7 +220,7 @@ class WebsiteService:
             # decrypt api_key
             api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=credentials.get("config").get("api_key"))
             firecrawl_app = FirecrawlApp(api_key=api_key, base_url=credentials.get("config").get("base_url", None))
-            params = {"pageOptions": {"onlyMainContent": only_main_content, "includeHtml": False}}
+            params = {"onlyMainContent": only_main_content}
             result = firecrawl_app.scrape_url(url, params)
             return result
         else:

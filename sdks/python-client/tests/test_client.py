@@ -87,7 +87,7 @@ class TestKnowledgeBaseClient(unittest.TestCase):
     def _test_005_batch_indexing_status(self):
         client = self._get_dataset_kb_client()
         response = client.batch_indexing_status(self.batch_id)
-        data = response.json()
+        response.json()
         self.assertEqual(response.status_code, 200)
 
     def _test_006_update_document_by_file(self):

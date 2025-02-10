@@ -50,6 +50,7 @@ const translation = {
     submit: '送信',
     skip: 'スキップ',
     imageCopied: 'コピーした画像',
+    deleteApp: 'アプリを削除',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',

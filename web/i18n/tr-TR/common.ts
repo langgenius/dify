@@ -50,6 +50,7 @@ const translation = {
     submit: 'Gönder',
     skip: 'Gemi',
     imageCopied: 'Kopyalanan görüntü',
+    deleteApp: 'Uygulamayı Sil',
   },
   errorMsg: {
     fieldRequired: '{{field}} gereklidir',

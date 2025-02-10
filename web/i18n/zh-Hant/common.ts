@@ -50,6 +50,7 @@ const translation = {
     submit: '提交',
     skip: '船',
     imageCopied: '複製的圖片',
+    deleteApp: '刪除應用程式',
   },
   placeholder: {
     input: '請輸入',
