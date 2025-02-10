@@ -287,6 +287,7 @@ const translation = {
       usedUp: 'Cota de probă a fost epuizată. Adăugați propriul furnizor de modele.',
       useYourModel: 'În prezent se utilizează propriul furnizor de modele.',
       close: 'Închide',
+      trialQuotaTip: 'Cota de încercare Anthropic va expira pe 11.03.2025 și nu va mai fi disponibilă ulterior. Vă rugăm să o utilizați la timp.',
     },
     anthropic: {
       using: 'Capacitatea de încorporare utilizează',
