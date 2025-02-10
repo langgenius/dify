@@ -333,54 +333,71 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
         """
         model_config = get_model_config(credentials)
 
-        rules = [
-            ParameterRule(
-                name="temperature",
-                type=ParameterType.FLOAT,
-                use_template="temperature",
-                label=I18nObject(zh_Hans="温度", en_US="Temperature"),
-            ),
-            ParameterRule(
-                name="top_p",
-                type=ParameterType.FLOAT,
-                use_template="top_p",
-                label=I18nObject(zh_Hans="Top P", en_US="Top P"),
-            ),
-            ParameterRule(
-                name="top_k", type=ParameterType.INT, min=1, default=1, label=I18nObject(zh_Hans="Top K", en_US="Top K")
-            ),
-            ParameterRule(
-                name="presence_penalty",
-                type=ParameterType.FLOAT,
-                use_template="presence_penalty",
-                label=I18nObject(
-                    en_US="Presence Penalty",
-                    zh_Hans="存在惩罚",
+        if model.startswith("DeepSeek-R1"):
+            rules = [
+                ParameterRule(
+                    name="max_tokens",
+                    type=ParameterType.INT,
+                    use_template="max_tokens",
+                    min=1,
+                    max=model_config.properties.max_tokens,
+                    default=512,
+                    label=I18nObject(zh_Hans="最大生成长度", en_US="Max Tokens"),
                 ),
-                min=-2.0,
-                max=2.0,
-            ),
-            ParameterRule(
-                name="frequency_penalty",
-                type=ParameterType.FLOAT,
-                use_template="frequency_penalty",
-                label=I18nObject(
-                    en_US="Frequency Penalty",
-                    zh_Hans="频率惩罚",
+            ]
+        else:
+            rules = [
+                ParameterRule(
+                    name="temperature",
+                    type=ParameterType.FLOAT,
+                    use_template="temperature",
+                    label=I18nObject(zh_Hans="温度", en_US="Temperature"),
                 ),
-                min=-2.0,
-                max=2.0,
-            ),
-            ParameterRule(
-                name="max_tokens",
-                type=ParameterType.INT,
-                use_template="max_tokens",
-                min=1,
-                max=model_config.properties.max_tokens,
-                default=512,
-                label=I18nObject(zh_Hans="最大生成长度", en_US="Max Tokens"),
-            ),
-        ]
+                ParameterRule(
+                    name="top_p",
+                    type=ParameterType.FLOAT,
+                    use_template="top_p",
+                    label=I18nObject(zh_Hans="Top P", en_US="Top P"),
+                ),
+                ParameterRule(
+                    name="top_k",
+                    type=ParameterType.INT,
+                    min=1,
+                    default=1,
+                    label=I18nObject(zh_Hans="Top K", en_US="Top K")
+                ),
+                ParameterRule(
+                    name="presence_penalty",
+                    type=ParameterType.FLOAT,
+                    use_template="presence_penalty",
+                    label=I18nObject(
+                        en_US="Presence Penalty",
+                        zh_Hans="存在惩罚",
+                    ),
+                    min=-2.0,
+                    max=2.0,
+                ),
+                ParameterRule(
+                    name="frequency_penalty",
+                    type=ParameterType.FLOAT,
+                    use_template="frequency_penalty",
+                    label=I18nObject(
+                        en_US="Frequency Penalty",
+                        zh_Hans="频率惩罚",
+                    ),
+                    min=-2.0,
+                    max=2.0,
+                ),
+                ParameterRule(
+                    name="max_tokens",
+                    type=ParameterType.INT,
+                    use_template="max_tokens",
+                    min=1,
+                    max=model_config.properties.max_tokens,
+                    default=512,
+                    label=I18nObject(zh_Hans="最大生成长度", en_US="Max Tokens"),
+                ),
+            ]
 
         model_properties = {}
         model_properties[ModelPropertyKey.CONTEXT_SIZE] = model_config.properties.context_size
