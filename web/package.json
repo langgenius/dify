@@ -165,7 +165,6 @@
     "code-inspector-plugin": "^0.18.1",
     "cross-env": "^7.0.3",
     "eslint": "^9.13.0",
-    "eslint-config-next": "15.1.5",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.13",
     "eslint-plugin-storybook": "^0.10.1",
