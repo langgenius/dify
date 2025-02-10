@@ -237,7 +237,9 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
             content = delta.content
         if hasattr(delta, "reasoning_content"):
             reasoning_content = delta.reasoning_content
-        return self._wrap_thinking_by_reasoning_content({"content": content, "reasoning_content": reasoning_content}, is_reasoning)
+        return self._wrap_thinking_by_reasoning_content(
+            {"content": content, "reasoning_content": reasoning_content}, is_reasoning
+        )
 
     def _generate_v3(
         self,
@@ -261,9 +263,7 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
                 content = ""
                 if chunk.choices:
                     delta = chunk.choices[0].delta
-                    content, is_reasoning_started = self.wrap_thinking(
-                        delta, is_reasoning_started
-                    )
+                    content, is_reasoning_started = self.wrap_thinking(delta, is_reasoning_started)
 
                 yield LLMResultChunk(
                     model=model,
