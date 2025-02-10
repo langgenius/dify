@@ -315,8 +315,8 @@ class HttpConfig(BaseSettings):
     )
 
     RESPECT_XFORWARD_HEADERS_ENABLED: bool = Field(
-        description="Enable or disable the X-Forwarded-For Proxy Fix middleware from Werkzeug"
-        " to respect X-* headers to redirect clients",
+        description="Enable handling of X-Forwarded-For, X-Forwarded-Proto, and X-Forwarded-Port headers"
+        " when the app is behind a single trusted reverse proxy.",
         default=False,
     )
 
