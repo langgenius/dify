@@ -130,7 +130,7 @@ export const ProviderContextProvider = ({
           Toast.notify({
             type: 'info',
             message: t('common.provider.anthropicHosted.trialQuotaTip'),
-            duration: 6000,
+            duration: 60000,
             onClose: () => {
               localStorage.setItem('anthropic_quota_notice', 'true')
             },
