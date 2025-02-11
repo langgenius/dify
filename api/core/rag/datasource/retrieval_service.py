@@ -1,6 +1,6 @@
 import concurrent.futures
 import json
-from typing import Optional, cast
+from typing import Any, Optional, cast
 
 from flask import Flask, current_app
 from sqlalchemy.orm import load_only
@@ -287,28 +287,23 @@ class RetrievalService:
                     if not child_chunk:
                         continue
 
-                    segment = (
-                        db.session.query(DocumentSegment)
-                        .filter(
-                            DocumentSegment.dataset_id == dataset_document.dataset_id,
-                            DocumentSegment.enabled == True,
-                            DocumentSegment.status == "completed",
-                            DocumentSegment.id == child_chunk.segment_id,
+                    result = db.session.query(DocumentSegment).filter(
+                        DocumentSegment.dataset_id == dataset_document.dataset_id,
+                        DocumentSegment.enabled == True,
+                        DocumentSegment.status == "completed",
+                        DocumentSegment.id == child_chunk.segment_id,
+                    ).options(
+                        load_only(
+                            DocumentSegment.id,
+                            DocumentSegment.content,
+                            DocumentSegment.answer,
+                            DocumentSegment.doc_metadata,
                         )
-                        .options(
-                            load_only(
-                                DocumentSegment.id,
-                                DocumentSegment.content,
-                                DocumentSegment.answer,
-                                DocumentSegment.doc_metadata,
-                            )
-                        )
-                        .first()
-                    )
-
-                    if not segment:
+                    ).first()
+                    if result is None:
                         continue
 
+                    segment: DocumentSegment = cast(DocumentSegment, result)
                     if segment.id not in include_segment_ids:
                         include_segment_ids.add(segment.id)
                         child_chunk_detail = {
@@ -343,20 +338,16 @@ class RetrievalService:
                     if not index_node_id:
                         continue
 
-                    segment = (
-                        db.session.query(DocumentSegment)
-                        .filter(
-                            DocumentSegment.dataset_id == dataset_document.dataset_id,
-                            DocumentSegment.enabled == True,
-                            DocumentSegment.status == "completed",
-                            DocumentSegment.index_node_id == index_node_id,
-                        ).first()
-                    )
-
-                    if not segment:
+                    result = db.session.query(DocumentSegment).filter(
+                        DocumentSegment.dataset_id == dataset_document.dataset_id,
+                        DocumentSegment.enabled == True,
+                        DocumentSegment.status == "completed",
+                        DocumentSegment.index_node_id == index_node_id,
+                    ).first()
+                    if result is None:
                         continue
 
-                    segment = cast(DocumentSegment, segment)
+                    segment: DocumentSegment = cast(DocumentSegment, result)
                     include_segment_ids.add(segment.id)
                     record = {
                         "segment": segment,
