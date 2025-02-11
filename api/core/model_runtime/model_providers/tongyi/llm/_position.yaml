@@ -1,3 +1,7 @@
+- deepseek-r1
+- deepseek-r1-distill-qwen-14b
+- deepseek-r1-distill-qwen-32b
+- deepseek-v3
 - qwen-vl-max-0809
 - qwen-vl-max-0201
 - qwen-vl-max

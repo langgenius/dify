@@ -161,9 +161,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }
 
   return (
-    <div className={cn(s.app, 'flex', 'overflow-hidden')}>
+    <div className={cn(s.app, 'flex relative', 'overflow-hidden')}>
       {appDetail && (
-        <AppSideBar title={appDetail.name} icon={appDetail.icon} icon_background={appDetail.icon_background} desc={appDetail.mode} navigation={navigation} />
+        <AppSideBar title={appDetail.name} icon={appDetail.icon} icon_background={appDetail.icon_background as string} desc={appDetail.mode} navigation={navigation} />
       )}
       <div className="bg-components-panel-bg grow overflow-hidden">
         {children}

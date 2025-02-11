@@ -50,6 +50,7 @@ const translation = {
     submit: 'Envoyer',
     skip: 'Bateau',
     imageCopied: 'Image copied',
+    deleteApp: 'Supprimer l’application',
   },
   placeholder: {
     input: 'Veuillez entrer',
@@ -286,6 +287,7 @@ const translation = {
       usedUp: 'Quota d\'essai épuisé. Ajoutez votre propre fournisseur de modèle.',
       useYourModel: 'Utilise actuellement son propre fournisseur de modèle.',
       close: 'Fermer',
+      trialQuotaTip: 'Votre quota d’essai Anthropic expirera le 11/03/2025 et ne sera plus disponible par la suite. Veuillez l’utiliser à temps.',
     },
     anthropic: {
       using: 'La capacité d\'embedding est utilisée',

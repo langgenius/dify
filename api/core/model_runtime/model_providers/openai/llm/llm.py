@@ -619,9 +619,9 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         # clear illegal prompt messages
         prompt_messages = self._clear_illegal_prompt_messages(model, prompt_messages)
 
-        # o1 compatibility
+        # o1, o3 compatibility
         block_as_stream = False
-        if model.startswith("o1"):
+        if model.startswith(("o1", "o3")):
             if "max_tokens" in model_parameters:
                 model_parameters["max_completion_tokens"] = model_parameters["max_tokens"]
                 del model_parameters["max_tokens"]
@@ -941,7 +941,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                                 ]
                             )
 
-        if model.startswith("o1"):
+        if model.startswith(("o1", "o3")):
             system_message_count = len([m for m in prompt_messages if isinstance(m, SystemPromptMessage)])
             if system_message_count > 0:
                 new_prompt_messages = []
@@ -1053,7 +1053,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             model = model.split(":")[1]
 
         # Currently, we can use gpt4o to calculate chatgpt-4o-latest's token.
-        if model == "chatgpt-4o-latest" or model.startswith("o1"):
+        if model == "chatgpt-4o-latest" or model.startswith(("o1", "o3")):
             model = "gpt-4o"
 
         try:
@@ -1068,7 +1068,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             tokens_per_message = 4
             # if there's a name, the role is omitted
             tokens_per_name = -1
-        elif model.startswith("gpt-3.5-turbo") or model.startswith("gpt-4") or model.startswith("o1"):
+        elif model.startswith("gpt-3.5-turbo") or model.startswith("gpt-4") or model.startswith(("o1", "o3")):
             tokens_per_message = 3
             tokens_per_name = 1
         else:

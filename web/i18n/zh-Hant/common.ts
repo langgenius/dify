@@ -50,6 +50,7 @@ const translation = {
     submit: '提交',
     skip: '船',
     imageCopied: '複製的圖片',
+    deleteApp: '刪除應用程式',
   },
   placeholder: {
     input: '請輸入',
@@ -286,6 +287,7 @@ const translation = {
       usedUp: '試用額度已用完，請在下方新增自己的模型供應商',
       useYourModel: '當前正在使用你自己的模型供應商。',
       close: '關閉',
+      trialQuotaTip: '您的 Anthropic 試用配額將於 2025 年 3 月 11 日到期，此後將不再可用。請及時利用。',
     },
     anthropic: {
       using: '嵌入能力正在使用',
