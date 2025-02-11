@@ -287,19 +287,24 @@ class RetrievalService:
                     if not child_chunk:
                         continue
 
-                    result = db.session.query(DocumentSegment).filter(
-                        DocumentSegment.dataset_id == dataset_document.dataset_id,
-                        DocumentSegment.enabled == True,
-                        DocumentSegment.status == "completed",
-                        DocumentSegment.id == child_chunk.segment_id,
-                    ).options(
-                        load_only(
-                            DocumentSegment.id,
-                            DocumentSegment.content,
-                            DocumentSegment.answer,
-                            DocumentSegment.doc_metadata,
+                    result = (
+                        db.session.query(DocumentSegment)
+                        .filter(
+                            DocumentSegment.dataset_id == dataset_document.dataset_id,
+                            DocumentSegment.enabled == True,
+                            DocumentSegment.status == "completed",
+                            DocumentSegment.id == child_chunk.segment_id,
                         )
-                    ).first()
+                        .options(
+                            load_only(
+                                DocumentSegment.id,
+                                DocumentSegment.content,
+                                DocumentSegment.answer,
+                                DocumentSegment.doc_metadata,
+                            )
+                        )
+                        .first()
+                    )
                     if result is None:
                         continue
 
@@ -338,12 +343,16 @@ class RetrievalService:
                     if not index_node_id:
                         continue
 
-                    result = db.session.query(DocumentSegment).filter(
-                        DocumentSegment.dataset_id == dataset_document.dataset_id,
-                        DocumentSegment.enabled == True,
-                        DocumentSegment.status == "completed",
-                        DocumentSegment.index_node_id == index_node_id,
-                    ).first()
+                    result = (
+                        db.session.query(DocumentSegment)
+                        .filter(
+                            DocumentSegment.dataset_id == dataset_document.dataset_id,
+                            DocumentSegment.enabled == True,
+                            DocumentSegment.status == "completed",
+                            DocumentSegment.index_node_id == index_node_id,
+                        )
+                        .first()
+                    )
                     if result is None:
                         continue
 
