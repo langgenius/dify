@@ -3,12 +3,15 @@
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import useSWR from 'swr'
 import { useEffect, useState } from 'react'
+import dayjs from 'dayjs'
+import { useTranslation } from 'react-i18next'
 import {
   fetchModelList,
   fetchModelProviders,
   fetchSupportRetrievalMethods,
 } from '@/service/common'
 import {
+  CurrentSystemQuotaTypeEnum,
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -18,6 +21,7 @@ import { Plan, type UsagePlanInfo } from '@/app/components/billing/type'
 import { fetchCurrentPlanInfo } from '@/service/billing'
 import { parseCurrentPlan } from '@/app/components/billing/utils'
 import { defaultPlan } from '@/app/components/billing/config'
+import Toast from '@/app/components/base/toast'
 
 type ProviderContextState = {
   modelProviders: ModelProvider[]
@@ -109,6 +113,32 @@ export const ProviderContextProvider = ({
   useEffect(() => {
     fetchPlan()
   }, [])
+
+  const { t } = useTranslation()
+  useEffect(() => {
+    if (localStorage.getItem('anthropic_quota_notice') === 'true')
+      return
+
+    if (dayjs().isAfter(dayjs('2025-03-11')))
+      return
+
+    if (providersData?.data && providersData.data.length > 0) {
+      const anthropic = providersData.data.find(provider => provider.provider === 'anthropic')
+      if (anthropic && anthropic.system_configuration.current_quota_type === CurrentSystemQuotaTypeEnum.trial) {
+        const quota = anthropic.system_configuration.quota_configurations.find(item => item.quota_type === anthropic.system_configuration.current_quota_type)
+        if (quota && quota.is_valid && quota.quota_used < quota.quota_limit) {
+          Toast.notify({
+            type: 'info',
+            message: t('common.provider.anthropicHosted.trialQuotaTip'),
+            duration: 60000,
+            onClose: () => {
+              localStorage.setItem('anthropic_quota_notice', 'true')
+            },
+          })
+        }
+      }
+    }
+  }, [providersData, t])
 
   return (
     <ProviderContext.Provider value={{

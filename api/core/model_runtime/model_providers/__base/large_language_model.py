@@ -30,11 +30,6 @@ from core.model_runtime.model_providers.__base.ai_model import AIModel
 
 logger = logging.getLogger(__name__)
 
-HTML_THINKING_TAG = (
-    '<details style="color:gray;background-color: #f8f8f8;padding: 8px;border-radius: 4px;" open> '
-    "<summary> Thinking... </summary>"
-)
-
 
 class LargeLanguageModel(AIModel):
     """
@@ -408,7 +403,7 @@ if you are not sure about the structure.
     def _wrap_thinking_by_reasoning_content(self, delta: dict, is_reasoning: bool) -> tuple[str, bool]:
         """
         If the reasoning response is from delta.get("reasoning_content"), we wrap
-        it with HTML details tag.
+        it with HTML think tag.
 
         :param delta: delta dictionary from LLM streaming response
         :param is_reasoning: is reasoning
@@ -420,24 +415,16 @@ if you are not sure about the structure.
 
         if reasoning_content:
             if not is_reasoning:
-                content = HTML_THINKING_TAG + reasoning_content
+                content = "<think>\n" + reasoning_content
                 is_reasoning = True
             else:
                 content = reasoning_content
-        elif is_reasoning:
-            content = "</details>" + content
+        elif is_reasoning and content:
+            # do not end reasoning when content is empty
+            # there may be more reasoning_content later that follows previous reasoning closely
+            content = "\n</think>" + content
             is_reasoning = False
         return content, is_reasoning
-
-    def _wrap_thinking_by_tag(self, content: str) -> str:
-        """
-        if the reasoning response is a <think>...</think> block from delta.get("content"),
-        we replace <think> to <detail>.
-
-        :param content: delta.get("content")
-        :return: processed_content
-        """
-        return content.replace("<think>", HTML_THINKING_TAG).replace("</think>", "</details>")
 
     def _invoke_result_generator(
         self,

@@ -78,7 +78,7 @@ const ConfigPanel = () => {
                   styleCss={CssTransform(themeBuilder.theme?.backgroundButtonDefaultColorStyle ?? '')}
                   variant='secondary-accent'
                   size='small'
-                  className='shrink-0'
+                  className='shrink-0 text-white'
                   onClick={() => setCollapsed(false)}
                 >
                   <Edit02 className='mr-1 w-3 h-3' />
