@@ -1,6 +1,6 @@
 import concurrent.futures
 import json
-from typing import Optional
+from typing import Optional, cast
 
 from flask import Flask, current_app
 from sqlalchemy.orm import load_only
@@ -57,7 +57,7 @@ class RetrievalService:
                 futures.append(
                     executor.submit(
                         cls.keyword_search,
-                        flask_app=current_app._get_current_object(),
+                        flask_app=current_app,
                         dataset_id=dataset_id,
                         query=query,
                         top_k=top_k,
@@ -69,7 +69,7 @@ class RetrievalService:
                 futures.append(
                     executor.submit(
                         cls.embedding_search,
-                        flask_app=current_app._get_current_object(),
+                        flask_app=current_app,
                         dataset_id=dataset_id,
                         query=query,
                         top_k=top_k,
@@ -84,7 +84,7 @@ class RetrievalService:
                 futures.append(
                     executor.submit(
                         cls.full_text_index_search,
-                        flask_app=current_app._get_current_object(),
+                        flask_app=current_app,
                         dataset_id=dataset_id,
                         query=query,
                         top_k=top_k,
@@ -354,6 +354,7 @@ class RetrievalService:
                         .first()
                     )
 
+                    segment = cast(DocumentSegment, segment)
                     if not segment:
                         continue
 
