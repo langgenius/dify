@@ -52,7 +52,7 @@
 Dify is an open-source LLM app development platform. Its intuitive interface combines agentic AI workflow, RAG pipeline, agent capabilities, model management, observability features and more, letting you quickly go from prototype to production. 
 
 ## OpenVINO Model Server (OVMS) integration
-`'./docker/docker-compose-template.yaml'`, `'./docker/docker-compose.yaml'` and `'./docker/.env.example'` are modified to include the OpenVINO Model Server (OVMS) into the `docker-compose.yaml` file. 
+`'./docker/docker-compose-template.yaml'`, `'./docker/docker-compose.yaml'` and `'./docker/.env.example'` are modified from the original Dify project, to include the OpenVINO Model Server (OVMS) into the `docker-compose.yaml` file. 
 
 ## Step to prepare the LLM models for OpenVINO Model Server.
 Refer the [Deployment on a Model Server / QuickStart - LLM models](https://docs.openvino.ai/2025/openvino-workflow/model-server/ovms_docs_llm_quickstart.html) section in the OpenVINO document web site to prepare a model and configuration files for the OVMS.
