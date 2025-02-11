@@ -266,6 +266,7 @@ class WorkflowCycleManage:
             workflow_node_execution.error = error
             workflow_node_execution.finished_at = now
             workflow_node_execution.elapsed_time = (now - workflow_node_execution.created_at).total_seconds()
+            session.add(workflow_node_execution)
 
         if trace_manager:
             trace_manager.add_trace_task(
