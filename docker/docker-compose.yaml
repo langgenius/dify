@@ -56,7 +56,6 @@ x-shared-env: &shared-api-worker-env
   POSTGRES_WORK_MEM: ${POSTGRES_WORK_MEM:-4MB}
   POSTGRES_MAINTENANCE_WORK_MEM: ${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}
   POSTGRES_EFFECTIVE_CACHE_SIZE: ${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}
-  OVMS_MODEL_DIR: ${OVMS_MODEL_DIR:-./models}
   REDIS_HOST: ${REDIS_HOST:-redis}
   REDIS_PORT: ${REDIS_PORT:-6379}
   REDIS_USERNAME: ${REDIS_USERNAME:-}
@@ -396,22 +395,6 @@ x-shared-env: &shared-api-worker-env
   TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-10}
 
 services:
-  # OpenVINO Model Server 
-  # https://github.com/openvinotoolkit/model_server
-  ovms:
-    image: openvino/model_server:2025.0
-    restart: always
-    networks:
-      - ssrf_proxy_network
-      - default
-    #expose:
-    #  - 8000
-    ports:
-      - 8000:8000
-    volumes:
-      - ${OVMS_MODEL_DIR:-./models}:/workspace:ro
-    entrypoint: /ovms/bin/ovms --rest_port 8000 --config_path /workspace/config.json
-
   # API service
   api:
     image: langgenius/dify-api:0.15.3
@@ -427,7 +410,6 @@ services:
     depends_on:
       - db
       - redis
-      - ovms
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
@@ -451,7 +433,6 @@ services:
     depends_on:
       - db
       - redis
-      - ovms
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
