@@ -59,6 +59,19 @@ model_credential_schema:
       placeholder:
         zh_Hans: 请输出你的Sagemaker推理端点
         en_US: Enter your Sagemaker Inference endpoint
+    - variable: context_length
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        zh_Hans: 模型上下文长度
+        en_US: Model context size
+      type: text-input
+      default: '4096'
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的模型上下文长度
+        en_US: Enter your Model context size
     - variable: audio_s3_cache_bucket
       show_on:
         - variable: __model_type
