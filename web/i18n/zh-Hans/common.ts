@@ -531,6 +531,8 @@ const translation = {
       hitScore: '召回得分：',
     },
     inputPlaceholder: '和机器人聊天',
+    thinking: '深度思考中...',
+    thought: '已深度思考',
   },
   promptEditor: {
     placeholder: '在这里写你的提示词，输入\'{\' 插入变量、输入\'/\' 插入提示内容块',
