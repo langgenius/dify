@@ -266,7 +266,6 @@ class WorkflowCycleManage:
             workflow_node_execution.error = error
             workflow_node_execution.finished_at = now
             workflow_node_execution.elapsed_time = (now - workflow_node_execution.created_at).total_seconds()
-            session.add(workflow_node_execution)
 
         if trace_manager:
             trace_manager.add_trace_task(
@@ -843,4 +842,4 @@ class WorkflowCycleManage:
         if node_execution_id not in self._workflow_node_executions:
             raise ValueError(f"Workflow node execution not found: {node_execution_id}")
         cached_workflow_node_execution = self._workflow_node_executions[node_execution_id]
-        return cached_workflow_node_execution
+        return session.merge(cached_workflow_node_execution)
