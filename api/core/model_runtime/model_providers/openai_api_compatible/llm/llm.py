@@ -807,34 +807,37 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
 
             # calculate num tokens for function object
             num_tokens += self._get_num_tokens_by_gpt2("name")
-            num_tokens += self._get_num_tokens_by_gpt2(tool.name)
+            if hasattr(tool, "name"):
+                num_tokens += self._get_num_tokens_by_gpt2(tool.name)
             num_tokens += self._get_num_tokens_by_gpt2("description")
-            num_tokens += self._get_num_tokens_by_gpt2(tool.description)
-            parameters = tool.parameters
-            num_tokens += self._get_num_tokens_by_gpt2("parameters")
-            if "title" in parameters:
-                num_tokens += self._get_num_tokens_by_gpt2("title")
-                num_tokens += self._get_num_tokens_by_gpt2(parameters.get("title"))
-            num_tokens += self._get_num_tokens_by_gpt2("type")
-            num_tokens += self._get_num_tokens_by_gpt2(parameters.get("type"))
-            if "properties" in parameters:
-                num_tokens += self._get_num_tokens_by_gpt2("properties")
-                for key, value in parameters.get("properties").items():
-                    num_tokens += self._get_num_tokens_by_gpt2(key)
-                    for field_key, field_value in value.items():
-                        num_tokens += self._get_num_tokens_by_gpt2(field_key)
-                        if field_key == "enum":
-                            for enum_field in field_value:
-                                num_tokens += 3
-                                num_tokens += self._get_num_tokens_by_gpt2(enum_field)
-                        else:
+            if hasattr(tool, "description"):
+                num_tokens += self._get_num_tokens_by_gpt2(tool.description)
+            if hasattr(tool, "parameters"):
+                parameters = tool.parameters
+                num_tokens += self._get_num_tokens_by_gpt2("parameters")
+                if "title" in parameters:
+                    num_tokens += self._get_num_tokens_by_gpt2("title")
+                    num_tokens += self._get_num_tokens_by_gpt2(parameters.get("title"))
+                num_tokens += self._get_num_tokens_by_gpt2("type")
+                num_tokens += self._get_num_tokens_by_gpt2(parameters.get("type"))
+                if "properties" in parameters:
+                    num_tokens += self._get_num_tokens_by_gpt2("properties")
+                    for key, value in parameters.get("properties", {}).items():
+                        num_tokens += self._get_num_tokens_by_gpt2(key)
+                        for field_key, field_value in value.items():
                             num_tokens += self._get_num_tokens_by_gpt2(field_key)
-                            num_tokens += self._get_num_tokens_by_gpt2(str(field_value))
-            if "required" in parameters:
-                num_tokens += self._get_num_tokens_by_gpt2("required")
-                for required_field in parameters["required"]:
-                    num_tokens += 3
-                    num_tokens += self._get_num_tokens_by_gpt2(required_field)
+                            if field_key == "enum":
+                                for enum_field in field_value:
+                                    num_tokens += 3
+                                    num_tokens += self._get_num_tokens_by_gpt2(enum_field)
+                            else:
+                                num_tokens += self._get_num_tokens_by_gpt2(field_key)
+                                num_tokens += self._get_num_tokens_by_gpt2(str(field_value))
+                if "required" in parameters:
+                    num_tokens += self._get_num_tokens_by_gpt2("required")
+                    for required_field in parameters["required"]:
+                        num_tokens += 3
+                        num_tokens += self._get_num_tokens_by_gpt2(required_field)
 
         return num_tokens
 
