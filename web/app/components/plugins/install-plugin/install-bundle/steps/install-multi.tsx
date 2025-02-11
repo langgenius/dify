@@ -87,10 +87,13 @@ const InstallByDSLList: FC<Props> = ({
       const failedIndex: number[] = []
       const nextPlugins = produce(pluginsRef.current, (draft) => {
         marketPlaceInDSLIndex.forEach((index, i) => {
-          if (payloads[i])
-            draft[index] = payloads[i]
-          else
-            failedIndex.push(index)
+          if (payloads[i]) {
+            draft[index] = {
+              ...payloads[i],
+              version: payloads[i].version || payloads[i].latest_version,
+            }
+          }
+          else { failedIndex.push(index) }
         })
       })
       setPlugins(nextPlugins)
@@ -192,8 +195,8 @@ const InstallByDSLList: FC<Props> = ({
               key={index}
               checked={!!selectedPlugins.find(p => p.plugin_id === plugins[index]?.plugin_id)}
               onCheckedChange={handleSelect(index)}
-              payload={plugins[index] as Plugin}
-              version={(d as GitHubItemAndMarketPlaceDependency).value.version!}
+              payload={plugin}
+              version={(d as GitHubItemAndMarketPlaceDependency).value.version! || plugin?.version || ''}
               versionInfo={getVersionInfo(`${plugin?.org || plugin?.author}/${plugin?.name}`)}
             />
           )
