@@ -1,6 +1,6 @@
 import concurrent.futures
 import json
-from typing import Any, Optional, cast
+from typing import Optional, cast
 
 from flask import Flask, current_app
 from sqlalchemy.orm import load_only
