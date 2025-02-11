@@ -308,9 +308,9 @@ class RetrievalService:
                     if result is None:
                         continue
 
-                    segment: DocumentSegment = cast(DocumentSegment, result)
-                    if segment.id not in include_segment_ids:
-                        include_segment_ids.add(segment.id)
+                    segment_result: DocumentSegment = cast(DocumentSegment, result)
+                    if segment_result.id not in include_segment_ids:
+                        include_segment_ids.add(segment_result.id)
                         child_chunk_detail = {
                             "id": child_chunk.id,
                             "content": child_chunk.content,
@@ -321,9 +321,9 @@ class RetrievalService:
                             "max_score": document.metadata.get("score", 0.0),
                             "child_chunks": [child_chunk_detail],
                         }
-                        segment_child_map[segment.id] = map_detail
+                        segment_child_map[segment_result.id] = map_detail
                         record = {
-                            "segment": segment,
+                            "segment": segment_result,
                         }
                         records.append(record)
                     else:
@@ -333,9 +333,9 @@ class RetrievalService:
                             "position": child_chunk.position,
                             "score": document.metadata.get("score", 0.0),
                         }
-                        segment_child_map[segment.id]["child_chunks"].append(child_chunk_detail)
-                        segment_child_map[segment.id]["max_score"] = max(
-                            segment_child_map[segment.id]["max_score"], document.metadata.get("score", 0.0)
+                        segment_child_map[segment_result.id]["child_chunks"].append(child_chunk_detail)
+                        segment_child_map[segment_result.id]["max_score"] = max(
+                            segment_child_map[segment_result.id]["max_score"], document.metadata.get("score", 0.0)
                         )
                 else:
                     # Handle normal documents
@@ -356,12 +356,12 @@ class RetrievalService:
                     if result is None:
                         continue
 
-                    segment: DocumentSegment = cast(DocumentSegment, result)
-                    include_segment_ids.add(segment.id)
+                    segment_result: DocumentSegment = cast(DocumentSegment, result)
+                    include_segment_ids.add(segment_result.id)
                     record = {
-                        "segment": segment,
+                        "segment": segment_result,
                         "score": document.metadata.get("score"),
-                        "segment_metadata": segment.doc_metadata,
+                        "segment_metadata": segment_result.doc_metadata,
                     }
                     records.append(record)
 
