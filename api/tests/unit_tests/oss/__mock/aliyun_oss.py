@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from oss2 import Bucket
-from oss2.models import GetObjectResult, PutObjectResult
+from oss2 import Bucket  # type: ignore
+from oss2.models import GetObjectResult, PutObjectResult  # type: ignore
 
 from tests.unit_tests.oss.__mock.base import (
     get_example_bucket,

@@ -114,6 +114,8 @@ class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         ai_model_entity = self._get_ai_model_entity(credentials["base_model_name"], model)
+        if not ai_model_entity:
+            return None
         return ai_model_entity.entity
 
     @staticmethod

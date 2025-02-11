@@ -61,6 +61,7 @@ class OllamaEmbeddingModel(TextEmbeddingModel):
         headers = {"Content-Type": "application/json"}
 
         endpoint_url = credentials.get("base_url")
+        assert endpoint_url is not None, "Base URL is required for Ollama API"
         if not endpoint_url.endswith("/"):
             endpoint_url += "/"
 

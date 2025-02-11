@@ -2,12 +2,9 @@ import base64
 import json
 import time
 from decimal import Decimal
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import tiktoken
-from google.cloud import aiplatform
-from google.oauth2 import service_account
-from vertexai.language_models import TextEmbeddingModel as VertexTextEmbeddingModel
 
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
@@ -23,6 +20,11 @@ from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, 
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.vertex_ai._common import _CommonVertexAi
+
+if TYPE_CHECKING:
+    from vertexai.language_models import TextEmbeddingModel as VertexTextEmbeddingModel
+else:
+    VertexTextEmbeddingModel = None
 
 
 class VertexAiTextEmbeddingModel(_CommonVertexAi, TextEmbeddingModel):
@@ -48,6 +50,10 @@ class VertexAiTextEmbeddingModel(_CommonVertexAi, TextEmbeddingModel):
         :param input_type: input type
         :return: embeddings result
         """
+        from google.cloud import aiplatform
+        from google.oauth2 import service_account
+        from vertexai.language_models import TextEmbeddingModel as VertexTextEmbeddingModel
+
         service_account_key = credentials.get("vertex_service_account_key", "")
         project_id = credentials["vertex_project_id"]
         location = credentials["vertex_location"]
@@ -100,6 +106,10 @@ class VertexAiTextEmbeddingModel(_CommonVertexAi, TextEmbeddingModel):
         :param credentials: model credentials
         :return:
         """
+        from google.cloud import aiplatform
+        from google.oauth2 import service_account
+        from vertexai.language_models import TextEmbeddingModel as VertexTextEmbeddingModel
+
         try:
             service_account_key = credentials.get("vertex_service_account_key", "")
             project_id = credentials["vertex_project_id"]

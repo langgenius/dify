@@ -16,6 +16,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2 # last 2 commits
+          persist-credentials: false
 
       - name: Check for file changes in i18n/en-US
         id: check_files

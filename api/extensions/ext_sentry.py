@@ -6,7 +6,7 @@ def init_app(app: DifyApp):
     if dify_config.SENTRY_DSN:
         import openai
         import sentry_sdk
-        from langfuse import parse_error
+        from langfuse import parse_error  # type: ignore
         from sentry_sdk.integrations.celery import CeleryIntegration
         from sentry_sdk.integrations.flask import FlaskIntegration
         from werkzeug.exceptions import HTTPException
@@ -27,6 +27,7 @@ def init_app(app: DifyApp):
             ignore_errors=[
                 HTTPException,
                 ValueError,
+                FileNotFoundError,
                 openai.APIStatusError,
                 InvokeRateLimitError,
                 parse_error.defaultErrorResponse,

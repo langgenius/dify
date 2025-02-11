@@ -144,6 +144,8 @@ const translation = {
     emptyTitle: 'Nenhuma ferramenta de fluxo de trabalho disponível',
     added: 'Adicionado',
     manageInTools: 'Gerenciar em Ferramentas',
+    emptyTitleCustom: 'Nenhuma ferramenta personalizada disponível',
+    emptyTipCustom: 'Criar uma ferramenta personalizada',
   },
   openInStudio: 'Abrir no Studio',
   customToolTip: 'Saiba mais sobre as ferramentas personalizadas da Dify',

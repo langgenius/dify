@@ -84,13 +84,17 @@ class ToolLabelManager:
             if not isinstance(controller, ApiToolProviderController | WorkflowToolProviderController):
                 raise ValueError("Unsupported tool type")
 
-        provider_ids = [controller.provider_id for controller in tool_providers]
+        provider_ids = [
+            controller.provider_id
+            for controller in tool_providers
+            if isinstance(controller, (ApiToolProviderController, WorkflowToolProviderController))
+        ]
 
         labels: list[ToolLabelBinding] = (
             db.session.query(ToolLabelBinding).filter(ToolLabelBinding.tool_id.in_(provider_ids)).all()
         )
 
-        tool_labels = {label.tool_id: [] for label in labels}
+        tool_labels: dict[str, list[str]] = {label.tool_id: [] for label in labels}
 
         for label in labels:
             tool_labels[label.tool_id].append(label.label_name)

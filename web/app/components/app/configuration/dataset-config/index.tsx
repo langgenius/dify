@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
@@ -19,6 +19,8 @@ import {
 } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { hasEditPermissionForDataset } from '@/utils/permission'
 
 const Icon = (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -29,6 +31,7 @@ const Icon = (
 
 const DatasetConfig: FC = () => {
   const { t } = useTranslation()
+  const userProfile = useAppContextSelector(s => s.userProfile)
   const {
     mode,
     dataSets: dataSet,
@@ -105,6 +108,20 @@ const DatasetConfig: FC = () => {
     setModelConfig(newModelConfig)
   }
 
+  const formattedDataset = useMemo(() => {
+    return dataSet.map((item) => {
+      const datasetConfig = {
+        createdBy: item.created_by,
+        partialMemberList: item.partial_member_list || [],
+        permission: item.permission,
+      }
+      return {
+        ...item,
+        editable: hasEditPermissionForDataset(userProfile?.id || '', datasetConfig),
+      }
+    })
+  }, [dataSet, userProfile?.id])
+
   return (
     <FeaturePanel
       className='mt-2'
@@ -122,12 +139,13 @@ const DatasetConfig: FC = () => {
       {hasData
         ? (
           <div className='flex flex-wrap mt-1 px-3 pb-3 justify-between'>
-            {dataSet.map(item => (
+            {formattedDataset.map(item => (
               <CardItem
                 key={item.id}
                 config={item}
                 onRemove={onRemove}
                 onSave={handleSave}
+                editable={item.editable}
               />
             ))}
           </div>

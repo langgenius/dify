@@ -23,7 +23,7 @@ from hashlib import sha1
 
 import Crypto.Hash.SHA1
 import Crypto.Util.number
-import gmpy2
+import gmpy2  # type: ignore
 from Crypto import Random
 from Crypto.Signature.pss import MGF1
 from Crypto.Util.number import bytes_to_long, ceil_div, long_to_bytes
@@ -191,12 +191,12 @@ class PKCS1OAepCipher:
         # Step 3g
         one_pos = hLen + db[hLen:].find(b"\x01")
         lHash1 = db[:hLen]
-        invalid = bord(y) | int(one_pos < hLen)
+        invalid = bord(y) | int(one_pos < hLen)  # type: ignore
         hash_compare = strxor(lHash1, lHash)
         for x in hash_compare:
-            invalid |= bord(x)
+            invalid |= bord(x)  # type: ignore
         for x in db[hLen:one_pos]:
-            invalid |= bord(x)
+            invalid |= bord(x)  # type: ignore
         if invalid != 0:
             raise ValueError("Incorrect decryption.")
         # Step 4

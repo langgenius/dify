@@ -9,7 +9,7 @@ const IterationStartNode = ({ id, data }: NodeProps) => {
   const { t } = useTranslation()
 
   return (
-    <div className='group flex nodrag items-center justify-center w-11 h-11 mt-1 rounded-2xl border border-workflow-block-border bg-white'>
+    <div className='group flex nodrag items-center justify-center w-11 h-11 mt-1 rounded-2xl border border-workflow-block-border bg-workflow-block-bg shadow-xs'>
       <Tooltip popupContent={t('workflow.blocks.iteration-start')} asChild={false}>
         <div className='flex items-center justify-center w-6 h-6 rounded-full border-[0.5px] border-components-panel-border-subtle bg-util-colors-blue-brand-blue-brand-500'>
           <RiHome5Fill className='w-3 h-3 text-text-primary-on-surface' />

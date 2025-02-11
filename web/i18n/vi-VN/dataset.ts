@@ -146,6 +146,28 @@ const translation = {
   externalKnowledgeIdPlaceholder: 'Vui lòng nhập ID kiến thức',
   createNewExternalAPI: 'Tạo API Kiến thức Bên ngoài mới',
   externalAPIPanelDescription: 'API kiến thức bên ngoài được sử dụng để kết nối với cơ sở kiến thức bên ngoài Dify và truy xuất kiến thức từ cơ sở kiến thức đó.',
+  chunkingMode: {
+    general: 'Tổng quát',
+    parentChild: 'Cha mẹ-con cái',
+  },
+  parentMode: {
+    paragraph: 'Đoạn',
+    fullDoc: 'Tài liệu đầy đủ',
+  },
+  batchAction: {
+    disable: 'Vô hiệu hóa',
+    enable: 'Kích hoạt',
+    delete: 'Xóa',
+    selected: 'Chọn',
+    archive: 'Lưu trữ',
+    cancel: 'Hủy',
+  },
+  localDocs: 'Tài liệu địa phương',
+  enable: 'Kích hoạt',
+  preprocessDocument: '{{số}} Tiền xử lý tài liệu',
+  documentsDisabled: '{{num}} tài liệu bị vô hiệu hóa - không hoạt động trong hơn 30 ngày',
+  allKnowledge: 'Tất cả kiến thức',
+  allKnowledgeDescription: 'Chọn để hiển thị tất cả kiến thức trong không gian làm việc này. Chỉ Chủ sở hữu không gian làm việc mới có thể quản lý tất cả kiến thức.',
 }
 
 export default translation

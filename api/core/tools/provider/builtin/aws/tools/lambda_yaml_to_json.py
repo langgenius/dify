@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Any, Union
 
-import boto3
+import boto3  # type: ignore
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool

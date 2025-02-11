@@ -130,7 +130,6 @@ class DatabaseConfig(BaseSettings):
     )
 
     @computed_field
-    @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         db_extras = (
             f"{self.DB_EXTRAS}&client_encoding={self.DB_CHARSET}" if self.DB_CHARSET else self.DB_EXTRAS
@@ -168,7 +167,6 @@ class DatabaseConfig(BaseSettings):
     )
 
     @computed_field
-    @property
     def SQLALCHEMY_ENGINE_OPTIONS(self) -> dict[str, Any]:
         return {
             "pool_size": self.SQLALCHEMY_POOL_SIZE,
@@ -206,7 +204,6 @@ class CeleryConfig(DatabaseConfig):
     )
 
     @computed_field
-    @property
     def CELERY_RESULT_BACKEND(self) -> str | None:
         return (
             "db+{}".format(self.SQLALCHEMY_DATABASE_URI)
@@ -214,7 +211,6 @@ class CeleryConfig(DatabaseConfig):
             else self.CELERY_BROKER_URL
         )
 
-    @computed_field
     @property
     def BROKER_USE_SSL(self) -> bool:
         return self.CELERY_BROKER_URL.startswith("rediss://") if self.CELERY_BROKER_URL else False

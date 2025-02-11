@@ -2,17 +2,18 @@ import base64
 import secrets
 
 from flask import request
-from flask_restful import Resource, reqparse
+from flask_restful import Resource, reqparse  # type: ignore
 
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
     EmailCodeError,
+    EmailPasswordResetLimitError,
     InvalidEmailError,
     InvalidTokenError,
     PasswordMismatchError,
 )
-from controllers.console.error import AccountNotFound, EmailSendIpLimitError
+from controllers.console.error import AccountInFreezeError, AccountNotFound, EmailSendIpLimitError
 from controllers.console.wraps import setup_required
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
@@ -20,6 +21,7 @@ from libs.helper import email, extract_remote_ip
 from libs.password import hash_password, valid_password
 from models.account import Account
 from services.account_service import AccountService, TenantService
+from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
 
@@ -66,6 +68,10 @@ class ForgotPasswordCheckApi(Resource):
 
         user_email = args["email"]
 
+        is_forgot_password_error_rate_limit = AccountService.is_forgot_password_error_rate_limit(args["email"])
+        if is_forgot_password_error_rate_limit:
+            raise EmailPasswordResetLimitError()
+
         token_data = AccountService.get_reset_password_data(args["token"])
         if token_data is None:
             raise InvalidTokenError()
@@ -74,8 +80,10 @@ class ForgotPasswordCheckApi(Resource):
             raise InvalidEmailError()
 
         if args["code"] != token_data.get("code"):
+            AccountService.add_forgot_password_error_rate_limit(args["email"])
             raise EmailCodeError()
 
+        AccountService.reset_forgot_password_error_rate_limit(args["email"])
         return {"is_valid": True, "email": token_data.get("email")}
 
 
@@ -122,13 +130,15 @@ class ForgotPasswordResetApi(Resource):
         else:
             try:
                 account = AccountService.create_account_and_tenant(
-                    email=reset_data.get("email"),
-                    name=reset_data.get("email"),
+                    email=reset_data.get("email", ""),
+                    name=reset_data.get("email", ""),
                     password=password_confirm,
                     interface_language=languages[0],
                 )
             except WorkSpaceNotAllowedCreateError:
                 pass
+            except AccountRegisterError as are:
+                raise AccountInFreezeError()
 
         return {"result": "success"}
 

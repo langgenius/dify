@@ -1,7 +1,7 @@
 from typing import Any, Union
 
 from requests.exceptions import HTTPError, ReadTimeout
-from yfinance import Ticker
+from yfinance import Ticker  # type: ignore
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool

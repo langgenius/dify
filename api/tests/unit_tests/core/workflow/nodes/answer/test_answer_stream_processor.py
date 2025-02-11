@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import Generator
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey

@@ -1,15 +1,12 @@
-import os
 from collections.abc import Generator
 from pathlib import Path
 
 import pytest
 
-from configs.middleware.storage.opendal_storage_config import OpenDALScheme
 from extensions.storage.opendal_storage import OpenDALStorage
 from tests.unit_tests.oss.__mock.base import (
     get_example_data,
     get_example_filename,
-    get_example_filepath,
     get_opendal_bucket,
 )
 
@@ -19,7 +16,7 @@ class TestOpenDAL:
     def setup_method(self, *args, **kwargs):
         """Executed before each test method."""
         self.storage = OpenDALStorage(
-            scheme=OpenDALScheme.FS,
+            scheme="fs",
             root=get_opendal_bucket(),
         )
 

@@ -18,7 +18,7 @@ const WebsitePreview = ({
   const { t } = useTranslation()
 
   return (
-    <div className={cn(s.filePreview)}>
+    <div className={cn(s.filePreview, 'h-full')}>
       <div className={cn(s.previewHeader)}>
         <div className={cn(s.title)}>
           <span>{t('datasetCreation.stepOne.pagePreview')}</span>
@@ -32,7 +32,7 @@ const WebsitePreview = ({
         <div className='truncate leading-[18px] text-xs font-normal text-gray-500' title={payload.source_url}>{payload.source_url}</div>
       </div>
       <div className={cn(s.previewContent)}>
-        <div className={cn(s.fileContent)}>{payload.markdown}</div>
+        <div className={cn(s.fileContent, 'body-md-regular')}>{payload.markdown}</div>
       </div>
     </div>
   )

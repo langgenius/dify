@@ -1,0 +1,47 @@
+name: Build docker image
+
+on:
+  pull_request:
+    branches:
+      - "main"
+    paths:
+      - api/Dockerfile
+      - web/Dockerfile
+
+concurrency:
+  group: docker-build-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build-docker:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service_name: "api-amd64"
+            platform: linux/amd64
+            context: "api"
+          - service_name: "api-arm64"
+            platform: linux/arm64
+            context: "api"
+          - service_name: "web-amd64"
+            platform: linux/amd64
+            context: "web"
+          - service_name: "web-arm64"
+            platform: linux/arm64
+            context: "web"
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          push: false
+          context: "{{defaultContext}}:${{ matrix.context }}"
+          platforms: ${{ matrix.platform }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

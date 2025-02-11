@@ -162,7 +162,7 @@ const InputVarList: FC<Props> = ({
                   readonly={readOnly}
                   isShowNodeName
                   nodeId={nodeId}
-                  value={varInput?.type === VarKindType.constant ? (varInput?.value || '') : (varInput?.value || [])}
+                  value={varInput?.type === VarKindType.constant ? (varInput?.value ?? '') : (varInput?.value ?? [])}
                   onChange={handleNotMixedTypeChange(variable)}
                   onOpen={handleOpen(index)}
                   defaultVarKindType={varInput?.type || (isNumber ? VarKindType.constant : VarKindType.variable)}

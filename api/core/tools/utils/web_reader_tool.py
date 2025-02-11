@@ -9,13 +9,13 @@ import tempfile
 import unicodedata
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Any, Literal, Optional, cast
 from urllib.parse import unquote
 
 import chardet
-import cloudscraper
-from bs4 import BeautifulSoup, CData, Comment, NavigableString
-from regex import regex
+import cloudscraper  # type: ignore
+from bs4 import BeautifulSoup, CData, Comment, NavigableString  # type: ignore
+from regex import regex  # type: ignore
 
 from core.helper import ssrf_proxy
 from core.rag.extractor import extract_processor
@@ -68,7 +68,7 @@ def get_url(url: str, user_agent: Optional[str] = None) -> str:
             return "Unsupported content-type [{}] of URL.".format(main_content_type)
 
         if main_content_type in extract_processor.SUPPORT_URL_CONTENT_TYPES:
-            return ExtractProcessor.load_from_url(url, return_text=True)
+            return cast(str, ExtractProcessor.load_from_url(url, return_text=True))
 
         response = ssrf_proxy.get(url, headers=headers, follow_redirects=True, timeout=(120, 300))
     elif response.status_code == 403:
@@ -125,7 +125,7 @@ def extract_using_readabilipy(html):
     os.unlink(article_json_path)
     os.unlink(html_path)
 
-    article_json = {
+    article_json: dict[str, Any] = {
         "title": None,
         "byline": None,
         "date": None,
@@ -300,7 +300,7 @@ def strip_control_characters(text):
 
 def normalize_unicode(text):
     """Normalize unicode such that things that are visually equivalent map to the same unicode string where possible."""
-    normal_form = "NFKC"
+    normal_form: Literal["NFC", "NFD", "NFKC", "NFKD"] = "NFKC"
     text = unicodedata.normalize(normal_form, text)
     return text
 
@@ -332,6 +332,7 @@ def add_content_digest(element):
 
 
 def content_digest(element):
+    digest: Any
     if is_text(element):
         # Hash
         trimmed_string = element.string.strip()

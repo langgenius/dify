@@ -4,6 +4,7 @@ import logging
 import os
 import threading
 import time
+from collections.abc import Mapping
 from pathlib import Path
 
 from .python_3x import http_request, makedirs_wrapper
@@ -255,8 +256,8 @@ class ApolloClient:
         logger.info("stopped, long_poll")
 
     # add the need for endorsement to the header
-    def _sign_headers(self, url):
-        headers = {}
+    def _sign_headers(self, url: str) -> Mapping[str, str]:
+        headers: dict[str, str] = {}
         if self.secret == "":
             return headers
         uri = url[len(self.config_url) : len(url)]

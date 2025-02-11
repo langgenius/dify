@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel
 
 from core.model_runtime.entities.llm_entities import LLMMode
@@ -16,60 +18,109 @@ class ModelConfig(BaseModel):
 
 
 configs: dict[str, ModelConfig] = {
+    "DeepSeek-R1-Distill-Qwen-32B": ModelConfig(
+        properties=ModelProperties(context_size=64000, max_tokens=8192, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT],
+    ),
+    "DeepSeek-R1-Distill-Qwen-7B": ModelConfig(
+        properties=ModelProperties(context_size=64000, max_tokens=8192, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT],
+    ),
+    "DeepSeek-R1": ModelConfig(
+        properties=ModelProperties(context_size=64000, max_tokens=8192, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT],
+    ),
+    "DeepSeek-V3": ModelConfig(
+        properties=ModelProperties(context_size=64000, max_tokens=8192, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT, ModelFeature.TOOL_CALL, ModelFeature.STREAM_TOOL_CALL],
+    ),
+    "Doubao-1.5-vision-pro-32k": ModelConfig(
+        properties=ModelProperties(context_size=32768, max_tokens=12288, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT, ModelFeature.VISION],
+    ),
+    "Doubao-1.5-pro-32k": ModelConfig(
+        properties=ModelProperties(context_size=32768, max_tokens=12288, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT],
+    ),
+    "Doubao-1.5-lite-32k": ModelConfig(
+        properties=ModelProperties(context_size=32768, max_tokens=12288, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT],
+    ),
+    "Doubao-1.5-pro-256k": ModelConfig(
+        properties=ModelProperties(context_size=262144, max_tokens=12288, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT],
+    ),
+    "Doubao-vision-pro-32k": ModelConfig(
+        properties=ModelProperties(context_size=32768, max_tokens=4096, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT, ModelFeature.VISION],
+    ),
+    "Doubao-vision-lite-32k": ModelConfig(
+        properties=ModelProperties(context_size=32768, max_tokens=4096, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT, ModelFeature.VISION],
+    ),
     "Doubao-pro-4k": ModelConfig(
         properties=ModelProperties(context_size=4096, max_tokens=4096, mode=LLMMode.CHAT),
-        features=[ModelFeature.TOOL_CALL],
+        features=[ModelFeature.AGENT_THOUGHT, ModelFeature.TOOL_CALL],
     ),
     "Doubao-lite-4k": ModelConfig(
         properties=ModelProperties(context_size=4096, max_tokens=4096, mode=LLMMode.CHAT),
-        features=[ModelFeature.TOOL_CALL],
+        features=[ModelFeature.AGENT_THOUGHT, ModelFeature.TOOL_CALL],
     ),
     "Doubao-pro-32k": ModelConfig(
         properties=ModelProperties(context_size=32768, max_tokens=4096, mode=LLMMode.CHAT),
-        features=[ModelFeature.TOOL_CALL],
+        features=[ModelFeature.AGENT_THOUGHT, ModelFeature.TOOL_CALL],
     ),
     "Doubao-lite-32k": ModelConfig(
         properties=ModelProperties(context_size=32768, max_tokens=4096, mode=LLMMode.CHAT),
-        features=[ModelFeature.TOOL_CALL],
+        features=[ModelFeature.AGENT_THOUGHT, ModelFeature.TOOL_CALL],
+    ),
+    "Doubao-pro-256k": ModelConfig(
+        properties=ModelProperties(context_size=262144, max_tokens=4096, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT],
     ),
     "Doubao-pro-128k": ModelConfig(
         properties=ModelProperties(context_size=131072, max_tokens=4096, mode=LLMMode.CHAT),
-        features=[ModelFeature.TOOL_CALL],
+        features=[ModelFeature.AGENT_THOUGHT, ModelFeature.TOOL_CALL],
     ),
     "Doubao-lite-128k": ModelConfig(
-        properties=ModelProperties(context_size=131072, max_tokens=4096, mode=LLMMode.CHAT), features=[]
+        properties=ModelProperties(context_size=131072, max_tokens=4096, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT],
     ),
     "Skylark2-pro-4k": ModelConfig(
-        properties=ModelProperties(context_size=4096, max_tokens=4096, mode=LLMMode.CHAT), features=[]
+        properties=ModelProperties(context_size=4096, max_tokens=4096, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT],
     ),
     "Llama3-8B": ModelConfig(
-        properties=ModelProperties(context_size=8192, max_tokens=8192, mode=LLMMode.CHAT), features=[]
+        properties=ModelProperties(context_size=8192, max_tokens=8192, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT],
     ),
     "Llama3-70B": ModelConfig(
-        properties=ModelProperties(context_size=8192, max_tokens=8192, mode=LLMMode.CHAT), features=[]
+        properties=ModelProperties(context_size=8192, max_tokens=8192, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT],
     ),
     "Moonshot-v1-8k": ModelConfig(
         properties=ModelProperties(context_size=8192, max_tokens=4096, mode=LLMMode.CHAT),
-        features=[ModelFeature.TOOL_CALL],
+        features=[ModelFeature.AGENT_THOUGHT, ModelFeature.TOOL_CALL],
     ),
     "Moonshot-v1-32k": ModelConfig(
         properties=ModelProperties(context_size=32768, max_tokens=16384, mode=LLMMode.CHAT),
-        features=[ModelFeature.TOOL_CALL],
+        features=[ModelFeature.AGENT_THOUGHT, ModelFeature.TOOL_CALL],
     ),
     "Moonshot-v1-128k": ModelConfig(
         properties=ModelProperties(context_size=131072, max_tokens=65536, mode=LLMMode.CHAT),
-        features=[ModelFeature.TOOL_CALL],
+        features=[ModelFeature.AGENT_THOUGHT, ModelFeature.TOOL_CALL],
     ),
     "GLM3-130B": ModelConfig(
         properties=ModelProperties(context_size=8192, max_tokens=4096, mode=LLMMode.CHAT),
-        features=[ModelFeature.TOOL_CALL],
+        features=[ModelFeature.AGENT_THOUGHT, ModelFeature.TOOL_CALL],
     ),
     "GLM3-130B-Fin": ModelConfig(
         properties=ModelProperties(context_size=8192, max_tokens=4096, mode=LLMMode.CHAT),
-        features=[ModelFeature.TOOL_CALL],
+        features=[ModelFeature.AGENT_THOUGHT, ModelFeature.TOOL_CALL],
     ),
     "Mistral-7B": ModelConfig(
-        properties=ModelProperties(context_size=8192, max_tokens=2048, mode=LLMMode.CHAT), features=[]
+        properties=ModelProperties(context_size=8192, max_tokens=2048, mode=LLMMode.CHAT),
+        features=[ModelFeature.AGENT_THOUGHT],
     ),
 }
 
@@ -90,7 +141,7 @@ def get_model_config(credentials: dict) -> ModelConfig:
 
 
 def get_v2_req_params(credentials: dict, model_parameters: dict, stop: list[str] | None = None):
-    req_params = {}
+    req_params: dict[str, Any] = {}
     # predefined properties
     model_configs = get_model_config(credentials)
     if model_configs:
@@ -118,7 +169,7 @@ def get_v2_req_params(credentials: dict, model_parameters: dict, stop: list[str]
 
 
 def get_v3_req_params(credentials: dict, model_parameters: dict, stop: list[str] | None = None):
-    req_params = {}
+    req_params: dict[str, Any] = {}
     # predefined properties
     model_configs = get_model_config(credentials)
     if model_configs:

@@ -63,7 +63,8 @@ class ParameterExtractorNode(LLMNode):
     Parameter Extractor Node.
     """
 
-    _node_data_cls = ParameterExtractorNodeData
+    # FIXME: figure out why here is different from super class
+    _node_data_cls = ParameterExtractorNodeData  # type: ignore
     _node_type = NodeType.PARAMETER_EXTRACTOR
 
     _model_instance: Optional[ModelInstance] = None
@@ -179,6 +180,15 @@ class ParameterExtractorNode(LLMNode):
                 error=str(e),
                 metadata={},
             )
+        except Exception as e:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=inputs,
+                process_data=process_data,
+                outputs={"__is_success": 0, "__reason": "Failed to invoke model", "__error": str(e)},
+                error=str(e),
+                metadata={},
+            )
 
         error = None
 
@@ -243,6 +253,9 @@ class ParameterExtractorNode(LLMNode):
 
         # deduct quota
         self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
+
+        if text is None:
+            text = ""
 
         return text, usage, tool_call
 
@@ -596,9 +609,10 @@ class ParameterExtractorNode(LLMNode):
                 json_str = extract_json(result[idx:])
                 if json_str:
                     try:
-                        return json.loads(json_str)
+                        return cast(dict, json.loads(json_str))
                     except Exception:
                         pass
+        return None
 
     def _extract_json_from_tool_call(self, tool_call: AssistantPromptMessage.ToolCall) -> Optional[dict]:
         """
@@ -607,13 +621,13 @@ class ParameterExtractorNode(LLMNode):
         if not tool_call or not tool_call.function.arguments:
             return None
 
-        return json.loads(tool_call.function.arguments)
+        return cast(dict, json.loads(tool_call.function.arguments))
 
     def _generate_default_result(self, data: ParameterExtractorNodeData) -> dict:
         """
         Generate default result.
         """
-        result = {}
+        result: dict[str, Any] = {}
         for parameter in data.parameters:
             if parameter.type == "number":
                 result[parameter.name] = 0
@@ -763,7 +777,7 @@ class ParameterExtractorNode(LLMNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: ParameterExtractorNodeData,
+        node_data: ParameterExtractorNodeData,  # type: ignore
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -772,6 +786,7 @@ class ParameterExtractorNode(LLMNode):
         :param node_data: node data
         :return:
         """
+        # FIXME: fix the type error later
         variable_mapping: dict[str, Sequence[str]] = {"query": node_data.query}
 
         if node_data.instruction:

@@ -11,7 +11,7 @@ from dify_app import DifyApp
 
 
 def init_app(app: DifyApp):
-    log_handlers = []
+    log_handlers: list[logging.Handler] = []
     log_file = dify_config.LOG_FILE
     if log_file:
         log_dir = os.path.dirname(log_file)
@@ -27,12 +27,11 @@ def init_app(app: DifyApp):
     # Always add StreamHandler to log to console
     sh = logging.StreamHandler(sys.stdout)
     sh.addFilter(RequestIdFilter())
-    log_formatter = logging.Formatter(fmt=dify_config.LOG_FORMAT)
-    sh.setFormatter(log_formatter)
     log_handlers.append(sh)
 
     logging.basicConfig(
         level=dify_config.LOG_LEVEL,
+        format=dify_config.LOG_FORMAT,
         datefmt=dify_config.LOG_DATEFORMAT,
         handlers=log_handlers,
         force=True,
@@ -46,10 +45,11 @@ def init_app(app: DifyApp):
         timezone = pytz.timezone(log_tz)
 
         def time_converter(seconds):
-            return datetime.utcfromtimestamp(seconds).astimezone(timezone).timetuple()
+            return datetime.fromtimestamp(seconds, tz=timezone).timetuple()
 
         for handler in logging.root.handlers:
-            handler.formatter.converter = time_converter
+            if handler.formatter:
+                handler.formatter.converter = time_converter
 
 
 def get_request_id():

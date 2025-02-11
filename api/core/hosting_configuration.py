@@ -42,7 +42,7 @@ class HostedModerationConfig(BaseModel):
 
 class HostingConfiguration:
     provider_map: dict[str, HostingProvider] = {}
-    moderation_config: HostedModerationConfig = None
+    moderation_config: Optional[HostedModerationConfig] = None
 
     def init_app(self, app: Flask) -> None:
         if dify_config.EDITION != "CLOUD":
@@ -67,7 +67,7 @@ class HostingConfiguration:
                 "base_model_name": "gpt-35-turbo",
             }
 
-            quotas = []
+            quotas: list[HostingQuota] = []
             hosted_quota_limit = dify_config.HOSTED_AZURE_OPENAI_QUOTA_LIMIT
             trial_quota = TrialHostingQuota(
                 quota_limit=hosted_quota_limit,
@@ -123,7 +123,7 @@ class HostingConfiguration:
 
     def init_openai(self) -> HostingProvider:
         quota_unit = QuotaUnit.CREDITS
-        quotas = []
+        quotas: list[HostingQuota] = []
 
         if dify_config.HOSTED_OPENAI_TRIAL_ENABLED:
             hosted_quota_limit = dify_config.HOSTED_OPENAI_QUOTA_LIMIT
@@ -157,7 +157,7 @@ class HostingConfiguration:
     @staticmethod
     def init_anthropic() -> HostingProvider:
         quota_unit = QuotaUnit.TOKENS
-        quotas = []
+        quotas: list[HostingQuota] = []
 
         if dify_config.HOSTED_ANTHROPIC_TRIAL_ENABLED:
             hosted_quota_limit = dify_config.HOSTED_ANTHROPIC_QUOTA_LIMIT
@@ -187,7 +187,7 @@ class HostingConfiguration:
     def init_minimax() -> HostingProvider:
         quota_unit = QuotaUnit.TOKENS
         if dify_config.HOSTED_MINIMAX_ENABLED:
-            quotas = [FreeHostingQuota()]
+            quotas: list[HostingQuota] = [FreeHostingQuota()]
 
             return HostingProvider(
                 enabled=True,
@@ -205,7 +205,7 @@ class HostingConfiguration:
     def init_spark() -> HostingProvider:
         quota_unit = QuotaUnit.TOKENS
         if dify_config.HOSTED_SPARK_ENABLED:
-            quotas = [FreeHostingQuota()]
+            quotas: list[HostingQuota] = [FreeHostingQuota()]
 
             return HostingProvider(
                 enabled=True,
@@ -223,7 +223,7 @@ class HostingConfiguration:
     def init_zhipuai() -> HostingProvider:
         quota_unit = QuotaUnit.TOKENS
         if dify_config.HOSTED_ZHIPUAI_ENABLED:
-            quotas = [FreeHostingQuota()]
+            quotas: list[HostingQuota] = [FreeHostingQuota()]
 
             return HostingProvider(
                 enabled=True,

@@ -4,7 +4,7 @@ import time
 from typing import Optional
 
 import numpy as np
-import oci
+import oci  # type: ignore
 
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.model_entities import PriceType
