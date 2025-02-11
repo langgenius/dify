@@ -10,18 +10,6 @@ from .. import api
 from ..wraps import account_initialization_required, only_edition_cloud, setup_required
 
 
-class ComplianceListApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
-    def get(self):
-        current_user_id = current_user.id
-        current_tenant_id = current_user.current_tenant_id
-
-        return BillingService.list_compliance_files(tenant_id=current_tenant_id, account_id=current_user_id)
-
-
 class ComplianceApi(Resource):
     @setup_required
     @login_required
@@ -44,5 +32,4 @@ class ComplianceApi(Resource):
         )
 
 
-api.add_resource(ComplianceListApi, "/compliance/list")
 api.add_resource(ComplianceApi, "/compliance/download")
