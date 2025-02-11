@@ -350,8 +350,7 @@ class RetrievalService:
                             DocumentSegment.enabled == True,
                             DocumentSegment.status == "completed",
                             DocumentSegment.index_node_id == index_node_id,
-                        )
-                        .first()
+                        ).first()
                     )
 
                     if not segment:
