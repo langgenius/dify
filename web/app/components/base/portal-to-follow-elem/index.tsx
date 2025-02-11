@@ -115,7 +115,6 @@ export const PortalToFollowElemTrigger = (
 ) => {
   const context = usePortalToFollowElemContext()
   const childrenRef = (children as any).props?.ref
-  console.log(childrenRef)
   const ref = useMergeRefs([context.refs.setReference, propRef, childrenRef])
 
   // `asChild` allows the user to pass any element as the anchor

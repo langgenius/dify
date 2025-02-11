@@ -284,7 +284,7 @@ importers:
         specifier: ^1.15.0
         version: 1.15.6
       swr:
-        specifier: ^2.1.0
+        specifier: ^2.3.0
         version: 2.3.2(react@19.0.0)
       tailwind-merge:
         specifier: ^2.5.4

@@ -41,7 +41,7 @@ export const getLocaleOnServer = async (): Promise<Locale> => {
   if (!languages.length) {
     // Negotiator expects plain object so we need to transform headers
     const negotiatorHeaders: Record<string, string> = {}
-    headers().forEach((value, key) => (negotiatorHeaders[key] = value))
+    (await headers()).forEach((value, key) => (negotiatorHeaders[key] = value))
     // Use negotiator and intl-localematcher to get best locale
     languages = new Negotiator({ headers: negotiatorHeaders }).languages()
   }

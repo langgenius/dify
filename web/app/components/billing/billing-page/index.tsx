@@ -20,6 +20,7 @@ const Billing: FC = () => {
     (!enableBilling || !isCurrentWorkspaceManager) ? null : ['/billing/invoices'],
     () => fetchBillingUrl().then(data => data.url),
   )
+  console.log(billingUrl)
 
   return (
     <div>
