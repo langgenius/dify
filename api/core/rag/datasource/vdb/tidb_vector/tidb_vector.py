@@ -60,7 +60,6 @@ class TiDBVector(BaseVector):
                 Field.VECTOR.value,
                 VectorType(dim),
                 nullable=False,
-                comment="" if self._distance_func is None else f"hnsw(distance={self._distance_func})",
             ),
             Column(Field.TEXT_KEY.value, TEXT, nullable=False),
             Column("meta", JSON, nullable=False),
