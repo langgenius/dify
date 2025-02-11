@@ -161,7 +161,7 @@ class Vector:
                 if i < max_batch_documents:
                     self._vector_processor.create(texts=batch_documents, embeddings=batch_embeddings, **kwargs)
                 else:
-                    self._vector_processor.add_texts(texts=batch_documents, embeddings=batch_embeddings, **kwargs)
+                    self._vector_processor.add_texts(documents=batch_documents, embeddings=batch_embeddings, **kwargs)
 
     def add_texts(self, documents: list[Document], **kwargs):
         if kwargs.get("duplicate_check", False):
