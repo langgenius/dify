@@ -20,7 +20,7 @@ import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
 import { getRedirection } from '@/utils/app-redirection'
 import { useProviderContext } from '@/context/provider-context'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { BASE_PATH, NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import EditAppModal from '@/app/components/explore/create-app-modal'
 import SwitchAppModal from '@/app/components/app/switch-app-modal'
@@ -216,7 +216,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       try {
         const { installed_apps }: any = await fetchInstalledAppList(app.id) || {}
         if (installed_apps?.length > 0)
-          window.open(`/explore/installed/${installed_apps[0].id}`, '_blank')
+          window.open(`${BASE_PATH}/explore/installed/${installed_apps[0].id}`, '_blank')
         else
           throw new Error('No app found in Explore')
       }

@@ -9,6 +9,7 @@ import CustomDialog from '@/app/components/base/dialog'
 import Textarea from '@/app/components/base/textarea'
 import Toast from '@/app/components/base/toast'
 import { logout } from '@/service/common'
+import { BASE_PATH } from '@/config'
 
 type DeleteAccountProps = {
   onCancel: () => void
@@ -25,7 +26,7 @@ export default function FeedBack(props: DeleteAccountProps) {
   const handleSuccess = useCallback(async () => {
     try {
       await logout({
-        url: `${process.env.NEXT_PUBLIC_BASE_PATH}/logout`,
+        url: `${BASE_PATH}/logout`,
         params: {},
       })
       localStorage.removeItem('refresh_token')

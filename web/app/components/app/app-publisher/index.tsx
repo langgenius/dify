@@ -26,7 +26,7 @@ import { LeftIndent02 } from '@/app/components/base/icons/src/vender/line/editor
 import { FileText } from '@/app/components/base/icons/src/vender/line/files'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
 import type { InputVar } from '@/app/components/workflow/types'
-import { appDefaultIconBackground } from '@/config'
+import { BASE_PATH, appDefaultIconBackground } from '@/config'
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -111,7 +111,7 @@ const AppPublisher = ({
     try {
       const { installed_apps }: any = await fetchInstalledAppList(appDetail?.id) || {}
       if (installed_apps?.length > 0)
-        window.open(`/explore/installed/${installed_apps[0].id}`, '_blank')
+        window.open(`${BASE_PATH}/explore/installed/${installed_apps[0].id}`, '_blank')
       else
         throw new Error('No app found in Explore')
     }
