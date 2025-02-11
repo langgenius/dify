@@ -22,6 +22,7 @@ class SambaNovaLargeLanguageModel(OAIAPICompatLargeLanguageModel):
         return super()._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
+        print("credentials", credentials)
         self._add_custom_parameters(credentials)
         super().validate_credentials(model, credentials)
 
@@ -29,4 +30,4 @@ class SambaNovaLargeLanguageModel(OAIAPICompatLargeLanguageModel):
     # TODO: SambaNova's LLM models also provide translation mode. It does not fit into the below structure
     def _add_custom_parameters(credentials: dict) -> None:
         credentials["mode"] = "chat"
-        credentials["endpoint_url"] = "https://api.sambanova.ai/v1/chat/completions"
+        credentials["endpoint_url"] = "https://api.sambanova.ai/v1"
