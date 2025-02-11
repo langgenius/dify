@@ -172,6 +172,8 @@ const translation = {
   localDocs: 'Lokalne dokumenty',
   documentsDisabled: '{{num}} dokumenty wyłączone - nieaktywne przez ponad 30 dni',
   enable: 'Umożliwiać',
+  allKnowledge: 'Cała wiedza',
+  allKnowledgeDescription: 'Wybierz tę opcję, aby wyświetlić całą wiedzę w tym obszarze roboczym. Tylko właściciel obszaru roboczego może zarządzać całą wiedzą.',
 }
 
 export default translation

@@ -166,6 +166,8 @@ const translation = {
   localDocs: 'Lokale Dokumente',
   preprocessDocument: '{{num}} Vorverarbeiten von Dokumenten',
   documentsDisabled: '{{num}} Dokumente deaktiviert - seit über 30 Tagen inaktiv',
+  allKnowledge: 'Alles Wissen',
+  allKnowledgeDescription: 'Wählen Sie diese Option aus, um das gesamte Wissen in diesem Arbeitsbereich anzuzeigen. Nur der Workspace-Besitzer kann das gesamte Wissen verwalten.',
 }
 
 export default translation

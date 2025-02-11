@@ -1,3 +1,5 @@
+import json
+
 from flask_restful import Resource, reqparse  # type: ignore
 
 from controllers.console.wraps import setup_required
@@ -29,4 +31,34 @@ class EnterpriseWorkspace(Resource):
         return {"message": "enterprise workspace created."}
 
 
+class EnterpriseWorkspaceNoOwnerEmail(Resource):
+    @setup_required
+    @inner_api_only
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("name", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        tenant = TenantService.create_tenant(args["name"], is_from_dashboard=True)
+
+        tenant_was_created.send(tenant)
+
+        resp = {
+            "id": tenant.id,
+            "name": tenant.name,
+            "encrypt_public_key": tenant.encrypt_public_key,
+            "plan": tenant.plan,
+            "status": tenant.status,
+            "custom_config": json.loads(tenant.custom_config) if tenant.custom_config else {},
+            "created_at": tenant.created_at.isoformat() + "Z" if tenant.created_at else None,
+            "updated_at": tenant.updated_at.isoformat() + "Z" if tenant.updated_at else None,
+        }
+
+        return {
+            "message": "enterprise workspace created.",
+            "tenant": resp,
+        }
+
+
 api.add_resource(EnterpriseWorkspace, "/enterprise/workspace")
+api.add_resource(EnterpriseWorkspaceNoOwnerEmail, "/enterprise/workspace/ownerless")

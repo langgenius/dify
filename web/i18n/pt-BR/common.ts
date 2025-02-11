@@ -49,6 +49,8 @@ const translation = {
     view: 'Vista',
     submit: 'Enviar',
     skip: 'Navio',
+    imageCopied: 'Imagem copiada',
+    deleteApp: 'Excluir aplicativo',
   },
   placeholder: {
     input: 'Por favor, insira',
@@ -285,6 +287,7 @@ const translation = {
       usedUp: 'Cota de teste esgotada. Adicione seu próprio Fornecedor de Modelo.',
       useYourModel: 'Atualmente usando seu próprio Fornecedor de Modelo.',
       close: 'Fechar',
+      trialQuotaTip: 'Sua cota de teste do Anthropic expirará em 11/03/2025 e não estará mais disponível depois disso. Por favor, use-o a tempo.',
     },
     anthropic: {
       using: 'A capacidade de incorporação está sendo utilizada',

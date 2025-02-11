@@ -166,6 +166,8 @@ const translation = {
   localDocs: 'Yerel Dokümanlar',
   documentsDisabled: '{{num}} belge devre dışı - 30 günden uzun süre etkin değil',
   enable: 'Etkinleştirmek',
+  allKnowledge: 'Tüm Bilgiler',
+  allKnowledgeDescription: 'Bu çalışma alanındaki tüm bilgileri görüntülemek için seçin. Yalnızca Çalışma Alanı Sahibi tüm bilgileri yönetebilir.',
 }
 
 export default translation

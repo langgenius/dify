@@ -4,7 +4,7 @@ FROM python:3.12-slim-bookworm AS base
 WORKDIR /app/api
 
 # Install Poetry
-ENV POETRY_VERSION=1.8.4
+ENV POETRY_VERSION=2.0.1
 
 # if you located in China, you can use aliyun mirror to speed up
 # RUN pip install --no-cache-dir poetry==${POETRY_VERSION} -i https://mirrors.aliyun.com/pypi/simple/
@@ -48,16 +48,18 @@ ENV TZ=UTC
 
 WORKDIR /app/api
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl nodejs libgmp-dev libmpfr-dev libmpc-dev \
-    # if you located in China, you can use aliyun mirror to speed up
-    # && echo "deb http://mirrors.aliyun.com/debian testing main" > /etc/apt/sources.list \
-    && echo "deb http://deb.debian.org/debian testing main" > /etc/apt/sources.list \
-    && apt-get update \
-    # For Security
-    && apt-get install -y --no-install-recommends expat=2.6.4-1 libldap-2.5-0=2.5.19+dfsg-1 perl=5.40.0-8 libsqlite3-0=3.46.1-1 zlib1g=1:1.3.dfsg+really1.3.1-1+b1 \
-    # install a chinese font to support the use of tools like matplotlib
-    && apt-get install -y fonts-noto-cjk \
+RUN \
+    apt-get update \
+    # Install dependencies
+    && apt-get install -y --no-install-recommends \
+        # basic environment
+        curl nodejs libgmp-dev libmpfr-dev libmpc-dev \
+        # For Security
+        expat libldap-2.5-0 perl libsqlite3-0 zlib1g \
+        # install a chinese font to support the use of tools like matplotlib
+        fonts-noto-cjk \
+        # install libmagic to support the use of python-magic guess MIMETYPE
+        libmagic1 \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
@@ -75,7 +77,6 @@ COPY . /app/api/
 # Copy entrypoint
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-
 
 ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}

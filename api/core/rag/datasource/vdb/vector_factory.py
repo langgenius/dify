@@ -90,6 +90,12 @@ class Vector:
                 from core.rag.datasource.vdb.elasticsearch.elasticsearch_vector import ElasticSearchVectorFactory
 
                 return ElasticSearchVectorFactory
+            case VectorType.ELASTICSEARCH_JA:
+                from core.rag.datasource.vdb.elasticsearch.elasticsearch_ja_vector import (
+                    ElasticSearchJaVectorFactory,
+                )
+
+                return ElasticSearchJaVectorFactory
             case VectorType.TIDB_VECTOR:
                 from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVectorFactory
 

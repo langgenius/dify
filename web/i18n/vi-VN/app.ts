@@ -155,6 +155,10 @@ const translation = {
       removeConfirmContent: 'Cấu hình hiện tại đang được sử dụng, việc xóa nó sẽ tắt tính năng Theo dõi.',
     },
     view: 'Cảnh',
+    opik: {
+      description: 'Opik là một nền tảng mã nguồn mở để đánh giá, thử nghiệm và giám sát các ứng dụng LLM.',
+      title: 'Opik',
+    },
   },
   answerIcon: {
     description: 'Có nên sử dụng biểu tượng WebApp để thay thế 🤖 trong ứng dụng được chia sẻ hay không',

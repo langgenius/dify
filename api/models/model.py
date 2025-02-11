@@ -1066,8 +1066,10 @@ class Message(db.Model):  # type: ignore[name-defined]
             "id": self.id,
             "app_id": self.app_id,
             "conversation_id": self.conversation_id,
+            "model_id": self.model_id,
             "inputs": self.inputs,
             "query": self.query,
+            "total_price": self.total_price,
             "message": self.message,
             "answer": self.answer,
             "status": self.status,
@@ -1088,7 +1090,9 @@ class Message(db.Model):  # type: ignore[name-defined]
             id=data["id"],
             app_id=data["app_id"],
             conversation_id=data["conversation_id"],
+            model_id=data["model_id"],
             inputs=data["inputs"],
+            total_price=data["total_price"],
             query=data["query"],
             message=data["message"],
             answer=data["answer"],
@@ -1405,9 +1409,8 @@ class ApiToken(db.Model):  # type: ignore[name-defined]
     def generate_api_key(prefix, n):
         while True:
             result = prefix + generate_string(n)
-            while db.session.query(ApiToken).filter(ApiToken.token == result).count() > 0:
-                result = prefix + generate_string(n)
-
+            if db.session.query(ApiToken).filter(ApiToken.token == result).count() > 0:
+                continue
             return result
 
 

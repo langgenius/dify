@@ -166,6 +166,8 @@ const translation = {
   documentsDisabled: 'Документы {{num}} отключены - неактивны более 30 дней',
   localDocs: 'Местная документация',
   enable: 'Давать возможность',
+  allKnowledge: 'Все знания',
+  allKnowledgeDescription: 'Выберите, чтобы отобразить все знания в этой рабочей области. Только владелец рабочего пространства может управлять всеми знаниями.',
 }
 
 export default translation

@@ -221,13 +221,12 @@ class AIModel(ABC):
         :param credentials: model credentials
         :return: model schema
         """
-        # get predefined models (predefined_models)
-        models = self.predefined_models()
+        # Try to get model schema from predefined models
+        for predefined_model in self.predefined_models():
+            if model == predefined_model.model:
+                return predefined_model
 
-        model_map = {model.model: model for model in models}
-        if model in model_map:
-            return model_map[model]
-
+        # Try to get model schema from credentials
         if credentials:
             model_schema = self.get_customizable_model_schema_from_credentials(model, credentials)
             if model_schema:

@@ -65,7 +65,7 @@ class BaiduFieldTranslateTool(BuiltinTool, BaiduTranslateToolBase):
             if "trans_result" in result:
                 result_text = result["trans_result"][0]["dst"]
             else:
-                result_text = f'{result["error_code"]}: {result["error_msg"]}'
+                result_text = f"{result['error_code']}: {result['error_msg']}"
 
             return self.create_text_message(str(result_text))
         except requests.RequestException as e:

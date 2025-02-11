@@ -3,7 +3,10 @@ from typing import Optional, Union
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from core.model_runtime.entities.message_entities import (
+    PromptMessage,
+    PromptMessageTool,
+)
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
     FetchFrom,
@@ -29,9 +32,6 @@ class SiliconflowLargeLanguageModel(OAIAPICompatLargeLanguageModel):
         user: Optional[str] = None,
     ) -> Union[LLMResult, Generator]:
         self._add_custom_parameters(credentials)
-        # {"response_format": "json_object"} need convert to {"response_format": {"type": "json_object"}}
-        if "response_format" in model_parameters:
-            model_parameters["response_format"] = {"type": model_parameters.get("response_format")}
         return super()._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:

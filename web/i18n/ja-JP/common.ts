@@ -49,6 +49,8 @@ const translation = {
     regenerate: '再生成',
     submit: '送信',
     skip: 'スキップ',
+    imageCopied: 'コピーした画像',
+    deleteApp: 'アプリを削除',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',
@@ -289,6 +291,7 @@ const translation = {
       usedUp: 'トライアルクォータが使い果たされました。独自のモデルプロバイダを追加してください。',
       useYourModel: '現在、独自のモデルプロバイダを使用しています。',
       close: '閉じる',
+      trialQuotaTip: 'お客様の Anthropic 試用枠は 2025/03/11 に失効し、その後は利用できなくなります。お早めにご利用ください。',
     },
     anthropic: {
       using: '埋め込み機能は使用中です',

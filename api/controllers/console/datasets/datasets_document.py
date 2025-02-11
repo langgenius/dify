@@ -257,7 +257,8 @@ class DatasetDocumentListApi(Resource):
         parser.add_argument("original_document_id", type=str, required=False, location="json")
         parser.add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
         parser.add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
-
+        parser.add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
         parser.add_argument(
             "doc_language", type=str, default="English", required=False, nullable=False, location="json"
         )
@@ -349,8 +350,7 @@ class DatasetInitApi(Resource):
                 )
             except InvokeAuthorizationError:
                 raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
@@ -525,8 +525,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 return response.model_dump(), 200
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
+                    "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)

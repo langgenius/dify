@@ -146,7 +146,7 @@ class EndpointConfig(BaseSettings):
     )
 
     CONSOLE_WEB_URL: str = Field(
-        description="Base URL for the console web interface," "used for frontend references and CORS configuration",
+        description="Base URL for the console web interface,used for frontend references and CORS configuration",
         default="",
     )
 
@@ -315,8 +315,8 @@ class HttpConfig(BaseSettings):
     )
 
     RESPECT_XFORWARD_HEADERS_ENABLED: bool = Field(
-        description="Enable or disable the X-Forwarded-For Proxy Fix middleware from Werkzeug"
-        " to respect X-* headers to redirect clients",
+        description="Enable handling of X-Forwarded-For, X-Forwarded-Proto, and X-Forwarded-Port headers"
+        " when the app is behind a single trusted reverse proxy.",
         default=False,
     )
 
@@ -488,8 +488,18 @@ class AuthConfig(BaseSettings):
         default=60,
     )
 
+    REFRESH_TOKEN_EXPIRE_DAYS: PositiveFloat = Field(
+        description="Expiration time for refresh tokens in days",
+        default=30,
+    )
+
     LOGIN_LOCKOUT_DURATION: PositiveInt = Field(
         description="Time (in seconds) a user must wait before retrying login after exceeding the rate limit.",
+        default=86400,
+    )
+
+    FORGOT_PASSWORD_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying password reset after exceeding the rate limit.",
         default=86400,
     )
 

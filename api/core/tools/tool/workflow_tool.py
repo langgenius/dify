@@ -195,14 +195,14 @@ class WorkflowTool(Tool):
             if isinstance(value, list):
                 for item in value:
                     if isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                        item["tool_file_id"] = item.get("related_id")
+                        item = self._update_file_mapping(item)
                         file = build_from_mapping(
                             mapping=item,
                             tenant_id=str(cast(Tool.Runtime, self.runtime).tenant_id),
                         )
                         files.append(file)
             elif isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                value["tool_file_id"] = value.get("related_id")
+                value = self._update_file_mapping(value)
                 file = build_from_mapping(
                     mapping=value,
                     tenant_id=str(cast(Tool.Runtime, self.runtime).tenant_id),
@@ -211,3 +211,11 @@ class WorkflowTool(Tool):
 
             result[key] = value
         return result, files
+
+    def _update_file_mapping(self, file_dict: dict) -> dict:
+        transfer_method = FileTransferMethod.value_of(file_dict.get("transfer_method"))
+        if transfer_method == FileTransferMethod.TOOL_FILE:
+            file_dict["tool_file_id"] = file_dict.get("related_id")
+        elif transfer_method == FileTransferMethod.LOCAL_FILE:
+            file_dict["upload_file_id"] = file_dict.get("related_id")
+        return file_dict

@@ -44,9 +44,6 @@ class MoonshotLargeLanguageModel(OAIAPICompatLargeLanguageModel):
         self._add_custom_parameters(credentials)
         self._add_function_call(model, credentials)
         user = user[:32] if user else None
-        # {"response_format": "json_object"} need convert to {"response_format": {"type": "json_object"}}
-        if "response_format" in model_parameters:
-            model_parameters["response_format"] = {"type": model_parameters.get("response_format")}
         return super()._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
