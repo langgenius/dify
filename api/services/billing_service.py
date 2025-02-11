@@ -2,8 +2,7 @@ import os
 from typing import Literal, Optional
 
 import httpx
-from tenacity import (retry, retry_if_exception_type, stop_before_delay,
-                      wait_fixed)
+from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 
 from extensions.ext_database import db
 from libs.helper import RateLimiter
@@ -97,11 +96,6 @@ class BillingService:
         return cls._send_request("POST", "/account/delete-feedback", json=json)
 
     @classmethod
-    def list_compliance_files(cls, tenant_id: str, account_id: str):
-        params = {"account_id": account_id, "tenant_id": tenant_id}
-        return cls._send_request("GET", "/compliance/list", params=params)
-
-    @classmethod
     def get_compliance_download_link(
         cls,
         doc_name: str,
@@ -113,6 +107,7 @@ class BillingService:
         limiter_key = f"{account_id}:{tenant_id}"
         if cls.compliance_download_rate_limiter.is_rate_limited(limiter_key):
             from controllers.console.error import CompilanceRateLimitError
+
             raise CompilanceRateLimitError()
 
         json = {
