@@ -354,10 +354,10 @@ class RetrievalService:
                         .first()
                     )
 
-                    segment = cast(DocumentSegment, segment)
                     if not segment:
                         continue
 
+                    segment = cast(DocumentSegment, segment)
                     include_segment_ids.add(segment.id)
                     record = {
                         "segment": segment,
