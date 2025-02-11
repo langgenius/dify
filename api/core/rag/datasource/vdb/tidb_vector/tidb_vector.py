@@ -96,6 +96,7 @@ class TiDBVector(BaseVector):
             collection_exist_cache_key = "vector_indexing_{}".format(self._collection_name)
             if redis_client.get(collection_exist_cache_key):
                 return
+            tidb_dist_func = self._get_distance_func()
             with Session(self._engine) as session:
                 session.begin()
                 create_statement = sql_text(f"""
@@ -108,7 +109,7 @@ class TiDBVector(BaseVector):
                         create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
                         update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                         KEY (doc_id),
-                        VECTOR INDEX idx_vector ((VEC_COSINE_DISTANCE(vector))) USING HNSW
+                        VECTOR INDEX idx_vector (({tidb_dist_func}(vector))) USING HNSW
                     );
                 """)
                 session.execute(create_statement)
@@ -194,13 +195,7 @@ class TiDBVector(BaseVector):
         )
 
         docs = []
-        match self._distance_func:
-            case "l2":
-                tidb_dist_func = "VEC_L2_DISTANCE"
-            case "cosine":
-                tidb_dist_func = "VEC_COSINE_DISTANCE"
-            case _:
-                tidb_dist_func = "VEC_COSINE_DISTANCE"
+        tidb_dist_func = self._get_distance_func()
 
         with Session(self._engine) as session:
             select_statement = sql_text(f"""
@@ -239,6 +234,16 @@ class TiDBVector(BaseVector):
         with Session(self._engine) as session:
             session.execute(sql_text(f"""DROP TABLE IF EXISTS {self._collection_name};"""))
             session.commit()
+
+    def _get_distance_func(self) -> str:
+        match self._distance_func:
+            case "l2":
+                tidb_dist_func = "VEC_L2_DISTANCE"
+            case "cosine":
+                tidb_dist_func = "VEC_COSINE_DISTANCE"
+            case _:
+                tidb_dist_func = "VEC_COSINE_DISTANCE"
+        return tidb_dist_func
 
 
 class TiDBVectorFactory(AbstractVectorFactory):
