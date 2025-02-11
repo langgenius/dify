@@ -193,3 +193,5 @@ api/.vscode
 
 .idea/
 .vscode
+
+venv-ovms/

@@ -399,7 +399,7 @@ services:
   # OpenVINO Model Server 
   # https://github.com/openvinotoolkit/model_server
   ovms:
-    image: openvino/model_server:2024.5
+    image: openvino/model_server:2025.0
     restart: always
     networks:
       - ssrf_proxy_network

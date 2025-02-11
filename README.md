@@ -52,23 +52,67 @@
 Dify is an open-source LLM app development platform. Its intuitive interface combines agentic AI workflow, RAG pipeline, agent capabilities, model management, observability features and more, letting you quickly go from prototype to production. 
 
 ## OpenVINO Model Server (OVMS) integration
-`'./docker/docker-compose-template.yaml'` `'./docker/docker-compose.yaml'` and `'./docker/.env.example'` are modified to include the OpenVINO Model Server (OVMS) into the `docker-compose.yaml` file. 
+`'./docker/docker-compose-template.yaml'`, `'./docker/docker-compose.yaml'` and `'./docker/.env.example'` are modified to include the OpenVINO Model Server (OVMS) into the `docker-compose.yaml` file. 
 
 ## Step to prepare the LLM models for OpenVINO Model Server.
 Refer the [Deployment on a Model Server / QuickStart - LLM models](https://docs.openvino.ai/2025/openvino-workflow/model-server/ovms_docs_llm_quickstart.html) section in the OpenVINO document web site to prepare a model and configuration files for the OVMS.
 You need to place the models in the `'./docker/models'` directory.
 
-Here's the quick summary of command lines described in the model preparation instruction in the above web page.
+Here's the quick summary of command lines described in the model preparation instruction in the above web page.  
+**Run the commands below in `'./docker'` directory** (so that the `models` directory is created under `./docker` directory)
+### Linux
 ```sh
+# Optional - Creating a virtual environment
+python3 -m venv venv-ovms
+source venv-ovms/bin/activate
+python3 -m pip install -U pip
+pip3 install -U setuptools wheel
+
 # Install prerequisites
 pip3 install -r https://raw.githubusercontent.com/openvinotoolkit/model_server/refs/heads/releases/2025/0/demos/common/export_models/requirements.txt
 
 # Obtain model conversion script (convert to OpenVINO model format)
 curl https://raw.githubusercontent.com/openvinotoolkit/model_server/refs/heads/releases/2025/0/demos/common/export_models/export_model.py -o export_model.py
-mkdir models
+
 # Download and convert the model (DeepSeek-R1-Distill-Qwen-7B)
-python export_model.py text_generation --source_model deepseek-ai/DeepSeek-R1-Distill-Qwen-7B --weight-format int4 --config_file_path models/config.json --model_repository_path models --target_device GPU --cache 2
+mkdir models
+python3 export_model.py text_generation --source_model deepseek-ai/DeepSeek-R1-Distill-Qwen-7B --weight-format int4 --config_file_path models/config.json --model_repository_path models --target_device CPU --cache 2
 ```
+
+### Windows
+```sh
+# Optional - Creating a virtual environment
+python -m venv venv-ovms
+venv-ovms\Scripts\activate
+python -m pip install -U pip
+pip install -U setuptools wheel
+
+# Install prerequisites
+pip install -r https://raw.githubusercontent.com/openvinotoolkit/model_server/refs/heads/releases/2025/0/demos/common/export_models/requirements.txt
+
+# Obtain model conversion script (convert to OpenVINO model format)
+powershell -c Invoke-WebRequest -Uri https://raw.githubusercontent.com/openvinotoolkit/model_server/refs/heads/releases/2025/0/demos/common/export_models/export_model.py -OutFile export_model.py
+
+# Download and convert the model (DeepSeek-R1-Distill-Qwen-7B)
+mkdir models
+python export_model.py text_generation --source_model deepseek-ai/DeepSeek-R1-Distill-Qwen-7B --weight-format int4 --config_file_path models/config.json --model_repository_path models --target_device CPU --cache 2
+```
+#### Hint
+You can check the other LLM models at [HiggingFace web site](https://huggingface.co/). Followings are some other LLM files that you can try.
+- deepseek-ai/DeepSeek-R1-Distill-Llama-8B
+- TinyLlama/TinyLlama-1.1B-Chat-v1.0
+
+### Modify model `./docker/config.json` file - Windows users only
+The `base_path` contains `\\`, the Windows file path separator. Replace `\\` with `/`.
+- Wrong
+```sh
+            "base_path": "deepseek-ai\\DeepSeek-R1-Distill-Qwen-7B"
+```
+- Correct
+```sh
+            "base_path": "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
+```
+
 
 ## Quick start
 > Before installing Dify, make sure your machine meets the following minimum system requirements:
@@ -88,6 +132,18 @@ docker compose up -d
 ```
 
 After running, you can access the Dify dashboard in your browser at [http://localhost/install](http://localhost/install) and start the initialization process.
+
+## How to setup model provider for OpenVINO Model Server in Dify
+
+1. Go to `Settings` and select `OpenAI-API-compatible` model provider
+Hit `+ Add Model` button.
+![model_provider](./images/model_provider_selection.png)
+
+2. Fill `Model Name` and `API endpoint URL` text box  
+Model Name : `deepseek-ai/DeepSeek-R1-Distill-Qwen-7B`
+API endpoint URL: `http://docker-ovms-1:8000/v3`
+Other items can be left as it is.
+![model_provider_settings](./images/model_provider_settings.png)
 
 #### Seeking help
 Please refer to our [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) if you encounter problems setting up Dify. Reach out to [the community and us](#community--contact) if you are still having issues.
