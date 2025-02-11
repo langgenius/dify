@@ -104,7 +104,7 @@ class TiDBVector(BaseVector):
                         text TEXT NOT NULL,
                         meta JSON NOT NULL,
                         doc_id VARCHAR(64) AS (JSON_UNQUOTE(JSON_EXTRACT(meta, '$.doc_id'))) STORED,
-                        vector VECTOR<FLOAT>({dimension}) NOT NULL COMMENT "hnsw(distance={self._distance_func})",
+                        vector VECTOR<FLOAT>({dimension}) NOT NULL,
                         create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
                         update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                         KEY (doc_id),
