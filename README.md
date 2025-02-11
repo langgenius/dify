@@ -175,7 +175,6 @@ Please refer to our [FAQ](https://docs.dify.ai/getting-started/install-self-host
   </tr>
 </table>
 
-You can copy and paste this into your Markdown file.
 ## Using Dify
 
 - **Cloud </br>**
