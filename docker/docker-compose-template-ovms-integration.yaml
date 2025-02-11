@@ -1,5 +1,19 @@
 x-shared-env: &shared-api-worker-env
 services:
+  # OpenVINO Model Server 
+  # https://github.com/openvinotoolkit/model_server
+  ovms:
+    image: openvino/model_server:2025.0
+    restart: always
+    networks:
+      - ssrf_proxy_network
+      - default
+    ports:
+      - 8000:8000
+    volumes:
+      - ${OVMS_MODEL_ROOT_DIR:-./models}:/workspace:ro
+    entrypoint: /ovms/bin/ovms --rest_port 8000 --config_path /workspace/config.json
+
   # API service
   api:
     image: langgenius/dify-api:0.15.3
@@ -13,6 +27,7 @@ services:
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
     depends_on:
+      - ovms
       - db
       - redis
     volumes:
@@ -36,6 +51,7 @@ services:
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
     depends_on:
+      - ovms
       - db
       - redis
     volumes:
