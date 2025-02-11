@@ -1,6 +1,6 @@
 import concurrent.futures
 import json
-from typing import Optional, cast
+from typing import Optional
 
 from flask import Flask, current_app
 from sqlalchemy.orm import load_only
@@ -57,7 +57,7 @@ class RetrievalService:
                 futures.append(
                     executor.submit(
                         cls.keyword_search,
-                        flask_app=current_app,
+                        flask_app=current_app._get_current_object(),
                         dataset_id=dataset_id,
                         query=query,
                         top_k=top_k,
@@ -69,7 +69,7 @@ class RetrievalService:
                 futures.append(
                     executor.submit(
                         cls.embedding_search,
-                        flask_app=current_app,
+                        flask_app=current_app._get_current_object(),
                         dataset_id=dataset_id,
                         query=query,
                         top_k=top_k,
@@ -84,7 +84,7 @@ class RetrievalService:
                 futures.append(
                     executor.submit(
                         cls.full_text_index_search,
-                        flask_app=current_app,
+                        flask_app=current_app._get_current_object(),
                         dataset_id=dataset_id,
                         query=query,
                         top_k=top_k,
@@ -287,7 +287,7 @@ class RetrievalService:
                     if not child_chunk:
                         continue
 
-                    result = (
+                    segment = (
                         db.session.query(DocumentSegment)
                         .filter(
                             DocumentSegment.dataset_id == dataset_document.dataset_id,
@@ -305,12 +305,12 @@ class RetrievalService:
                         )
                         .first()
                     )
-                    if result is None:
+
+                    if not segment:
                         continue
 
-                    segment_result: DocumentSegment = cast(DocumentSegment, result)
-                    if segment_result.id not in include_segment_ids:
-                        include_segment_ids.add(segment_result.id)
+                    if segment.id not in include_segment_ids:
+                        include_segment_ids.add(segment.id)
                         child_chunk_detail = {
                             "id": child_chunk.id,
                             "content": child_chunk.content,
@@ -321,9 +321,9 @@ class RetrievalService:
                             "max_score": document.metadata.get("score", 0.0),
                             "child_chunks": [child_chunk_detail],
                         }
-                        segment_child_map[segment_result.id] = map_detail
+                        segment_child_map[segment.id] = map_detail
                         record = {
-                            "segment": segment_result,
+                            "segment": segment,
                         }
                         records.append(record)
                     else:
@@ -333,9 +333,9 @@ class RetrievalService:
                             "position": child_chunk.position,
                             "score": document.metadata.get("score", 0.0),
                         }
-                        segment_child_map[segment_result.id]["child_chunks"].append(child_chunk_detail)
-                        segment_child_map[segment_result.id]["max_score"] = max(
-                            segment_child_map[segment_result.id]["max_score"], document.metadata.get("score", 0.0)
+                        segment_child_map[segment.id]["child_chunks"].append(child_chunk_detail)
+                        segment_child_map[segment.id]["max_score"] = max(
+                            segment_child_map[segment.id]["max_score"], document.metadata.get("score", 0.0)
                         )
                 else:
                     # Handle normal documents
@@ -343,7 +343,7 @@ class RetrievalService:
                     if not index_node_id:
                         continue
 
-                    result = (
+                    segment = (
                         db.session.query(DocumentSegment)
                         .filter(
                             DocumentSegment.dataset_id == dataset_document.dataset_id,
@@ -353,15 +353,15 @@ class RetrievalService:
                         )
                         .first()
                     )
-                    if result is None:
+
+                    if not segment:
                         continue
 
-                    segment_result: DocumentSegment = cast(DocumentSegment, result)
-                    include_segment_ids.add(segment_result.id)
+                    include_segment_ids.add(segment.id)
                     record = {
-                        "segment": segment_result,
+                        "segment": segment,
                         "score": document.metadata.get("score"),
-                        "segment_metadata": segment_result.doc_metadata,
+                        "segment_metadata": segment.doc_metadata,
                     }
                     records.append(record)
 
