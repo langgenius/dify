@@ -74,8 +74,8 @@ class DatasetListApi(Resource):
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
             # convert embedding_model_provider to plugin standard format
-            item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
             if item["indexing_technique"] == "high_quality":
+                item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
                 item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
                 if item_model in model_names:
                     item["embedding_available"] = True
