@@ -35,6 +35,7 @@ export type ToolValue = {
   provider_name: string
   tool_name: string
   tool_label: string
+  settings?: Record<string, any>
   parameters?: Record<string, any>
   enabled?: boolean
   extra?: Record<string, any>
