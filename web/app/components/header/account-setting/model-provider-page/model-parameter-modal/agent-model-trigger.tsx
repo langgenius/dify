@@ -1,6 +1,7 @@
 import type { FC } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import type {
   ModelItem,
   ModelProvider,
@@ -9,7 +10,6 @@ import {
   CustomConfigurationStatusEnum,
   ModelTypeEnum,
 } from '../declarations'
-import type { PluginInfoFromMarketPlace } from '@/app/components/plugins/types'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import ConfigurationButton from './configuration-button'
 import Loading from '@/app/components/base/loading'
@@ -66,43 +66,44 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
       needsConfiguration,
     }
   }, [modelProviders, providerName])
-  const [pluginInfo, setPluginInfo] = useState<PluginInfoFromMarketPlace | null>(null)
-  const [isPluginChecked, setIsPluginChecked] = useState(false)
   const [installed, setInstalled] = useState(false)
-  const [inModelList, setInModelList] = useState(false)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const handleOpenModal = useModelModalHandler()
 
-  useEffect(() => {
-    (async () => {
-      if (modelId && currentProvider) {
-        try {
-          const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${currentProvider?.provider}/models`)
-          if (modelId && modelsData.data.find(item => item.model === modelId))
-            setInModelList(true)
-        }
-        catch (error) {
-          // pass
-        }
+  const { data: inModelList = false } = useQuery({
+    queryKey: ['modelInList', currentProvider?.provider, modelId],
+    queryFn: async () => {
+      if (!modelId || !currentProvider) return false
+      try {
+        const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${currentProvider?.provider}/models`)
+        return !!modelId && !!modelsData.data.find(item => item.model === modelId)
       }
-      if (providerName) {
-        const parts = providerName.split('/')
-        const org = parts[0]
-        const name = parts[1]
-        try {
-          const pluginInfo = await fetchPluginInfoFromMarketPlace({ org, name })
-          if (pluginInfo.data.plugin.category === PluginType.model)
-            setPluginInfo(pluginInfo.data.plugin)
-        }
-        catch (error) {
-          // pass
-        }
+      catch (error) {
+        return false
       }
-      setIsPluginChecked(true)
-    })()
-  }, [providerName, modelId, currentProvider])
+    },
+    enabled: !!modelId && !!currentProvider,
+  })
 
-  if (modelId && !isPluginChecked)
+  const { data: pluginInfo, isLoading: isPluginLoading } = useQuery({
+    queryKey: ['pluginInfo', providerName],
+    queryFn: async () => {
+      if (!providerName) return null
+      const parts = providerName.split('/')
+      const org = parts[0]
+      const name = parts[1]
+      try {
+        const response = await fetchPluginInfoFromMarketPlace({ org, name })
+        return response.data.plugin.category === PluginType.model ? response.data.plugin : null
+      }
+      catch (error) {
+        return null
+      }
+    },
+    enabled: !!providerName,
+  })
+
+  if (modelId && isPluginLoading)
     return <Loading />
 
   return (
