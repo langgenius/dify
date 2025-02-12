@@ -21,7 +21,7 @@ type Props = {
   payload: PluginManifestInMarket | Plugin
   onCancel: () => void
   onStartToInstall?: () => void
-  onInstalled: () => void
+  onInstalled: (notRefresh?: boolean) => void
   onFailed: (message?: string) => void
 }
 
@@ -51,7 +51,7 @@ const Installed: FC<Props> = ({
     check,
     stop,
   } = checkTaskStatus()
-  const { handleRefetch } = usePluginTaskList()
+  const { handleRefetch } = usePluginTaskList(payload.category)
 
   useEffect(() => {
     if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier)
@@ -106,7 +106,7 @@ const Installed: FC<Props> = ({
         onFailed(error)
         return
       }
-      onInstalled()
+      onInstalled(true)
     }
     catch (e) {
       if (typeof e === 'string') {
