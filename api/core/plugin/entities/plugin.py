@@ -169,6 +169,21 @@ class GenericProviderID:
         return f"{self.organization}/{self.plugin_name}"
 
 
+class ModelProviderID(GenericProviderID):
+    def __init__(self, value: str, is_hardcoded: bool = False) -> None:
+        super().__init__(value, is_hardcoded)
+        if self.organization == "langgenius" and self.provider_name == "google":
+            self.provider_name = "gemini"
+
+
+class ToolProviderID(GenericProviderID):
+    def __init__(self, value: str, is_hardcoded: bool = False) -> None:
+        super().__init__(value, is_hardcoded)
+        if self.organization == "langgenius":
+            if self.provider_name in ["jina", "siliconflow"]:
+                self.provider_name = f"{self.provider_name}_tool"
+
+
 class PluginDependency(BaseModel):
     class Type(enum.StrEnum):
         Github = PluginInstallationSource.Github.value
