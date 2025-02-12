@@ -197,7 +197,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         else:
             # nothing different between chat model and completion model in tongyi
             params["messages"] = self._convert_prompt_messages_to_tongyi_messages(prompt_messages)
-            response = Generation.call(**params, result_format="message", stream=stream, incremental_output=True)
+            response = Generation.call(**params, result_format="message", stream=stream, incremental_output=stream)
         if stream:
             return self._handle_generate_stream_response(model, credentials, response, prompt_messages)
 
