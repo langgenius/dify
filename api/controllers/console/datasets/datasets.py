@@ -4,6 +4,7 @@ from flask_login import current_user  # type: ignore  # type: ignore
 from flask_restful import Resource, marshal, marshal_with, reqparse  # type: ignore
 from werkzeug.exceptions import Forbidden, NotFound
 
+from core.plugin.entities.plugin import ModelProviderID
 import services
 from configs import dify_config
 from controllers.console import api
@@ -72,6 +73,8 @@ class DatasetListApi(Resource):
 
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
+            # convert embedding_model_provider to plugin standard format
+            item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
             if item["indexing_technique"] == "high_quality":
                 item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
                 if item_model in model_names:
