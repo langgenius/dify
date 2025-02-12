@@ -1,4 +1,4 @@
-import json
+_handle_invoke_resultimport json
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, cast
@@ -247,6 +247,11 @@ class LLMNode(BaseNode[LLMNodeData]):
 
     def _handle_invoke_result(self, invoke_result: LLMResult | Generator) -> Generator[NodeEvent, None, None]:
         if isinstance(invoke_result, LLMResult):
+            yield ModelInvokeCompletedEvent(
+                text=invoke_result.message.content,
+                usage=invoke_result.usage,
+                finish_reason=None,
+            )
             return
 
         model = None
