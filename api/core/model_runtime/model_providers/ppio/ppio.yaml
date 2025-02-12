@@ -1,0 +1,34 @@
+provider: ppio
+label:
+  en_US: PPIO
+  zh_Hans: PPIO 派欧云
+description:
+  en_US: PPIO is a cloud infrastructure provider offering a wide range of AI model services.
+  zh_Hans: PPIO 提供满血版 DeepSeek R1/V3 模型，以及 Qwen、Llama、Yi 等一系列模型。
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+  zh_Hans: icon_l_zh.svg
+background: "#b5cefc"
+help:
+  title:
+    en_US: Get your API key from PPIO
+    zh_Hans: 从 PPIO 获取 API Key
+  url:
+    en_US: https://ppinfra.com/settings/key-management?utm_source=github_dify&utm_medium=github_readme&utm_campaign=link
+supported_model_types:
+  - llm
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: api_key
+      label:
+        en_US: API Key
+        zh_Hans: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        en_US: Please input your  API Key
+        zh_Hans: 请输入您的 API Key
