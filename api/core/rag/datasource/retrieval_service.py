@@ -2,10 +2,10 @@ import concurrent.futures
 import json
 from typing import Optional
 
-from configs import dify_config
 from flask import Flask, current_app
 from sqlalchemy.orm import load_only
 
+from configs import dify_config
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
