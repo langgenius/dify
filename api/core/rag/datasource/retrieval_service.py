@@ -57,7 +57,7 @@ class RetrievalService:
                 futures.append(
                     executor.submit(
                         cls.keyword_search,
-                        flask_app=current_app._get_current_object(),
+                        flask_app=current_app._get_current_object(),  # type: ignore
                         dataset_id=dataset_id,
                         query=query,
                         top_k=top_k,
@@ -69,7 +69,7 @@ class RetrievalService:
                 futures.append(
                     executor.submit(
                         cls.embedding_search,
-                        flask_app=current_app._get_current_object(),
+                        flask_app=current_app._get_current_object(),  # type: ignore
                         dataset_id=dataset_id,
                         query=query,
                         top_k=top_k,
@@ -84,7 +84,7 @@ class RetrievalService:
                 futures.append(
                     executor.submit(
                         cls.full_text_index_search,
-                        flask_app=current_app._get_current_object(),
+                        flask_app=current_app._get_current_object(),  # type: ignore
                         dataset_id=dataset_id,
                         query=query,
                         top_k=top_k,
@@ -360,7 +360,7 @@ class RetrievalService:
                     include_segment_ids.add(segment.id)
                     record = {
                         "segment": segment,
-                        "score": document.metadata.get("score"),
+                        "score": document.metadata.get("score"),  # type: ignore
                         "segment_metadata": segment.doc_metadata,
                     }
                     records.append(record)
@@ -368,7 +368,7 @@ class RetrievalService:
             # Add child chunks information to records
             for record in records:
                 if record["segment"].id in segment_child_map:
-                    record["child_chunks"] = segment_child_map[record["segment"].id].get("child_chunks")
+                    record["child_chunks"] = segment_child_map[record["segment"].id].get("child_chunks")  # type: ignore
                     record["score"] = segment_child_map[record["segment"].id]["max_score"]
 
             return [RetrievalSegments(**record) for record in records]
