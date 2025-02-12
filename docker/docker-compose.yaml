@@ -417,7 +417,7 @@ services:
       - ssrf_proxy_network
       - default
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - host.docker.internal:host-gateway
 
   # worker service
   # The Celery worker for processing the queue.
@@ -442,7 +442,7 @@ services:
       - ssrf_proxy_network
       - default
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - host.docker.internal:host-gateway
 
   # Frontend web application.
   web:
