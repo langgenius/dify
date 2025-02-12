@@ -144,7 +144,7 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
             return _extract_text_from_yaml(file_content)
         case ".pdf":
             return _extract_text_from_pdf(file_content)
-        case ".doc" | ".docx":
+        case ".doc":
             return _extract_text_from_doc(file_content)
         case ".docx":
             return _extract_text_from_docx(file_content)
