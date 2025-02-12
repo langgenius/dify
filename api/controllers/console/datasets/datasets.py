@@ -4,7 +4,6 @@ from flask_login import current_user  # type: ignore  # type: ignore
 from flask_restful import Resource, marshal, marshal_with, reqparse  # type: ignore
 from werkzeug.exceptions import Forbidden, NotFound
 
-from core.plugin.entities.plugin import ModelProviderID
 import services
 from configs import dify_config
 from controllers.console import api
@@ -15,6 +14,7 @@ from controllers.console.wraps import account_initialization_required, enterpris
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
 from core.model_runtime.entities.model_entities import ModelType
+from core.plugin.entities.plugin import ModelProviderID
 from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
