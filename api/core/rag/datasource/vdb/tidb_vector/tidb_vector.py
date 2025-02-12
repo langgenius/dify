@@ -206,10 +206,10 @@ class TiDBVector(BaseVector):
                     text,
                     {tidb_dist_func}(vector, :query_vector_str) AS distance
                   FROM {self._collection_name}
+                  ORDER BY distance ASC
+                  LIMIT :top_k
                 ) t
                 WHERE distance <= :distance
-                ORDER BY distance ASC
-                LIMIT :top_k
                 """)
             res = session.execute(
                 select_statement,
