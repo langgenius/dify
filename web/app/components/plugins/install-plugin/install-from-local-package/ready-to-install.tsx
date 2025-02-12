@@ -32,9 +32,10 @@ const ReadyToInstall: FC<Props> = ({
 }) => {
   const { refreshPluginList } = useRefreshPluginList()
 
-  const handleInstalled = useCallback(() => {
+  const handleInstalled = useCallback((notRefresh?: boolean) => {
     onStepChange(InstallStep.installed)
-    refreshPluginList(manifest)
+    if (!notRefresh)
+      refreshPluginList(manifest)
     setIsInstalling(false)
   }, [manifest, onStepChange, refreshPluginList, setIsInstalling])
 

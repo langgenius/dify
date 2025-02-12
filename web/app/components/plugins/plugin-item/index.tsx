@@ -20,11 +20,9 @@ import Title from '../card/base/title'
 import Action from './action'
 import cn from '@/utils/classnames'
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
-import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import { useInvalidateAllBuiltInTools, useInvalidateAllToolProviders } from '@/service/use-tools'
 import { useSingleCategories } from '../hooks'
-import { useProviderContext } from '@/context/provider-context'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 
 type Props = {
   className?: string
@@ -39,10 +37,7 @@ const PluginItem: FC<Props> = ({
   const { categoriesMap } = useSingleCategories()
   const currentPluginID = usePluginPageContext(v => v.currentPluginID)
   const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
-  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
-  const invalidateAllToolProviders = useInvalidateAllToolProviders()
-  const invalidateAllBuiltinTools = useInvalidateAllBuiltInTools()
-  const { refreshModelProviders } = useProviderContext()
+  const { refreshPluginList } = useRefreshPluginList()
 
   const {
     source,
@@ -60,13 +55,7 @@ const PluginItem: FC<Props> = ({
   }, [source, author])
 
   const handleDelete = () => {
-    invalidateInstalledPluginList()
-    if (PluginType.model.includes(category))
-      refreshModelProviders()
-    if (PluginType.tool.includes(category)) {
-      invalidateAllToolProviders()
-      invalidateAllBuiltinTools()
-    }
+    refreshPluginList({ category } as any)
   }
   const getValueFromI18nObject = useRenderI18nObject()
   const title = getValueFromI18nObject(label)
@@ -116,6 +105,7 @@ const PluginItem: FC<Props> = ({
                   isShowDelete
                   meta={meta}
                   onDelete={handleDelete}
+                  category={category}
                 />
               </div>
             </div>

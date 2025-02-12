@@ -24,7 +24,7 @@ type LoadedProps = {
   selectedPackage: string
   onBack: () => void
   onStartToInstall?: () => void
-  onInstalled: () => void
+  onInstalled: (notRefresh?: boolean) => void
   onFailed: (message?: string) => void
 }
 
@@ -55,7 +55,7 @@ const Loaded: React.FC<LoadedProps> = ({
 
   const [isInstalling, setIsInstalling] = React.useState(false)
   const { mutateAsync: installPackageFromGitHub } = useInstallPackageFromGitHub()
-  const { handleRefetch } = usePluginTaskList()
+  const { handleRefetch } = usePluginTaskList(payload.category)
   const { check } = checkTaskStatus()
 
   useEffect(() => {
@@ -127,7 +127,7 @@ const Loaded: React.FC<LoadedProps> = ({
         onFailed(error)
         return
       }
-      onInstalled()
+      onInstalled(true)
     }
     catch (e) {
       if (typeof e === 'string') {
