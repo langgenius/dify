@@ -146,7 +146,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         })
       }
     }
-  }, [appDetailRes, appId, getNavigations, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, router, setAppDetail, systemFeatures.enable_web_sso_switch_component])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appDetailRes, appId, getNavigations, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace, router, setAppDetail, systemFeatures.enable_web_sso_switch_component])
 
   useUnmount(() => {
     setAppDetail()
