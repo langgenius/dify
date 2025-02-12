@@ -114,7 +114,7 @@ safetensors = "~0.4.3"
 [tool.poetry.group.tools.dependencies]
 arxiv = "2.1.0"
 cloudscraper = "1.2.71"
-duckduckgo-search = "~6.3.0"
+duckduckgo-search = "~7.3.2"
 jsonpath-ng = "1.6.1"
 matplotlib = "~3.8.2"
 mplfonts = "~0.0.8"
