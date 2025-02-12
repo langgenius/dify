@@ -51,8 +51,8 @@ class RetrievalService:
         exceptions: list[str] = []
 
         # Optimize multithreading with thread pools
-        futures = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            futures = []
             if retrieval_method == "keyword_search":
                 futures.append(
                     executor.submit(
@@ -95,7 +95,7 @@ class RetrievalService:
                         exceptions=exceptions,
                     )
                 )
-            concurrent.futures.wait(futures)
+            concurrent.futures.wait(futures, timeout=30, return_when=concurrent.futures.ALL_COMPLETED)
 
         if exceptions:
             raise ValueError(";\n".join(exceptions))
