@@ -1,7 +1,6 @@
 import datetime
 import json
 import logging
-import sys
 import time
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
@@ -417,8 +416,6 @@ class PluginMigration:
         thread_pool.shutdown(wait=True)
 
         logger.info("Uninstall plugins")
-
-        sys.exit(-1)
 
         # get installation
         try:
