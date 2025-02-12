@@ -11,6 +11,7 @@ import type {
   PluginDetail,
   PluginInfoFromMarketPlace,
   PluginTask,
+  PluginType,
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
   VersionInfo,
@@ -31,6 +32,7 @@ import {
 import { useInvalidateAllBuiltInTools } from './use-tools'
 import usePermission from '@/app/components/plugins/plugin-page/use-permission'
 import { uninstallPlugin } from '@/service/plugins'
+import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 
 const NAME_SPACE = 'plugins'
 
@@ -367,10 +369,11 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[])
 }
 
 const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
-export const usePluginTaskList = () => {
+export const usePluginTaskList = (category?: PluginType) => {
   const {
     canManagement,
   } = usePermission()
+  const { refreshPluginList } = useRefreshPluginList()
   const {
     data,
     isFetched,
@@ -383,8 +386,12 @@ export const usePluginTaskList = () => {
     refetchInterval: (lastQuery) => {
       const lastData = lastQuery.state.data
       const taskDone = lastData?.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
-      if (taskDone)
+      const taskAllFailed = lastData?.tasks.every(task => task.status === TaskStatus.failed)
+      if (taskDone) {
+        if (lastData?.tasks.length && !taskAllFailed)
+          refreshPluginList(category ? { category } as any : undefined, !category)
         return false
+      }
 
       return 5000
     },

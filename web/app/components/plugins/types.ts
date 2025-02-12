@@ -151,6 +151,7 @@ export type Permissions = {
 }
 
 export type UpdateFromMarketPlacePayload = {
+  category: PluginType
   originalPackageInfo: {
     id: string
     payload: PluginDeclaration
@@ -173,6 +174,7 @@ export type UpdateFromGitHubPayload = {
 
 export type UpdatePluginPayload = {
   type: PluginSource
+  category: PluginType
   marketPlace?: UpdateFromMarketPlacePayload
   github?: UpdateFromGitHubPayload
 }

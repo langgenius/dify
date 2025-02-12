@@ -20,7 +20,7 @@ type Props = {
   payload: PluginDeclaration
   onCancel: () => void
   onStartToInstall?: () => void
-  onInstalled: () => void
+  onInstalled: (notRefresh?: boolean) => void
   onFailed: (message?: string) => void
 }
 
@@ -62,7 +62,7 @@ const Installed: FC<Props> = ({
     onCancel()
   }
 
-  const { handleRefetch } = usePluginTaskList()
+  const { handleRefetch } = usePluginTaskList(payload.category)
   const handleInstall = async () => {
     if (isInstalling) return
     setIsInstalling(true)
@@ -92,7 +92,7 @@ const Installed: FC<Props> = ({
         onFailed(error)
         return
       }
-      onInstalled()
+      onInstalled(true)
     }
     catch (e) {
       if (typeof e === 'string') {
