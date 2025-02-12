@@ -2,6 +2,7 @@ import concurrent.futures
 import json
 from typing import Optional
 
+from configs import dify_config
 from flask import Flask, current_app
 from sqlalchemy.orm import load_only
 
@@ -51,7 +52,7 @@ class RetrievalService:
         exceptions: list[str] = []
 
         # Optimize multithreading with thread pools
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_WORKER) as executor:  # type: ignore
             futures = []
             if retrieval_method == "keyword_search":
                 futures.append(
