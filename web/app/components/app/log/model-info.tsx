@@ -64,6 +64,7 @@ const ModelInfo: FC<Props> = ({
           modelName={currentModel?.model}
         />
         <ModelName
+          className='max-w-[219px]'
           modelItem={currentModel!}
           showMode
         />
