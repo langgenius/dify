@@ -171,6 +171,7 @@ const translation = {
   metadata: {
     createMetadata: {
       title: '新建元数据',
+      back: '返回',
       type: '类型',
       name: '名称',
       namePlaceholder: '添加元数据名称',

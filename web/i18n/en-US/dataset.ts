@@ -171,6 +171,7 @@ const translation = {
   metadata: {
     createMetadata: {
       title: 'New Metadata',
+      back: 'Back',
       type: 'Type',
       name: 'Name',
       namePlaceholder: 'Add metadata name',

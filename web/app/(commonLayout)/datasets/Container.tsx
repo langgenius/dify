@@ -83,7 +83,7 @@ const Container = () => {
 
   return (
     <div ref={containerRef} className='grow relative flex flex-col bg-background-body overflow-y-auto scroll-container'>
-      <CreateModal onSave={(data) => { console.log(data) }} />
+      <CreateModal hasBack onSave={(data) => { console.log(data) }} />
       <div className='sticky top-0 flex justify-between pt-4 px-12 pb-2 leading-[56px] bg-background-body z-10 flex-wrap gap-y-2'>
         <TabSliderNew
           value={activeTab}

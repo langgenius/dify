@@ -7,15 +7,20 @@ import { DataType } from './types'
 import Field from './field'
 import OptionCard from '../../workflow/nodes/_base/components/option-card'
 import Input from '@/app/components/base/input'
+import { RiArrowLeftLine } from '@remixicon/react'
 
 const i18nPrefix = 'dataset.metadata.createMetadata'
 
 type Props = {
   onSave: (data: any) => void
+  hasBack?: boolean
+  onBack?: () => void
 }
 
 const CreateModal: FC<Props> = ({
   onSave,
+  hasBack,
+  onBack,
 }) => {
   const { t } = useTranslation()
   const [type, setType] = useState(DataType.string)
@@ -38,6 +43,13 @@ const CreateModal: FC<Props> = ({
       title={t(`${i18nPrefix}.title`)}
       onClose={() => { }}
       onConfirm={handleSave}
+      hideCloseBtn={hasBack}
+      beforeHeader={hasBack && (
+        <div className='relative left-[-4px] mb-1 flex items-center py-1 space-x-1 text-text-accent cursor-pointer' onClick={onBack}>
+          <RiArrowLeftLine className='size-4' />
+          <div className='system-xs-semibold-uppercase'>{t(`${i18nPrefix}.back`)}</div>
+        </div>
+      )}
     >
       <div className='space-y-3'>
         <Field label={t(`${i18nPrefix}.type`)}>
