@@ -68,6 +68,7 @@ services:
       SANDBOX_PORT: 8194
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
+      - ./volumes/sandbox/conf:/conf
     networks:
       - ssrf_proxy_network
 
