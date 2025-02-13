@@ -28,8 +28,24 @@ parameters:
       en_US: The Perplexity AI model to use for generating the response.
       zh_Hans: 用于生成响应的 Perplexity AI 模型。
     form: form
-    default: "llama-3.1-sonar-small-128k-online"
+    default: "sonar"
     options:
+      - value: sonar
+        label:
+          en_US: sonar
+          zh_Hans: sonar
+      - value: sonar-pro
+        label:
+          en_US: sonar-pro
+          zh_Hans: sonar-pro
+      - value: sonar-reasoning
+        label:
+          en_US: sonar-reasoning
+          zh_Hans: sonar-reasoning
+      - value: sonar-reasoning-pro
+        label:
+          en_US: sonar-reasoning-pro
+          zh_Hans: sonar-reasoning-pro
       - value: llama-3.1-sonar-small-128k-online
         label:
           en_US: llama-3.1-sonar-small-128k-online
