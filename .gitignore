@@ -177,6 +177,7 @@ docker/volumes/couchbase/*
 docker/volumes/oceanbase/*
 
 docker/nginx/conf.d/default.conf
+docker/nginx/conf.d/.htpasswd
 docker/nginx/ssl/*
 !docker/nginx/ssl/.gitkeep
 docker/middleware.env
