@@ -191,8 +191,8 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                     key=lambda x: x.get("score") or 0.0,
                     reverse=True,
                 )
-                for position, item in enumerate(retrieval_resource_list, start=1):
-                    item["position"] = position
+                for position, item in enumerate(retrieval_resource_list, start=1):  # type: ignore
+                    item["position"] = position  # type: ignore
                 for hit_callback in self.hit_callbacks:
                     hit_callback.return_retriever_resource_info(retrieval_resource_list)
             if document_context_list:
