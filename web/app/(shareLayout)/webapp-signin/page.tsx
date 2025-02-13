@@ -89,7 +89,7 @@ const WebSSOForm: FC = () => {
     }
 
     init()
-  }, [message, tokenFromUrl, handleSSOLogin, processTokenAndRedirect]) // Added dependencies to useEffect
+  }, [message, tokenFromUrl]) // Added dependencies to useEffect
 
   return (
     <div className="flex items-center justify-center h-full">

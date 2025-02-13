@@ -62,8 +62,6 @@ const DatasetCard = ({
         onSuccess()
     }
     catch (e: any) {
-      const res = await e.json()
-      notify({ type: 'error', message: res?.message || 'Unknown error' })
     }
     setShowConfirmDelete(false)
   }, [dataset.id, notify, onSuccess, t])
