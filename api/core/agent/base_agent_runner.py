@@ -329,6 +329,7 @@ class BaseAgentRunner(AppRunner):
         )
         if not updated_agent_thought:
             raise ValueError("agent thought not found")
+        agent_thought = updated_agent_thought
 
         if thought:
             agent_thought.thought = thought
