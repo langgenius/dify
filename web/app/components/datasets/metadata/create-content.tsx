@@ -1,29 +1,30 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
-import ModalLikeWrap from '../../base/modal-like-wrap'
-import { useTranslation } from 'react-i18next'
 import { DataType } from './types'
+import ModalLikeWrap from '../../base/modal-like-wrap'
 import Field from './field'
 import OptionCard from '../../workflow/nodes/_base/components/option-card'
 import Input from '@/app/components/base/input'
 import { RiArrowLeftLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 
 const i18nPrefix = 'dataset.metadata.createMetadata'
 
-type Props = {
+export type Props = {
   onSave: (data: any) => void
   hasBack?: boolean
   onBack?: () => void
 }
 
-const CreateModal: FC<Props> = ({
-  onSave,
+const CreateContent: FC<Props> = ({
   hasBack,
   onBack,
+  onSave,
 }) => {
   const { t } = useTranslation()
   const [type, setType] = useState(DataType.string)
+
   const handleTypeChange = useCallback((newType: DataType) => {
     return () => setType(newType)
   }, [setType])
@@ -38,6 +39,7 @@ const CreateModal: FC<Props> = ({
       name,
     })
   }, [onSave, type, name])
+
   return (
     <ModalLikeWrap
       title={t(`${i18nPrefix}.title`)}
@@ -82,4 +84,4 @@ const CreateModal: FC<Props> = ({
     </ModalLikeWrap>
   )
 }
-export default React.memo(CreateModal)
+export default React.memo(CreateContent)

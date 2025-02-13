@@ -20,7 +20,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
-import CreateModal from '@/app/components/datasets/metadata/create-modal'
+import CreateModal from '@/app/components/datasets/metadata/create-metadata-modal'
 // Services
 import { fetchDatasetApiBaseUrl } from '@/service/datasets'
 
@@ -83,7 +83,9 @@ const Container = () => {
 
   return (
     <div ref={containerRef} className='grow relative flex flex-col bg-background-body overflow-y-auto scroll-container'>
-      <CreateModal hasBack onSave={(data) => { console.log(data) }} />
+      <div className='ml-[600px] mt-[300px]'>
+        <CreateModal trigger={<Button className='w-[200px]'>open</Button>} hasBack onSave={(data) => { console.log(data) }} />
+      </div>
       <div className='sticky top-0 flex justify-between pt-4 px-12 pb-2 leading-[56px] bg-background-body z-10 flex-wrap gap-y-2'>
         <TabSliderNew
           value={activeTab}
