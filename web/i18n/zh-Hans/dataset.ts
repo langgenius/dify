@@ -168,6 +168,14 @@ const translation = {
   preprocessDocument: '{{num}} 个预处理文档',
   allKnowledge: '所有知识库',
   allKnowledgeDescription: '选择以显示该工作区内所有知识库。只有工作区所有者才能管理所有知识库。',
+  metadata: {
+    createMetadata: {
+      title: '新建元数据',
+      type: '类型',
+      name: '名称',
+      namePlaceholder: '添加元数据名称',
+    },
+  },
 }
 
 export default translation

@@ -168,6 +168,14 @@ const translation = {
   preprocessDocument: '{{num}} Preprocess Documents',
   allKnowledge: 'All Knowledge',
   allKnowledgeDescription: 'Select to display all knowledge in this workspace. Only the Workspace Owner can manage all knowledge.',
+  metadata: {
+    createMetadata: {
+      title: 'New Metadata',
+      type: 'Type',
+      name: 'Name',
+      namePlaceholder: 'Add metadata name',
+    },
+  },
 }
 
 export default translation

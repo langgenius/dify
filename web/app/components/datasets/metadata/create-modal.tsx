@@ -8,6 +8,8 @@ import Field from './field'
 import OptionCard from '../../workflow/nodes/_base/components/option-card'
 import Input from '@/app/components/base/input'
 
+const i18nPrefix = 'dataset.metadata.createMetadata'
+
 type Props = {
   onSave: (data: any) => void
 }
@@ -33,12 +35,12 @@ const CreateModal: FC<Props> = ({
   }, [onSave, type, name])
   return (
     <ModalLikeWrap
-      title='Create'
+      title={t(`${i18nPrefix}.title`)}
       onClose={() => { }}
       onConfirm={handleSave}
     >
       <div className='space-y-3'>
-        <Field label='Type'>
+        <Field label={t(`${i18nPrefix}.type`)}>
           <div className='grid grid-cols-3 gap-2'>
             <OptionCard
               title='String'
@@ -57,11 +59,11 @@ const CreateModal: FC<Props> = ({
             />
           </div>
         </Field>
-        <Field label='Name'>
+        <Field label={t(`${i18nPrefix}.name`)}>
           <Input
             value={name}
             onChange={handleNameChange}
-            placeholder='Add metadata name'
+            placeholder={t(`${i18nPrefix}.namePlaceholder`)}
           />
         </Field>
       </div>
