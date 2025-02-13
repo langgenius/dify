@@ -112,10 +112,13 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     if (userProfileResponse && !userProfileResponse.bodyUsed) {
       const result = await userProfileResponse.json()
       setUserProfile(result)
-      const current_version = userProfileResponse.headers.get('x-version')
-      const current_env = process.env.NODE_ENV === 'development' ? 'DEVELOPMENT' : userProfileResponse.headers.get('x-env')
-      const versionData = await fetchLanggeniusVersion({ url: '/version', params: { current_version } })
-      setLangeniusVersionInfo({ ...versionData, current_version, latest_version: versionData.version, current_env })
+
+      if (process.env.NEXT_PUBLIC_SITE_ABOUT !== 'hide' && document?.body?.getAttribute('data-public-site-about') !== 'hide') {
+        const current_version = userProfileResponse.headers.get('x-version')
+        const current_env = process.env.NODE_ENV === 'development' ? 'DEVELOPMENT' : userProfileResponse.headers.get('x-env')
+        const versionData = await fetchLanggeniusVersion({ url: '/version', params: { current_version } })
+        setLangeniusVersionInfo({ ...versionData, current_version, latest_version: versionData.version, current_env })
+      }
     }
   }, [userProfileResponse])
 
