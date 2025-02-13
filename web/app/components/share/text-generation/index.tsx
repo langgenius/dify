@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  RiBookmark3Line,
   RiErrorWarningFill,
 } from '@remixicon/react'
 import { useBoolean, useClickAway } from 'ahooks'
@@ -11,10 +12,9 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import TabHeader from '../../base/tab-header'
 import Button from '../../base/button'
 import { checkOrSetAccessToken } from '../utils'
-import s from './style.module.css'
+import MenuDropdown from './menu-dropdown'
 import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
-import cn from '@/utils/classnames'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import RunOnce from '@/app/components/share/text-generation/run-once'
 import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage } from '@/service/share'
@@ -26,6 +26,7 @@ import type {
   TextToSpeechConfig,
 } from '@/models/debug'
 import AppIcon from '@/app/components/base/app-icon'
+import Badge from '@/app/components/base/badge'
 import { changeLanguage } from '@/i18n/i18next-config'
 import Loading from '@/app/components/base/loading'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
@@ -37,6 +38,8 @@ import Toast from '@/app/components/base/toast'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Resolution, TransferMethod } from '@/types/app'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
+import LogoSite from '@/app/components/base/logo/logo-site'
+import cn from '@/utils/classnames'
 
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
@@ -102,6 +105,7 @@ const TextGeneration: FC<IMainProps> = ({
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
+  const [customConfig, setCustomConfig] = useState<Record<string, any> | null>(null)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
   const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
@@ -388,10 +392,11 @@ const TextGeneration: FC<IMainProps> = ({
   useEffect(() => {
     (async () => {
       const [appData, appParams]: any = await fetchInitData()
-      const { app_id: appId, site: siteInfo, can_replace_logo } = appData
+      const { app_id: appId, site: siteInfo, can_replace_logo, custom_config } = appData
       setAppId(appId)
       setSiteInfo(siteInfo as SiteInfo)
       setCanReplaceLogo(can_replace_logo)
+      setCustomConfig(custom_config)
       changeLanguage(siteInfo.default_language)
 
       const { user_input_form, more_like_this, file_upload, text_to_speech }: any = appParams
@@ -472,70 +477,60 @@ const TextGeneration: FC<IMainProps> = ({
     return (showTaskList.map(task => renderRes(task)))
   }
 
-  const resWrapClassNames = (() => {
-    if (isPC)
-      return 'grow h-full'
-
-    if (!isShowResSidebar)
-      return 'none'
-
-    return cn('fixed z-50 inset-0', isTablet ? 'pl-[128px]' : 'pl-6')
-  })()
-
   const renderResWrap = (
     <div
       ref={resRef}
-      className={
-        cn(
-          'flex flex-col h-full shrink-0',
-          isPC ? 'px-10 py-8' : 'bg-gray-50',
-          isTablet && 'p-6', isMobile && 'p-4')
-      }
+      className={cn(
+        'flex flex-col h-full shrink-0 bg-chatbot-bg overflow-y-auto',
+        isPC && 'px-14 py-8',
+        isTablet && 'p-6',
+        isMobile && 'p-0',
+      )}
     >
       <>
-        <div className='flex items-center justify-between shrink-0'>
-          <div className='flex items-center space-x-3'>
-            <div className={s.starIcon}></div>
-            <div className='text-lg font-semibold text-gray-800'>{t('share.generation.title')}</div>
-          </div>
-          <div className='flex items-center space-x-2'>
-            {allFailedTaskList.length > 0 && (
-              <div className='flex items-center'>
-                <RiErrorWarningFill className='w-4 h-4 text-[#D92D20]' />
-                <div className='ml-1 text-[#D92D20]'>{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
-                <Button
-                  variant='primary'
-                  className='ml-2'
-                  onClick={handleRetryAllFailedTask}
-                >{t('share.generation.batchFailed.retry')}</Button>
-                <div className='mx-3 w-[1px] h-3.5 bg-gray-200'></div>
-              </div>
-            )}
-            {allSuccessTaskList.length > 0 && (
-              <ResDownload
-                isMobile={isMobile}
-                values={exportRes}
-              />
-            )}
-            {!isPC && (
-              <div
-                className='flex items-center justify-center cursor-pointer'
-                onClick={hideResSidebar}
-              >
-                <XMarkIcon className='w-4 h-4 text-gray-800' />
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className='overflow-y-auto grow'>
-          {!isCallBatchAPI ? renderRes() : renderBatchRes()}
-          {!noPendingTask && (
-            <div className='mt-4'>
-              <Loading type='area' />
+        {/* TODO  */}
+        {false && (
+          <div className='flex items-center justify-between shrink-0'>
+            <div className='flex items-center space-x-3'>
+              {/* <div className={s.starIcon}></div> */}
+              {/* <div className='text-lg font-semibold text-gray-800'>{t('share.generation.title')}</div> */}
             </div>
-          )}
-        </div>
+            <div className='flex items-center space-x-2'>
+              {allFailedTaskList.length > 0 && (
+                <div className='flex items-center'>
+                  <RiErrorWarningFill className='w-4 h-4 text-[#D92D20]' />
+                  <div className='ml-1 text-[#D92D20]'>{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
+                  <Button
+                    variant='primary'
+                    className='ml-2'
+                    onClick={handleRetryAllFailedTask}
+                  >{t('share.generation.batchFailed.retry')}</Button>
+                  <div className='mx-3 w-[1px] h-3.5 bg-gray-200'></div>
+                </div>
+              )}
+              {allSuccessTaskList.length > 0 && (
+                <ResDownload
+                  isMobile={isMobile}
+                  values={exportRes}
+                />
+              )}
+              {!isPC && (
+                <div
+                  className='flex items-center justify-center cursor-pointer'
+                  onClick={hideResSidebar}
+                >
+                  <XMarkIcon className='w-4 h-4 text-gray-800' />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {!isCallBatchAPI ? renderRes() : renderBatchRes()}
+        {!noPendingTask && (
+          <div className='mt-4'>
+            <Loading type='area' />
+          </div>
+        )}
       </>
     </div>
   )
@@ -548,46 +543,33 @@ const TextGeneration: FC<IMainProps> = ({
   }
 
   return (
-    <>
+    <div className={cn(
+      isPC && 'flex',
+      isInstalledApp ? 'h-full rounded-2xl shadow-md' : 'h-screen',
+      'bg-background-default-burn',
+    )}>
+      {/* Left */}
       <div className={cn(
-        isPC && 'flex',
-        isInstalledApp ? s.installedApp : 'h-screen',
-        'bg-gray-50',
+        'shrink-0 relative flex flex-col h-full bg-components-panel-bg',
+        isPC ? 'w-[600px] max-w-[50%]' : '',
+        isInstalledApp && 'rounded-l-2xl',
       )}>
-        {/* Left */}
-        <div className={cn(
-          isPC ? 'w-[600px] max-w-[50%] p-8' : 'p-4',
-          isInstalledApp && 'rounded-l-2xl',
-          'shrink-0 relative flex flex-col pb-10 h-full border-r border-gray-100 bg-white',
-        )}>
-          <div className='mb-6'>
-            <div className='flex items-center justify-between'>
-              <div className='flex items-center space-x-3'>
-                <AppIcon
-                  size="small"
-                  iconType={siteInfo.icon_type}
-                  icon={siteInfo.icon}
-                  background={siteInfo.icon_background || appDefaultIconBackground}
-                  imageUrl={siteInfo.icon_url}
-                />
-                <div className='text-lg font-semibold text-gray-800'>{siteInfo.title}</div>
-              </div>
-              {!isPC && (
-                <Button
-                  className='shrink-0 ml-2'
-                  onClick={showResSidebar}
-                >
-                  <div className='flex items-center space-x-2 text-primary-600 text-[13px] font-medium'>
-                    <div className={s.starIcon}></div>
-                    <span>{t('share.generation.title')}</span>
-                  </div>
-                </Button>
-              )}
-            </div>
-            {siteInfo.description && (
-              <div className='mt-2 text-xs text-gray-500'>{siteInfo.description}</div>
-            )}
+        {/* header */}
+        <div className={cn('shrink-0 space-y-4 border-b border-divider-subtle', isPC ? 'p-8 pb-0' : 'p-4 pb-0 bg-background-default-burn')}>
+          <div className='flex items-center gap-3'>
+            <AppIcon
+              size={isPC ? 'large' : 'small'}
+              iconType={siteInfo.icon_type}
+              icon={siteInfo.icon}
+              background={siteInfo.icon_background || appDefaultIconBackground}
+              imageUrl={siteInfo.icon_url}
+            />
+            <div className='grow text-text-secondary system-md-semibold truncate'>{siteInfo.title}</div>
+            <MenuDropdown data={siteInfo} />
           </div>
+          {siteInfo.description && (
+            <div className='system-xs-regular text-text-tertiary'>{siteInfo.description}</div>
+          )}
           <TabHeader
             items={[
               { id: 'create', name: t('share.generation.tabs.create') },
@@ -597,11 +579,12 @@ const TextGeneration: FC<IMainProps> = ({
                   id: 'saved',
                   name: t('share.generation.tabs.saved'),
                   isRight: true,
+                  icon: <RiBookmark3Line className='w-4 h-4' />,
                   extra: savedMessages.length > 0
                     ? (
-                      <div className='ml-1 flex items-center h-5 px-1.5 rounded-md border border-gray-200 text-gray-500 text-xs font-medium'>
+                      <Badge className='ml-1'>
                         {savedMessages.length}
-                      </div>
+                      </Badge>
                     )
                     : null,
                 }]
@@ -610,72 +593,66 @@ const TextGeneration: FC<IMainProps> = ({
             value={currentTab}
             onChange={setCurrentTab}
           />
-          <div className='h-20 overflow-y-auto grow'>
-            <div className={cn(currentTab === 'create' ? 'block' : 'hidden')}>
-              <RunOnce
-                siteInfo={siteInfo}
-                inputs={inputs}
-                inputsRef={inputsRef}
-                onInputsChange={setInputs}
-                promptConfig={promptConfig}
-                onSend={handleSend}
-                visionConfig={visionConfig}
-                onVisionFilesChange={setCompletionFiles}
-              />
-            </div>
-            <div className={cn(isInBatchTab ? 'block' : 'hidden')}>
-              <RunBatch
-                vars={promptConfig.prompt_variables}
-                onSend={handleRunBatch}
-                isAllFinished={allTasksRun}
-              />
-            </div>
-
-            {currentTab === 'saved' && (
-              <SavedItems
-                className='mt-4'
-                isShowTextToSpeech={textToSpeechConfig?.enabled}
-                list={savedMessages}
-                onRemove={handleRemoveSavedMessage}
-                onStartCreateContent={() => setCurrentTab('create')}
-              />
-            )}
+        </div>
+        {/* form */}
+        <div className={cn('grow h-0 overflow-y-auto', isPC ? 'px-8' : 'px-4')}>
+          <div className={cn(currentTab === 'create' ? 'block' : 'hidden')}>
+            <RunOnce
+              siteInfo={siteInfo}
+              inputs={inputs}
+              inputsRef={inputsRef}
+              onInputsChange={setInputs}
+              promptConfig={promptConfig}
+              onSend={handleSend}
+              visionConfig={visionConfig}
+              onVisionFilesChange={setCompletionFiles}
+            />
+          </div>
+          <div className={cn(isInBatchTab ? 'block' : 'hidden')}>
+            <RunBatch
+              vars={promptConfig.prompt_variables}
+              onSend={handleRunBatch}
+              isAllFinished={allTasksRun}
+            />
           </div>
 
-          {/* copyright */}
-          <div className={cn(
-            isInstalledApp ? 'left-[248px]' : 'left-8',
-            'fixed  bottom-4  flex space-x-2 text-gray-400 font-normal text-xs',
-          )}>
-            {siteInfo.copyright && (
-              <div className="">© {(new Date()).getFullYear()} {siteInfo.copyright}</div>
+          {currentTab === 'saved' && (
+            <SavedItems
+              className={cn(isPC ? 'mt-6' : 'mt-4')}
+              list={savedMessages}
+              onRemove={handleRemoveSavedMessage}
+              onStartCreateContent={() => setCurrentTab('create')}
+            />
+          )}
+        </div>
+        {/* powered by */}
+        {!customConfig?.remove_webapp_brand && (
+          <div className={cn('shrink-0 py-3 flex items-center gap-1.5', isPC ? 'px-8' : 'px-4')}>
+            <div className='text-text-tertiary system-2xs-medium-uppercase'>{t('share.chat.poweredBy')}</div>
+            {customConfig?.replace_webapp_logo && (
+              <img src={customConfig?.replace_webapp_logo} alt='logo' className='block w-auto h-5' />
             )}
-            {siteInfo.privacy_policy && (
-              <>
-                {siteInfo.copyright && <div>·</div>}
-                <div>{t('share.chat.privacyPolicyLeft')}
-                  <a
-                    className='text-gray-500 px-1'
-                    href={siteInfo.privacy_policy}
-                    target='_blank' rel='noopener noreferrer'>{t('share.chat.privacyPolicyMiddle')}</a>
-                  {t('share.chat.privacyPolicyRight')}
-                </div>
-              </>
+            {!customConfig?.replace_webapp_logo && (
+              <LogoSite className='!h-5' />
             )}
           </div>
-        </div>
-
-        {/* Result */}
-        <div
-          className={resWrapClassNames}
-          style={{
-            background: (!isPC && isShowResSidebar) ? 'rgba(35, 56, 118, 0.2)' : 'none',
-          }}
-        >
-          {renderResWrap}
-        </div>
+        )}
       </div>
-    </>
+
+      {/* Result */}
+      <div
+        className={cn(
+          !isPC ? 'fixed z-50 inset-0' : 'grow h-full',
+          isTablet && 'pl-[128px]',
+          isMobile && 'pl-6',
+        )}
+        style={{
+          background: (!isPC && isShowResSidebar) ? 'rgba(35, 56, 118, 0.2)' : 'none',
+        }}
+      >
+        {renderResWrap}
+      </div>
+    </div>
   )
 }
 

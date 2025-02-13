@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
 import produce from 'immer'
-import cn from '@/utils/classnames'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
 import NoData from '@/app/components/share/text-generation/no-data'
 import Toast from '@/app/components/base/toast'
@@ -24,7 +23,7 @@ import {
   getFilesInLogs,
 } from '@/app/components/base/file-uploader/utils'
 
-export interface IResultProps {
+export type IResultProps = {
   isWorkflow: boolean
   isCallBatchAPI: boolean
   isPC: boolean
@@ -398,7 +397,7 @@ const Result: FC<IResultProps> = ({
   )
 
   return (
-    <div className={cn(isNoData && !isCallBatchAPI && 'h-full')}>
+    <>
       {!isCallBatchAPI && !isWorkflow && (
         (isResponding && !completionRes)
           ? (
@@ -414,25 +413,23 @@ const Result: FC<IResultProps> = ({
             </>
           )
       )}
-      {
-        !isCallBatchAPI && isWorkflow && (
-          (isResponding && !workflowProcessData)
-            ? (
-              <div className='flex h-full w-full justify-center items-center'>
-                <Loading type='area' />
-              </div>
-            )
-            : !workflowProcessData
-              ? <NoData />
-              : renderTextGenerationRes()
-        )
-      }
+      {!isCallBatchAPI && isWorkflow && (
+        (isResponding && !workflowProcessData)
+          ? (
+            <div className='flex h-full w-full justify-center items-center'>
+              <Loading type='area' />
+            </div>
+          )
+          : !workflowProcessData
+            ? <NoData />
+            : renderTextGenerationRes()
+      )}
       {isCallBatchAPI && (
         <div className='mt-2'>
           {renderTextGenerationRes()}
         </div>
       )}
-    </div>
+    </>
   )
 }
 export default React.memo(Result)

@@ -31,9 +31,9 @@ const ResDownload: FC<IResDownloadProps> = ({
       }}
       data={values}
     >
-      <Button className={cn('space-x-2 bg-white', isMobile ? '!p-0 !w-8 justify-center' : '')}>
-        <DownloadIcon className='w-4 h-4 text-[#155EEF]' />
-        {!isMobile && <span className='text-[#155EEF]'>{t('common.operation.download')}</span>}
+      <Button variant='secondary-accent' className={cn('space-x-2')}>
+        <DownloadIcon className='w-4 h-4' />
+        {!isMobile && <span>{t('common.operation.download')}</span>}
       </Button>
     </CSVDownloader>
   )
