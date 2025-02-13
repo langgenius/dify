@@ -73,7 +73,7 @@ type IExtraInfoProps = {
 
 const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
   const locale = getLocaleOnClient()
-  const [isShowTips, { toggle: toggleTips, set: setShowTips }] = useBoolean(!isMobile)
+  const [, { set: setShowTips }] = useBoolean(!isMobile)
   const { t } = useTranslation()
 
   const hasRelatedApps = relatedApps?.data && relatedApps?.data?.length > 0

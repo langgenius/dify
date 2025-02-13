@@ -62,7 +62,7 @@ const Datasets = ({
   useEffect(() => {
     loadingStateRef.current = isLoading
     document.title = `${t('dataset.knowledge')} - Dify`
-  }, [isLoading])
+  }, [isLoading, t])
 
   useEffect(() => {
     const onScroll = debounce(() => {
@@ -76,7 +76,7 @@ const Datasets = ({
 
     containerRef.current?.addEventListener('scroll', onScroll)
     return () => containerRef.current?.removeEventListener('scroll', onScroll)
-  }, [])
+  }, [containerRef, setSize])
 
   return (
     <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
