@@ -267,22 +267,7 @@ class QuestionClassifierNode(LLMNode):
                 role=PromptMessageRole.SYSTEM, text=QUESTION_CLASSIFIER_SYSTEM_PROMPT.format(histories=memory_str)
             )
             prompt_messages.append(system_prompt_messages)
-            user_prompt_message_1 = LLMNodeChatModelMessage(
-                role=PromptMessageRole.USER, text=QUESTION_CLASSIFIER_USER_PROMPT_1
-            )
-            prompt_messages.append(user_prompt_message_1)
-            assistant_prompt_message_1 = LLMNodeChatModelMessage(
-                role=PromptMessageRole.ASSISTANT, text=QUESTION_CLASSIFIER_ASSISTANT_PROMPT_1
-            )
-            prompt_messages.append(assistant_prompt_message_1)
-            user_prompt_message_2 = LLMNodeChatModelMessage(
-                role=PromptMessageRole.USER, text=QUESTION_CLASSIFIER_USER_PROMPT_2
-            )
-            prompt_messages.append(user_prompt_message_2)
-            assistant_prompt_message_2 = LLMNodeChatModelMessage(
-                role=PromptMessageRole.ASSISTANT, text=QUESTION_CLASSIFIER_ASSISTANT_PROMPT_2
-            )
-            prompt_messages.append(assistant_prompt_message_2)
+            
             user_prompt_message_3 = LLMNodeChatModelMessage(
                 role=PromptMessageRole.USER,
                 text=QUESTION_CLASSIFIER_USER_PROMPT_3.format(
