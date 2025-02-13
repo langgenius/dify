@@ -166,9 +166,9 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                 source = {
                                     "dataset_id": dataset.id,
                                     "dataset_name": dataset.name,
-                                    "document_id": document.id,# type: ignore
-                                    "document_name": document.name,# type: ignore
-                                    "data_source_type": document.data_source_type,# type: ignore
+                                    "document_id": document.id,  # type: ignore
+                                    "document_name": document.name,  # type: ignore
+                                    "data_source_type": document.data_source_type,  # type: ignore
                                     "segment_id": segment.id,
                                     "retriever_from": self.retriever_from,
                                     "score": record.score or 0.0,
