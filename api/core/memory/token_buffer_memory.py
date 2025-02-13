@@ -1,5 +1,6 @@
 from collections.abc import Sequence
-from typing import Optional
+from typing import Optional, cast
+import re
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.file import file_manager
@@ -127,6 +128,8 @@ class TokenBufferMemory:
                 pruned_memory.append(prompt_messages.pop(0))
                 curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
 
+        self.delete_think_content(prompt_messages)
+        
         return prompt_messages
 
     def get_history_prompt_text(
@@ -169,3 +172,13 @@ class TokenBufferMemory:
                 string_messages.append(message)
 
         return "\n".join(string_messages)
+
+    def delete_think_content(self, msgs: Sequence[PromptMessage]):
+        """
+        Delete the thinking process in the chat history. The content is as follows: <think>......</think>
+        """
+        for msg in msgs:
+            if isinstance(msg, AssistantPromptMessage):
+                msg = cast(AssistantPromptMessage, msg)
+                if msg.content and isinstance(msg.content, str):
+                    msg.content = re.sub(r"<think>.*?</think>", "", msg.content, flags=re.DOTALL).strip()
