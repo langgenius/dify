@@ -50,9 +50,12 @@ class GithubRepositoriesTool(BuiltinTool):
                         updated_at_object = datetime.strptime(item["updated_at"], "%Y-%m-%dT%H:%M:%SZ")
                         content["owner"] = item["owner"]["login"]
                         content["name"] = item["name"]
-                        content["description"] = (
-                            item["description"][:100] + "..." if len(item["description"]) > 100 else item["description"]
-                        )
+                        if item["description"] is not None:
+                            content["description"] = (
+                               item["description"][:100] + "..." if len(item["description"]) > 100 else item["description"]
+                            )
+                        else:
+                            content["description"] = ""
                         content["url"] = item["html_url"]
                         content["star"] = item["watchers"]
                         content["forks"] = item["forks"]
