@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
 import type {
   ModelItem,
   ModelProvider,
@@ -13,7 +12,6 @@ import {
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import ConfigurationButton from './configuration-button'
 import Loading from '@/app/components/base/loading'
-import { PluginType } from '@/app/components/plugins/types'
 import {
   useModelModalHandler,
   useUpdateModelList,
@@ -26,8 +24,7 @@ import StatusIndicators from './status-indicators'
 import cn from '@/utils/classnames'
 import { useProviderContext } from '@/context/provider-context'
 import { RiEqualizer2Line } from '@remixicon/react'
-import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
-import { fetchModelProviderModelList } from '@/service/common'
+import { useModelInList, usePluginInfo } from '@/service/use-plugins'
 
 export type AgentModelTriggerProps = {
   open?: boolean
@@ -70,38 +67,8 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const handleOpenModal = useModelModalHandler()
 
-  const { data: inModelList = false } = useQuery({
-    queryKey: ['modelInList', currentProvider?.provider, modelId],
-    queryFn: async () => {
-      if (!modelId || !currentProvider) return false
-      try {
-        const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${currentProvider?.provider}/models`)
-        return !!modelId && !!modelsData.data.find(item => item.model === modelId)
-      }
-      catch (error) {
-        return false
-      }
-    },
-    enabled: !!modelId && !!currentProvider,
-  })
-
-  const { data: pluginInfo, isLoading: isPluginLoading } = useQuery({
-    queryKey: ['pluginInfo', providerName],
-    queryFn: async () => {
-      if (!providerName) return null
-      const parts = providerName.split('/')
-      const org = parts[0]
-      const name = parts[1]
-      try {
-        const response = await fetchPluginInfoFromMarketPlace({ org, name })
-        return response.data.plugin.category === PluginType.model ? response.data.plugin : null
-      }
-      catch (error) {
-        return null
-      }
-    },
-    enabled: !!providerName,
-  })
+  const { data: inModelList = false } = useModelInList(currentProvider, modelId)
+  const { data: pluginInfo, isLoading: isPluginLoading } = usePluginInfo(providerName)
 
   if (modelId && isPluginLoading)
     return <Loading />
