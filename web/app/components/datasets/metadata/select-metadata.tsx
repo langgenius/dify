@@ -61,10 +61,12 @@ const SelectMetadata: FC<Props> = ({
           <RiAddLine className='size-3.5' />
           <div className='system-sm-medium'>New Metadata</div>
         </div>
-        <div className='flex items-center h-6 px-1.5 text-text-secondary rounded-md hover:bg-state-base-hover cursor-pointer space-x-1' onClick={onManage}>
-          <div className='mr-[9px] w-px h-3 bg-divider-regular'></div>
-          <div className='mr-1 system-sm-medium'>Manage</div>
-          <RiArrowRightUpLine className='size-3.5' />
+        <div className='flex items-center h-6 text-text-secondary '>
+          <div className='mr-[3px] w-px h-3 bg-divider-regular'></div>
+          <div className='flex h-full items-center px-1.5 hover:bg-state-base-hover rounded-md cursor-pointer' onClick={onManage}>
+            <div className='mr-1 system-sm-medium'>Manage</div>
+            <RiArrowRightUpLine className='size-3.5' />
+          </div>
         </div>
       </div>
     </div>
