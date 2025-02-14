@@ -246,7 +246,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         return self._handle_invoke_result(invoke_result=invoke_result)
 
     def _handle_invoke_result(self, invoke_result: LLMResult | Generator) -> Generator[NodeEvent, None, None]:
-         if isinstance(invoke_result, LLMResult):
+        if isinstance(invoke_result, LLMResult):
             content = invoke_result.message.content
             if content is None:
                 message_text = ""
