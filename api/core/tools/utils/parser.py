@@ -184,6 +184,8 @@ class ApiBasedToolSchemaParser:
             return ToolParameter.ToolParameterType.NUMBER
         elif typ == "boolean":
             return ToolParameter.ToolParameterType.BOOLEAN
+        elif typ == "object":
+            return ToolParameter.ToolParameterType.OBJECT
         elif typ == "string":
             return ToolParameter.ToolParameterType.STRING
         else:
