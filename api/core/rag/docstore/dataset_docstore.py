@@ -115,6 +115,7 @@ class DatasetDocumentStore:
                     tokens=tokens,
                     enabled=False,
                     created_by=self._user_id,
+                    page_number=doc.metadata.get("page", 0),
                 )
                 if doc.metadata.get("answer"):
                     segment_document.answer = doc.metadata.pop("answer", "")
