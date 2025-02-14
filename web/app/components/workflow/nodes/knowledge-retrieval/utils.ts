@@ -167,9 +167,6 @@ export const getMultipleRetrievalConfig = (
         }
       }
     }
-    else {
-      result.reranking_enable = true
-    }
   }
 
   if (allHighQuality && !inconsistentEmbeddingModel && allInternal) {
