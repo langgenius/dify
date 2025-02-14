@@ -1,0 +1,156 @@
+identity:
+  name: cogvideox
+  author: 刘江波
+  label:
+    en_US: CogVideoX
+    zh_Hans: CogVideoX 视频生成
+description:
+  human:
+    en_US: Use the CogVideoX model provided by ZhipuAI to generate videos based on user prompts and images.
+    zh_Hans: 使用智谱AI CogVideoX 模型，根据用户输入的提示词和图片，生成视频。
+  llm: A tool for generating videos. The input is user's prompt or image url or both of them, the output is a task id. You can use another tool with this task id to check the status and get the video.
+parameters:
+  - name: model
+    type: select
+    required: true
+    label:
+      en_US: model
+      zh_Hans: 模型
+    form: form
+    options:
+      - value: cogvideox-2
+        label:
+          en_US: cogvideox-2
+          zh_Hans: cogvideox-2
+      - value: cogvideox-flash
+        label:
+          en_US: cogvideox-flash(free)
+          zh_Hans: cogvideox-flash(免费)
+    default: cogvideox-flash
+
+  - name: prompt
+    type: string
+    label:
+      en_US: prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: The prompt text used to generate video.
+      zh_Hans: 用于生成视频的提示词。
+    llm_description: The prompt text used to generate video. Optional.
+    form: llm
+
+  - name: quality
+    type: select
+    required: false
+    label:
+      en_US: quality
+      zh_Hans: 输出模式
+    form: form
+    options:
+      - value: quality
+        label:
+          en_US: quality
+          zh_Hans: 质量优先
+      - value: speed
+        label:
+          en_US: speed
+          zh_Hans: 速度优先
+    default: speed
+
+  - name: with_audio
+    type: boolean
+    required: false
+    label:
+      en_US: Whether to generate AI audio
+      zh_Hans: 是否生成 AI 音效
+    llm_description: Whether to generate AI audio. Optional.
+    form: form
+    default: false
+
+  - name: image_url
+    type: string
+    label:
+      en_US: image url
+      zh_Hans: 图片链接
+    human_description:
+      en_US: The image url used to generate video.
+      zh_Hans: 提供基于其生成内容的图像。如果传入此参数，系统将以该图像为基础进行操作。图片要求如下：图片支持.png、jpeg、.jpg 格式、图片大小：不超过5M。
+    llm_description: The image url used to generate video. Optional.
+    form: llm
+
+  - name: size
+    type: select
+    required: false
+    human_description:
+      en_US: selecting the video size
+      zh_Hans: 若不指定，默认生成视频的短边为 1080，长边根据原图片比例缩放。最高支持 4K 分辨率。
+    label:
+      en_US: Video Size
+      zh_Hans: 分辨率
+    form: form
+    options:
+      - value: 720x480
+        label:
+          en_US: 720x480
+          zh_Hans: 720x480
+      - value: 1024x1024
+        label:
+          en_US: 1024x1024
+          zh_Hans: 1024x1024
+      - value: 1280x960
+        label:
+          en_US: 1280x960
+          zh_Hans: 1280x960
+      - value: 960x1280
+        label:
+          en_US: 960x1280
+          zh_Hans: 960x1280
+      - value: 1920x1080
+        label:
+          en_US: 1920x1080
+          zh_Hans: 1920x1080
+      - value: 1080x1920
+        label:
+          en_US: 1080x1920
+          zh_Hans: 1080x1920
+      - value: 2048x1080
+        label:
+          en_US: 2048x1080
+          zh_Hans: 2048x1080
+      - value: 3840x2160
+        label:
+          en_US: 3840x2160
+          zh_Hans: 3840x2160
+    default: 1920x1080
+
+  - name: fps
+    type: select
+    required: false
+    human_description:
+      en_US: selecting the FPS
+      zh_Hans: 视频帧率（FPS），可选值为 30 或 60。
+    label:
+      en_US: FPS
+      zh_Hans: 视频帧率
+    form: form
+    options:
+      - value: 30
+        label:
+          en_US: "30"
+          zh_Hans: "30"
+      - value: 60
+        label:
+          en_US: "60"
+          zh_Hans: "60"
+    default: 30
+
+  - name: timeout
+    type: number
+    required: false
+    label:
+      en_US: timeout(s)
+      zh_Hans: 超时时间(s)
+    form: form
+    min: 1
+    max: 600
+    default: 180
