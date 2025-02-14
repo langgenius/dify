@@ -20,9 +20,9 @@ class SlideSpeakProvider(BuiltinToolProviderController):
 
         headers = {"Content-Type": "application/json", "X-API-Key": api_key}
 
-        test_task_id = "xxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-        url = f"{base_url or 'https://api.slidespeak.co/api/v1'}/task_status/{test_task_id}"
+
+        url = f"{base_url or 'https://api.slidespeak.co/api/v1'}/me"
 
         response = requests.get(url, headers=headers)
         if response.status_code != 200:
-            raise ToolProviderCredentialValidationError("Invalid SlidePeak API key")
+            raise ToolProviderCredentialValidationError("Invalid SlideSpeak API key")
