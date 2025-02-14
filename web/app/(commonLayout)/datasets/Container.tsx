@@ -85,6 +85,7 @@ const Container = () => {
       return router.replace('/apps')
   }, [currentWorkspace, router])
 
+  const [isBuiltInEnabled, setIsBuiltInEnabled] = useState(false)
   const [userMetadata, setUserMetadata] = useState([
     { id: '1', name: 'name1', type: DataType.string, valueLength: 1 },
     { id: '2', name: 'name2', type: DataType.number, valueLength: 2 },
@@ -107,8 +108,8 @@ const Container = () => {
             { id: '2', name: 'name2', type: DataType.number, valueLength: 2 },
             { id: '3', name: 'name3', type: DataType.time, valueLength: 3 },
           ]}
-          isBuiltInEnabled={false}
-          onIsBuiltInEnabledChange={() => { }}
+          isBuiltInEnabled={isBuiltInEnabled}
+          onIsBuiltInEnabledChange={setIsBuiltInEnabled}
           onClose={() => { }}
         />
       </div>

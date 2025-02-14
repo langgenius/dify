@@ -61,7 +61,7 @@ export default function Drawer({
                 {title}
               </Dialog.Title>}
               {showClose && <Dialog.Title className="flex items-center mb-4" as="div">
-                <XMarkIcon className='w-4 h-4 text-text-tertiary' onClick={onClose} />
+                <XMarkIcon className='w-4 h-4 text-text-tertiary cursor-pointer' onClick={onClose} />
               </Dialog.Title>}
             </div>
 

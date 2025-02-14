@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import type { MetadataItemWithValueLength } from './types'
 import Drawer from '../../base/drawer'
 import Button from '@/app/components/base/button'
@@ -15,6 +15,8 @@ import produce from 'immer'
 import Switch from '../../base/switch'
 import Tooltip from '../../base/tooltip'
 import CreateModal from '@/app/components/datasets/metadata/create-metadata-modal'
+import { useBoolean, useHover } from 'ahooks'
+import Confirm from '@/app/components/base/confirm'
 
 const i18nPrefix = 'dataset.metadata.datasetMetadata'
 
@@ -29,12 +31,14 @@ type Props = {
 
 type ItemProps = {
   readonly?: boolean
+  disabled?: boolean
   payload: MetadataItemWithValueLength
   onRename?: () => void
   onDelete?: () => void
 }
 const Item: FC<ItemProps> = ({
   readonly,
+  disabled,
   payload,
   onRename,
   onDelete,
@@ -45,25 +49,56 @@ const Item: FC<ItemProps> = ({
     onRename?.()
   }, [onRename])
 
+  const deleteBtnRef = useRef<HTMLDivElement>(null)
+  const isDeleteHovering = useHover(deleteBtnRef)
+  const [isShowDeleteConfirm, {
+    setTrue: showDeleteConfirm,
+    setFalse: hideDeleteConfirm,
+  }] = useBoolean(false)
   const handleDelete = useCallback(() => {
+    hideDeleteConfirm()
     onDelete?.()
-  }, [onDelete])
+  }, [hideDeleteConfirm, onDelete])
 
   return (
     <div
       key={payload.id}
-      className={cn(!readonly && 'group/item', 'mx-1 flex items-center h-6  px-3 justify-between rounded-md hover:bg-state-base-hover cursor-pointer')}
+      className={cn(
+        !readonly && !disabled && 'group/item hover:shadow-xs cursor-pointer',
+        'border border-components-panel-border-subtle rounded-md bg-components-panel-on-panel-item-bg',
+        isDeleteHovering && 'border border-state-destructive-border bg-state-destructive-hover',
+      )}
     >
-      <div className='w-0 grow flex items-center h-full text-text-secondary'>
-        <Icon className='shrink-0 mr-[5px] size-3.5' />
-        <div className='w-0 grow truncate system-sm-medium'>{payload.name}</div>
-      </div>
-      <div className='group-hover/item:hidden ml-1 shrink-0 system-xs-regular text-text-tertiary'>
-        {payload.valueLength || 0} values
-      </div>
-      <div className='group-hover/item:flex hidden items-center h-6 px-3 text-text-secondary rounded-md hover:bg-state-base-hover cursor-pointer space-x-1'>
-        <RiEditLine className='size-4 cursor-pointer' onClick={handleRename} />
-        <RiDeleteBinLine className='size-4 cursor-pointer' onClick={handleDelete} />
+      <div
+        className={cn(
+          'flex items-center h-8 px-2  justify-between',
+          disabled && 'opacity-30', // not include border and bg
+        )}
+      >
+        <div className='flex items-center h-full text-text-tertiary space-x-1'>
+          <Icon className='shrink-0 size-4' />
+          <div className='max-w-[250px] truncate system-sm-medium text-text-primary'>{payload.name}</div>
+          <div className='shrink-0 system-xs-regular'>{payload.type}</div>
+        </div>
+        <div className='group-hover/item:hidden ml-2 shrink-0 system-xs-regular text-text-tertiary'>
+          {disabled ? 'Disabled' : `${payload.valueLength || 0} values`}
+        </div>
+        <div className='group-hover/item:flex hidden ml-2 items-center text-text-tertiary space-x-1'>
+          <RiEditLine className='size-4 cursor-pointer' onClick={handleRename} />
+          <div ref={deleteBtnRef} className='hover:text-text-destructive'>
+            <RiDeleteBinLine className='size-4 cursor-pointer' onClick={showDeleteConfirm} />
+          </div>
+        </div>
+        {isShowDeleteConfirm && (
+          <Confirm
+            isShow
+            type='warning'
+            title={'Confirm to delete'}
+            content={`Are you sure you want to delete the metadata "${payload.name}"?`}
+            onConfirm={handleDelete}
+            onCancel={hideDeleteConfirm}
+          />
+        )}
       </div>
     </div>
   )
@@ -121,7 +156,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
       showClose
       title='Metadata'
       footer={null}
-      panelClassname='block !max-w-[420px] my-2 rounded-l-2xl'
+      panelClassname='px-4 block !max-w-[420px] my-2 rounded-l-2xl'
     >
       <div className='system-sm-regular text-text-tertiary'>You can manage all metadata in this knowledge here. Modifications will be synchronized to every document.</div>
 
@@ -130,31 +165,36 @@ const DatasetMetadataDrawer: FC<Props> = ({
         Add Metadata
       </Button>} hasBack onSave={handleAdd} />
 
-      {userMetadata.map(payload => (
-        <Item
-          key={payload.id}
-          payload={payload}
-          onRename={handleRename(payload)}
-          onDelete={handleDelete(payload)}
-        />
-      ))}
+      <div className='mt-3 space-y-1'>
+        {userMetadata.map(payload => (
+          <Item
+            key={payload.id}
+            payload={payload}
+            onRename={handleRename(payload)}
+            onDelete={handleDelete(payload)}
+          />
+        ))}
+      </div>
 
-      <div className='flex'>
+      <div className='mt-3 flex h-6 items-center'>
         <Switch
           defaultValue={isBuiltInEnabled}
           onChange={onIsBuiltInEnabledChange}
         />
-        <div>Built-in</div>
+        <div className='ml-2 mr-0.5 system-sm-semibold text-text-secondary'>Built-in</div>
         <Tooltip popupContent="xxx" />
       </div>
 
-      {builtInMetadata.map(payload => (
-        <Item
-          key={payload.id}
-          readonly
-          payload={payload}
-        />
-      ))}
+      <div className='mt-1 space-y-1'>
+        {builtInMetadata.map(payload => (
+          <Item
+            key={payload.id}
+            readonly
+            disabled={!isBuiltInEnabled}
+            payload={payload}
+          />
+        ))}
+      </div>
 
       {isShowRenameModal && (
         <Modal isShow title="rename">
