@@ -9,3 +9,7 @@ export type MetadataItem = {
   type: DataType
   name: string
 }
+
+export type MetadataItemWithValueLength = MetadataItem & {
+  valueLength: number
+}

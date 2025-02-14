@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import React, { useState } from 'react'
-import { DataType } from './types'
 import type { MetadataItem } from './types'
 import SearchInput from '../../base/search-input'
-import { RiAddLine, RiArrowRightUpLine, RiHashtag, RiTextSnippet, RiTimeLine } from '@remixicon/react'
+import { RiAddLine, RiArrowRightUpLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { getIcon } from './utils/get-icon'
 
 const i18nPrefix = 'dataset.metadata.selectMetadata'
 
@@ -14,14 +14,6 @@ type Props = {
   onSelect: (data: any) => void
   onNew: () => void
   onManage: () => void
-}
-
-const getIcon = (type: DataType) => {
-  return ({
-    [DataType.string]: RiTextSnippet,
-    [DataType.number]: RiHashtag,
-    [DataType.time]: RiTimeLine,
-  }[type] || RiTextSnippet)
 }
 
 const SelectMetadata: FC<Props> = ({
