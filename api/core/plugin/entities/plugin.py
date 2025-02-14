@@ -212,3 +212,9 @@ class PluginDependency(BaseModel):
 
     type: Type
     value: Github | Marketplace | Package
+    current_identifier: Optional[str] = None
+
+
+class MissingPluginDependency(BaseModel):
+    plugin_unique_identifier: str
+    current_identifier: Optional[str] = None
