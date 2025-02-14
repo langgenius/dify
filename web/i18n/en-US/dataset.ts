@@ -176,6 +176,11 @@ const translation = {
       name: 'Name',
       namePlaceholder: 'Add metadata name',
     },
+    selectMetadata: {
+      search: 'Search metadata',
+      newAction: 'New Metadata',
+      manageAction: 'Manage',
+    },
   },
 }
 

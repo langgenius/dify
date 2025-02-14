@@ -176,6 +176,11 @@ const translation = {
       name: '名称',
       namePlaceholder: '添加元数据名称',
     },
+    selectMetadata: {
+      search: '搜索元数据',
+      newAction: '新建元数据',
+      manageAction: '管理',
+    },
   },
 }
 

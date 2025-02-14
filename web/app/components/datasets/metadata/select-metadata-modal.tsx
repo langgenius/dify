@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import type { Props as CreateContentProps } from './create-content'
 import CreateContent from './create-content'
 import SelectMetadata from './select-metadata'
@@ -30,8 +30,13 @@ const SelectMetadataModal: FC<Props> = ({
   popupLeft = 4,
   onSave,
 }) => {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const [step, setStep] = useState(Step.select)
+
+  const handleSave = useCallback((data: MetadataItem) => {
+    onSave(data)
+    setOpen(false)
+  }, [onSave])
   return (
     <PortalToFollowElem
       open={open}
@@ -50,14 +55,14 @@ const SelectMetadataModal: FC<Props> = ({
       <PortalToFollowElemContent className='z-[1000]'>
         {step === Step.select ? (
           <SelectMetadata
-            onSelect={onSave}
+            onSelect={handleSave}
             list={testMetadataList}
             onNew={() => setStep(Step.create)}
             onManage={() => { }}
           />
         ) : (
           <CreateContent
-            onSave={onSave}
+            onSave={handleSave}
             hasBack
             onBack={() => setStep(Step.select)}
           />

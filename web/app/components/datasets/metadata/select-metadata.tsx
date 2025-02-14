@@ -5,6 +5,9 @@ import { DataType } from './types'
 import type { MetadataItem } from './types'
 import SearchInput from '../../base/search-input'
 import { RiAddLine, RiArrowRightUpLine, RiHashtag, RiTextSnippet, RiTimeLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
+
+const i18nPrefix = 'dataset.metadata.selectMetadata'
 
 type Props = {
   list: MetadataItem[]
@@ -27,6 +30,8 @@ const SelectMetadata: FC<Props> = ({
   onNew,
   onManage,
 }) => {
+  const { t } = useTranslation()
+
   const [query, setQuery] = useState('')
   return (
     <div className='w-[320px] pt-2 pb-0 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg backdrop-blur-[5px]'>
@@ -34,7 +39,7 @@ const SelectMetadata: FC<Props> = ({
         className='mx-2'
         value={query}
         onChange={setQuery}
-        placeholder='Search metadata'
+        placeholder={t(`${i18nPrefix}.search`)}
       />
       <div className='mt-2'>
         {list.map((item) => {
@@ -59,12 +64,12 @@ const SelectMetadata: FC<Props> = ({
       <div className='mt-1 flex justify-between p-1 border-t border-divider-subtle'>
         <div className='flex items-center h-6 px-3 text-text-secondary rounded-md hover:bg-state-base-hover cursor-pointer space-x-1' onClick={onNew}>
           <RiAddLine className='size-3.5' />
-          <div className='system-sm-medium'>New Metadata</div>
+          <div className='system-sm-medium'>{t(`${i18nPrefix}.newAction`)}</div>
         </div>
         <div className='flex items-center h-6 text-text-secondary '>
           <div className='mr-[3px] w-px h-3 bg-divider-regular'></div>
           <div className='flex h-full items-center px-1.5 hover:bg-state-base-hover rounded-md cursor-pointer' onClick={onManage}>
-            <div className='mr-1 system-sm-medium'>Manage</div>
+            <div className='mr-1 system-sm-medium'>{t(`${i18nPrefix}.manageAction`)}</div>
             <RiArrowRightUpLine className='size-3.5' />
           </div>
         </div>
