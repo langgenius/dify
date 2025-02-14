@@ -43,6 +43,8 @@ const translation = {
     completionResult: '生成结果',
     queryPlaceholder: '请输入文本内容',
     run: '运行',
+    execution: '运行',
+    executions: '{{num}} 次运行',
     copy: '拷贝',
     resultTitle: 'AI 书写',
     noData: 'AI 会在这里给你惊喜。',

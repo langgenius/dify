@@ -7,10 +7,8 @@ import {
   RiErrorWarningFill,
 } from '@remixicon/react'
 import { useBoolean, useClickAway } from 'ahooks'
-import { XMarkIcon } from '@heroicons/react/24/outline'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import TabHeader from '../../base/tab-header'
-import Button from '../../base/button'
 import { checkOrSetAccessToken } from '../utils'
 import MenuDropdown from './menu-dropdown'
 import RunBatch from './run-batch'
@@ -481,57 +479,44 @@ const TextGeneration: FC<IMainProps> = ({
     <div
       ref={resRef}
       className={cn(
-        'flex flex-col h-full shrink-0 bg-chatbot-bg overflow-y-auto',
-        isPC && 'px-14 py-8',
-        isTablet && 'p-6',
-        isMobile && 'p-0',
+        'relative flex flex-col h-full bg-chatbot-bg',
       )}
     >
-      <>
-        {/* TODO  */}
-        {false && (
-          <div className='flex items-center justify-between shrink-0'>
-            <div className='flex items-center space-x-3'>
-              {/* <div className={s.starIcon}></div> */}
-              {/* <div className='text-lg font-semibold text-gray-800'>{t('share.generation.title')}</div> */}
-            </div>
-            <div className='flex items-center space-x-2'>
-              {allFailedTaskList.length > 0 && (
-                <div className='flex items-center'>
-                  <RiErrorWarningFill className='w-4 h-4 text-[#D92D20]' />
-                  <div className='ml-1 text-[#D92D20]'>{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
-                  <Button
-                    variant='primary'
-                    className='ml-2'
-                    onClick={handleRetryAllFailedTask}
-                  >{t('share.generation.batchFailed.retry')}</Button>
-                  <div className='mx-3 w-[1px] h-3.5 bg-gray-200'></div>
-                </div>
-              )}
-              {allSuccessTaskList.length > 0 && (
-                <ResDownload
-                  isMobile={isMobile}
-                  values={exportRes}
-                />
-              )}
-              {!isPC && (
-                <div
-                  className='flex items-center justify-center cursor-pointer'
-                  onClick={hideResSidebar}
-                >
-                  <XMarkIcon className='w-4 h-4 text-gray-800' />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+      {isCallBatchAPI && (
+        <div className={cn(
+          'shrink-0 px-14 pt-9 pb-2 flex items-center justify-between',
+          !isPC && 'px-4 pt-3 pb-1',
+        )}>
+          <div className='text-text-primary system-md-semibold-uppercase'>{t('share.generation.executions', { num: allTaskList.length })}</div>
+          {allSuccessTaskList.length > 0 && (
+            <ResDownload
+              isMobile={isMobile}
+              values={exportRes}
+            />
+          )}
+        </div>
+      )}
+      <div className={cn(
+        'grow flex flex-col h-0 overflow-y-auto',
+        isPC && 'px-14 py-8',
+        isPC && isCallBatchAPI && 'pt-0',
+        isMobile && 'p-0',
+      )}>
         {!isCallBatchAPI ? renderRes() : renderBatchRes()}
         {!noPendingTask && (
           <div className='mt-4'>
             <Loading type='area' />
           </div>
         )}
-      </>
+      </div>
+      {isCallBatchAPI && allFailedTaskList.length > 0 && (
+        <div className='z-10 absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 p-3 rounded-xl bg-components-panel-bg-blur backdrop-blur-sm border border-components-panel-border shadow-lg'>
+          <RiErrorWarningFill className='w-4 h-4 text-text-destructive' />
+          <div className='text-text-secondary system-sm-medium'>{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
+          <div className='w-px h-3.5 bg-divider-regular'></div>
+          <div onClick={handleRetryAllFailedTask} className='text-text-accent system-sm-semibold-uppercase cursor-pointer'>{t('share.generation.batchFailed.retry')}</div>
+        </div>
+      )}
     </div>
   )
 

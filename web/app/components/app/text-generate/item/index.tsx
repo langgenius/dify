@@ -147,6 +147,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     controlClearMoreLikeThis,
     isWorkflow,
     siteInfo,
+    taskId,
   }
 
   const handleMoreLikeThis = async () => {
@@ -232,17 +233,18 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 </div>
               )}
               {taskId && (
-                <div className={cn('sticky left-0 top-0 flex items-center w-full p-4 pb-3 system-2xs-medium-uppercase text-text-accent-secondary', isError && 'text-text-destructive')}>
+                <div className={cn('sticky left-0 top-0 flex items-center w-full p-4 pb-3 bg-components-actionbar-bg rounded-t-2xl system-2xs-medium-uppercase text-text-accent-secondary', isError && 'text-text-destructive')}>
                   <RiPlayList2Line className='w-3 h-3 mr-1' />
-                  <span> · </span>
-                  <span>{taskId}</span>
+                  <span>{t('share.generation.execution')}</span>
+                  <span className='px-1'>·</span>
+                  <span>{`${taskId}${depth > 1 ? `-${depth - 1}` : ''}`}</span>
                 </div>
               )}
               {isError && (
                 <div className='p-4 pt-0text-text-quaternary body-lg-regular'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
               )}
               {!workflowProcessData && !isError && (typeof content === 'string') && (
-                <div className='p-4'>
+                <div className={cn('p-4', taskId && 'pt-0')}>
                   <Markdown content={content} />
                 </div>
               )}

@@ -424,11 +424,7 @@ const Result: FC<IResultProps> = ({
             ? <NoData />
             : renderTextGenerationRes()
       )}
-      {isCallBatchAPI && (
-        <div className='mt-2'>
-          {renderTextGenerationRes()}
-        </div>
-      )}
+      {isCallBatchAPI && renderTextGenerationRes()}
     </>
   )
 }

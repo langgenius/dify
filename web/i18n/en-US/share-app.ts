@@ -47,6 +47,8 @@ const translation = {
     completionResult: 'Completion result',
     queryPlaceholder: 'Write your query content...',
     run: 'Execute',
+    execution: 'EXECUTION',
+    executions: '{{num}} EXECUTIONS',
     copy: 'Copy',
     resultTitle: 'AI Completion',
     noData: 'AI will give you what you want here.',
