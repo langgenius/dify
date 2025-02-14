@@ -6,6 +6,7 @@ import { getLocaleOnServer } from '@/i18n/server'
 import { TanstackQueryIniter } from '@/context/query-client'
 import './styles/globals.css'
 import './styles/markdown.scss'
+import { BASE_PATH } from '@/config'
 
 export const metadata = {
   title: 'Dify',
@@ -33,6 +34,7 @@ const LocaleLayout = ({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <link rel="icon" type="image/x-icon" href={`${BASE_PATH}/favicon.ico`} />
       </head>
       <body
         className="h-full select-auto color-scheme"
