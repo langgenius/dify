@@ -22,8 +22,8 @@ import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/d
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import CreateModal from '@/app/components/datasets/metadata/create-metadata-modal'
 import SelectMetadataModal from '@/app/components/datasets/metadata/select-metadata-modal'
-import DatasetMetadataDrawer from '@/app/components/datasets/metadata/dataset-metadata-drawer'
-
+// import DatasetMetadataDrawer from '@/app/components/datasets/metadata/dataset-metadata-drawer'
+import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch-modal'
 // Services
 import { fetchDatasetApiBaseUrl } from '@/service/datasets'
 
@@ -100,7 +100,7 @@ const Container = () => {
         <Button className='flex w-[200px]' size="medium" onClick={() => setShowExternalApiPanel(true)}>
           Metadata
         </Button>
-        <DatasetMetadataDrawer
+        {/* <DatasetMetadataDrawer
           userMetadata={userMetadata}
           onChange={setUserMetadata}
           builtInMetadata={[
@@ -111,6 +111,20 @@ const Container = () => {
           isBuiltInEnabled={isBuiltInEnabled}
           onIsBuiltInEnabledChange={setIsBuiltInEnabled}
           onClose={() => { }}
+        /> */}
+        <EditMetadataBatchModal
+          list={[
+            {
+              id: '1', name: 'name1', type: DataType.string, value: 'aaa',
+            }, {
+              id: '2', name: 'name2', type: DataType.number, value: 'ccc', isMultipleValue: true,
+            }, {
+              id: '3', name: 'name3', type: DataType.time, value: '', isMultipleValue: false,
+            },
+          ]}
+          onHide={() => { }}
+          onChange={(list, newList, isApplyToAllSelectDocument) => { console.log(list, newList, isApplyToAllSelectDocument) }}
+
         />
       </div>
       <div className='sticky top-0 flex justify-between pt-4 px-12 pb-2 leading-[56px] bg-background-body z-10 flex-wrap gap-y-2'>
