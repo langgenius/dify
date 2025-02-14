@@ -255,8 +255,7 @@ class LLMNode(BaseNode[LLMNodeData]):
             elif isinstance(content, list):
                 # Assuming the list contains PromptMessageContent objects with a "data" attribute
                 message_text = "".join(
-                    item.data if hasattr(item, "data") and isinstance(item.data, str) else str(item)
-                    for item in content
+                    item.data if hasattr(item, "data") and isinstance(item.data, str) else str(item) for item in content
                 )
             else:
                 message_text = str(content)
