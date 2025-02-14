@@ -247,6 +247,24 @@ class LLMNode(BaseNode[LLMNodeData]):
 
     def _handle_invoke_result(self, invoke_result: LLMResult | Generator) -> Generator[NodeEvent, None, None]:
         if isinstance(invoke_result, LLMResult):
+            content = invoke_result.message.content
+            if content is None:
+                message_text = ""
+            elif isinstance(content, str):
+                message_text = content
+            elif isinstance(content, list):
+                # Assuming the list contains PromptMessageContent objects with a "data" attribute
+                message_text = "".join(
+                    item.data if hasattr(item, "data") and isinstance(item.data, str) else str(item) for item in content
+                )
+            else:
+                message_text = str(content)
+
+            yield ModelInvokeCompletedEvent(
+                text=message_text,
+                usage=invoke_result.usage,
+                finish_reason=None,
+            )
             return
 
         model = None
