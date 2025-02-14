@@ -43,6 +43,7 @@ const Item: FC<ItemProps> = ({
   onRename,
   onDelete,
 }) => {
+  const { t } = useTranslation()
   const Icon = getIcon(payload.type)
 
   const handleRename = useCallback(() => {
@@ -81,7 +82,7 @@ const Item: FC<ItemProps> = ({
           <div className='shrink-0 system-xs-regular'>{payload.type}</div>
         </div>
         <div className='group-hover/item:hidden ml-2 shrink-0 system-xs-regular text-text-tertiary'>
-          {disabled ? 'Disabled' : `${payload.valueLength || 0} values`}
+          {disabled ? t(`${i18nPrefix}.disabled`) : t(`${i18nPrefix}.values`, { num: payload.valueLength || 0 })}
         </div>
         <div className='group-hover/item:flex hidden ml-2 items-center text-text-tertiary space-x-1'>
           <RiEditLine className='size-4 cursor-pointer' onClick={handleRename} />
@@ -154,15 +155,15 @@ const DatasetMetadataDrawer: FC<Props> = ({
       isOpen={true}
       onClose={onClose}
       showClose
-      title='Metadata'
+      title={t('dataset.metadata.metadata')}
       footer={null}
       panelClassname='px-4 block !max-w-[420px] my-2 rounded-l-2xl'
     >
-      <div className='system-sm-regular text-text-tertiary'>You can manage all metadata in this knowledge here. Modifications will be synchronized to every document.</div>
+      <div className='system-sm-regular text-text-tertiary'>{t(`${i18nPrefix}.description`)}</div>
 
       <CreateModal trigger={<Button variant='primary' className='mt-3'>
         <RiAddLine className='mr-1' />
-        Add Metadata
+        {t(`${i18nPrefix}.addMetaData`)}
       </Button>} hasBack onSave={handleAdd} />
 
       <div className='mt-3 space-y-1'>
@@ -181,8 +182,8 @@ const DatasetMetadataDrawer: FC<Props> = ({
           defaultValue={isBuiltInEnabled}
           onChange={onIsBuiltInEnabledChange}
         />
-        <div className='ml-2 mr-0.5 system-sm-semibold text-text-secondary'>Built-in</div>
-        <Tooltip popupContent="xxx" />
+        <div className='ml-2 mr-0.5 system-sm-semibold text-text-secondary'>{t(`${i18nPrefix}.builtIn`)}</div>
+        <Tooltip popupContent={<div className='max-w-[100px]'>{t(`${i18nPrefix}.builtInDescription`)}</div>} />
       </div>
 
       <div className='mt-1 space-y-1'>
@@ -197,7 +198,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
       </div>
 
       {isShowRenameModal && (
-        <Modal isShow title="rename">
+        <Modal isShow title={t(`${i18nPrefix}.rename`)} onClose={() => setIsShowRenameModal(false)}>
           <Field label={t(`${i18nPrefix}.name`)}>
             <Input
               value={templeName}

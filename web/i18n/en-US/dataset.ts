@@ -169,6 +169,7 @@ const translation = {
   allKnowledge: 'All Knowledge',
   allKnowledgeDescription: 'Select to display all knowledge in this workspace. Only the Workspace Owner can manage all knowledge.',
   metadata: {
+    metadata: 'Metadata',
     createMetadata: {
       title: 'New Metadata',
       back: 'Back',
@@ -180,6 +181,17 @@ const translation = {
       search: 'Search metadata',
       newAction: 'New Metadata',
       manageAction: 'Manage',
+    },
+    datasetMetadata: {
+      description: 'You can manage all metadata in this knowledge here. Modifications will be synchronized to every document.',
+      addMetaData: 'Add Metadata',
+      values: '{{num}} Values',
+      disabled: 'Disabled',
+      rename: 'Rename',
+      name: 'Name',
+      namePlaceholder: 'Metadata name',
+      builtIn: 'Built-in',
+      builtInDescription: 'Built-in metadata is automatically extracted and generated. It must be enabled before use and cannot be edited.',
     },
   },
 }
