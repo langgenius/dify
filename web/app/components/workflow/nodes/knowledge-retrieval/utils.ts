@@ -152,9 +152,8 @@ export const getMultipleRetrievalConfig = (
 
   if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel || allExternal || mixtureInternalAndExternal) {
     result.reranking_mode = RerankingModeEnum.RerankingModel
-    if (!result.reranking_model?.provider || !result.reranking_model?.model) {
+    if (result.reranking_enable && (!result.reranking_model?.provider || !result.reranking_model?.model)) {
       if (rerankModelIsValid) {
-        result.reranking_enable = true
         result.reranking_model = {
           provider: validRerankModel?.provider || '',
           model: validRerankModel?.model || '',
@@ -166,9 +165,6 @@ export const getMultipleRetrievalConfig = (
           model: '',
         }
       }
-    }
-    else {
-      result.reranking_enable = true
     }
   }
 
