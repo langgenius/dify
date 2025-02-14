@@ -42,7 +42,10 @@ class StreamProcessor(ABC):
                 if (
                     edge.run_condition
                     and edge.run_condition.branch_identify
-                    and run_result.edge_source_handle == edge.run_condition.branch_identify
+                    and (
+                        run_result.edge_source_handle == edge.run_condition.branch_identify
+                        or edge.target_node_id not in self.graph.node_parallel_mapping
+                    )
                 ):
                     # remove unreachable nodes
                     # FIXME: because of the code branch can combine directly, so for answer node
