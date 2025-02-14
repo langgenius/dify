@@ -1,0 +1,35 @@
+identity:
+  author: Gitee
+  name: gitee
+  label:
+    en_US: Gitee
+    en_Hans: Gitee
+  description:
+    en_US: Gitee api plugin for OpenAPI v5
+    zh_Hans: Gitee v5 OpenAPI 插件
+  icon: gitee.svg
+credentials_for_provider:
+  access_tokens:
+    type: secret-input
+    required: true
+    label:
+      en_US: Gitee personal access token
+      zh_Hans: Gitee 私人令牌
+    placeholder:
+      en_US: Please input your personal access token
+      zh_Hans: 请输入你的私人令牌
+    help:
+      en_US: Get personal access token from Gitee
+      zh_Hans: 从 Gitee 获取私人令牌
+    url: https://gitee.com/profile/personal_access_tokens
+  host_url:
+    type: text-input
+    required: false
+    default: 'https://gitee.com'
+    label:
+      en_US: Gitee host url
+      zh_Hans: Gitee host url
+    placeholder:
+      en_US: Please input Gitee host url
+      zh_Hans: 请输入 Gitee host url
+    

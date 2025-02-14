@@ -1,0 +1,13 @@
+identity:
+  name: get_user_info
+  author: Gitee
+  label:
+    en_US: User Info
+    zh_Hans: 获取授权用户信息
+  icon: gitee.svg
+description:
+  human:
+    en_US: Get authorized user information
+    zh_Hans: 获取授权用户的信息
+  llm: Get authorized user details info
+  
