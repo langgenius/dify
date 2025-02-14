@@ -594,16 +594,6 @@ services:
       - '${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}'
       - '${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}'
 
-  # The TiDB vector store.
-  # For production use, please refer to https://github.com/pingcap/tidb-docker-compose
-  tidb:
-    image: pingcap/tidb:v8.4.0
-    profiles:
-      - tidb
-    command:
-      - --store=unistore
-    restart: always
-
   # The Weaviate vector store.
   weaviate:
     image: semitechnologies/weaviate:1.19.0

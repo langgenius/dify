@@ -842,4 +842,4 @@ class WorkflowCycleManage:
         if node_execution_id not in self._workflow_node_executions:
             raise ValueError(f"Workflow node execution not found: {node_execution_id}")
         cached_workflow_node_execution = self._workflow_node_executions[node_execution_id]
-        return cached_workflow_node_execution
+        return session.merge(cached_workflow_node_execution)
