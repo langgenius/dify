@@ -163,6 +163,7 @@ docker/volumes/db/data/*
 docker/volumes/redis/data/*
 docker/volumes/weaviate/*
 docker/volumes/qdrant/*
+docker/tidb/volumes/*
 docker/volumes/etcd/*
 docker/volumes/minio/*
 docker/volumes/milvus/*
