@@ -1,14 +1,15 @@
 # for more details, please refer to https://help.aliyun.com/zh/model-studio/getting-started/models
-model: qwen-vl-plus-0201
+model: qwen-vl-plus-2025-01-25
 label:
-  en_US: qwen-vl-plus-0201
+  en_US: qwen-vl-plus-2025-01-25
 model_type: llm
 features:
   - vision
   - agent-thought
+  - video
 model_properties:
   mode: chat
-  context_size: 8000
+  context_size: 131072
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -42,9 +43,9 @@ parameter_rules:
     required: false
     use_template: max_tokens
     type: int
-    default: 2000
+    default: 4096
     min: 1
-    max: 2000
+    max: 8192
     help:
       zh_Hans: 用于指定模型在生成内容时token的最大数量，它定义了生成的上限，但不保证每次都会生成到这个数量。
       en_US: It is used to specify the maximum number of tokens when the model generates content. It defines the upper limit of generation, but does not guarantee that this number will be generated every time.
@@ -71,7 +72,7 @@ parameter_rules:
   - name: response_format
     use_template: response_format
 pricing:
-  input: '0.02'
-  output: '0.02'
+  input: '0.003'
+  output: '0.009'
   unit: '0.001'
   currency: RMB

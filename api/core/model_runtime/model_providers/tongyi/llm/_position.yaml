@@ -2,6 +2,8 @@
 - deepseek-r1-distill-qwen-14b
 - deepseek-r1-distill-qwen-32b
 - deepseek-v3
+- qwen-vl-max-latest
+- qwen-vl-max-2025-01-25
 - qwen-vl-max-0809
 - qwen-vl-max-0201
 - qwen-vl-max
@@ -21,8 +23,10 @@
 - qwen-plus-0206
 - qwen-plus-chat
 - qwen-plus
+- qwen-vl-plus-latest
+- qwen-vl-plus-2025-01-25
+- qwen-vl-plus-2025-01-02
 - qwen-vl-plus-0809
-- qwen-vl-plus-0201
 - qwen-vl-plus
 - qwen-turbo-latest
 - qwen-turbo-0919
