@@ -657,6 +657,7 @@ class DocumentSegment(Base):
     dataset_id = db.Column(StringUUID, nullable=False)
     document_id = db.Column(StringUUID, nullable=False)
     position: Mapped[int]
+    page_number = db.Column(db.Integer, nullable=True)
     content = db.Column(db.Text, nullable=False)
     answer = db.Column(db.Text, nullable=True)
     word_count = db.Column(db.Integer, nullable=False)
