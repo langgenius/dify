@@ -12,7 +12,6 @@ import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import Loading from '@/app/components/base/loading'
 import type { PromptConfig } from '@/models/debug'
 import type { InstalledApp } from '@/models/explore'
-import type { ModerationService } from '@/models/common'
 import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
@@ -42,11 +41,10 @@ export type IResultProps = {
   handleSaveMessage: (messageId: string) => void
   taskId?: number
   onCompleted: (completionRes: string, taskId?: number, success?: boolean) => void
-  enableModeration?: boolean
-  moderationService?: (text: string) => ReturnType<ModerationService>
   visionConfig: VisionSettings
   completionFiles: VisionFile[]
   siteInfo: SiteInfo | null
+  onRunStart: () => void
 }
 
 const Result: FC<IResultProps> = ({
@@ -71,6 +69,7 @@ const Result: FC<IResultProps> = ({
   visionConfig,
   completionFiles,
   siteInfo,
+  onRunStart,
 }) => {
   const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] = useBoolean(false)
   useEffect(() => {
@@ -182,8 +181,10 @@ const Result: FC<IResultProps> = ({
     let res: string[] = []
     let tempMessageId = ''
 
-    if (!isPC)
+    if (!isPC) {
       onShowRes()
+      onRunStart()
+    }
 
     setRespondingTrue()
     let isEnd = false

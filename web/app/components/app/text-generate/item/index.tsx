@@ -280,7 +280,10 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               )}
             </div>
             {/* meta data */}
-            <div className='relative mt-1 h-4 px-4 text-text-quaternary system-xs-regular'>
+            <div className={cn(
+              'relative mt-1 h-4 px-4 text-text-quaternary system-xs-regular',
+              isMobile && ((childMessageId || isQuerying) && depth < 3) && 'pl-10',
+            )}>
               {!isWorkflow && <span>{content?.length} {t('common.unit.char')}</span>}
               {/* action buttons */}
               <div className='absolute right-2 bottom-1 flex items-center'>
@@ -355,9 +358,15 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             </div>
             {/* more like this elements */}
             {!isTop && (
-              <div className='absolute top-[-33px] left-[50%] translate-x-[-50%] w-4 h-[33px] flex justify-center'>
+              <div className={cn(
+                'absolute top-[-32px] w-4 h-[33px] flex justify-center',
+                isMobile ? 'left-[17px]' : 'left-[50%] translate-x-[-50%]',
+              )}>
                 <div className='h-full w-0.5 bg-divider-regular'></div>
-                <div className='absolute left-0 top-2 w-4 h-4 flex items-center justify-center bg-util-colors-blue-blue-500 rounded-2xl border-[0.5px] border-divider-subtle shadow-xs'>
+                <div className={cn(
+                  'absolute left-0 w-4 h-4 flex items-center justify-center bg-util-colors-blue-blue-500 rounded-2xl border-[0.5px] border-divider-subtle shadow-xs',
+                  isMobile ? 'top-[3.5px]' : 'top-2',
+                )}>
                   <RiSparklingFill className='w-3 h-3 text-text-primary-on-surface' />
                 </div>
               </div>

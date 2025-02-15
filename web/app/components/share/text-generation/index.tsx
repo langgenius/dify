@@ -6,7 +6,7 @@ import {
   RiBookmark3Line,
   RiErrorWarningFill,
 } from '@remixicon/react'
-import { useBoolean, useClickAway } from 'ahooks'
+import { useBoolean } from 'ahooks'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import TabHeader from '../../base/tab-header'
 import { checkOrSetAccessToken } from '../utils'
@@ -73,8 +73,6 @@ const TextGeneration: FC<IMainProps> = ({
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
-  const isTablet = media === MediaType.tablet
-  const isMobile = media === MediaType.mobile
 
   const searchParams = useSearchParams()
   const mode = searchParams.get('mode') || 'create'
@@ -144,7 +142,7 @@ const TextGeneration: FC<IMainProps> = ({
     setAllTaskList([]) // clear batch task running status
 
     // eslint-disable-next-line ts/no-use-before-define
-    showResSidebar()
+    showResultPanel()
   }
 
   const [controlRetry, setControlRetry] = useState(0)
@@ -325,7 +323,7 @@ const TextGeneration: FC<IMainProps> = ({
     setControlStopResponding(Date.now())
 
     // eslint-disable-next-line ts/no-use-before-define
-    showResSidebar()
+    showResultPanel()
   }
   const handleCompleted = (completionRes: string, taskId?: number, isSuccess?: boolean) => {
     const allTaskListLatest = getLatestTaskList()
@@ -434,24 +432,21 @@ const TextGeneration: FC<IMainProps> = ({
     icon_url: siteInfo?.icon_url,
   })
 
-  const [isShowResSidebar, { setTrue: doShowResSidebar, setFalse: hideResSidebar }] = useBoolean(false)
-  const showResSidebar = () => {
+  const [isShowResultPanel, { setTrue: doShowResultPanel, setFalse: hideResultPanel }] = useBoolean(false)
+  const showResultPanel = () => {
     // fix: useClickAway hideResSidebar will close sidebar
     setTimeout(() => {
-      doShowResSidebar()
+      doShowResultPanel()
     }, 0)
   }
-  const resRef = useRef<HTMLDivElement>(null)
-  useClickAway(() => {
-    hideResSidebar()
-  }, resRef)
+  const [resultExisted, setResultExisted] = useState(false)
 
   const renderRes = (task?: Task) => (<Res
     key={task?.id}
     isWorkflow={isWorkflow}
     isCallBatchAPI={isCallBatchAPI}
     isPC={isPC}
-    isMobile={isMobile}
+    isMobile={!isPC}
     isInstalledApp={isInstalledApp}
     installedAppInfo={installedAppInfo}
     isError={task?.status === TaskStatus.failed}
@@ -461,7 +456,7 @@ const TextGeneration: FC<IMainProps> = ({
     controlSend={controlSend}
     controlRetry={task?.status === TaskStatus.failed ? controlRetry : 0}
     controlStopResponding={controlStopResponding}
-    onShowRes={showResSidebar}
+    onShowRes={showResultPanel}
     handleSaveMessage={handleSaveMessage}
     taskId={task?.id}
     onCompleted={handleCompleted}
@@ -469,6 +464,7 @@ const TextGeneration: FC<IMainProps> = ({
     completionFiles={completionFiles}
     isShowTextToSpeech={!!textToSpeechConfig?.enabled}
     siteInfo={siteInfo}
+    onRunStart={() => setResultExisted(true)}
   />)
 
   const renderBatchRes = () => {
@@ -477,9 +473,14 @@ const TextGeneration: FC<IMainProps> = ({
 
   const renderResWrap = (
     <div
-      ref={resRef}
       className={cn(
-        'relative flex flex-col h-full bg-chatbot-bg',
+        'relative flex flex-col h-full',
+        !isPC && 'h-[calc(100vh_-_36px)] rounded-t-2xl shadow-lg backdrop-blur-sm',
+        !isPC
+          ? isShowResultPanel
+            ? 'bg-background-default-burn'
+            : 'bg-components-panel-bg border-t-[0.5px] border-divider-regular'
+          : 'bg-chatbot-bg',
       )}
     >
       {isCallBatchAPI && (
@@ -490,7 +491,7 @@ const TextGeneration: FC<IMainProps> = ({
           <div className='text-text-primary system-md-semibold-uppercase'>{t('share.generation.executions', { num: allTaskList.length })}</div>
           {allSuccessTaskList.length > 0 && (
             <ResDownload
-              isMobile={isMobile}
+              isMobile={!isPC}
               values={exportRes}
             />
           )}
@@ -500,7 +501,7 @@ const TextGeneration: FC<IMainProps> = ({
         'grow flex flex-col h-0 overflow-y-auto',
         isPC && 'px-14 py-8',
         isPC && isCallBatchAPI && 'pt-0',
-        isMobile && 'p-0',
+        !isPC && 'p-0 pb-2',
       )}>
         {!isCallBatchAPI ? renderRes() : renderBatchRes()}
         {!noPendingTask && (
@@ -529,18 +530,19 @@ const TextGeneration: FC<IMainProps> = ({
 
   return (
     <div className={cn(
-      isPC && 'flex',
-      isInstalledApp ? 'h-full rounded-2xl shadow-md' : 'h-screen',
       'bg-background-default-burn',
+      isPC && 'flex',
+      !isPC && 'flex-col',
+      isInstalledApp ? 'h-full rounded-2xl shadow-md' : 'h-screen',
     )}>
       {/* Left */}
       <div className={cn(
-        'shrink-0 relative flex flex-col h-full bg-components-panel-bg',
-        isPC ? 'w-[600px] max-w-[50%]' : '',
+        'shrink-0 relative flex flex-col h-full',
+        isPC ? 'w-[600px] max-w-[50%]' : resultExisted ? 'h-[calc(100%_-_64px)]' : '',
         isInstalledApp && 'rounded-l-2xl',
       )}>
         {/* header */}
-        <div className={cn('shrink-0 space-y-4 border-b border-divider-subtle', isPC ? 'p-8 pb-0' : 'p-4 pb-0 bg-background-default-burn')}>
+        <div className={cn('shrink-0 space-y-4 border-b border-divider-subtle', isPC ? 'p-8 pb-0 bg-components-panel-bg' : 'p-4 pb-0')}>
           <div className='flex items-center gap-3'>
             <AppIcon
               size={isPC ? 'large' : 'small'}
@@ -580,7 +582,11 @@ const TextGeneration: FC<IMainProps> = ({
           />
         </div>
         {/* form */}
-        <div className={cn('grow h-0 overflow-y-auto', isPC ? 'px-8' : 'px-4')}>
+        <div className={cn(
+          'grow h-0 bg-components-panel-bg overflow-y-auto',
+          isPC ? 'px-8' : 'px-4',
+          !isPC && resultExisted && customConfig?.remove_webapp_brand && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
+        )}>
           <div className={cn(currentTab === 'create' ? 'block' : 'hidden')}>
             <RunOnce
               siteInfo={siteInfo}
@@ -600,10 +606,10 @@ const TextGeneration: FC<IMainProps> = ({
               isAllFinished={allTasksRun}
             />
           </div>
-
           {currentTab === 'saved' && (
             <SavedItems
               className={cn(isPC ? 'mt-6' : 'mt-4')}
+              isShowTextToSpeech={textToSpeechConfig?.enabled}
               list={savedMessages}
               onRemove={handleRemoveSavedMessage}
               onStartCreateContent={() => setCurrentTab('create')}
@@ -612,7 +618,11 @@ const TextGeneration: FC<IMainProps> = ({
         </div>
         {/* powered by */}
         {!customConfig?.remove_webapp_brand && (
-          <div className={cn('shrink-0 py-3 flex items-center gap-1.5', isPC ? 'px-8' : 'px-4')}>
+          <div className={cn(
+            'shrink-0 py-3 flex items-center gap-1.5 bg-components-panel-bg',
+            isPC ? 'px-8' : 'px-4',
+            !isPC && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
+          )}>
             <div className='text-text-tertiary system-2xs-medium-uppercase'>{t('share.chat.poweredBy')}</div>
             {customConfig?.replace_webapp_logo && (
               <img src={customConfig?.replace_webapp_logo} alt='logo' className='block w-auto h-5' />
@@ -623,18 +633,33 @@ const TextGeneration: FC<IMainProps> = ({
           </div>
         )}
       </div>
-
       {/* Result */}
-      <div
-        className={cn(
-          !isPC ? 'fixed z-50 inset-0' : 'grow h-full',
-          isTablet && 'pl-[128px]',
-          isMobile && 'pl-6',
+      <div className={cn(
+        isPC
+          ? 'grow h-full'
+          : isShowResultPanel
+            ? 'fixed z-50 inset-0 bg-background-overlay backdrop-blur-sm'
+            : resultExisted
+              ? 'relative shrink-0 h-16 pt-2.5 bg-background-default-burn overflow-hidden'
+              : '',
+      )}>
+        {!isPC && (
+          <div
+            className={cn(
+              isShowResultPanel
+                ? 'p-2 pt-6 flex items-center justify-center'
+                : 'z-10 absolute top-0 left-0 w-full px-2 pt-[3px] pb-[57px] flex items-center justify-center',
+            )}
+            onClick={() => {
+              if (isShowResultPanel)
+                hideResultPanel()
+              else
+                showResultPanel()
+            }}
+          >
+            <div className='w-8 h-1 rounded bg-divider-solid cursor-grab'/>
+          </div>
         )}
-        style={{
-          background: (!isPC && isShowResSidebar) ? 'rgba(35, 56, 118, 0.2)' : 'none',
-        }}
-      >
         {renderResWrap}
       </div>
     </div>
