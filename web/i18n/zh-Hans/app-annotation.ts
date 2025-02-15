@@ -19,6 +19,7 @@ const translation = {
       bulkImport: '批量导入',
       bulkExport: '批量导出',
       clearAll: '删除所有标注',
+      clearAllConfirm: '您是否确定要删除所有标注？这个动作不可撤回！',
     },
   },
   editModal: {

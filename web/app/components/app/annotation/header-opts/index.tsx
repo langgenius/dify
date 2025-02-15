@@ -77,6 +77,18 @@ const HeaderOptions: FC<Props> = ({
 
   const [showBulkImportModal, setShowBulkImportModal] = useState(false)
 
+    const handleClearAll = async () => {
+    await confirm({
+      title: t('appAnnotation.table.header.clearAllConfirm'),
+      type: 'danger',
+    })
+    try {
+      await clearAllAnnotations(appId)
+      onAdded()
+    } catch (e) {
+      console.error(e)
+    }
+  }
   const Operations = () => {
     return (
       <div className="w-full py-1">
@@ -125,6 +137,15 @@ const HeaderOptions: FC<Props> = ({
             </MenuItems>
           </Transition>
         </Menu>
+        <button
+          onClick={handleClearAll}
+          className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-red-50 rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)] text-red-600'
+        >
+          <Trash03 className='w-4 h-4'/>
+          <span className='grow system-sm-regular text-left'>
+            {t('appAnnotation.table.header.clearAll')}
+          </span>
+        </button>
       </div>
     )
   }
@@ -138,7 +159,7 @@ const HeaderOptions: FC<Props> = ({
         <div>{t('appAnnotation.table.header.addAnnotation')}</div>
       </Button>
       <CustomPopover
-        htmlContent={<Operations />}
+        htmlContent={<Operations/>}
         position="br"
         trigger="click"
         btnElement={
