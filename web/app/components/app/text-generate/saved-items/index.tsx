@@ -13,6 +13,7 @@ import type { SavedMessage } from '@/models/debug'
 import { Markdown } from '@/app/components/base/markdown'
 import Toast from '@/app/components/base/toast'
 import ActionButton from '@/app/components/base/action-button'
+import NewAudioButton from '@/app/components/base/new-audio-button'
 
 export type ISavedItemsProps = {
   className?: string
@@ -24,6 +25,7 @@ export type ISavedItemsProps = {
 
 const SavedItems: FC<ISavedItemsProps> = ({
   className,
+  isShowTextToSpeech,
   list,
   onRemove,
   onStartCreateContent,
@@ -49,6 +51,7 @@ const SavedItems: FC<ISavedItemsProps> = ({
               </div>
               <div className='absolute right-2 bottom-1'>
                 <div className='ml-1 flex items-center gap-0.5 p-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm'>
+                  {isShowTextToSpeech && <NewAudioButton value={answer}/>}
                   <ActionButton onClick={() => {
                     copy(answer)
                     Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })

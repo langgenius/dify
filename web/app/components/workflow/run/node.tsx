@@ -89,7 +89,7 @@ const NodePanel: FC<Props> = ({
         <div
           className={cn(
             'flex items-center pl-1 pr-3 cursor-pointer',
-            hideInfo ? 'py-2' : 'py-1.5',
+            hideInfo ? 'py-2 pl-2' : 'py-1.5',
             !collapseState && (hideInfo ? '!pb-1' : '!pb-1.5'),
           )}
           onClick={() => setCollapseState(!collapseState)}

@@ -17,11 +17,9 @@ import copy from 'copy-to-clipboard'
 import { useParams } from 'next/navigation'
 import { useBoolean } from 'ahooks'
 import ResultTab from './result-tab'
-import cn from '@/utils/classnames'
 import { Markdown } from '@/app/components/base/markdown'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
-import AudioBtn from '@/app/components/base/audio-btn'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
 import { fetchTextGenerationMessage } from '@/service/debug'
@@ -31,6 +29,8 @@ import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { SiteInfo } from '@/models/share'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import NewAudioButton from '@/app/components/base/new-audio-button'
+import cn from '@/utils/classnames'
 
 const MAX_DEPTH = 3
 
@@ -62,20 +62,6 @@ export type IGenerationItemProps = {
   siteInfo: SiteInfo | null
   inSidePanel?: boolean
 }
-
-export const SimpleBtn = ({ className, isDisabled, onClick, children }: {
-  className?: string
-  isDisabled?: boolean
-  onClick?: () => void
-  children: React.ReactNode
-}) => (
-  <div
-    className={cn(isDisabled ? 'border-gray-100 text-gray-300' : 'border-gray-200 text-gray-700 cursor-pointer hover:border-gray-300 hover:shadow-sm', 'flex items-center h-7 px-3 rounded-md border text-xs  font-medium', className)}
-    onClick={() => !isDisabled && onClick?.()}
-  >
-    {children}
-  </div>
-)
 
 export const copyIcon = (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -205,6 +191,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   }
 
   const [currentTab, setCurrentTab] = useState<string>('DETAIL')
+  const showResultTabs = !!workflowProcessData?.resultText || !!workflowProcessData?.files?.length
+  const switchTab = async (tab: string) => {
+    setCurrentTab(tab)
+  }
+  useEffect(() => {
+    if (workflowProcessData?.resultText || !!workflowProcessData?.files?.length)
+      switchTab('RESULT')
+    else
+      switchTab('DETAIL')
+  }, [workflowProcessData?.files?.length, workflowProcessData?.resultText])
 
   return (
     <>
@@ -220,22 +216,53 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               !inSidePanel && 'bg-chat-bubble-bg rounded-2xl border-t border-divider-subtle',
             )}>
               {workflowProcessData && (
-                <div className='sticky left-0 top-0 p-3 pb-0'>
-                  {siteInfo && workflowProcessData && (
-                    <WorkflowProcessItem
-                      data={workflowProcessData}
-                      expand={workflowProcessData.expand}
-                      hideProcessDetail={hideProcessDetail}
-                      hideInfo={hideProcessDetail}
-                      readonly={!siteInfo.show_workflow_steps}
-                    />
+                <>
+                  <div className={cn(
+                    'p-3 pb-0',
+                    showResultTabs && 'border-b border-divider-subtle',
+                  )}>
+                    {taskId && (
+                      <div className={cn('mb-2 flex items-center system-2xs-medium-uppercase text-text-accent-secondary', isError && 'text-text-destructive')}>
+                        <RiPlayList2Line className='w-3 h-3 mr-1' />
+                        <span>{t('share.generation.execution')}</span>
+                        <span className='px-1'>·</span>
+                        <span>{taskId}</span>
+                      </div>
+                    )}
+                    {siteInfo && workflowProcessData && (
+                      <WorkflowProcessItem
+                        data={workflowProcessData}
+                        expand={workflowProcessData.expand}
+                        hideProcessDetail={hideProcessDetail}
+                        hideInfo={hideProcessDetail}
+                        readonly={!siteInfo.show_workflow_steps}
+                      />
+                    )}
+                    {showResultTabs && (
+                      <div className='flex items-center px-1 space-x-6'>
+                        <div
+                          className={cn(
+                            'py-3 border-b-2 border-transparent system-sm-semibold-uppercase text-text-tertiary cursor-pointer',
+                            currentTab === 'RESULT' && 'text-text-primary border-util-colors-blue-brand-blue-brand-600',
+                          )}
+                          onClick={() => switchTab('RESULT')}
+                        >{t('runLog.result')}</div>
+                        <div
+                          className={cn(
+                            'py-3 border-b-2 border-transparent system-sm-semibold-uppercase text-text-tertiary cursor-pointer',
+                            currentTab === 'DETAIL' && 'text-text-primary border-util-colors-blue-brand-blue-brand-600',
+                          )}
+                          onClick={() => switchTab('DETAIL')}
+                        >{t('runLog.detail')}</div>
+                      </div>
+                    )}
+                  </div>
+                  {!isError && (
+                    <ResultTab data={workflowProcessData} content={content} currentTab={currentTab} />
                   )}
-                  {workflowProcessData && !isError && (
-                    <ResultTab data={workflowProcessData} content={content} currentTab={currentTab} onCurrentTabChange={setCurrentTab} />
-                  )}
-                </div>
+                </>
               )}
-              {taskId && (
+              {!workflowProcessData && taskId && (
                 <div className={cn('sticky left-0 top-0 flex items-center w-full p-4 pb-3 bg-components-actionbar-bg rounded-t-2xl system-2xs-medium-uppercase text-text-accent-secondary', isError && 'text-text-destructive')}>
                   <RiPlayList2Line className='w-3 h-3 mr-1' />
                   <span>{t('share.generation.execution')}</span>
@@ -271,11 +298,9 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                       <RiSparklingLine className='w-4 h-4' />
                     </ActionButton>
                   )}
-                  {/* TODO */}
-                  {false && isShowTextToSpeech && (
-                    <AudioBtn
+                  {isShowTextToSpeech && (
+                    <NewAudioButton
                       id={messageId!}
-                      className={'mr-1'}
                       voice={config?.text_to_speech?.voice}
                     />
                   )}

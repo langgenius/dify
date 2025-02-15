@@ -374,7 +374,6 @@ const Result: FC<IResultProps> = ({
     <TextGenerationRes
       isWorkflow={isWorkflow}
       workflowProcessData={workflowProcessData}
-      className='mt-3'
       isError={isError}
       onRetry={handleSend}
       content={completionRes}
