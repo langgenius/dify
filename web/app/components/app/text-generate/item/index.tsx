@@ -60,6 +60,7 @@ export type IGenerationItemProps = {
   isShowTextToSpeech?: boolean
   hideProcessDetail?: boolean
   siteInfo: SiteInfo | null
+  inSidePanel?: boolean
 }
 
 export const SimpleBtn = ({ className, isDisabled, onClick, children }: {
@@ -85,7 +86,7 @@ export const copyIcon = (
 const GenerationItem: FC<IGenerationItemProps> = ({
   isWorkflow,
   workflowProcessData,
-  // className,
+  className,
   isError,
   onRetry,
   content,
@@ -107,6 +108,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   isShowTextToSpeech,
   hideProcessDetail,
   siteInfo,
+  inSidePanel,
 }) => {
   const { t } = useTranslation()
   const params = useParams()
@@ -206,15 +208,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   return (
     <>
-      <div className={cn('relative', !isTop && 'mt-3')}>
+      <div className={cn('relative', !isTop && 'mt-3', className)}>
         {isLoading && (
-          <div className='flex items-center h-10 bg-chat-bubble-bg rounded-2xl border-t border-divider-subtle'><Loading type='area' /></div>
+          <div className={cn('flex items-center h-10', !inSidePanel && 'bg-chat-bubble-bg rounded-2xl border-t border-divider-subtle')}><Loading type='area' /></div>
         )}
         {!isLoading && (
           <>
             {/* result content */}
             <div className={cn(
-              'relative bg-chat-bubble-bg rounded-2xl border-t border-divider-subtle',
+              'relative',
+              !inSidePanel && 'bg-chat-bubble-bg rounded-2xl border-t border-divider-subtle',
             )}>
               {workflowProcessData && (
                 <div className='sticky left-0 top-0 p-3 pb-0'>
@@ -250,80 +253,80 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               )}
             </div>
             {/* meta data */}
-            <div className='mt-1 h-4 px-4 text-text-quaternary system-xs-regular'>
+            <div className='relative mt-1 h-4 px-4 text-text-quaternary system-xs-regular'>
               {!isWorkflow && <span>{content?.length} {t('common.unit.char')}</span>}
-            </div>
-            {/* action buttons */}
-            <div className='absolute right-2 bottom-1 flex items-center'>
-              {!isInWebApp && !isInstalledApp && !isResponding && (
+              {/* action buttons */}
+              <div className='absolute right-2 bottom-1 flex items-center'>
+                {!isInWebApp && !isInstalledApp && !isResponding && (
+                  <div className='ml-1 flex items-center gap-0.5 p-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm'>
+                    <ActionButton disabled={isError || !messageId} onClick={handleOpenLogModal}>
+                      <RiFileList3Line className='w-4 h-4' />
+                      {/* <div>{t('common.operation.log')}</div> */}
+                    </ActionButton>
+                  </div>
+                )}
                 <div className='ml-1 flex items-center gap-0.5 p-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm'>
-                  <ActionButton disabled={isError || !messageId} onClick={handleOpenLogModal}>
-                    <RiFileList3Line className='w-4 h-4' />
-                    {/* <div>{t('common.operation.log')}</div> */}
-                  </ActionButton>
+                  {moreLikeThis && (
+                    <ActionButton state={depth === MAX_DEPTH ? ActionButtonState.Disabled : ActionButtonState.Default} disabled={depth === MAX_DEPTH} onClick={handleMoreLikeThis}>
+                      <RiSparklingLine className='w-4 h-4' />
+                    </ActionButton>
+                  )}
+                  {/* TODO */}
+                  {false && isShowTextToSpeech && (
+                    <AudioBtn
+                      id={messageId!}
+                      className={'mr-1'}
+                      voice={config?.text_to_speech?.voice}
+                    />
+                  )}
+                  {((currentTab === 'RESULT' && workflowProcessData?.resultText) || !isWorkflow) && (
+                    <ActionButton disabled={isError || !messageId} onClick={() => {
+                      const copyContent = isWorkflow ? workflowProcessData?.resultText : content
+                      if (typeof copyContent === 'string')
+                        copy(copyContent)
+                      else
+                        copy(JSON.stringify(copyContent))
+                      Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+                    }}>
+                      <RiClipboardLine className='w-4 h-4' />
+                    </ActionButton>
+                  )}
+                  {isInWebApp && isError && (
+                    <ActionButton onClick={onRetry}>
+                      <RiReplay15Line className='w-4 h-4' />
+                    </ActionButton>
+                  )}
+                  {isInWebApp && !isWorkflow && (
+                    <ActionButton disabled={isError || !messageId} onClick={() => { onSave?.(messageId as string) }}>
+                      <RiBookmark3Line className='w-4 h-4' />
+                    </ActionButton>
+                  )}
                 </div>
-              )}
-              <div className='ml-1 flex items-center gap-0.5 p-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm'>
-                {moreLikeThis && (
-                  <ActionButton state={depth === MAX_DEPTH ? ActionButtonState.Disabled : ActionButtonState.Default} disabled={depth === MAX_DEPTH} onClick={handleMoreLikeThis}>
-                    <RiSparklingLine className='w-4 h-4' />
-                  </ActionButton>
-                )}
-                {/* TODO */}
-                {false && isShowTextToSpeech && (
-                  <AudioBtn
-                    id={messageId!}
-                    className={'mr-1'}
-                    voice={config?.text_to_speech?.voice}
-                  />
-                )}
-                {((currentTab === 'RESULT' && workflowProcessData?.resultText) || !isWorkflow) && (
-                  <ActionButton disabled={isError || !messageId} onClick={() => {
-                    const copyContent = isWorkflow ? workflowProcessData?.resultText : content
-                    if (typeof copyContent === 'string')
-                      copy(copyContent)
-                    else
-                      copy(JSON.stringify(copyContent))
-                    Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
-                  }}>
-                    <RiClipboardLine className='w-4 h-4' />
-                  </ActionButton>
-                )}
-                {isInWebApp && isError && (
-                  <ActionButton onClick={onRetry}>
-                    <RiReplay15Line className='w-4 h-4' />
-                  </ActionButton>
-                )}
-                {isInWebApp && !isWorkflow && (
-                  <ActionButton disabled={isError || !messageId} onClick={() => { onSave?.(messageId as string) }}>
-                    <RiBookmark3Line className='w-4 h-4' />
-                  </ActionButton>
-                )}
-              </div>
-              {(supportFeedback || isInWebApp) && !isWorkflow && !isError && messageId && (
-                <div className='ml-1 flex items-center gap-0.5 p-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm'>
-                  {!feedback?.rating && (
-                    <>
-                      <ActionButton onClick={() => onFeedback?.({ rating: 'like' })}>
+                {(supportFeedback || isInWebApp) && !isWorkflow && !isError && messageId && (
+                  <div className='ml-1 flex items-center gap-0.5 p-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg shadow-md backdrop-blur-sm'>
+                    {!feedback?.rating && (
+                      <>
+                        <ActionButton onClick={() => onFeedback?.({ rating: 'like' })}>
+                          <RiThumbUpLine className='w-4 h-4' />
+                        </ActionButton>
+                        <ActionButton onClick={() => onFeedback?.({ rating: 'dislike' })}>
+                          <RiThumbDownLine className='w-4 h-4' />
+                        </ActionButton>
+                      </>
+                    )}
+                    {feedback?.rating === 'like' && (
+                      <ActionButton state={ActionButtonState.Active} onClick={() => onFeedback?.({ rating: null })}>
                         <RiThumbUpLine className='w-4 h-4' />
                       </ActionButton>
-                      <ActionButton onClick={() => onFeedback?.({ rating: 'dislike' })}>
+                    )}
+                    {feedback?.rating === 'dislike' && (
+                      <ActionButton state={ActionButtonState.Destructive} onClick={() => onFeedback?.({ rating: null })}>
                         <RiThumbDownLine className='w-4 h-4' />
                       </ActionButton>
-                    </>
-                  )}
-                  {feedback?.rating === 'like' && (
-                    <ActionButton state={ActionButtonState.Active} onClick={() => onFeedback?.({ rating: null })}>
-                      <RiThumbUpLine className='w-4 h-4' />
-                    </ActionButton>
-                  )}
-                  {feedback?.rating === 'dislike' && (
-                    <ActionButton state={ActionButtonState.Destructive} onClick={() => onFeedback?.({ rating: null })}>
-                      <RiThumbDownLine className='w-4 h-4' />
-                    </ActionButton>
-                  )}
-                </div>
-              )}
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             {/* more like this elements */}
             {!isTop && (

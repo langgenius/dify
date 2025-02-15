@@ -135,6 +135,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
       messageId={messageId}
       isError={false}
       onRetry={() => { }}
+      inSidePanel
     />
   )
 }
