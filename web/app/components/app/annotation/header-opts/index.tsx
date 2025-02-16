@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
   RiMoreFill,
+  RiDeleteBinLine
 } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import {
@@ -152,7 +153,7 @@ const HeaderOptions: FC<Props> = ({
           onClick={handleClearAll}
           className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-red-50 rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)] text-red-600'
         >
-          <FileDownload02 className='w-4 h-4'/>
+          <RiDeleteBinLine className='w-4 h-4'/>
           <span className='grow system-sm-regular text-left'>
             {t('appAnnotation.table.header.clearAll')}
           </span>
