@@ -89,7 +89,6 @@ const HeaderOptions: FC<Props> = ({
         await clearAllAnnotations(appId)
         onAdded()
       } catch (e) {
-      console.error(e)
       }
     }
   }
