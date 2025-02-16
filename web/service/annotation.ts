@@ -65,5 +65,5 @@ export const fetchHitHistoryList = (appId: string, annotationId: string, params:
 }
 
 export const clearAllAnnotations = (appId: string): Promise<any> => {
-  return post(`apps/${appId}/annotations/${annotationId}/clear-all`)
+  return post(`apps/${appId}/annotations/clear-all`)
 }
