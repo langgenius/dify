@@ -79,15 +79,17 @@ const HeaderOptions: FC<Props> = ({
   const [showBulkImportModal, setShowBulkImportModal] = useState(false)
 
     const handleClearAll = async () => {
-    await confirm({
+    const isConfirmed= await confirm({
       title: t('appAnnotation.table.header.clearAllConfirm'),
       type: 'danger',
     })
-    try {
-      await clearAllAnnotations(appId)
-      onAdded()
-    } catch (e) {
+    if(isConfirmed){
+      try {
+        await clearAllAnnotations(appId)
+        onAdded()
+      } catch (e) {
       console.error(e)
+      }
     }
   }
   const Operations = () => {
