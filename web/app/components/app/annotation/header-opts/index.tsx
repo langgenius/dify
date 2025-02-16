@@ -22,6 +22,7 @@ import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows
 
 import I18n from '@/context/i18n'
 import { fetchExportAnnotationList } from '@/service/annotation'
+import { clearAllAnnotations } from '@/service/annotation'
 import { LanguagesSupported } from '@/i18n/language'
 
 const CSV_HEADER_QA_EN = ['Question', 'Answer']
@@ -84,7 +85,7 @@ const HeaderOptions: FC<Props> = ({
     })
     try {
       await clearAllAnnotations(appId)
-      onAdded() // 刷新列表
+      onAdded()
     } catch (e) {
       console.error(e)
     }
@@ -149,7 +150,7 @@ const HeaderOptions: FC<Props> = ({
           onClick={handleClearAll}
           className='h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-red-50 rounded-lg cursor-pointer disabled:opacity-50 w-[calc(100%_-_8px)] text-red-600'
         >
-          <Trash03 className='w-4 h-4'/>
+          <FileDownload02 className='w-4 h-4'/>
           <span className='grow system-sm-regular text-left'>
             {t('appAnnotation.table.header.clearAll')}
           </span>

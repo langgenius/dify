@@ -445,13 +445,6 @@ class AppAnnotationService:
 
     @classmethod
     def clear_all_annotations(cls, app_id: str) -> dict:
-        """
-        清空指定应用的所有标注及其相关的命中历史记录。
-
-        :param app_id: 应用的ID
-        :return: 返回操作结果
-        """
-        # 获取应用信息
         app = (
             db.session.query(App)
             .filter(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
@@ -461,10 +454,8 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
 
-        # 删除所有标注
         annotations = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id).all()
         for annotation in annotations:
-            # 删除标注的命中历史记录
             annotation_hit_histories = (
                 db.session.query(AppAnnotationHitHistory)
                 .filter(AppAnnotationHitHistory.annotation_id == annotation.id)
@@ -473,13 +464,10 @@ class AppAnnotationService:
             for annotation_hit_history in annotation_hit_histories:
                 db.session.delete(annotation_hit_history)
 
-            # 删除标注本身
             db.session.delete(annotation)
 
-        # 提交事务
         db.session.commit()
 
-        # 如果标注回复功能已启用，清理相关的索引任务
         annotation_setting = (
             db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_id).first()
         )
