@@ -1289,7 +1289,7 @@ class MessageAnnotation(Base):
         return account
 
 
-class AppAnnotationHitHistory(Base):
+class AppAnnotationHitHistory(db.Model):
     __tablename__ = "app_annotation_hit_histories"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="app_annotation_hit_histories_pkey"),
