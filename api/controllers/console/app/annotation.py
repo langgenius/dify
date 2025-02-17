@@ -271,18 +271,6 @@ class AnnotationHitHistoryListApi(Resource):
         }
         return response
 
-class AnnotationClearAllApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self, app_id):
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        app_id = str(app_id)
-        AppAnnotationService.clear_all_annotations(app_id)
-        return {"result": "success"}, 200
-
 
 api.add_resource(AnnotationReplyActionApi, "/apps/<uuid:app_id>/annotation-reply/<string:action>")
 api.add_resource(
