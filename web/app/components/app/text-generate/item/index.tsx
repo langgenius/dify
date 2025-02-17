@@ -271,7 +271,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 </div>
               )}
               {isError && (
-                <div className='p-4 pt-0text-text-quaternary body-lg-regular'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
+                <div className='p-4 pt-0 text-text-quaternary body-lg-regular'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
               )}
               {!workflowProcessData && !isError && (typeof content === 'string') && (
                 <div className={cn('p-4', taskId && 'pt-0')}>
