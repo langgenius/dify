@@ -5,9 +5,9 @@ const translation = {
     appUnknownError: 'App is unavailable',
   },
   chat: {
-    newChat: 'New chat',
+    newChat: 'Start New chat',
     pinnedTitle: 'Pinned',
-    unpinnedTitle: 'Chats',
+    unpinnedTitle: 'Recent',
     newChatDefaultName: 'New conversation',
     resetChat: 'Reset conversation',
     poweredBy: 'Powered by',

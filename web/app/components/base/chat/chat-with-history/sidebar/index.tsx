@@ -3,22 +3,29 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  RiEditBoxLine,
+  RiLayoutLeft2Line,
+} from '@remixicon/react'
 import { useChatWithHistoryContext } from '../context'
-import List from './list'
 import AppIcon from '@/app/components/base/app-icon'
+import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
-import { Edit05 } from '@/app/components/base/icons/src/vender/line/general'
-import type { ConversationItem } from '@/models/share'
+import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
+import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
 import Confirm from '@/app/components/base/confirm'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
+import LogoSite from '@/app/components/base/logo/logo-site'
+import type { ConversationItem } from '@/models/share'
+import cn from '@/utils/classnames'
 
 const Sidebar = () => {
   const { t } = useTranslation()
   const {
     appData,
+    handleNewConversation,
     pinnedConversationList,
     conversationList,
-    handleNewConversation,
     currentConversationId,
     handleChangeConversation,
     handlePinConversation,
@@ -26,8 +33,8 @@ const Sidebar = () => {
     conversationRenaming,
     handleRenameConversation,
     handleDeleteConversation,
-    isMobile,
   } = useChatWithHistoryContext()
+
   const [showConfirm, setShowConfirm] = useState<ConversationItem | null>(null)
   const [showRename, setShowRename] = useState<ConversationItem | null>(null)
 
@@ -60,66 +67,71 @@ const Sidebar = () => {
   }, [showRename, handleRenameConversation, handleCancelRename])
 
   return (
-    <div className='shrink-0 h-full flex flex-col w-[240px] border-r border-r-gray-100'>
-      {
-        !isMobile && (
-          <div className='shrink-0 flex p-4'>
-            <AppIcon
-              className='mr-3'
-              size='small'
-              iconType={appData?.site.icon_type}
-              icon={appData?.site.icon}
-              background={appData?.site.icon_background}
-              imageUrl={appData?.site.icon_url}
-            />
-            <div className='py-1 text-base font-semibold text-gray-800'>
-              {appData?.site.title}
-            </div>
-          </div>
-        )
-      }
-      <div className='shrink-0 p-4'>
-        <Button
-          variant='secondary-accent'
-          className='justify-start w-full'
-          onClick={handleNewConversation}
-        >
-          <Edit05 className='mr-2 w-4 h-4' />
+    <div className='flex flex-col w-[236px] p-1 pr-0'>
+      <div className='shrink-0 flex items-center gap-3 p-3 pr-2'>
+        <div className='shrink-0'>
+          <AppIcon
+            size='large'
+            iconType={appData?.site.icon_type}
+            icon={appData?.site.icon}
+            background={appData?.site.icon_background}
+            imageUrl={appData?.site.icon_url}
+          />
+        </div>
+        <div className={cn('grow text-text-secondary system-md-semibold truncate')}>{appData?.site.title}</div>
+        <ActionButton size='l' onClick={() => { }}>
+          <RiLayoutLeft2Line className='w-5 h-5' />
+        </ActionButton>
+      </div>
+      <div className='shrink-0 px-3 py-4'>
+        <Button variant='secondary-accent' className='w-full justify-center space-x-0.5' onClick={handleNewConversation}>
+          <RiEditBoxLine className='w-4 h-4' />
           {t('share.chat.newChat')}
         </Button>
       </div>
-      <div className='grow px-4 py-2 overflow-y-auto'>
-        {
-          !!pinnedConversationList.length && (
-            <div className='mb-4'>
-              <List
-                isPin
-                title={t('share.chat.pinnedTitle') || ''}
-                list={pinnedConversationList}
-                onChangeConversation={handleChangeConversation}
-                onOperate={handleOperate}
-                currentConversationId={currentConversationId}
-              />
-            </div>
-          )
-        }
-        {
-          !!conversationList.length && (
+      <div className='grow h-0 pt-4 px-3 space-y-2 overflow-y-auto'>
+        {/* pinned list */}
+        {!!pinnedConversationList.length && (
+          <div className='mb-4'>
             <List
-              title={(pinnedConversationList.length && t('share.chat.unpinnedTitle')) || ''}
-              list={conversationList}
+              isPin
+              title={t('share.chat.pinnedTitle') || ''}
+              list={pinnedConversationList}
               onChangeConversation={handleChangeConversation}
               onOperate={handleOperate}
               currentConversationId={currentConversationId}
             />
-          )
-        }
+          </div>
+        )}
+        {!!conversationList.length && (
+          <List
+            title={(pinnedConversationList.length && t('share.chat.unpinnedTitle')) || ''}
+            list={conversationList}
+            onChangeConversation={handleChangeConversation}
+            onOperate={handleOperate}
+            currentConversationId={currentConversationId}
+          />
+        )}
       </div>
-      {appData?.site.copyright && (
-        <div className='px-4 pb-4 text-xs text-gray-400'>
-          © {(new Date()).getFullYear()} {appData?.site.copyright}
+      <div className='shrink-0 p-3 flex items-center justify-between'>
+        <MenuDropdown placement='top-start' data={appData?.site} />
+        {/* powered by */}
+        <div className='shrink-0'>
+          {!appData?.custom_config?.remove_webapp_brand && (
+            <div className={cn(
+              'shrink-0 px-2 flex items-center gap-1.5',
+            )}>
+              <div className='text-text-tertiary system-2xs-medium-uppercase'>{t('share.chat.poweredBy')}</div>
+              {appData?.custom_config?.replace_webapp_logo && (
+                <img src={appData?.custom_config?.replace_webapp_logo} alt='logo' className='block w-auto h-5' />
+              )}
+              {!appData?.custom_config?.replace_webapp_logo && (
+                <LogoSite className='!h-5' />
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </div>
       {!!showConfirm && (
         <Confirm
           title={t('share.chat.deleteConversation.title')}

@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { Placement } from '@floating-ui/react'
 import {
   RiEqualizer2Line,
 } from '@remixicon/react'
@@ -16,11 +17,13 @@ import type { SiteInfo } from '@/models/share'
 import cn from '@/utils/classnames'
 
 type Props = {
-  data: SiteInfo
+  data?: SiteInfo
+  placement?: Placement
 }
 
 const MenuDropdown: FC<Props> = ({
   data,
+  placement,
 }) => {
   const { t } = useTranslation()
   const [open, doSetOpen] = useState(false)
@@ -41,7 +44,11 @@ const MenuDropdown: FC<Props> = ({
       <PortalToFollowElem
         open={open}
         onOpenChange={setOpen}
-        placement='bottom-end'
+        placement={placement || 'bottom-end'}
+        offset={{
+          mainAxis: 4,
+          crossAxis: -4,
+        }}
       >
         <PortalToFollowElemTrigger onClick={handleTrigger}>
           <div>
@@ -51,9 +58,9 @@ const MenuDropdown: FC<Props> = ({
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-50'>
-          <div className='w-[224px] bg-components-panel-bg-blur rounded-xl border-[0.5px] border-components-panel-border shadow-lg'>
+          <div className='w-[224px] bg-components-panel-bg-blur backdrop-blur-sm rounded-xl border-[0.5px] border-components-panel-border shadow-lg'>
             <div className='p-1'>
-              {data.privacy_policy && (
+              {data?.privacy_policy && (
                 <a href={data.privacy_policy} target='_blank' className='flex items-center px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'>
                   <span className='grow'>{t('share.chat.privacyPolicyMiddle')}</span>
                 </a>

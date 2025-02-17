@@ -6,7 +6,7 @@ import { appDefaultIconBackground } from '@/config'
 import cn from 'classnames'
 
 type Props = {
-  data: SiteInfo
+  data?: SiteInfo
   isShow: boolean
   onClose: () => void
 }
@@ -26,18 +26,18 @@ const InfoModal = ({
       <div className={cn('pt-10 px-4 pb-8 flex flex-col items-center gap-4')}>
         <AppIcon
           size='xxl'
-          iconType={data.icon_type}
-          icon={data.icon}
-          background={data.icon_background || appDefaultIconBackground}
-          imageUrl={data.icon_url}
+          iconType={data?.icon_type}
+          icon={data?.icon}
+          background={data?.icon_background || appDefaultIconBackground}
+          imageUrl={data?.icon_url}
         />
-        <div className='text-text-secondary system-xl-semibold'>{data.title}</div>
+        <div className='text-text-secondary system-xl-semibold'>{data?.title}</div>
         <div className='text-text-tertiary system-xs-regular'>
           {/* copyright */}
-          {data.copyright && (
-            <div>© {(new Date()).getFullYear()} {data.copyright}</div>
+          {data?.copyright && (
+            <div>© {(new Date()).getFullYear()} {data?.copyright}</div>
           )}
-          {data.custom_disclaimer && (
+          {data?.custom_disclaimer && (
             <div className='mt-2'>{data.custom_disclaimer}</div>
           )}
         </div>

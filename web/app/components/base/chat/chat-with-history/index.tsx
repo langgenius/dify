@@ -19,6 +19,7 @@ import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
+import cn from '@/utils/classnames'
 
 type ChatWithHistoryProps = {
   className?: string
@@ -65,7 +66,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   }
 
   return (
-    <div className={`h-full flex bg-white ${className} ${isMobile && 'flex-col'}`}>
+    <div className={cn('h-full flex bg-background-default-burn', isMobile && 'flex-col', className)}>
       {
         !isMobile && (
           <Sidebar />

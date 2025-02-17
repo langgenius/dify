@@ -23,7 +23,7 @@ export type SharePageContextProviderProps = {
 }
 
 export const SharePageContextProvider: FC<SharePageContextProviderProps> = ({ children }) => {
-  const [theme, setTheme] = useState<Theme>(Theme.dark)
+  const [theme, setTheme] = useState<Theme>(Theme.light)
   const handleSetTheme = useCallback((theme: Theme) => {
     setTheme(theme)
     globalThis.document.documentElement.setAttribute('data-theme', theme)

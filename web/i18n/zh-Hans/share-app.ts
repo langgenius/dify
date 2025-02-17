@@ -5,7 +5,7 @@ const translation = {
     appUnknownError: '应用不可用',
   },
   chat: {
-    newChat: '新对话',
+    newChat: '开启新对话',
     pinnedTitle: '已置顶',
     unpinnedTitle: '对话列表',
     newChatDefaultName: '新的对话',
