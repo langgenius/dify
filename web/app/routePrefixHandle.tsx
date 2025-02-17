@@ -8,12 +8,6 @@ export default function RoutePrefixHandle() {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
   console.log('basePath:', basePath)
 
-  useEffect(() => {
-    if (!basePath)
-      return
-    handleRouteChange()
-  }, [pathname])
-
   const handleRouteChange = () => {
     console.log('页面已切换到:', pathname)
     const addPrefixToImg = (e) => {
@@ -24,7 +18,6 @@ export default function RoutePrefixHandle() {
         e.src = url.toString()
       }
     }
-
     // 创建一个观察者实例
     const observer = new MutationObserver((mutationsList) => {
       for (const mutation of mutationsList) {
@@ -53,6 +46,11 @@ export default function RoutePrefixHandle() {
 
     observer.observe(document.body, config)
   }
+
+  useEffect(() => {
+    if (basePath)
+      handleRouteChange()
+  }, [pathname])
 
   return null
 }
