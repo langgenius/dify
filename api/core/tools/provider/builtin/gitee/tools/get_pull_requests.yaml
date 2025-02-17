@@ -1,0 +1,177 @@
+identity:
+  name: get_pull_requests
+  author: Gitee
+  label:
+    en_US: Get Pull Request
+    zh_Hans: 获取Pull Request列表
+  icon: gitee.svg
+description:
+  human:
+    en_US: Get repo's pull requests
+    zh_Hans: 获取 Pull Request 列表
+  llm: Get a specified repo's pull requests
+parameters:
+  - name: owner
+    type: string
+    required: true
+    label:
+      en_US: repo owner
+      zh_Hans: 仓库归属空间地址
+    human_description:
+      en_US: Namespace of repo
+      zh_Hans: 仓库所属空间地址(企业、组织或个人的地址path)
+    llm_description: The namespace address to which the repository belongs (the address path of an enterprise, organization or individual)
+    form: llm
+  - name: repo
+    type: string
+    required: true
+    label:
+      en_US: repo path
+      zh_Hans: 仓库空间地址
+    human_description:
+      en_US: Repo's path
+      zh_Hans: 仓库空间地址
+    llm_description: Repo's path
+    form: llm
+  - name: state
+    type: string
+    required: false
+    label:
+      en_US: State
+      zh_Hans: 状态
+    human_description:
+      en_US: State of Pull Request
+      zh_Hans: Pull Request 状态
+    default: open
+    enum:
+      - open
+      - closed
+      - merged
+      - all
+    llm_description: State of pull requests, a filter option
+    form: llm
+  - name: head
+    type: string
+    required: false
+    label:
+      en_US: Head
+      zh_Hans: 源分支
+    human_description:
+      en_US: The source branch submitted by the Pull Request. Format branch or "username:branch"
+      zh_Hans: Pull Request提交的源分支。格式 branch 或者 "username:branch"
+    llm_description: Source branch of pull request, a filter option
+    form: llm
+  - name: base
+    type: string
+    required: false
+    label:
+      en_US: Base
+      zh_Hans: 目标分支
+    human_description:
+      en_US: Target branch of pull request
+      zh_Hans: Pull Request提交目标分支的名称
+    llm_description: Target branch of pull request, a filter option
+    form: llm
+  - name: sort
+    type: string
+    required: false
+    label:
+      en_US: Sort Field
+      zh_Hans: 排序字段
+    human_description:
+      en_US: Sort field, default sort by created_at
+      zh_Hans: 排序字段，默认按创建时间
+    default: created
+    enum:
+      - created
+      - updated
+      - popularity
+      - long-running
+    llm_description: Sort field, default sort by created_at
+    form: llm
+  - name: since
+    type: string
+    required: false
+    label:
+      en_US: Since time
+      zh_Hans: 起始时间
+    human_description:
+      en_US: Starting update time, the required time format is ISO 8601
+      zh_Hans: 起始的更新时间，要求时间格式为ISO 8601
+    llm_description: Starting update time in ISO 8601 format. E.g., "2025-01-01T00:00:00Z"
+    form: llm
+  - name: direction
+    type: string
+    required: false
+    label:
+      en_US: Direction
+      zh_Hans: 排序方向
+    default: desc
+    enum:
+      - asc
+      - desc
+    human_description:
+      en_US: asc/desc
+      zh_Hans: 升序/降序
+    llm_description: Sort direction, default desc
+    form: llm
+  - name: labels
+    type: string
+    required: false
+    label:
+      en_US: Labels
+      zh_Hans: 标签
+    human_description:
+      en_US: Labels separated by commas. Such as bug,performance
+      zh_Hans: 用逗号分开的标签。如 bug,performance
+    llm_description: Labels separated by commas, filter the pull requests
+    form: llm
+  - name: author
+    type: string
+    required: false
+    label:
+      en_US: Author
+      zh_Hans: 创建者
+    human_description:
+      en_US: Pull Request creator's username
+      zh_Hans: PR创建者用户名
+    llm_description: Pull Request creator's username, for filtering
+    form: llm
+  - name: assignee
+    type: string
+    required: false
+    label:
+      en_US: Assignee
+      zh_Hans: 审查者
+    human_description:
+      en_US: Assigneer username
+      zh_Hans: 评审者用户名
+    llm_description: Assigneer username, for filtering
+    form: llm
+  - name: tester
+    type: string
+    required: false
+    label:
+      en_US: Tester
+      zh_Hans: 测试者
+    human_description:
+      en_US: Tester username
+      zh_Hans: 测试者用户名
+    llm_description: Tester username, for filtering
+    form: llm
+  - name: page
+    type: number
+    required: false
+    label:
+      en_US: Page number
+      zh_Hans: 页码
+    llm_description: Page number
+    form: llm
+  - name: per_page
+    type: number
+    required: false
+    label:
+      en_US: Per page number
+      zh_Hans: 每页数量
+    llm_description: Per page number
+    form: llm
