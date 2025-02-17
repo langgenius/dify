@@ -236,9 +236,9 @@ class LLMNode(BaseNode[LLMNodeData]):
         db.session.close()
 
         invoke_result = model_instance.invoke_llm(
-            prompt_messages=prompt_messages,
+            prompt_messages=list(prompt_messages),
             model_parameters=node_data_model.completion_params,
-            stop=stop,
+            stop=list(stop or []),
             stream=True,
             user=self.user_id,
         )

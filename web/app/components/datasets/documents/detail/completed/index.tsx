@@ -80,7 +80,7 @@ export const useSegmentListContext = (selector: (value: SegmentListContextValue)
   return useContextSelector(SegmentListContext, selector)
 }
 
-type ICompletedProps = {
+interface ICompletedProps {
   embeddingAvailable: boolean
   showNewSegmentModal: boolean
   onNewSegmentModalChange: (state: boolean) => void

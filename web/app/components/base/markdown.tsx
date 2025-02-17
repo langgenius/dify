@@ -1,3 +1,4 @@
+import type { Components } from 'react-markdown'
 import ReactMarkdown from 'react-markdown'
 import ReactEcharts from 'echarts-for-react'
 import 'katex/dist/katex.min.css'
@@ -8,8 +9,7 @@ import RemarkGfm from 'remark-gfm'
 import RehypeRaw from 'rehype-raw'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
-import { Component, memo, useMemo, useRef, useState } from 'react'
-import type { CodeComponent } from 'react-markdown/lib/ast-to-react'
+import { Component, createContext, memo, useContext, useMemo, useRef, useState } from 'react'
 import { flow } from 'lodash/fp'
 import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
@@ -22,7 +22,7 @@ import AudioGallery from '@/app/components/base/audio-gallery'
 import SVGRenderer from '@/app/components/base/svg-gallery'
 import MarkdownButton from '@/app/components/base/markdown-blocks/button'
 import MarkdownForm from '@/app/components/base/markdown-blocks/form'
-import ThinkBlock from '@/app/components/base/markdown-blocks/think-block'
+import type { ElementContentMap } from 'hast'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -57,7 +57,7 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
   return language.charAt(0).toUpperCase() + language.substring(1)
 }
 
-const preprocessLaTeX = (content: string) => {
+const preprocessLaTeX = (content?: string) => {
   if (typeof content !== 'string')
     return content
 
@@ -91,6 +91,20 @@ export function PreCode(props: { children: any }) {
   )
 }
 
+const PreContext = createContext({
+  // if children not in PreContext, just leave inline true
+  inline: true,
+})
+
+const PreBlock: Components['pre'] = (props) => {
+  const { ...rest } = props
+  return <PreContext.Provider value={{
+    inline: false,
+  }}>
+    <pre {...rest} />
+  </PreContext.Provider>
+}
+
 // **Add code block
 // Avoid error #185 (Maximum update depth exceeded.
 // This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate.
@@ -104,7 +118,8 @@ export function PreCode(props: { children: any }) {
 // visit https://reactjs.org/docs/error-decoder.html?invariant=185 for the full message
 // or use the non-minified dev environment for full errors and additional helpful warnings.
 
-const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }) => {
+const CodeBlock: Components['code'] = memo(({ className, children, ...props }) => {
+  const { inline } = useContext(PreContext)
   const [isSVG, setIsSVG] = useState(true)
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
@@ -143,7 +158,7 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
     else {
       return (
         <SyntaxHighlighter
-          {...props}
+          {...props as any}
           style={atelierHeathLight}
           customStyle={{
             paddingLeft: 12,
@@ -184,23 +199,23 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
     </div>
   )
 })
-CodeBlock.displayName = 'CodeBlock'
+// CodeBlock.displayName = 'CodeBlock'
 
-const VideoBlock: CodeComponent = memo(({ node }) => {
-  const srcs = node.children.filter(child => 'properties' in child).map(child => (child as any).properties.src)
+const VideoBlock: Components['video'] = memo(({ node }) => {
+  const srcs = node!.children.filter(child => 'properties' in child).map(child => (child as any).properties.src)
   if (srcs.length === 0)
     return null
   return <VideoGallery key={srcs.join()} srcs={srcs} />
 })
-VideoBlock.displayName = 'VideoBlock'
+// VideoBlock.displayName = 'VideoBlock'
 
-const AudioBlock: CodeComponent = memo(({ node }) => {
-  const srcs = node.children.filter(child => 'properties' in child).map(child => (child as any).properties.src)
+const AudioBlock: Components['audio'] = memo(({ node }) => {
+  const srcs = node!.children.filter(child => 'properties' in child).map(child => (child as any).properties.src)
   if (srcs.length === 0)
     return null
   return <AudioGallery key={srcs.join()} srcs={srcs} />
 })
-AudioBlock.displayName = 'AudioBlock'
+// AudioBlock.displayName = 'AudioBlock'
 
 const ScriptBlock = memo(({ node }: any) => {
   const scriptContent = node.children[0]?.value || ''
@@ -208,34 +223,32 @@ const ScriptBlock = memo(({ node }: any) => {
 })
 ScriptBlock.displayName = 'ScriptBlock'
 
-const Paragraph = (paragraph: any) => {
-  const { node }: any = paragraph
-  const children_node = node.children
-  if (children_node && children_node[0] && 'tagName' in children_node[0] && children_node[0].tagName === 'img') {
-    return (
-      <>
-        <ImageGallery srcs={[children_node[0].properties.src]} />
-        <p>{paragraph.children.slice(1)}</p>
-      </>
-    )
-  }
-  return <p>{paragraph.children}</p>
+const Paragraph: Components['p'] = ({ node, children }) => {
+  const children_node = node!.children
+  if (children_node && children_node[0] && 'tagName' in children_node[0] && children_node[0].tagName === 'img')
+    return <ImageGallery srcs={[children_node?.[0]?.properties?.src as string]} />
+  return <p>{children}</p>
 }
 
-const Img = ({ src }: any) => {
-  return (<ImageGallery srcs={[src]} />)
+const Img: Components['img'] = ({ src }) => {
+  return (<ImageGallery srcs={[src!]} />)
 }
 
-const Link = ({ node, ...props }: any) => {
-  if (node.properties?.href && node.properties.href?.toString().startsWith('abbr')) {
+const Link: Components['a'] = ({ node, ...props }) => {
+  if (node!.properties?.href && node!.properties.href?.toString().startsWith('abbr')) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const { onSend } = useChatContext()
-    const hidden_text = decodeURIComponent(node.properties.href.toString().split('abbr:')[1])
-
-    return <abbr className="underline decoration-dashed !decoration-primary-700 cursor-pointer" onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value}>{node.children[0]?.value}</abbr>
+    const hidden_text = decodeURIComponent(node!.properties.href.toString().split('abbr:')[1])
+    const title = (node!.children[0] as ElementContentMap['text'])?.value
+    return <abbr className="underline decoration-dashed !decoration-primary-700 cursor-pointer" onClick={() => onSend?.(hidden_text)} title={title}>{title}</abbr>
   }
   else {
-    return <a {...props} target="_blank" className="underline decoration-dashed !decoration-primary-700 cursor-pointer">{node.children[0] ? node.children[0]?.value : 'Download'}</a>
+    const firstChild = node?.children?.[0] as ElementContentMap['text'] | undefined
+    return <a {...props} target="_blank" className="underline decoration-dashed !decoration-primary-700 cursor-pointer">{
+      firstChild
+        ? firstChild.value
+        : 'Download'
+    }</a>
   }
 }
 
@@ -245,7 +258,7 @@ export function Markdown(props: { content: string; className?: string }) {
     preprocessLaTeX,
   ])(props.content)
   return (
-    <div className={cn(props.className, 'markdown-body')}>
+    <div className={cn('markdown-body', props.className)}>
       <ReactMarkdown
         remarkPlugins={[
           RemarkGfm,
@@ -271,6 +284,7 @@ export function Markdown(props: { content: string; className?: string }) {
         ]}
         disallowedElements={['iframe', 'head', 'html', 'meta', 'link', 'style', 'body']}
         components={{
+          pre: PreBlock,
           code: CodeBlock,
           img: Img,
           video: VideoBlock,
@@ -282,7 +296,6 @@ export function Markdown(props: { content: string; className?: string }) {
           script: ScriptBlock,
           details: ThinkBlock,
         }}
-        linkTarget='_blank'
       >
         {/* Markdown detect has problem. */}
         {latexContent}
@@ -307,11 +320,11 @@ export default class ErrorBoundary extends Component {
   }
 
   render() {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     if (this.state.hasError)
       return <div>Oops! An error occurred. This could be due to an ECharts runtime error or invalid SVG content. <br />(see the browser console for more information)</div>
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     return this.props.children
   }

@@ -8,7 +8,7 @@ import { logout } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 
-export type IAppSelector = {
+export interface IAppSelector {
   isMobile: boolean
 }
 

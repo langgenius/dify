@@ -15,6 +15,10 @@ export const fetchCollectionList = () => {
   return get<Collection[]>('/workspaces/current/tool-providers')
 }
 
+export const fetchCollectionDetail = (collectionName: string) => {
+  return get<Collection>(`/workspaces/current/tool-provider/${collectionName}/info`)
+}
+
 export const fetchBuiltInToolList = (collectionName: string) => {
   return get<Tool[]>(`/workspaces/current/tool-provider/builtin/${collectionName}/tools`)
 }

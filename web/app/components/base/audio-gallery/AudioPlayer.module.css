@@ -2,15 +2,15 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  background-color: #ffffff;
+  background-color: var(--color-components-chat-input-audio-bg-alt);
   border-radius: 10px;
   padding: 8px;
   min-width: 240px;
   max-width: 420px;
   max-height: 40px;
   backdrop-filter: blur(5px);
-  border: 1px solid rgba(16, 24, 40, 0.08);
-  box-shadow: 0 1px 2px rgba(9, 9, 11, 0.05);
+  border: 1px solid var(--color-components-panel-border-subtle);
+  box-shadow: 0 1px 2px var(--color-shadow-shadow-3);
   gap: 8px;
 }
 
@@ -19,8 +19,8 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background-color: #296DFF;
-  color: white;
+  background-color: var(--color-components-button-primary-bg);
+  color: var(--color-components-chat-input-audio-bg-alt);
   border: none;
   cursor: pointer;
   align-items: center;
@@ -30,16 +30,15 @@
 }
 
 .playButton:hover {
-  background-color: #3367d6;
+  background-color: var(--color-components-button-primary-bg-hover);
 }
 
 .playButton:disabled {
-  background-color: #bdbdbf;
+  background-color: var(--color-components-button-primary-bg-disabled);
 }
 
 .audioControls {
   flex-grow: 1;
-  
 }
 
 .progressBarContainer {
@@ -76,8 +75,8 @@
 
 .timeDisplay {
   /* position: absolute; */
-  color: #296DFF;
-  border-radius: 2px;
+  color: var(--color-text-accent-secondary);
+  font-size: 12px;
   order: 0;
   height: 100%;
   width: 50px;
@@ -97,7 +96,6 @@
 } */
 
 .duration {
-  background-color: rgba(255, 255, 255, 0.8);
   padding: 2px 4px;
   border-radius: 10px;
 }
@@ -114,6 +112,6 @@
 }
 
 .playButton svg path,
-.playButton svg rect{
-   fill:currentColor;
+.playButton svg rect {
+  fill: currentColor;
 }

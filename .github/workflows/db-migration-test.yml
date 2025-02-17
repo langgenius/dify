@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+      - plugins/beta
     paths:
       - api/migrations/**
       - .github/workflows/db-migration-test.yml

@@ -8,7 +8,7 @@ import RemoveButton from '@/app/components/workflow/nodes/_base/components/remov
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 
-type Props = {
+interface Props {
   isString: boolean
   list: any[]
   onChange: (list: any[]) => void

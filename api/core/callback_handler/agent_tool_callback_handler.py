@@ -1,4 +1,4 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping
 from typing import Any, Optional, TextIO, Union
 
 from pydantic import BaseModel
@@ -57,7 +57,7 @@ class DifyAgentCallbackHandler(BaseModel):
         self,
         tool_name: str,
         tool_inputs: Mapping[str, Any],
-        tool_outputs: Sequence[ToolInvokeMessage] | str,
+        tool_outputs: Iterable[ToolInvokeMessage] | str,
         message_id: Optional[str] = None,
         timer: Optional[Any] = None,
         trace_manager: Optional[TraceQueueManager] = None,

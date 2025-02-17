@@ -9,9 +9,11 @@ from typing import Any, Optional
 
 from flask_login import current_user  # type: ignore
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from core.entities import DEFAULT_PLUGIN_ID
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -268,7 +270,15 @@ class DatasetService:
             external_knowledge_api_id = data.get("external_knowledge_api_id", None)
             if not external_knowledge_api_id:
                 raise ValueError("External knowledge api id is required.")
-            external_knowledge_binding = ExternalKnowledgeBindings.query.filter_by(dataset_id=dataset_id).first()
+
+            with Session(db.engine) as session:
+                external_knowledge_binding = (
+                    session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id).first()
+                )
+
+                if not external_knowledge_binding:
+                    raise ValueError("External knowledge binding not found.")
+
             if (
                 external_knowledge_binding.external_knowledge_id != external_knowledge_id
                 or external_knowledge_binding.external_knowledge_api_id != external_knowledge_api_id
@@ -316,8 +326,19 @@ class DatasetService:
                     except ProviderTokenNotInitError as ex:
                         raise ValueError(ex.description)
             else:
+                # add default plugin id to both setting sets, to make sure the plugin model provider is consistent
+                plugin_model_provider = dataset.embedding_model_provider
+                if "/" not in plugin_model_provider:
+                    plugin_model_provider = f"{DEFAULT_PLUGIN_ID}/{plugin_model_provider}/{plugin_model_provider}"
+
+                new_plugin_model_provider = data["embedding_model_provider"]
+                if "/" not in new_plugin_model_provider:
+                    new_plugin_model_provider = (
+                        f"{DEFAULT_PLUGIN_ID}/{new_plugin_model_provider}/{new_plugin_model_provider}"
+                    )
+
                 if (
-                    data["embedding_model_provider"] != dataset.embedding_model_provider
+                    new_plugin_model_provider != plugin_model_provider
                     or data["embedding_model"] != dataset.embedding_model
                 ):
                     action = "update"
@@ -1468,7 +1489,7 @@ class SegmentService:
                 model=dataset.embedding_model,
             )
             # calc embedding use tokens
-            tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
+            tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
         lock_name = "add_segment_lock_document_id_{}".format(document.id)
         with redis_client.lock(lock_name, timeout=600):
             max_position = (
@@ -1545,9 +1566,12 @@ class SegmentService:
                 if dataset.indexing_technique == "high_quality" and embedding_model:
                     # calc embedding use tokens
                     if document.doc_form == "qa_model":
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment_item["answer"]])
+                        tokens = embedding_model.get_text_embedding_num_tokens(
+                            texts=[content + segment_item["answer"]]
+                        )[0]
                     else:
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
+
                 segment_document = DocumentSegment(
                     tenant_id=current_user.current_tenant_id,
                     dataset_id=document.dataset_id,
@@ -1695,9 +1719,9 @@ class SegmentService:
 
                     # calc embedding use tokens
                     if document.doc_form == "qa_model":
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]
                     else:
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
                 segment.content = content
                 segment.index_node_hash = segment_hash
                 segment.word_count = len(content)
