@@ -532,6 +532,8 @@ const translation = {
       hitScore: 'Puntuación de recuperación:',
     },
     inputPlaceholder: 'Hablar con el bot',
+    thinking: 'Pensamiento...',
+    thought: 'Pensamiento',
   },
   promptEditor: {
     placeholder: 'Escribe tu palabra de indicación aquí, ingresa \'{\' para insertar una variable, ingresa \'/\' para insertar un bloque de contenido de indicación',

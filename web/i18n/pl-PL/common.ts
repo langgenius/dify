@@ -543,6 +543,8 @@ const translation = {
       hitScore: 'Wynik trafień:',
     },
     inputPlaceholder: 'Porozmawiaj z botem',
+    thought: 'Myśl',
+    thinking: 'Myślenie...',
   },
   promptEditor: {
     placeholder:

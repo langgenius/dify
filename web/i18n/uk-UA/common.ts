@@ -529,6 +529,8 @@ const translation = {
       hitScore: 'Оцінка звернення:',
     },
     inputPlaceholder: 'Поговоріть з ботом',
+    thought: 'Думка',
+    thinking: 'Мислення...',
   },
   promptEditor: {
     placeholder: 'Пишіть свої підказки тут, вводьте \'{\', щоб вставити змінну чи \'/\', щоб вставити блок-підказку',

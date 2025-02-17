@@ -528,6 +528,8 @@ const translation = {
       hitScore: 'Điểm truy xuất:',
     },
     inputPlaceholder: 'Nói chuyện với Bot',
+    thought: 'Tư duy',
+    thinking: 'Suy nghĩ...',
   },
   promptEditor: {
     placeholder: 'Viết từ khóa của bạn ở đây, nhập \'{\' để chèn một biến, nhập \'/\' để chèn một khối nội dung nhắc nhở',
