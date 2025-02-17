@@ -1,0 +1,43 @@
+identity:
+  name: janus
+  author: hjlarry
+  label:
+    en_US: Janus Pro
+    zh_Hans: Janus Pro
+    zh_CN: Janus Pro
+  icon: icon.svg
+description:
+  human:
+    en_US: Generate image via SiliconFlow's Janus Pro 7B model. 
+    zh_Hans: 使用 SiliconFlow 的 Janus Pro 7B 模型生成图片。
+    zh_CN: 使用 SiliconFlow 的 Janus Pro 7B 模型生成图片。
+  llm: This tool uses the Janus Pro 7B model to generate 384x384 resolution images from text prompts. The generated image URLs are valid for 1 hour.
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    default: an island near sea, with seagulls, moon shining over the sea, light house, boats in the background
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+      zh_CN: 提示词
+    human_description:
+      en_US: The text prompt used to generate the image. English prompts are recommended for better results.
+      zh_Hans: 用于生成图片的文字提示词。建议使用英文提示词以获得更好的生成效果。
+      zh_CN: 用于生成图片的文字提示词。建议使用英文提示词以获得更好的生成效果。
+    llm_description: The text description that will be used to generate the image. The model works best with detailed English prompts.
+    form: llm
+  - name: seed
+    type: number
+    required: false
+    min: 1
+    max: 9999999999
+    label:
+      en_US: Seed
+      zh_Hans: 种子
+      zh_CN: 种子
+    human_description:
+      en_US: Random seed for image generation (1-9999999999). Using the same seed and prompt will produce similar images.
+      zh_Hans: 图片生成的随机种子(1-9999999999)。使用相同的种子和提示词可以生成相似的图片。
+      zh_CN: 图片生成的随机种子(1-9999999999)。使用相同的种子和提示词可以生成相似的图片。
+    form: form 

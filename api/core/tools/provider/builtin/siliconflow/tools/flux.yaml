@@ -3,10 +3,12 @@ identity:
   author: hjlarry
   label:
     en_US: Flux
+    zh_Hans: Flux
   icon: icon.svg
 description:
   human:
     en_US: Generate image via SiliconFlow's flux model.
+    zh_Hans: 使用 SiliconFlow 的 flux 模型生成图片。
   llm: This tool is used to generate image from prompt via SiliconFlow's flux model.
 parameters:
   - name: prompt
