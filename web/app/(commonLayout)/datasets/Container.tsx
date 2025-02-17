@@ -32,7 +32,7 @@ import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { useAppContext } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
-import { DataType } from '@/app/components/datasets/metadata/types'
+import { DataType, UpdateType } from '@/app/components/datasets/metadata/types'
 
 const Container = () => {
   const { t } = useTranslation()
@@ -119,9 +119,13 @@ const Container = () => {
               id: '1', name: 'name1', type: DataType.string, value: 'aaa',
             },
             {
-              id: '2', name: 'name2', type: DataType.number, value: 'ccc', isMultipleValue: true,
-            }, {
-              id: '3', name: 'name3', type: DataType.time, value: '', isMultipleValue: false,
+              id: '2', name: 'name2', type: DataType.number, value: 'ccc', isMultipleValue: true, isUpdated: true,
+            },
+            {
+              id: '2.1', name: 'num v', type: DataType.number, value: 10,
+            },
+            {
+              id: '3', name: 'name3', type: DataType.time, value: '', isUpdated: true, updateType: UpdateType.delete,
             },
           ]}
           onHide={() => { }}

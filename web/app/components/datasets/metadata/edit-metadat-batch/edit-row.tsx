@@ -8,6 +8,7 @@ import { RiDeleteBinLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import InputHasSetMultipleValue from './input-has-set-multiple-value'
 import InputCombined from './input-combined'
+import EditedBeacon from './edited-beacon'
 
 type Props = {
   payload: MetadataItemWithEdit
@@ -37,9 +38,11 @@ const EditMetadatabatchItem: FC<Props> = ({
   onChange,
   onRemove,
 }) => {
+  const isUpdated = payload.isUpdated
   const isDeleted = payload.updateType === UpdateType.delete
   return (
     <div className='flex h-6 items-center space-x-0.5'>
+      {isUpdated ? <EditedBeacon onReset={() => { }} /> : <div className='shrink-0 size-4' />}
       <Label text={payload.name} isDeleted={isDeleted} />
       {payload.isMultipleValue
         ? <InputHasSetMultipleValue onClear={() => onChange({ ...payload, isMultipleValue: false })} />
@@ -53,7 +56,7 @@ const EditMetadatabatchItem: FC<Props> = ({
         className={
           cn(
             'p-1 rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive cursor-pointer',
-            isDeleted && 'cursor-default bg-state-destructive-hover  text-text-quaternary ')
+            isDeleted && 'cursor-default bg-state-destructive-hover  text-text-destructive')
         }
         onClick={() => onRemove(payload.id)}
       >
