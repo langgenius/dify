@@ -482,4 +482,3 @@ class AppAnnotationService:
                 )
 
         return {"result": "success"}
-
