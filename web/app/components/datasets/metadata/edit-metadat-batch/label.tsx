@@ -4,7 +4,7 @@ import React from 'react'
 import cn from '@/utils/classnames'
 
 type Props = {
-  isDeleted: boolean,
+  isDeleted?: boolean,
   className?: string,
   text: string
 }

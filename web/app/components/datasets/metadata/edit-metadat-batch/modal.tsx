@@ -2,12 +2,16 @@
 import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import Modal from '../../../base/modal'
-import type { MetadataItemWithEdit } from '../types'
-import EditMetadataBatchItem, { AddedMetadataItem } from './edit-row'
+import { DataType, type MetadataItemWithEdit } from '../types'
+import EditMetadataBatchItem from './edit-row'
+import AddedMetadataItem from './add-row'
 import Button from '../../../base/button'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '../../../base/checkbox'
 import Tooltip from '../../../base/tooltip'
+import SelectMetadataModal from '../select-metadata-modal'
+import { RiAddLine } from '@remixicon/react'
+import Divider from '@/app/components/base/divider'
 
 type Props = {
   documentNum: number
@@ -33,14 +37,24 @@ const EditMetadataBatchModal: FC<Props> = ({
     setTempleList(newTempleList)
   }, [templeList])
 
-  const [addedList, setAddedList] = useState<MetadataItemWithEdit[]>([])
+  const testAddedList: MetadataItemWithEdit[] = [
+    {
+      id: '1', name: 'name1', type: DataType.string, value: 'aaa',
+    },
+    {
+      id: '2.1', name: 'num v', type: DataType.number, value: 10,
+    },
+  ]
+  const [addedList, setAddedList] = useState<MetadataItemWithEdit[]>(testAddedList)
   const handleAddedListChange = useCallback((payload: MetadataItemWithEdit) => {
     const newAddedList = addedList.map(i => i.id === payload.id ? payload : i)
     setAddedList(newAddedList)
   }, [addedList])
-  const handleAddedItemRemove = useCallback((id: string) => {
-    const newAddedList = addedList.filter(i => i.id !== id)
-    setAddedList(newAddedList)
+  const handleAddedItemRemove = useCallback((removeIndex: number) => {
+    return () => {
+      const newAddedList = addedList.filter((i, index) => index !== removeIndex)
+      setAddedList(newAddedList)
+    }
   }, [addedList])
 
   const [isApplyToAllSelectDocument, setIsApplyToAllSelectDocument] = useState(false)
@@ -68,16 +82,32 @@ const EditMetadataBatchModal: FC<Props> = ({
           />
         ))}
       </div>
-
-      <div>
-        {addedList.map(item => (
-          <AddedMetadataItem
-            key={item.id}
-            payload={item}
-            onChange={handleAddedListChange}
-            onRemove={handleAddedItemRemove}
+      <div className='mt-4 pl-[18px]'>
+        <div className='flex items-center'>
+          <div className='mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary'>New metadata</div>
+          <Divider bgStyle='gradient' />
+        </div>
+        <div className='mt-2 space-y-2'>
+          {addedList.map((item, i) => (
+            <AddedMetadataItem
+              key={i}
+              payload={item}
+              onChange={handleAddedListChange}
+              onRemove={handleAddedItemRemove(i)}
+            />
+          ))}
+        </div>
+        <div className='mt-3'>
+          <SelectMetadataModal
+            trigger={
+              <Button className='w-full flex items-center' size='small' variant='tertiary'>
+                <RiAddLine className='mr-1 size-3.5' />
+                <div>Add metadata</div>
+              </Button>
+            }
+            onSave={data => setAddedList([...addedList, data])}
           />
-        ))}
+        </div>
       </div>
 
       <div className='mt-4 flex items-center justify-between'>

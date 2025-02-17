@@ -49,6 +49,7 @@ const SelectMetadataModal: FC<Props> = ({
     >
       <PortalToFollowElemTrigger
         onClick={() => setOpen(!open)}
+        className='block'
       >
         {trigger}
       </PortalToFollowElemTrigger>

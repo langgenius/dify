@@ -18,7 +18,7 @@ export enum UpdateType {
   delete = 'delete',
 }
 export type MetadataItemWithEdit = MetadataItem & {
-  value: string
+  value: string | number
   isMultipleValue?: boolean
   isUpdated?: boolean
   updateType?: UpdateType
