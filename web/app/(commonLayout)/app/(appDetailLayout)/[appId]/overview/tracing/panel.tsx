@@ -219,8 +219,8 @@ const Panel: FC = () => {
             </div>
           </>
         )}
-      </div>
-    </div>
+      </div >
+    </div >
   )
 }
 export default React.memo(Panel)

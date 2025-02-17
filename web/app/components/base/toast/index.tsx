@@ -122,7 +122,8 @@ Toast.notify = ({
   duration,
   className,
   customComponent,
-}: Pick<IToastProps, 'type' | 'size' | 'message' | 'duration' | 'className' | 'customComponent'>) => {
+  onClose,
+}: Pick<IToastProps, 'type' | 'size' | 'message' | 'duration' | 'className' | 'customComponent' | 'onClose'>) => {
   const defaultDuring = (type === 'success' || type === 'info') ? 3000 : 6000
   if (typeof window === 'object') {
     const holder = document.createElement('div')
@@ -130,12 +131,13 @@ Toast.notify = ({
 
     root.render(
       <ToastContext.Provider value={{
-        notify: () => {},
+        notify: () => { },
         close: () => {
           if (holder) {
             root.unmount()
             holder.remove()
           }
+          onClose?.()
         },
       }}>
         <Toast type={type} size={size} message={message} duration={duration} className={className} customComponent={customComponent} />
@@ -147,6 +149,7 @@ Toast.notify = ({
         root.unmount()
         holder.remove()
       }
+      onClose?.()
     }, duration || defaultDuring)
   }
 }
