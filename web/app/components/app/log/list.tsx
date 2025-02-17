@@ -79,6 +79,9 @@ const HandThumbIconWithCount: FC<{ count: number; iconType: 'up' | 'down' }> = (
 }
 
 const statusTdRender = (statusCount: StatusCount) => {
+  if (!statusCount)
+    return null
+
   if (statusCount.partial_success + statusCount.failed === 0) {
     return (
       <div className='inline-flex items-center gap-1 system-xs-semibold-uppercase'>

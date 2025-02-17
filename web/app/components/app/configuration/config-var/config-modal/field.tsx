@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React from 'react'
 import cn from '@/utils/classnames'
 
-type Props = {
+interface Props {
   className?: string
   title: string
   children: JSX.Element

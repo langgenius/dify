@@ -184,7 +184,7 @@ export const createWorkflowStore = () => {
   }
   return createStore<Shape>(set => ({
     appId: '',
-    panelWidth: localStorage.getItem('workflow-node-panel-width') ? parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420,
+    panelWidth: localStorage.getItem('workflow-node-panel-width') ? Number.parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420,
     showSingleRunPanel: false,
     setShowSingleRunPanel: showSingleRunPanel => set(() => ({ showSingleRunPanel })),
     workflowRunningData: undefined,

@@ -4,7 +4,7 @@ import React from 'react'
 import type { KeyValue } from '../../types'
 import KeyValueEdit from './key-value-edit'
 
-type Props = {
+interface Props {
   readonly: boolean
   nodeId: string
   list: KeyValue[]

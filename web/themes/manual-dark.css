@@ -1,21 +1,34 @@
 html[data-theme="dark"] {
-  --color-chatbot-bg: linear-gradient(
-    180deg,
-    rgba(34, 34, 37, 0.9) 0%,
-    rgba(29, 29, 32, 0.9) 90.48%
-  );
-  --color-chat-bubble-bg: linear-gradient(
-    180deg,
-    rgba(200, 206, 218, 0.08) 0%,
-    rgba(200, 206, 218, 0.02) 100%
-  );
-  --color-workflow-process-bg: linear-gradient(
-    90deg,
-    rgba(24, 24, 27, 0.25) 0%,
-    rgba(24, 24, 27, 0.04) 100%
-  );
-  --color-account-teams-bg: linear-gradient(
-    271deg,
+  --color-chatbot-bg: linear-gradient(180deg,
+      rgba(34, 34, 37, 0.9) 0%,
+      rgba(29, 29, 32, 0.9) 90.48%);
+  --color-chat-bubble-bg: linear-gradient(180deg,
+      rgba(200, 206, 218, 0.08) 0%,
+      rgba(200, 206, 218, 0.02) 100%);
+  --color-chat-input-mask: linear-gradient(180deg,
+      rgba(24, 24, 27, 0.04) 0%,
+      rgba(24, 24, 27, 0.60) 100%);
+  --color-workflow-process-bg: linear-gradient(90deg,
+      rgba(24, 24, 27, 0.25) 0%,
+      rgba(24, 24, 27, 0.04) 100%);
+  --color-marketplace-divider-bg: linear-gradient(90deg,
+      rgba(200, 206, 218, 0.14) 0%,
+      rgba(0, 0, 0, 0) 100%);
+  --color-marketplace-plugin-empty: linear-gradient(180deg,
+      rgba(0, 0, 0, 0) 0%,
+      #222225 100%);
+  --color-toast-success-bg: linear-gradient(92deg,
+      rgba(23, 178, 106, 0.3) 0%,
+      rgba(0, 0, 0, 0) 100%);
+  --color-toast-warning-bg: linear-gradient(92deg,
+      rgba(247, 144, 9, 0.3) 0%,
+      rgba(0, 0, 0, 0) 100%);
+  --color-toast-error-bg: linear-gradient(92deg,
+      rgba(240, 68, 56, 0.3) 0%,
+      rgba(0, 0, 0, 0) 100%);
+  --color-toast-info-bg: linear-gradient(92deg,
+      rgba(11, 165, 236, 0.3) 0%),
+  --color-account-teams-bg: linear-gradient(271deg,
     rgba(34, 34, 37, 0.9) -0.1%,
     rgba(29, 29, 32, 0.9) 98.26%
   );
@@ -41,6 +54,5 @@ html[data-theme="dark"] {
   --mask-top2bottom-gray-50-to-transparent: linear-gradient(
     180deg,
     rgba(24, 24, 27, 0.08) 0%,
-    rgba(0, 0, 0, 0) 100%
-  );
+    rgba(0, 0, 0, 0) 100%);
 }

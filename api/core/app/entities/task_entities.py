@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.workflow.entities.node_entities import AgentNodeStrategyInit
 from models.workflow import WorkflowNodeExecutionStatus
 
 
@@ -60,6 +61,7 @@ class StreamEvent(Enum):
     ITERATION_COMPLETED = "iteration_completed"
     TEXT_CHUNK = "text_chunk"
     TEXT_REPLACE = "text_replace"
+    AGENT_LOG = "agent_log"
 
 
 class StreamResponse(BaseModel):
@@ -247,6 +249,7 @@ class NodeStartStreamResponse(StreamResponse):
         parent_parallel_start_node_id: Optional[str] = None
         iteration_id: Optional[str] = None
         parallel_run_id: Optional[str] = None
+        agent_strategy: Optional[AgentNodeStrategyInit] = None
 
     event: StreamEvent = StreamEvent.NODE_STARTED
     workflow_run_id: str
@@ -695,4 +698,27 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
         finished_at: int
 
     workflow_run_id: str
+    data: Data
+
+
+class AgentLogStreamResponse(StreamResponse):
+    """
+    AgentLogStreamResponse entity
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        node_execution_id: str
+        id: str
+        label: str
+        parent_id: str | None
+        error: str | None
+        status: str
+        data: Mapping[str, Any]
+        metadata: Optional[Mapping[str, Any]] = None
+
+    event: StreamEvent = StreamEvent.AGENT_LOG
     data: Data

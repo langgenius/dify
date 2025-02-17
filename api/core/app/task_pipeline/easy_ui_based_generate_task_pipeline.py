@@ -215,7 +215,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
             and text_to_speech_dict.get("autoPlay") == "enabled"
             and text_to_speech_dict.get("enabled")
         ):
-            publisher = AppGeneratorTTSPublisher(tenant_id, text_to_speech_dict.get("voice", None))
+            publisher = AppGeneratorTTSPublisher(
+                tenant_id, text_to_speech_dict.get("voice", None), text_to_speech_dict.get("language", None)
+            )
         for response in self._process_stream_response(publisher=publisher, trace_manager=trace_manager):
             while True:
                 audio_response = self._listen_audio_msg(publisher, task_id)

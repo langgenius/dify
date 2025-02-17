@@ -301,6 +301,7 @@ class RetrievalService:
                                 DocumentSegment.id,
                                 DocumentSegment.content,
                                 DocumentSegment.answer,
+                                DocumentSegment.doc_metadata,
                             )
                         )
                         .first()
@@ -361,6 +362,7 @@ class RetrievalService:
                     record = {
                         "segment": segment,
                         "score": document.metadata.get("score"),  # type: ignore
+                        "segment_metadata": segment.doc_metadata,
                     }
                     records.append(record)
 

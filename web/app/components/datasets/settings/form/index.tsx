@@ -19,7 +19,7 @@ import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/d
 import { updateDatasetSetting } from '@/service/datasets'
 import { type DataSetListResponse, DatasetPermission } from '@/models/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
-import { type RetrievalConfig } from '@/types/app'
+import type { RetrievalConfig } from '@/types/app'
 import { useAppContext } from '@/context/app-context'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
