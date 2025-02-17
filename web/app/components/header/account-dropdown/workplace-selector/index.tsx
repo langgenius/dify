@@ -9,19 +9,18 @@ import { useWorkspacesContext } from '@/context/workspace-context'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { ToastContext } from '@/app/components/base/toast'
-import classNames from '@/utils/classnames'
 
 const itemClassName = `
-  flex items-center px-3 py-2 h-10 cursor-pointer
+  flex items-center px-3 py-2 h-9 cursor-pointer rounded-lg
 `
 const itemIconClassName = `
-  shrink-0 mr-2 flex items-center justify-center w-6 h-6 bg-[#EFF4FF] rounded-md text-xs font-medium text-primary-600
+  shrink-0 mr-2 flex items-center justify-center w-6 h-6 bg-[#EFF4FF] rounded-md text-xs font-medium text-text-accent
 `
 const itemNameClassName = `
-  grow mr-2 text-sm text-gray-700 text-left
+  grow mr-2 text-sm text-text-secondary text-left
 `
 const itemCheckClassName = `
-  shrink-0 w-4 h-4 text-primary-600
+  shrink-0 w-4 h-4 text-text-accent
 `
 
 const WorkplaceSelector = () => {
@@ -48,15 +47,15 @@ const WorkplaceSelector = () => {
       {
         ({ open }) => (
           <>
-            <Menu.Button className={cn(
+            <Menu.Button className={cn(itemClassName,
               `
-                ${itemClassName} w-full
-                group hover:bg-state-base-hover cursor-pointer ${open && 'bg-state-base-hover'} rounded-lg
+                w-full group hover:bg-state-base-hover pl-3 pr-2
               `,
+              open && 'bg-state-base-hover',
             )}>
               <div className={itemIconClassName}>{currentWorkspace?.name[0].toLocaleUpperCase()}</div>
-              <div className={`${itemNameClassName} truncate`}>{currentWorkspace?.name}</div>
-              <ChevronRight className='shrink-0 w-[14px] h-[14px] text-gray-500' />
+              <div className={`${itemNameClassName} truncate px-1`}>{currentWorkspace?.name}</div>
+              <ChevronRight className='shrink-0 size-[14px] text-text-tertiary' />
             </Menu.Button>
             <Transition
               as={Fragment}
@@ -70,8 +69,8 @@ const WorkplaceSelector = () => {
               <Menu.Items
                 className={cn(
                   `
-                    absolute top-[1px] min-w-[200px] max-h-[70vh] overflow-y-scroll z-10 bg-white border-[0.5px] border-gray-200
-                    divide-y divide-gray-100 origin-top-right rounded-xl focus:outline-none
+                    absolute top-[1px] w-[216px] max-h-[70vh] overflow-y-scroll z-10 bg-components-panel-bg-blur backdrop-blur-[5px] border-[0.5px] border-components-panel-border
+                    divide-y divide-divider-subtle origin-top-right rounded-xl focus:outline-none
                   `,
                   s.popup,
                 )}
@@ -80,7 +79,7 @@ const WorkplaceSelector = () => {
                   {
                     workspaces.map(workspace => (
                       <Menu.Item key={workspace.id}>
-                        {({ active }) => <div className={classNames(itemClassName,
+                        {({ active }) => <div className={cn(itemClassName,
                           active && 'bg-state-base-hover',
                         )} key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
                           <div className={itemIconClassName}>{workspace.name[0].toLocaleUpperCase()}</div>
