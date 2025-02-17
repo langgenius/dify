@@ -266,7 +266,7 @@ const ProviderDetail = ({
               variant='primary'
               className={cn('shrink-0 my-3 w-[183px]')}
             >
-              <a className='flex items-center text-white' href={`/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
+              <a className='flex items-center text-white' href={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
                 <div className='leading-5 text-sm font-medium'>{t('tools.openInStudio')}</div>
                 <LinkExternal02 className='ml-1 w-4 h-4' />
               </a>

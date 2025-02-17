@@ -111,7 +111,7 @@ const AppPublisher = ({
     try {
       const { installed_apps }: any = await fetchInstalledAppList(appDetail?.id) || {}
       if (installed_apps?.length > 0)
-        window.open(`/explore/installed/${installed_apps[0].id}`, '_blank')
+        window.open(`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/explore/installed/${installed_apps[0].id}`, '_blank')
       else
         throw new Error('No app found in Explore')
     }
