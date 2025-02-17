@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import Checkbox from '../../../base/checkbox'
 import Tooltip from '../../../base/tooltip'
 import SelectMetadataModal from '../select-metadata-modal'
-import { RiAddLine } from '@remixicon/react'
+import { RiAddLine, RiQuestionLine } from '@remixicon/react'
 import Divider from '@/app/components/base/divider'
 
 type Props = {
@@ -113,10 +113,14 @@ const EditMetadataBatchModal: FC<Props> = ({
       <div className='mt-4 flex items-center justify-between'>
         <div className='flex items-center'>
           <Checkbox checked={isApplyToAllSelectDocument} onCheck={() => setIsApplyToAllSelectDocument(!isApplyToAllSelectDocument)} />
-          <div className='ml-2 mr-1'> Apply to all selected documents</div>
+          <div className='ml-2 mr-1 system-xs-medium text-text-secondary'>Apply to all selected documents</div>
           <Tooltip popupContent={
             <div className='max-w-[240px]'>Automatically create all the above edited and new metadata for all selected documents, otherwise editing metadata will only apply to documents with it.</div>
-          } />
+          } >
+            <div className='p-px cursor-pointer'>
+              <RiQuestionLine className='size-3.5 text-text-tertiary' />
+            </div>
+          </Tooltip>
         </div>
         <div className='flex items-center space-x-2'>
           <Button
