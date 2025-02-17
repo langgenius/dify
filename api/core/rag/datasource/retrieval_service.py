@@ -301,7 +301,6 @@ class RetrievalService:
                                 DocumentSegment.id,
                                 DocumentSegment.content,
                                 DocumentSegment.answer,
-                                DocumentSegment.doc_metadata,
                             )
                         )
                         .first()
