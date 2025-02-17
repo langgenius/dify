@@ -8,6 +8,6 @@ identity:
 description:
   human:
     en_US: Get authorized user information
-    zh_Hans: 获取授权用户的信息
+    zh_Hans: 获取授权用户的详细信息
   llm: Get authorized user details info
   

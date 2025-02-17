@@ -7,8 +7,8 @@ identity:
   icon: gitee.svg
 description:
   human:
-    en_US: Get user authorized repos
-    zh_Hans: 列出授权用户的所有仓库
+    en_US: Get the repository list of authorized users, supporting multiple filtering conditions
+    zh_Hans: 获取授权用户的仓库列表，支持多种筛选条件
   llm: Get user authorized repos
 parameters:
   - name: visibility

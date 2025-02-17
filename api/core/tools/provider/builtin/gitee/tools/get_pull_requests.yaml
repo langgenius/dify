@@ -7,8 +7,8 @@ identity:
   icon: gitee.svg
 description:
   human:
-    en_US: Get repo's pull requests
-    zh_Hans: 获取 Pull Request 列表
+    en_US: Get the Pull Request list of the specified repository, supporting multiple filtering conditions
+    zh_Hans: 获取指定仓库 Pull Request 列表，支持多种筛选条件
   llm: Get a specified repo's pull requests
 parameters:
   - name: owner
