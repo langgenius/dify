@@ -25,34 +25,25 @@ class GiteeUserReposTool(BuiltinTool):
 
         if not access_token:
             return self.create_text_message("Gitee API Access Token is required.")
-        
+
         result = self.fetch_repos(
-            host_url, 
-            access_token, 
-            visibility, 
-            affiliation, 
-            type, 
-            sort, 
-            direction, 
-            q, 
-            page, 
-            per_page
-            )
+            host_url, access_token, visibility, affiliation, type, sort, direction, q, page, per_page
+        )
 
         return [self.create_json_message(item) for item in result]
-    
+
     def fetch_repos(
-            self,
-            host_url: str,
-            access_token: str,
-            visibility: str,
-            affiliation: str,
-            type: str,
-            sort: str,
-            direction: str,
-            q: str,
-            page: str,
-            per_page: str,
+        self,
+        host_url: str,
+        access_token: str,
+        visibility: str,
+        affiliation: str,
+        type: str,
+        sort: str,
+        direction: str,
+        q: str,
+        page: str,
+        per_page: str,
     ) -> list[dict[str, Any]]:
         headers = {"Authorization": f"token {access_token}"}
         results = []
@@ -102,5 +93,5 @@ class GiteeUserReposTool(BuiltinTool):
             print(results)
         except requests.RequestException as e:
             print(f"Error fetching data from Gitee: {e}")
-        
+
         return results

@@ -11,7 +11,7 @@ class GiteeProvider(BuiltinToolProviderController):
         try:
             if "access_tokens" not in credentials or not credentials.get("access_tokens"):
                 raise ToolProviderCredentialValidationError("Gitee personal access token is required.")
-            
+
             if "host_url" not in credentials or not credentials.get("host_url"):
                 host_url = "https://gitee.com"
             else:

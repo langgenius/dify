@@ -50,11 +50,11 @@ class GiteeReposPullRequestsTool(BuiltinTool):
             assignee,
             tester,
             page,
-            per_page
+            per_page,
         )
 
         return [self.create_json_message(item) for item in result]
-        
+
     def fetch_pull_requests(
         self,
         host_url: str,
