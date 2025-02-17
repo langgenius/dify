@@ -9,7 +9,7 @@ import RemarkGfm from 'remark-gfm'
 import RehypeRaw from 'rehype-raw'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
-import { Component, memo, useMemo, useRef, useState } from 'react'
+import { Component, createContext, memo, useContext, useMemo, useRef, useState } from 'react'
 import { flow } from 'lodash/fp'
 import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
@@ -22,7 +22,7 @@ import AudioGallery from '@/app/components/base/audio-gallery'
 import SVGRenderer from '@/app/components/base/svg-gallery'
 import MarkdownButton from '@/app/components/base/markdown-blocks/button'
 import MarkdownForm from '@/app/components/base/markdown-blocks/form'
-import ThinkBlock from '@/app/components/base/markdown-blocks/think-block'
+import type { ElementContentMap } from 'hast'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -73,8 +73,10 @@ const preprocessThinkTag = (content: string) => {
     return content
 
   return flow([
-    (str: string) => str.replace('<think>\n', '<details>\n'),
-    (str: string) => str.replace('\n</think>', '\n[ENDTHINKFLAG]</details>'),
+    (str: string) => str.replace('<think>\n', '<details open><summary class="text-gray-500 font-bold">Thinking</summary><div class="text-gray-500 p-3 ml-2 bg-gray-50 border-l border-gray-300">\n'),
+    (str: string) => str.includes('\n</think>')
+      ? str.replace('\n</think>', '\n</div></details>')
+      : `${str}\n</div></details>`,
   ])(content)
 }
 
@@ -294,7 +296,6 @@ export function Markdown(props: { content: string; className?: string }) {
           button: MarkdownButton,
           form: MarkdownForm,
           script: ScriptBlock,
-          details: ThinkBlock,
         }}
       >
         {/* Markdown detect has problem. */}
