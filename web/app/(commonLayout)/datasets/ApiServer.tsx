@@ -30,7 +30,7 @@ const ApiServer: FC<ApiServerProps> = ({
         {t('appApi.ok')}
       </div>
       <SecretKeyButton
-        className='flex-shrink-0 !h-8 bg-white'
+        className='shrink-0 !h-8 bg-white'
       />
     </div>
   )

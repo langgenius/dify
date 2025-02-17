@@ -8,7 +8,7 @@ import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
-type Props = {
+interface Props {
   className?: string
   children: React.ReactNode
   controlFoldOptions?: number

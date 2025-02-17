@@ -18,7 +18,7 @@ import type { Tag } from '@/app/components/base/tag-management/constant'
 
 import { fetchTagList } from '@/service/tag'
 
-type TagFilterProps = {
+interface TagFilterProps {
   type: 'knowledge' | 'app'
   value: string[]
   onChange: (v: string[]) => void

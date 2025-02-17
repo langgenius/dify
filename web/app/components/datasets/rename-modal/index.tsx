@@ -14,7 +14,7 @@ import { ToastContext } from '@/app/components/base/toast'
 import type { DataSet } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 
-type RenameDatasetModalProps = {
+interface RenameDatasetModalProps {
   show: boolean
   dataset: DataSet
   onSuccess?: () => void

@@ -106,6 +106,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       // if ((appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow') && (pathname).endsWith('workflow'))
       //   setAppSiderbarExpand('collapse')
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appDetail, isMobile])
 
   useEffect(() => {
@@ -146,7 +147,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         })
       }
     }
-  }, [appDetailRes, appId, getNavigations, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, router, setAppDetail, systemFeatures.enable_web_sso_switch_component])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appDetailRes, appId, getNavigations, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace, router, setAppDetail, systemFeatures.enable_web_sso_switch_component])
 
   useUnmount(() => {
     setAppDetail()

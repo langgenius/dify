@@ -9,7 +9,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
-import { type AppMode } from '@/types/app'
+import type { AppMode } from '@/types/app'
 export type AppSelectorProps = {
   value: Array<AppMode>
   onChange: (value: AppSelectorProps['value']) => void

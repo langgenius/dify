@@ -7,9 +7,9 @@ import {
 import VarList from './components/var-list'
 import useConfig from './use-config'
 import type { AssignerNodeType } from './types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import { useHandleAddOperationItem } from './hooks'
 import ActionButton from '@/app/components/base/action-button'
-import { type NodePanelProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.assigner'
 
@@ -40,7 +40,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
     <div className='flex py-2 flex-col items-start self-stretch'>
       <div className='flex flex-col justify-center items-start gap-1 px-4 py-2 w-full self-stretch'>
         <div className='flex items-start gap-2 self-stretch'>
-          <div className='flex flex-col justify-center items-start flex-grow text-text-secondary system-sm-semibold-uppercase'>{t(`${i18nPrefix}.variables`)}</div>
+          <div className='flex flex-col justify-center items-start grow text-text-secondary system-sm-semibold-uppercase'>{t(`${i18nPrefix}.variables`)}</div>
           <ActionButton onClick={handleAddOperation}>
             <RiAddLine className='w-4 h-4 shrink-0 text-text-tertiary' />
           </ActionButton>
