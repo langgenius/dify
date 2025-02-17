@@ -23,7 +23,7 @@ import CheckboxWithLabel from '@/app/components/datasets/create/website/base/che
 import CreateModal from '@/app/components/datasets/metadata/create-metadata-modal'
 import SelectMetadataModal from '@/app/components/datasets/metadata/select-metadata-modal'
 // import DatasetMetadataDrawer from '@/app/components/datasets/metadata/dataset-metadata-drawer'
-import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadat-batch/modal'
+import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 // Services
 import { fetchDatasetApiBaseUrl } from '@/service/datasets'
 
