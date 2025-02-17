@@ -1,0 +1,104 @@
+identity:
+  name: get_user_repos
+  author: Gitee
+  label:
+    en_US: User Repos
+    zh_Hans: 列出授权用户的所有仓库
+  icon: gitee.svg
+description:
+  human:
+    en_US: Get user authorized repos
+    zh_Hans: 列出授权用户的所有仓库
+  llm: Get user authorized repos
+parameters:
+  - name: visibility
+    type: string
+    required: false
+    label:
+      en_US: visibility
+      zh_Hans: 仓库可见性
+    human_description:
+      en_US: Visibility of repository
+      zh_Hans: 仓库可见性
+    llm_description: Visibility of repository
+    enum:
+      - private
+      - public
+      - all
+    default: all
+    form: llm
+  - name: affiliation
+    type: string
+    required: false
+    label:
+      en_US: affiliation
+      zh_Hans: 授权用户与仓库的联系
+    human_description:
+      en_US: The relationship between the authorized user and the repository, owner (the repository owned by the authorized user), collaborator (the authorized user is a member of the repository), organization_member (the authorized user is the organization where the repository is located and has access rights to the repository), enterprise_member (the authorized user belongs to the enterprise and has access rights to the repository), admin (all those with permissions, including all repositorys in the managed organization and all repositorys in the managed enterprise). Can be combined using comma separators. Such as owner, organization_member or owner, collaborator, organization_member
+      zh_Hans: 授权用户与仓库的联系，owner(授权用户拥有的仓库)、collaborator(授权用户为仓库成员)、organization_member(授权用户为仓库所在组织并有访问仓库权限)、enterprise_member(授权用户所在企业并有访问仓库权限)、admin(所有有权限的，包括所管理的组织中所有仓库、所管理的企业的所有仓库)。 可以用逗号分隔符组合。如 owner, organization_member 或 owner, collaborator, organization_member
+    llm_description: The relationship between the authorized user and the repository
+    form: llm
+  - name: type
+    type: string
+    required: false
+    label:
+      en_US: Type of repository
+      zh_Hans: 仓库类型
+    human_description:
+      en_US: Filter user repositories their creation (owner), personal (personal), their membership (member), public (public), private (private), cannot be used together with the visibility or affiliation parameters, otherwise a 422 error will be reported
+      zh_Hans: 筛选用户仓库 其创建(owner)、个人(personal)、其为成员(member)、公开(public)、私有(private)，不能与 visibility 或 affiliation 参数一并使用，否则会报 422 错误
+    llm_description: Filter user repositories their creation (owner), personal (personal), their membership (member), public (public), private (private), cannot be used together with the visibility or affiliation parameters, otherwise a 422 error will be reported
+    default: all
+    form: llm
+  - name: sort
+    type: string
+    required: false
+    label:
+      en_US: Sort way
+      zh_Hans: 排序方式
+    human_description:
+      en_US: Sort way, support fields(created、updated、pushed、full_name)
+      zh_Hans: 排序方式 创建时间(created)，更新时间(updated)，最后推送时间(pushed)，仓库所属与名称(full_name)。默认 full_name
+    llm_description: Sort way, support fields(created、updated、pushed、full_name)
+    default: full_name
+    enum:
+      - created
+      - updated
+      - pushed
+      - full_name
+    form: llm
+  - name: direction
+    type: string
+    required: false
+    label:
+      en_US: Sorting direction
+      zh_Hans: 排序方向
+    llm_description: Sorting direction
+    enum:
+      - asc
+      - desc
+    form: llm
+  - name: q
+    type: string
+    required: false
+    label:
+      en_US: Search keyword
+      zh_Hans: 搜索关键字
+    llm_description: Search keyword
+    form: llm
+  - name: page
+    type: number
+    required: false
+    label:
+      en_US: Page number
+      zh_Hans: 页码
+    llm_description: Page number
+    form: llm
+  - name: per_page
+    type: number
+    required: false
+    label:
+      en_US: Per page number
+      zh_Hans: 每页数量
+    llm_description: Per page number
+    form: llm
