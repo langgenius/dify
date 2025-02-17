@@ -638,8 +638,8 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
             completion_tokens = usage["completion_tokens"]
         else:
             # calculate num tokens
-            prompt_tokens = self._num_tokens_from_string(model, prompt_messages[0].content)
-            completion_tokens = self._num_tokens_from_string(model, assistant_message.content)
+            prompt_tokens = self._num_tokens_from_string(text=prompt_messages[0].content)
+            completion_tokens = self._num_tokens_from_string(text=assistant_message.content)
 
         # transform usage
         usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)

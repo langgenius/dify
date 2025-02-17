@@ -201,8 +201,8 @@ class StepfunLargeLanguageModel(OAIAPICompatLargeLanguageModel):
             index: int, message: AssistantPromptMessage, finish_reason: str
         ) -> LLMResultChunk:
             # calculate num tokens
-            prompt_tokens = self._num_tokens_from_string(model, prompt_messages[0].content)
-            completion_tokens = self._num_tokens_from_string(model, full_assistant_content)
+            prompt_tokens = self._num_tokens_from_string(text=prompt_messages[0].content)
+            completion_tokens = self._num_tokens_from_string(text=full_assistant_content)
 
             # transform usage
             usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
