@@ -23,7 +23,7 @@ import CheckboxWithLabel from '@/app/components/datasets/create/website/base/che
 import CreateModal from '@/app/components/datasets/metadata/create-metadata-modal'
 import SelectMetadataModal from '@/app/components/datasets/metadata/select-metadata-modal'
 // import DatasetMetadataDrawer from '@/app/components/datasets/metadata/dataset-metadata-drawer'
-import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch-modal'
+import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadat-batch/modal'
 // Services
 import { fetchDatasetApiBaseUrl } from '@/service/datasets'
 
@@ -113,10 +113,12 @@ const Container = () => {
           onClose={() => { }}
         /> */}
         <EditMetadataBatchModal
+          documentNum={20}
           list={[
             {
               id: '1', name: 'name1', type: DataType.string, value: 'aaa',
-            }, {
+            },
+            {
               id: '2', name: 'name2', type: DataType.number, value: 'ccc', isMultipleValue: true,
             }, {
               id: '3', name: 'name3', type: DataType.time, value: '', isMultipleValue: false,

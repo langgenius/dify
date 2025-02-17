@@ -13,10 +13,13 @@ export type MetadataItem = {
 export type MetadataItemWithValueLength = MetadataItem & {
   valueLength: number
 }
-
+export enum UpdateType {
+  changeValue = 'changeValue',
+  delete = 'delete',
+}
 export type MetadataItemWithEdit = MetadataItem & {
   value: string
   isMultipleValue?: boolean
-  isRemoved?: boolean
   isUpdated?: boolean
+  updateType?: UpdateType
 }
