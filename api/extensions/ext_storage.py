@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Callable, Generator
-from typing import Union
+from typing import Literal, Union, overload
 
 from flask import Flask
 
@@ -78,6 +78,12 @@ class Storage:
         except Exception as e:
             logger.exception(f"Failed to save file {filename}")
             raise e
+
+    @overload
+    def load(self, filename: str, /, *, stream: Literal[False] = False) -> bytes: ...
+
+    @overload
+    def load(self, filename: str, /, *, stream: Literal[True]) -> Generator: ...
 
     def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
         try:

@@ -53,10 +53,12 @@ ignore = [
     "FURB152", # math-constant
     "UP007", # non-pep604-annotation
     "UP032", # f-string
+    "UP045", # non-pep604-annotation-optional
     "B005", # strip-with-multi-characters
     "B006", # mutable-argument-default
     "B007", # unused-loop-control-variable
     "B026", # star-arg-unpacking-after-keyword-arg
+    "B903", # class-as-data-structure
     "B904", # raise-without-from-inside-except
     "B905", # zip-without-explicit-strict
     "N806", # non-lowercase-variable-in-function
@@ -67,7 +69,7 @@ ignore = [
     "SIM105", # suppressible-exception
     "SIM107", # return-in-try-except-finally
     "SIM108", # if-else-block-instead-of-if-exp
-    "SIM113", # eumerate-for-loop
+    "SIM113", # enumerate-for-loop
     "SIM117", # multiple-with-statements
     "SIM210", # if-expr-with-true-false
 ]
@@ -85,11 +87,11 @@ ignore = [
 ]
 "tests/*" = [
     "F811", # redefined-while-unused
-    "F401", # unused-import
 ]
 
 [lint.pyflakes]
-extend-generics = [
+allowed-unused-imports = [
     "_pytest.monkeypatch",
     "tests.integration_tests",
+    "tests.unit_tests",
 ]

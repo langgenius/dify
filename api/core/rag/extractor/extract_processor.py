@@ -10,6 +10,7 @@ from core.rag.extractor.csv_extractor import CSVExtractor
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.excel_extractor import ExcelExtractor
+from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.extractor.firecrawl.firecrawl_web_extractor import FirecrawlWebExtractor
 from core.rag.extractor.html_extractor import HtmlExtractor
 from core.rag.extractor.jina_reader_extractor import JinaReaderWebExtractor
@@ -23,7 +24,6 @@ from core.rag.extractor.unstructured.unstructured_markdown_extractor import Unst
 from core.rag.extractor.unstructured.unstructured_msg_extractor import UnstructuredMsgExtractor
 from core.rag.extractor.unstructured.unstructured_ppt_extractor import UnstructuredPPTExtractor
 from core.rag.extractor.unstructured.unstructured_pptx_extractor import UnstructuredPPTXExtractor
-from core.rag.extractor.unstructured.unstructured_text_extractor import UnstructuredTextExtractor
 from core.rag.extractor.unstructured.unstructured_xml_extractor import UnstructuredXmlExtractor
 from core.rag.extractor.word_extractor import WordExtractor
 from core.rag.models.document import Document
@@ -66,9 +66,13 @@ class ExtractProcessor:
                     filename_match = re.search(r'filename="([^"]+)"', content_disposition)
                     if filename_match:
                         filename = unquote(filename_match.group(1))
-                        suffix = "." + re.search(r"\.(\w+)$", filename).group(1)
-
-            file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
+                        match = re.search(r"\.(\w+)$", filename)
+                        if match:
+                            suffix = "." + match.group(1)
+                        else:
+                            suffix = ""
+            # FIXME mypy: Cannot determine type of 'tempfile._get_candidate_names' better not use it here
+            file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
             Path(file_path).write_bytes(response.content)
             extract_setting = ExtractSetting(datasource_type="upload_file", document_model="text_model")
             if return_text:
@@ -89,16 +93,20 @@ class ExtractProcessor:
         if extract_setting.datasource_type == DatasourceType.FILE.value:
             with tempfile.TemporaryDirectory() as temp_dir:
                 if not file_path:
+                    assert extract_setting.upload_file is not None, "upload_file is required"
                     upload_file: UploadFile = extract_setting.upload_file
                     suffix = Path(upload_file.key).suffix
-                    file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
+                    # FIXME mypy: Cannot determine type of 'tempfile._get_candidate_names' better not use it here
+                    file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"  # type: ignore
                     storage.download(upload_file.key, file_path)
                 input_file = Path(file_path)
                 file_extension = input_file.suffix.lower()
                 etl_type = dify_config.ETL_TYPE
-                unstructured_api_url = dify_config.UNSTRUCTURED_API_URL
-                unstructured_api_key = dify_config.UNSTRUCTURED_API_KEY
+                extractor: Optional[BaseExtractor] = None
                 if etl_type == "Unstructured":
+                    unstructured_api_url = dify_config.UNSTRUCTURED_API_URL
+                    unstructured_api_key = dify_config.UNSTRUCTURED_API_KEY or ""
+
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
@@ -131,11 +139,7 @@ class ExtractProcessor:
                         extractor = UnstructuredEpubExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     else:
                         # txt
-                        extractor = (
-                            UnstructuredTextExtractor(file_path, unstructured_api_url)
-                            if is_automatic
-                            else TextExtractor(file_path, autodetect_encoding=True)
-                        )
+                        extractor = TextExtractor(file_path, autodetect_encoding=True)
                 else:
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
@@ -156,6 +160,7 @@ class ExtractProcessor:
                         extractor = TextExtractor(file_path, autodetect_encoding=True)
                 return extractor.extract()
         elif extract_setting.datasource_type == DatasourceType.NOTION.value:
+            assert extract_setting.notion_info is not None, "notion_info is required"
             extractor = NotionExtractor(
                 notion_workspace_id=extract_setting.notion_info.notion_workspace_id,
                 notion_obj_id=extract_setting.notion_info.notion_obj_id,
@@ -165,6 +170,7 @@ class ExtractProcessor:
             )
             return extractor.extract()
         elif extract_setting.datasource_type == DatasourceType.WEBSITE.value:
+            assert extract_setting.website_info is not None, "website_info is required"
             if extract_setting.website_info.provider == "firecrawl":
                 extractor = FirecrawlWebExtractor(
                     url=extract_setting.website_info.url,

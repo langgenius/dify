@@ -202,7 +202,7 @@ const ViewHistory = ({
                             {`Test ${isChatMode ? 'Chat' : 'Run'}#${item.sequence_number}`}
                           </div>
                           <div className='flex items-center text-xs text-gray-500 leading-[18px]'>
-                            {item.created_by_account.name} · {formatTimeFromNow((item.finished_at || item.created_at) * 1000)}
+                            {item.created_by_account?.name} · {formatTimeFromNow((item.finished_at || item.created_at) * 1000)}
                           </div>
                         </div>
                       </div>

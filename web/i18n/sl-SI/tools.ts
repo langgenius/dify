@@ -31,6 +31,8 @@ const translation = {
     manageInTools: 'Upravljaj v Orodjih',
     emptyTitle: 'Orodje za potek dela ni na voljo',
     emptyTip: 'Pojdite na "Potek dela -> Objavi kot orodje"',
+    emptyTipCustom: 'Ustvarjanje orodja po meri',
+    emptyTitleCustom: 'Orodje po meri ni na voljo',
   },
   createTool: {
     title: 'Ustvari prilagojeno orodje',

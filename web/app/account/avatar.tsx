@@ -8,7 +8,7 @@ import { logout } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 
-export type IAppSelector = {
+export interface IAppSelector {
   isMobile: boolean
 }
 
@@ -40,12 +40,12 @@ export default function AppSelector() {
                 className={`
                     inline-flex items-center
                     rounded-[20px] p-1x text-sm
-                  text-gray-700 hover:bg-gray-200
+                    text-text-primary
                     mobile:px-1
-                    ${open && 'bg-gray-200'}
+                    ${open && 'bg-components-panel-bg-blur'}
                   `}
               >
-                <Avatar name={userProfile.name} size={32} />
+                <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={32} />
               </Menu.Button>
             </div>
             <Transition
@@ -60,7 +60,7 @@ export default function AppSelector() {
               <Menu.Items
                 className="
                     absolute -right-2 -top-1 w-60 max-w-80
-                    divide-y divide-gray-100 origin-top-right rounded-lg bg-white
+                    divide-y divide-divider-subtle origin-top-right rounded-lg bg-components-panel-bg-blur
                     shadow-lg
                   "
               >
@@ -71,17 +71,17 @@ export default function AppSelector() {
                         <div className='system-md-medium text-text-primary break-all'>{userProfile.name}</div>
                         <div className='system-xs-regular text-text-tertiary break-all'>{userProfile.email}</div>
                       </div>
-                      <Avatar name={userProfile.name} size={32} />
+                      <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={32} />
                     </div>
                   </div>
                 </Menu.Item>
                 <Menu.Item>
                   <div className='p-1' onClick={() => handleLogout()}>
                     <div
-                      className='flex items-center justify-start h-9 px-3 rounded-lg cursor-pointer group hover:bg-gray-50'
+                      className='flex items-center justify-start h-9 px-3 rounded-lg cursor-pointer group hover:bg-state-base-hover'
                     >
-                      <LogOut01 className='w-4 h-4 text-gray-500 flex mr-1' />
-                      <div className='font-normal text-[14px] text-gray-700'>{t('common.userProfile.logout')}</div>
+                      <LogOut01 className='w-4 h-4 text-text-tertiary flex mr-1' />
+                      <div className='font-normal text-[14px] text-text-secondary'>{t('common.userProfile.logout')}</div>
                     </div>
                   </div>
                 </Menu.Item>

@@ -1,14 +1,14 @@
 'use client'
-import type { HTMLProps } from 'react'
 import React, { useMemo, useState } from 'react'
-import {
-  Cog8ToothIcon,
-  DocumentTextIcon,
-  PaintBrushIcon,
-  RocketLaunchIcon,
-} from '@heroicons/react/24/outline'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
+import {
+  RiBookOpenLine,
+  RiEqualizer2Line,
+  RiExternalLinkLine,
+  RiPaintBrushLine,
+  RiWindowLine,
+} from '@remixicon/react'
 import SettingsModal from './settings'
 import EmbeddedModal from './embedded'
 import CustomizeModal from './customize'
@@ -18,7 +18,6 @@ import Tooltip from '@/app/components/base/tooltip'
 import AppBasic from '@/app/components/app-sidebar/basic'
 import { asyncRunSafe, randomString } from '@/utils'
 import Button from '@/app/components/base/button'
-import Tag from '@/app/components/base/tag'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import CopyFeedback from '@/app/components/base/copy-feedback'
@@ -28,10 +27,12 @@ import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-butt
 import type { AppDetailResponse } from '@/models/app'
 import { useAppContext } from '@/context/app-context'
 import type { AppSSO } from '@/types/app'
+import Indicator from '@/app/components/header/indicator'
 
 export type IAppCardProps = {
   className?: string
   appInfo: AppDetailResponse & Partial<AppSSO>
+  isInPanel?: boolean
   cardType?: 'api' | 'webapp'
   customBgColor?: string
   onChangeStatus: (val: boolean) => Promise<void>
@@ -39,12 +40,9 @@ export type IAppCardProps = {
   onGenerateCode?: () => Promise<void>
 }
 
-const EmbedIcon = ({ className = '' }: HTMLProps<HTMLDivElement>) => {
-  return <div className={`${style.codeBrowserIcon} ${className}`}></div>
-}
-
 function AppCard({
   appInfo,
+  isInPanel,
   cardType = 'webapp',
   customBgColor,
   onChangeStatus,
@@ -66,17 +64,18 @@ function AppCard({
   const OPERATIONS_MAP = useMemo(() => {
     const operationsMap = {
       webapp: [
-        { opName: t('appOverview.overview.appInfo.preview'), opIcon: RocketLaunchIcon },
-        { opName: t('appOverview.overview.appInfo.customize.entry'), opIcon: PaintBrushIcon },
+        { opName: t('appOverview.overview.appInfo.launch'), opIcon: RiExternalLinkLine },
       ] as { opName: string; opIcon: any }[],
-      api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: DocumentTextIcon }],
+      api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: RiBookOpenLine }],
       app: [],
     }
     if (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow')
-      operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: EmbedIcon })
+      operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: RiWindowLine })
+
+    operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.customize.entry'), opIcon: RiPaintBrushLine })
 
     if (isCurrentWorkspaceEditor)
-      operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.settings.entry'), opIcon: Cog8ToothIcon })
+      operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.settings.entry'), opIcon: RiEqualizer2Line })
 
     return operationsMap
   }, [isCurrentWorkspaceEditor, appInfo, t])
@@ -92,13 +91,9 @@ function AppCard({
   const appUrl = `${app_base_url}/${appMode}/${access_token}`
   const apiUrl = appInfo?.api_base_url
 
-  let bgColor = 'bg-primary-50 bg-opacity-40'
-  if (cardType === 'api')
-    bgColor = 'bg-purple-50'
-
   const genClickFuncByName = (opName: string) => {
     switch (opName) {
-      case t('appOverview.overview.appInfo.preview'):
+      case t('appOverview.overview.appInfo.launch'):
         return () => {
           window.open(appUrl, '_blank')
         }
@@ -135,49 +130,50 @@ function AppCard({
   return (
     <div
       className={
-        `shadow-xs border-[0.5px] rounded-lg border-gray-200 ${className ?? ''}`}
+        `${isInPanel ? 'border-l-[0.5px] border-t' : 'shadow-xs border-[0.5px]'} rounded-xl border-effects-highlight w-full max-w-full ${className ?? ''}`}
     >
-      <div className={`px-6 py-5 ${customBgColor ?? bgColor} rounded-lg`}>
-        <div className="mb-2.5 flex flex-row items-start justify-between">
-          <AppBasic
-            iconType={cardType}
-            icon={appInfo.icon}
-            icon_background={appInfo.icon_background}
-            name={basicName}
-            type={
-              isApp
-                ? t('appOverview.overview.appInfo.explanation')
-                : t('appOverview.overview.apiInfo.explanation')
-            }
-          />
-          <div className="flex flex-row items-center h-9">
-            <Tag className="mr-2" color={runningStatus ? 'green' : 'yellow'}>
-              {runningStatus
-                ? t('appOverview.overview.status.running')
-                : t('appOverview.overview.status.disable')}
-            </Tag>
+      <div className={`${customBgColor ?? 'bg-background-default'} rounded-xl`}>
+        <div className='flex flex-col p-3 justify-center items-start gap-3 self-stretch border-b-[0.5px] border-divider-subtle w-full'>
+          <div className='flex items-center gap-3 self-stretch w-full'>
+            <AppBasic
+              iconType={cardType}
+              icon={appInfo.icon}
+              icon_background={appInfo.icon_background}
+              name={basicName}
+              type={
+                isApp
+                  ? t('appOverview.overview.appInfo.explanation')
+                  : t('appOverview.overview.apiInfo.explanation')
+              }
+            />
+            <div className='flex items-center gap-1'>
+              <Indicator color={runningStatus ? 'green' : 'yellow'} />
+              <div className={`${runningStatus ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
+                {runningStatus
+                  ? t('appOverview.overview.status.running')
+                  : t('appOverview.overview.status.disable')}
+              </div>
+            </div>
             <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={toggleDisabled} />
           </div>
-        </div>
-        <div className="flex flex-col justify-center py-2">
-          <div className="py-1">
-            <div className="pb-1 text-xs text-gray-500">
+          <div className='flex flex-col justify-center items-start self-stretch'>
+            <div className="pb-1 system-xs-medium text-text-tertiary">
               {isApp
                 ? t('appOverview.overview.appInfo.accessibleAddress')
                 : t('appOverview.overview.apiInfo.accessibleAddress')}
             </div>
-            <div className="w-full h-9 pl-2 pr-0.5 py-0.5 bg-black bg-opacity-2 rounded-lg border border-black border-opacity-5 justify-start items-center inline-flex">
-              <div className="h-4 px-2 justify-start items-start gap-2 flex flex-1 min-w-0">
-                <div className="text-gray-700 text-xs font-medium text-ellipsis overflow-hidden whitespace-nowrap">
+            <div className="w-full h-9 pl-2 p-1 bg-components-input-bg-normal rounded-lg items-center inline-flex gap-0.5">
+              <div className="h-4 px-1 justify-start items-start gap-2 flex flex-1 min-w-0">
+                <div className="text-text-secondary text-xs font-medium text-ellipsis overflow-hidden whitespace-nowrap">
                   {isApp ? appUrl : apiUrl}
                 </div>
               </div>
-              <Divider type="vertical" className="!h-3.5 shrink-0 !mx-0.5" />
-              {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} selectorId={randomString(8)} className={'hover:bg-gray-200'} />}
               <CopyFeedback
                 content={isApp ? appUrl : apiUrl}
-                className={'hover:bg-gray-200'}
+                className={'!size-6'}
               />
+              {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} className='z-50 !size-6 hover:bg-state-base-hover rounded-md' selectorId={randomString(8)} />}
+              {isApp && <Divider type="vertical" className="!h-3.5 shrink-0 !mx-0.5" />}
               {/* button copy link/ button regenerate */}
               {showConfirmDelete && (
                 <Confirm
@@ -197,7 +193,7 @@ function AppCard({
                   popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
                 >
                   <div
-                    className="w-8 h-8 ml-0.5 cursor-pointer hover:bg-gray-200 rounded-lg"
+                    className="w-6 h-6 cursor-pointer hover:bg-state-base-hover rounded-md"
                     onClick={() => setShowConfirmDelete(true)}
                   >
                     <div
@@ -210,8 +206,8 @@ function AppCard({
             </div>
           </div>
         </div>
-        <div className={'pt-2 flex flex-row items-center flex-wrap gap-y-2'}>
-          {!isApp && <SecretKeyButton className='flex-shrink-0 !h-8 bg-white mr-2' textCls='!text-gray-700 font-medium' iconCls='stroke-[1.2px]' appId={appInfo.id} />}
+        <div className={'flex p-3 items-center gap-1 self-stretch'}>
+          {!isApp && <SecretKeyButton appId={appInfo.id} />}
           {OPERATIONS_MAP[cardType].map((op) => {
             const disabled
               = op.opName === t('appOverview.overview.appInfo.settings.entry')
@@ -219,7 +215,9 @@ function AppCard({
                 : !runningStatus
             return (
               <Button
-                className="mr-2"
+                className="mr-1 min-w-[88px]"
+                size="small"
+                variant={'ghost'}
                 key={op.opName}
                 onClick={genClickFuncByName(op.opName)}
                 disabled={disabled}
@@ -230,9 +228,9 @@ function AppCard({
                   }
                   popupClassName={disabled ? 'mt-[-8px]' : '!hidden'}
                 >
-                  <div className="flex flex-row items-center">
-                    <op.opIcon className="h-4 w-4 mr-1.5 stroke-[1.8px]" />
-                    <span className="text-[13px]">{op.opName}</span>
+                  <div className="flex items-center justify-center gap-[1px]">
+                    <op.opIcon className="h-3.5 w-3.5" />
+                    <div className={`${runningStatus ? 'text-text-tertiary' : 'text-components-button-ghost-text-disabled'} system-xs-medium px-[3px]`}>{op.opName}</div>
                   </div>
                 </Tooltip>
               </Button>

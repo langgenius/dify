@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import Field from './field'
-import type { LangFuseConfig, LangSmithConfig } from './type'
+import type { LangFuseConfig, LangSmithConfig, OpikConfig } from './type'
 import { TracingProvider } from './type'
 import { docURL } from './config'
 import {
@@ -17,14 +17,15 @@ import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/gene
 import Confirm from '@/app/components/base/confirm'
 import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
 import Toast from '@/app/components/base/toast'
+import Divider from '@/app/components/base/divider'
 
 type Props = {
   appId: string
   type: TracingProvider
-  payload?: LangSmithConfig | LangFuseConfig | null
+  payload?: LangSmithConfig | LangFuseConfig | OpikConfig | null
   onRemoved: () => void
   onCancel: () => void
-  onSaved: (payload: LangSmithConfig | LangFuseConfig) => void
+  onSaved: (payload: LangSmithConfig | LangFuseConfig | OpikConfig) => void
   onChosen: (provider: TracingProvider) => void
 }
 
@@ -42,6 +43,13 @@ const langFuseConfigTemplate = {
   host: '',
 }
 
+const opikConfigTemplate = {
+  api_key: '',
+  project: '',
+  url: '',
+  workspace: '',
+}
+
 const ProviderConfigModal: FC<Props> = ({
   appId,
   type,
@@ -55,14 +63,17 @@ const ProviderConfigModal: FC<Props> = ({
   const isEdit = !!payload
   const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)
-  const [config, setConfig] = useState<LangSmithConfig | LangFuseConfig>((() => {
+  const [config, setConfig] = useState<LangSmithConfig | LangFuseConfig | OpikConfig>((() => {
     if (isEdit)
       return payload
 
     if (type === TracingProvider.langSmith)
       return langSmithConfigTemplate
 
-    return langFuseConfigTemplate
+    else if (type === TracingProvider.langfuse)
+      return langFuseConfigTemplate
+
+    return opikConfigTemplate
   })())
   const [isShowRemoveConfirm, {
     setTrue: showRemoveConfirm,
@@ -111,6 +122,11 @@ const ProviderConfigModal: FC<Props> = ({
         errorMessage = t('common.errorMsg.fieldRequired', { field: 'Host' })
     }
 
+    if (type === TracingProvider.opik) {
+      // todo: check field validity
+      // const postData = config as OpikConfig
+    }
+
     return errorMessage
   }, [config, t, type])
   const handleSave = useCallback(async () => {
@@ -152,11 +168,11 @@ const ProviderConfigModal: FC<Props> = ({
         ? (
           <PortalToFollowElem open>
             <PortalToFollowElemContent className='w-full h-full z-[60]'>
-              <div className='fixed inset-0 flex items-center justify-center bg-black/[.25]'>
-                <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
+              <div className='fixed inset-0 flex items-center justify-center bg-background-overlay'>
+                <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-components-panel-bg shadow-xl rounded-2xl overflow-y-auto'>
                   <div className='px-8 pt-8'>
                     <div className='flex justify-between items-center mb-4'>
-                      <div className='text-xl font-semibold text-gray-900'>{t(`${I18N_PREFIX}.title`)}{t(`app.tracing.${type}.title`)}</div>
+                      <div className='title-2xl-semibold text-text-primary'>{t(`${I18N_PREFIX}.title`)}{t(`app.tracing.${type}.title`)}</div>
                     </div>
 
                     <div className='space-y-4'>
@@ -215,6 +231,38 @@ const ProviderConfigModal: FC<Props> = ({
                           />
                         </>
                       )}
+                      {type === TracingProvider.opik && (
+                        <>
+                          <Field
+                            label='API Key'
+                            labelClassName='!text-sm'
+                            value={(config as OpikConfig).api_key}
+                            onChange={handleConfigChange('api_key')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'API Key' })!}
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.project`)!}
+                            labelClassName='!text-sm'
+                            value={(config as OpikConfig).project}
+                            onChange={handleConfigChange('project')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.project`) })!}
+                          />
+                          <Field
+                            label='Workspace'
+                            labelClassName='!text-sm'
+                            value={(config as OpikConfig).workspace}
+                            onChange={handleConfigChange('workspace')}
+                            placeholder={'default'}
+                          />
+                          <Field
+                            label='Url'
+                            labelClassName='!text-sm'
+                            value={(config as OpikConfig).url}
+                            onChange={handleConfigChange('url')}
+                            placeholder={'https://www.comet.com/opik/api/'}
+                          />
+                        </>
+                      )}
 
                     </div>
                     <div className='my-8 flex justify-between items-center h-8'>
@@ -230,16 +278,16 @@ const ProviderConfigModal: FC<Props> = ({
                         {isEdit && (
                           <>
                             <Button
-                              className='h-9 text-sm font-medium text-gray-700'
+                              className='h-9 text-sm font-medium text-text-secondary'
                               onClick={showRemoveConfirm}
                             >
                               <span className='text-[#D92D20]'>{t('common.operation.remove')}</span>
                             </Button>
-                            <div className='mx-3 w-px h-[18px] bg-gray-200'></div>
+                            <Divider className='mx-3 h-[18px]' />
                           </>
                         )}
                         <Button
-                          className='mr-2 h-9 text-sm font-medium text-gray-700'
+                          className='mr-2 h-9 text-sm font-medium text-text-secondary'
                           onClick={onCancel}
                         >
                           {t('common.operation.cancel')}
@@ -256,9 +304,9 @@ const ProviderConfigModal: FC<Props> = ({
 
                     </div>
                   </div>
-                  <div className='border-t-[0.5px] border-t-black/5'>
-                    <div className='flex justify-center items-center py-3 bg-gray-50 text-xs text-gray-500'>
-                      <Lock01 className='mr-1 w-3 h-3 text-gray-500' />
+                  <div className='border-t-[0.5px] border-divider-regular'>
+                    <div className='flex justify-center items-center py-3 bg-background-section-burn text-xs text-text-tertiary'>
+                      <Lock01 className='mr-1 w-3 h-3 text-text-tertiary' />
                       {t('common.modelProvider.encrypted.front')}
                       <a
                         className='text-primary-600 mx-1'

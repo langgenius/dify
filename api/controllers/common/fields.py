@@ -1,4 +1,4 @@
-from flask_restful import fields
+from flask_restful import fields  # type: ignore
 
 parameters__system_parameters = {
     "image_file_size_limit": fields.Integer,

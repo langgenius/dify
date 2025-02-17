@@ -12,7 +12,7 @@ const Overview = async ({
   params: { appId },
 }: IDevelopProps) => {
   return (
-    <div className="h-full px-4 sm:px-16 py-6 overflow-scroll">
+    <div className="h-full px-4 sm:px-12 py-6 overflow-scroll bg-chatbot-bg">
       <ApikeyInfoPanel />
       <TracingPanel />
       <CardView appId={appId} />

@@ -9,7 +9,7 @@ import uuid
 from collections.abc import Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
@@ -19,7 +19,9 @@ from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.file import helpers as file_helpers
 from extensions.ext_redis import redis_client
-from models.account import Account
+
+if TYPE_CHECKING:
+    from models.account import Account
 
 
 def run(script):
@@ -38,6 +40,18 @@ class AppIconUrlField(fields.Raw):
 
         if isinstance(obj, App | Site) and obj.icon_type == IconType.IMAGE.value:
             return file_helpers.get_signed_file_url(obj.icon)
+        return None
+
+
+class AvatarUrlField(fields.Raw):
+    def output(self, key, obj):
+        if obj is None:
+            return None
+
+        from models.account import Account
+
+        if isinstance(obj, Account) and obj.avatar is not None:
+            return file_helpers.get_signed_file_url(obj.avatar)
         return None
 
 
@@ -180,9 +194,7 @@ def generate_text_hash(text: str) -> str:
     return sha256(hash_text.encode()).hexdigest()
 
 
-def compact_generate_response(
-    response: Union[Mapping[str, Any], RateLimitGenerator, Generator[str, None, None]],
-) -> Response:
+def compact_generate_response(response: Union[Mapping, Generator, RateLimitGenerator]) -> Response:
     if isinstance(response, dict):
         return Response(response=json.dumps(response), status=200, mimetype="application/json")
     else:
@@ -198,7 +210,7 @@ class TokenManager:
     def generate_token(
         cls,
         token_type: str,
-        account: Optional[Account] = None,
+        account: Optional["Account"] = None,
         email: Optional[str] = None,
         additional_data: Optional[dict] = None,
     ) -> str:
@@ -248,13 +260,13 @@ class TokenManager:
         if token_data_json is None:
             logging.warning(f"{token_type} token {token} not found with key {key}")
             return None
-        token_data = json.loads(token_data_json)
+        token_data: Optional[dict[str, Any]] = json.loads(token_data_json)
         return token_data
 
     @classmethod
     def _get_current_token_for_account(cls, account_id: str, token_type: str) -> Optional[str]:
         key = cls._get_account_token_key(account_id, token_type)
-        current_token = redis_client.get(key)
+        current_token: Optional[str] = redis_client.get(key)
         return current_token
 
     @classmethod

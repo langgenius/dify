@@ -1,59 +1,52 @@
-import type { FC, SVGProps } from 'react'
+import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
-import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { omit } from 'lodash-es'
-import { ArrowRightIcon } from '@heroicons/react/24/solid'
-import SegmentCard from '../completed/SegmentCard'
+import { RiLoader2Line, RiPauseCircleLine, RiPlayCircleLine } from '@remixicon/react'
+import Image from 'next/image'
 import { FieldInfo } from '../metadata'
-import style from '../completed/style.module.css'
-import { DocumentContext } from '../index'
-import s from './style.module.css'
+import { useDocumentContext } from '../index'
+import { IndexingType } from '../../../create/step-two'
+import { indexMethodIcon, retrievalIcon } from '../../../create/icons'
+import EmbeddingSkeleton from './skeleton'
+import { RETRIEVE_METHOD } from '@/types/app'
 import cn from '@/utils/classnames'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { ToastContext } from '@/app/components/base/toast'
-import type { FullDocumentDetail, ProcessRuleResponse } from '@/models/datasets'
+import { ProcessMode, type ProcessRuleResponse } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 import { asyncRunSafe, sleep } from '@/utils'
-import { fetchIndexingStatus as doFetchIndexingStatus, fetchProcessRule, pauseDocIndexing, resumeDocIndexing } from '@/service/datasets'
-import StopEmbeddingModal from '@/app/components/datasets/create/stop-embedding-modal'
+import {
+  fetchIndexingStatus as doFetchIndexingStatus,
+  fetchProcessRule,
+  pauseDocIndexing,
+  resumeDocIndexing,
+} from '@/service/datasets'
 
-type Props = {
-  detail?: FullDocumentDetail
-  stopPosition?: 'top' | 'bottom'
+type IEmbeddingDetailProps = {
   datasetId?: string
   documentId?: string
-  indexingType?: string
+  indexingType?: IndexingType
+  retrievalMethod?: RETRIEVE_METHOD
   detailUpdate: VoidFunction
 }
 
-const StopIcon = ({ className }: SVGProps<SVGElement>) => {
-  return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
-    <g clipPath="url(#clip0_2328_2798)">
-      <path d="M1.5 3.9C1.5 3.05992 1.5 2.63988 1.66349 2.31901C1.8073 2.03677 2.03677 1.8073 2.31901 1.66349C2.63988 1.5 3.05992 1.5 3.9 1.5H8.1C8.94008 1.5 9.36012 1.5 9.68099 1.66349C9.96323 1.8073 10.1927 2.03677 10.3365 2.31901C10.5 2.63988 10.5 3.05992 10.5 3.9V8.1C10.5 8.94008 10.5 9.36012 10.3365 9.68099C10.1927 9.96323 9.96323 10.1927 9.68099 10.3365C9.36012 10.5 8.94008 10.5 8.1 10.5H3.9C3.05992 10.5 2.63988 10.5 2.31901 10.3365C2.03677 10.1927 1.8073 9.96323 1.66349 9.68099C1.5 9.36012 1.5 8.94008 1.5 8.1V3.9Z" stroke="#344054" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </g>
-    <defs>
-      <clipPath id="clip0_2328_2798">
-        <rect width="12" height="12" fill="white" />
-      </clipPath>
-    </defs>
-  </svg>
+type IRuleDetailProps = {
+  sourceData?: ProcessRuleResponse
+  indexingType?: IndexingType
+  retrievalMethod?: RETRIEVE_METHOD
 }
 
-const ResumeIcon = ({ className }: SVGProps<SVGElement>) => {
-  return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
-    <path d="M10 3.5H5C3.34315 3.5 2 4.84315 2 6.5C2 8.15685 3.34315 9.5 5 9.5H10M10 3.5L8 1.5M10 3.5L8 5.5" stroke="#344054" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-}
-
-const RuleDetail: FC<{ sourceData?: ProcessRuleResponse; docName?: string }> = ({ sourceData, docName }) => {
+const RuleDetail: FC<IRuleDetailProps> = React.memo(({
+  sourceData,
+  indexingType,
+  retrievalMethod,
+}) => {
   const { t } = useTranslation()
 
   const segmentationRuleMap = {
-    docName: t('datasetDocuments.embedding.docName'),
     mode: t('datasetDocuments.embedding.mode'),
     segmentLength: t('datasetDocuments.embedding.segmentLength'),
     textCleaning: t('datasetDocuments.embedding.textCleaning'),
@@ -70,48 +63,106 @@ const RuleDetail: FC<{ sourceData?: ProcessRuleResponse; docName?: string }> = (
       return t('datasetCreation.stepTwo.removeStopwords')
   }
 
+  const isNumber = (value: unknown) => {
+    return typeof value === 'number'
+  }
+
   const getValue = useCallback((field: string) => {
     let value: string | number | undefined = '-'
+    const maxTokens = isNumber(sourceData?.rules?.segmentation?.max_tokens)
+      ? sourceData.rules.segmentation.max_tokens
+      : value
+    const childMaxTokens = isNumber(sourceData?.rules?.subchunk_segmentation?.max_tokens)
+      ? sourceData.rules.subchunk_segmentation.max_tokens
+      : value
     switch (field) {
-      case 'docName':
-        value = docName
-        break
       case 'mode':
-        value = sourceData?.mode === 'automatic' ? (t('datasetDocuments.embedding.automatic') as string) : (t('datasetDocuments.embedding.custom') as string)
+        value = !sourceData?.mode
+          ? value
+          : sourceData.mode === ProcessMode.general
+            ? (t('datasetDocuments.embedding.custom') as string)
+            : `${t('datasetDocuments.embedding.hierarchical')} · ${sourceData?.rules?.parent_mode === 'paragraph'
+              ? t('dataset.parentMode.paragraph')
+              : t('dataset.parentMode.fullDoc')}`
         break
       case 'segmentLength':
-        value = sourceData?.rules?.segmentation?.max_tokens
+        value = !sourceData?.mode
+          ? value
+          : sourceData.mode === ProcessMode.general
+            ? maxTokens
+            : `${t('datasetDocuments.embedding.parentMaxTokens')} ${maxTokens}; ${t('datasetDocuments.embedding.childMaxTokens')} ${childMaxTokens}`
         break
       default:
-        value = sourceData?.mode === 'automatic'
-          ? (t('datasetDocuments.embedding.automatic') as string)
-          // eslint-disable-next-line array-callback-return
-          : sourceData?.rules?.pre_processing_rules?.map((rule) => {
-            if (rule.enabled)
-              return getRuleName(rule.id)
-          }).filter(Boolean).join(';')
+        value = !sourceData?.mode
+          ? value
+          : sourceData?.rules?.pre_processing_rules?.filter(rule =>
+            rule.enabled).map(rule => getRuleName(rule.id)).join(',')
         break
     }
     return value
-  }, [sourceData, docName])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceData])
 
-  return <div className='flex flex-col pt-8 pb-10 first:mt-0'>
-    {Object.keys(segmentationRuleMap).map((field) => {
-      return <FieldInfo
-        key={field}
-        label={segmentationRuleMap[field as keyof typeof segmentationRuleMap]}
-        displayedValue={String(getValue(field))}
-      />
-    })}
+  return <div className='py-3'>
+    <div className='flex flex-col gap-y-1'>
+      {Object.keys(segmentationRuleMap).map((field) => {
+        return <FieldInfo
+          key={field}
+          label={segmentationRuleMap[field as keyof typeof segmentationRuleMap]}
+          displayedValue={String(getValue(field))}
+        />
+      })}
+    </div>
+    <Divider type='horizontal' className='bg-divider-subtle' />
+    <FieldInfo
+      label={t('datasetCreation.stepTwo.indexMode')}
+      displayedValue={t(`datasetCreation.stepTwo.${indexingType === IndexingType.ECONOMICAL ? 'economical' : 'qualified'}`) as string}
+      valueIcon={
+        <Image
+          className='size-4'
+          src={
+            indexingType === IndexingType.ECONOMICAL
+              ? indexMethodIcon.economical
+              : indexMethodIcon.high_quality
+          }
+          alt=''
+        />
+      }
+    />
+    <FieldInfo
+      label={t('datasetSettings.form.retrievalSetting.title')}
+      displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'invertedIndex' : retrievalMethod}.title`) as string}
+      valueIcon={
+        <Image
+          className='size-4'
+          src={
+            retrievalMethod === RETRIEVE_METHOD.fullText
+              ? retrievalIcon.fullText
+              : retrievalMethod === RETRIEVE_METHOD.hybrid
+                ? retrievalIcon.hybrid
+                : retrievalIcon.vector
+          }
+          alt=''
+        />
+      }
+    />
   </div>
-}
+})
 
-const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: dstId, documentId: docId, detailUpdate }) => {
-  const onTop = stopPosition === 'top'
+RuleDetail.displayName = 'RuleDetail'
+
+const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
+  datasetId: dstId,
+  documentId: docId,
+  detailUpdate,
+  indexingType,
+  retrievalMethod,
+}) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
 
-  const { datasetId = '', documentId = '' } = useContext(DocumentContext)
+  const datasetId = useDocumentContext(s => s.datasetId)
+  const documentId = useDocumentContext(s => s.documentId)
   const localDatasetId = dstId ?? datasetId
   const localDocumentId = docId ?? documentId
 
@@ -146,6 +197,7 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
       await sleep(2500)
       await startQueryStatus()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stopQueryStatus])
 
   useEffect(() => {
@@ -156,20 +208,12 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
     }
   }, [startQueryStatus, stopQueryStatus])
 
-  const { data: ruleDetail, error: ruleError } = useSWR({
+  const { data: ruleDetail } = useSWR({
     action: 'fetchProcessRule',
     params: { documentId: localDocumentId },
   }, apiParams => fetchProcessRule(omit(apiParams, 'action')), {
     revalidateOnFocus: false,
   })
-
-  const [showModal, setShowModal] = useState(false)
-  const modalShowHandle = () => setShowModal(true)
-  const modalCloseHandle = () => setShowModal(false)
-  const router = useRouter()
-  const navToDocument = () => {
-    router.push(`/datasets/${localDatasetId}/documents/${localDocumentId}`)
-  }
 
   const isEmbedding = useMemo(() => ['indexing', 'splitting', 'parsing', 'cleaning'].includes(indexingStatusDetail?.indexing_status || ''), [indexingStatusDetail])
   const isEmbeddingCompleted = useMemo(() => ['completed'].includes(indexingStatusDetail?.indexing_status || ''), [indexingStatusDetail])
@@ -189,6 +233,12 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId: localDatasetId, documentId: localDocumentId }) as Promise<CommonResponse>)
     if (!e) {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      // if the embedding is resumed from paused, we need to start the query status
+      if (isEmbeddingPaused) {
+        isStopQuery.current = false
+        startQueryStatus()
+        detailUpdate()
+      }
       setIndexingStatusDetail(null)
     }
     else {
@@ -196,78 +246,66 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
     }
   }
 
-  // if (!ruleDetail && !error)
-  //   return <Loading type='app' />
-
   return (
     <>
-      <div className={s.embeddingStatus}>
-        {isEmbedding && t('datasetDocuments.embedding.processing')}
-        {isEmbeddingCompleted && t('datasetDocuments.embedding.completed')}
-        {isEmbeddingPaused && t('datasetDocuments.embedding.paused')}
-        {isEmbeddingError && t('datasetDocuments.embedding.error')}
-        {onTop && isEmbedding && (
-          <Button onClick={handleSwitch} className={s.opBtn}>
-            <StopIcon className={s.opIcon} />
-            {t('datasetDocuments.embedding.stop')}
-          </Button>
-        )}
-        {onTop && isEmbeddingPaused && (
-          <Button onClick={handleSwitch} className={s.opBtn}>
-            <ResumeIcon className={s.opIcon} />
-            {t('datasetDocuments.embedding.resume')}
-          </Button>
-        )}
-      </div>
-      {/* progress bar */}
-      <div className={s.progressContainer}>
-        {new Array(10).fill('').map((_, idx) => <div
-          key={idx}
-          className={cn(s.progressBgItem, isEmbedding ? 'bg-primary-50' : 'bg-gray-100')}
-        />)}
-        <div
-          className={cn(
-            'rounded-l-md',
-            s.progressBar,
-            (isEmbedding || isEmbeddingCompleted) && s.barProcessing,
-            (isEmbeddingPaused || isEmbeddingError) && s.barPaused,
-            indexingStatusDetail?.indexing_status === 'completed' && 'rounded-r-md',
-          )}
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-      <div className={s.progressData}>
-        <div>{t('datasetDocuments.embedding.segments')} {indexingStatusDetail?.completed_segments}/{indexingStatusDetail?.total_segments} · {percent}%</div>
-      </div>
-      <RuleDetail sourceData={ruleDetail} docName={detail?.name} />
-      {!onTop && (
-        <div className='flex items-center gap-2 mt-10'>
+      <div className='py-12 px-16 flex flex-col gap-y-2'>
+        <div className='flex items-center gap-x-1 h-6'>
+          {isEmbedding && <RiLoader2Line className='h-4 w-4 text-text-secondary animate-spin' />}
+          <span className='grow text-text-secondary system-md-semibold-uppercase'>
+            {isEmbedding && t('datasetDocuments.embedding.processing')}
+            {isEmbeddingCompleted && t('datasetDocuments.embedding.completed')}
+            {isEmbeddingPaused && t('datasetDocuments.embedding.paused')}
+            {isEmbeddingError && t('datasetDocuments.embedding.error')}
+          </span>
           {isEmbedding && (
-            <Button onClick={modalShowHandle} className='w-fit'>
-              {t('datasetCreation.stepThree.stop')}
-            </Button>
+            <button
+              type='button'
+              className={`px-1.5 py-1 border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg
+              shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] flex items-center gap-x-1 rounded-md`}
+              onClick={handleSwitch}
+            >
+              <RiPauseCircleLine className='w-3.5 h-3.5 text-components-button-secondary-text' />
+              <span className='pr-[3px] text-components-button-secondary-text system-xs-medium'>
+                {t('datasetDocuments.embedding.pause')}
+              </span>
+            </button>
           )}
           {isEmbeddingPaused && (
-            <Button onClick={handleSwitch} className='w-fit'>
-              {t('datasetCreation.stepThree.resume')}
-            </Button>
+            <button
+              type='button'
+              className={`px-1.5 py-1 border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg
+              shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] flex items-center gap-x-1 rounded-md`}
+              onClick={handleSwitch}
+            >
+              <RiPlayCircleLine className='w-3.5 h-3.5 text-components-button-secondary-text' />
+              <span className='pr-[3px] text-components-button-secondary-text system-xs-medium'>
+                {t('datasetDocuments.embedding.resume')}
+              </span>
+            </button>
           )}
-          <Button className='w-fit' variant='primary' onClick={navToDocument}>
-            <span>{t('datasetCreation.stepThree.navTo')}</span>
-            <ArrowRightIcon className='h-4 w-4 ml-2 stroke-current stroke-1' />
-          </Button>
         </div>
-      )}
-      {onTop && <>
-        <Divider />
-        <div className={s.previewTip}>{t('datasetDocuments.embedding.previewTip')}</div>
-        <div className={style.cardWrapper}>
-          {[1, 2, 3].map((v, index) => (
-            <SegmentCard key={index} loading={true} detail={{ position: v } as any} />
-          ))}
+        {/* progress bar */}
+        <div className={cn(
+          'flex items-center w-full h-2 rounded-md border border-components-progress-bar-border overflow-hidden',
+          isEmbedding ? 'bg-components-progress-bar-bg bg-opacity-50' : 'bg-components-progress-bar-bg',
+        )}>
+          <div
+            className={cn(
+              'h-full',
+              (isEmbedding || isEmbeddingCompleted) && 'bg-components-progress-bar-progress-solid',
+              (isEmbeddingPaused || isEmbeddingError) && 'bg-components-progress-bar-progress-highlight',
+            )}
+            style={{ width: `${percent}%` }}
+          />
         </div>
-      </>}
-      <StopEmbeddingModal show={showModal} onConfirm={handleSwitch} onHide={modalCloseHandle} />
+        <div className={'w-full flex items-center'}>
+          <span className='text-text-secondary system-xs-medium'>
+            {`${t('datasetDocuments.embedding.segments')} ${indexingStatusDetail?.completed_segments || '--'}/${indexingStatusDetail?.total_segments || '--'} · ${percent}%`}
+          </span>
+        </div>
+        <RuleDetail sourceData={ruleDetail} indexingType={indexingType} retrievalMethod={retrievalMethod} />
+      </div>
+      <EmbeddingSkeleton />
     </>
   )
 }

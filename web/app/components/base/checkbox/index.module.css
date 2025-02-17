@@ -1,0 +1,10 @@
+.mixed {
+  background: var(--color-components-checkbox-bg) url(./assets/mixed.svg) center center no-repeat;
+  background-size: 12px 12px;
+  border: none;
+}
+
+.checked.disabled {
+  background-color: #d0d5dd;
+  border-color: #d0d5dd;
+}
