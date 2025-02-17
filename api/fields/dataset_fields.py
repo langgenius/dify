@@ -87,3 +87,9 @@ dataset_query_detail_fields = {
     "created_by": fields.String,
     "created_at": TimestampField,
 }
+
+dataset_metadata_fields = {
+    "id": fields.String,
+    "type": fields.String,
+    "name": fields.String,
+}

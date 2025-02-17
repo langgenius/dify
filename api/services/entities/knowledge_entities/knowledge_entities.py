@@ -124,3 +124,8 @@ class SegmentUpdateArgs(BaseModel):
 class ChildChunkUpdateArgs(BaseModel):
     id: Optional[str] = None
     content: str
+
+
+class MetadataArgs(BaseModel):
+    type: Literal["string", "number", "time"]
+    name: str

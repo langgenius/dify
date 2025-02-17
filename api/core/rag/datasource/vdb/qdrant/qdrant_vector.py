@@ -393,6 +393,28 @@ class QdrantVector(BaseVector):
 
         return documents
 
+    def update_metadata(self, document_id: str, metadata: dict) -> None:
+        from qdrant_client.http import models
+        scroll_filter = models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="group_id",
+                    match=models.MatchValue(value=self._group_id),
+                ),
+                models.FieldCondition(
+                    key="metadata.doc_id",
+                    match=models.MatchValue(value=document_id),
+                ),
+            ]
+        )
+        self._client.set_payload(
+            collection_name=self._collection_name,
+            filter=scroll_filter,
+            payload={
+                Field.METADATA_KEY.value: metadata,
+            },
+        )
+
     def _reload_if_needed(self):
         if isinstance(self._client, QdrantLocal):
             self._client = cast(QdrantLocal, self._client)
