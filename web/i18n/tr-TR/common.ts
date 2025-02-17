@@ -50,6 +50,7 @@ const translation = {
     submit: 'Gönder',
     skip: 'Gemi',
     imageCopied: 'Kopyalanan görüntü',
+    deleteApp: 'Uygulamayı Sil',
   },
   errorMsg: {
     fieldRequired: '{{field}} gereklidir',
@@ -290,6 +291,7 @@ const translation = {
       usedUp: 'Deneme kotası kullanıldı. Kendi Model Sağlayıcınızı ekleyin.',
       useYourModel: 'Şu anda kendi Model Sağlayıcınızı kullanıyorsunuz.',
       close: 'Kapat',
+      trialQuotaTip: 'Antropik deneme kotanız 11/03/2025 tarihinde sona erecek ve bu tarihten sonra kullanılamayacaktır. Lütfen zamanında kullanın.',
     },
     anthropic: {
       using: 'Yerleştirme yeteneği,',

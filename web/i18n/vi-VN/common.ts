@@ -50,6 +50,7 @@ const translation = {
     submit: 'Trình',
     skip: 'Tàu',
     imageCopied: 'Hình ảnh sao chép',
+    deleteApp: 'Xóa ứng dụng',
   },
   placeholder: {
     input: 'Vui lòng nhập',
@@ -286,6 +287,7 @@ const translation = {
       usedUp: 'Quota dùng thử đã hết. Thêm nhà cung cấp Mô hình của riêng bạn.',
       useYourModel: 'Hiện đang sử dụng nhà cung cấp Mô hình của riêng bạn.',
       close: 'Đóng',
+      trialQuotaTip: 'Hạn ngạch dùng thử Anthropic của bạn sẽ hết hạn vào 2025/03/11 và sẽ không còn khả dụng sau đó. Vui lòng sử dụng nó kịp thời.',
     },
     anthropic: {
       using: 'Khả năng nhúng đang sử dụng',

@@ -50,6 +50,7 @@ const translation = {
     submit: 'Predložiti',
     skip: 'Ladja',
     imageCopied: 'Kopirana slika',
+    deleteApp: 'Izbriši aplikacijo',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
@@ -290,6 +291,7 @@ const translation = {
       usedUp: 'Kvota za preizkus porabljena. Dodajte svojega ponudnika modelov.',
       useYourModel: 'Trenutno uporabljate svojega ponudnika modelov.',
       close: 'Zapri',
+      trialQuotaTip: 'Vaša kvota za preskušanje antropičnih izdelkov bo potekla 11.3.2025 in po tem datumu ne bo več na voljo. Prosimo, da jo pravočasno izkoristite.',
     },
     anthropic: {
       using: 'Zmožnost vdelave uporablja',

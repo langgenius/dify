@@ -19,6 +19,17 @@ html[data-theme="dark"] {
     rgba(34, 34, 37, 0.9) -0.1%,
     rgba(29, 29, 32, 0.9) 98.26%
   );
+  --color-app-detail-bg: linear-gradient(
+    169deg,
+    #1D1D20 1.18%,
+    #222225 99.52%
+  );
+  --color-app-detail-overlay-bg: linear-gradient(
+    270deg,
+    rgba(0, 0, 0, 0.00) 0%,
+    rgba(24, 24, 27, 0.02) 8%,
+    rgba(24, 24, 27, 0.54) 100%
+  );
   --color-dataset-chunk-process-success-bg: linear-gradient(92deg, rgba(23, 178, 106, 0.30) 0%, rgba(0, 0, 0, 0.00) 100%);
   --color-dataset-chunk-process-error-bg: linear-gradient(92deg, rgba(240, 68, 56, 0.30) 0%, rgba(0, 0, 0, 0.00) 100%);
   --color-dataset-chunk-detail-card-hover-bg: linear-gradient(180deg, #1D1D20 0%, #222225 100%);

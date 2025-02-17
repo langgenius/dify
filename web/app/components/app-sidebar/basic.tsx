@@ -58,7 +58,7 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
   const { t } = useTranslation()
 
   return (
-    <div className="flex items-start p-1">
+    <div className="flex items-center grow">
       {icon && icon_background && iconType === 'app' && (
         <div className='flex-shrink-0 mr-3'>
           <AppIcon icon={icon} background={icon_background} />
@@ -71,8 +71,10 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
 
       }
       {mode === 'expand' && <div className="group">
-        <div className={`flex flex-row items-center text-sm font-semibold text-gray-700 group-hover:text-gray-900 break-all ${textStyle?.main ?? ''}`}>
-          {name}
+        <div className={`flex flex-row items-center system-md-semibold text-text-secondary group-hover:text-text-primary ${textStyle?.main ?? ''}`}>
+          <div className="max-w-[180px] truncate">
+            {name}
+          </div>
           {hoverTip
             && <Tooltip
               popupContent={
@@ -86,7 +88,6 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
             />
           }
         </div>
-        <div className={`text-xs font-normal text-gray-500 group-hover:text-gray-700 break-all ${textStyle?.extra ?? ''}`}>{type}</div>
         <div className='text-text-tertiary system-2xs-medium-uppercase'>{isExternal ? t('dataset.externalTag') : ''}</div>
       </div>}
     </div>

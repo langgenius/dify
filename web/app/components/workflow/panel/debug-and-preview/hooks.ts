@@ -425,13 +425,12 @@ export const useChat = (
           else
             responseItem.workflowProcess!.tracing[currentIndex].retryDetail = [data as NodeTracing]
 
-          handleUpdateChatList(produce(chatListRef.current, (draft) => {
-            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
-            draft[currentIndex] = {
-              ...draft[currentIndex],
-              ...responseItem,
-            }
-          }))
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
         },
         onNodeFinished: ({ data }) => {
           if (data.iteration_id)

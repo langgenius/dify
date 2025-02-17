@@ -452,11 +452,9 @@ class ProviderManager:
 
         provider_name_to_provider_load_balancing_model_configs_dict = defaultdict(list)
         for provider_load_balancing_config in provider_load_balancing_configs:
-            (
-                provider_name_to_provider_load_balancing_model_configs_dict[
-                    provider_load_balancing_config.provider_name
-                ].append(provider_load_balancing_config)
-            )
+            provider_name_to_provider_load_balancing_model_configs_dict[
+                provider_load_balancing_config.provider_name
+            ].append(provider_load_balancing_config)
 
         return provider_name_to_provider_load_balancing_model_configs_dict
 

@@ -1,9 +1,9 @@
 import logging
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from typing import Any, Optional, Union
 
 from azure.ai.inference import ChatCompletionsClient
-from azure.ai.inference.models import StreamingChatCompletionsUpdate
+from azure.ai.inference.models import StreamingChatCompletionsUpdate, SystemMessage, UserMessage
 from azure.core.credentials import AzureKeyCredential
 from azure.core.exceptions import (
     ClientAuthenticationError,
@@ -20,7 +20,7 @@ from azure.core.exceptions import (
 )
 
 from core.model_runtime.callbacks.base_callback import Callback
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
@@ -30,6 +30,7 @@ from core.model_runtime.entities.model_entities import (
     AIModelEntity,
     FetchFrom,
     I18nObject,
+    ModelPropertyKey,
     ModelType,
     ParameterRule,
     ParameterType,
@@ -60,10 +61,10 @@ class AzureAIStudioLargeLanguageModel(LargeLanguageModel):
         self,
         model: str,
         credentials: dict,
-        prompt_messages: list[PromptMessage],
+        prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        tools: Optional[Sequence[PromptMessageTool]] = None,
+        stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
     ) -> Union[LLMResult, Generator]:
@@ -82,8 +83,8 @@ class AzureAIStudioLargeLanguageModel(LargeLanguageModel):
         """
 
         if not self.client:
-            endpoint = credentials.get("endpoint")
-            api_key = credentials.get("api_key")
+            endpoint = str(credentials.get("endpoint"))
+            api_key = str(credentials.get("api_key"))
             self.client = ChatCompletionsClient(endpoint=endpoint, credential=AzureKeyCredential(api_key))
 
         messages = [{"role": msg.role.value, "content": msg.content} for msg in prompt_messages]
@@ -94,6 +95,7 @@ class AzureAIStudioLargeLanguageModel(LargeLanguageModel):
             "temperature": model_parameters.get("temperature", 0),
             "top_p": model_parameters.get("top_p", 1),
             "stream": stream,
+            "model": model,
         }
 
         if stop:
@@ -255,10 +257,16 @@ class AzureAIStudioLargeLanguageModel(LargeLanguageModel):
         :return:
         """
         try:
-            endpoint = credentials.get("endpoint")
-            api_key = credentials.get("api_key")
+            endpoint = str(credentials.get("endpoint"))
+            api_key = str(credentials.get("api_key"))
             client = ChatCompletionsClient(endpoint=endpoint, credential=AzureKeyCredential(api_key))
-            client.get_model_info()
+            client.complete(
+                messages=[
+                    SystemMessage(content="I say 'ping', you say 'pong'"),
+                    UserMessage(content="ping"),
+                ],
+                model=model,
+            )
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
@@ -327,7 +335,10 @@ class AzureAIStudioLargeLanguageModel(LargeLanguageModel):
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.LLM,
             features=[],
-            model_properties={},
+            model_properties={
+                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size", "4096")),
+                ModelPropertyKey.MODE: credentials.get("mode", LLMMode.CHAT),
+            },
             parameter_rules=rules,
         )
 
