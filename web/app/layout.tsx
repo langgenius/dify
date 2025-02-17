@@ -3,6 +3,7 @@ import I18nServer from './components/i18n-server'
 import BrowserInitor from './components/browser-initor'
 import SentryInitor from './components/sentry-initor'
 import { getLocaleOnServer } from '@/i18n/server'
+import RoutePrefixHandle from './routePrefixHandle'
 import { TanstackQueryIniter } from '@/context/query-client'
 import './styles/globals.css'
 import './styles/markdown.scss'
@@ -54,6 +55,7 @@ const LocaleLayout = ({
             </TanstackQueryIniter>
           </SentryInitor>
         </BrowserInitor>
+        <RoutePrefixHandle />
       </body>
     </html>
   )
