@@ -8,6 +8,8 @@ identity:
     en_US: Gitee api plugin for OpenAPI v5
     zh_Hans: Gitee v5 OpenAPI 插件
   icon: gitee.svg
+  tags:
+    - utilities
 credentials_for_provider:
   access_tokens:
     type: secret-input
