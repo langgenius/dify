@@ -14,26 +14,6 @@ const hasEndThink = (children: any): boolean => {
   return false
 }
 
-const removeEndThink = (children: any): any => {
-  if (typeof children === 'string')
-    return children.replace('[ENDTHINKFLAG]', '')
-
-  if (Array.isArray(children))
-    return children.map(child => removeEndThink(child))
-
-  if (children?.props?.children) {
-    return React.cloneElement(
-      children,
-      {
-        ...children.props,
-        children: removeEndThink(children.props.children),
-      },
-    )
-  }
-
-  return children
-}
-
 const useThinkTimer = (children: any) => {
   const [startTime] = useState(Date.now())
   const [elapsedTime, setElapsedTime] = useState(0)
@@ -43,8 +23,8 @@ const useThinkTimer = (children: any) => {
   useEffect(() => {
     timerRef.current = setInterval(() => {
       if (!isComplete)
-        setElapsedTime(Math.floor((Date.now() - startTime) / 100) / 10)
-    }, 100)
+        setElapsedTime(Math.floor((Date.now() - startTime) / 1000))
+    }, 1000)
 
     return () => {
       if (timerRef.current)
@@ -63,9 +43,17 @@ const useThinkTimer = (children: any) => {
   return { elapsedTime, isComplete }
 }
 
+export const stopThinking = () => {
+  const alldetails = document.getElementsByTagName('details')
+  const lastDetailsElement = alldetails[alldetails.length - 1]
+  if (lastDetailsElement) {
+    const html = lastDetailsElement.innerHTML
+    lastDetailsElement.innerHTML = `${html}<span style="display:none">[ENDTHINKFLAG]</span>`
+  }
+}
+
 export const ThinkBlock = ({ children, ...props }: any) => {
   const { elapsedTime, isComplete } = useThinkTimer(children)
-  const displayContent = removeEndThink(children)
   const { t } = useTranslation()
 
   return (
@@ -85,11 +73,13 @@ export const ThinkBlock = ({ children, ...props }: any) => {
               d="M9 5l7 7-7 7"
             />
           </svg>
-          {isComplete ? `${t('common.chat.thought')}(${elapsedTime.toFixed(1)}s)` : `${t('common.chat.thinking')}(${elapsedTime.toFixed(1)}s)`}
+          {isComplete
+            ? `${t('common.chat.thought')}${elapsedTime > 0 ? `(${elapsedTime >= 60 ? `${Math.floor(elapsedTime / 60)}m` : `${elapsedTime}s`})` : ''}`
+            : `${t('common.chat.thinking')}(${elapsedTime >= 60 ? `${Math.floor(elapsedTime / 60)}m` : `${elapsedTime}s`})`}
         </div>
       </summary>
       <div className="text-gray-500 p-3 ml-2 bg-gray-50 border-l border-gray-300">
-        {displayContent}
+        {children}
       </div>
     </details>
   )

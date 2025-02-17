@@ -34,6 +34,7 @@ import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
+import { stopThinking } from '@/app/components/base/markdown-blocks/think-block'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -161,6 +162,7 @@ export const useChat = (
       conversationMessagesAbortControllerRef.current.abort()
     if (suggestedQuestionsAbortControllerRef.current)
       suggestedQuestionsAbortControllerRef.current.abort()
+    stopThinking()
   }, [stopChat, handleResponding])
 
   const handleRestart = useCallback(() => {

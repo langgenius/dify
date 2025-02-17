@@ -74,7 +74,7 @@ const preprocessThinkTag = (content: string) => {
 
   return flow([
     (str: string) => str.replace('<think>\n', '<details>\n'),
-    (str: string) => str.replace('\n</think>', '\n[ENDTHINKFLAG]</details>'),
+    (str: string) => str.replace('\n</think>', '<span style="display:none">[ENDTHINKFLAG]</span></details>'),
   ])(content)
 }
 
