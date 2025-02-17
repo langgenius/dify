@@ -50,8 +50,8 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
             "plan": tenant.plan,
             "status": tenant.status,
             "custom_config": json.loads(tenant.custom_config) if tenant.custom_config else {},
-            "created_at": tenant.created_at.isoformat() if tenant.created_at else None,
-            "updated_at": tenant.updated_at.isoformat() if tenant.updated_at else None,
+            "created_at": tenant.created_at.isoformat() + "Z" if tenant.created_at else None,
+            "updated_at": tenant.updated_at.isoformat() + "Z" if tenant.updated_at else None,
         }
 
         return {

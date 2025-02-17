@@ -73,10 +73,8 @@ const preprocessThinkTag = (content: string) => {
     return content
 
   return flow([
-    (str: string) => str.replace('<think>\n', '<details open><summary class="text-gray-500 font-bold">Thinking</summary><div class="text-gray-500 p-3 ml-2 bg-gray-50 border-l border-gray-300">\n'),
-    (str: string) => str.includes('\n</think>')
-      ? str.replace('\n</think>', '\n</div></details>')
-      : `${str}\n</div></details>`,
+    (str: string) => str.replace('<think>\n', '<details>\n'),
+    (str: string) => str.replace('\n</think>', '\n[ENDTHINKFLAG]</details>'),
   ])(content)
 }
 
@@ -296,6 +294,7 @@ export function Markdown(props: { content: string; className?: string }) {
           button: MarkdownButton,
           form: MarkdownForm,
           script: ScriptBlock,
+          details: ThinkBlock,
         }}
       >
         {/* Markdown detect has problem. */}
