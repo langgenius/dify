@@ -4,7 +4,6 @@ on:
   pull_request:
     branches:
       - main
-      - plugins/beta
     paths:
       - api/**
       - docker/**

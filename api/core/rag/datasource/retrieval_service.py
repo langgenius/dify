@@ -1,5 +1,5 @@
-import json
 import concurrent.futures
+import json
 from typing import Optional
 
 from flask import Flask, current_app

@@ -4,7 +4,6 @@ on:
   pull_request:
     branches:
       - main
-      - plugins/beta
 
 concurrency:
   group: style-${{ github.head_ref || github.run_id }}
@@ -153,7 +152,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         env:
           BASH_SEVERITY: warning
-          DEFAULT_BRANCH: plugins/beta
+          DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IGNORE_GENERATED_FILES: true
           IGNORE_GITIGNORED_FILES: true
