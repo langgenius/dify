@@ -665,7 +665,7 @@ class GraphEngine:
                                     retries += 1
                                     route_node_state.node_run_result = run_result
                                     yield NodeRunRetryEvent(
-                                        id=node_instance.id,
+                                        id=str(uuid.uuid4()),
                                         node_id=node_instance.node_id,
                                         node_type=node_instance.node_type,
                                         node_data=node_instance.node_data,
@@ -680,7 +680,7 @@ class GraphEngine:
                                         start_at=retry_start_at,
                                     )
                                     time.sleep(retry_interval)
-                                    continue
+                                    break
                             route_node_state.set_finished(run_result=run_result)
 
                             if run_result.status == WorkflowNodeExecutionStatus.FAILED:

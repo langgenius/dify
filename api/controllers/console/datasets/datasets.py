@@ -623,7 +623,6 @@ class DatasetRetrievalSettingApi(Resource):
         match vector_type:
             case (
                 VectorType.RELYT
-                | VectorType.PGVECTOR
                 | VectorType.TIDB_VECTOR
                 | VectorType.CHROMA
                 | VectorType.TENCENT

@@ -1,20 +1,19 @@
 'use client'
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiQrCodeLine,
-} from '@remixicon/react'
-import { QRCodeCanvas as QRCode } from 'qrcode.react'
-import ActionButton from '@/app/components/base/action-button'
+import { QRCodeSVG } from 'qrcode.react'
+import QrcodeStyle from './style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   content: string
+  selectorId: string
+  className?: string
 }
 
 const prefixEmbedded = 'appOverview.overview.appInfo.qrcode.title'
 
-const ShareQRCode = ({ content }: Props) => {
+const ShareQRCode = ({ content, selectorId, className }: Props) => {
   const { t } = useTranslation()
   const [isShow, setIsShow] = useState<boolean>(false)
   const qrCodeRef = useRef<HTMLDivElement>(null)
@@ -54,21 +53,22 @@ const ShareQRCode = ({ content }: Props) => {
     <Tooltip
       popupContent={t(`${prefixEmbedded}`) || ''}
     >
-      <div className='relative w-6 h-6' onClick={toggleQRCode}>
-        <ActionButton>
-          <RiQrCodeLine className='w-4 h-4' />
-        </ActionButton>
+      <div
+        className={`w-8 h-8 cursor-pointer rounded-lg relative ${className ?? ''}`}
+        onClick={toggleQRCode}
+      >
+        <div className={`w-full h-full ${QrcodeStyle.QrcodeIcon} ${isShow ? QrcodeStyle.show : ''}`} />
         {isShow && (
           <div
             ref={qrCodeRef}
-            className='absolute top-8 -right-8 z-10 w-[232px] flex flex-col items-center bg-components-panel-bg shadow-xs rounded-lg p-4'
+            className={`${QrcodeStyle.qrcodeform} !absolute right-0 top-0`}
             onClick={handlePanelClick}
           >
-            <QRCode size={160} value={content} className='mb-2' />
-            <div className='flex items-center system-xs-regular'>
-              <div className='text-text-tertiary'>{t('appOverview.overview.appInfo.qrcode.scan')}</div>
-              <div className='text-text-tertiary'>·</div>
-              <div className='text-text-accent-secondary cursor-pointer' onClick={downloadQR}>{t('appOverview.overview.appInfo.qrcode.download')}</div>
+            <QRCodeSVG size={160} value={content} className={QrcodeStyle.qrcodeimage} />
+            <div className={QrcodeStyle.text}>
+              <div className={`text-text-tertiary ${QrcodeStyle.scan}`}>{t('appOverview.overview.appInfo.qrcode.scan')}</div>
+              <div className={`text-text-tertiary ${QrcodeStyle.scan}`}>·</div>
+              <div className={QrcodeStyle.download} onClick={downloadQR}>{t('appOverview.overview.appInfo.qrcode.download')}</div>
             </div>
           </div>
         )}
