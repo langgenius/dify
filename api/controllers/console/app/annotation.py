@@ -123,6 +123,17 @@ class AnnotationListApi(Resource):
         }
         return response, 200
 
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, app_id):
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        app_id = str(app_id)
+        AppAnnotationService.clear_all_annotations(app_id)
+        return {"result": "success"}, 200
+
 
 class AnnotationExportApi(Resource):
     @setup_required
@@ -285,4 +296,3 @@ api.add_resource(AnnotationBatchImportStatusApi, "/apps/<uuid:app_id>/annotation
 api.add_resource(AnnotationHitHistoryListApi, "/apps/<uuid:app_id>/annotations/<uuid:annotation_id>/hit-histories")
 api.add_resource(AppAnnotationSettingDetailApi, "/apps/<uuid:app_id>/annotation-setting")
 api.add_resource(AppAnnotationSettingUpdateApi, "/apps/<uuid:app_id>/annotation-settings/<uuid:annotation_setting_id>")
-api.add_resource(AnnotationClearAllApi, "/apps/<uuid:app_id>/annotations/clear-all")
