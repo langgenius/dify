@@ -57,7 +57,7 @@ const ConfigVision: FC = () => {
     return null
 
   return (
-    <div className='mt-2 flex items-center gap-2 p-2 rounded-xl border-t-[0.5px] border-l-[0.5px] bg-background-section-burn'>
+    <div className='mt-2 flex items-center gap-2 p-2 rounded-xl border-effects-highlight border-t-[0.5px] border-l-[0.5px] bg-background-section-burn'>
       <div className='shrink-0 p-1'>
         <div className='p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-indigo-indigo-600'>
           <Vision className='w-4 h-4 text-text-primary-on-surface' />
@@ -99,7 +99,7 @@ const ConfigVision: FC = () => {
           />
         </div> */}
         <ParamConfig />
-        <div className='ml-1 mr-3 w-[1px] h-3.5 bg-divider-subtle'></div>
+        <div className='ml-1 mr-3 w-[1px] h-3.5 bg-divider-regular'></div>
         <Switch
           defaultValue={isImageEnabled}
           onChange={handleChange}

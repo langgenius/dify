@@ -13,6 +13,7 @@ import type {
   DefaultValueForm,
   ErrorHandleTypeEnum,
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
 
 export enum BlockEnum {
   Start = 'start',
@@ -34,6 +35,7 @@ export enum BlockEnum {
   ListFilter = 'list-operator',
   IterationStart = 'iteration-start',
   Assigner = 'assigner', // is now named as VariableAssigner
+  Agent = 'agent',
 }
 
 export enum ControlMode {
@@ -68,6 +70,7 @@ export type CommonNodeType<T = {}> = {
   _iterationIndex?: number
   _inParallelHovering?: boolean
   _waitingRun?: boolean
+  _retryIndex?: number
   isInIteration?: boolean
   iteration_id?: string
   selected?: boolean
@@ -77,6 +80,7 @@ export type CommonNodeType<T = {}> = {
   width?: number
   height?: number
   error_strategy?: ErrorHandleTypeEnum
+  retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
 
@@ -286,6 +290,11 @@ export enum WorkflowRunningStatus {
   Stopped = 'stopped',
 }
 
+export enum WorkflowVersion {
+  Draft = 'draft',
+  Latest = 'latest',
+}
+
 export enum NodeRunningStatus {
   NotStart = 'not-start',
   Waiting = 'waiting',
@@ -293,6 +302,7 @@ export enum NodeRunningStatus {
   Succeeded = 'succeeded',
   Failed = 'failed',
   Exception = 'exception',
+  Retry = 'retry',
 }
 
 export type OnNodeAdd = (

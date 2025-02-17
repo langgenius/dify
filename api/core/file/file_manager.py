@@ -1,15 +1,15 @@
 import base64
+from collections.abc import Mapping
 
 from configs import dify_config
-from core.file import file_repository
 from core.helper import ssrf_proxy
 from core.model_runtime.entities import (
     AudioPromptMessageContent,
     DocumentPromptMessageContent,
     ImagePromptMessageContent,
+    MultiModalPromptMessageContent,
     VideoPromptMessageContent,
 )
-from extensions.ext_database import db
 from extensions.ext_storage import storage
 
 from . import helpers
@@ -41,7 +41,7 @@ def to_prompt_message_content(
     /,
     *,
     image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
-):
+) -> MultiModalPromptMessageContent:
     if f.extension is None:
         raise ValueError("Missing file extension")
     if f.mime_type is None:
@@ -56,7 +56,7 @@ def to_prompt_message_content(
     if f.type == FileType.IMAGE:
         params["detail"] = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
 
-    prompt_class_map = {
+    prompt_class_map: Mapping[FileType, type[MultiModalPromptMessageContent]] = {
         FileType.IMAGE: ImagePromptMessageContent,
         FileType.AUDIO: AudioPromptMessageContent,
         FileType.VIDEO: VideoPromptMessageContent,
@@ -64,22 +64,19 @@ def to_prompt_message_content(
     }
 
     try:
-        return prompt_class_map[f.type](**params)
+        return prompt_class_map[f.type].model_validate(params)
     except KeyError:
         raise ValueError(f"file type {f.type} is not supported")
 
 
 def download(f: File, /):
-    if f.transfer_method == FileTransferMethod.TOOL_FILE:
-        tool_file = file_repository.get_tool_file(session=db.session(), file=f)
-        return _download_file_content(tool_file.file_key)
-    elif f.transfer_method == FileTransferMethod.LOCAL_FILE:
-        upload_file = file_repository.get_upload_file(session=db.session(), file=f)
-        return _download_file_content(upload_file.key)
-    # remote file
-    response = ssrf_proxy.get(f.remote_url, follow_redirects=True)
-    response.raise_for_status()
-    return response.content
+    if f.transfer_method in (FileTransferMethod.TOOL_FILE, FileTransferMethod.LOCAL_FILE):
+        return _download_file_content(f._storage_key)
+    elif f.transfer_method == FileTransferMethod.REMOTE_URL:
+        response = ssrf_proxy.get(f.remote_url, follow_redirects=True)
+        response.raise_for_status()
+        return response.content
+    raise ValueError(f"unsupported transfer method: {f.transfer_method}")
 
 
 def _download_file_content(path: str, /):
@@ -110,11 +107,9 @@ def _get_encoded_string(f: File, /):
             response.raise_for_status()
             data = response.content
         case FileTransferMethod.LOCAL_FILE:
-            upload_file = file_repository.get_upload_file(session=db.session(), file=f)
-            data = _download_file_content(upload_file.key)
+            data = _download_file_content(f._storage_key)
         case FileTransferMethod.TOOL_FILE:
-            tool_file = file_repository.get_tool_file(session=db.session(), file=f)
-            data = _download_file_content(tool_file.file_key)
+            data = _download_file_content(f._storage_key)
 
     encoded_string = base64.b64encode(data).decode("utf-8")
     return encoded_string

@@ -33,12 +33,14 @@ const translation = {
       explanation: '开箱即用的 AI WebApp',
       accessibleAddress: '公开访问 URL',
       preview: '预览',
+      launch: '启动',
       regenerate: '重新生成',
       regenerateNotice: '您是否要重新生成公开访问 URL？',
       preUseReminder: '使用前请先打开开关',
       settings: {
         entry: '设置',
         title: 'WebApp 设置',
+        modalTip: '客户端 WebApp 设置。',
         webName: 'WebApp 名称',
         webDesc: 'WebApp 描述',
         webDescTip: '以下文字将展示在客户端中，对应用进行说明和使用上的基本引导',
@@ -64,6 +66,8 @@ const translation = {
         more: {
           entry: '展示更多设置',
           copyright: '版权',
+          copyrightTip: '在 WebApp 中展示版权信息',
+          copyrightTooltip: '请升级到专业版或者更高',
           copyRightPlaceholder: '请输入作者或组织名称',
           privacyPolicy: '隐私政策',
           privacyPolicyPlaceholder: '请输入隐私政策链接',

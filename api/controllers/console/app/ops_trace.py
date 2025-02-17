@@ -1,4 +1,4 @@
-from flask_restful import Resource, reqparse
+from flask_restful import Resource, reqparse  # type: ignore
 from werkzeug.exceptions import BadRequest
 
 from controllers.console import api

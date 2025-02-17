@@ -25,18 +25,18 @@ const Collapse = ({
   const toggle = () => setOpen(!open)
 
   return (
-    <div className={classNames('border border-gray-200 bg-gray-50 rounded-lg', wrapperClassName)}>
-      <div className='flex items-center justify-between leading-[18px] px-3 py-2 text-xs font-medium text-gray-800 cursor-pointer' onClick={toggle}>
+    <div className={classNames('bg-background-section-burn rounded-xl', wrapperClassName)}>
+      <div className='flex items-center justify-between leading-[18px] px-3 py-2 text-xs font-medium text-text-secondary cursor-pointer' onClick={toggle}>
         {title}
         {
           open
-            ? <ChevronDownIcon className='w-3 h-3 text-gray-400' />
-            : <ChevronRightIcon className='w-3 h-3 text-gray-400' />
+            ? <ChevronDownIcon className='w-3 h-3 text-components-button-tertiary-text' />
+            : <ChevronRightIcon className='w-3 h-3 text-components-button-tertiary-text' />
         }
       </div>
       {
         open && (
-          <div className='py-2 border-t border-t-gray-100'>
+          <div className='py-1 mb-1 mx-1 border-t border-divider-subtle rounded-lg bg-components-panel-on-panel-item-bg'>
             {
               items.map(item => (
                 <div key={item.key} onClick={() => onSelect && onSelect(item)}>

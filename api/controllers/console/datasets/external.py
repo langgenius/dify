@@ -1,6 +1,6 @@
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource, marshal, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, marshal, reqparse  # type: ignore
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services

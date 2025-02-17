@@ -38,7 +38,7 @@ import ModelName from '@/app/components/header/account-setting/model-provider-pa
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
-export type IGetAutomaticResProps = {
+export interface IGetAutomaticResProps {
   mode: AppType
   model: Model
   isShow: boolean

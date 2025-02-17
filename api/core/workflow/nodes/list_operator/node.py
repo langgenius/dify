@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import Literal, Union
+from typing import Any, Literal, Union
 
 from core.file import File
 from core.variables import ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment
@@ -17,9 +17,9 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
     _node_type = NodeType.LIST_OPERATOR
 
     def _run(self):
-        inputs = {}
-        process_data = {}
-        outputs = {}
+        inputs: dict[str, list] = {}
+        process_data: dict[str, list] = {}
+        outputs: dict[str, Any] = {}
 
         variable = self.graph_runtime_state.variable_pool.get(self.node_data.variable)
         if variable is None:
@@ -93,6 +93,8 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
     def _apply_filter(
         self, variable: Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]
     ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
+        filter_func: Callable[[Any], bool]
+        result: list[Any] = []
         for condition in self.node_data.filter_by.conditions:
             if isinstance(variable, ArrayStringSegment):
                 if not isinstance(condition.value, str):
@@ -236,6 +238,7 @@ def _get_number_filter_func(*, condition: str, value: int | float) -> Callable[[
 
 
 def _get_file_filter_func(*, key: str, condition: str, value: str | Sequence[str]) -> Callable[[File], bool]:
+    extract_func: Callable[[File], Any]
     if key in {"name", "extension", "mime_type", "url"} and isinstance(value, str):
         extract_func = _get_file_extract_string_func(key=key)
         return lambda x: _get_string_filter_func(condition=condition, value=value)(extract_func(x))
@@ -249,47 +252,47 @@ def _get_file_filter_func(*, key: str, condition: str, value: str | Sequence[str
         raise InvalidKeyError(f"Invalid key: {key}")
 
 
-def _contains(value: str):
+def _contains(value: str) -> Callable[[str], bool]:
     return lambda x: value in x
 
 
-def _startswith(value: str):
+def _startswith(value: str) -> Callable[[str], bool]:
     return lambda x: x.startswith(value)
 
 
-def _endswith(value: str):
+def _endswith(value: str) -> Callable[[str], bool]:
     return lambda x: x.endswith(value)
 
 
-def _is(value: str):
+def _is(value: str) -> Callable[[str], bool]:
     return lambda x: x is value
 
 
-def _in(value: str | Sequence[str]):
+def _in(value: str | Sequence[str]) -> Callable[[str], bool]:
     return lambda x: x in value
 
 
-def _eq(value: int | float):
+def _eq(value: int | float) -> Callable[[int | float], bool]:
     return lambda x: x == value
 
 
-def _ne(value: int | float):
+def _ne(value: int | float) -> Callable[[int | float], bool]:
     return lambda x: x != value
 
 
-def _lt(value: int | float):
+def _lt(value: int | float) -> Callable[[int | float], bool]:
     return lambda x: x < value
 
 
-def _le(value: int | float):
+def _le(value: int | float) -> Callable[[int | float], bool]:
     return lambda x: x <= value
 
 
-def _gt(value: int | float):
+def _gt(value: int | float) -> Callable[[int | float], bool]:
     return lambda x: x > value
 
 
-def _ge(value: int | float):
+def _ge(value: int | float) -> Callable[[int | float], bool]:
     return lambda x: x >= value
 
 
@@ -302,6 +305,7 @@ def _order_string(*, order: Literal["asc", "desc"], array: Sequence[str]):
 
 
 def _order_file(*, order: Literal["asc", "desc"], order_by: str = "", array: Sequence[File]):
+    extract_func: Callable[[File], Any]
     if order_by in {"name", "type", "extension", "mime_type", "transfer_method", "url"}:
         extract_func = _get_file_extract_string_func(key=order_by)
         return sorted(array, key=lambda x: extract_func(x), reverse=order == "desc")

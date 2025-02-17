@@ -1,8 +1,8 @@
 import logging
 
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource, fields, inputs, marshal, marshal_with, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, fields, inputs, marshal, marshal_with, reqparse  # type: ignore
 from werkzeug.exceptions import Unauthorized
 
 import services
@@ -82,11 +82,7 @@ class WorkspaceListApi(Resource):
         parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
         args = parser.parse_args()
 
-        tenants = (
-            db.session.query(Tenant)
-            .order_by(Tenant.created_at.desc())
-            .paginate(page=args["page"], per_page=args["limit"])
-        )
+        tenants = Tenant.query.order_by(Tenant.created_at.desc()).paginate(page=args["page"], per_page=args["limit"])
 
         has_more = False
         if len(tenants.items) == args["limit"]:
@@ -151,6 +147,8 @@ class SwitchWorkspaceApi(Resource):
             raise AccountNotLinkTenantError("Account not link tenant")
 
         new_tenant = db.session.query(Tenant).get(args["tenant_id"])  # Get new tenant
+        if new_tenant is None:
+            raise ValueError("Tenant not found")
 
         return {"result": "success", "new_tenant": marshal(WorkspaceService.get_tenant_info(new_tenant), tenant_fields)}
 
@@ -166,7 +164,7 @@ class CustomConfigWorkspaceApi(Resource):
         parser.add_argument("replace_webapp_logo", type=str, location="json")
         args = parser.parse_args()
 
-        tenant = db.session.query(Tenant).filter(Tenant.id == current_user.current_tenant_id).one_or_404()
+        tenant = Tenant.query.filter(Tenant.id == current_user.current_tenant_id).one_or_404()
 
         custom_config_dict = {
             "remove_webapp_brand": args["remove_webapp_brand"],

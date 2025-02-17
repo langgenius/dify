@@ -79,10 +79,12 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.service_name }}
 
       - name: Export digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           mkdir -p /tmp/digests
-          digest="${{ steps.build.outputs.digest }}"
-          touch "/tmp/digests/${digest#sha256:}"
+          sanitized_digest=${DIGEST#sha256:}
+          touch "/tmp/digests/${sanitized_digest}"
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
@@ -132,10 +134,15 @@ jobs:
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
+        env:
+          IMAGE_NAME: ${{ env[matrix.image_name_env] }}
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env[matrix.image_name_env] }}@sha256:%s ' *)
+            $(printf "$IMAGE_NAME@sha256:%s " *)
 
       - name: Inspect image
+        env:
+          IMAGE_NAME: ${{ env[matrix.image_name_env] }}
+          IMAGE_VERSION: ${{ steps.meta.outputs.version }}
         run: |
-          docker buildx imagetools inspect ${{ env[matrix.image_name_env] }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect "$IMAGE_NAME:$IMAGE_VERSION"

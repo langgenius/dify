@@ -3,7 +3,7 @@ import hashlib
 import uuid
 from typing import Any, Literal, Union
 
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -61,14 +61,14 @@ class FileService:
             # end_user
             current_tenant_id = user.tenant_id
 
-        file_key = "upload_files/" + current_tenant_id + "/" + file_uuid + "." + extension
+        file_key = "upload_files/" + (current_tenant_id or "") + "/" + file_uuid + "." + extension
 
         # save file to storage
         storage.save(file_key, content)
 
         # save file to db
         upload_file = UploadFile(
-            tenant_id=current_tenant_id,
+            tenant_id=current_tenant_id or "",
             storage_type=dify_config.STORAGE_TYPE,
             key=file_key,
             name=filename,

@@ -37,7 +37,7 @@ function useAppsQueryState() {
   const syncSearchParams = useCallback((params: URLSearchParams) => {
     const search = params.toString()
     const query = search ? `?${search}` : ''
-    router.push(`${pathname}${query}`)
+    router.push(`${pathname}${query}`, { scroll: false })
   }, [router, pathname])
 
   // Update the URL search string whenever the query changes.

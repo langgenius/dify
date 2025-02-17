@@ -157,6 +157,10 @@ const translation = {
       title: 'Langfuse',
       description: '跟踪、评估、提示管理和指标，以调试和改进您的 LLM 应用程序。',
     },
+    opik: {
+      title: 'Opik',
+      description: '一个全方位的开发者平台，适用于 LLM 驱动应用程序生命周期的每个步骤。',
+    },
     inUse: '使用中',
     configProvider: {
       title: '配置 ',
@@ -169,7 +173,14 @@ const translation = {
       removeConfirmContent: '当前配置正在使用中，删除它将关闭追踪功能。',
     },
   },
+  appSelector: {
+    label: '应用',
+    placeholder: '选择一个应用',
+    params: '应用参数',
+    noParams: '无需参数',
+  },
   openInExplore: '在“探索”中打开',
+  showMyCreatedAppsOnly: '我创建的',
 }
 
 export default translation

@@ -49,4 +49,6 @@ const AutoHeightTextarea = forwardRef<HTMLTextAreaElement, AutoHeightTextareaPro
   },
 )
 
+AutoHeightTextarea.displayName = 'AutoHeightTextarea'
+
 export default AutoHeightTextarea

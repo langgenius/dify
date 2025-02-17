@@ -3,7 +3,7 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 
 from core.indexing_runner import IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -22,10 +22,13 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
 
     Usage: retry_document_indexing_task.delay(dataset_id, document_id)
     """
-    documents = []
+    documents: list[Document] = []
     start_at = time.perf_counter()
 
     dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+    if not dataset:
+        raise ValueError("Dataset not found")
+
     for document_id in document_ids:
         retry_indexing_cache_key = "document_{}_is_retried".format(document_id)
         # check document limit
@@ -45,7 +48,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
             if document:
                 document.indexing_status = "error"
                 document.error = str(e)
-                document.stopped_at = datetime.datetime.utcnow()
+                document.stopped_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 db.session.add(document)
                 db.session.commit()
             redis_client.delete(retry_indexing_cache_key)
@@ -55,33 +58,35 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
         document = (
             db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
         )
+        if not document:
+            logging.info(click.style("Document not found: {}".format(document_id), fg="yellow"))
+            return
         try:
-            if document:
-                # clean old data
-                index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
+            # clean old data
+            index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
 
-                segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
-                if segments:
-                    index_node_ids = [segment.index_node_id for segment in segments]
-                    # delete from vector index
-                    index_processor.clean(dataset, index_node_ids)
+            segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
+            if segments:
+                index_node_ids = [segment.index_node_id for segment in segments]
+                # delete from vector index
+                index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
 
-                    for segment in segments:
-                        db.session.delete(segment)
-                    db.session.commit()
+            for segment in segments:
+                db.session.delete(segment)
+            db.session.commit()
 
-                document.indexing_status = "parsing"
-                document.processing_started_at = datetime.datetime.utcnow()
-                db.session.add(document)
-                db.session.commit()
+            document.indexing_status = "parsing"
+            document.processing_started_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            db.session.add(document)
+            db.session.commit()
 
-                indexing_runner = IndexingRunner()
-                indexing_runner.run([document])
-                redis_client.delete(retry_indexing_cache_key)
+            indexing_runner = IndexingRunner()
+            indexing_runner.run([document])
+            redis_client.delete(retry_indexing_cache_key)
         except Exception as ex:
             document.indexing_status = "error"
             document.error = str(ex)
-            document.stopped_at = datetime.datetime.utcnow()
+            document.stopped_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.add(document)
             db.session.commit()
             logging.info(click.style(str(ex), fg="yellow"))

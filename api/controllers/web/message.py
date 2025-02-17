@@ -1,7 +1,7 @@
 import logging
 
-from flask_restful import fields, marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restful import fields, marshal_with, reqparse  # type: ignore
+from flask_restful.inputs import int_range  # type: ignore
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
@@ -21,7 +21,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from fields.conversation_fields import message_file_fields
-from fields.message_fields import agent_thought_fields
+from fields.message_fields import agent_thought_fields, feedback_fields, retriever_resource_fields
 from fields.raws import FilesContainedField
 from libs import helper
 from libs.helper import TimestampField, uuid_value
@@ -34,27 +34,6 @@ from services.message_service import MessageService
 
 
 class MessageListApi(WebApiResource):
-    feedback_fields = {"rating": fields.String}
-
-    retriever_resource_fields = {
-        "id": fields.String,
-        "message_id": fields.String,
-        "position": fields.Integer,
-        "dataset_id": fields.String,
-        "dataset_name": fields.String,
-        "document_id": fields.String,
-        "document_name": fields.String,
-        "data_source_type": fields.String,
-        "segment_id": fields.String,
-        "score": fields.Float,
-        "hit_count": fields.Integer,
-        "word_count": fields.Integer,
-        "segment_position": fields.Integer,
-        "index_node_hash": fields.String,
-        "content": fields.String,
-        "created_at": TimestampField,
-    }
-
     message_fields = {
         "id": fields.String,
         "conversation_id": fields.String,
@@ -91,7 +70,7 @@ class MessageListApi(WebApiResource):
 
         try:
             return MessageService.pagination_by_first_id(
-                app_model, end_user, args["conversation_id"], args["first_id"], args["limit"], "desc"
+                app_model, end_user, args["conversation_id"], args["first_id"], args["limit"]
             )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -105,10 +84,17 @@ class MessageFeedbackApi(WebApiResource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
+        parser.add_argument("content", type=str, location="json", default=None)
         args = parser.parse_args()
 
         try:
-            MessageService.create_feedback(app_model, message_id, end_user, args["rating"])
+            MessageService.create_feedback(
+                app_model=app_model,
+                message_id=message_id,
+                user=end_user,
+                rating=args.get("rating"),
+                content=args.get("content"),
+            )
         except services.errors.message.MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 

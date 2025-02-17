@@ -21,7 +21,7 @@ import {
 import Tooltip from '@/app/components/base/tooltip'
 import Log from '@/app/components/base/chat/chat/log'
 
-type OperationProps = {
+interface OperationProps {
   item: ChatItem
   question: string
   index: number

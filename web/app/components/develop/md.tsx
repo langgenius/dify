@@ -1,4 +1,5 @@
 'use client'
+import type { PropsWithChildren } from 'react'
 import classNames from '@/utils/classnames'
 
 type IChildrenProps = {
@@ -55,7 +56,7 @@ export const Heading = function H2({
 
 export function Row({ children }: IChildrenProps) {
   return (
-    <div className="grid items-start grid-cols-1 gap-x-16 gap-y-10 xl:max-w-none xl:grid-cols-2">
+    <div className="grid items-start grid-cols-1 gap-x-16 gap-y-10 xl:!max-w-none xl:grid-cols-2">
       {children}
     </div>
   )
@@ -137,5 +138,11 @@ export function SubProperty({ name, type, children }: ISubProperty) {
         </dd>
       </dl>
     </li>
+  )
+}
+
+export function PropertyInstruction({ children }: PropsWithChildren<{}>) {
+  return (
+    <li className="m-0 px-0 py-4 first:pt-0 italic">{children}</li>
   )
 }

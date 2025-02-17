@@ -1,4 +1,4 @@
-from flask_restful import fields
+from flask_restful import fields  # type: ignore
 
 from core.file import File
 

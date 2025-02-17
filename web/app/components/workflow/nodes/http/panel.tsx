@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import useConfig from './use-config'
 import ApiInput from './components/api-input'
@@ -181,6 +181,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
       {isShowSingleRun && (
         <BeforeRunForm
           nodeName={inputs.title}
+          nodeType={inputs.type}
           onHide={hideSingleRun}
           forms={[
             {
@@ -207,4 +208,4 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
   )
 }
 
-export default React.memo(Panel)
+export default memo(Panel)

@@ -17,22 +17,29 @@ import ResultPanel from '@/app/components/workflow/run/result-panel'
 import Toast from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
+import type { BlockEnum } from '@/app/components/workflow/types'
+import type { Emoji } from '@/app/components/tools/types'
+import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
+import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 
 const i18nPrefix = 'workflow.singleRun'
 
 type BeforeRunFormProps = {
   nodeName: string
+  nodeType?: BlockEnum
+  toolIcon?: string | Emoji
   onHide: () => void
   onRun: (submitData: Record<string, any>) => void
   onStop: () => void
   runningStatus: NodeRunningStatus
   result?: JSX.Element
   forms: FormProps[]
-}
+  showSpecialResultPanel?: boolean
+} & Partial<SpecialResultPanelProps>
 
 function formatValue(value: string | any, type: InputVarType) {
   if (type === InputVarType.number)
-    return parseFloat(value)
+    return Number.parseFloat(value)
   if (type === InputVarType.json)
     return JSON.parse(value)
   if (type === InputVarType.contexts) {
@@ -50,12 +57,16 @@ function formatValue(value: string | any, type: InputVarType) {
 }
 const BeforeRunForm: FC<BeforeRunFormProps> = ({
   nodeName,
+  nodeType,
+  toolIcon,
   onHide,
   onRun,
   onStop,
   runningStatus,
   result,
   forms,
+  showSpecialResultPanel,
+  ...restResultPanelParams
 }) => {
   const { t } = useTranslation()
 
@@ -122,48 +133,59 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
           <div className='text-base font-semibold text-gray-900 truncate'>
             {t(`${i18nPrefix}.testRun`)} {nodeName}
           </div>
-          <div className='ml-2 shrink-0 p-1 cursor-pointer' onClick={onHide}>
+          <div className='ml-2 shrink-0 p-1 cursor-pointer' onClick={() => {
+            onHide()
+          }}>
             <RiCloseLine className='w-4 h-4 text-gray-500 ' />
           </div>
         </div>
-
-        <div className='h-0 grow overflow-y-auto pb-4'>
-          <div className='mt-3 px-4 space-y-4'>
-            {forms.map((form, index) => (
-              <div key={index}>
-                <Form
-                  key={index}
-                  className={cn(index < forms.length - 1 && 'mb-4')}
-                  {...form}
-                />
-                {index < forms.length - 1 && <Split />}
+        {
+          showSpecialResultPanel && (
+            <div className='h-0 grow overflow-y-auto pb-4'>
+              <SpecialResultPanel {...restResultPanelParams} />
+            </div>
+          )
+        }
+        {
+          !showSpecialResultPanel && (
+            <div className='h-0 grow overflow-y-auto pb-4'>
+              <div className='mt-3 px-4 space-y-4'>
+                {forms.map((form, index) => (
+                  <div key={index}>
+                    <Form
+                      key={index}
+                      className={cn(index < forms.length - 1 && 'mb-4')}
+                      {...form}
+                    />
+                    {index < forms.length - 1 && <Split />}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-
-          <div className='mt-4 flex justify-between space-x-2 px-4' >
-            {isRunning && (
-              <div
-                className='p-2 rounded-lg border border-gray-200 bg-white shadow-xs cursor-pointer'
-                onClick={onStop}
-              >
-                <StopCircle className='w-4 h-4 text-gray-500' />
+              <div className='mt-4 flex justify-between space-x-2 px-4' >
+                {isRunning && (
+                  <div
+                    className='p-2 rounded-lg border border-gray-200 bg-white shadow-xs cursor-pointer'
+                    onClick={onStop}
+                  >
+                    <StopCircle className='w-4 h-4 text-gray-500' />
+                  </div>
+                )}
+                <Button disabled={!isFileLoaded || isRunning} variant='primary' className='w-0 grow space-x-2' onClick={handleRun}>
+                  {isRunning && <RiLoader2Line className='animate-spin w-4 h-4 text-white' />}
+                  <div>{t(`${i18nPrefix}.${isRunning ? 'running' : 'startRun'}`)}</div>
+                </Button>
               </div>
-            )}
-            <Button disabled={!isFileLoaded || isRunning} variant='primary' className='w-0 grow space-x-2' onClick={handleRun}>
-              {isRunning && <RiLoader2Line className='animate-spin w-4 h-4 text-white' />}
-              <div>{t(`${i18nPrefix}.${isRunning ? 'running' : 'startRun'}`)}</div>
-            </Button>
-          </div>
-          {isRunning && (
-            <ResultPanel status='running' showSteps={false} />
-          )}
-          {isFinished && (
-            <>
-              {result}
-            </>
-          )}
-        </div>
+              {isRunning && (
+                <ResultPanel status='running' showSteps={false} />
+              )}
+              {isFinished && (
+                <>
+                  {result}
+                </>
+              )}
+            </div>
+          )
+        }
       </div>
     </div>
   )

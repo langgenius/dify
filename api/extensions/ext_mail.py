@@ -26,7 +26,7 @@ class Mail:
 
         match mail_type:
             case "resend":
-                import resend
+                import resend  # type: ignore
 
                 api_key = dify_config.RESEND_API_KEY
                 if not api_key:
@@ -48,9 +48,9 @@ class Mail:
                 self._client = SMTPClient(
                     server=dify_config.SMTP_SERVER,
                     port=dify_config.SMTP_PORT,
-                    username=dify_config.SMTP_USERNAME,
-                    password=dify_config.SMTP_PASSWORD,
-                    _from=dify_config.MAIL_DEFAULT_SEND_FROM,
+                    username=dify_config.SMTP_USERNAME or "",
+                    password=dify_config.SMTP_PASSWORD or "",
+                    _from=dify_config.MAIL_DEFAULT_SEND_FROM or "",
                     use_tls=dify_config.SMTP_USE_TLS,
                     opportunistic_tls=dify_config.SMTP_OPPORTUNISTIC_TLS,
                 )

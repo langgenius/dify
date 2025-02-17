@@ -282,6 +282,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
       {isShowSingleRun && (
         <BeforeRunForm
           nodeName={inputs.title}
+          nodeType={inputs.type}
           onHide={hideSingleRun}
           forms={singleRunForms}
           runningStatus={runningStatus}

@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from core.workflow.entities.node_entities import AgentNodeStrategyInit
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNodeData
@@ -33,7 +34,7 @@ class GraphRunSucceededEvent(BaseGraphEvent):
 
 class GraphRunFailedEvent(BaseGraphEvent):
     error: str = Field(..., description="failed reason")
-    exceptions_count: Optional[int] = Field(description="exception count", default=0)
+    exceptions_count: int = Field(description="exception count", default=0)
 
 
 class GraphRunPartialSucceededEvent(BaseGraphEvent):
@@ -66,8 +67,10 @@ class BaseNodeEvent(GraphEngineEvent):
 
 class NodeRunStartedEvent(BaseNodeEvent):
     predecessor_node_id: Optional[str] = None
-    parallel_mode_run_id: Optional[str] = None
     """predecessor node id"""
+    parallel_mode_run_id: Optional[str] = None
+    """iteration node parallel mode run id"""
+    agent_strategy: Optional[AgentNodeStrategyInit] = None
 
 
 class NodeRunStreamChunkEvent(BaseNodeEvent):
@@ -95,6 +98,12 @@ class NodeRunExceptionEvent(BaseNodeEvent):
 
 class NodeInIterationFailedEvent(BaseNodeEvent):
     error: str = Field(..., description="error")
+
+
+class NodeRunRetryEvent(NodeRunStartedEvent):
+    error: str = Field(..., description="error")
+    retry_index: int = Field(..., description="which retry attempt is about to be performed")
+    start_at: datetime = Field(..., description="retry start time")
 
 
 ###########################################
@@ -158,8 +167,8 @@ class IterationRunStartedEvent(BaseIterationEvent):
 
 class IterationRunNextEvent(BaseIterationEvent):
     index: int = Field(..., description="index")
-    pre_iteration_output: Optional[Any] = Field(None, description="pre iteration output")
-    duration: Optional[float] = Field(None, description="duration")
+    pre_iteration_output: Optional[Any] = None
+    duration: Optional[float] = None
 
 
 class IterationRunSucceededEvent(BaseIterationEvent):
@@ -180,4 +189,24 @@ class IterationRunFailedEvent(BaseIterationEvent):
     error: str = Field(..., description="failed reason")
 
 
-InNodeEvent = BaseNodeEvent | BaseParallelBranchEvent | BaseIterationEvent
+###########################################
+# Agent Events
+###########################################
+
+
+class BaseAgentEvent(GraphEngineEvent):
+    pass
+
+
+class AgentLogEvent(BaseAgentEvent):
+    id: str = Field(..., description="id")
+    label: str = Field(..., description="label")
+    node_execution_id: str = Field(..., description="node execution id")
+    parent_id: str | None = Field(..., description="parent id")
+    error: str | None = Field(..., description="error")
+    status: str = Field(..., description="status")
+    data: Mapping[str, Any] = Field(..., description="data")
+    metadata: Optional[Mapping[str, Any]] = Field(default=None, description="metadata")
+
+
+InNodeEvent = BaseNodeEvent | BaseParallelBranchEvent | BaseIterationEvent | BaseAgentEvent

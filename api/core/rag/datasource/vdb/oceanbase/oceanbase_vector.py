@@ -4,7 +4,7 @@ import math
 from typing import Any
 
 from pydantic import BaseModel, model_validator
-from pyobvector import VECTOR, ObVecClient
+from pyobvector import VECTOR, ObVecClient  # type: ignore
 from sqlalchemy import JSON, Column, String, func
 from sqlalchemy.dialects.mysql import LONGTEXT
 
@@ -131,9 +131,11 @@ class OceanBaseVector(BaseVector):
 
     def text_exists(self, id: str) -> bool:
         cur = self._client.get(table_name=self._collection_name, id=id)
-        return cur.rowcount != 0
+        return bool(cur.rowcount != 0)
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        if not ids:
+            return
         self._client.delete(table_name=self._collection_name, ids=ids)
 
     def get_ids_by_metadata_field(self, key: str, value: str) -> list[str]:

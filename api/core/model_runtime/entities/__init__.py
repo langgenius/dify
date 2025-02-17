@@ -1,9 +1,10 @@
-from .llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from .llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from .message_entities import (
     AssistantPromptMessage,
     AudioPromptMessageContent,
     DocumentPromptMessageContent,
     ImagePromptMessageContent,
+    MultiModalPromptMessageContent,
     PromptMessage,
     PromptMessageContent,
     PromptMessageContentType,
@@ -22,11 +23,13 @@ __all__ = [
     "AudioPromptMessageContent",
     "DocumentPromptMessageContent",
     "ImagePromptMessageContent",
+    "LLMMode",
     "LLMResult",
     "LLMResultChunk",
     "LLMResultChunkDelta",
     "LLMUsage",
     "ModelPropertyKey",
+    "MultiModalPromptMessageContent",
     "PromptMessage",
     "PromptMessage",
     "PromptMessageContent",

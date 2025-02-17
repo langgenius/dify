@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -13,6 +14,7 @@ import { useWorkflowStore } from '../../store'
 import { DEFAULT_ITER_TIMES } from '../../constants'
 import type {
   ChatItem,
+  ChatItemInTree,
   Inputs,
 } from '@/app/components/base/chat/types'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
@@ -27,6 +29,7 @@ import {
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { getThreadMessages } from '@/app/components/base/chat/utils'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -38,7 +41,7 @@ export const useChat = (
     inputs: Inputs
     inputsForm: InputForm[]
   },
-  prevChatList?: ChatItem[],
+  prevChatTree?: ChatItemInTree[],
   stopChat?: (taskId: string) => void,
 ) => {
   const { t } = useTranslation()
@@ -48,16 +51,54 @@ export const useChat = (
   const workflowStore = useWorkflowStore()
   const conversationId = useRef('')
   const taskIdRef = useRef('')
-  const [chatList, setChatList] = useState<ChatItem[]>(prevChatList || [])
-  const chatListRef = useRef<ChatItem[]>(prevChatList || [])
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
-
   const {
     setIterTimes,
   } = workflowStore.getState()
+
+  const handleResponding = useCallback((isResponding: boolean) => {
+    setIsResponding(isResponding)
+    isRespondingRef.current = isResponding
+  }, [])
+
+  const [chatTree, setChatTree] = useState<ChatItemInTree[]>(prevChatTree || [])
+  const chatTreeRef = useRef<ChatItemInTree[]>(chatTree)
+  const [targetMessageId, setTargetMessageId] = useState<string>()
+  const threadMessages = useMemo(() => getThreadMessages(chatTree, targetMessageId), [chatTree, targetMessageId])
+
+  const getIntroduction = useCallback((str: string) => {
+    return processOpeningStatement(str, formSettings?.inputs || {}, formSettings?.inputsForm || [])
+  }, [formSettings?.inputs, formSettings?.inputsForm])
+
+  /** Final chat list that will be rendered */
+  const chatList = useMemo(() => {
+    const ret = [...threadMessages]
+    if (config?.opening_statement) {
+      const index = threadMessages.findIndex(item => item.isOpeningStatement)
+
+      if (index > -1) {
+        ret[index] = {
+          ...ret[index],
+          content: getIntroduction(config.opening_statement),
+          suggestedQuestions: config.suggested_questions,
+        }
+      }
+      else {
+        ret.unshift({
+          id: `${Date.now()}`,
+          content: getIntroduction(config.opening_statement),
+          isAnswer: true,
+          isOpeningStatement: true,
+          suggestedQuestions: config.suggested_questions,
+        })
+      }
+    }
+    return ret
+  }, [threadMessages, config?.opening_statement, getIntroduction, config?.suggested_questions])
+
   useEffect(() => {
     setAutoFreeze(false)
     return () => {
@@ -65,43 +106,21 @@ export const useChat = (
     }
   }, [])
 
-  const handleUpdateChatList = useCallback((newChatList: ChatItem[]) => {
-    setChatList(newChatList)
-    chatListRef.current = newChatList
-  }, [])
-
-  const handleResponding = useCallback((isResponding: boolean) => {
-    setIsResponding(isResponding)
-    isRespondingRef.current = isResponding
-  }, [])
-
-  const getIntroduction = useCallback((str: string) => {
-    return processOpeningStatement(str, formSettings?.inputs || {}, formSettings?.inputsForm || [])
-  }, [formSettings?.inputs, formSettings?.inputsForm])
-  useEffect(() => {
-    if (config?.opening_statement) {
-      handleUpdateChatList(produce(chatListRef.current, (draft) => {
-        const index = draft.findIndex(item => item.isOpeningStatement)
-
-        if (index > -1) {
-          draft[index] = {
-            ...draft[index],
-            content: getIntroduction(config.opening_statement),
-            suggestedQuestions: config.suggested_questions,
-          }
+  /** Find the target node by bfs and then operate on it */
+  const produceChatTreeNode = useCallback((targetId: string, operation: (node: ChatItemInTree) => void) => {
+    return produce(chatTreeRef.current, (draft) => {
+      const queue: ChatItemInTree[] = [...draft]
+      while (queue.length > 0) {
+        const current = queue.shift()!
+        if (current.id === targetId) {
+          operation(current)
+          break
         }
-        else {
-          draft.unshift({
-            id: `${Date.now()}`,
-            content: getIntroduction(config.opening_statement),
-            isAnswer: true,
-            isOpeningStatement: true,
-            suggestedQuestions: config.suggested_questions,
-          })
-        }
-      }))
-    }
-  }, [config?.opening_statement, getIntroduction, config?.suggested_questions, handleUpdateChatList])
+        if (current.children)
+          queue.push(...current.children)
+      }
+    })
+  }, [])
 
   const handleStop = useCallback(() => {
     hasStopResponded.current = true
@@ -118,50 +137,52 @@ export const useChat = (
     taskIdRef.current = ''
     handleStop()
     setIterTimes(DEFAULT_ITER_TIMES)
-    const newChatList = config?.opening_statement
-      ? [{
-        id: `${Date.now()}`,
-        content: config.opening_statement,
-        isAnswer: true,
-        isOpeningStatement: true,
-        suggestedQuestions: config.suggested_questions,
-      }]
-      : []
-    handleUpdateChatList(newChatList)
+    setChatTree([])
     setSuggestQuestions([])
   }, [
-    config,
     handleStop,
-    handleUpdateChatList,
     setIterTimes,
   ])
 
-  const updateCurrentQA = useCallback(({
+  const updateCurrentQAOnTree = useCallback(({
+    parentId,
     responseItem,
-    questionId,
-    placeholderAnswerId,
+    placeholderQuestionId,
     questionItem,
   }: {
+    parentId?: string
     responseItem: ChatItem
-    questionId: string
-    placeholderAnswerId: string
+    placeholderQuestionId: string
     questionItem: ChatItem
   }) => {
-    const newListWithAnswer = produce(
-      chatListRef.current.filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-      (draft) => {
-        if (!draft.find(item => item.id === questionId))
-          draft.push({ ...questionItem })
-
-        draft.push({ ...responseItem })
+    let nextState: ChatItemInTree[]
+    const currentQA = { ...questionItem, children: [{ ...responseItem, children: [] }] }
+    if (!parentId && !chatTree.some(item => [placeholderQuestionId, questionItem.id].includes(item.id))) {
+      // QA whose parent is not provided is considered as a first message of the conversation,
+      // and it should be a root node of the chat tree
+      nextState = produce(chatTree, (draft) => {
+        draft.push(currentQA)
       })
-    handleUpdateChatList(newListWithAnswer)
-  }, [handleUpdateChatList])
+    }
+    else {
+      // find the target QA in the tree and update it; if not found, insert it to its parent node
+      nextState = produceChatTreeNode(parentId!, (parentNode) => {
+        const questionNodeIndex = parentNode.children!.findIndex(item => [placeholderQuestionId, questionItem.id].includes(item.id))
+        if (questionNodeIndex === -1)
+          parentNode.children!.push(currentQA)
+        else
+          parentNode.children![questionNodeIndex] = currentQA
+      })
+    }
+    setChatTree(nextState)
+    chatTreeRef.current = nextState
+  }, [chatTree, produceChatTreeNode])
 
   const handleSend = useCallback((
     params: {
       query: string
       files?: FileEntity[]
+      parent_message_id?: string
       [key: string]: any
     },
     {
@@ -173,12 +194,15 @@ export const useChat = (
       return false
     }
 
-    const questionId = `question-${Date.now()}`
+    const parentMessage = threadMessages.find(item => item.id === params.parent_message_id)
+
+    const placeholderQuestionId = `question-${Date.now()}`
     const questionItem = {
-      id: questionId,
+      id: placeholderQuestionId,
       content: params.query,
       isAnswer: false,
       message_files: params.files,
+      parentMessageId: params.parent_message_id,
     }
 
     const placeholderAnswerId = `answer-placeholder-${Date.now()}`
@@ -186,10 +210,17 @@ export const useChat = (
       id: placeholderAnswerId,
       content: '',
       isAnswer: true,
+      parentMessageId: questionItem.id,
+      siblingIndex: parentMessage?.children?.length ?? chatTree.length,
     }
 
-    const newList = [...chatListRef.current, questionItem, placeholderAnswerItem]
-    handleUpdateChatList(newList)
+    setTargetMessageId(parentMessage?.id)
+    updateCurrentQAOnTree({
+      parentId: params.parent_message_id,
+      responseItem: placeholderAnswerItem,
+      placeholderQuestionId,
+      questionItem,
+    })
 
     // answer
     const responseItem: ChatItem = {
@@ -198,6 +229,8 @@ export const useChat = (
       agent_thoughts: [],
       message_files: [],
       isAnswer: true,
+      parentMessageId: questionItem.id,
+      siblingIndex: parentMessage?.children?.length ?? chatTree.length,
     }
 
     handleResponding(true)
@@ -229,7 +262,9 @@ export const useChat = (
           responseItem.content = responseItem.content + message
 
           if (messageId && !hasSetResponseId) {
+            questionItem.id = `question-${messageId}`
             responseItem.id = messageId
+            responseItem.parentMessageId = questionItem.id
             hasSetResponseId = true
           }
 
@@ -240,11 +275,11 @@ export const useChat = (
           if (messageId)
             responseItem.id = messageId
 
-          updateCurrentQA({
-            responseItem,
-            questionId,
-            placeholderAnswerId,
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
             questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
           })
         },
         async onCompleted(hasError?: boolean, errorMessage?: string) {
@@ -254,15 +289,12 @@ export const useChat = (
             if (errorMessage) {
               responseItem.content = errorMessage
               responseItem.isError = true
-              const newListWithAnswer = produce(
-                chatListRef.current.filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-                (draft) => {
-                  if (!draft.find(item => item.id === questionId))
-                    draft.push({ ...questionItem })
-
-                  draft.push({ ...responseItem })
-                })
-              handleUpdateChatList(newListWithAnswer)
+              updateCurrentQAOnTree({
+                placeholderQuestionId,
+                questionItem,
+                responseItem,
+                parentId: params.parent_message_id,
+              })
             }
             return
           }
@@ -275,6 +307,7 @@ export const useChat = (
               )
               setSuggestQuestions(data)
             }
+            // eslint-disable-next-line unused-imports/no-unused-vars
             catch (error) {
               setSuggestQuestions([])
             }
@@ -285,15 +318,12 @@ export const useChat = (
           const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
           responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
 
-          const newListWithAnswer = produce(
-            chatListRef.current.filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-            (draft) => {
-              if (!draft.find(item => item.id === questionId))
-                draft.push({ ...questionItem })
-
-              draft.push({ ...responseItem })
-            })
-          handleUpdateChatList(newListWithAnswer)
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
         },
         onMessageReplace: (messageReplace) => {
           responseItem.content = messageReplace.answer
@@ -308,62 +338,48 @@ export const useChat = (
             status: WorkflowRunningStatus.Running,
             tracing: [],
           }
-          handleUpdateChatList(produce(chatListRef.current, (draft) => {
-            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
-            draft[currentIndex] = {
-              ...draft[currentIndex],
-              ...responseItem,
-            }
-          }))
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
         },
         onWorkflowFinished: ({ data }) => {
           responseItem.workflowProcess!.status = data.status as WorkflowRunningStatus
-          handleUpdateChatList(produce(chatListRef.current, (draft) => {
-            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
-            draft[currentIndex] = {
-              ...draft[currentIndex],
-              ...responseItem,
-            }
-          }))
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
         },
         onIterationStart: ({ data }) => {
           responseItem.workflowProcess!.tracing!.push({
             ...data,
             status: NodeRunningStatus.Running,
-            details: [],
-          } as any)
-          handleUpdateChatList(produce(chatListRef.current, (draft) => {
-            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
-            draft[currentIndex] = {
-              ...draft[currentIndex],
-              ...responseItem,
-            }
-          }))
-        },
-        onIterationNext: ({ data }) => {
-          const tracing = responseItem.workflowProcess!.tracing!
-          const iterations = tracing.find(item => item.node_id === data.node_id
-            && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
-          iterations.details!.push([])
-
-          handleUpdateChatList(produce(chatListRef.current, (draft) => {
-            const currentIndex = draft.length - 1
-            draft[currentIndex] = responseItem
-          }))
+          })
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
         },
         onIterationFinish: ({ data }) => {
-          const tracing = responseItem.workflowProcess!.tracing!
-          const iterationsIndex = tracing.findIndex(item => item.node_id === data.node_id
-            && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
-          tracing[iterationsIndex] = {
-            ...tracing[iterationsIndex],
-            ...data,
-            status: NodeRunningStatus.Succeeded,
-          } as any
-          handleUpdateChatList(produce(chatListRef.current, (draft) => {
-            const currentIndex = draft.length - 1
-            draft[currentIndex] = responseItem
-          }))
+          const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.id)
+          if (currentTracingIndex > -1) {
+            responseItem.workflowProcess!.tracing[currentTracingIndex] = {
+              ...responseItem.workflowProcess!.tracing[currentTracingIndex],
+              ...data,
+            }
+            updateCurrentQAOnTree({
+              placeholderQuestionId,
+              questionItem,
+              responseItem,
+              parentId: params.parent_message_id,
+            })
+          }
         },
         onNodeStarted: ({ data }) => {
           if (data.iteration_id)
@@ -373,46 +389,92 @@ export const useChat = (
             ...data,
             status: NodeRunningStatus.Running,
           } as any)
-          handleUpdateChatList(produce(chatListRef.current, (draft) => {
-            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
-            draft[currentIndex] = {
-              ...draft[currentIndex],
-              ...responseItem,
-            }
-          }))
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
+        },
+        onNodeRetry: ({ data }) => {
+          if (data.iteration_id)
+            return
+
+          responseItem.workflowProcess!.tracing!.push(data)
+
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
         },
         onNodeFinished: ({ data }) => {
           if (data.iteration_id)
             return
 
-          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {
-            if (!item.execution_metadata?.parallel_id)
-              return item.node_id === data.node_id
-            return item.node_id === data.node_id && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id)
-          })
-          responseItem.workflowProcess!.tracing[currentIndex] = {
-            ...(responseItem.workflowProcess!.tracing[currentIndex]?.extras
-              ? { extras: responseItem.workflowProcess!.tracing[currentIndex].extras }
-              : {}),
-            ...data,
-          } as any
-          handleUpdateChatList(produce(chatListRef.current, (draft) => {
-            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
-            draft[currentIndex] = {
-              ...draft[currentIndex],
-              ...responseItem,
+          const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.id)
+          if (currentTracingIndex > -1) {
+            responseItem.workflowProcess!.tracing[currentTracingIndex] = {
+              ...responseItem.workflowProcess!.tracing[currentTracingIndex],
+              ...data,
             }
-          }))
+            updateCurrentQAOnTree({
+              placeholderQuestionId,
+              questionItem,
+              responseItem,
+              parentId: params.parent_message_id,
+            })
+          }
+        },
+        onAgentLog: ({ data }) => {
+          const currentNodeIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
+          if (currentNodeIndex > -1) {
+            const current = responseItem.workflowProcess!.tracing![currentNodeIndex]
+
+            if (current.execution_metadata) {
+              if (current.execution_metadata.agent_log) {
+                const currentLogIndex = current.execution_metadata.agent_log.findIndex(log => log.id === data.id)
+                if (currentLogIndex > -1) {
+                  current.execution_metadata.agent_log[currentLogIndex] = {
+                    ...current.execution_metadata.agent_log[currentLogIndex],
+                    ...data,
+                  }
+                }
+                else {
+                  current.execution_metadata.agent_log.push(data)
+                }
+              }
+              else {
+                current.execution_metadata.agent_log = [data]
+              }
+            }
+            else {
+              current.execution_metadata = {
+                agent_log: [data],
+              } as any
+            }
+
+            responseItem.workflowProcess!.tracing[currentNodeIndex] = {
+              ...current,
+            }
+
+            updateCurrentQAOnTree({
+              placeholderQuestionId,
+              questionItem,
+              responseItem,
+              parentId: params.parent_message_id,
+            })
+          }
         },
       },
     )
-  }, [handleRun, handleResponding, handleUpdateChatList, notify, t, updateCurrentQA, config.suggested_questions_after_answer?.enabled, formSettings])
+  }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, notify, t, config?.suggested_questions_after_answer?.enabled])
 
   return {
     conversationId: conversationId.current,
     chatList,
-    chatListRef,
-    handleUpdateChatList,
+    setTargetMessageId,
     handleSend,
     handleStop,
     handleRestart,
