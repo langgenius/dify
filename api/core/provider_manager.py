@@ -100,6 +100,13 @@ class ProviderManager:
             tenant_id, provider_name_to_provider_records_dict
         )
 
+        # append providers with langgenius/openai/openai
+        for provider_name in list(provider_name_to_provider_records_dict.keys()):
+            provider_id = ModelProviderID(provider_name)
+            provider_name_to_provider_records_dict[str(provider_id)] = provider_name_to_provider_records_dict[
+                provider_name
+            ]
+
         # Get all provider model records of the workspace
         provider_name_to_provider_model_records_dict = self._get_all_provider_models(tenant_id)
 
