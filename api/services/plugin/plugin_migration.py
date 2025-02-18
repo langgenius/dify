@@ -356,7 +356,7 @@ class PluginMigration:
         return {"plugins": plugins, "plugin_not_exist": plugin_not_exist}
 
     @classmethod
-    def install_plugins(cls, extracted_plugins: str, output_file: str) -> None:
+    def install_plugins(cls, extracted_plugins: str, output_file: str, workers: int = 100) -> None:
         """
         Install plugins.
         """
@@ -370,7 +370,7 @@ class PluginMigration:
         fake_tenant_id = uuid4().hex
         logger.info(f"Installing {len(plugins['plugins'])} plugin instances for fake tenant {fake_tenant_id}")
 
-        thread_pool = ThreadPoolExecutor(max_workers=40)
+        thread_pool = ThreadPoolExecutor(max_workers=workers)
 
         response = cls.handle_plugin_instance_install(fake_tenant_id, plugins["plugins"])
         if response.get("failed"):
@@ -378,10 +378,17 @@ class PluginMigration:
 
         def install(tenant_id: str, plugin_ids: list[str]) -> None:
             logger.info(f"Installing {len(plugin_ids)} plugins for tenant {tenant_id}")
+            # fetch plugin already installed
+            installed_plugins = manager.list_plugins(tenant_id)
+            installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
             # at most 64 plugins one batch
             for i in range(0, len(plugin_ids), 64):
                 batch_plugin_ids = plugin_ids[i : i + 64]
-                batch_plugin_identifiers = [plugins["plugins"][plugin_id] for plugin_id in batch_plugin_ids]
+                batch_plugin_identifiers = [
+                    plugins["plugins"][plugin_id]
+                    for plugin_id in batch_plugin_ids
+                    if plugin_id not in installed_plugins_ids
+                ]
                 manager.install_from_identifiers(
                     tenant_id,
                     batch_plugin_identifiers,
@@ -477,8 +484,8 @@ class PluginMigration:
         reverse_map = {v: k for k, v in plugin_identifiers_map.items()}
 
         # at most 8 plugins one batch
-        for i in range(0, len(plugin_identifiers_map), 8):
-            batch_plugin_ids = list(plugin_identifiers_map.keys())[i : i + 8]
+        for i in range(0, len(plugin_identifiers_map), 3):
+            batch_plugin_ids = list(plugin_identifiers_map.keys())[i : i + 3]
             batch_plugin_identifiers = [plugin_identifiers_map[plugin_id] for plugin_id in batch_plugin_ids]
 
             try:
