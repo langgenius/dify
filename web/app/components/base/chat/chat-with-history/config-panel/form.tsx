@@ -10,12 +10,14 @@ const Form = () => {
   const { t } = useTranslation()
   const {
     appParams,
-    inputsForms,
+    inputsForms: forms,
     newConversationInputs,
     newConversationInputsRef,
     handleNewConversationInputsChange,
     isMobile,
   } = useChatWithHistoryContext()
+
+  const inputsForms = forms.filter(({ is_chat_option }) => !is_chat_option)
 
   const handleFormChange = useCallback((variable: string, value: any) => {
     handleNewConversationInputsChange({

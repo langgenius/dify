@@ -157,6 +157,14 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     newConversationInputsRef.current = newInputs
     setNewConversationInputs(newInputs)
   }, [])
+
+  const inChatInputsRef = useRef<Record<string, any>>({})
+  const [inChatInputs, setInChatInputs] = useState<Record<string, any>>({})
+  const handleInChatInputsChange = useCallback((newInputs: Record<string, any>) => {
+    inChatInputsRef.current = newInputs
+    setInChatInputs(newInputs)
+  }, [])
+
   const inputsForms = useMemo(() => {
     return (appParams?.user_input_form || []).filter((item: any) => !item.external_data_tool).map((item: any) => {
       if (item.paragraph) {
@@ -253,7 +261,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const checkInputsRequired = useCallback((silent?: boolean) => {
     let hasEmptyInput = ''
     let fileIsUploading = false
-    const requiredVars = inputsForms.filter(({ required }) => required)
+    const requiredVars = inputsForms.filter(({ required }) => required).filter(({ is_chat_option }) => !is_chat_option)
     if (requiredVars.length) {
       requiredVars.forEach(({ variable, label, type }) => {
         if (hasEmptyInput)
@@ -441,6 +449,9 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     newConversationInputs,
     newConversationInputsRef,
     handleNewConversationInputsChange,
+    inChatInputs,
+    inChatInputsRef,
+    handleInChatInputsChange,
     inputsForms,
     handleNewConversation,
     handleStartChat,

@@ -34,6 +34,7 @@ import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
+import { useChatWithHistoryContext } from '@/app/components/base/chat/chat-with-history/context'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -65,6 +66,7 @@ export const useChat = (
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
   const params = useParams()
   const pathname = usePathname()
+  const { inChatInputs } = useChatWithHistoryContext()
 
   const [chatTree, setChatTree] = useState<ChatItemInTree[]>(prevChatTree || [])
   const chatTreeRef = useRef<ChatItemInTree[]>(chatTree)
@@ -277,6 +279,10 @@ export const useChat = (
       query,
       inputs: getProcessedInputs(inputs || {}, formSettings?.inputsForm || []),
       ...restData,
+    }
+    bodyParams.inputs = {
+      ...bodyParams.inputs,
+      ...inChatInputs,
     }
     if (bodyParams?.files?.length) {
       bodyParams.files = bodyParams.files.map((item) => {
@@ -591,6 +597,7 @@ export const useChat = (
     params.appId,
     pathname,
     formSettings,
+    inChatInputs,
   ])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {

@@ -393,6 +393,8 @@ const translation = {
       atLeastOneOption: '至少需要一个选项',
       optionRepeat: '选项不能重复',
     },
+    'isChatOption': '在每条消息中输入',
+    'isChatOptionNumberHint': '当用户选中时,该变量值为1,否则为0',
   },
   vision: {
     name: '视觉',
