@@ -6,8 +6,8 @@ from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
 from typing import Optional
 
-from sqlalchemy import or_
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy import or_
 
 from constants import HIDDEN_VALUE
 from core.entities import DEFAULT_PLUGIN_ID
