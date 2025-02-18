@@ -6,30 +6,14 @@
    fill="none"
    version="1.1"
    id="svg6"
-   sodipodi:docname="opik-icon.svg"
-   inkscape:version="1.3.2 (091e20ef0f, 2023-11-25)"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:svg="http://www.w3.org/2000/svg">
+   xmlns="http://www.w3.org/2000/svg">
   <sodipodi:namedview
      id="namedview6"
      pagecolor="#b95d5d"
      bordercolor="#666666"
      borderopacity="1.0"
-     inkscape:showpageshadow="2"
-     inkscape:pageopacity="0.0"
-     inkscape:pagecheckerboard="0"
-     inkscape:deskcolor="#d1d1d1"
-     inkscape:zoom="18.615087"
-     inkscape:cx="34.541874"
-     inkscape:cy="18.882533"
-     inkscape:window-width="2560"
-     inkscape:window-height="1371"
-     inkscape:window-x="0"
-     inkscape:window-y="0"
-     inkscape:window-maximized="1"
-     inkscape:current-layer="svg6" />
+ />
   <rect
      width="47.119099"
      height="15.98219"
@@ -38,7 +22,7 @@
      x="0"
      y="0"
      style="stroke-width:0.0455515;fill:none"
-     inkscape:label="rect1" />
+ />
   <path
      fill-rule="evenodd"
      clip-rule="evenodd"
