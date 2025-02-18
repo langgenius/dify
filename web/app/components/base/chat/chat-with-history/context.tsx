@@ -16,7 +16,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 
-export interface ChatWithHistoryContextValue {
+export type ChatWithHistoryContextValue = {
   appInfoError?: any
   appInfoLoading?: boolean
   appMeta?: AppMeta
@@ -59,21 +59,21 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   showConfigPanelBeforeChat: false,
   newConversationInputs: {},
   newConversationInputsRef: { current: {} },
-  handleNewConversationInputsChange: () => {},
+  handleNewConversationInputsChange: () => { },
   inputsForms: [],
-  handleNewConversation: () => {},
-  handleStartChat: () => {},
-  handleChangeConversation: () => {},
-  handlePinConversation: () => {},
-  handleUnpinConversation: () => {},
-  handleDeleteConversation: () => {},
+  handleNewConversation: () => { },
+  handleStartChat: () => { },
+  handleChangeConversation: () => { },
+  handlePinConversation: () => { },
+  handleUnpinConversation: () => { },
+  handleDeleteConversation: () => { },
   conversationRenaming: false,
-  handleRenameConversation: () => {},
-  handleNewConversationCompleted: () => {},
+  handleRenameConversation: () => { },
+  handleNewConversationCompleted: () => { },
   chatShouldReloadKey: '',
   isMobile: false,
   isInstalledApp: false,
-  handleFeedback: () => {},
-  currentChatInstanceRef: { current: { handleStop: () => {} } },
+  handleFeedback: () => { },
+  currentChatInstanceRef: { current: { handleStop: () => { } } },
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)

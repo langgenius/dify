@@ -20,7 +20,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 
-interface ChatWithHistoryProps {
+type ChatWithHistoryProps = {
   className?: string
 }
 const ChatWithHistory: FC<ChatWithHistoryProps> = ({
@@ -65,7 +65,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   }
 
   return (
-    <div className={`h-full flex bg-white ${className} ${isMobile && 'flex-col'}`}>
+    <div className={`flex h-full bg-white ${className} ${isMobile && 'flex-col'}`}>
       {
         !isMobile && (
           <Sidebar />
@@ -79,7 +79,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
       <div className={`grow overflow-hidden ${showConfigPanelBeforeChat && !appPrevChatTree.length && 'flex items-center justify-center'}`}>
         {
           showConfigPanelBeforeChat && !appChatListDataLoading && !appPrevChatTree.length && (
-            <div className={`flex w-full items-center justify-center h-full ${isMobile && 'px-4'}`}>
+            <div className={`flex h-full w-full items-center justify-center ${isMobile && 'px-4'}`}>
               <ConfigPanel />
             </div>
           )
@@ -99,7 +99,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   )
 }
 
-export interface ChatWithHistoryWrapProps {
+export type ChatWithHistoryWrapProps = {
   installedAppInfo?: InstalledApp
   className?: string
 }

@@ -98,9 +98,9 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
               />
             }
           >
-            <div className='inline-flex items-center system-xs-medium-uppercase text-text-secondary space-x-1 cursor-pointer'>
+            <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 text-text-secondary'>
               <span>{relatedAppsTotal || '--'} {t('common.datasetMenus.relatedApp')}</span>
-              <RiInformation2Line className='w-4 h-4' />
+              <RiInformation2Line className='h-4 w-4' />
             </div>
           </Tooltip>
         )}
@@ -117,13 +117,13 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
         noDecoration
         needsDelay
         popupContent={
-          <div className='p-4 w-[240px] bg-components-panel-bg-blur border-[0.5px] border-components-panel-border rounded-xl'>
-            <div className='inline-flex p-2 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle'>
+          <div className='w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4'>
+            <div className='inline-flex rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle p-2'>
               <RiApps2AddLine className='h-4 w-4 text-text-tertiary' />
             </div>
-            <div className='text-xs text-text-tertiary my-2'>{t('common.datasetMenus.emptyTip')}</div>
+            <div className='my-2 text-xs text-text-tertiary'>{t('common.datasetMenus.emptyTip')}</div>
             <a
-              className='inline-flex items-center text-xs text-text-accent mt-2 cursor-pointer'
+              className='mt-2 inline-flex cursor-pointer items-center text-xs text-text-accent'
               href={
                 locale === LanguagesSupported[1]
                   ? 'https://docs.dify.ai/v/zh-hans/guides/knowledge-base/integrate-knowledge-within-application'
@@ -137,9 +137,9 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
           </div>
         }
       >
-        <div className='inline-flex items-center system-xs-medium-uppercase text-text-secondary space-x-1 cursor-pointer'>
+        <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 text-text-secondary'>
           <span>{t('common.datasetMenus.noRelatedApp')}</span>
-          <RiInformation2Line className='w-4 h-4' />
+          <RiInformation2Line className='h-4 w-4' />
         </div>
       </Tooltip>
     )}
@@ -204,7 +204,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     return <Loading type='app' />
 
   return (
-    <div className='grow flex overflow-hidden'>
+    <div className='flex grow overflow-hidden'>
       {!hideSideBar && <AppSideBar
         title={datasetRes?.name || '--'}
         icon={datasetRes?.icon || 'https://static.dify.ai/images/dataset-default-icon.png'}
@@ -220,7 +220,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         dataset: datasetRes,
         mutateDatasetRes: () => mutateDatasetRes(),
       }}>
-        <div className="bg-background-default-subtle grow overflow-hidden">{children}</div>
+        <div className="grow overflow-hidden bg-background-default-subtle">{children}</div>
       </DatasetDetailContext.Provider>
     </div>
   )

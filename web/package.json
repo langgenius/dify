@@ -183,8 +183,8 @@
         "uglify-js": "^3.19.3"
     },
     "resolutions": {
-        "@types/react": "~18.2.0",
-        "@types/react-dom": "~18.2.0",
+        "@types/react": "19.0.7",
+        "@types/react-dom": "19.0.3",
         "string-width": "4.2.3"
     },
     "lint-staged": {
