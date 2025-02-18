@@ -1,11 +1,17 @@
+from collections.abc import Sequence
+from typing import cast
+from uuid import uuid4
+
 from pydantic import Field
 
 from core.helper import encrypter
 
 from .segments import (
     ArrayAnySegment,
+    ArrayFileSegment,
     ArrayNumberSegment,
     ArrayObjectSegment,
+    ArraySegment,
     ArrayStringSegment,
     FileSegment,
     FloatSegment,
@@ -24,11 +30,12 @@ class Variable(Segment):
     """
 
     id: str = Field(
-        default="",
-        description="Unique identity for variable. It's only used by environment variables now.",
+        default=lambda _: str(uuid4()),
+        description="Unique identity for variable.",
     )
     name: str
     description: str = Field(default="", description="Description of the variable.")
+    selector: Sequence[str] = Field(default_factory=list)
 
 
 class StringVariable(StringSegment, Variable):
@@ -47,19 +54,23 @@ class ObjectVariable(ObjectSegment, Variable):
     pass
 
 
-class ArrayAnyVariable(ArrayAnySegment, Variable):
+class ArrayVariable(ArraySegment, Variable):
     pass
 
 
-class ArrayStringVariable(ArrayStringSegment, Variable):
+class ArrayAnyVariable(ArrayAnySegment, ArrayVariable):
     pass
 
 
-class ArrayNumberVariable(ArrayNumberSegment, Variable):
+class ArrayStringVariable(ArrayStringSegment, ArrayVariable):
     pass
 
 
-class ArrayObjectVariable(ArrayObjectSegment, Variable):
+class ArrayNumberVariable(ArrayNumberSegment, ArrayVariable):
+    pass
+
+
+class ArrayObjectVariable(ArrayObjectSegment, ArrayVariable):
     pass
 
 
@@ -68,7 +79,7 @@ class SecretVariable(StringVariable):
 
     @property
     def log(self) -> str:
-        return encrypter.obfuscated_token(self.value)
+        return cast(str, encrypter.obfuscated_token(self.value))
 
 
 class NoneVariable(NoneSegment, Variable):
@@ -77,4 +88,8 @@ class NoneVariable(NoneSegment, Variable):
 
 
 class FileVariable(FileSegment, Variable):
+    pass
+
+
+class ArrayFileVariable(ArrayFileSegment, ArrayVariable):
     pass

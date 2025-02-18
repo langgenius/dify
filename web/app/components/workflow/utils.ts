@@ -19,9 +19,15 @@ import type {
   ToolWithProvider,
   ValueSelector,
 } from './types'
-import { BlockEnum } from './types'
+import {
+  BlockEnum,
+  ErrorHandleMode,
+  NodeRunningStatus,
+} from './types'
 import {
   CUSTOM_NODE,
+  DEFAULT_RETRY_INTERVAL,
+  DEFAULT_RETRY_MAX,
   ITERATION_CHILDREN_Z_INDEX,
   ITERATION_NODE_Z_INDEX,
   NODE_WIDTH_X_OFFSET,
@@ -35,6 +41,7 @@ import type { ToolNodeType } from './nodes/tool/types'
 import type { IterationNodeType } from './nodes/iteration/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { canFindTool, correctModelProvider } from '@/utils'
 
 const WHITE = 'WHITE'
 const GRAY = 'GRAY'
@@ -267,8 +274,33 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       })
     }
 
-    if (node.data.type === BlockEnum.Iteration)
-      node.data._children = iterationNodeMap[node.id] || []
+    if (node.data.type === BlockEnum.Iteration) {
+      const iterationNodeData = node.data as IterationNodeType
+      iterationNodeData._children = iterationNodeMap[node.id] || []
+      iterationNodeData.is_parallel = iterationNodeData.is_parallel || false
+      iterationNodeData.parallel_nums = iterationNodeData.parallel_nums || 10
+      iterationNodeData.error_handle_mode = iterationNodeData.error_handle_mode || ErrorHandleMode.Terminated
+    }
+
+    // legacy provider handle
+    if (node.data.type === BlockEnum.LLM)
+      (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)
+
+    if (node.data.type === BlockEnum.KnowledgeRetrieval && (node as any).data.multiple_retrieval_config.reranking_model)
+      (node as any).data.multiple_retrieval_config.reranking_model.provider = correctModelProvider((node as any).data.multiple_retrieval_config.reranking_model.provider)
+
+    if (node.data.type === BlockEnum.QuestionClassifier)
+      (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)
+
+    if (node.data.type === BlockEnum.ParameterExtractor)
+      (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)
+    if (node.data.type === BlockEnum.HttpRequest && !node.data.retry_config) {
+      node.data.retry_config = {
+        retry_enabled: true,
+        max_retries: DEFAULT_RETRY_MAX,
+        retry_interval: DEFAULT_RETRY_INTERVAL,
+      }
+    }
 
     return node
   })
@@ -363,6 +395,8 @@ export const canRunBySingle = (nodeType: BlockEnum) => {
     || nodeType === BlockEnum.Tool
     || nodeType === BlockEnum.ParameterExtractor
     || nodeType === BlockEnum.Iteration
+    || nodeType === BlockEnum.Agent
+    || nodeType === BlockEnum.DocExtractor
 }
 
 type ConnectedSourceOrTargetNodesChange = {
@@ -423,7 +457,7 @@ export const genNewNodeTitleFromOld = (oldTitle: string) => {
 
   if (match) {
     const title = match[1]
-    const num = parseInt(match[2], 10)
+    const num = Number.parseInt(match[2], 10)
     return `${title} (${num + 1})`
   }
   else {
@@ -483,7 +517,7 @@ export const getToolCheckParams = (
   const { provider_id, provider_type, tool_name } = toolData
   const isBuiltIn = provider_type === CollectionType.builtIn
   const currentTools = provider_type === CollectionType.builtIn ? buildInTools : provider_type === CollectionType.custom ? customTools : workflowTools
-  const currCollection = currentTools.find(item => item.id === provider_id)
+  const currCollection = currentTools.find(item => canFindTool(item.id, provider_id))
   const currTool = currCollection?.tools.find(tool => tool.name === tool_name)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
   const toolInputVarSchema = formSchemas.filter((item: any) => item.form === 'llm')
@@ -540,6 +574,7 @@ export const isMac = () => {
 const specialKeysNameMap: Record<string, string | undefined> = {
   ctrl: '⌘',
   alt: '⌥',
+  shift: '⇧',
 }
 
 export const getKeyboardKeyNameBySystem = (key: string) => {
@@ -755,4 +790,39 @@ export const getParallelInfo = (nodes: Node[], edges: Edge[], parentNodeId?: str
     parallelList,
     hasAbnormalEdges,
   }
+}
+
+export const hasErrorHandleNode = (nodeType?: BlockEnum) => {
+  return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code
+}
+
+export const getEdgeColor = (nodeRunningStatus?: NodeRunningStatus, isFailBranch?: boolean) => {
+  if (nodeRunningStatus === NodeRunningStatus.Succeeded)
+    return 'var(--color-workflow-link-line-success-handle)'
+
+  if (nodeRunningStatus === NodeRunningStatus.Failed)
+    return 'var(--color-workflow-link-line-error-handle)'
+
+  if (nodeRunningStatus === NodeRunningStatus.Exception)
+    return 'var(--color-workflow-link-line-failure-handle)'
+
+  if (nodeRunningStatus === NodeRunningStatus.Running) {
+    if (isFailBranch)
+      return 'var(--color-workflow-link-line-failure-handle)'
+
+    return 'var(--color-workflow-link-line-handle)'
+  }
+
+  return 'var(--color-workflow-link-line-normal)'
+}
+
+export const isExceptionVariable = (variable: string, nodeType?: BlockEnum) => {
+  if ((variable === 'error_message' || variable === 'error_type') && hasErrorHandleNode(nodeType))
+    return true
+
+  return false
+}
+
+export const hasRetryNode = (nodeType?: BlockEnum) => {
+  return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code
 }

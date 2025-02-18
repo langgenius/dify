@@ -6,20 +6,22 @@ import string
 import subprocess
 import time
 import uuid
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
-from flask_restful import fields
+from flask_restful import fields  # type: ignore
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.file import helpers as file_helpers
 from extensions.ext_redis import redis_client
-from models.account import Account
+
+if TYPE_CHECKING:
+    from models.account import Account
 
 
 def run(script):
@@ -31,10 +33,25 @@ class AppIconUrlField(fields.Raw):
         if obj is None:
             return None
 
-        from models.model import IconType
+        from models.model import App, IconType, Site
 
-        if obj.icon_type == IconType.IMAGE.value:
+        if isinstance(obj, dict) and "app" in obj:
+            obj = obj["app"]
+
+        if isinstance(obj, App | Site) and obj.icon_type == IconType.IMAGE.value:
             return file_helpers.get_signed_file_url(obj.icon)
+        return None
+
+
+class AvatarUrlField(fields.Raw):
+    def output(self, key, obj):
+        if obj is None:
+            return None
+
+        from models.account import Account
+
+        if isinstance(obj, Account) and obj.avatar is not None:
+            return file_helpers.get_signed_file_url(obj.avatar)
         return None
 
 
@@ -165,11 +182,11 @@ def generate_string(n):
 
 def extract_remote_ip(request) -> str:
     if request.headers.get("CF-Connecting-IP"):
-        return request.headers.get("Cf-Connecting-Ip")
+        return cast(str, request.headers.get("Cf-Connecting-Ip"))
     elif request.headers.getlist("X-Forwarded-For"):
-        return request.headers.getlist("X-Forwarded-For")[0]
+        return cast(str, request.headers.getlist("X-Forwarded-For")[0])
     else:
-        return request.remote_addr
+        return cast(str, request.remote_addr)
 
 
 def generate_text_hash(text: str) -> str:
@@ -177,7 +194,7 @@ def generate_text_hash(text: str) -> str:
     return sha256(hash_text.encode()).hexdigest()
 
 
-def compact_generate_response(response: Union[dict, RateLimitGenerator]) -> Response:
+def compact_generate_response(response: Union[Mapping, Generator, RateLimitGenerator]) -> Response:
     if isinstance(response, dict):
         return Response(response=json.dumps(response), status=200, mimetype="application/json")
     else:
@@ -193,7 +210,7 @@ class TokenManager:
     def generate_token(
         cls,
         token_type: str,
-        account: Optional[Account] = None,
+        account: Optional["Account"] = None,
         email: Optional[str] = None,
         additional_data: Optional[dict] = None,
     ) -> str:
@@ -216,12 +233,14 @@ class TokenManager:
             token_data.update(additional_data)
 
         expiry_minutes = dify_config.model_dump().get(f"{token_type.upper()}_TOKEN_EXPIRY_MINUTES")
+        if expiry_minutes is None:
+            raise ValueError(f"Expiry minutes for {token_type} token is not set")
         token_key = cls._get_token_key(token, token_type)
         expiry_time = int(expiry_minutes * 60)
         redis_client.setex(token_key, expiry_time, json.dumps(token_data))
 
         if account_id:
-            cls._set_current_token_for_account(account.id, token, token_type, expiry_minutes)
+            cls._set_current_token_for_account(account_id, token, token_type, expiry_minutes)
 
         return token
 
@@ -241,13 +260,13 @@ class TokenManager:
         if token_data_json is None:
             logging.warning(f"{token_type} token {token} not found with key {key}")
             return None
-        token_data = json.loads(token_data_json)
+        token_data: Optional[dict[str, Any]] = json.loads(token_data_json)
         return token_data
 
     @classmethod
     def _get_current_token_for_account(cls, account_id: str, token_type: str) -> Optional[str]:
         key = cls._get_account_token_key(account_id, token_type)
-        current_token = redis_client.get(key)
+        current_token: Optional[str] = redis_client.get(key)
         return current_token
 
     @classmethod

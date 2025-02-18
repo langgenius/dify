@@ -82,7 +82,7 @@
       "name": "ไทย (ประเทศไทย)",
       "prompt_name": "Thai",
       "example": "สวัสดี Dify!",
-      "supported": false
+      "supported": true
     },
     {
       "value": "id-ID",
@@ -138,6 +138,13 @@
       "name": "Farsi (Iran)",
       "prompt_name": "Farsi",
       "example": "سلام, دیفای!",
+      "supported": true
+    },
+    {
+      "value": "sl-SI",
+      "name": "Slovensko (Slovenija)",
+      "prompt_name": "Slovensko",
+      "example": "Zdravo, Dify!",
       "supported": true
     }
   ]

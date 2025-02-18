@@ -384,7 +384,7 @@ def test_mock_404(setup_http_mock):
     assert result.outputs is not None
     resp = result.outputs
 
-    assert 404 == resp.get("status_code")
+    assert resp.get("status_code") == 404
     assert "Not Found" in resp.get("body", "")
 
 
@@ -430,37 +430,3 @@ def test_multi_colons_parse(setup_http_mock):
     assert urlencode({"Redirect": "http://example2.com"}) in result.process_data.get("request", "")
     assert 'form-data; name="Redirect"\r\n\r\nhttp://example6.com' in result.process_data.get("request", "")
     # assert "http://example3.com" == resp.get("headers", {}).get("referer")
-
-
-def test_image_file(monkeypatch):
-    from types import SimpleNamespace
-
-    monkeypatch.setattr(
-        "core.tools.tool_file_manager.ToolFileManager.create_file_by_raw",
-        lambda *args, **kwargs: SimpleNamespace(id="1"),
-    )
-
-    node = init_http_node(
-        config={
-            "id": "1",
-            "data": {
-                "title": "http",
-                "desc": "",
-                "method": "get",
-                "url": "https://cloud.dify.ai/logo/logo-site.png",
-                "authorization": {
-                    "type": "no-auth",
-                    "config": None,
-                },
-                "params": "",
-                "headers": "",
-                "body": None,
-            },
-        }
-    )
-
-    result = node._run()
-    assert result.process_data is not None
-    assert result.outputs is not None
-    resp = result.outputs
-    assert len(resp.get("files", [])) == 1

@@ -42,6 +42,15 @@ const translation = {
     zoomIn: 'Acercar',
     openInNewTab: 'Abrir en una nueva pestaña',
     copyImage: 'Copiar imagen',
+    viewMore: 'VER MÁS',
+    regenerate: 'Regenerar',
+    close: 'Cerrar',
+    saveAndRegenerate: 'Guardar y regenerar fragmentos secundarios',
+    view: 'Vista',
+    submit: 'Enviar',
+    skip: 'Navío',
+    imageCopied: 'Imagen copiada',
+    deleteApp: 'Eliminar aplicación',
   },
   errorMsg: {
     fieldRequired: '{{field}} es requerido',
@@ -178,6 +187,18 @@ const translation = {
     account: 'Cuenta',
     myAccount: 'Mi Cuenta',
     studio: 'Estudio Dify',
+    deletePrivacyLinkTip: 'Para obtener más información sobre cómo manejamos sus datos, consulte nuestra',
+    deletePrivacyLink: 'Política de privacidad.',
+    deleteSuccessTip: 'Su cuenta necesita tiempo para terminar de eliminarse. Te enviaremos un correo electrónico cuando todo esté listo.',
+    deleteLabel: 'Para confirmar, escriba su correo electrónico a continuación',
+    deletePlaceholder: 'Por favor, introduzca su correo electrónico',
+    sendVerificationButton: 'Enviar código de verificación',
+    verificationLabel: 'Código de verificación',
+    verificationPlaceholder: 'Pega el código de 6 dígitos',
+    permanentlyDeleteButton: 'Eliminar cuenta de forma permanente',
+    feedbackTitle: 'Retroalimentación',
+    feedbackLabel: '¿Cuéntanos por qué eliminaste tu cuenta?',
+    feedbackPlaceholder: 'Opcional',
   },
   members: {
     team: 'Equipo',
@@ -199,6 +220,7 @@ const translation = {
     datasetOperatorTip: 'Solo puede administrar la base de conocimiento',
     inviteTeamMember: 'Agregar miembro del equipo',
     inviteTeamMemberTip: 'Pueden acceder a tus datos del equipo directamente después de iniciar sesión.',
+    emailNotSetup: 'El servidor de correo no está configurado, por lo que no se pueden enviar correos de invitación. En su lugar, notifique a los usuarios el enlace de invitación que se emitirá después de la invitación.',
     email: 'Correo electrónico',
     emailInvalid: 'Formato de correo electrónico inválido',
     emailPlaceholder: 'Por favor ingresa correos electrónicos',
@@ -269,6 +291,7 @@ const translation = {
       usedUp: 'Cuota de prueba agotada. Agrega tu propio proveedor de modelos.',
       useYourModel: 'Actualmente usando tu propio proveedor de modelos.',
       close: 'Cerrar',
+      trialQuotaTip: 'Su cuota de prueba antrópica caducará el 11/03/2025 y ya no estará disponible a partir de entonces. Por favor, aprovéchelo a tiempo.',
     },
     anthropic: {
       using: 'La capacidad de incrustación está usando',
@@ -477,6 +500,7 @@ const translation = {
     emptyTip: 'El Conocimiento no ha sido asociado, por favor ve a la aplicación o plugin para completar la asociación.',
     viewDoc: 'Ver documentación',
     relatedApp: 'aplicaciones vinculadas',
+    noRelatedApp: 'No hay aplicaciones vinculadas',
   },
   voiceInput: {
     speaking: 'Habla ahora...',
@@ -590,6 +614,13 @@ const translation = {
     fileExtensionNotSupport: 'Extensión de archivo no compatible',
     pasteFileLinkInputPlaceholder: 'Introduzca la URL...',
     uploadFromComputerLimit: 'El archivo de carga no puede exceder {{size}}',
+  },
+  license: {
+    expiring: 'Caduca en un día',
+    expiring_plural: 'Caducando en {{count}} días',
+  },
+  pagination: {
+    perPage: 'Elementos por página',
   },
 }
 

@@ -89,3 +89,15 @@ class IndexingEstimateError(BaseHTTPException):
     error_code = "indexing_estimate_error"
     description = "Knowledge indexing estimate failed: {message}"
     code = 500
+
+
+class ChildChunkIndexingError(BaseHTTPException):
+    error_code = "child_chunk_indexing_error"
+    description = "Create child chunk index failed: {message}"
+    code = 500
+
+
+class ChildChunkDeleteIndexError(BaseHTTPException):
+    error_code = "child_chunk_delete_index_error"
+    description = "Delete child chunk index failed: {message}"
+    code = 500

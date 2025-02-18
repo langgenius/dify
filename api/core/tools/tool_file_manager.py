@@ -8,9 +8,10 @@ from mimetypes import guess_extension, guess_type
 from typing import Optional, Union
 from uuid import uuid4
 
-from httpx import get
+import httpx
 
 from configs import dify_config
+from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import MessageFile
@@ -89,17 +90,16 @@ class ToolFileManager:
     def create_file_by_url(
         user_id: str,
         tenant_id: str,
-        conversation_id: str | None,
         file_url: str,
+        conversation_id: Optional[str] = None,
     ) -> ToolFile:
         # try to download image
         try:
-            response = get(file_url)
+            response = ssrf_proxy.get(file_url)
             response.raise_for_status()
             blob = response.content
-        except Exception as e:
-            logger.error(f"Failed to download file from {file_url}: {e}")
-            raise
+        except httpx.TimeoutException:
+            raise ValueError(f"timeout when downloading file from {file_url}")
 
         mimetype = guess_type(file_url)[0] or "octet/stream"
         extension = guess_extension(mimetype) or ".bin"
@@ -133,7 +133,7 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        tool_file = (
+        tool_file: ToolFile | None = (
             db.session.query(ToolFile)
             .filter(
                 ToolFile.id == id,
@@ -157,7 +157,7 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        message_file = (
+        message_file: MessageFile | None = (
             db.session.query(MessageFile)
             .filter(
                 MessageFile.id == id,
@@ -177,7 +177,7 @@ class ToolFileManager:
         else:
             tool_file_id = None
 
-        tool_file = (
+        tool_file: ToolFile | None = (
             db.session.query(ToolFile)
             .filter(
                 ToolFile.id == tool_file_id,
@@ -201,7 +201,7 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        tool_file = (
+        tool_file: ToolFile | None = (
             db.session.query(ToolFile)
             .filter(
                 ToolFile.id == tool_file_id,

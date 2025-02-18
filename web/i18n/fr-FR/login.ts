@@ -99,6 +99,12 @@ const translation = {
   noLoginMethodTip: 'Veuillez contacter l’administrateur système pour ajouter une méthode d’authentification.',
   resetPasswordDesc: 'Tapez l’adresse e-mail que vous avez utilisée pour vous inscrire sur Dify et nous vous enverrons un e-mail de réinitialisation de mot de passe.',
   usePassword: 'Utiliser le mot de passe',
+  licenseInactiveTip: 'La licence Dify Enterprise de votre espace de travail est inactive. Veuillez contacter votre administrateur pour continuer à utiliser Dify.',
+  licenseLostTip: 'Échec de la connexion au serveur de licences Dify. Veuillez contacter votre administrateur pour continuer à utiliser Dify.',
+  licenseExpired: 'Licence expirée',
+  licenseLost: 'Licence perdue',
+  licenseExpiredTip: 'La licence Dify Enterprise de votre espace de travail a expiré. Veuillez contacter votre administrateur pour continuer à utiliser Dify.',
+  licenseInactive: 'Licence inactive',
 }
 
 export default translation

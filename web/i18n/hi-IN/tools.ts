@@ -32,6 +32,8 @@ const translation = {
     manageInTools: 'उपकरणों में प्रबंधित करें',
     emptyTitle: 'कोई कार्यप्रवाह उपकरण उपलब्ध नहीं',
     emptyTip: 'कार्यप्रवाह -> उपकरण के रूप में प्रकाशित पर जाएं',
+    emptyTipCustom: 'एक कस्टम टूल बनाएं',
+    emptyTitleCustom: 'कोई कस्टम टूल उपलब्ध नहीं है',
   },
   createTool: {
     title: 'कस्टम उपकरण बनाएं',

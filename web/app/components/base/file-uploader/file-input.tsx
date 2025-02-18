@@ -13,15 +13,24 @@ const FileInput = ({
   const files = useStore(s => s.files)
   const { handleLocalFileUpload } = useFile(fileConfig)
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const targetFiles = e.target.files
 
-    if (file)
-      handleLocalFileUpload(file)
+    if (targetFiles) {
+      if (fileConfig.number_limits) {
+        for (let i = 0; i < targetFiles.length; i++) {
+          if (i + 1 + files.length <= fileConfig.number_limits)
+            handleLocalFileUpload(targetFiles[i])
+        }
+      }
+      else {
+        handleLocalFileUpload(targetFiles[0])
+      }
+    }
   }
 
   const allowedFileTypes = fileConfig.allowed_file_types
   const isCustom = allowedFileTypes?.includes(SupportUploadFileTypes.custom)
-  const exts = isCustom ? (fileConfig.allowed_file_extensions?.map(item => `.${item}`) || []) : (allowedFileTypes?.map(type => FILE_EXTS[type]) || []).flat().map(item => `.${item}`)
+  const exts = isCustom ? (fileConfig.allowed_file_extensions || []) : (allowedFileTypes?.map(type => FILE_EXTS[type]) || []).flat().map(item => `.${item}`)
   const accept = exts.join(',')
 
   return (
@@ -32,6 +41,7 @@ const FileInput = ({
       onChange={handleChange}
       accept={accept}
       disabled={!!(fileConfig.number_limits && files.length >= fileConfig?.number_limits)}
+      multiple={!!fileConfig.number_limits && fileConfig.number_limits > 1}
     />
   )
 }

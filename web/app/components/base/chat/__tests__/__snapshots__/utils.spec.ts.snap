@@ -1804,8 +1804,85 @@ exports[`build chat item tree and get thread messages should get thread messages
 ]
 `;
 
-exports[`build chat item tree and get thread messages should work with partial messages 1`] = `
+exports[`build chat item tree and get thread messages should work with partial messages 1 1`] = `
 [
+  {
+    "children": [
+      {
+        "agent_thoughts": [
+          {
+            "chain_id": null,
+            "created_at": 1726105799,
+            "files": [],
+            "id": "9730d587-9268-4683-9dd9-91a1cab9510b",
+            "message_id": "4c5d0841-1206-463e-95d8-71f812877658",
+            "observation": "",
+            "position": 1,
+            "thought": "I'll go with 112. Your turn!",
+            "tool": "",
+            "tool_input": "",
+            "tool_labels": {},
+          },
+        ],
+        "children": [],
+        "content": "I'll go with 112. Your turn!",
+        "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+        "feedbackDisabled": false,
+        "id": "4c5d0841-1206-463e-95d8-71f812877658",
+        "input": {
+          "inputs": {},
+          "query": "99",
+        },
+        "isAnswer": true,
+        "log": [
+          {
+            "files": [],
+            "role": "user",
+            "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+          },
+          {
+            "files": [],
+            "role": "assistant",
+            "text": "Sure, I'll play! My number is 57. Your turn!",
+          },
+          {
+            "files": [],
+            "role": "user",
+            "text": "58",
+          },
+          {
+            "files": [],
+            "role": "assistant",
+            "text": "I choose 83. What's your next number?",
+          },
+          {
+            "files": [],
+            "role": "user",
+            "text": "99",
+          },
+          {
+            "files": [],
+            "role": "assistant",
+            "text": "I'll go with 112. Your turn!",
+          },
+        ],
+        "message_files": [],
+        "more": {
+          "latency": "1.49",
+          "time": "09/11/2024 09:50 PM",
+          "tokens": 86,
+        },
+        "parentMessageId": "question-4c5d0841-1206-463e-95d8-71f812877658",
+        "siblingIndex": 0,
+        "workflow_run_id": null,
+      },
+    ],
+    "content": "99",
+    "id": "question-4c5d0841-1206-463e-95d8-71f812877658",
+    "isAnswer": false,
+    "message_files": [],
+    "parentMessageId": "73bbad14-d915-499d-87bf-0df14d40779d",
+  },
   {
     "children": [
       {
@@ -2074,6 +2151,178 @@ exports[`build chat item tree and get thread messages should work with partial m
     "id": "question-cd5affb0-7bc2-4a6f-be7e-25e74595c9dd",
     "isAnswer": false,
     "message_files": [],
+  },
+]
+`;
+
+exports[`build chat item tree and get thread messages should work with partial messages 2 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [],
+        "content": "237.",
+        "id": "ebb73fe2-15de-46dd-aab5-75416d8448eb",
+        "isAnswer": true,
+        "parentMessageId": "question-ebb73fe2-15de-46dd-aab5-75416d8448eb",
+        "siblingIndex": 0,
+      },
+    ],
+    "content": "123",
+    "id": "question-ebb73fe2-15de-46dd-aab5-75416d8448eb",
+    "isAnswer": false,
+    "parentMessageId": "57c989f9-3fa4-4dec-9ee5-c3568dd27418",
+  },
+  {
+    "children": [
+      {
+        "children": [],
+        "content": "My number is 256.",
+        "id": "3553d508-3850-462e-8594-078539f940f9",
+        "isAnswer": true,
+        "parentMessageId": "question-3553d508-3850-462e-8594-078539f940f9",
+        "siblingIndex": 1,
+      },
+    ],
+    "content": "123",
+    "id": "question-3553d508-3850-462e-8594-078539f940f9",
+    "isAnswer": false,
+    "parentMessageId": "57c989f9-3fa4-4dec-9ee5-c3568dd27418",
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [
+                                                  {
+                                                    "children": [
+                                                      {
+                                                        "children": [
+                                                          {
+                                                            "children": [
+                                                              {
+                                                                "children": [],
+                                                                "content": "My number is 3e (approximately 8.15).",
+                                                                "id": "9eac3bcc-8d3b-4e56-a12b-44c34cebc719",
+                                                                "isAnswer": true,
+                                                                "parentMessageId": "question-9eac3bcc-8d3b-4e56-a12b-44c34cebc719",
+                                                                "siblingIndex": 0,
+                                                              },
+                                                            ],
+                                                            "content": "e",
+                                                            "id": "question-9eac3bcc-8d3b-4e56-a12b-44c34cebc719",
+                                                            "isAnswer": false,
+                                                            "parentMessageId": "5c56a2b3-f057-42a0-9b2c-52a35713cd8c",
+                                                          },
+                                                        ],
+                                                        "content": "My number is 2π (approximately 6.28).",
+                                                        "id": "5c56a2b3-f057-42a0-9b2c-52a35713cd8c",
+                                                        "isAnswer": true,
+                                                        "parentMessageId": "question-5c56a2b3-f057-42a0-9b2c-52a35713cd8c",
+                                                        "siblingIndex": 0,
+                                                      },
+                                                    ],
+                                                    "content": "π",
+                                                    "id": "question-5c56a2b3-f057-42a0-9b2c-52a35713cd8c",
+                                                    "isAnswer": false,
+                                                    "parentMessageId": "46a49bb9-0881-459e-8c6a-24d20ae48d2f",
+                                                  },
+                                                ],
+                                                "content": "My number is 145.",
+                                                "id": "46a49bb9-0881-459e-8c6a-24d20ae48d2f",
+                                                "isAnswer": true,
+                                                "parentMessageId": "question-46a49bb9-0881-459e-8c6a-24d20ae48d2f",
+                                                "siblingIndex": 0,
+                                              },
+                                            ],
+                                            "content": "78",
+                                            "id": "question-46a49bb9-0881-459e-8c6a-24d20ae48d2f",
+                                            "isAnswer": false,
+                                            "parentMessageId": "3cded945-855a-4a24-aab7-43c7dd54664c",
+                                          },
+                                        ],
+                                        "content": "My number is 7.89.",
+                                        "id": "3cded945-855a-4a24-aab7-43c7dd54664c",
+                                        "isAnswer": true,
+                                        "parentMessageId": "question-3cded945-855a-4a24-aab7-43c7dd54664c",
+                                        "siblingIndex": 0,
+                                      },
+                                    ],
+                                    "content": "3.11",
+                                    "id": "question-3cded945-855a-4a24-aab7-43c7dd54664c",
+                                    "isAnswer": false,
+                                    "parentMessageId": "a956de3d-ef95-4d90-84fe-f7a26ef28cd7",
+                                  },
+                                ],
+                                "content": "My number is 22.",
+                                "id": "a956de3d-ef95-4d90-84fe-f7a26ef28cd7",
+                                "isAnswer": true,
+                                "parentMessageId": "question-a956de3d-ef95-4d90-84fe-f7a26ef28cd7",
+                                "siblingIndex": 0,
+                              },
+                            ],
+                            "content": "-5",
+                            "id": "question-a956de3d-ef95-4d90-84fe-f7a26ef28cd7",
+                            "isAnswer": false,
+                            "parentMessageId": "93bac05d-1470-4ac9-b090-fe21cd7c3d55",
+                          },
+                        ],
+                        "content": "My number is 4782.",
+                        "id": "93bac05d-1470-4ac9-b090-fe21cd7c3d55",
+                        "isAnswer": true,
+                        "parentMessageId": "question-93bac05d-1470-4ac9-b090-fe21cd7c3d55",
+                        "siblingIndex": 0,
+                      },
+                    ],
+                    "content": "3306",
+                    "id": "question-93bac05d-1470-4ac9-b090-fe21cd7c3d55",
+                    "isAnswer": false,
+                    "parentMessageId": "9e51a13b-7780-4565-98dc-f2d8c3b1758f",
+                  },
+                ],
+                "content": "My number is 2048.",
+                "id": "9e51a13b-7780-4565-98dc-f2d8c3b1758f",
+                "isAnswer": true,
+                "parentMessageId": "question-9e51a13b-7780-4565-98dc-f2d8c3b1758f",
+                "siblingIndex": 0,
+              },
+            ],
+            "content": "1024",
+            "id": "question-9e51a13b-7780-4565-98dc-f2d8c3b1758f",
+            "isAnswer": false,
+            "parentMessageId": "507f9df9-1f06-4a57-bb38-f00228c42c22",
+          },
+        ],
+        "content": "My number is 259.",
+        "id": "507f9df9-1f06-4a57-bb38-f00228c42c22",
+        "isAnswer": true,
+        "parentMessageId": "question-507f9df9-1f06-4a57-bb38-f00228c42c22",
+        "siblingIndex": 2,
+      },
+    ],
+    "content": "123",
+    "id": "question-507f9df9-1f06-4a57-bb38-f00228c42c22",
+    "isAnswer": false,
+    "parentMessageId": "57c989f9-3fa4-4dec-9ee5-c3568dd27418",
   },
 ]
 `;

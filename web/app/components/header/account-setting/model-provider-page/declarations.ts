@@ -15,6 +15,10 @@ export enum FormTypeEnum {
   boolean = 'boolean',
   files = 'files',
   file = 'file',
+  modelSelector = 'model-selector',
+  toolSelector = 'tool-selector',
+  multiToolSelector = 'array[tools]',
+  appSelector = 'app-selector',
 }
 
 export type FormOption = {
@@ -52,6 +56,9 @@ export enum ModelFeatureEnum {
   multiToolCall = 'multi-tool-call',
   agentThought = 'agent-thought',
   vision = 'vision',
+  video = 'video',
+  document = 'document',
+  audio = 'audio',
 }
 
 export enum ModelFeatureTextEnum {
@@ -59,6 +66,9 @@ export enum ModelFeatureTextEnum {
   multiToolCall = 'Multi Tool Call',
   agentThought = 'Agent Thought',
   vision = 'Vision',
+  video = 'Video',
+  document = 'Document',
+  audio = 'Audio',
 }
 
 export enum ModelStatusEnum {
@@ -103,9 +113,19 @@ export type CredentialFormSchemaBase = {
   tooltip?: TypeWithI18N
   show_on: FormShowOnObject[]
   url?: string
+  scope?: string
 }
 
-export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & { max_length?: number; placeholder?: TypeWithI18N }
+export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & {
+  max_length?: number;
+  placeholder?: TypeWithI18N,
+  template?: {
+    enabled: boolean
+  },
+  auto_generate?: {
+    type: string
+  }
+}
 export type CredentialFormSchemaNumberInput = CredentialFormSchemaBase & { min?: number; max?: number; placeholder?: TypeWithI18N }
 export type CredentialFormSchemaSelect = CredentialFormSchemaBase & { options: FormOption[]; placeholder?: TypeWithI18N }
 export type CredentialFormSchemaRadio = CredentialFormSchemaBase & { options: FormOption[] }

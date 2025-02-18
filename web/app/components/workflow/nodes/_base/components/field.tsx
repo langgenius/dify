@@ -1,26 +1,25 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import React from 'react'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import type { DefaultTFuncReturn } from 'i18next'
 import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   className?: string
-  title: JSX.Element | string | DefaultTFuncReturn
+  title: ReactNode
+  tooltip?: ReactNode
   isSubTitle?: boolean
-  tooltip?: string
   supportFold?: boolean
   children?: JSX.Element | string | null
   operations?: JSX.Element
   inline?: boolean
 }
 
-const Filed: FC<Props> = ({
+const Field: FC<Props> = ({
   className,
   title,
   isSubTitle,
@@ -47,12 +46,11 @@ const Filed: FC<Props> = ({
               triggerClassName='w-4 h-4 ml-1'
             />
           )}
-
         </div>
         <div className='flex'>
           {operations && <div>{operations}</div>}
           {supportFold && (
-            <RiArrowDownSLine className='w-4 h-4 text-text-tertiary cursor-pointer transform transition-transform' style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
+            <RiArrowDownSLine className='w-4 h-4 text-text-tertiary cursor-pointer transition-transform' style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
           )}
         </div>
       </div>
@@ -60,4 +58,4 @@ const Filed: FC<Props> = ({
     </div>
   )
 }
-export default React.memo(Filed)
+export default React.memo(Field)

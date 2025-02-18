@@ -77,6 +77,7 @@ const translation = {
     requestBody: 'リクエストボディ',
     pathParams: 'パスパラメータ',
     query: 'クエリ',
+    toc: '内容',
   },
   regenerate: '再生',
 }

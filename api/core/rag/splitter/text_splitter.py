@@ -45,7 +45,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         self,
         chunk_size: int = 4000,
         chunk_overlap: int = 200,
-        length_function: Callable[[str], int] = len,
+        length_function: Callable[[list[str]], list[int]] = lambda x: [len(x) for x in x],
         keep_separator: bool = False,
         add_start_index: bool = False,
     ) -> None:
@@ -92,7 +92,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         texts, metadatas = [], []
         for doc in documents:
             texts.append(doc.page_content)
-            metadatas.append(doc.metadata)
+            metadatas.append(doc.metadata or {})
         return self.create_documents(texts, metadatas=metadatas)
 
     def _join_docs(self, docs: list[str], separator: str) -> Optional[str]:
@@ -106,7 +106,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
     def _merge_splits(self, splits: Iterable[str], separator: str, lengths: list[int]) -> list[str]:
         # We now want to combine these smaller pieces into medium size
         # chunks to send to the LLM.
-        separator_len = self._length_function(separator)
+        separator_len = self._length_function([separator])[0]
 
         docs = []
         current_doc: list[str] = []
@@ -129,7 +129,9 @@ class TextSplitter(BaseDocumentTransformer, ABC):
                     while total > self._chunk_overlap or (
                         total + _len + (separator_len if len(current_doc) > 0 else 0) > self._chunk_size and total > 0
                     ):
-                        total -= self._length_function(current_doc[0]) + (separator_len if len(current_doc) > 1 else 0)
+                        total -= self._length_function([current_doc[0]])[0] + (
+                            separator_len if len(current_doc) > 1 else 0
+                        )
                         current_doc = current_doc[1:]
             current_doc.append(d)
             total += _len + (separator_len if len(current_doc) > 1 else 0)
@@ -143,7 +145,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
     def from_huggingface_tokenizer(cls, tokenizer: Any, **kwargs: Any) -> TextSplitter:
         """Text splitter that uses HuggingFace tokenizer to count length."""
         try:
-            from transformers import PreTrainedTokenizerBase
+            from transformers import PreTrainedTokenizerBase  # type: ignore
 
             if not isinstance(tokenizer, PreTrainedTokenizerBase):
                 raise ValueError("Tokenizer received was not an instance of PreTrainedTokenizerBase")
@@ -155,7 +157,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
             raise ValueError(
                 "Could not import transformers python package. Please install it with `pip install transformers`."
             )
-        return cls(length_function=_huggingface_tokenizer_length, **kwargs)
+        return cls(length_function=lambda x: [_huggingface_tokenizer_length(text) for text in x], **kwargs)
 
     @classmethod
     def from_tiktoken_encoder(
@@ -199,7 +201,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
             }
             kwargs = {**kwargs, **extra_kwargs}
 
-        return cls(length_function=_tiktoken_encoder, **kwargs)
+        return cls(length_function=lambda x: [_tiktoken_encoder(text) for text in x], **kwargs)
 
     def transform_documents(self, documents: Sequence[Document], **kwargs: Any) -> Sequence[Document]:
         """Transform sequence of documents by splitting them."""
@@ -224,8 +226,8 @@ class CharacterTextSplitter(TextSplitter):
         splits = _split_text_with_regex(text, self._separator, self._keep_separator)
         _separator = "" if self._keep_separator else self._separator
         _good_splits_lengths = []  # cache the lengths of the splits
-        for split in splits:
-            _good_splits_lengths.append(self._length_function(split))
+        if splits:
+            _good_splits_lengths.extend(self._length_function(splits))
         return self._merge_splits(splits, _separator, _good_splits_lengths)
 
 
@@ -478,9 +480,8 @@ class RecursiveCharacterTextSplitter(TextSplitter):
         _good_splits = []
         _good_splits_lengths = []  # cache the lengths of the splits
         _separator = "" if self._keep_separator else separator
-
-        for s in splits:
-            s_len = self._length_function(s)
+        s_lens = self._length_function(splits)
+        for s, s_len in zip(splits, s_lens):
             if s_len < self._chunk_size:
                 _good_splits.append(s)
                 _good_splits_lengths.append(s_len)

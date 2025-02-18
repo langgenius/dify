@@ -1,8 +1,6 @@
-import { addFileInfos, sortAgentSorts } from '../../tools/utils'
 import { UUID_NIL } from './constants'
 import type { IChatItem } from './chat/type'
 import type { ChatItem, ChatItemInTree } from './types'
-import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 
 async function decodeBase64AndDecompress(base64String: string) {
   const binaryString = atob(base64String)
@@ -21,67 +19,24 @@ function getProcessedInputsFromUrlParams(): Record<string, any> {
   return inputs
 }
 
-function getLastAnswer(chatList: ChatItem[]) {
+function isValidGeneratedAnswer(item?: ChatItem | ChatItemInTree): boolean {
+  return !!item && item.isAnswer && !item.id.startsWith('answer-placeholder-') && !item.isOpeningStatement
+}
+
+function getLastAnswer<T extends ChatItem | ChatItemInTree>(chatList: T[]): T | null {
   for (let i = chatList.length - 1; i >= 0; i--) {
     const item = chatList[i]
-    if (item.isAnswer && !item.id.startsWith('answer-placeholder-') && !item.isOpeningStatement)
+    if (isValidGeneratedAnswer(item))
       return item
   }
   return null
 }
 
-function appendQAToChatList(chatList: ChatItem[], item: any) {
-  // we append answer first and then question since will reverse the whole chatList later
-  const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
-  chatList.push({
-    id: item.id,
-    content: item.answer,
-    agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
-    feedback: item.feedback,
-    isAnswer: true,
-    citation: item.retriever_resources,
-    message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
-  })
-  const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
-  chatList.push({
-    id: `question-${item.id}`,
-    content: item.query,
-    isAnswer: false,
-    message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
-  })
-}
-
 /**
- * Computes the latest thread messages from all messages of the conversation.
- * Same logic as backend codebase `api/core/prompt/utils/extract_thread_messages.py`
- *
- * @param fetchedMessages - The history chat list data from the backend, sorted by created_at in descending order. This includes all flattened history messages of the conversation.
- * @returns An array of ChatItems representing the latest thread.
+ * Build a chat item tree from a chat list
+ * @param allMessages - The chat list, sorted from oldest to newest
+ * @returns The chat item tree
  */
-function getPrevChatList(fetchedMessages: any[]) {
-  const ret: ChatItem[] = []
-  let nextMessageId = null
-
-  for (const item of fetchedMessages) {
-    if (!item.parent_message_id) {
-      appendQAToChatList(ret, item)
-      break
-    }
-
-    if (!nextMessageId) {
-      appendQAToChatList(ret, item)
-      nextMessageId = item.parent_message_id
-    }
-    else {
-      if (item.id === nextMessageId || nextMessageId === UUID_NIL) {
-        appendQAToChatList(ret, item)
-        nextMessageId = item.parent_message_id
-      }
-    }
-  }
-  return ret.reverse()
-}
-
 function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
   const map: Record<string, ChatItemInTree> = {}
   const rootNodes: ChatItemInTree[] = []
@@ -127,18 +82,15 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
       lastAppendedLegacyAnswer = answerNode
     }
     else {
-      if (!parentMessageId)
+      if (
+        !parentMessageId
+        || !allMessages.some(item => item.id === parentMessageId) // parent message might not be fetched yet, in this case we will append the question to the root nodes
+      )
         rootNodes.push(questionNode)
       else
         map[parentMessageId]?.children!.push(questionNode)
     }
   }
-
-  // If no messages have parentMessageId=null (indicating a root node),
-  // then we likely have a partial chat history. In this case,
-  // use the first available message as the root node.
-  if (rootNodes.length === 0 && allMessages.length > 0)
-    rootNodes.push(map[allMessages[0]!.id]!)
 
   return rootNodes
 }
@@ -211,7 +163,7 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
 
 export {
   getProcessedInputsFromUrlParams,
-  getPrevChatList,
+  isValidGeneratedAnswer,
   getLastAnswer,
   buildChatItemTree,
   getThreadMessages,

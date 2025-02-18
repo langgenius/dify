@@ -42,6 +42,15 @@ const translation = {
     zoomIn: 'Ampliar',
     copyImage: 'Copiar imagem',
     openInNewTab: 'Abrir em nova guia',
+    viewMore: 'VER MAIS',
+    regenerate: 'Regenerar',
+    close: 'Fechar',
+    saveAndRegenerate: 'Salvar e regenerar pedaços filhos',
+    view: 'Vista',
+    submit: 'Enviar',
+    skip: 'Navio',
+    imageCopied: 'Imagem copiada',
+    deleteApp: 'Excluir aplicativo',
   },
   placeholder: {
     input: 'Por favor, insira',
@@ -174,6 +183,18 @@ const translation = {
     myAccount: 'Minha Conta',
     account: 'Conta',
     studio: 'Estúdio Dify',
+    deletePrivacyLinkTip: 'Para obter mais informações sobre como lidamos com seus dados, consulte nosso',
+    deletePrivacyLink: 'Política de privacidade.',
+    deleteSuccessTip: 'Sua conta precisa de tempo para concluir a exclusão. Enviaremos um e-mail quando tudo estiver pronto.',
+    deleteLabel: 'Para confirmar, digite seu e-mail abaixo',
+    deletePlaceholder: 'Por favor, digite seu e-mail',
+    sendVerificationButton: 'Enviar código de verificação',
+    verificationLabel: 'Código de verificação',
+    verificationPlaceholder: 'Cole o código de 6 dígitos',
+    permanentlyDeleteButton: 'Excluir conta permanentemente',
+    feedbackTitle: 'Realimentação',
+    feedbackLabel: 'Diga-nos por que você excluiu sua conta?',
+    feedbackPlaceholder: 'Opcional',
   },
   members: {
     team: 'Equipe',
@@ -191,6 +212,7 @@ const translation = {
     editorTip: 'Pode editar aplicativos, mas não pode gerenciar configurações da equipe',
     inviteTeamMember: 'Adicionar membro da equipe',
     inviteTeamMemberTip: 'Eles podem acessar os dados da sua equipe diretamente após fazer login.',
+    emailNotSetup: 'O servidor de e-mail não está configurado, então os e-mails de convite não podem ser enviados. Por favor, notifique os usuários sobre o link de convite que será emitido após o convite.',
     email: 'E-mail',
     emailInvalid: 'Formato de e-mail inválido',
     emailPlaceholder: 'Por favor, insira e-mails',
@@ -265,6 +287,7 @@ const translation = {
       usedUp: 'Cota de teste esgotada. Adicione seu próprio Fornecedor de Modelo.',
       useYourModel: 'Atualmente usando seu próprio Fornecedor de Modelo.',
       close: 'Fechar',
+      trialQuotaTip: 'Sua cota de teste do Anthropic expirará em 11/03/2025 e não estará mais disponível depois disso. Por favor, use-o a tempo.',
     },
     anthropic: {
       using: 'A capacidade de incorporação está sendo utilizada',
@@ -473,6 +496,7 @@ const translation = {
     emptyTip: 'O Conhecimento não foi associado, por favor, vá para o aplicativo ou plug-in para completar a associação.',
     viewDoc: 'Ver documentação',
     relatedApp: 'aplicativos relacionados',
+    noRelatedApp: 'Nenhum aplicativo vinculado',
   },
   voiceInput: {
     speaking: 'Fale agora...',
@@ -590,6 +614,13 @@ const translation = {
     uploadFromComputerReadError: 'Falha na leitura do arquivo, tente novamente.',
     uploadFromComputerLimit: 'Carregar arquivo não pode exceder {{size}}',
     uploadFromComputerUploadError: 'Falha no upload do arquivo, faça o upload novamente.',
+  },
+  license: {
+    expiring: 'Expirando em um dia',
+    expiring_plural: 'Expirando em {{count}} dias',
+  },
+  pagination: {
+    perPage: 'Itens por página',
   },
 }
 

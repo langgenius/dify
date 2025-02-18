@@ -3,27 +3,22 @@ Proxy requests to avoid SSRF
 """
 
 import logging
-import os
 import time
 
 import httpx
 
-SSRF_PROXY_ALL_URL = os.getenv("SSRF_PROXY_ALL_URL", "")
-SSRF_PROXY_HTTP_URL = os.getenv("SSRF_PROXY_HTTP_URL", "")
-SSRF_PROXY_HTTPS_URL = os.getenv("SSRF_PROXY_HTTPS_URL", "")
-SSRF_DEFAULT_MAX_RETRIES = int(os.getenv("SSRF_DEFAULT_MAX_RETRIES", "3"))
+from configs import dify_config
 
-proxy_mounts = (
-    {
-        "http://": httpx.HTTPTransport(proxy=SSRF_PROXY_HTTP_URL),
-        "https://": httpx.HTTPTransport(proxy=SSRF_PROXY_HTTPS_URL),
-    }
-    if SSRF_PROXY_HTTP_URL and SSRF_PROXY_HTTPS_URL
-    else None
-)
+SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 
 BACKOFF_FACTOR = 0.5
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
+
+
+class MaxRetriesExceededError(ValueError):
+    """Raised when the maximum number of retries is exceeded."""
+
+    pass
 
 
 def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
@@ -32,13 +27,25 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
         if "follow_redirects" not in kwargs:
             kwargs["follow_redirects"] = allow_redirects
 
+    if "timeout" not in kwargs:
+        kwargs["timeout"] = httpx.Timeout(
+            timeout=dify_config.SSRF_DEFAULT_TIME_OUT,
+            connect=dify_config.SSRF_DEFAULT_CONNECT_TIME_OUT,
+            read=dify_config.SSRF_DEFAULT_READ_TIME_OUT,
+            write=dify_config.SSRF_DEFAULT_WRITE_TIME_OUT,
+        )
+
     retries = 0
     while retries <= max_retries:
         try:
-            if SSRF_PROXY_ALL_URL:
-                with httpx.Client(proxy=SSRF_PROXY_ALL_URL) as client:
+            if dify_config.SSRF_PROXY_ALL_URL:
+                with httpx.Client(proxy=dify_config.SSRF_PROXY_ALL_URL) as client:
                     response = client.request(method=method, url=url, **kwargs)
-            elif proxy_mounts:
+            elif dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
+                proxy_mounts = {
+                    "http://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTP_URL),
+                    "https://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTPS_URL),
+                }
                 with httpx.Client(mounts=proxy_mounts) as client:
                     response = client.request(method=method, url=url, **kwargs)
             else:
@@ -52,12 +59,13 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
 
         except httpx.RequestError as e:
             logging.warning(f"Request to URL {url} failed on attempt {retries + 1}: {e}")
+            if max_retries == 0:
+                raise
 
         retries += 1
         if retries <= max_retries:
             time.sleep(BACKOFF_FACTOR * (2 ** (retries - 1)))
-
-    raise Exception(f"Reached maximum retries ({max_retries}) for URL {url}")
+    raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
 
 
 def get(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):

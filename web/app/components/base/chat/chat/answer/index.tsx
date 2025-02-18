@@ -13,7 +13,7 @@ import AgentContent from './agent-content'
 import BasicContent from './basic-content'
 import SuggestedQuestions from './suggested-questions'
 import More from './more'
-import WorkflowProcess from './workflow-process'
+import WorkflowProcessItem from './workflow-process'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import Citation from '@/app/components/base/chat/chat/citation'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
@@ -114,7 +114,7 @@ const Answer: FC<AnswerProps> = ({
         <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
           <div
             ref={contentRef}
-            className={cn('relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-2xl text-sm text-gray-900', workflowProcess && 'w-full')}
+            className={cn('relative inline-block px-4 py-3 max-w-full bg-chat-bubble-bg rounded-2xl body-lg-regular text-text-primary', workflowProcess && 'w-full')}
           >
             {
               !responding && (
@@ -133,7 +133,7 @@ const Answer: FC<AnswerProps> = ({
             {/** Render the normal steps */}
             {
               workflowProcess && !hideProcessDetail && (
-                <WorkflowProcess
+                <WorkflowProcessItem
                   data={workflowProcess}
                   item={item}
                   hideProcessDetail={hideProcessDetail}
@@ -142,11 +142,12 @@ const Answer: FC<AnswerProps> = ({
             }
             {/** Hide workflow steps by it's settings in siteInfo */}
             {
-              workflowProcess && hideProcessDetail && appData && appData.site.show_workflow_steps && (
-                <WorkflowProcess
+              workflowProcess && hideProcessDetail && appData && (
+                <WorkflowProcessItem
                   data={workflowProcess}
                   item={item}
                   hideProcessDetail={hideProcessDetail}
+                  readonly={!appData.site.show_workflow_steps}
                 />
               )
             }
@@ -208,19 +209,19 @@ const Answer: FC<AnswerProps> = ({
             }
             {item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined && <div className="pt-3.5 flex justify-center items-center text-sm">
               <button
-                className={`${item.prevSibling ? 'opacity-100' : 'opacity-65'}`}
+                className={`${item.prevSibling ? 'opacity-100' : 'opacity-30'}`}
                 disabled={!item.prevSibling}
                 onClick={() => item.prevSibling && switchSibling?.(item.prevSibling)}
               >
-                <ChevronRight className="w-[14px] h-[14px] rotate-180 text-gray-500" />
+                <ChevronRight className="w-[14px] h-[14px] rotate-180 text-text-primary" />
               </button>
-              <span className="px-2 text-xs text-gray-700">{item.siblingIndex + 1} / {item.siblingCount}</span>
+              <span className="px-2 text-xs text-text-primary">{item.siblingIndex + 1} / {item.siblingCount}</span>
               <button
-                className={`${item.nextSibling ? 'opacity-100' : 'opacity-65'}`}
+                className={`${item.nextSibling ? 'opacity-100' : 'opacity-30'}`}
                 disabled={!item.nextSibling}
                 onClick={() => item.nextSibling && switchSibling?.(item.nextSibling)}
               >
-                <ChevronRight className="w-[14px] h-[14px] text-gray-500" />
+                <ChevronRight className="w-[14px] h-[14px] text-text-primary" />
               </button>
             </div>}
           </div>

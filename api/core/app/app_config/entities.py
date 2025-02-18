@@ -1,10 +1,10 @@
 from collections.abc import Sequence
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-from core.file import FileExtraConfig, FileTransferMethod, FileType
+from core.file import FileTransferMethod, FileType, FileUploadConfig
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from models.model import AppMode
 
@@ -88,7 +88,7 @@ class PromptTemplateEntity(BaseModel):
     advanced_completion_prompt_template: Optional[AdvancedCompletionPromptTemplateEntity] = None
 
 
-class VariableEntityType(str, Enum):
+class VariableEntityType(StrEnum):
     TEXT_INPUT = "text-input"
     SELECT = "select"
     PARAGRAPH = "paragraph"
@@ -211,7 +211,7 @@ class TracingConfigEntity(BaseModel):
 
 
 class AppAdditionalFeatures(BaseModel):
-    file_upload: Optional[FileExtraConfig] = None
+    file_upload: Optional[FileUploadConfig] = None
     opening_statement: Optional[str] = None
     suggested_questions: list[str] = []
     suggested_questions_after_answer: bool = False

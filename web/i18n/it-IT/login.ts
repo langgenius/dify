@@ -109,6 +109,12 @@ const translation = {
   resetPasswordDesc: 'Digita l\'e-mail che hai utilizzato per registrarti su Dify e ti invieremo un\'e-mail per reimpostare la password.',
   noLoginMethodTip: 'Contatta l\'amministratore di sistema per aggiungere un metodo di autenticazione.',
   enterYourName: 'Inserisci il tuo nome utente',
+  licenseLostTip: 'Impossibile connettersi al server licenze Dify. Contatta il tuo amministratore per continuare a utilizzare Dify.',
+  licenseExpired: 'Licenza scaduta',
+  licenseLost: 'Licenza persa',
+  licenseExpiredTip: 'La licenza Dify Enterprise per la tua area di lavoro è scaduta. Contatta il tuo amministratore per continuare a utilizzare Dify.',
+  licenseInactiveTip: 'La licenza Dify Enterprise per la tua area di lavoro è inattiva. Contatta il tuo amministratore per continuare a utilizzare Dify.',
+  licenseInactive: 'Licenza inattiva',
 }
 
 export default translation

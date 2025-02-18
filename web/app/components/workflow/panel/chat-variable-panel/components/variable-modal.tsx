@@ -18,13 +18,13 @@ import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel
 import cn from '@/utils/classnames'
 import { checkKeys } from '@/utils/var'
 
-export type ModalPropsType = {
+export interface ModalPropsType {
   chatVar?: ConversationVariable
   onClose: () => void
   onSave: (chatVar: ConversationVariable) => void
 }
 
-type ObjectValueItem = {
+interface ObjectValueItem {
   key: string
   type: ChatVarType
   value: string | number | undefined
@@ -97,8 +97,9 @@ const ChatVariableModal = ({
     return objectPlaceholder
   }, [type])
   const getObjectValue = useCallback(() => {
-    if (!chatVar)
+    if (!chatVar || Object.keys(chatVar.value).length === 0)
       return [DEFAULT_OBJECT_VALUE]
+
     return Object.keys(chatVar.value).map((key) => {
       return {
         key,

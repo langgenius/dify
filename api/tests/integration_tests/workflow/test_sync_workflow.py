@@ -27,8 +27,8 @@ NEW_VERSION_WORKFLOW_FEATURES = {
     "file_upload": {
         "enabled": True,
         "allowed_file_types": ["image"],
-        "allowed_extensions": [],
-        "allowed_upload_methods": ["remote_url", "local_file"],
+        "allowed_file_extensions": [],
+        "allowed_file_upload_methods": ["remote_url", "local_file"],
         "number_limits": 6,
     },
     "opening_statement": "",

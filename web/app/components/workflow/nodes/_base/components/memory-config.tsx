@@ -53,7 +53,7 @@ type Props = {
 
 const MEMORY_DEFAULT: Memory = {
   window: { enabled: false, size: WINDOW_SIZE_DEFAULT },
-  query_prompt_template: '',
+  query_prompt_template: '{{#sys.query#}}',
 }
 
 const MemoryConfig: FC<Props> = ({
@@ -88,7 +88,7 @@ const MemoryConfig: FC<Props> = ({
         limitedSize = null
       }
       else {
-        limitedSize = parseInt(limitedSize as string, 10)
+        limitedSize = Number.parseInt(limitedSize as string, 10)
         if (isNaN(limitedSize))
           limitedSize = WINDOW_SIZE_DEFAULT
 

@@ -24,6 +24,7 @@ import cn from '@/utils/classnames'
 import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/hooks'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
+import Divider from '@/app/components/base/divider'
 
 type Props = {
   datasetConfigs: DatasetConfigs
@@ -59,36 +60,24 @@ const ConfigContent: FC<Props> = ({
 
   const {
     modelList: rerankModelList,
-    defaultModel: rerankDefaultModel,
-    currentModel: isRerankDefaultModelValid,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   const {
     currentModel: currentRerankModel,
   } = useCurrentProviderAndModel(
     rerankModelList,
-    rerankDefaultModel
-      ? {
-        ...rerankDefaultModel,
-        provider: rerankDefaultModel.provider.provider,
-      }
-      : undefined,
+    {
+      provider: datasetConfigs.reranking_model?.reranking_provider_name,
+      model: datasetConfigs.reranking_model?.reranking_model_name,
+    },
   )
 
-  const rerankModel = (() => {
-    if (datasetConfigs.reranking_model?.reranking_provider_name) {
-      return {
-        provider_name: datasetConfigs.reranking_model.reranking_provider_name,
-        model_name: datasetConfigs.reranking_model.reranking_model_name,
-      }
+  const rerankModel = useMemo(() => {
+    return {
+      provider_name: datasetConfigs?.reranking_model?.reranking_provider_name ?? '',
+      model_name: datasetConfigs?.reranking_model?.reranking_model_name ?? '',
     }
-    else if (rerankDefaultModel) {
-      return {
-        provider_name: rerankDefaultModel.provider.provider,
-        model_name: rerankDefaultModel.model,
-      }
-    }
-  })()
+  }, [datasetConfigs.reranking_model])
 
   const handleParamChange = (key: string, value: number) => {
     if (key === 'top_k') {
@@ -133,6 +122,12 @@ const ConfigContent: FC<Props> = ({
   }
 
   const handleRerankModeChange = (mode: RerankingModeEnum) => {
+    if (mode === datasetConfigs.reranking_mode)
+      return
+
+    if (mode === RerankingModeEnum.RerankingModel && !currentRerankModel)
+      Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
+
     onChange({
       ...datasetConfigs,
       reranking_mode: mode,
@@ -162,31 +157,25 @@ const ConfigContent: FC<Props> = ({
 
   const canManuallyToggleRerank = useMemo(() => {
     return (selectedDatasetsMode.allInternal && selectedDatasetsMode.allEconomic)
-      || selectedDatasetsMode.allExternal
+    || selectedDatasetsMode.allExternal
   }, [selectedDatasetsMode.allEconomic, selectedDatasetsMode.allExternal, selectedDatasetsMode.allInternal])
 
   const showRerankModel = useMemo(() => {
     if (!canManuallyToggleRerank)
       return true
-    else if (canManuallyToggleRerank && !isRerankDefaultModelValid)
-      return false
 
     return datasetConfigs.reranking_enable
-  }, [canManuallyToggleRerank, datasetConfigs.reranking_enable])
+  }, [datasetConfigs.reranking_enable, canManuallyToggleRerank])
 
-  const handleDisabledSwitchClick = useCallback(() => {
-    if (!currentRerankModel && !showRerankModel)
+  const handleDisabledSwitchClick = useCallback((enable: boolean) => {
+    if (!currentRerankModel && enable)
       Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
-  }, [currentRerankModel, showRerankModel, t])
-
-  useEffect(() => {
-    if (canManuallyToggleRerank && showRerankModel !== datasetConfigs.reranking_enable) {
-      onChange({
-        ...datasetConfigs,
-        reranking_enable: showRerankModel,
-      })
-    }
-  }, [canManuallyToggleRerank, showRerankModel, datasetConfigs, onChange])
+    onChange({
+      ...datasetConfigs,
+      reranking_enable: enable,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentRerankModel, datasetConfigs, onChange])
 
   return (
     <div>
@@ -200,7 +189,7 @@ const ConfigContent: FC<Props> = ({
             <div className='shrink-0 mr-2 system-xs-semibold-uppercase text-text-secondary'>
               {t('dataset.rerankSettings')}
             </div>
-            <div className='grow h-[1px] bg-gradient-to-l from-white to-[rgba(16,24,40,0.08)]'></div>
+            <Divider bgStyle='gradient' className='!h-px mx-0' />
           </div>
           {
             selectedDatasetsMode.inconsistentEmbeddingModel
@@ -267,24 +256,12 @@ const ConfigContent: FC<Props> = ({
                 <div className='flex items-center'>
                   {
                     selectedDatasetsMode.allEconomic && !selectedDatasetsMode.mixtureInternalAndExternal && (
-                      <div
-                        className='flex items-center'
-                        onClick={handleDisabledSwitchClick}
-                      >
-                        <Switch
-                          size='md'
-                          defaultValue={showRerankModel}
-                          disabled={!currentRerankModel || !canManuallyToggleRerank}
-                          onChange={(v) => {
-                            if (canManuallyToggleRerank) {
-                              onChange({
-                                ...datasetConfigs,
-                                reranking_enable: v,
-                              })
-                            }
-                          }}
-                        />
-                      </div>
+                      <Switch
+                        size='md'
+                        defaultValue={showRerankModel}
+                        disabled={!canManuallyToggleRerank}
+                        onChange={handleDisabledSwitchClick}
+                      />
                     )
                   }
                   <div className='leading-[32px] ml-1 text-text-secondary system-sm-semibold'>{t('common.modelProvider.rerankModel.key')}</div>
@@ -298,21 +275,24 @@ const ConfigContent: FC<Props> = ({
                     triggerClassName='ml-1 w-4 h-4'
                   />
                 </div>
-                <div>
-                  <ModelSelector
-                    defaultModel={rerankModel && { provider: rerankModel?.provider_name, model: rerankModel?.model_name }}
-                    onSelect={(v) => {
-                      onChange({
-                        ...datasetConfigs,
-                        reranking_model: {
-                          reranking_provider_name: v.provider,
-                          reranking_model_name: v.model,
-                        },
-                      })
-                    }}
-                    modelList={rerankModelList}
-                  />
-                </div>
+                {
+                  showRerankModel && (
+                    <div>
+                      <ModelSelector
+                        defaultModel={rerankModel && { provider: rerankModel?.provider_name, model: rerankModel?.model_name }}
+                        onSelect={(v) => {
+                          onChange({
+                            ...datasetConfigs,
+                            reranking_model: {
+                              reranking_provider_name: v.provider,
+                              reranking_model_name: v.model,
+                            },
+                          })
+                        }}
+                        modelList={rerankModelList}
+                      />
+                    </div>
+                  )}
               </div>
             )
           }
@@ -373,7 +353,7 @@ const ConfigContent: FC<Props> = ({
       {isInWorkflow && type === RETRIEVE_TYPE.oneWay && (
         <div className='mt-4'>
           <div className='flex items-center space-x-0.5'>
-            <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.systemReasoningModel.key')}</div>
+            <div className='leading-[32px] text-[13px] font-medium text-text-primary'>{t('common.modelProvider.systemReasoningModel.key')}</div>
             <Tooltip
               popupContent={t('common.modelProvider.systemReasoningModel.tip')}
             />

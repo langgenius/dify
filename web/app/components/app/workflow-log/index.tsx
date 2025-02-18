@@ -3,14 +3,12 @@ import type { FC, SVGProps } from 'react'
 import React, { useState } from 'react'
 import useSWR from 'swr'
 import { usePathname } from 'next/navigation'
-import { Pagination } from 'react-headless-pagination'
 import { useDebounce } from 'ahooks'
-import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
 import { Trans, useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import List from './list'
 import Filter from './filter'
-import s from './style.module.css'
+import Pagination from '@/app/components/base/pagination'
 import Loading from '@/app/components/base/loading'
 import { fetchWorkflowLogs } from '@/service/log'
 import { APP_PAGE_LIMIT } from '@/config'
@@ -53,10 +51,11 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const [queryParams, setQueryParams] = useState<QueryParam>({ status: 'all' })
   const [currPage, setCurrPage] = React.useState<number>(0)
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
+  const [limit, setLimit] = React.useState<number>(APP_PAGE_LIMIT)
 
   const query = {
     page: currPage + 1,
-    limit: APP_PAGE_LIMIT,
+    limit,
     ...(debouncedQueryParams.status !== 'all' ? { status: debouncedQueryParams.status } : {}),
     ...(debouncedQueryParams.keyword ? { keyword: debouncedQueryParams.keyword } : {}),
   }
@@ -77,7 +76,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     <div className='flex flex-col h-full'>
       <h1 className='text-text-primary system-xl-semibold'>{t('appLog.workflowTitle')}</h1>
       <p className='text-text-tertiary system-sm-regular'>{t('appLog.workflowSubtitle')}</p>
-      <div className='flex flex-col py-4 flex-1'>
+      <div className='flex flex-col py-4 flex-1 max-h-[calc(100%-16px)]'>
         <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
         {/* workflow log */}
         {total === undefined
@@ -89,35 +88,12 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)
           ? <Pagination
-            className="flex items-center w-full h-10 text-sm select-none mt-8"
-            currentPage={currPage}
-            edgePageCount={2}
-            middlePagesSiblingCount={1}
-            setCurrentPage={setCurrPage}
-            totalPages={Math.ceil(total / APP_PAGE_LIMIT)}
-            truncableClassName="w-8 px-0.5 text-center"
-            truncableText="..."
-          >
-            <Pagination.PrevButton
-              disabled={currPage === 0}
-              className={`flex items-center mr-2 text-gray-500  focus:outline-none ${currPage === 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-gray-600 dark:hover:text-gray-200'}`} >
-              <ArrowLeftIcon className="mr-3 h-3 w-3" />
-              {t('appLog.table.pagination.previous')}
-            </Pagination.PrevButton>
-            <div className={`flex items-center justify-center flex-grow ${s.pagination}`}>
-              <Pagination.PageButton
-                activeClassName="bg-primary-50 dark:bg-opacity-0 text-primary-600 dark:text-white"
-                className="flex items-center justify-center h-8 w-8 rounded-full cursor-pointer"
-                inactiveClassName="text-gray-500"
-              />
-            </div>
-            <Pagination.NextButton
-              disabled={currPage === Math.ceil(total / APP_PAGE_LIMIT) - 1}
-              className={`flex items-center mr-2 text-gray-500 focus:outline-none ${currPage === Math.ceil(total / APP_PAGE_LIMIT) - 1 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-gray-600 dark:hover:text-gray-200'}`} >
-              {t('appLog.table.pagination.next')}
-              <ArrowRightIcon className="ml-3 h-3 w-3" />
-            </Pagination.NextButton>
-          </Pagination>
+            current={currPage}
+            onChange={setCurrPage}
+            total={total}
+            limit={limit}
+            onLimitChange={setLimit}
+          />
           : null}
       </div>
     </div>

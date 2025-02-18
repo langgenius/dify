@@ -25,6 +25,8 @@ from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
 from models.provider import Provider, ProviderModel
 from services.account_service import RegisterService, TenantService
+from services.plugin.data_migration import PluginDataMigration
+from services.plugin.plugin_migration import PluginMigration
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -159,8 +161,7 @@ def migrate_annotation_vector_database():
         try:
             # get apps info
             apps = (
-                db.session.query(App)
-                .filter(App.status == "normal")
+                App.query.filter(App.status == "normal")
                 .order_by(App.created_at.desc())
                 .paginate(page=page, per_page=50)
             )
@@ -259,7 +260,7 @@ def migrate_knowledge_vector_database():
     skipped_count = 0
     total_count = 0
     vector_type = dify_config.VECTOR_STORE
-    upper_colletion_vector_types = {
+    upper_collection_vector_types = {
         VectorType.MILVUS,
         VectorType.PGVECTOR,
         VectorType.RELYT,
@@ -267,7 +268,7 @@ def migrate_knowledge_vector_database():
         VectorType.ORACLE,
         VectorType.ELASTICSEARCH,
     }
-    lower_colletion_vector_types = {
+    lower_collection_vector_types = {
         VectorType.ANALYTICDB,
         VectorType.CHROMA,
         VectorType.MYSCALE,
@@ -285,8 +286,7 @@ def migrate_knowledge_vector_database():
     while True:
         try:
             datasets = (
-                db.session.query(Dataset)
-                .filter(Dataset.indexing_technique == "high_quality")
+                Dataset.query.filter(Dataset.indexing_technique == "high_quality")
                 .order_by(Dataset.created_at.desc())
                 .paginate(page=page, per_page=50)
             )
@@ -307,7 +307,7 @@ def migrate_knowledge_vector_database():
                         continue
                 collection_name = ""
                 dataset_id = dataset.id
-                if vector_type in upper_colletion_vector_types:
+                if vector_type in upper_collection_vector_types:
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                 elif vector_type == VectorType.QDRANT:
                     if dataset.collection_binding_id:
@@ -323,7 +323,7 @@ def migrate_knowledge_vector_database():
                     else:
                         collection_name = Dataset.gen_collection_name_by_id(dataset_id)
 
-                elif vector_type in lower_colletion_vector_types:
+                elif vector_type in lower_collection_vector_types:
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
                 else:
                     raise ValueError(f"Vector store {vector_type} is not supported.")
@@ -450,7 +450,8 @@ def convert_to_agent_apps():
                 if app_id not in proceeded_app_ids:
                     proceeded_app_ids.append(app_id)
                     app = db.session.query(App).filter(App.id == app_id).first()
-                    apps.append(app)
+                    if app is not None:
+                        apps.append(app)
 
             if len(apps) == 0:
                 break
@@ -525,7 +526,7 @@ def add_qdrant_doc_id_index(field: str):
                         )
                     )
 
-    except Exception as e:
+    except Exception:
         click.echo(click.style("Failed to create Qdrant client.", fg="red"))
 
     click.echo(click.style(f"Index creation complete. Created {create_count} collection indexes.", fg="green"))
@@ -555,14 +556,20 @@ def create_tenant(email: str, language: Optional[str] = None, name: Optional[str
     if language not in languages:
         language = "en-US"
 
-    name = name.strip()
+    # Validates name encoding for non-Latin characters.
+    name = name.strip().encode("utf-8").decode("utf-8") if name else None
 
     # generate random password
     new_password = secrets.token_urlsafe(16)
 
     # register account
-    account = RegisterService.register(email=email, name=account_name, password=new_password, language=language)
-
+    account = RegisterService.register(
+        email=email,
+        name=account_name,
+        password=new_password,
+        language=language,
+        create_workspace_required=False,
+    )
     TenantService.create_owner_tenant_if_not_exist(account, name)
 
     click.echo(
@@ -582,14 +589,14 @@ def upgrade_db():
             click.echo(click.style("Starting database migration.", fg="green"))
 
             # run db migration
-            import flask_migrate
+            import flask_migrate  # type: ignore
 
             flask_migrate.upgrade()
 
             click.echo(click.style("Database migration successful!", fg="green"))
 
-        except Exception as e:
-            logging.exception(f"Database migration failed: {e}")
+        except Exception:
+            logging.exception("Failed to execute database migration")
         finally:
             lock.release()
     else:
@@ -620,6 +627,10 @@ where sites.id is null limit 1000"""
 
                 try:
                     app = db.session.query(App).filter(App.id == app_id).first()
+                    if not app:
+                        print(f"App {app_id} not found")
+                        continue
+
                     tenant = app.tenant
                     if tenant:
                         accounts = tenant.get_accounts()
@@ -630,10 +641,10 @@ where sites.id is null limit 1000"""
                         account = accounts[0]
                         print("Fixing missing site for app {}".format(app.id))
                         app_was_created.send(app, account=account)
-                except Exception as e:
+                except Exception:
                     failed_app_ids.append(app_id)
                     click.echo(click.style("Failed to fix missing site for app {}".format(app_id), fg="red"))
-                    logging.exception(f"Fix app related site missing issue failed, error: {e}")
+                    logging.exception(f"Failed to fix app related site missing issue, app_id: {app_id}")
                     continue
 
             if not processed_count:
@@ -642,13 +653,67 @@ where sites.id is null limit 1000"""
     click.echo(click.style("Fix for missing app-related sites completed successfully!", fg="green"))
 
 
-def register_commands(app):
-    app.cli.add_command(reset_password)
-    app.cli.add_command(reset_email)
-    app.cli.add_command(reset_encrypt_key_pair)
-    app.cli.add_command(vdb_migrate)
-    app.cli.add_command(convert_to_agent_apps)
-    app.cli.add_command(add_qdrant_doc_id_index)
-    app.cli.add_command(create_tenant)
-    app.cli.add_command(upgrade_db)
-    app.cli.add_command(fix_app_site_missing)
+@click.command("migrate-data-for-plugin", help="Migrate data for plugin.")
+def migrate_data_for_plugin():
+    """
+    Migrate data for plugin.
+    """
+    click.echo(click.style("Starting migrate data for plugin.", fg="white"))
+
+    PluginDataMigration.migrate()
+
+    click.echo(click.style("Migrate data for plugin completed.", fg="green"))
+
+
+@click.command("extract-plugins", help="Extract plugins.")
+@click.option("--output_file", prompt=True, help="The file to store the extracted plugins.", default="plugins.jsonl")
+@click.option("--workers", prompt=True, help="The number of workers to extract plugins.", default=10)
+def extract_plugins(output_file: str, workers: int):
+    """
+    Extract plugins.
+    """
+    click.echo(click.style("Starting extract plugins.", fg="white"))
+
+    PluginMigration.extract_plugins(output_file, workers)
+
+    click.echo(click.style("Extract plugins completed.", fg="green"))
+
+
+@click.command("extract-unique-identifiers", help="Extract unique identifiers.")
+@click.option(
+    "--output_file",
+    prompt=True,
+    help="The file to store the extracted unique identifiers.",
+    default="unique_identifiers.json",
+)
+@click.option(
+    "--input_file", prompt=True, help="The file to store the extracted unique identifiers.", default="plugins.jsonl"
+)
+def extract_unique_plugins(output_file: str, input_file: str):
+    """
+    Extract unique plugins.
+    """
+    click.echo(click.style("Starting extract unique plugins.", fg="white"))
+
+    PluginMigration.extract_unique_plugins_to_file(input_file, output_file)
+
+    click.echo(click.style("Extract unique plugins completed.", fg="green"))
+
+
+@click.command("install-plugins", help="Install plugins.")
+@click.option(
+    "--input_file", prompt=True, help="The file to store the extracted unique identifiers.", default="plugins.jsonl"
+)
+@click.option(
+    "--output_file", prompt=True, help="The file to store the installed plugins.", default="installed_plugins.jsonl"
+)
+@click.option("--workers", prompt=True, help="The number of workers to install plugins.", default=100)
+def install_plugins(input_file: str, output_file: str, workers: int):
+    """
+    Install plugins.
+    """
+    click.echo(click.style("Starting install plugins.", fg="white"))
+
+    PluginMigration.install_plugins(input_file, output_file, workers)
+
+    click.echo(click.style("Install plugins completed.", fg="green"))

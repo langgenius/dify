@@ -12,40 +12,52 @@ import ConfigContext from '@/context/debug-configuration'
 // import { Resolution } from '@/types/app'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import Switch from '@/app/components/base/switch'
-import type { FileUpload } from '@/app/components/base/features/types'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 
 const ConfigVision: FC = () => {
   const { t } = useTranslation()
-  const { isShowVisionConfig } = useContext(ConfigContext)
+  const { isShowVisionConfig, isAllowVideoUpload } = useContext(ConfigContext)
   const file = useFeatures(s => s.features.file)
   const featuresStore = useFeaturesStore()
 
-  const handleChange = useCallback((data: FileUpload) => {
+  const isImageEnabled = file?.allowed_file_types?.includes(SupportUploadFileTypes.image) ?? false
+
+  const handleChange = useCallback((value: boolean) => {
     const {
       features,
       setFeatures,
     } = featuresStore!.getState()
 
     const newFeatures = produce(features, (draft) => {
-      draft.file = {
-        ...draft.file,
-        enabled: data.enabled,
-        image: {
-          enabled: data.enabled,
-          detail: data.image?.detail,
-          transfer_methods: data.image?.transfer_methods,
-          number_limits: data.image?.number_limits,
-        },
+      if (value) {
+        draft.file!.allowed_file_types = Array.from(new Set([
+          ...(draft.file?.allowed_file_types || []),
+          SupportUploadFileTypes.image,
+          ...(isAllowVideoUpload ? [SupportUploadFileTypes.video] : []),
+        ]))
+      }
+      else {
+        draft.file!.allowed_file_types = draft.file!.allowed_file_types?.filter(
+          type => type !== SupportUploadFileTypes.image && (isAllowVideoUpload ? type !== SupportUploadFileTypes.video : true),
+        )
+      }
+
+      if (draft.file) {
+        draft.file.enabled = (draft.file.allowed_file_types?.length ?? 0) > 0
+        draft.file.image = {
+          ...(draft.file.image || {}),
+          enabled: value,
+        }
       }
     })
     setFeatures(newFeatures)
-  }, [featuresStore])
+  }, [featuresStore, isAllowVideoUpload])
 
   if (!isShowVisionConfig)
     return null
 
   return (
-    <div className='mt-2 flex items-center gap-2 p-2 rounded-xl border-t-[0.5px] border-l-[0.5px] bg-background-section-burn'>
+    <div className='mt-2 flex items-center gap-2 p-2 rounded-xl border-effects-highlight border-t-[0.5px] border-l-[0.5px] bg-background-section-burn'>
       <div className='shrink-0 p-1'>
         <div className='p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-indigo-indigo-600'>
           <Vision className='w-4 h-4 text-text-primary-on-surface' />
@@ -87,13 +99,10 @@ const ConfigVision: FC = () => {
           />
         </div> */}
         <ParamConfig />
-        <div className='ml-1 mr-3 w-[1px] h-3.5 bg-divider-subtle'></div>
+        <div className='ml-1 mr-3 w-[1px] h-3.5 bg-divider-regular'></div>
         <Switch
-          defaultValue={file?.enabled}
-          onChange={value => handleChange({
-            ...(file || {}),
-            enabled: value,
-          })}
+          defaultValue={isImageEnabled}
+          onChange={handleChange}
           size='md'
         />
       </div>

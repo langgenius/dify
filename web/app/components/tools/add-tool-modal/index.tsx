@@ -15,7 +15,6 @@ import Category from './category'
 import Tools from './tools'
 import cn from '@/utils/classnames'
 import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
 import Drawer from '@/app/components/base/drawer'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
@@ -44,12 +43,14 @@ const AddToolModal: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  const language = getLanguage(locale)
   const [currentType, setCurrentType] = useState('builtin')
   const [currentCategory, setCurrentCategory] = useState('')
   const [keywords, setKeywords] = useState<string>('')
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
+  }
+  const isMatchingKeywords = (text: string, keywords: string) => {
+    return text.toLowerCase().includes(keywords.toLowerCase())
   }
   const [toolList, setToolList] = useState<ToolWithProvider[]>([])
   const [listLoading, setListLoading] = useState(true)
@@ -82,13 +83,16 @@ const AddToolModal: FC<Props> = ({
       else
         return toolWithProvider.labels.includes(currentCategory)
     }).filter((toolWithProvider) => {
-      return toolWithProvider.tools.some((tool) => {
-        return Object.values(tool.label).some((label) => {
-          return label.toLowerCase().includes(keywords.toLowerCase())
+      return (
+        isMatchingKeywords(toolWithProvider.name, keywords)
+        || toolWithProvider.tools.some((tool) => {
+          return Object.values(tool.label).some((label) => {
+            return isMatchingKeywords(label, keywords)
+          })
         })
-      })
+      )
     })
-  }, [currentType, currentCategory, toolList, keywords, language])
+  }, [currentType, currentCategory, toolList, keywords])
 
   const {
     modelConfig,

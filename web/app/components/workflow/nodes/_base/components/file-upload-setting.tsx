@@ -39,7 +39,13 @@ const FileUploadSetting: FC<Props> = ({
     allowed_file_extensions,
   } = payload
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
-  const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = useFileSizeLimit(fileUploadConfigResponse)
+  const {
+    imgSizeLimit,
+    docSizeLimit,
+    audioSizeLimit,
+    videoSizeLimit,
+    maxFileUploadLimit,
+  } = useFileSizeLimit(fileUploadConfigResponse)
 
   const handleSupportFileTypeChange = useCallback((type: SupportUploadFileTypes) => {
     const newPayload = produce(payload, (draft) => {
@@ -76,8 +82,6 @@ const FileUploadSetting: FC<Props> = ({
   const handleCustomFileTypesChange = useCallback((customFileTypes: string[]) => {
     const newPayload = produce(payload, (draft) => {
       draft.allowed_file_extensions = customFileTypes.map((v) => {
-        if (v.startsWith('.')) // Not start with dot
-          return v.slice(1)
         return v
       })
     })
@@ -112,7 +116,7 @@ const FileUploadSetting: FC<Props> = ({
               type={SupportUploadFileTypes.custom}
               selected={allowed_file_types.includes(SupportUploadFileTypes.custom)}
               onToggle={handleSupportFileTypeChange}
-              customFileTypes={allowed_file_extensions?.map(item => `.${item}`)}
+              customFileTypes={allowed_file_extensions}
               onCustomFileTypesChange={handleCustomFileTypesChange}
             />
           </div>
@@ -156,7 +160,7 @@ const FileUploadSetting: FC<Props> = ({
             <InputNumberWithSlider
               value={max_length}
               min={1}
-              max={10}
+              max={maxFileUploadLimit}
               onChange={handleMaxUploadNumLimitChange}
             />
           </div>

@@ -64,7 +64,7 @@ class UpstashVector(BaseVector):
         item_ids = []
         for doc_id in ids:
             ids = self.get_ids_by_metadata_field("doc_id", doc_id)
-            if id:
+            if ids:
                 item_ids += ids
         self._delete_by_ids(ids=item_ids)
 
@@ -95,9 +95,10 @@ class UpstashVector(BaseVector):
             metadata = record.metadata
             text = record.data
             score = record.score
-            metadata["score"] = score
-            if score > score_threshold:
-                docs.append(Document(page_content=text, metadata=metadata))
+            if metadata is not None and text is not None:
+                metadata["score"] = score
+                if score > score_threshold:
+                    docs.append(Document(page_content=text, metadata=metadata))
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
@@ -123,7 +124,7 @@ class UpstashVectorFactory(AbstractVectorFactory):
         return UpstashVector(
             collection_name=collection_name,
             config=UpstashVectorConfig(
-                url=dify_config.UPSTASH_VECTOR_URL,
-                token=dify_config.UPSTASH_VECTOR_TOKEN,
+                url=dify_config.UPSTASH_VECTOR_URL or "",
+                token=dify_config.UPSTASH_VECTOR_TOKEN or "",
             ),
         )

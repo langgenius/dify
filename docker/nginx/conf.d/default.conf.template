@@ -24,13 +24,24 @@ server {
       include proxy.conf;
     }
 
-    # placeholder for chatbot basic auth
-    ${CHATBOT_BASIC_AUTH_CONFIG}
+    location /explore {
+      proxy_pass http://web:3000;
+      include proxy.conf;
+    }
+
+    location /e {
+      proxy_pass http://plugin_daemon:5002;
+      proxy_set_header Dify-Hook-Url $scheme://$host$request_uri;
+      include proxy.conf;
+    }
 
     location / {
       proxy_pass http://web:3000;
       include proxy.conf;
     }
+
+    # placeholder for chatbot basic auth
+    ${CHATBOT_BASIC_AUTH_CONFIG}
 
     # placeholder for acme challenge location
     ${ACME_CHALLENGE_LOCATION}

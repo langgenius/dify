@@ -42,6 +42,15 @@ const translation = {
     openInNewTab: 'Otwórz w nowej karcie',
     zoomIn: 'Powiększenie',
     zoomOut: 'Pomniejszanie',
+    saveAndRegenerate: 'Zapisywanie i regeneracja fragmentów podrzędnych',
+    view: 'Widok',
+    regenerate: 'Ponownie wygenerować',
+    viewMore: 'ZOBACZ WIĘCEJ',
+    close: 'Zamykać',
+    submit: 'Prześlij',
+    skip: 'Statek',
+    imageCopied: 'Skopiowany obraz',
+    deleteApp: 'Usuń aplikację',
   },
   placeholder: {
     input: 'Proszę wprowadzić',
@@ -180,6 +189,18 @@ const translation = {
     myAccount: 'Moje konto',
     studio: 'Dify Studio',
     account: 'Rachunek',
+    deletePrivacyLinkTip: 'Aby uzyskać więcej informacji o tym, jak postępujemy z Twoimi danymi, zapoznaj się z naszą',
+    deletePrivacyLink: 'Polityka prywatności.',
+    deleteSuccessTip: 'Twoje konto potrzebuje czasu na dokończenie usuwania. Wyślemy Ci wiadomość e-mail, gdy wszystko będzie gotowe.',
+    deleteLabel: 'Aby potwierdzić, wpisz poniżej swój adres e-mail',
+    deletePlaceholder: 'Podaj swój adres e-mail',
+    sendVerificationButton: 'Wyślij kod weryfikacyjny',
+    verificationLabel: 'Kod weryfikacyjny',
+    verificationPlaceholder: 'Wklej 6-cyfrowy kod',
+    permanentlyDeleteButton: 'Trwale usuń konto',
+    feedbackTitle: 'Sprzężenie zwrotne',
+    feedbackLabel: 'Powiedz nam, dlaczego usunąłeś swoje konto?',
+    feedbackPlaceholder: 'Fakultatywny',
   },
   members: {
     team: 'Zespół',
@@ -198,6 +219,7 @@ const translation = {
     inviteTeamMember: 'Dodaj członka zespołu',
     inviteTeamMemberTip:
       'Mogą uzyskać bezpośredni dostęp do danych Twojego zespołu po zalogowaniu.',
+    emailNotSetup: 'Serwer poczty nie jest skonfigurowany, więc nie można wysyłać zaproszeń e-mail. Proszę powiadomić użytkowników o linku do zaproszenia, który zostanie wydany po zaproszeniu.',
     email: 'Email',
     emailInvalid: 'Nieprawidłowy format e-maila',
     emailPlaceholder: 'Proszę podać adresy e-mail',
@@ -274,6 +296,7 @@ const translation = {
       usedUp: 'Limit próbny został wyczerpany. Dodaj własnego dostawcę modeli.',
       useYourModel: 'Aktualnie używany jest własny dostawca modeli.',
       close: 'Zamknij',
+      trialQuotaTip: 'Twój limit próbny Anthropic wygaśnie w dniu 11.03.2025 i nie będzie już dostępny po tym czasie. Prosimy o skorzystanie z niego w odpowiednim czasie.',
     },
     anthropic: {
       using: 'Zdolność do osadzania jest używana',
@@ -488,6 +511,7 @@ const translation = {
       'Wiedza nie została powiązana, przejdź do aplikacji lub wtyczki, aby ukończyć powiązanie.',
     viewDoc: 'Zobacz dokumentację',
     relatedApp: 'powiązane aplikacje',
+    noRelatedApp: 'Brak połączonych aplikacji',
   },
   voiceInput: {
     speaking: 'Mów teraz...',
@@ -608,6 +632,13 @@ const translation = {
     uploadFromComputerReadError: 'Odczyt pliku nie powiódł się, spróbuj ponownie.',
     fileExtensionNotSupport: 'Rozszerzenie pliku nie jest obsługiwane',
     uploadFromComputer: 'Przesyłanie lokalne',
+  },
+  license: {
+    expiring_plural: 'Wygasa za {{count}} dni',
+    expiring: 'Wygasa w ciągu jednego dnia',
+  },
+  pagination: {
+    perPage: 'Ilość elementów na stronie',
   },
 }
 

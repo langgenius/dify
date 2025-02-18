@@ -10,6 +10,7 @@ type ResultProps = {
   time?: number
   tokens?: number
   error?: string
+  exceptionCounts?: number
 }
 
 const StatusPanel: FC<ResultProps> = ({
@@ -17,18 +18,23 @@ const StatusPanel: FC<ResultProps> = ({
   time,
   tokens,
   error,
+  exceptionCounts,
 }) => {
   const { t } = useTranslation()
 
   return (
     <StatusContainer status={status}>
       <div className='flex'>
-        <div className='flex-[33%] max-w-[120px]'>
+        <div className={cn(
+          'flex-[33%] max-w-[120px]',
+          status === 'partial-succeeded' && 'min-w-[140px]',
+        )}>
           <div className='mb-1 text-text-tertiary system-2xs-medium-uppercase'>{t('runLog.resultPanel.status')}</div>
           <div
             className={cn(
               'flex items-center gap-1 system-xs-semibold-uppercase',
               status === 'succeeded' && 'text-util-colors-green-green-600',
+              status === 'partial-succeeded' && 'text-util-colors-green-green-600',
               status === 'failed' && 'text-util-colors-red-red-600',
               status === 'stopped' && 'text-util-colors-warning-warning-600',
               status === 'running' && 'text-util-colors-blue-light-blue-light-600',
@@ -44,6 +50,18 @@ const StatusPanel: FC<ResultProps> = ({
               <>
                 <Indicator color={'green'} />
                 <span>SUCCESS</span>
+              </>
+            )}
+            {status === 'partial-succeeded' && (
+              <>
+                <Indicator color={'green'} />
+                <span>PARTIAL SUCCESS</span>
+              </>
+            )}
+            {status === 'exception' && (
+              <>
+                <Indicator color={'yellow'} />
+                <span>EXCEPTION</span>
               </>
             )}
             {status === 'failed' && (
@@ -87,8 +105,45 @@ const StatusPanel: FC<ResultProps> = ({
         <>
           <div className='my-2 h-[0.5px] bg-divider-subtle'/>
           <div className='system-xs-regular text-text-destructive'>{error}</div>
+          {
+            !!exceptionCounts && (
+              <>
+                <div className='my-2 h-[0.5px] bg-divider-subtle'/>
+                <div className='system-xs-regular text-text-destructive'>
+                  {t('workflow.nodes.common.errorHandle.partialSucceeded.tip', { num: exceptionCounts })}
+                </div>
+              </>
+            )
+          }
         </>
       )}
+      {
+        status === 'partial-succeeded' && !!exceptionCounts && (
+          <>
+            <div className='my-2 h-[0.5px] bg-divider-deep'/>
+            <div className='system-xs-medium text-text-warning'>
+              {t('workflow.nodes.common.errorHandle.partialSucceeded.tip', { num: exceptionCounts })}
+            </div>
+          </>
+        )
+      }
+      {
+        status === 'exception' && (
+          <>
+            <div className='my-2 h-[0.5px] bg-divider-deep'/>
+            <div className='system-xs-medium text-text-warning'>
+              {error}
+              <a
+                href='https://docs.dify.ai/guides/workflow/error-handling/error-type'
+                target='_blank'
+                className='text-text-accent'
+              >
+                {t('workflow.common.learnMore')}
+              </a>
+            </div>
+          </>
+        )
+      }
     </StatusContainer>
   )
 }

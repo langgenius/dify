@@ -3,9 +3,10 @@ import time
 from typing import Optional
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.tools.utils.rag_web_reader import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.dataset import Dataset, DocumentSegment
@@ -37,9 +38,22 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
         if segments:
             index_node_ids = [segment.index_node_id for segment in segments]
             index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-            index_processor.clean(dataset, index_node_ids)
+            index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
 
             for segment in segments:
+                image_upload_file_ids = get_image_upload_file_ids(segment.content)
+                for upload_file_id in image_upload_file_ids:
+                    image_file = db.session.query(UploadFile).filter(UploadFile.id == upload_file_id).first()
+                    if image_file is None:
+                        continue
+                    try:
+                        storage.delete(image_file.key)
+                    except Exception:
+                        logging.exception(
+                            "Delete image_files failed when storage deleted, \
+                                          image_upload_file_is: {}".format(upload_file_id)
+                        )
+                    db.session.delete(image_file)
                 db.session.delete(segment)
 
             db.session.commit()

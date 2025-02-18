@@ -34,12 +34,7 @@ class TemplateTransformNode(BaseNode[TemplateTransformNodeData]):
         for variable_selector in self.node_data.variables:
             variable_name = variable_selector.variable
             value = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
-            if value is None:
-                return NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.FAILED,
-                    error=f"Variable {variable_name} not found in variable pool",
-                )
-            variables[variable_name] = value.to_object()
+            variables[variable_name] = value.to_object() if value else None
         # Run code
         try:
             result = CodeExecutor.execute_workflow_code_template(

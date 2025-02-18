@@ -3,7 +3,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-from core.model_runtime.entities import ImagePromptMessageContent
+from core.model_runtime.entities import ImagePromptMessageContent, LLMMode
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.nodes.base import BaseNodeData
@@ -12,7 +12,7 @@ from core.workflow.nodes.base import BaseNodeData
 class ModelConfig(BaseModel):
     provider: str
     name: str
-    mode: str
+    mode: LLMMode
     completion_params: dict[str, Any] = {}
 
 
@@ -39,10 +39,18 @@ class VisionConfig(BaseModel):
 
 
 class PromptConfig(BaseModel):
-    jinja2_variables: Optional[list[VariableSelector]] = None
+    jinja2_variables: Sequence[VariableSelector] = Field(default_factory=list)
+
+    @field_validator("jinja2_variables", mode="before")
+    @classmethod
+    def convert_none_jinja2_variables(cls, v: Any):
+        if v is None:
+            return []
+        return v
 
 
 class LLMNodeChatModelMessage(ChatModelMessage):
+    text: str = ""
     jinja2_text: Optional[str] = None
 
 
@@ -53,7 +61,14 @@ class LLMNodeCompletionModelPromptTemplate(CompletionModelPromptTemplate):
 class LLMNodeData(BaseNodeData):
     model: ModelConfig
     prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
-    prompt_config: Optional[PromptConfig] = None
+    prompt_config: PromptConfig = Field(default_factory=PromptConfig)
     memory: Optional[MemoryConfig] = None
     context: ContextConfig
     vision: VisionConfig = Field(default_factory=VisionConfig)
+
+    @field_validator("prompt_config", mode="before")
+    @classmethod
+    def convert_none_prompt_config(cls, v: Any):
+        if v is None:
+            return PromptConfig()
+        return v

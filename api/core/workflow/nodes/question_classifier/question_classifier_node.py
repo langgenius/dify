@@ -1,7 +1,6 @@
 import json
-import logging
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import Any, Optional, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -24,6 +23,7 @@ from libs.json_in_md_parser import parse_and_check_json_markdown
 from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import QuestionClassifierNodeData
+from .exc import InvalidModelTypeError
 from .template_prompts import (
     QUESTION_CLASSIFIER_ASSISTANT_PROMPT_1,
     QUESTION_CLASSIFIER_ASSISTANT_PROMPT_2,
@@ -34,12 +34,9 @@ from .template_prompts import (
     QUESTION_CLASSIFIER_USER_PROMPT_3,
 )
 
-if TYPE_CHECKING:
-    from core.file import File
-
 
 class QuestionClassifierNode(LLMNode):
-    _node_data_cls = QuestionClassifierNodeData
+    _node_data_cls = QuestionClassifierNodeData  # type: ignore
     _node_type = NodeType.QUESTION_CLASSIFIER
 
     def _run(self):
@@ -61,7 +58,7 @@ class QuestionClassifierNode(LLMNode):
         node_data.instruction = node_data.instruction or ""
         node_data.instruction = variable_pool.convert_template(node_data.instruction).text
 
-        files: Sequence[File] = (
+        files = (
             self._fetch_files(
                 selector=node_data.vision.configs.variable_selector,
             )
@@ -84,35 +81,38 @@ class QuestionClassifierNode(LLMNode):
         )
         prompt_messages, stop = self._fetch_prompt_messages(
             prompt_template=prompt_template,
-            system_query=query,
+            sys_query=query,
             memory=memory,
             model_config=model_config,
-            files=files,
+            sys_files=files,
             vision_enabled=node_data.vision.enabled,
             vision_detail=node_data.vision.configs.detail,
-        )
-
-        # handle invoke result
-        generator = self._invoke_llm(
-            node_data_model=node_data.model,
-            model_instance=model_instance,
-            prompt_messages=prompt_messages,
-            stop=stop,
+            variable_pool=variable_pool,
+            jinja2_variables=[],
         )
 
         result_text = ""
         usage = LLMUsage.empty_usage()
         finish_reason = None
-        for event in generator:
-            if isinstance(event, ModelInvokeCompletedEvent):
-                result_text = event.text
-                usage = event.usage
-                finish_reason = event.finish_reason
-                break
 
-        category_name = node_data.classes[0].name
-        category_id = node_data.classes[0].id
         try:
+            # handle invoke result
+            generator = self._invoke_llm(
+                node_data_model=node_data.model,
+                model_instance=model_instance,
+                prompt_messages=prompt_messages,
+                stop=stop,
+            )
+
+            for event in generator:
+                if isinstance(event, ModelInvokeCompletedEvent):
+                    result_text = event.text
+                    usage = event.usage
+                    finish_reason = event.finish_reason
+                    break
+
+            category_name = node_data.classes[0].name
+            category_id = node_data.classes[0].id
             result_text_json = parse_and_check_json_markdown(result_text, [])
             # result_text_json = json.loads(result_text.strip('```JSON\n'))
             if "category_name" in result_text_json and "category_id" in result_text_json:
@@ -123,10 +123,6 @@ class QuestionClassifierNode(LLMNode):
                 if category_id_result in category_ids:
                     category_name = classes_map[category_id_result]
                     category_id = category_id_result
-
-        except Exception:
-            logging.error(f"Failed to parse result text: {result_text}")
-        try:
             process_data = {
                 "model_mode": model_config.mode,
                 "prompts": PromptMessageUtil.prompt_messages_to_prompt_for_saving(
@@ -135,7 +131,7 @@ class QuestionClassifierNode(LLMNode):
                 "usage": jsonable_encoder(usage),
                 "finish_reason": finish_reason,
             }
-            outputs = {"class_name": category_name}
+            outputs = {"class_name": category_name, "class_id": category_id}
 
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -150,7 +146,6 @@ class QuestionClassifierNode(LLMNode):
                 },
                 llm_usage=usage,
             )
-
         except ValueError as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
@@ -170,7 +165,7 @@ class QuestionClassifierNode(LLMNode):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: QuestionClassifierNodeData,
+        node_data: Any,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -179,6 +174,7 @@ class QuestionClassifierNode(LLMNode):
         :param node_data: node data
         :return:
         """
+        node_data = cast(QuestionClassifierNodeData, node_data)
         variable_mapping = {"query": node_data.query_variable_selector}
         variable_selectors = []
         if node_data.instruction:
@@ -309,4 +305,4 @@ class QuestionClassifierNode(LLMNode):
             )
 
         else:
-            raise ValueError(f"Model mode {model_mode} not support.")
+            raise InvalidModelTypeError(f"Model mode {model_mode} not support.")

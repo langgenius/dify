@@ -1,10 +1,12 @@
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Optional
 
 import requests
 from flask import current_app, redirect, request
-from flask_restful import Resource
+from flask_restful import Resource  # type: ignore
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
@@ -16,7 +18,7 @@ from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models import Account
 from models.account import AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
-from services.errors.account import AccountNotFoundError
+from services.errors.account import AccountNotFoundError, AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
 from services.feature_service import FeatureService
 
@@ -52,7 +54,6 @@ class OAuthLogin(Resource):
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
-            print(vars(oauth_provider))
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
 
@@ -77,8 +78,9 @@ class OAuthCallback(Resource):
         try:
             token = oauth_provider.get_access_token(code)
             user_info = oauth_provider.get_user_info(token)
-        except requests.exceptions.HTTPError as e:
-            logging.exception(f"An error occurred during the OAuth process with {provider}: {e.response.text}")
+        except requests.exceptions.RequestException as e:
+            error_text = e.response.text if e.response else str(e)
+            logging.exception(f"An error occurred during the OAuth process with {provider}: {error_text}")
             return {"error": "OAuth process failed"}, 400
 
         if invite_token and RegisterService.is_valid_invite_token(invite_token):
@@ -99,6 +101,8 @@ class OAuthCallback(Resource):
                 f"{dify_config.CONSOLE_WEB_URL}/signin"
                 "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
             )
+        except AccountRegisterError as e:
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={e.description}")
 
         # Check account status
         if account.status == AccountStatus.BANNED.value:
@@ -106,7 +110,7 @@ class OAuthCallback(Resource):
 
         if account.status == AccountStatus.PENDING.value:
             account.status = AccountStatus.ACTIVE.value
-            account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            account.initialized_at = datetime.now(UTC).replace(tzinfo=None)
             db.session.commit()
 
         try:
@@ -130,10 +134,11 @@ class OAuthCallback(Resource):
 
 
 def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> Optional[Account]:
-    account = Account.get_by_openid(provider, user_info.id)
+    account: Optional[Account] = Account.get_by_openid(provider, user_info.id)
 
     if not account:
-        account = Account.query.filter_by(email=user_info.email).first()
+        with Session(db.engine) as session:
+            account = session.execute(select(Account).filter_by(email=user_info.email)).scalar_one_or_none()
 
     return account
 

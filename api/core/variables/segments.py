@@ -118,11 +118,11 @@ class FileSegment(Segment):
 
     @property
     def log(self) -> str:
-        return str(self.value)
+        return ""
 
     @property
     def text(self) -> str:
-        return str(self.value)
+        return ""
 
 
 class ArrayAnySegment(ArraySegment):
@@ -133,6 +133,10 @@ class ArrayAnySegment(ArraySegment):
 class ArrayStringSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_STRING
     value: Sequence[str]
+
+    @property
+    def text(self) -> str:
+        return json.dumps(self.value)
 
 
 class ArrayNumberSegment(ArraySegment):
@@ -155,3 +159,11 @@ class ArrayFileSegment(ArraySegment):
         for item in self.value:
             items.append(item.markdown)
         return "\n".join(items)
+
+    @property
+    def log(self) -> str:
+        return ""
+
+    @property
+    def text(self) -> str:
+        return ""

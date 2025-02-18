@@ -5,9 +5,9 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from constants import UUID_NIL
-from core.app.app_config.entities import AppConfig, EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
+from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
-from core.file.models import File
+from core.file import File, FileUploadConfig
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.ops.ops_trace_manager import TraceQueueManager
 
@@ -79,7 +79,8 @@ class AppGenerateEntity(BaseModel):
     task_id: str
 
     # app config
-    app_config: AppConfig
+    app_config: Any
+    file_upload_config: Optional[FileUploadConfig] = None
 
     inputs: Mapping[str, Any]
     files: Sequence[File]
@@ -182,7 +183,7 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
         """
 
         node_id: str
-        inputs: dict
+        inputs: Mapping
 
     single_iteration_run: Optional[SingleIterationRunEntity] = None
 
@@ -194,7 +195,7 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
 
     # app config
     app_config: WorkflowUIBasedAppConfig
-    workflow_run_id: Optional[str] = None
+    workflow_run_id: str
 
     class SingleIterationRunEntity(BaseModel):
         """

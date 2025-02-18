@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -21,15 +21,15 @@ class ImageConfig(BaseModel):
     detail: ImagePromptMessageContent.DETAIL | None = None
 
 
-class FileExtraConfig(BaseModel):
+class FileUploadConfig(BaseModel):
     """
     File Upload Entity.
     """
 
     image_config: Optional[ImageConfig] = None
     allowed_file_types: Sequence[FileType] = Field(default_factory=list)
-    allowed_extensions: Sequence[str] = Field(default_factory=list)
-    allowed_upload_methods: Sequence[FileTransferMethod] = Field(default_factory=list)
+    allowed_file_extensions: Sequence[str] = Field(default_factory=list)
+    allowed_file_upload_methods: Sequence[FileTransferMethod] = Field(default_factory=list)
     number_limits: int = 0
 
 
@@ -46,7 +46,38 @@ class File(BaseModel):
     extension: Optional[str] = Field(default=None, description="File extension, should contains dot")
     mime_type: Optional[str] = None
     size: int = -1
-    _extra_config: FileExtraConfig | None = None
+
+    # Those properties are private, should not be exposed to the outside.
+    _storage_key: str
+
+    def __init__(
+        self,
+        *,
+        id: Optional[str] = None,
+        tenant_id: str,
+        type: FileType,
+        transfer_method: FileTransferMethod,
+        remote_url: Optional[str] = None,
+        related_id: Optional[str] = None,
+        filename: Optional[str] = None,
+        extension: Optional[str] = None,
+        mime_type: Optional[str] = None,
+        size: int = -1,
+        storage_key: str,
+    ):
+        super().__init__(
+            id=id,
+            tenant_id=tenant_id,
+            type=type,
+            transfer_method=transfer_method,
+            remote_url=remote_url,
+            related_id=related_id,
+            filename=filename,
+            extension=extension,
+            mime_type=mime_type,
+            size=size,
+        )
+        self._storage_key = storage_key
 
     def to_dict(self) -> Mapping[str, str | int | None]:
         data = self.model_dump(mode="json")
@@ -59,7 +90,7 @@ class File(BaseModel):
     def markdown(self) -> str:
         url = self.generate_url()
         if self.type == FileType.IMAGE:
-            text = f'![{self.filename or ""}]({url})'
+            text = f"![{self.filename or ''}]({url})"
         else:
             text = f"[{self.filename or url}]({url})"
 
@@ -93,6 +124,17 @@ class File(BaseModel):
                     tool_file_id=self.related_id, extension=self.extension
                 )
 
+    def to_plugin_parameter(self) -> dict[str, Any]:
+        return {
+            "dify_model_identity": FILE_MODEL_IDENTITY,
+            "mime_type": self.mime_type,
+            "filename": self.filename,
+            "extension": self.extension,
+            "size": self.size,
+            "type": self.type,
+            "url": self.generate_url(),
+        }
+
     @model_validator(mode="after")
     def validate_after(self):
         match self.transfer_method:
@@ -107,34 +149,4 @@ class File(BaseModel):
             case FileTransferMethod.TOOL_FILE:
                 if not self.related_id:
                     raise ValueError("Missing file related_id")
-
-        # Validate the extra config.
-        if not self._extra_config:
-            return self
-
-        if self._extra_config.allowed_file_types:
-            if self.type not in self._extra_config.allowed_file_types and self.type != FileType.CUSTOM:
-                raise ValueError(f"Invalid file type: {self.type}")
-
-        if self._extra_config.allowed_extensions and self.extension not in self._extra_config.allowed_extensions:
-            raise ValueError(f"Invalid file extension: {self.extension}")
-
-        if (
-            self._extra_config.allowed_upload_methods
-            and self.transfer_method not in self._extra_config.allowed_upload_methods
-        ):
-            raise ValueError(f"Invalid transfer method: {self.transfer_method}")
-
-        match self.type:
-            case FileType.IMAGE:
-                # NOTE: This part of validation is deprecated, but still used in app features "Image Upload".
-                if not self._extra_config.image_config:
-                    return self
-                # TODO: skip check if transfer_methods is empty, because many test cases are not setting this field
-                if (
-                    self._extra_config.image_config.transfer_methods
-                    and self.transfer_method not in self._extra_config.image_config.transfer_methods
-                ):
-                    raise ValueError(f"Invalid transfer method: {self.transfer_method}")
-
         return self

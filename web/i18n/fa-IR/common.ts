@@ -42,6 +42,15 @@ const translation = {
     copyImage: 'کپی تصویر',
     openInNewTab: 'باز کردن در برگه جدید',
     zoomOut: 'کوچک نمایی',
+    close: 'نزدیک',
+    regenerate: 'بازسازی',
+    view: 'مشاهده',
+    viewMore: 'بیشتر ببینید',
+    saveAndRegenerate: 'ذخیره و بازسازی تکه های فرزند',
+    submit: 'ارسال',
+    skip: 'کشتی',
+    imageCopied: 'تصویر کپی شده',
+    deleteApp: 'حذف برنامه',
   },
   errorMsg: {
     fieldRequired: '{{field}} الزامی است',
@@ -178,6 +187,18 @@ const translation = {
     account: 'حساب',
     myAccount: 'حساب من',
     studio: 'استودیو Dify',
+    feedbackTitle: 'بازخورد',
+    verificationPlaceholder: 'کد 6 رقمی را جایگذاری کنید',
+    deletePlaceholder: 'لطفا ایمیل خود را وارد کنید',
+    permanentlyDeleteButton: 'حذف دائمی حساب',
+    verificationLabel: 'کد تأیید',
+    feedbackPlaceholder: 'اختیاری',
+    sendVerificationButton: 'ارسال کد تأیید',
+    deletePrivacyLink: 'سیاست حفظ حریم خصوصی.',
+    deleteLabel: 'برای تایید، لطفا ایمیل خود را در زیر تایپ کنید',
+    deleteSuccessTip: 'حساب شما برای پایان دادن به حذف به زمان نیاز دارد. وقتی همه چیز تمام شد به شما ایمیل خواهیم زد.',
+    deletePrivacyLinkTip: 'برای کسب اطلاعات بیشتر در مورد نحوه مدیریت داده های شما، لطفا به ما مراجعه کنید',
+    feedbackLabel: 'به ما بگویید چرا حساب خود را حذف کرده اید؟',
   },
   members: {
     team: 'تیم',
@@ -199,6 +220,7 @@ const translation = {
     datasetOperatorTip: 'فقط می‌تواند پایگاه دانش را مدیریت کند',
     inviteTeamMember: 'افزودن عضو تیم',
     inviteTeamMemberTip: 'آنها می‌توانند پس از ورود به سیستم، مستقیماً به داده‌های تیم شما دسترسی پیدا کنند.',
+    emailNotSetup: 'سرور ایمیل راه‌اندازی نشده است، بنابراین ایمیل‌های دعوت نمی‌توانند ارسال شوند. لطفاً کاربران را از لینک دعوت که پس از دعوت صادر خواهد شد مطلع کنید。',
     email: 'ایمیل',
     emailInvalid: 'فرمت ایمیل نامعتبر است',
     emailPlaceholder: 'لطفاً ایمیل‌ها را وارد کنید',
@@ -269,6 +291,7 @@ const translation = {
       usedUp: 'سهمیه آزمایشی تمام شده است. ارائه‌دهنده مدل خود را اضافه کنید.',
       useYourModel: 'در حال حاضر از ارائه‌دهنده مدل خود استفاده می‌کنید.',
       close: 'بستن',
+      trialQuotaTip: 'سهمیه آزمایشی Anthropic شما در تاریخ 2025/03/11 منقضی می شود و پس از آن دیگر در دسترس نخواهد بود. لطفا به موقع از آن استفاده کنید.',
     },
     anthropic: {
       using: 'قابلیت تعبیه از این استفاده می‌کند',
@@ -477,6 +500,7 @@ const translation = {
     emptyTip: 'دانش مرتبط نشده است، لطفاً به برنامه یا افزونه بروید تا ارتباط را کامل کنید.',
     viewDoc: 'مشاهده مستندات',
     relatedApp: 'برنامه‌های مرتبط',
+    noRelatedApp: 'هیچ برنامه پیوندی وجود ندارد',
   },
   voiceInput: {
     speaking: 'اکنون صحبت کنید...',
@@ -590,6 +614,13 @@ const translation = {
     uploadFromComputerUploadError: 'آپلود فایل انجام نشد، لطفا دوباره آپلود کنید.',
     pasteFileLink: 'پیوند فایل را جایگذاری کنید',
     uploadFromComputerLimit: 'آپلود فایل نمی تواند از {{size}} تجاوز کند',
+  },
+  license: {
+    expiring_plural: 'انقضا در {{count}} روز',
+    expiring: 'انقضا در یک روز',
+  },
+  pagination: {
+    perPage: 'موارد در هر صفحه',
   },
 }
 

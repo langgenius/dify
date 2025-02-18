@@ -94,7 +94,6 @@ const JinaReader: FC<Props> = ({
   const waitForCrawlFinished = useCallback(async (jobId: string) => {
     try {
       const res = await checkJinaReaderTaskStatus(jobId) as any
-      console.log('res', res)
       if (res.status === 'completed') {
         return {
           isError: false,

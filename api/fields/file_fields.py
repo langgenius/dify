@@ -1,4 +1,4 @@
-from flask_restful import fields
+from flask_restful import fields  # type: ignore
 
 from libs.helper import TimestampField
 
@@ -8,6 +8,7 @@ upload_config_fields = {
     "image_file_size_limit": fields.Integer,
     "video_file_size_limit": fields.Integer,
     "audio_file_size_limit": fields.Integer,
+    "workflow_file_upload_limit": fields.Integer,
 }
 
 file_fields = {

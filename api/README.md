@@ -18,12 +18,17 @@
    ```
 
 2. Copy `.env.example` to `.env`
+
+   ```cli
+   cp .env.example .env 
+   ```
 3. Generate a `SECRET_KEY` in the `.env` file.
 
+   bash for Linux
    ```bash for Linux
    sed -i "/^SECRET_KEY=/c\SECRET_KEY=$(openssl rand -base64 42)" .env
    ```
-
+   bash for Mac
    ```bash for Mac
    secret_key=$(openssl rand -base64 42)
    sed -i '' "/^SECRET_KEY=/c\\
@@ -32,21 +37,19 @@
 
 4. Create environment.
 
-   Dify API service uses [Poetry](https://python-poetry.org/docs/) to manage dependencies. You can execute `poetry shell` to activate the environment.
+   Dify API service uses [Poetry](https://python-poetry.org/docs/) to manage dependencies. First, you need to add the poetry shell plugin, if you don't have it already, in order to run in a virtual environment. [Note: Poetry shell is no longer a native command so you need to install the poetry plugin beforehand]
+
+   ```bash
+   poetry self add poetry-plugin-shell
+   ```
+   
+   Then, You can execute `poetry shell` to activate the environment.
 
 5. Install dependencies
 
    ```bash
-   poetry env use 3.10
+   poetry env use 3.12
    poetry install
-   ```
-
-   In case of contributors missing to update dependencies for `pyproject.toml`, you can perform the following shell instead.
-
-   ```bash
-   poetry shell                                               # activate current environment
-   poetry add $(cat requirements.txt)           # install dependencies of production and update pyproject.toml
-   poetry add $(cat requirements-dev.txt) --group dev    # install dependencies of development and update pyproject.toml
    ```
 
 6. Run migrate
@@ -76,13 +79,11 @@
 1. Install dependencies for both the backend and the test environment
 
    ```bash
-   poetry install --with dev
+   poetry install -C api --with dev
    ```
 
 2. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`
 
    ```bash
-   cd ../
-   poetry run -C api bash dev/pytest/pytest_all_tests.sh
+   poetry run -P api bash dev/pytest/pytest_all_tests.sh
    ```
-

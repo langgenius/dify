@@ -2,7 +2,7 @@ import { BlockEnum, VarType } from '../../types'
 import type { NodeDefault } from '../../types'
 import { comparisonOperatorNotRequireValue } from '../if-else/utils'
 import { type ListFilterNodeType, OrderBy } from './types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
+import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 const i18nPrefix = 'workflow.errorMsg'
 
 const nodeDefault: NodeDefault<ListFilterNodeType> = {
@@ -11,6 +11,10 @@ const nodeDefault: NodeDefault<ListFilterNodeType> = {
     filter_by: {
       enabled: false,
       conditions: [],
+    },
+    extract_by: {
+      enabled: false,
+      serial: '1',
     },
     order_by: {
       enabled: false,

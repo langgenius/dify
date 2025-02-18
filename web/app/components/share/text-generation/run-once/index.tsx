@@ -1,5 +1,5 @@
 import type { FC, FormEvent } from 'react'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PlayIcon,
@@ -19,6 +19,7 @@ export type IRunOnceProps = {
   siteInfo: SiteInfo
   promptConfig: PromptConfig
   inputs: Record<string, any>
+  inputsRef: React.MutableRefObject<Record<string, any>>
   onInputsChange: (inputs: Record<string, any>) => void
   onSend: () => void
   visionConfig: VisionSettings
@@ -27,6 +28,7 @@ export type IRunOnceProps = {
 const RunOnce: FC<IRunOnceProps> = ({
   promptConfig,
   inputs,
+  inputsRef,
   onInputsChange,
   onSend,
   visionConfig,
@@ -47,6 +49,11 @@ const RunOnce: FC<IRunOnceProps> = ({
     onSend()
   }
 
+  const handleInputsChange = useCallback((newInputs: Record<string, any>) => {
+    onInputsChange(newInputs)
+    inputsRef.current = newInputs
+  }, [onInputsChange, inputsRef])
+
   return (
     <div className="">
       <section>
@@ -60,7 +67,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                   <Select
                     className='w-full'
                     defaultValue={inputs[item.key]}
-                    onSelect={(i) => { onInputsChange({ ...inputs, [item.key]: i.value }) }}
+                    onSelect={(i) => { handleInputsChange({ ...inputsRef.current, [item.key]: i.value }) }}
                     items={(item.options || []).map(i => ({ name: i, value: i }))}
                     allowSearch={false}
                     bgClassName='bg-gray-50'
@@ -72,7 +79,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                     className="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 "
                     placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
                     value={inputs[item.key]}
-                    onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
+                    onChange={(e) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
                     maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
                   />
                 )}
@@ -81,7 +88,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                     className='h-[104px] sm:text-xs'
                     placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
                     value={inputs[item.key]}
-                    onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
+                    onChange={(e) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
                   />
                 )}
                 {item.type === 'number' && (
@@ -90,12 +97,12 @@ const RunOnce: FC<IRunOnceProps> = ({
                     className="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 "
                     placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
                     value={inputs[item.key]}
-                    onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
+                    onChange={(e) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
                   />
                 )}
                 {item.type === 'file' && (
                   <FileUploaderInAttachmentWrapper
-                    onChange={(files) => { onInputsChange({ ...inputs, [item.key]: getProcessedFiles(files)[0] }) }}
+                    onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files)[0] }) }}
                     fileConfig={{
                       ...item.config,
                       fileUploadConfig: (visionConfig as any).fileUploadConfig,
@@ -104,7 +111,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                 )}
                 {item.type === 'file-list' && (
                   <FileUploaderInAttachmentWrapper
-                    onChange={(files) => { onInputsChange({ ...inputs, [item.key]: getProcessedFiles(files) }) }}
+                    onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files) }) }}
                     fileConfig={{
                       ...item.config,
                       fileUploadConfig: (visionConfig as any).fileUploadConfig,

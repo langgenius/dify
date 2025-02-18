@@ -42,6 +42,15 @@ const translation = {
     zoomOut: 'Thu nhỏ',
     zoomIn: 'Phóng to',
     openInNewTab: 'Mở trong tab mới',
+    regenerate: 'Tái tạo',
+    close: 'Đóng',
+    saveAndRegenerate: 'Lưu và tạo lại các phần con',
+    view: 'Cảnh',
+    viewMore: 'XEM THÊM',
+    submit: 'Trình',
+    skip: 'Tàu',
+    imageCopied: 'Hình ảnh sao chép',
+    deleteApp: 'Xóa ứng dụng',
   },
   placeholder: {
     input: 'Vui lòng nhập',
@@ -174,6 +183,18 @@ const translation = {
     studio: 'Dify Studio',
     myAccount: 'Tài khoản của tôi',
     account: 'Tài khoản',
+    deletePrivacyLinkTip: 'Để biết thêm thông tin về cách chúng tôi xử lý dữ liệu của bạn, vui lòng xem',
+    deletePrivacyLink: 'Chính sách bảo mật.',
+    deleteSuccessTip: 'Tài khoản của bạn cần thời gian để xóa xong. Chúng tôi sẽ gửi email cho bạn khi tất cả hoàn tất.',
+    deleteLabel: 'Để xác nhận, vui lòng nhập email của bạn bên dưới',
+    deletePlaceholder: 'Vui lòng nhập email của bạn',
+    sendVerificationButton: 'Gửi mã xác minh',
+    verificationLabel: 'Mã xác minh',
+    verificationPlaceholder: 'Dán mã gồm 6 chữ số',
+    permanentlyDeleteButton: 'Xóa vĩnh viễn tài khoản',
+    feedbackTitle: 'Phản hồi',
+    feedbackLabel: 'Hãy cho chúng tôi biết lý do tại sao bạn xóa tài khoản của mình?',
+    feedbackPlaceholder: 'Tùy chọn',
   },
   members: {
     team: 'Nhóm',
@@ -191,6 +212,7 @@ const translation = {
     editorTip: 'Có thể xây dựng ứng dụng, không thể quản lý cài đặt nhóm',
     inviteTeamMember: 'Mời thành viên nhóm',
     inviteTeamMemberTip: 'Sau khi đăng nhập, họ có thể truy cập trực tiếp vào dữ liệu nhóm của bạn.',
+    emailNotSetup: 'Máy chủ email chưa được thiết lập, vì vậy không thể gửi email mời. Vui lòng thông báo cho người dùng về liên kết mời sẽ được phát hành sau khi mời.',
     email: 'Email',
     emailInvalid: 'Định dạng Email không hợp lệ',
     emailPlaceholder: 'Vui lòng nhập email',
@@ -265,6 +287,7 @@ const translation = {
       usedUp: 'Quota dùng thử đã hết. Thêm nhà cung cấp Mô hình của riêng bạn.',
       useYourModel: 'Hiện đang sử dụng nhà cung cấp Mô hình của riêng bạn.',
       close: 'Đóng',
+      trialQuotaTip: 'Hạn ngạch dùng thử Anthropic của bạn sẽ hết hạn vào 2025/03/11 và sẽ không còn khả dụng sau đó. Vui lòng sử dụng nó kịp thời.',
     },
     anthropic: {
       using: 'Khả năng nhúng đang sử dụng',
@@ -473,6 +496,7 @@ const translation = {
     emptyTip: 'Kiến thức chưa được liên kết, vui lòng đi đến ứng dụng hoặc plug-in để hoàn thành liên kết.',
     viewDoc: 'Xem tài liệu',
     relatedApp: 'các ứng dụng liên kết',
+    noRelatedApp: 'Không có ứng dụng được liên kết',
   },
   voiceInput: {
     speaking: 'Hãy nói...',
@@ -590,6 +614,13 @@ const translation = {
     pasteFileLinkInvalid: 'Liên kết tệp không hợp lệ',
     uploadFromComputerUploadError: 'Tải lên tệp không thành công, vui lòng tải lên lại.',
     uploadFromComputerReadError: 'Đọc tệp không thành công, vui lòng thử lại.',
+  },
+  license: {
+    expiring_plural: 'Hết hạn sau {{count}} ngày',
+    expiring: 'Hết hạn trong một ngày',
+  },
+  pagination: {
+    perPage: 'Mục trên mỗi trang',
   },
 }
 

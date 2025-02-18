@@ -18,6 +18,15 @@ from .entities import (
     HttpRequestNodeTimeout,
     Response,
 )
+from .exc import (
+    AuthorizationConfigError,
+    FileFetchError,
+    HttpRequestNodeError,
+    InvalidHttpMethodError,
+    InvalidURLError,
+    RequestBodyError,
+    ResponseSizeError,
+)
 
 BODY_TYPE_TO_CONTENT_TYPE = {
     "json": "application/json",
@@ -28,9 +37,24 @@ BODY_TYPE_TO_CONTENT_TYPE = {
 
 
 class Executor:
-    method: Literal["get", "head", "post", "put", "delete", "patch"]
+    method: Literal[
+        "get",
+        "head",
+        "post",
+        "put",
+        "delete",
+        "patch",
+        "options",
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "HEAD",
+        "OPTIONS",
+    ]
     url: str
-    params: Mapping[str, str] | None
+    params: list[tuple[str, str]] | None
     content: str | bytes | None
     data: Mapping[str, Any] | None
     files: Mapping[str, tuple[str | None, bytes, str]] | None
@@ -38,6 +62,7 @@ class Executor:
     headers: dict[str, str]
     auth: HttpRequestNodeAuthorization
     timeout: HttpRequestNodeTimeout
+    max_retries: int
 
     boundary: str
 
@@ -47,11 +72,12 @@ class Executor:
         node_data: HttpRequestNodeData,
         timeout: HttpRequestNodeTimeout,
         variable_pool: VariablePool,
+        max_retries: int = dify_config.SSRF_DEFAULT_MAX_RETRIES,
     ):
         # If authorization API key is present, convert the API key using the variable pool
         if node_data.authorization.type == "api-key":
             if node_data.authorization.config is None:
-                raise ValueError("authorization config is required")
+                raise AuthorizationConfigError("authorization config is required")
             node_data.authorization.config.api_key = variable_pool.convert_template(
                 node_data.authorization.config.api_key
             ).text
@@ -60,12 +86,13 @@ class Executor:
         self.method = node_data.method
         self.auth = node_data.authorization
         self.timeout = timeout
-        self.params = {}
+        self.params = []
         self.headers = {}
         self.content = None
         self.files = None
         self.data = None
         self.json = None
+        self.max_retries = max_retries
 
         # init template
         self.variable_pool = variable_pool
@@ -81,22 +108,55 @@ class Executor:
     def _init_url(self):
         self.url = self.variable_pool.convert_template(self.node_data.url).text
 
+        # check if url is a valid URL
+        if not self.url:
+            raise InvalidURLError("url is required")
+        if not self.url.startswith(("http://", "https://")):
+            raise InvalidURLError("url should start with http:// or https://")
+
     def _init_params(self):
-        params = self.variable_pool.convert_template(self.node_data.params).text
-        self.params = _plain_text_to_dict(params)
+        """
+        Almost same as _init_headers(), difference:
+        1. response a list tuple to support same key, like 'aa=1&aa=2'
+        2. param value may have '\n', we need to splitlines then extract the variable value.
+        """
+        result = []
+        for line in self.node_data.params.splitlines():
+            if not (line := line.strip()):
+                continue
+
+            key, *value = line.split(":", 1)
+            if not (key := key.strip()):
+                continue
+
+            value_str = value[0].strip() if value else ""
+            result.append(
+                (self.variable_pool.convert_template(key).text, self.variable_pool.convert_template(value_str).text)
+            )
+
+        self.params = result
 
     def _init_headers(self):
-        headers = self.variable_pool.convert_template(self.node_data.headers).text
-        self.headers = _plain_text_to_dict(headers)
+        """
+        Convert the header string of frontend to a dictionary.
 
-        body = self.node_data.body
-        if body is None:
-            return
-        if "content-type" not in (k.lower() for k in self.headers) and body.type in BODY_TYPE_TO_CONTENT_TYPE:
-            self.headers["Content-Type"] = BODY_TYPE_TO_CONTENT_TYPE[body.type]
-        if body.type == "form-data":
-            self.boundary = f"----WebKitFormBoundary{_generate_random_string(16)}"
-            self.headers["Content-Type"] = f"multipart/form-data; boundary={self.boundary}"
+        Each line in the header string represents a key-value pair.
+        Keys and values are separated by ':'.
+        Empty values are allowed.
+
+        Examples:
+            'aa:bb\n cc:dd'  -> {'aa': 'bb', 'cc': 'dd'}
+            'aa:\n cc:dd\n'  -> {'aa': '', 'cc': 'dd'}
+            'aa\n cc : dd'   -> {'aa': '', 'cc': 'dd'}
+
+        """
+        headers = self.variable_pool.convert_template(self.node_data.headers).text
+        self.headers = {
+            key.strip(): (value[0].strip() if value else "")
+            for line in headers.splitlines()
+            if line.strip()
+            for key, *value in [line.split(":", 1)]
+        }
 
     def _init_body(self):
         body = self.node_data.body
@@ -106,17 +166,26 @@ class Executor:
                 case "none":
                     self.content = ""
                 case "raw-text":
+                    if len(data) != 1:
+                        raise RequestBodyError("raw-text body type should have exactly one item")
                     self.content = self.variable_pool.convert_template(data[0].value).text
                 case "json":
+                    if len(data) != 1:
+                        raise RequestBodyError("json body type should have exactly one item")
                     json_string = self.variable_pool.convert_template(data[0].value).text
-                    json_object = json.loads(json_string)
+                    try:
+                        json_object = json.loads(json_string, strict=False)
+                    except json.JSONDecodeError as e:
+                        raise RequestBodyError(f"Failed to parse JSON: {json_string}") from e
                     self.json = json_object
                     # self.json = self._parse_object_contains_variables(json_object)
                 case "binary":
+                    if len(data) != 1:
+                        raise RequestBodyError("binary body type should have exactly one item")
                     file_selector = data[0].file
                     file_variable = self.variable_pool.get_file(file_selector)
                     if file_variable is None:
-                        raise ValueError(f"cannot fetch file with selector {file_selector}")
+                        raise FileFetchError(f"cannot fetch file with selector {file_selector}")
                     file = file_variable.value
                     self.content = file_manager.download(file)
                 case "x-www-form-urlencoded":
@@ -138,29 +207,29 @@ class Executor:
                         self.variable_pool.convert_template(item.key).text: item.file
                         for item in filter(lambda item: item.type == "file", data)
                     }
+                    files: dict[str, Any] = {}
                     files = {k: self.variable_pool.get_file(selector) for k, selector in file_selectors.items()}
                     files = {k: v for k, v in files.items() if v is not None}
-                    files = {k: variable.value for k, variable in files.items()}
+                    files = {k: variable.value for k, variable in files.items() if variable is not None}
                     files = {
                         k: (v.filename, file_manager.download(v), v.mime_type or "application/octet-stream")
                         for k, v in files.items()
                         if v.related_id is not None
                     }
-
                     self.data = form_data
-                    self.files = files
+                    self.files = files or None
 
     def _assembling_headers(self) -> dict[str, Any]:
         authorization = deepcopy(self.auth)
         headers = deepcopy(self.headers) or {}
         if self.auth.type == "api-key":
             if self.auth.config is None:
-                raise ValueError("self.authorization config is required")
+                raise AuthorizationConfigError("self.authorization config is required")
             if authorization.config is None:
-                raise ValueError("authorization config is required")
+                raise AuthorizationConfigError("authorization config is required")
 
             if self.auth.config.api_key is None:
-                raise ValueError("api_key is required")
+                raise AuthorizationConfigError("api_key is required")
 
             if not authorization.config.header:
                 authorization.config.header = "Authorization"
@@ -183,10 +252,10 @@ class Executor:
             else dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE
         )
         if executor_response.size > threshold_size:
-            raise ValueError(
-                f'{"File" if executor_response.is_file else "Text"} size is too large,'
-                f' max size is {threshold_size / 1024 / 1024:.2f} MB,'
-                f' but current size is {executor_response.readable_size}.'
+            raise ResponseSizeError(
+                f"{'File' if executor_response.is_file else 'Text'} size is too large,"
+                f" max size is {threshold_size / 1024 / 1024:.2f} MB,"
+                f" but current size is {executor_response.readable_size}."
             )
 
         return executor_response
@@ -195,8 +264,23 @@ class Executor:
         """
         do http request depending on api bundle
         """
-        if self.method not in {"get", "head", "post", "put", "delete", "patch"}:
-            raise ValueError(f"Invalid http method {self.method}")
+        if self.method not in {
+            "get",
+            "head",
+            "post",
+            "put",
+            "delete",
+            "patch",
+            "options",
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "HEAD",
+            "OPTIONS",
+        }:
+            raise InvalidHttpMethodError(f"Invalid http method {self.method}")
 
         request_args = {
             "url": self.url,
@@ -208,10 +292,15 @@ class Executor:
             "params": self.params,
             "timeout": (self.timeout.connect, self.timeout.read, self.timeout.write),
             "follow_redirects": True,
+            "max_retries": self.max_retries,
         }
-
-        response = getattr(ssrf_proxy, self.method)(**request_args)
-        return response
+        # request_args = {k: v for k, v in request_args.items() if v is not None}
+        try:
+            response = getattr(ssrf_proxy, self.method.lower())(**request_args)
+        except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
+            raise HttpRequestNodeError(str(e))
+        # FIXME: fix type ignore, this maybe httpx type issue
+        return response  # type: ignore
 
     def invoke(self) -> Response:
         # assemble headers
@@ -236,76 +325,56 @@ class Executor:
         raw += f"Host: {url_parts.netloc}\r\n"
 
         headers = self._assembling_headers()
+        body = self.node_data.body
+        boundary = f"----WebKitFormBoundary{_generate_random_string(16)}"
+        if body:
+            if "content-type" not in (k.lower() for k in self.headers) and body.type in BODY_TYPE_TO_CONTENT_TYPE:
+                headers["Content-Type"] = BODY_TYPE_TO_CONTENT_TYPE[body.type]
+            if body.type == "form-data":
+                headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
         for k, v in headers.items():
             if self.auth.type == "api-key":
                 authorization_header = "Authorization"
                 if self.auth.config and self.auth.config.header:
                     authorization_header = self.auth.config.header
                 if k.lower() == authorization_header.lower():
-                    raw += f'{k}: {"*" * len(v)}\r\n'
+                    raw += f"{k}: {'*' * len(v)}\r\n"
                     continue
             raw += f"{k}: {v}\r\n"
 
-        body = ""
+        body_string = ""
         if self.files:
-            boundary = self.boundary
             for k, v in self.files.items():
-                body += f"--{boundary}\r\n"
-                body += f'Content-Disposition: form-data; name="{k}"\r\n\r\n'
-                body += f"{v[1]}\r\n"
-            body += f"--{boundary}--\r\n"
+                body_string += f"--{boundary}\r\n"
+                body_string += f'Content-Disposition: form-data; name="{k}"\r\n\r\n'
+                body_string += f"{v[1]}\r\n"
+            body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
             if self.content:
                 if isinstance(self.content, str):
-                    body = self.content
+                    body_string = self.content
                 elif isinstance(self.content, bytes):
-                    body = self.content.decode("utf-8", errors="replace")
+                    body_string = self.content.decode("utf-8", errors="replace")
             elif self.data and self.node_data.body.type == "x-www-form-urlencoded":
-                body = urlencode(self.data)
+                body_string = urlencode(self.data)
             elif self.data and self.node_data.body.type == "form-data":
-                boundary = self.boundary
                 for key, value in self.data.items():
-                    body += f"--{boundary}\r\n"
-                    body += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
-                    body += f"{value}\r\n"
-                body += f"--{boundary}--\r\n"
+                    body_string += f"--{boundary}\r\n"
+                    body_string += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
+                    body_string += f"{value}\r\n"
+                body_string += f"--{boundary}--\r\n"
             elif self.json:
-                body = json.dumps(self.json)
+                body_string = json.dumps(self.json)
             elif self.node_data.body.type == "raw-text":
-                body = self.node_data.body.data[0].value
-        if body:
-            raw += f"Content-Length: {len(body)}\r\n"
+                if len(self.node_data.body.data) != 1:
+                    raise RequestBodyError("raw-text body type should have exactly one item")
+                body_string = self.node_data.body.data[0].value
+        if body_string:
+            raw += f"Content-Length: {len(body_string)}\r\n"
         raw += "\r\n"  # Empty line between headers and body
-        raw += body
+        raw += body_string
 
         return raw
-
-
-def _plain_text_to_dict(text: str, /) -> dict[str, str]:
-    """
-    Convert a string of key-value pairs to a dictionary.
-
-    Each line in the input string represents a key-value pair.
-    Keys and values are separated by ':'.
-    Empty values are allowed.
-
-    Examples:
-        'aa:bb\n cc:dd'  -> {'aa': 'bb', 'cc': 'dd'}
-        'aa:\n cc:dd\n'  -> {'aa': '', 'cc': 'dd'}
-        'aa\n cc : dd'   -> {'aa': '', 'cc': 'dd'}
-
-    Args:
-        convert_text (str): The input string to convert.
-
-    Returns:
-        dict[str, str]: A dictionary of key-value pairs.
-    """
-    return {
-        key.strip(): (value[0].strip() if value else "")
-        for line in text.splitlines()
-        if line.strip()
-        for key, *value in [line.split(":", 1)]
-    }
 
 
 def _generate_random_string(n: int) -> str:

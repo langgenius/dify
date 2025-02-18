@@ -99,6 +99,12 @@ const translation = {
   noLoginMethodTip: 'Wenden Sie sich an den Systemadministrator, um eine Authentifizierungsmethode hinzuzufügen.',
   usePassword: 'Passwort verwenden',
   noLoginMethod: 'Authentifizierungsmethode nicht konfiguriert',
+  licenseExpired: 'Lizenz abgelaufen',
+  licenseLostTip: 'Fehler beim Verbinden des Dify-Lizenzservers. Wenden Sie sich an Ihren Administrator, um Dify weiterhin zu verwenden.',
+  licenseInactive: 'Lizenz inaktiv',
+  licenseInactiveTip: 'Die Dify Enterprise-Lizenz für Ihren Arbeitsbereich ist inaktiv. Wenden Sie sich an Ihren Administrator, um Dify weiterhin zu verwenden.',
+  licenseExpiredTip: 'Die Dify Enterprise-Lizenz für Ihren Arbeitsbereich ist abgelaufen. Wenden Sie sich an Ihren Administrator, um Dify weiterhin zu verwenden.',
+  licenseLost: 'Lizenz verloren',
 }
 
 export default translation

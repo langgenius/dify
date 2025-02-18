@@ -91,7 +91,7 @@ class XinferenceProvider(Provider):
       """
   ```
 
-  也可以直接抛出对应Erros，并做如下定义，这样在之后的调用中可以直接抛出`InvokeConnectionError`等异常。
+  也可以直接抛出对应 Errors，并做如下定义，这样在之后的调用中可以直接抛出`InvokeConnectionError`等异常。
   
     ```python
     @property

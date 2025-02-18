@@ -4,6 +4,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.graph_engine.entities.event import (
     GraphEngineEvent,
     GraphRunFailedEvent,
+    GraphRunPartialSucceededEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     IterationRunFailedEvent,
@@ -32,13 +33,15 @@ _TEXT_COLOR_MAPPING = {
 
 class WorkflowLoggingCallback(WorkflowCallback):
     def __init__(self) -> None:
-        self.current_node_id = None
+        self.current_node_id: Optional[str] = None
 
     def on_event(self, event: GraphEngineEvent) -> None:
         if isinstance(event, GraphRunStartedEvent):
             self.print_text("\n[GraphRunStartedEvent]", color="pink")
         elif isinstance(event, GraphRunSucceededEvent):
             self.print_text("\n[GraphRunSucceededEvent]", color="green")
+        elif isinstance(event, GraphRunPartialSucceededEvent):
+            self.print_text("\n[GraphRunPartialSucceededEvent]", color="pink")
         elif isinstance(event, GraphRunFailedEvent):
             self.print_text(f"\n[GraphRunFailedEvent] reason: {event.error}", color="red")
         elif isinstance(event, NodeRunStartedEvent):

@@ -1,8 +1,8 @@
 import logging
-import os
 from collections.abc import Callable, Generator, Iterable, Sequence
-from typing import IO, Any, Optional, Union, cast
+from typing import IO, Any, Literal, Optional, Union, cast, overload
 
+from configs import dify_config
 from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
@@ -98,12 +98,48 @@ class ModelInstance:
 
         return None
 
+    @overload
     def invoke_llm(
         self,
         prompt_messages: list[PromptMessage],
         model_parameters: Optional[dict] = None,
         tools: Sequence[PromptMessageTool] | None = None,
         stop: Optional[list[str]] = None,
+        stream: Literal[True] = True,
+        user: Optional[str] = None,
+        callbacks: Optional[list[Callback]] = None,
+    ) -> Generator: ...
+
+    @overload
+    def invoke_llm(
+        self,
+        prompt_messages: list[PromptMessage],
+        model_parameters: Optional[dict] = None,
+        tools: Sequence[PromptMessageTool] | None = None,
+        stop: Optional[list[str]] = None,
+        stream: Literal[False] = False,
+        user: Optional[str] = None,
+        callbacks: Optional[list[Callback]] = None,
+    ) -> LLMResult: ...
+
+    @overload
+    def invoke_llm(
+        self,
+        prompt_messages: list[PromptMessage],
+        model_parameters: Optional[dict] = None,
+        tools: Sequence[PromptMessageTool] | None = None,
+        stop: Optional[list[str]] = None,
+        stream: bool = True,
+        user: Optional[str] = None,
+        callbacks: Optional[list[Callback]] = None,
+    ) -> Union[LLMResult, Generator]: ...
+
+    def invoke_llm(
+        self,
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: Optional[dict] = None,
+        tools: Sequence[PromptMessageTool] | None = None,
+        stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
@@ -124,17 +160,20 @@ class ModelInstance:
             raise Exception("Model type instance is not LargeLanguageModel")
 
         self.model_type_instance = cast(LargeLanguageModel, self.model_type_instance)
-        return self._round_robin_invoke(
-            function=self.model_type_instance.invoke,
-            model=self.model,
-            credentials=self.credentials,
-            prompt_messages=prompt_messages,
-            model_parameters=model_parameters,
-            tools=tools,
-            stop=stop,
-            stream=stream,
-            user=user,
-            callbacks=callbacks,
+        return cast(
+            Union[LLMResult, Generator],
+            self._round_robin_invoke(
+                function=self.model_type_instance.invoke,
+                model=self.model,
+                credentials=self.credentials,
+                prompt_messages=prompt_messages,
+                model_parameters=model_parameters,
+                tools=tools,
+                stop=stop,
+                stream=stream,
+                user=user,
+                callbacks=callbacks,
+            ),
         )
 
     def get_llm_num_tokens(
@@ -151,12 +190,15 @@ class ModelInstance:
             raise Exception("Model type instance is not LargeLanguageModel")
 
         self.model_type_instance = cast(LargeLanguageModel, self.model_type_instance)
-        return self._round_robin_invoke(
-            function=self.model_type_instance.get_num_tokens,
-            model=self.model,
-            credentials=self.credentials,
-            prompt_messages=prompt_messages,
-            tools=tools,
+        return cast(
+            int,
+            self._round_robin_invoke(
+                function=self.model_type_instance.get_num_tokens,
+                model=self.model,
+                credentials=self.credentials,
+                prompt_messages=prompt_messages,
+                tools=tools,
+            ),
         )
 
     def invoke_text_embedding(
@@ -174,16 +216,19 @@ class ModelInstance:
             raise Exception("Model type instance is not TextEmbeddingModel")
 
         self.model_type_instance = cast(TextEmbeddingModel, self.model_type_instance)
-        return self._round_robin_invoke(
-            function=self.model_type_instance.invoke,
-            model=self.model,
-            credentials=self.credentials,
-            texts=texts,
-            user=user,
-            input_type=input_type,
+        return cast(
+            TextEmbeddingResult,
+            self._round_robin_invoke(
+                function=self.model_type_instance.invoke,
+                model=self.model,
+                credentials=self.credentials,
+                texts=texts,
+                user=user,
+                input_type=input_type,
+            ),
         )
 
-    def get_text_embedding_num_tokens(self, texts: list[str]) -> int:
+    def get_text_embedding_num_tokens(self, texts: list[str]) -> list[int]:
         """
         Get number of tokens for text embedding
 
@@ -194,11 +239,14 @@ class ModelInstance:
             raise Exception("Model type instance is not TextEmbeddingModel")
 
         self.model_type_instance = cast(TextEmbeddingModel, self.model_type_instance)
-        return self._round_robin_invoke(
-            function=self.model_type_instance.get_num_tokens,
-            model=self.model,
-            credentials=self.credentials,
-            texts=texts,
+        return cast(
+            list[int],
+            self._round_robin_invoke(
+                function=self.model_type_instance.get_num_tokens,
+                model=self.model,
+                credentials=self.credentials,
+                texts=texts,
+            ),
         )
 
     def invoke_rerank(
@@ -223,15 +271,18 @@ class ModelInstance:
             raise Exception("Model type instance is not RerankModel")
 
         self.model_type_instance = cast(RerankModel, self.model_type_instance)
-        return self._round_robin_invoke(
-            function=self.model_type_instance.invoke,
-            model=self.model,
-            credentials=self.credentials,
-            query=query,
-            docs=docs,
-            score_threshold=score_threshold,
-            top_n=top_n,
-            user=user,
+        return cast(
+            RerankResult,
+            self._round_robin_invoke(
+                function=self.model_type_instance.invoke,
+                model=self.model,
+                credentials=self.credentials,
+                query=query,
+                docs=docs,
+                score_threshold=score_threshold,
+                top_n=top_n,
+                user=user,
+            ),
         )
 
     def invoke_moderation(self, text: str, user: Optional[str] = None) -> bool:
@@ -246,12 +297,15 @@ class ModelInstance:
             raise Exception("Model type instance is not ModerationModel")
 
         self.model_type_instance = cast(ModerationModel, self.model_type_instance)
-        return self._round_robin_invoke(
-            function=self.model_type_instance.invoke,
-            model=self.model,
-            credentials=self.credentials,
-            text=text,
-            user=user,
+        return cast(
+            bool,
+            self._round_robin_invoke(
+                function=self.model_type_instance.invoke,
+                model=self.model,
+                credentials=self.credentials,
+                text=text,
+                user=user,
+            ),
         )
 
     def invoke_speech2text(self, file: IO[bytes], user: Optional[str] = None) -> str:
@@ -266,12 +320,15 @@ class ModelInstance:
             raise Exception("Model type instance is not Speech2TextModel")
 
         self.model_type_instance = cast(Speech2TextModel, self.model_type_instance)
-        return self._round_robin_invoke(
-            function=self.model_type_instance.invoke,
-            model=self.model,
-            credentials=self.credentials,
-            file=file,
-            user=user,
+        return cast(
+            str,
+            self._round_robin_invoke(
+                function=self.model_type_instance.invoke,
+                model=self.model,
+                credentials=self.credentials,
+                file=file,
+                user=user,
+            ),
         )
 
     def invoke_tts(self, content_text: str, tenant_id: str, voice: str, user: Optional[str] = None) -> Iterable[bytes]:
@@ -288,17 +345,20 @@ class ModelInstance:
             raise Exception("Model type instance is not TTSModel")
 
         self.model_type_instance = cast(TTSModel, self.model_type_instance)
-        return self._round_robin_invoke(
-            function=self.model_type_instance.invoke,
-            model=self.model,
-            credentials=self.credentials,
-            content_text=content_text,
-            user=user,
-            tenant_id=tenant_id,
-            voice=voice,
+        return cast(
+            Iterable[bytes],
+            self._round_robin_invoke(
+                function=self.model_type_instance.invoke,
+                model=self.model,
+                credentials=self.credentials,
+                content_text=content_text,
+                user=user,
+                tenant_id=tenant_id,
+                voice=voice,
+            ),
         )
 
-    def _round_robin_invoke(self, function: Callable[..., Any], *args, **kwargs):
+    def _round_robin_invoke(self, function: Callable[..., Any], *args, **kwargs) -> Any:
         """
         Round-robin invoke
         :param function: function to invoke
@@ -309,7 +369,7 @@ class ModelInstance:
         if not self.load_balancing_manager:
             return function(*args, **kwargs)
 
-        last_exception = None
+        last_exception: Union[InvokeRateLimitError, InvokeAuthorizationError, InvokeConnectionError, None] = None
         while True:
             lb_config = self.load_balancing_manager.fetch_next()
             if not lb_config:
@@ -373,7 +433,7 @@ class ModelManager:
 
         return ModelInstance(provider_model_bundle, model)
 
-    def get_default_provider_model_name(self, tenant_id: str, model_type: ModelType) -> tuple[str, str]:
+    def get_default_provider_model_name(self, tenant_id: str, model_type: ModelType) -> tuple[str | None, str | None]:
         """
         Return first provider and the first model in the provider
         :param tenant_id: tenant id
@@ -463,7 +523,7 @@ class LBModelManager:
             if real_index > max_index:
                 real_index = 0
 
-            config = self._load_balancing_configs[real_index]
+            config: ModelLoadBalancingConfiguration = self._load_balancing_configs[real_index]
 
             if self.in_cooldown(config):
                 cooldown_load_balancing_configs.append(config)
@@ -473,7 +533,7 @@ class LBModelManager:
 
                 continue
 
-            if bool(os.environ.get("DEBUG", "False").lower() == "true"):
+            if dify_config.DEBUG:
                 logger.info(
                     f"Model LB\nid: {config.id}\nname:{config.name}\n"
                     f"tenant_id: {self._tenant_id}\nprovider: {self._provider}\n"
@@ -507,8 +567,7 @@ class LBModelManager:
             self._tenant_id, self._provider, self._model_type.value, self._model, config.id
         )
 
-        res = redis_client.exists(cooldown_cache_key)
-        res = cast(bool, res)
+        res: bool = redis_client.exists(cooldown_cache_key)
         return res
 
     @staticmethod

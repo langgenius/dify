@@ -90,6 +90,12 @@ class Vector:
                 from core.rag.datasource.vdb.elasticsearch.elasticsearch_vector import ElasticSearchVectorFactory
 
                 return ElasticSearchVectorFactory
+            case VectorType.ELASTICSEARCH_JA:
+                from core.rag.datasource.vdb.elasticsearch.elasticsearch_ja_vector import (
+                    ElasticSearchJaVectorFactory,
+                )
+
+                return ElasticSearchJaVectorFactory
             case VectorType.TIDB_VECTOR:
                 from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVectorFactory
 
@@ -134,6 +140,10 @@ class Vector:
                 from core.rag.datasource.vdb.tidb_on_qdrant.tidb_on_qdrant_vector import TidbOnQdrantVectorFactory
 
                 return TidbOnQdrantVectorFactory
+            case VectorType.LINDORM:
+                from core.rag.datasource.vdb.lindorm.lindorm_vector import LindormVectorStoreFactory
+
+                return LindormVectorStoreFactory
             case VectorType.OCEANBASE:
                 from core.rag.datasource.vdb.oceanbase.oceanbase_vector import OceanBaseVectorFactory
 
@@ -189,10 +199,13 @@ class Vector:
 
     def _filter_duplicate_texts(self, texts: list[Document]) -> list[Document]:
         for text in texts.copy():
+            if text.metadata is None:
+                continue
             doc_id = text.metadata["doc_id"]
-            exists_duplicate_node = self.text_exists(doc_id)
-            if exists_duplicate_node:
-                texts.remove(text)
+            if doc_id:
+                exists_duplicate_node = self.text_exists(doc_id)
+                if exists_duplicate_node:
+                    texts.remove(text)
 
         return texts
 

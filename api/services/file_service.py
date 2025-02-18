@@ -3,7 +3,7 @@ import hashlib
 import uuid
 from typing import Any, Literal, Union
 
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -61,14 +61,14 @@ class FileService:
             # end_user
             current_tenant_id = user.tenant_id
 
-        file_key = "upload_files/" + current_tenant_id + "/" + file_uuid + "." + extension
+        file_key = "upload_files/" + (current_tenant_id or "") + "/" + file_uuid + "." + extension
 
         # save file to storage
         storage.save(file_key, content)
 
         # save file to db
         upload_file = UploadFile(
-            tenant_id=current_tenant_id,
+            tenant_id=current_tenant_id or "",
             storage_type=dify_config.STORAGE_TYPE,
             key=file_key,
             name=filename,
@@ -77,7 +77,7 @@ class FileService:
             mime_type=mimetype,
             created_by_role=(CreatedByRole.ACCOUNT if isinstance(user, Account) else CreatedByRole.END_USER),
             created_by=user.id,
-            created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+            created_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
             used=False,
             hash=hashlib.sha3_256(content).hexdigest(),
             source_url=source_url,
@@ -123,10 +123,10 @@ class FileService:
             mime_type="text/plain",
             created_by=current_user.id,
             created_by_role=CreatedByRole.ACCOUNT,
-            created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+            created_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
             used=True,
             used_by=current_user.id,
-            used_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+            used_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
         )
 
         db.session.add(upload_file)

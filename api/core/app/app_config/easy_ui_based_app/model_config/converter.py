@@ -4,14 +4,15 @@ from core.app.app_config.entities import EasyUIBasedAppConfig
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_runtime.entities.model_entities import ModelType
+from core.model_runtime.entities.llm_entities import LLMMode
+from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.provider_manager import ProviderManager
 
 
 class ModelConfigConverter:
     @classmethod
-    def convert(cls, app_config: EasyUIBasedAppConfig, skip_check: bool = False) -> ModelConfigWithCredentialsEntity:
+    def convert(cls, app_config: EasyUIBasedAppConfig) -> ModelConfigWithCredentialsEntity:
         """
         Convert app model config dict to entity.
         :param app_config: app config
@@ -38,27 +39,23 @@ class ModelConfigConverter:
         )
 
         if model_credentials is None:
-            if not skip_check:
-                raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
-            else:
-                model_credentials = {}
+            raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
 
-        if not skip_check:
-            # check model
-            provider_model = provider_model_bundle.configuration.get_provider_model(
-                model=model_config.model, model_type=ModelType.LLM
-            )
+        # check model
+        provider_model = provider_model_bundle.configuration.get_provider_model(
+            model=model_config.model, model_type=ModelType.LLM
+        )
 
-            if provider_model is None:
-                model_name = model_config.model
-                raise ValueError(f"Model {model_name} not exist.")
+        if provider_model is None:
+            model_name = model_config.model
+            raise ValueError(f"Model {model_name} not exist.")
 
-            if provider_model.status == ModelStatus.NO_CONFIGURE:
-                raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
-            elif provider_model.status == ModelStatus.NO_PERMISSION:
-                raise ModelCurrentlyNotSupportError(f"Dify Hosted OpenAI {model_name} currently not support.")
-            elif provider_model.status == ModelStatus.QUOTA_EXCEEDED:
-                raise QuotaExceededError(f"Model provider {provider_name} quota exceeded.")
+        if provider_model.status == ModelStatus.NO_CONFIGURE:
+            raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
+        elif provider_model.status == ModelStatus.NO_PERMISSION:
+            raise ModelCurrentlyNotSupportError(f"Dify Hosted OpenAI {model_name} currently not support.")
+        elif provider_model.status == ModelStatus.QUOTA_EXCEEDED:
+            raise QuotaExceededError(f"Model provider {provider_name} quota exceeded.")
 
         # model config
         completion_params = model_config.parameters
@@ -67,16 +64,16 @@ class ModelConfigConverter:
             stop = completion_params["stop"]
             del completion_params["stop"]
 
+        model_schema = model_type_instance.get_model_schema(model_config.model, model_credentials)
+
         # get model mode
         model_mode = model_config.mode
         if not model_mode:
-            mode_enum = model_type_instance.get_model_mode(model=model_config.model, credentials=model_credentials)
+            model_mode = LLMMode.CHAT.value
+            if model_schema and model_schema.model_properties.get(ModelPropertyKey.MODE):
+                model_mode = LLMMode.value_of(model_schema.model_properties[ModelPropertyKey.MODE]).value
 
-            model_mode = mode_enum.value
-
-        model_schema = model_type_instance.get_model_schema(model_config.model, model_credentials)
-
-        if not skip_check and not model_schema:
+        if not model_schema:
             raise ValueError(f"Model {model_name} not exist.")
 
         return ModelConfigWithCredentialsEntity(

@@ -103,7 +103,7 @@ const translation = {
       edit: 'Edit annotation',
     },
     dataSet: {
-      title: 'Context',
+      title: 'Knowledge',
       noData: 'You can import Knowledge as context',
       words: 'Words',
       textBlocks: 'Text Blocks',
@@ -217,6 +217,10 @@ const translation = {
       empty: 'Enable feature to enhance web app user experience',
       enableText: 'Features Enabled',
       manage: 'Manage',
+    },
+    documentUpload: {
+      title: 'Document',
+      description: 'Enable Document will allows the model to take in documents and answer questions about them.',
     },
   },
   codegen: {
@@ -479,7 +483,7 @@ const translation = {
       title: 'Multi-path retrieval',
       description: 'Based on user intent, queries across all Knowledge, retrieves relevant text from multi-sources, and selects the best results matching the user query after reranking. ',
     },
-    rerankModelRequired: 'Rerank model is required',
+    rerankModelRequired: 'A configured Rerank Model is required',
     params: 'Params',
     top_k: 'Top K',
     top_kTip: 'Used to filter chunks that are most similar to user questions. The system will also dynamically adjust the value of Top K, according to max_tokens of the selected model.',

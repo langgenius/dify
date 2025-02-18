@@ -10,8 +10,9 @@ import {
   useRef,
 } from 'react'
 import {
-  RiCheckboxCircleLine,
-  RiErrorWarningLine,
+  RiAlertFill,
+  RiCheckboxCircleFill,
+  RiErrorWarningFill,
   RiLoader2Line,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
@@ -24,16 +25,24 @@ import {
   useNodesReadOnly,
   useToolIcon,
 } from '../../hooks'
+import {
+  hasErrorHandleNode,
+  hasRetryNode,
+} from '../../utils'
 import { useNodeIterationInteractions } from '../iteration/use-interactions'
+import type { IterationNodeType } from '../iteration/types'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
 } from './components/node-handle'
 import NodeResizer from './components/node-resizer'
 import NodeControl from './components/node-control'
+import ErrorHandleOnNode from './components/error-handle/error-handle-on-node'
+import RetryOnNode from './components/retry/retry-on-node'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import Tooltip from '@/app/components/base/tooltip'
 
 type BaseNodeProps = {
   children: ReactElement
@@ -69,11 +78,13 @@ const BaseNode: FC<BaseNodeProps> = ({
     showRunningBorder,
     showSuccessBorder,
     showFailedBorder,
+    showExceptionBorder,
   } = useMemo(() => {
     return {
       showRunningBorder: data._runningStatus === NodeRunningStatus.Running && !showSelectedBorder,
       showSuccessBorder: data._runningStatus === NodeRunningStatus.Succeeded && !showSelectedBorder,
       showFailedBorder: data._runningStatus === NodeRunningStatus.Failed && !showSelectedBorder,
+      showExceptionBorder: data._runningStatus === NodeRunningStatus.Exception && !showSelectedBorder,
     }
   }, [data._runningStatus, showSelectedBorder])
 
@@ -83,6 +94,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         'flex border-[2px] rounded-2xl',
         showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
         !showSelectedBorder && data._inParallelHovering && 'border-workflow-block-border-highlight',
+        data._waitingRun && 'opacity-70',
       )}
       ref={nodeRef}
       style={{
@@ -95,11 +107,12 @@ const BaseNode: FC<BaseNodeProps> = ({
           'group relative pb-1 shadow-xs',
           'border border-transparent rounded-[15px]',
           data.type !== BlockEnum.Iteration && 'w-[240px] bg-workflow-block-bg',
-          data.type === BlockEnum.Iteration && 'flex flex-col w-full h-full bg-[#fcfdff]/80',
+          data.type === BlockEnum.Iteration && 'flex flex-col w-full h-full bg-workflow-block-bg-transparent border-workflow-block-border',
           !data._runningStatus && 'hover:shadow-lg',
-          showRunningBorder && '!border-primary-500',
-          showSuccessBorder && '!border-[#12B76A]',
-          showFailedBorder && '!border-[#F04438]',
+          showRunningBorder && '!border-state-accent-solid',
+          showSuccessBorder && '!border-state-success-solid',
+          showFailedBorder && '!border-state-destructive-solid',
+          showExceptionBorder && '!border-state-warning-solid',
           data._isBundled && '!shadow-lg',
         )}
       >
@@ -156,7 +169,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         }
         <div className={cn(
           'flex items-center px-3 pt-3 pb-2 rounded-t-2xl',
-          data.type === BlockEnum.Iteration && 'bg-[rgba(250,252,255,0.9)]',
+          data.type === BlockEnum.Iteration && 'bg-transparent',
         )}>
           <BlockIcon
             className='shrink-0 mr-2'
@@ -166,30 +179,53 @@ const BaseNode: FC<BaseNodeProps> = ({
           />
           <div
             title={data.title}
-            className='grow mr-1 system-sm-semibold-uppercase text-text-primary truncate'
+            className='grow mr-1 system-sm-semibold-uppercase text-text-primary truncate flex items-center'
           >
-            {data.title}
+            <div>
+              {data.title}
+            </div>
+            {
+              data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
+                <Tooltip popupContent={
+                  <div className='w-[180px]'>
+                    <div className='font-extrabold'>
+                      {t('workflow.nodes.iteration.parallelModeEnableTitle')}
+                    </div>
+                    {t('workflow.nodes.iteration.parallelModeEnableDesc')}
+                  </div>}
+                >
+                  <div className='flex justify-center items-center px-[5px] py-[3px] ml-1 border-[1px] border-text-warning rounded-[5px] text-text-warning system-2xs-medium-uppercase '>
+                    {t('workflow.nodes.iteration.parallelModeUpper')}
+                  </div>
+                </Tooltip>
+              )
+            }
           </div>
           {
             data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running && (
-              <div className='mr-1.5 text-xs font-medium text-primary-600'>
-                {data._iterationIndex}/{data._iterationLength}
+              <div className='mr-1.5 text-xs font-medium text-text-accent'>
+                {data._iterationIndex > data._iterationLength ? data._iterationLength : data._iterationIndex}/{data._iterationLength}
               </div>
             )
           }
           {
             (data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running) && (
-              <RiLoader2Line className='w-3.5 h-3.5 text-primary-600 animate-spin' />
+              <RiLoader2Line className='w-3.5 h-3.5 text-text-accent animate-spin' />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Succeeded && (
-              <RiCheckboxCircleLine className='w-3.5 h-3.5 text-[#12B76A]' />
+              <RiCheckboxCircleFill className='w-3.5 h-3.5 text-text-success' />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Failed && (
-              <RiErrorWarningLine className='w-3.5 h-3.5 text-[#F04438]' />
+              <RiErrorWarningFill className='w-3.5 h-3.5 text-text-destructive' />
+            )
+          }
+          {
+            data._runningStatus === NodeRunningStatus.Exception && (
+              <RiAlertFill className='w-3.5 h-3.5 text-text-warning-secondary' />
             )
           }
         </div>
@@ -203,6 +239,22 @@ const BaseNode: FC<BaseNodeProps> = ({
             <div className='grow pl-1 pr-1 pb-1'>
               {cloneElement(children, { id, data })}
             </div>
+          )
+        }
+        {
+          hasRetryNode(data.type) && (
+            <RetryOnNode
+              id={id}
+              data={data}
+            />
+          )
+        }
+        {
+          hasErrorHandleNode(data.type) && (
+            <ErrorHandleOnNode
+              id={id}
+              data={data}
+            />
           )
         }
         {

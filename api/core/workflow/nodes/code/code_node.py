@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
@@ -11,6 +11,12 @@ from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.code.entities import CodeNodeData
 from core.workflow.nodes.enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
+
+from .exc import (
+    CodeNodeError,
+    DepthLimitError,
+    OutputValidationError,
+)
 
 
 class CodeNode(BaseNode[CodeNodeData]):
@@ -43,13 +49,7 @@ class CodeNode(BaseNode[CodeNodeData]):
         for variable_selector in self.node_data.variables:
             variable_name = variable_selector.variable
             variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
-            if variable is None:
-                return NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.FAILED,
-                    inputs=variables,
-                    error=f"Variable `{variable_selector.value_selector}` not found",
-                )
-            variables[variable_name] = variable.to_object()
+            variables[variable_name] = variable.to_object() if variable else None
         # Run code
         try:
             result = CodeExecutor.execute_workflow_code_template(
@@ -59,48 +59,48 @@ class CodeNode(BaseNode[CodeNodeData]):
             )
 
             # Transform result
-            result = self._transform_result(result, self.node_data.outputs)
-        except (CodeExecutionError, ValueError) as e:
-            return NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e))
+            result = self._transform_result(result=result, output_schema=self.node_data.outputs)
+        except (CodeExecutionError, CodeNodeError) as e:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e), error_type=type(e).__name__
+            )
 
         return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs=result)
 
-    def _check_string(self, value: str, variable: str) -> str:
+    def _check_string(self, value: str | None, variable: str) -> str | None:
         """
         Check string
         :param value: value
         :param variable: variable
         :return:
         """
+        if value is None:
+            return None
         if not isinstance(value, str):
-            if value is None:
-                return None
-            else:
-                raise ValueError(f"Output variable `{variable}` must be a string")
+            raise OutputValidationError(f"Output variable `{variable}` must be a string")
 
         if len(value) > dify_config.CODE_MAX_STRING_LENGTH:
-            raise ValueError(
+            raise OutputValidationError(
                 f"The length of output variable `{variable}` must be"
                 f" less than {dify_config.CODE_MAX_STRING_LENGTH} characters"
             )
 
         return value.replace("\x00", "")
 
-    def _check_number(self, value: Union[int, float], variable: str) -> Union[int, float]:
+    def _check_number(self, value: int | float | None, variable: str) -> int | float | None:
         """
         Check number
         :param value: value
         :param variable: variable
         :return:
         """
+        if value is None:
+            return None
         if not isinstance(value, int | float):
-            if value is None:
-                return None
-            else:
-                raise ValueError(f"Output variable `{variable}` must be a number")
+            raise OutputValidationError(f"Output variable `{variable}` must be a number")
 
         if value > dify_config.CODE_MAX_NUMBER or value < dify_config.CODE_MIN_NUMBER:
-            raise ValueError(
+            raise OutputValidationError(
                 f"Output variable `{variable}` is out of range,"
                 f" it must be between {dify_config.CODE_MIN_NUMBER} and {dify_config.CODE_MAX_NUMBER}."
             )
@@ -108,7 +108,7 @@ class CodeNode(BaseNode[CodeNodeData]):
         if isinstance(value, float):
             # raise error if precision is too high
             if len(str(value).split(".")[1]) > dify_config.CODE_MAX_PRECISION:
-                raise ValueError(
+                raise OutputValidationError(
                     f"Output variable `{variable}` has too high precision,"
                     f" it must be less than {dify_config.CODE_MAX_PRECISION} digits."
                 )
@@ -116,18 +116,16 @@ class CodeNode(BaseNode[CodeNodeData]):
         return value
 
     def _transform_result(
-        self, result: dict, output_schema: Optional[dict[str, CodeNodeData.Output]], prefix: str = "", depth: int = 1
-    ) -> dict:
-        """
-        Transform result
-        :param result: result
-        :param output_schema: output schema
-        :return:
-        """
+        self,
+        result: Mapping[str, Any],
+        output_schema: Optional[dict[str, CodeNodeData.Output]],
+        prefix: str = "",
+        depth: int = 1,
+    ):
         if depth > dify_config.CODE_MAX_DEPTH:
-            raise ValueError(f"Depth limit ${dify_config.CODE_MAX_DEPTH} reached, object too deep.")
+            raise DepthLimitError(f"Depth limit ${dify_config.CODE_MAX_DEPTH} reached, object too deep.")
 
-        transformed_result = {}
+        transformed_result: dict[str, Any] = {}
         if output_schema is None:
             # validate output thought instance type
             for output_name, output_value in result.items():
@@ -177,14 +175,14 @@ class CodeNode(BaseNode[CodeNodeData]):
                                         depth=depth + 1,
                                     )
                         else:
-                            raise ValueError(
+                            raise OutputValidationError(
                                 f"Output {prefix}.{output_name} is not a valid array."
                                 f" make sure all elements are of the same type."
                             )
                 elif output_value is None:
                     pass
                 else:
-                    raise ValueError(f"Output {prefix}.{output_name} is not a valid type.")
+                    raise OutputValidationError(f"Output {prefix}.{output_name} is not a valid type.")
 
             return result
 
@@ -192,15 +190,15 @@ class CodeNode(BaseNode[CodeNodeData]):
         for output_name, output_config in output_schema.items():
             dot = "." if prefix else ""
             if output_name not in result:
-                raise ValueError(f"Output {prefix}{dot}{output_name} is missing.")
+                raise OutputValidationError(f"Output {prefix}{dot}{output_name} is missing.")
 
             if output_config.type == "object":
                 # check if output is object
                 if not isinstance(result.get(output_name), dict):
-                    if isinstance(result.get(output_name), type(None)):
+                    if result[output_name] is None:
                         transformed_result[output_name] = None
                     else:
-                        raise ValueError(
+                        raise OutputValidationError(
                             f"Output {prefix}{dot}{output_name} is not an object,"
                             f" got {type(result.get(output_name))} instead."
                         )
@@ -225,16 +223,16 @@ class CodeNode(BaseNode[CodeNodeData]):
             elif output_config.type == "array[number]":
                 # check if array of number available
                 if not isinstance(result[output_name], list):
-                    if isinstance(result[output_name], type(None)):
+                    if result[output_name] is None:
                         transformed_result[output_name] = None
                     else:
-                        raise ValueError(
+                        raise OutputValidationError(
                             f"Output {prefix}{dot}{output_name} is not an array,"
                             f" got {type(result.get(output_name))} instead."
                         )
                 else:
                     if len(result[output_name]) > dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH:
-                        raise ValueError(
+                        raise OutputValidationError(
                             f"The length of output variable `{prefix}{dot}{output_name}` must be"
                             f" less than {dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH} elements."
                         )
@@ -246,16 +244,16 @@ class CodeNode(BaseNode[CodeNodeData]):
             elif output_config.type == "array[string]":
                 # check if array of string available
                 if not isinstance(result[output_name], list):
-                    if isinstance(result[output_name], type(None)):
+                    if result[output_name] is None:
                         transformed_result[output_name] = None
                     else:
-                        raise ValueError(
+                        raise OutputValidationError(
                             f"Output {prefix}{dot}{output_name} is not an array,"
                             f" got {type(result.get(output_name))} instead."
                         )
                 else:
                     if len(result[output_name]) > dify_config.CODE_MAX_STRING_ARRAY_LENGTH:
-                        raise ValueError(
+                        raise OutputValidationError(
                             f"The length of output variable `{prefix}{dot}{output_name}` must be"
                             f" less than {dify_config.CODE_MAX_STRING_ARRAY_LENGTH} elements."
                         )
@@ -267,16 +265,16 @@ class CodeNode(BaseNode[CodeNodeData]):
             elif output_config.type == "array[object]":
                 # check if array of object available
                 if not isinstance(result[output_name], list):
-                    if isinstance(result[output_name], type(None)):
+                    if result[output_name] is None:
                         transformed_result[output_name] = None
                     else:
-                        raise ValueError(
+                        raise OutputValidationError(
                             f"Output {prefix}{dot}{output_name} is not an array,"
                             f" got {type(result.get(output_name))} instead."
                         )
                 else:
                     if len(result[output_name]) > dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH:
-                        raise ValueError(
+                        raise OutputValidationError(
                             f"The length of output variable `{prefix}{dot}{output_name}` must be"
                             f" less than {dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH} elements."
                         )
@@ -286,7 +284,7 @@ class CodeNode(BaseNode[CodeNodeData]):
                             if value is None:
                                 pass
                             else:
-                                raise ValueError(
+                                raise OutputValidationError(
                                     f"Output {prefix}{dot}{output_name}[{i}] is not an object,"
                                     f" got {type(value)} instead at index {i}."
                                 )
@@ -303,13 +301,13 @@ class CodeNode(BaseNode[CodeNodeData]):
                         for i, value in enumerate(result[output_name])
                     ]
             else:
-                raise ValueError(f"Output type {output_config.type} is not supported.")
+                raise OutputValidationError(f"Output type {output_config.type} is not supported.")
 
             parameters_validated[output_name] = True
 
         # check if all output parameters are validated
         if len(parameters_validated) != len(result):
-            raise ValueError("Not all output parameters are validated.")
+            raise CodeNodeError("Not all output parameters are validated.")
 
         return transformed_result
 

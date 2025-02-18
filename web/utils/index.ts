@@ -8,10 +8,8 @@ export async function asyncRunSafe<T = any>(fn: Promise<T>): Promise<[Error] | [
   try {
     return [null, await fn]
   }
-  catch (e) {
-    if (e instanceof Error)
-      return [e]
-    return [new Error('unknown error')]
+  catch (e: any) {
+    return [e || new Error('unknown error')]
   }
 }
 
@@ -56,4 +54,36 @@ export async function fetchWithRetry<T = any>(fn: Promise<T>, retries = 3): Prom
   else {
     return [null, res]
   }
+}
+
+export const correctModelProvider = (provider: string) => {
+  if (!provider)
+    return ''
+
+  if (provider.includes('/'))
+    return provider
+
+  if (['google'].includes(provider))
+    return 'langgenius/gemini/google'
+
+  return `langgenius/${provider}/${provider}`
+}
+
+export const correctToolProvider = (provider: string) => {
+  if (!provider)
+    return ''
+
+  if (provider.includes('/'))
+    return provider
+
+  if (['stepfun', 'jina', 'siliconflow'].includes(provider))
+    return `langgenius/${provider}_tool/${provider}`
+
+  return `langgenius/${provider}/${provider}`
+}
+
+export const canFindTool = (providerId: string, oldToolId?: string) => {
+  return providerId === oldToolId
+  || providerId === `langgenius/${oldToolId}/${oldToolId}`
+  || providerId === `langgenius/${oldToolId}_tool/${oldToolId}`
 }
