@@ -1,15 +1,19 @@
 import dayjs from 'dayjs'
 import { Period } from './types'
-import { useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 
 const YEAR_RANGE = 100
 
 export const useDaysOfWeek = () => {
-  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const { t } = useTranslation()
+  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => t(`time.daysInWeek.${day}`))
+
+  return daysOfWeek
 }
 
 export const useMonths = () => {
-  return [
+  const { t } = useTranslation()
+  const months = [
     'January',
     'February',
     'March',
@@ -22,22 +26,24 @@ export const useMonths = () => {
     'October',
     'November',
     'December',
-  ]
+  ].map(month => t(`time.months.${month}`))
+
+  return months
 }
 
 export const useYearOptions = () => {
-  const yearOptions = useRef(Array.from({ length: 200 }, (_, i) => dayjs().year() - YEAR_RANGE / 2 + i))
-  return yearOptions.current
+  const yearOptions = Array.from({ length: 200 }, (_, i) => dayjs().year() - YEAR_RANGE / 2 + i)
+  return yearOptions
 }
 
 export const useTimeOptions = () => {
-  const hourOptions = useRef(Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0')))
-  const minuteOptions = useRef(Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')))
-  const periodOptions = useRef([Period.AM, Period.PM])
+  const hourOptions = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'))
+  const minuteOptions = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'))
+  const periodOptions = [Period.AM, Period.PM]
 
   return {
-    hourOptions: hourOptions.current,
-    minuteOptions: minuteOptions.current,
-    periodOptions: periodOptions.current,
+    hourOptions,
+    minuteOptions,
+    periodOptions,
   }
 }

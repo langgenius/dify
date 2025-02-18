@@ -11,12 +11,20 @@ export enum Period {
   PM = 'PM',
 }
 
+type TriggerProps = {
+  value: Dayjs | undefined
+  selectedDate: Dayjs | undefined
+  handleClear: (e: React.MouseEvent) => void
+  isOpen: boolean
+}
+
 export type DatePickerProps = {
   value: Dayjs | undefined
   placeholder?: string
   onChange: (date?: Dayjs) => void
   onClear: () => void
   needTimePicker?: boolean
+  renderTrigger?: (props: TriggerProps) => React.ReactNode
 }
 
 export type DatePickerHeaderProps = {

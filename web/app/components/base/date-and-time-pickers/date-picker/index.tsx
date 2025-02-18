@@ -18,23 +18,27 @@ import YearAndMonthPickerOptions from '../year-and-month-picker/options'
 import YearAndMonthPickerFooter from '../year-and-month-picker/footer'
 import TimePickerHeader from '../time-picker/header'
 import TimePickerOptions from '../time-picker/options'
+import { useTranslation } from 'react-i18next'
 
 const DatePicker = ({
   value,
   onChange,
   onClear,
-  placeholder = 'Pick a time...',
+  placeholder,
   needTimePicker = true,
+  renderTrigger,
 }: DatePickerProps) => {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [view, setView] = useState(ViewType.date)
   const containerRef = useRef<HTMLDivElement>(null)
+  const today = useRef(dayjs())
 
-  const [currentDate, setCurrentDate] = useState(value || dayjs())
+  const [currentDate, setCurrentDate] = useState(value || today.current)
   const [selectedDate, setSelectedDate] = useState(value)
 
-  const [selectedMonth, setSelectedMonth] = useState((value || dayjs()).month())
-  const [selectedYear, setSelectedYear] = useState((value || dayjs()).year())
+  const [selectedMonth, setSelectedMonth] = useState((value || today.current).month())
+  const [selectedYear, setSelectedYear] = useState((value || today.current).year())
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -47,18 +51,23 @@ const DatePicker = ({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleOpen = (e: React.MouseEvent) => {
+  const handleClickTrigger = (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (isOpen) {
+      setIsOpen(false)
+      return
+    }
     setView(ViewType.date)
     setIsOpen(true)
   }
 
   const handleClear = (e: React.MouseEvent) => {
+    const newDate = dayjs()
     e.stopPropagation()
     setSelectedDate(undefined)
-    setCurrentDate(prev => prev || dayjs())
-    setSelectedMonth(prev => prev || dayjs().month())
-    setSelectedYear(prev => prev || dayjs().year())
+    setCurrentDate(prev => prev || newDate)
+    setSelectedMonth(prev => prev || newDate.month())
+    setSelectedYear(prev => prev || newDate.year())
     if (!isOpen)
       onClear()
   }
@@ -82,8 +91,11 @@ const DatePicker = ({
   }, [selectedDate])
 
   const handleSelectCurrentDate = () => {
-    setCurrentDate(dayjs())
-    setSelectedDate(dayjs())
+    const newDate = dayjs()
+    setCurrentDate(newDate)
+    setSelectedDate(newDate)
+    onChange(newDate)
+    setIsOpen(false)
   }
 
   const handleConfirmDate = () => {
@@ -151,9 +163,10 @@ const DatePicker = ({
     setView(ViewType.date)
   }
 
-  const displayValue = value?.format('MMMM D, YYYY hh:mm A') || ''
+  const timeFormat = needTimePicker ? 'MMMM D, YYYY hh:mm A' : 'MMMM D, YYYY'
+  const displayValue = value?.format(timeFormat) || ''
   const displayTime = (selectedDate || dayjs()).format('hh:mm A')
-  const placeholderDate = isOpen && selectedDate ? selectedDate.format('MMMM D, YYYY hh:mm A') : placeholder
+  const placeholderDate = isOpen && selectedDate ? selectedDate.format(timeFormat) : (placeholder || t('time.defaultPlaceholder'))
 
   return (
     <PortalToFollowElem
@@ -161,16 +174,17 @@ const DatePicker = ({
       onOpenChange={setIsOpen}
       placement='bottom-end'
     >
-      <PortalToFollowElemTrigger onClick={() => {}}>
-        <div className='w-[252px]'>
-          {/* Display of Date */}
-          <div
-            className='w-full flex items-center gap-x-0.5 rounded-lg px-2 py-1 bg-components-input-bg-normal cursor-pointer group hover:bg-state-base-hover-alt'
-            onClick={handleOpen}
-          >
+      <PortalToFollowElemTrigger onClick={handleClickTrigger}>
+        {renderTrigger ? (renderTrigger({
+          value,
+          selectedDate,
+          handleClear,
+          isOpen,
+        })) : (
+          <div className='w-[252px] flex items-center gap-x-0.5 rounded-lg px-2 py-1 bg-components-input-bg-normal cursor-pointer group hover:bg-state-base-hover-alt'>
             <input
               className='flex-1 p-1 bg-transparent text-components-input-text-filled placeholder:text-components-input-text-placeholder truncate system-xs-regular
-              outline-none appearance-none cursor-pointer'
+            outline-none appearance-none cursor-pointer'
               readOnly
               value={isOpen ? '' : displayValue}
               placeholder={placeholderDate}
@@ -188,7 +202,7 @@ const DatePicker = ({
               onClick={handleClear}
             />
           </div>
-        </div>
+        )}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>
         <div className='w-[252px] mt-1 bg-components-panel-bg rounded-xl shadow-lg shadow-shadow-shadow-5 border-[0.5px] border-components-panel-border'>

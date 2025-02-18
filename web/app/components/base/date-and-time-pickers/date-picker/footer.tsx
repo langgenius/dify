@@ -3,6 +3,7 @@ import Button from '../../button'
 import type { DatePickerFooterProps } from '../types'
 import { RiTimeLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
+import { useTranslation } from 'react-i18next'
 
 const Footer: FC<DatePickerFooterProps> = ({
   needTimePicker,
@@ -11,6 +12,8 @@ const Footer: FC<DatePickerFooterProps> = ({
   handleSelectCurrentDate,
   handleConfirmDate,
 }) => {
+  const { t } = useTranslation()
+
   return (
     <div className={cn(
       'flex justify-between items-center p-2 border-t-[0.5px] border-divider-regular',
@@ -28,7 +31,6 @@ const Footer: FC<DatePickerFooterProps> = ({
           <span>{displayTime}</span>
         </button>
       )}
-      {/* Now and Confirm */}
       <div className='flex items-center gap-x-1'>
         {/* Now */}
         <button
@@ -36,7 +38,7 @@ const Footer: FC<DatePickerFooterProps> = ({
           className='flex items-center justify-center px-1.5 py-1 text-components-button-secondary-accent-text system-xs-medium'
           onClick={handleSelectCurrentDate}
         >
-          <span className='px-[3px]'>Now</span>
+          <span className='px-[3px]'>{t('time.operation.now')}</span>
         </button>
         {/* Confirm Button */}
         <Button
@@ -45,7 +47,7 @@ const Footer: FC<DatePickerFooterProps> = ({
           className='w-16 px-1.5 py-1'
           onClick={handleConfirmDate}
         >
-          OK
+          {t('time.operation.ok')}
         </Button>
       </div>
     </div>

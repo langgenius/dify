@@ -4,6 +4,7 @@ import type { Period, TimePickerProps } from '../types'
 import { cloneTime, getHourIn12Hour } from '../utils'
 import Footer from './footer'
 import Options from './options'
+import Header from './header'
 
 const TimePicker = ({
   value,
@@ -43,9 +44,7 @@ const TimePicker = ({
       {/* Header */}
       <div className='flex flex-col border-b-[0.5px] border-divider-regular'>
         {/* Title */}
-        <div className='flex items-center px-2 py-1.5 text-text-primary system-md-semibold'>
-          Pick Time
-        </div>
+        <Header />
       </div>
 
       {/* Time Options */}
