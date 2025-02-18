@@ -1,0 +1,60 @@
+import type { Dayjs } from 'dayjs'
+import type { Day } from './types'
+
+const monthMaps: Record<string, Day[]> = {}
+
+export const cloneTime = (targetDate: Dayjs, sourceDate: Dayjs) => {
+  return targetDate.clone()
+    .set('hour', sourceDate.hour())
+    .set('minute', sourceDate.minute())
+}
+
+export const getDaysInMonth = (currentDate: Dayjs) => {
+  const key = currentDate.format('YYYY-MM')
+  // return the cached days
+  if (monthMaps[key])
+    return monthMaps[key]
+
+  const daysInCurrentMonth = currentDate.daysInMonth()
+  const firstDay = currentDate.startOf('month').day()
+  const lastDay = currentDate.endOf('month').day()
+  const lastDayInLastMonth = currentDate.clone().subtract(1, 'month').endOf('month')
+  const firstDayInNextMonth = currentDate.clone().add(1, 'month').startOf('month')
+  const days: Day[] = []
+
+  // Add cells for days before the first day of the month
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const date = cloneTime(lastDayInLastMonth.subtract(i, 'day'), currentDate)
+    days.push({
+      date,
+      isCurrentMonth: false,
+    })
+  }
+
+  // Add days of the month
+  for (let i = 1; i <= daysInCurrentMonth; i++) {
+    const date = cloneTime(currentDate.startOf('month').add(i - 1, 'day'), currentDate)
+    days.push({
+      date,
+      isCurrentMonth: true,
+    })
+  }
+
+  // Add cells for days after the last day of the month
+  for (let i = 0; lastDay + i < 6; i++) {
+    const date = cloneTime(firstDayInNextMonth.add(i, 'day'), currentDate)
+    days.push({
+      date,
+      isCurrentMonth: false,
+    })
+  }
+
+  // cache the days
+  monthMaps[key] = days
+  return days
+}
+
+export const getHourIn12Hour = (date: Dayjs) => {
+  const hour = date.hour()
+  return hour === 0 ? 12 : hour >= 12 ? hour - 12 : hour
+}
